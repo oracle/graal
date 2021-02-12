@@ -44,6 +44,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
@@ -198,23 +199,43 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         sp += stackFrameSize;
     }
 
+    public void pushFrame(IntArrayBuffer frame) {
+        ensureSize(sp + 2 * stackFrameSize);
+        push();
+        writeFrame(frame);
+    }
+
+    public void readFrame(IntArrayBuffer to) {
+        to.ensureCapacity(stackFrameSize);
+        to.setLength(stackFrameSize);
+        System.arraycopy(stack(), sp, to.getBuffer(), 0, stackFrameSize);
+    }
+
+    public void writeFrame(IntArrayBuffer from) {
+        System.arraycopy(from.getBuffer(), 0, stack(), sp, stackFrameSize);
+    }
+
     public void dupFrame() {
         dupFrame(1);
     }
 
     public void dupFrame(int n) {
         int minSize = sp + (stackFrameSize * (n + 1));
+        ensureSize(minSize);
+        int targetFrame = sp;
+        for (int i = 0; i < n; i++) {
+            targetFrame += stackFrameSize;
+            System.arraycopy(stack(), sp, stack(), targetFrame, stackFrameSize);
+        }
+    }
+
+    private void ensureSize(int minSize) {
         if (stack().length < minSize) {
             int newLength = stack().length << 1;
             while (newLength < minSize) {
                 newLength <<= 1;
             }
             stack.stack = Arrays.copyOf(stack(), newLength);
-        }
-        int targetFrame = sp;
-        for (int i = 0; i < n; i++) {
-            targetFrame += stackFrameSize;
-            System.arraycopy(stack(), sp, stack(), targetFrame, stackFrameSize);
         }
     }
 
@@ -262,6 +283,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public void restoreIndex() {
         setIndex(stack()[sp]);
+    }
+
+    public int getPc() {
+        return stack()[offsetIP()];
     }
 
     public int setPc(int pc) {

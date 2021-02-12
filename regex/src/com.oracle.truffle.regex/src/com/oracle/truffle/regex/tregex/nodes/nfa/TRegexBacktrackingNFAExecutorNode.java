@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nfa.PureNFA;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
@@ -111,6 +112,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Children private CharMatcher[] matchers;
     private final int[] zeroWidthTermEnclosedCGLow;
     private final int[] zeroWidthQuantifierCGOffsets;
+    private final IntArrayBuffer currentFrame;
 
     @Child InputRegionMatchesNode regionMatchesNode;
     @Child InputIndexOfStringNode indexOfNode;
@@ -126,6 +128,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.backrefWithNullTargetSucceeds = nfaMap.getAst().getOptions().getFlavor() != RubyFlavor.INSTANCE;
         this.monitorCaptureGroupsInEmptyCheck = nfaMap.getAst().getOptions().getFlavor() == RubyFlavor.INSTANCE;
         this.transitionMatchesStepByStep = nfaMap.getAst().getOptions().getFlavor() == RubyFlavor.INSTANCE;
+        this.currentFrame = this.transitionMatchesStepByStep ? new IntArrayBuffer() : null;
         this.loneSurrogates = nfaMap.getAst().getProperties().hasLoneSurrogates();
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
         this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifiables().size();
@@ -374,16 +377,80 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
              * We know that in this state only one transition can match at a time, so we can always
              * break after the first match.
              */
-            for (int i = 0; i < successors.length; i++) {
+            if (transitionMatchesStepByStep) {
+                // Use the tryUpdateState method instead of transitionMatches and updateState
+                locals.readFrame(currentFrame);
+                for (int i = 0; i < successors.length; i++) {
+                    PureNFATransition transition = successors[i];
+                    CompilerAsserts.partialEvaluationConstant(transition);
+                    if (tryUpdateState(locals, compactString, transition, index, atEnd, c)) {
+                        locals.restoreIndex();
+                        return transition.getTarget(isForward()).getId();
+                    } else {
+                        locals.writeFrame(currentFrame);
+                    }
+                }
+                return IP_BACKTRACK;
+            } else {
+                for (int i = 0; i < successors.length; i++) {
+                    PureNFATransition transition = successors[i];
+                    CompilerAsserts.partialEvaluationConstant(transition);
+                    if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
+                        updateState(locals, transition, index);
+                        locals.restoreIndex();
+                        return transition.getTarget(isForward()).getId();
+                    }
+                }
+                return IP_BACKTRACK;
+            }
+        } else if (transitionMatchesStepByStep) {
+            boolean hasMatchingTransition = false;
+            boolean transitionToFinalStateWins = false;
+            // We make a copy of the current stack frame, as we will need it to undo speculative
+            // changes done by tryUpdateState and to duplicate the current stack frame on demand.
+            locals.readFrame(currentFrame);
+            for (int i = successors.length - 1; i >= 0; i--) {
                 PureNFATransition transition = successors[i];
                 CompilerAsserts.partialEvaluationConstant(transition);
-                if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
-                    updateState(locals, transition, index);
-                    locals.restoreIndex();
-                    return transition.getTarget(isForward()).getId();
+                if (tryUpdateState(locals, compactString, transition, index, atEnd, c)) {
+                    hasMatchingTransition = true;
+                    PureNFAState target = transition.getTarget(isForward());
+                    CompilerAsserts.partialEvaluationConstant(target);
+                    if (target.isFinalState(isForward())) {
+                        locals.setResult();
+                        locals.pushResult();
+                        transitionToFinalStateWins = true;
+                        // Prepare a fresh frame by resetting the current one, as the current
+                        // frame is no longer needed.
+                        locals.writeFrame(currentFrame);
+                    } else {
+                        locals.setPc(target.getId());
+                        transitionToFinalStateWins = false;
+                        // Prepare a fresh frame by pushing a new one.
+                        locals.pushFrame(currentFrame);
+                    }
+                } else {
+                    // Prepare a fresh frame by undoing any changes done by tryUpdateState.
+                    locals.writeFrame(currentFrame);
                 }
             }
-            return IP_BACKTRACK;
+            // The stack always one leftover stack frame that is to be discarded
+            // (that frame is a copy of the current frame that would have been used by the next
+            // transition, if there was any).
+            if (transitionToFinalStateWins) {
+                // We are successfully terminating the search, hence we can leave the leftover
+                // frame be.
+                return IP_END;
+            } else if (hasMatchingTransition) {
+                // We erase the leftover frame from the stack and set the index and stateId to the
+                // values stored in the top frame (index is set to locals, the stateId is returned).
+                locals.pop();
+                locals.restoreIndex();
+                return locals.getPc();
+            } else {
+                // We will backtrack, which will remove the leftover frame from the stack.
+                return IP_BACKTRACK;
+            }
         } else {
             /*
              * Multiple transitions may match, and we may have to push states to the stack. We avoid
@@ -520,10 +587,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
 
     @ExplodeLoop
     protected boolean transitionMatches(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFATransition transition, int index, boolean atEnd, int c) {
-        // If transitionMatchesStepByStep is true, we will make a copy of the current stack frame
-        // and simulate the effects of the QuantifierGuards, which are usually delayed until the
-        // call to updateState.
-        TRegexBacktrackingNFAExecutorLocals localsForMatching = transitionMatchesStepByStep ? locals.createSubNFALocals() : locals;
         PureNFAState target = transition.getTarget(isForward());
         CompilerAsserts.partialEvaluationConstant(target);
         if (transition.hasCaretGuard() && index != 0) {
@@ -539,72 +602,35 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             Quantifier q = guard.getQuantifier();
             CompilerAsserts.partialEvaluationConstant(q);
             switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
-                case enter:
-                case loopInc:
-                    // If transitionMatchesStepByStep is true, we invoke the same logic that is
-                    // later executed in updateState.
-                    if (transitionMatchesStepByStep) {
-                        localsForMatching.incQuantifierCount(q);
-                    }
-                    break;
                 case loop:
                     // retreat if quantifier count is at maximum
-                    if (localsForMatching.getQuantifierCount(q) == q.getMax()) {
+                    if (locals.getQuantifierCount(q) == q.getMax()) {
                         return false;
-                    }
-                    if (transitionMatchesStepByStep) {
-                        localsForMatching.incQuantifierCount(q);
                     }
                     break;
                 case exit:
                     // retreat if quantifier count is less than minimum
-                    if (localsForMatching.getQuantifierCount(q) < q.getMin()) {
+                    if (locals.getQuantifierCount(q) < q.getMin()) {
                         return false;
-                    }
-                    if (transitionMatchesStepByStep) {
-                        localsForMatching.resetQuantifierCount(q);
-                    }
-                    break;
-                case exitReset:
-                    if (transitionMatchesStepByStep) {
-                        localsForMatching.resetQuantifierCount(q);
-                    }
-                    break;
-                case updateCG:
-                    if (transitionMatchesStepByStep) {
-                        localsForMatching.setCaptureGroupBoundary(guard.getIndex(), index);
-                    }
-                    break;
-                case enterZeroWidth:
-                    if (transitionMatchesStepByStep) {
-                        localsForMatching.setZeroWidthQuantifierGuardIndex(q);
-                        localsForMatching.setZeroWidthQuantifierResults(q);
                     }
                     break;
                 case exitZeroWidth:
-                    if (localsForMatching.getZeroWidthQuantifierGuardIndex(q) == index &&
-                                    (!monitorCaptureGroupsInEmptyCheck || localsForMatching.isResultUnmodifiedByZeroWidthQuantifier(q)) &&
-                                    (!q.hasIndex() || localsForMatching.getQuantifierCount(q) > q.getMin())) {
+                    if (locals.getZeroWidthQuantifierGuardIndex(q) == index &&
+                                    (!monitorCaptureGroupsInEmptyCheck || locals.isResultUnmodifiedByZeroWidthQuantifier(q)) &&
+                                    (!q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
                         return false;
                     }
                     break;
                 case escapeZeroWidth:
-                    if (localsForMatching.getZeroWidthQuantifierGuardIndex(q) != index ||
-                                    (monitorCaptureGroupsInEmptyCheck && !localsForMatching.isResultUnmodifiedByZeroWidthQuantifier(q))) {
+                    if (locals.getZeroWidthQuantifierGuardIndex(q) != index ||
+                                    (monitorCaptureGroupsInEmptyCheck && !locals.isResultUnmodifiedByZeroWidthQuantifier(q))) {
                         return false;
                     }
                     break;
                 case enterEmptyMatch:
                     // retreat if quantifier count is greater or equal to minimum
-                    if (localsForMatching.getQuantifierCount(q) >= q.getMin()) {
+                    if (locals.getQuantifierCount(q) >= q.getMin()) {
                         return false;
-                    }
-                    if (transitionMatchesStepByStep) {
-                        if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
-                            localsForMatching.setQuantifierCount(q, q.getMin());
-                        } else {
-                            localsForMatching.incQuantifierCount(q);
-                        }
                     }
                     break;
                 default:
@@ -682,6 +708,140 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             }
         }
         locals.saveIndex(getNewIndex(locals, transition.getTarget(isForward()), index));
+    }
+
+    /**
+     * This method composes {@link #transitionMatches} with {@link #updateState}. It is somewhat
+     * equivalent to the following:
+     * 
+     * <pre>
+     * if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
+     *     updateState(locals, transition, index);
+     *     return true;
+     * } else {
+     *     return false;
+     * }
+     * </pre>
+     *
+     * The key difference is that in this method, the {@link #updateState} effects of quantifier
+     * guards are evaluated in parallel with their {@link #transitionMatches} assertions. This more
+     * detailed behavior is necessary when working with NFA transitions that have complex chains of
+     * quantifier guards, such as the ones used in Ruby.
+     *
+     * <p>
+     * NB: This method writes to {@code locals} even if it returns {@code false}.
+     * </p>
+     */
+    @ExplodeLoop
+    protected boolean tryUpdateState(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFATransition transition, int index, boolean atEnd, int c) {
+        CompilerAsserts.partialEvaluationConstant(transition);
+        PureNFAState target = transition.getTarget(isForward());
+        CompilerAsserts.partialEvaluationConstant(target);
+        if (transition.hasCaretGuard() && index != 0) {
+            return false;
+        }
+        if (transition.hasDollarGuard() && index < locals.getMaxIndex()) {
+            return false;
+        }
+        switch (target.getKind()) {
+            case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
+                assert !target.isInitialState(isForward());
+                if (target.isAnchoredFinalState(isForward()) && !atEnd) {
+                    return false;
+                }
+                break;
+            case PureNFAState.KIND_CHARACTER_CLASS:
+                if (atEnd || !matchers[target.getId()].execute(c)) {
+                    return false;
+                }
+                break;
+            case PureNFAState.KIND_LOOK_AROUND:
+                if (canInlineLookAroundIntoTransition(target) && !checkSubMatcherInline(locals, compactString, transition, target)) {
+                    return false;
+                }
+                break;
+            case PureNFAState.KIND_BACK_REFERENCE:
+                if (canInlineBackReferenceIntoTransition()) {
+                    int start = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2, index);
+                    int end = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2 + 1, index);
+                    if ((start < 0 || end < 0) && !backrefWithNullTargetSucceeds) {
+                        return false;
+                    }
+                    if (!matchBackReferenceSimple(locals, start, end, index)) {
+                        return false;
+                    }
+                }
+                break;
+            case PureNFAState.KIND_EMPTY_MATCH:
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        int nGuards = transition.getQuantifierGuards().length;
+        for (int i = isForward() ? 0 : nGuards - 1; isForward() ? i < nGuards : i >= 0; i = inputIncRaw(i)) {
+            QuantifierGuard guard = transition.getQuantifierGuards()[i];
+            CompilerAsserts.partialEvaluationConstant(guard);
+            Quantifier q = guard.getQuantifier();
+            CompilerAsserts.partialEvaluationConstant(q);
+            switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
+                case enter:
+                case loopInc:
+                    locals.incQuantifierCount(q);
+                    break;
+                case loop:
+                    // retreat if quantifier count is at maximum
+                    if (locals.getQuantifierCount(q) == q.getMax()) {
+                        return false;
+                    }
+                    locals.incQuantifierCount(q);
+                    break;
+                case exit:
+                    // retreat if quantifier count is less than minimum
+                    if (locals.getQuantifierCount(q) < q.getMin()) {
+                        return false;
+                    }
+                    locals.resetQuantifierCount(q);
+                    break;
+                case exitReset:
+                    locals.resetQuantifierCount(q);
+                    break;
+                case updateCG:
+                    locals.setCaptureGroupBoundary(guard.getIndex(), index);
+                    break;
+                case enterZeroWidth:
+                    locals.setZeroWidthQuantifierGuardIndex(q);
+                    locals.setZeroWidthQuantifierResults(q);
+                    break;
+                case exitZeroWidth:
+                    if (locals.getZeroWidthQuantifierGuardIndex(q) == index &&
+                                    (!monitorCaptureGroupsInEmptyCheck || locals.isResultUnmodifiedByZeroWidthQuantifier(q)) &&
+                                    (!q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
+                        return false;
+                    }
+                    break;
+                case escapeZeroWidth:
+                    if (locals.getZeroWidthQuantifierGuardIndex(q) != index ||
+                                    (monitorCaptureGroupsInEmptyCheck && !locals.isResultUnmodifiedByZeroWidthQuantifier(q))) {
+                        return false;
+                    }
+                    break;
+                case enterEmptyMatch:
+                    // retreat if quantifier count is greater or equal to minimum
+                    if (locals.getQuantifierCount(q) >= q.getMin()) {
+                        return false;
+                    }
+                    if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
+                        locals.setQuantifierCount(q, q.getMin());
+                    } else {
+                        locals.incQuantifierCount(q);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        locals.saveIndex(getNewIndex(locals, target, index));
+        return true;
     }
 
     private int getNewIndex(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState target, int index) {
