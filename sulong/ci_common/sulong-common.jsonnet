@@ -61,12 +61,6 @@
     notify_groups:: ["sulong"],
   },
 
-  style:: {
-    packages+: {
-      ruby: "==2.1.0",  # for mdl
-    },
-  },
-
   sulong_gateTest_default_tools:: {
     environment+: {
       CLANG_LLVM_AS: "llvm-as",
