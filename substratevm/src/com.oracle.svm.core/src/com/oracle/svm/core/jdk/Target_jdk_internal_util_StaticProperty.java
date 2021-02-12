@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.annotate.TargetElement;
 
 /**
  * This class provides JDK-internal access to values that are also available via system properties.
@@ -61,5 +60,31 @@ final class Target_jdk_internal_util_StaticProperty {
     @Substitute
     private static String userName() {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).userName();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    private static String javaIoTmpDir() {
+        return ImageSingletons.lookup(SystemPropertiesSupport.class).tmpDir();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    private static String javaLibraryPath() {
+        String value = ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("java.library.path");
+        return value == null ? "" : value;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    private static String sunBootLibraryPath() {
+        String value = ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("sun.boot.library.path");
+        return value == null ? "" : value;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    private static String jdkSerialFilter() {
+        return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("jdk.serialFilter");
     }
 }
