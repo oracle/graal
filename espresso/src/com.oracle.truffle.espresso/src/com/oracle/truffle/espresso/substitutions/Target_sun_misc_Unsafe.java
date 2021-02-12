@@ -782,9 +782,9 @@ public final class Target_sun_misc_Unsafe {
     public static double getDouble(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
         return UnsafeAccess.getIfAllowed(meta).getDouble(offset);
     }
-
     // endregion get*(long offset)
 
+    // region put*Volatile(Object holder, long offset)
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
     public static void putObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
@@ -921,6 +921,7 @@ public final class Target_sun_misc_Unsafe {
         assert f.getKind().isSubWord();
         f.setByte(holder, value, true);
     }
+    // endregion put*Volatile(Object holder, long offset)
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz,
