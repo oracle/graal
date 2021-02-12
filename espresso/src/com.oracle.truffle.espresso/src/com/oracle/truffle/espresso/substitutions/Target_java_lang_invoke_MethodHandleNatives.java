@@ -178,7 +178,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitution
     public static void setCallSiteTargetVolatile(@Host(CallSite.class) StaticObject site, @Host(MethodHandle.class) StaticObject target,
                     @InjectMeta Meta meta) {
-        meta.java_lang_invoke_CallSite_target.setObjectVolatile(site, target);
+        meta.java_lang_invoke_CallSite_target.setObject(site, target, true);
     }
 
     // TODO(garcia) verifyConstants
