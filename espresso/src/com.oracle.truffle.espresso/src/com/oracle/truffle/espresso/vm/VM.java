@@ -60,7 +60,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 
 import org.graalvm.options.OptionValues;
 
@@ -68,7 +67,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -110,12 +108,11 @@ import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
-import com.oracle.truffle.espresso.jni.Callback;
+import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.JniVersion;
-import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -130,6 +127,7 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectMeta;
@@ -157,10 +155,8 @@ import com.oracle.truffle.espresso.substitutions.VMCollector;
  * <p>
  * - for new VM methods (/ex: upgrading from java 8 to 11), updating include/jvm.h
  */
-public final class VM extends NativeEnv implements ContextAccess {
-
-    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, VM.class);
-    private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
+@GenerateIntrinsification(target = VmImpl.class)
+public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
 
     private final @Pointer TruffleObject disposeMokapotContext;
     private final @Pointer TruffleObject initializeManagementContext;
@@ -187,14 +183,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         return joiner.toString();
     }
 
-    protected TruffleLogger getLogger() {
-        return logger;
-    }
-
-    protected InteropLibrary getUncached() {
-        return uncached;
-    }
-
     public void attachThread(Thread hostThread) {
         assert hostThread == Thread.currentThread();
         try {
@@ -211,22 +199,6 @@ public final class VM extends NativeEnv implements ContextAccess {
             return id.incrementAndGet();
         }
     }
-
-    private Callback lookupVmImplCallback = new Callback(LOOKUP_VM_IMPL_PARAMETER_COUNT, new Callback.Function() {
-        @Override
-        public Object call(Object... args) {
-            try {
-                String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
-                return VM.this.lookupVmImpl(name);
-            } catch (ClassCastException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Throwable e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
-    });
 
     public JNIHandles getHandles() {
         return jniEnv.getHandles();
@@ -320,7 +292,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             // void* fetch_by_name(char* function_name)
             @Pointer
-            TruffleObject lookupVmImplNativeCallback = getNativeAccess().createNativeClosure(lookupVmImplCallback, NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
+            TruffleObject lookupVmImplNativeCallback = getNativeAccess().createNativeClosure(getLookupCallback(), NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
 
             this.mokapotEnvPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplNativeCallback);
             this.rtldDefaultValue = getUncached().asPointer(getUncached().execute(mokapotGetRTLDDefault));
@@ -366,6 +338,11 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private static final Map<String, IntrinsicSubstitutor.Factory> vmMethods = buildVmMethods();
 
+    @Override
+    protected Map<String, IntrinsicSubstitutor.Factory> getNativeMethodsMapping() {
+        return vmMethods;
+    }
+
     public static VM create(JniEnv jniEnv) {
         return new VM(jniEnv);
     }
@@ -375,36 +352,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static int jvmCallerDepth() {
         return JVM_CALLER_DEPTH;
     }
-
-    public static final int LOOKUP_VM_IMPL_PARAMETER_COUNT = 1;
-
-    @TruffleBoundary
-    public TruffleObject lookupVmImpl(String methodName) {
-        IntrinsicSubstitutor.Factory m = vmMethods.get(methodName);
-        // Dummy placeholder for unimplemented/unknown methods.
-        if (m == null) {
-            getLogger().log(Level.FINER, "Fetching unknown/unimplemented VM method: {0}", methodName);
-            @Pointer
-            TruffleObject errorClosure = getNativeAccess().createNativeClosure(
-                            new Callback(0, new Callback.Function() {
-                                @Override
-                                public Object call(Object... args) {
-                                    CompilerDirectives.transferToInterpreter();
-                                    getLogger().log(Level.SEVERE, "Calling unimplemented VM method: {0}", methodName);
-                                    throw EspressoError.unimplemented("VM method: " + methodName);
-                                }
-                            }), NativeSignature.create(NativeType.VOID));
-            nativeClosures.add(errorClosure);
-            return errorClosure;
-        }
-
-        NativeSignature signature = m.jniNativeSignature();
-        Callback target = vmMethodWrapper(m);
-        TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature);
-        nativeClosures.add(nativeClosure);
-        return nativeClosure;
-    }
-
     // Checkstyle: stop method name check
 
     // region VM methods
@@ -619,38 +566,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         return clone;
-    }
-
-    public Callback vmMethodWrapper(IntrinsicSubstitutor.Factory m) {
-        int extraArg = (m.isJni()) ? 1 : 0;
-        return new Callback(m.parameterCount() + extraArg, new Callback.Function() {
-            @CompilerDirectives.CompilationFinal private IntrinsicSubstitutor subst = null;
-
-            @Override
-            public Object call(Object... args) {
-                boolean isJni = m.isJni();
-                try {
-                    if (subst == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        subst = m.create(getMeta());
-                    }
-                    return subst.invoke(VM.this, args);
-                } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
-                    if (isJni) {
-                        // This will most likely SOE again. Nothing we can do about that
-                        // unfortunately.
-                        EspressoException wrappedError = (e instanceof EspressoException)
-                                        ? (EspressoException) e
-                                        : (e instanceof StackOverflowError)
-                                                        ? getContext().getStackOverflow()
-                                                        : getContext().getOutOfMemory();
-                        jniEnv.getThreadLocalPendingException().set(wrappedError.getExceptionObject());
-                        return defaultValue(m.returnType());
-                    }
-                    throw e;
-                }
-            }
-        });
     }
 
     @VmImpl
@@ -2397,10 +2312,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         if (managementPtr == null) {
             try {
-                // void* fetch_by_name(char* function_name)
-                @Pointer
-                TruffleObject lookupVmImplNativeCallback = getNativeAccess().createNativeClosure(lookupVmImplCallback, NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
-                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, lookupVmImplNativeCallback, version);
+                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, getLookupCallback(), version);
                 managementVersion = version;
                 assert getUncached().isPointer(managementPtr);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

@@ -76,7 +76,6 @@ public class SubstitutionProcessor extends EspressoProcessor {
 
     private static final String SUBSTITUTOR = "Substitutor";
     private static final String COLLECTOR = "SubstitutorCollector";
-    private static final String COLLECTOR_INSTANCE_NAME = "substitutorCollector";
 
     private static final String INVOKE = "invoke(Object[] " + ARGS_NAME + ") {\n";
 
@@ -86,7 +85,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
     private static final String INSTANCE = "INSTANCE";
 
     public SubstitutionProcessor() {
-        super(SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
+        super(SUBSTITUTION_PACKAGE, SUBSTITUTOR);
     }
 
     static class SubstitutorHelper extends SubstitutionHelper {
@@ -385,6 +384,8 @@ public class SubstitutionProcessor extends EspressoProcessor {
             }
         }
         // Actual process
+        // Initialize the collector.
+        initCollector(COLLECTOR);
         for (Element e : env.getElementsAnnotatedWith(espressoSubstitutions)) {
             processElement(e);
         }

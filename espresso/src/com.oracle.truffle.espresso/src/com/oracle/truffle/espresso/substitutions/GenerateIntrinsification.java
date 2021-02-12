@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,22 +21,26 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.processor;
+package com.oracle.truffle.espresso.substitutions;
 
-public class VMImplProcessor extends IntrinsicsProcessor {
-    // Processor-specific constants
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    private static final String ENV_PACKAGE = "com.oracle.truffle.espresso.vm";
-
-    private static final String VM_IMPL = ENV_PACKAGE + "." + "VmImpl";
-
-    private static final String VM = "VM";
-    private static final String VM_NAME = "vm";
-
-    private static final String COLLECTOR = "VMCollector";
-    private static final String COLLECTOR_INSTANCE_NAME = "vmCollector";
-
-    public VMImplProcessor() {
-        super(VM_NAME, VM, VM_IMPL, ENV_PACKAGE, COLLECTOR, COLLECTOR_INSTANCE_NAME);
-    }
+/**
+ * Annotate a class implementing a native interface with this annotation to have the intrisification
+ * processor generate boilerplate code.
+ * 
+ * @see com.oracle.truffle.espresso.vm.VM
+ * @see com.oracle.truffle.espresso.jni.JniEnv
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE})
+public @interface GenerateIntrinsification {
+    /**
+     * @return The annotation used to mark methods that are part of the implemented native
+     *         interface.
+     */
+    Class<?> target();
 }

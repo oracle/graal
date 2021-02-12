@@ -199,11 +199,9 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      */
     abstract String generateInvoke(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
-    EspressoProcessor(String SUBSTITUTION_PACKAGE, String SUBSTITUTOR, String COLLECTOR, String COLLECTOR_INSTANCE_NAME) {
+    EspressoProcessor(String SUBSTITUTION_PACKAGE, String SUBSTITUTOR) {
         this.SUBSTITUTOR_PACKAGE = SUBSTITUTION_PACKAGE;
         this.SUBSTITUTOR = SUBSTITUTOR;
-        this.COLLECTOR = COLLECTOR;
-        this.COLLECTOR_INSTANCE_NAME = COLLECTOR_INSTANCE_NAME;
         this.PACKAGE = "package " + SUBSTITUTION_PACKAGE + ";\n\n";
         this.EXTENSION = " extends " + SUBSTITUTOR + " {\n";
         this.IMPORTS_COLLECTOR = PACKAGE +
@@ -215,15 +213,14 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     // Instance specific constants
     private final String SUBSTITUTOR_PACKAGE;
     private final String SUBSTITUTOR;
-    private final String COLLECTOR;
-    private final String COLLECTOR_INSTANCE_NAME;
     private final String PACKAGE;
     private final String EXTENSION;
     private final String IMPORTS_COLLECTOR;
 
     // Processor local info
+    private String collectorClassName;
     protected boolean done = false;
-    protected HashSet<String> classes = new HashSet<>();
+    protected HashSet<String> classes = null;
     protected StringBuilder collector = null;
 
     // Special annotations
@@ -275,6 +272,9 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     private static final String PUBLIC_STATIC_FINAL_CLASS = "public static final class ";
     private static final String PUBLIC_FINAL_CLASS = "public final class ";
     private static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
+
+    private static final String COLLECTOR_INSTANCE_NAME = "instance";
+
     static final String PUBLIC_FINAL = "public final";
     static final String OVERRIDE = "@Override";
 
@@ -338,8 +338,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnvironment) {
         super.init(processingEnvironment);
-        // Initialize the collector.
-        initCollector();
     }
 
     @Override
@@ -447,7 +445,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * 
      * COLLECTOR_INSTANCE.add(SUBSTITUTOR.getFactory());
      */
-    private void addSubstitutor(StringBuilder str, String substitutorName) {
+    private static void addSubstitutor(StringBuilder str, String substitutorName) {
         str.append(TAB_2).append(COLLECTOR_INSTANCE_NAME).append(".add(").append(substitutorName).append(".").append(FACTORY_GETTER).append("()").append(");\n");
     }
 
@@ -526,7 +524,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     void commitFiles() {
         try {
             collector.append(TAB_1).append("}\n}");
-            JavaFileObject file = processingEnv.getFiler().createSourceFile(getSubstitutorQualifiedName(COLLECTOR));
+            JavaFileObject file = processingEnv.getFiler().createSourceFile(getSubstitutorQualifiedName(collectorClassName));
             Writer wr = file.openWriter();
             wr.write(collector.toString());
             wr.close();
@@ -537,6 +535,8 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     // @formatter:off
     /**
+     * Setups the collector closure. If a closure had already been set, flush it.
+     * 
      * generates:
      *
      * COPYRIGHT
@@ -555,14 +555,22 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      *     static {
      */
     // @formatter:on
-    private void initCollector() {
+    protected final void initCollector(String collectorName) {
+        if (collectorName == null) {
+            return;
+        }
+        if (collector != null) {
+            commitFiles();
+        }
+        this.collectorClassName = collectorName;
+        this.classes = new HashSet<>();
         this.collector = new StringBuilder();
         collector.append(COPYRIGHT);
         collector.append(IMPORTS_COLLECTOR).append("\n");
         collector.append("// ").append(GENERATED_BY).append(SUBSTITUTOR).append("\n");
-        collector.append(PUBLIC_FINAL_CLASS).append(COLLECTOR).append(" {\n");
+        collector.append(PUBLIC_FINAL_CLASS).append(collectorClassName).append(" {\n");
         collector.append(generateInstance("ArrayList<>", COLLECTOR_INSTANCE_NAME, "List<" + SUBSTITUTOR + "." + FACTORY + ">"));
-        collector.append(TAB_1).append("private ").append(COLLECTOR).append("() {\n").append(TAB_1).append("}\n");
+        collector.append(TAB_1).append("private ").append(collectorClassName).append("() {\n").append(TAB_1).append("}\n");
         collector.append(generateGetter(COLLECTOR_INSTANCE_NAME, "List<" + SUBSTITUTOR + "." + FACTORY + ">", COLLECTOR_GETTER)).append("\n");
         collector.append(TAB_1).append("static {\n");
     }
