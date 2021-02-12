@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso._native.nfi;
 import java.nio.file.Path;
 import java.util.Collections;
 
+import com.oracle.truffle.espresso._native.NativeAccess;
+import com.oracle.truffle.espresso._native.NativeAccessProvider;
 import com.oracle.truffle.espresso._native.NativeSignature;
 import org.graalvm.options.OptionValues;
 
@@ -43,7 +45,7 @@ import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
-public final class NFIIsolatedNativeAccess extends NFINativeAccess {
+final class NFIIsolatedNativeAccess extends NFINativeAccess {
 
     final @Pointer TruffleObject edenLibrary;
     final @Pointer TruffleObject malloc;
@@ -52,9 +54,6 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
 
     public NFIIsolatedNativeAccess(EspressoContext context) {
         super(context);
-        OptionValues options = context.getEnv().getOptions();
-        boolean dlmopen = options.get(EspressoOptions.UseTruffleNFIIsolatedNamespace);
-        EspressoError.guarantee(dlmopen, "Native isolation is not enabled (--java.UseTruffleNFIIsolatedNamespace)");
         // libeden.so must be the first library loaded in the isolated namespace.
         Path espressoLibraryPath = context.getVmProperties().espressoHome().resolve("lib");
         this.edenLibrary = loadLibrary(Collections.singletonList(espressoLibraryPath), "eden", true);
@@ -117,6 +116,18 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    public final class Provider implements NativeAccessProvider {
+        @Override
+        public String id() {
+            return "nfi-dlmopen";
+        }
+
+        @Override
+        public NativeAccess create(EspressoContext context) {
+            return new NFIIsolatedNativeAccess(context);
         }
     }
 }

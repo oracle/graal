@@ -438,5 +438,9 @@ public final class EspressoOptions {
                     category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> JavaAgent = new OptionKey<>("");
 
+    @Option(help = "Native backend used by Espresso, if not specified, Espresso will pick one depending on the environment.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> NativeBackend = new OptionKey<>("");
+
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }

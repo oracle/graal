@@ -47,6 +47,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso._native.Buffer;
 import com.oracle.truffle.espresso._native.NativeAccess;
+import com.oracle.truffle.espresso._native.NativeAccessProvider;
 import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
@@ -63,7 +64,7 @@ import com.oracle.truffle.object.DebugCounter;
 
 import sun.misc.Unsafe;
 
-public class NFINativeAccess implements NativeAccess {
+class NFINativeAccess implements NativeAccess {
 
     private static final Unsafe UNSAFE = UnsafeAccess.get();
 
@@ -167,7 +168,7 @@ public class NFINativeAccess implements NativeAccess {
             // TODO(peterssen): Remove assert once GR-27045 reaches a definitive consensus.
             assert "com.oracle.truffle.nfi.impl.NFIUnsatisfiedLinkError".equals(e.getClass().getName());
             // We treat AbstractTruffleException as if it were an UnsatisfiedLinkError.
-            TruffleLogger.getLogger(EspressoLanguage.ID, NativeLibrary.class).fine(e.getMessage());
+            TruffleLogger.getLogger(EspressoLanguage.ID, NFIIsolatedNativeAccess.class).fine(e.getMessage());
             return null;
         }
     }
@@ -367,4 +368,17 @@ public class NFINativeAccess implements NativeAccess {
         }
         UNSAFE.freeMemory(address);
     }
+
+    public final class Provider implements NativeAccessProvider {
+        @Override
+        public String id() {
+            return "nfi-native";
+        }
+
+        @Override
+        public NativeAccess create(EspressoContext context) {
+            return new NFINativeAccess(context);
+        }
+    }
+
 }
