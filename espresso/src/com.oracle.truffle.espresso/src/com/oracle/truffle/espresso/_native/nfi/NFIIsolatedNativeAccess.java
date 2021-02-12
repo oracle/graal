@@ -76,7 +76,8 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
             throw new IllegalArgumentException("negative buffer length: " + size);
         }
         try {
-            @Pointer TruffleObject address = (TruffleObject) uncachedInterop.execute(malloc, size);
+            @Pointer
+            TruffleObject address = (TruffleObject) uncachedInterop.execute(malloc, size);
             if (InteropLibrary.getUncached().isNull(address)) {
                 // malloc returned NULL
                 return null;
@@ -106,7 +107,8 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         }
         assert InteropLibrary.getUncached().isPointer(buffer);
         try {
-            @Pointer TruffleObject address = (TruffleObject) uncachedInterop.execute(realloc, buffer, newSize);
+            @Pointer
+            TruffleObject address = (TruffleObject) uncachedInterop.execute(realloc, buffer, newSize);
             if (InteropLibrary.getUncached().isNull(address)) {
                 // realloc returned NULL
                 return null;

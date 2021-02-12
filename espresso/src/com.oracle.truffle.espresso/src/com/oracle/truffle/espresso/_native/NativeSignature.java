@@ -17,7 +17,8 @@ public interface NativeSignature {
     /**
      * Returns the i-th (0-based) parameter type, guaranteed to be != {@link NativeType#VOID void}.
      *
-     * @throws IndexOutOfBoundsException if the index is negative or >= {@link #getParameterCount()};
+     * @throws IndexOutOfBoundsException if the index is negative or >=
+     *             {@link #getParameterCount()}
      */
     NativeType parameterTypeAt(int index);
 

@@ -60,9 +60,11 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     private static final NativeSignature OPEN_SIGNATURE = NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
     private static final NativeSignature CLOSE_SIGNATURE = NativeSignature.create(NativeType.VOID, NativeType.POINTER);
     private static final NativeSignature PACKAGE_TO_MODULE_SIGNATURE = NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
-    private static final NativeSignature FIND_RESOURCE_SIGNATURE = NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+    private static final NativeSignature FIND_RESOURCE_SIGNATURE = NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER,
+                    NativeType.POINTER);
     private static final NativeSignature GET_RESOURCE_SIGNATURE = NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
-    private static final NativeSignature RESOURCE_ITERATOR_SIGNATURE = NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+    private static final NativeSignature RESOURCE_ITERATOR_SIGNATURE = NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER,
+                    NativeType.POINTER, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
     private static final NativeSignature RESOURCE_PATH_SIGNATURE = NativeSignature.create(NativeType.BOOLEAN, NativeType.POINTER, NativeType.LONG, NativeType.POINTER, NativeType.LONG);
 
     private final InteropLibrary uncached;

@@ -285,17 +285,17 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             @Pointer
             TruffleObject initializeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeMokapotContext",
-                    NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER));
+                            NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER));
 
             disposeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeMokapotContext",
-                    NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
 
             if (jniEnv.getContext().EnableManagement) {
                 initializeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeManagementContext",
-                        NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
+                                NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
 
                 disposeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeManagementContext",
-                        NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
+                                NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
             } else {
                 initializeManagementContext = null;
                 disposeManagementContext = null;
@@ -303,20 +303,20 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             getJavaVM = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getJavaVM",
-                    NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
+                            NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
 
             mokapotAttachThread = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotAttachThread",
-                    NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER));
 
             @Pointer
             TruffleObject mokapotGetRTLDDefault = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotGetRTLD_DEFAULT",
-                    NativeSignature.create(NativeType.POINTER));
+                            NativeSignature.create(NativeType.POINTER));
 
             getPackageAt = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getPackageAt",
-                    NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
+                            NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
             OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
             this.safeRTLDDefaultLookup = !options.get(EspressoOptions.UseTruffleNFIIsolatedNamespace);
 

@@ -446,7 +446,8 @@ public final class Target_sun_misc_Unsafe {
         if (length < 0 || length > jni.sizeMax()) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
         }
-        @Buffer TruffleObject buffer = meta.getNativeAccess().allocateMemory(length);
+        @Buffer
+        TruffleObject buffer = meta.getNativeAccess().allocateMemory(length);
         if (buffer == null && length > 0) {
             // malloc may return anything for 0-sized allocations.
             throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
@@ -483,7 +484,8 @@ public final class Target_sun_misc_Unsafe {
         if (newSize < 0 || newSize > jni.sizeMax()) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
         }
-        @Buffer TruffleObject result = meta.getNativeAccess().reallocateMemory(RawPointer.create(address), newSize);
+        @Buffer
+        TruffleObject result = meta.getNativeAccess().reallocateMemory(RawPointer.create(address), newSize);
         if (result == null) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc couldn't reallocate " + newSize + " bytes");
         }

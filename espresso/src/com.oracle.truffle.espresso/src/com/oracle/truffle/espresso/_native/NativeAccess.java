@@ -37,9 +37,9 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  * <p>
  * Includes similar functionality provided by libdl to load and peek into native libraries: dlopen,
  * dlclose and dlsym.
- * 
+ * <p>
  * Memory management: malloc and free.
- * 
+ * <p>
  * Lifting and sinking: A native method can be "lifted" to Java. A Java method can be "sunk" to the
  * native world e.g. as native pointer that can be called.
  */
@@ -76,11 +76,10 @@ public interface NativeAccess {
 
     /**
      * Similar to dlsym. The "default" namespace may not be supported.
-     * 
+     *
      * @return <code>null</code> if the symbol is not found, otherwise a pointer that can be called
-     *         directly from native code or
-     *         {@link #bindSymbol(TruffleObject, NativeSignature) bound} to a specific
-     *         signature.
+     *         directly from native code or {@link #bindSymbol(TruffleObject, NativeSignature)
+     *         bound} to a specific signature.
      */
     @Pointer
     TruffleObject lookupSymbol(@Pointer TruffleObject library, String symbolName);
@@ -93,7 +92,8 @@ public interface NativeAccess {
      * The returned object is managed by the Java GC, to keep it alive, including its native
      * component, keep a strong reference to it.
      */
-    @Pointer TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeSignature nativeSignature);
+    @Pointer
+    TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeSignature nativeSignature);
 
     default @Pointer TruffleObject lookupAndBindSymbol(@Pointer TruffleObject library, String symbolName, NativeSignature nativeSignature) {
         @Pointer
@@ -110,10 +110,9 @@ public interface NativeAccess {
      *
      * <h3>Lifetime
      *
-     * @throws IllegalArgumentException if the size is negative
-     *
      * @return <code>null</code> if the memory cannot be allocated. Otherwise, a
      *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
+     * @throws IllegalArgumentException if the size is negative
      */
     @Buffer
     TruffleObject allocateMemory(long size);
@@ -121,10 +120,9 @@ public interface NativeAccess {
     /**
      * Similar to realloc. The result of allocating a 0-sized buffer is an implementation detail.
      *
-     * @throws IllegalArgumentException if the size is negative
-     *
      * @return <code>null</code> if the memory cannot be re-allocated. Otherwise, a
      *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
+     * @throws IllegalArgumentException if the size is negative
      */
     @Buffer
     TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize);
@@ -138,7 +136,7 @@ public interface NativeAccess {
      * Sinking, make a Java method accessible to the native world. Returns an
      * {@link InteropLibrary#isPointer(Object) pointer} {@link TruffleObject object}, callable from
      * native code.
-     * 
+     *
      * <p>
      * The returned object is managed by the Java GC, to keep it alive, including its native
      * component, keep a strong reference to it.

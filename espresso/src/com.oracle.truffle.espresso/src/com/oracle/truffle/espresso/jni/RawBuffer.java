@@ -45,7 +45,7 @@ public final class RawBuffer implements AutoCloseable {
     public static RawBuffer getNativeString(String name) {
         CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
         int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
-        for (; ; ) {
+        for (;;) {
             if (length <= 0) {
                 throw EspressoError.shouldNotReachHere();
             }
