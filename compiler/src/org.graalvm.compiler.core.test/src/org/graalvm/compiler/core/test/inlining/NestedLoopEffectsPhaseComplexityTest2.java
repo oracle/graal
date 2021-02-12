@@ -173,7 +173,7 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
          * 2 remaining allocations = 1 times the >= depth level allocation of a and one allocations
          * of b inside
          */
-        testAndTimeFixedDepth("method20LevelNoNewAllocationsEnsureVirtualized", 1);
+        testAndTimeFixedDepth("method20LevelNoNewAllocationsEnsureVirtualized", 2);
     }
 
     /**
