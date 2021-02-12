@@ -750,35 +750,29 @@ def _debuginfotest(native_image, path, build_only, args):
     for key, value in javaProperties.items():
         args.append("-D" + key + "=" + value)
 
-    # build with and without Isolates and check both work
+
     native_image_args = ["--native-image-info", "-H:Path=" + path,
                          '-H:+VerifyNamingConventions',
                          '-cp', classpath('com.oracle.svm.test'),
                          '-Dgraal.LogFile=graal.log',
                          '-g',
-                         '-H:+SpawnIsolates',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
                          'hello.Hello'] + args
-    mx.log('native_image {}'.format(native_image_args))
-    native_image(native_image_args)
 
+    def build_debug_test(extra_args):
+        build_args = native_image_args + extra_args
+        mx.log('native_image {}'.format(build_args))
+        native_image(build_args)
+
+    # build with and without Isolates and check both work
+
+    build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest.isolates' : 'yes'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
 
-    native_image_args = ["--native-image-info", "-H:Path=" + path,
-                         '-H:+VerifyNamingConventions',
-                         '-cp', classpath('com.oracle.svm.test'),
-                         '-Dgraal.LogFile=graal.log',
-                         '-g',
-                         '-H:-SpawnIsolates',
-                         '-H:DebugInfoSourceSearchPath=' + sourcepath,
-                         '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
-                         'hello.Hello'] + args
-    mx.log('native_image {}'.format(native_image_args))
-    native_image(native_image_args)
-
+    build_debug_test(['-H:-SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest.isolates' : 'no'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
