@@ -301,7 +301,7 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         return extract_archive(dacapo_path, 'dacapo.extracted')
 
     def benchmark_resources(self, benchmark):
-        pass
+        return None
 
     def additional_lib(self, lib):
         return mx.library(lib).get_path(True)

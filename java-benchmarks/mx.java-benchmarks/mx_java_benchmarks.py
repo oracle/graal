@@ -772,7 +772,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
             # No benchmark specified in the command line, so run everything.
-            benchmarks = [b for b in self.benchmarkList(bmSuiteArgs)]
+            benchmarks = self.benchmarkList(bmSuiteArgs)
 
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)

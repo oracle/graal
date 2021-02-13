@@ -67,7 +67,6 @@ public class AheadOfTimeCompilationTest extends HotSpotGraalCompilerTest {
 
     @Before
     public void setUp() {
-        // Ignore on SPARC
         Assume.assumeFalse("skipping on AArch64", getTarget().arch instanceof AArch64);
     }
 

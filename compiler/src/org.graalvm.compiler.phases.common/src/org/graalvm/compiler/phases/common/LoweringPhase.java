@@ -534,7 +534,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
      * }
      * </pre>
      *
-     * This is necessary, as the recursive implementation quickly exceed the stack depth on SPARC.
+     * This is necessary, as the recursive implementation can quickly exceed the stack depth.
      *
      * @param rootFrame contains the starting block.
      */
