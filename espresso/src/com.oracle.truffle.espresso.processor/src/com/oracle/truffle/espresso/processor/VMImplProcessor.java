@@ -35,9 +35,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 
-import static com.oracle.truffle.espresso.processor.NativeType.OBJECT;
-import static com.oracle.truffle.espresso.processor.NativeType.VOID;
-
 public class VMImplProcessor extends IntrinsicsProcessor {
     // Annotations
 
@@ -146,7 +143,7 @@ public class VMImplProcessor extends IntrinsicsProcessor {
         if (parameterTypeName.contains("String")) {
             str.append(IMPORT_INTEROP_LIBRARY);
         }
-        if (parameterTypeName.contains("StaticObject") || h.jniNativeSignature[0].equals(VOID)) {
+        if (parameterTypeName.contains("StaticObject") || h.jniNativeSignature[0].equals(NativeType.VOID)) {
             str.append(IMPORT_STATIC_OBJECT);
         }
         if (parameterTypeName.contains("TruffleObject")) {
