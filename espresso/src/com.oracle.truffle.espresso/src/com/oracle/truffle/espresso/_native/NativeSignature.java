@@ -5,7 +5,7 @@ package com.oracle.truffle.espresso._native;
  */
 public interface NativeSignature {
     /**
-     * @return return type
+     * Return type.
      */
     NativeType getReturnType();
 

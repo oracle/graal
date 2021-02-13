@@ -164,6 +164,10 @@ public interface NativeAccess {
         // @formatter:on
     }
 
+    /**
+     * Hook called when starting guest threads, some native backends may need to prepare external
+     * threads (e.g. initialiye TLS storage).
+     */
     default void threadStart() {
         // nop
     }
