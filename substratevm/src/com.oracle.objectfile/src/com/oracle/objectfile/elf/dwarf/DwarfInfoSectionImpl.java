@@ -26,6 +26,13 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import java.lang.reflect.Modifier;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
+
+import org.graalvm.compiler.debug.DebugContext;
+
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
@@ -41,15 +48,8 @@ import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
-import com.oracle.objectfile.elf.ELFObjectFile;
-import org.graalvm.compiler.debug.DebugContext;
-
-import java.lang.reflect.Modifier;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Set;
-
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
+import com.oracle.objectfile.elf.ELFObjectFile;
 
 /**
  * Section generator for debug_info section.
@@ -851,9 +851,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_pointer;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        int byteSize = dwarfSections.oopReferenceSize();
-        log(context, "  [0x%08x]     byte_size 0x%x", pos, byteSize);
-        pos = writeAttrData1((byte) byteSize, buffer, pos);
+        int pointerSize = dwarfSections.pointerSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
+        pos = writeAttrData1((byte) pointerSize, buffer, pos);
         int layoutOffset = getLayoutIndex(classEntry);
         log(context, "  [0x%08x]     type 0x%x", pos, layoutOffset);
         pos = writeAttrRefAddr(layoutOffset, buffer, pos);
@@ -865,8 +865,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_indirect_pointer;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            log(context, "  [0x%08x]     byte_size 0x%x", pos, byteSize);
-            pos = writeAttrData1((byte) byteSize, buffer, pos);
+            int oopReferenceSize = dwarfSections.oopReferenceSize();
+            log(context, "  [0x%08x]     byte_size 0x%x", pos, oopReferenceSize);
+            pos = writeAttrData1((byte) oopReferenceSize, buffer, pos);
             layoutOffset = getIndirectLayoutIndex(classEntry);
             log(context, "  [0x%08x]     type 0x%x", pos, layoutOffset);
             pos = writeAttrRefAddr(layoutOffset, buffer, pos);
@@ -887,9 +888,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_interface_pointer;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        int byteSize = dwarfSections.oopReferenceSize();
-        log(context, "  [0x%08x]     byte_size 0x%x", pos, byteSize);
-        pos = writeAttrData1((byte) byteSize, buffer, pos);
+        int pointerSize = dwarfSections.pointerSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
+        pos = writeAttrData1((byte) pointerSize, buffer, pos);
         int layoutOffset = getLayoutIndex(interfaceClassEntry);
         log(context, "  [0x%08x]     type 0x%x", pos, layoutOffset);
         pos = writeAttrRefAddr(layoutOffset, buffer, pos);
@@ -901,6 +902,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_indirect_pointer;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
+            int byteSize = dwarfSections.oopReferenceSize();
             log(context, "  [0x%08x]     byte_size 0x%x", pos, byteSize);
             pos = writeAttrData1((byte) byteSize, buffer, pos);
             layoutOffset = getIndirectLayoutIndex(interfaceClassEntry);
@@ -1155,9 +1157,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_array_pointer;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        int byteSize = dwarfSections.oopReferenceSize();
-        log(context, "  [0x%08x]     byte_size  0x%x", pos, byteSize);
-        pos = writeAttrData1((byte) byteSize, buffer, pos);
+        int pointerSize = dwarfSections.pointerSize();
+        log(context, "  [0x%08x]     byte_size  0x%x", pos, pointerSize);
+        pos = writeAttrData1((byte) pointerSize, buffer, pos);
         log(context, "  [0x%08x]     type (pointer) 0x%x (%s)", pos, layoutOffset, name);
         pos = writeAttrRefAddr(layoutOffset, buffer, pos);
 
@@ -1168,6 +1170,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_indirect_pointer;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
+            int byteSize = dwarfSections.oopReferenceSize();
             log(context, "  [0x%08x]     byte_size  0x%x", pos, byteSize);
             pos = writeAttrData1((byte) byteSize, buffer, pos);
             log(context, "  [0x%08x]     type (pointer) 0x%x (%s)", pos, indirectLayoutOffset, name);

@@ -56,6 +56,11 @@ public interface DebugInfoProvider {
     int oopReferenceSize();
 
     /**
+     * Number of bytes used to store a raw pointer.
+     */
+    int pointerSize();
+
+    /**
      * Alignment of object memory area (and, therefore, of any oop) in bytes.
      */
     int oopAlignment();

@@ -451,7 +451,7 @@ public class SubstrateOptions {
         }
     };
 
-    private static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
+    public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
         // force update of TrackNodeSourcePosition and DeleteLocalSymbols
         TrackNodeSourcePosition.update(values, newValue > 0);
         DeleteLocalSymbols.update(values, newValue == 0);

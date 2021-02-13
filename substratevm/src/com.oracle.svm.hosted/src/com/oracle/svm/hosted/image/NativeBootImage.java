@@ -62,6 +62,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -400,7 +401,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
      */
     @Override
     @SuppressWarnings("try")
-    public void build(DebugContext debug) {
+    public void build(String imageName, DebugContext debug) {
         try (DebugContext.Scope buildScope = debug.scope("NativeBootImage.build")) {
             final CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
 
@@ -450,9 +451,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
              * If we constructed debug info give the object file a chance to install it
              */
             if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
-                ImageSingletons.add(SourceManager.class, new SourceManager());
-                DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);
-                objectFile.installDebugInfo(provider);
+                try (Timer.StopTimer t = new Timer(imageName, "dbginfo").start()) {
+                    ImageSingletons.add(SourceManager.class, new SourceManager());
+                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);
+                    objectFile.installDebugInfo(provider);
+                }
             }
             // - Write the heap to its own section.
             // Dynamic linkers/loaders generally don't ensure any alignment to more than page
