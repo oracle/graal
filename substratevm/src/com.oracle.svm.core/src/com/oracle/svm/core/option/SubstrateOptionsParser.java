@@ -30,12 +30,11 @@ import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -165,7 +164,7 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static OptionParseResult parseOption(SortedMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
+    static OptionParseResult parseOption(EconomicMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
                     String optionPrefix, BooleanOptionFormat booleanOptionFormat) {
         if (option.length() == 0) {
             return OptionParseResult.error("Option name must be specified");
@@ -210,7 +209,7 @@ public class SubstrateOptionsParser {
 
         if (desc == null) {
             List<OptionDescriptor> matches = new ArrayList<>();
-            OptionsParser.collectFuzzyMatches(options.values(), optionName, matches);
+            OptionsParser.collectFuzzyMatches(options.getValues(), optionName, matches);
             StringBuilder msg = new StringBuilder("Could not find option ").append(current);
             if (!matches.isEmpty()) {
                 msg.append(". Did you mean one of these:");
@@ -344,7 +343,7 @@ public class SubstrateOptionsParser {
      * @param arg the argument currently processed
      * @return true if {@code arg.startsWith(optionPrefix)}
      */
-    public static boolean parseHostedOption(String optionPrefix, SortedMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
+    public static boolean parseHostedOption(String optionPrefix, EconomicMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
                     BooleanOptionFormat booleanOptionFormat, Set<String> errors, String arg, PrintStream out) {
         if (!arg.startsWith(optionPrefix)) {
             return false;
@@ -405,12 +404,31 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static void printFlags(Predicate<OptionDescriptor> filter, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out, boolean verbose) {
-        for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-            OptionDescriptor descriptor = entry.getValue();
-            if (!filter.test(descriptor)) {
-                continue;
+    /**
+     * This method sorts the options before printing them.
+     * <p>
+     * Sorting the values of an {@link EconomicMap}, i.e., an {@link Iterable}, is not efficient
+     * since all elements need to first be copied to a list. A stream could be used or the options
+     * could be stored already sorted, however:
+     * <ul>
+     * <li>using a stream would make a lot of types reachable for even the simplest images</li>
+     * <li>storing the options as sorted at run time, i.e., in a {@link java.util.TreeMap}, would be
+     * less space efficient; since this method is shared between the hosted and run time worlds
+     * options are stored in an {@link EconomicMap}</li>
+     * </ul>
+     * Since this method is not performance critical and it is only rarely called the tradeoff
+     * between space and execution efficiency is acceptable.
+     */
+    static void printFlags(Predicate<OptionDescriptor> filter, EconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
+        List<OptionDescriptor> sortedDescriptors = new ArrayList<>();
+        for (OptionDescriptor option : options.getValues()) {
+            if (filter.test(option)) {
+                sortedDescriptors.add(option);
             }
+        }
+        sortedDescriptors.sort(Comparator.comparing(OptionDescriptor::getName));
+
+        for (OptionDescriptor descriptor : sortedDescriptors) {
             String helpMsg = verbose && !descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getHelp();
             int helpLen = helpMsg.length();
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
@@ -424,7 +442,7 @@ public class SubstrateOptionsParser {
                     defaultValue = defaultValues[0];
                 } else {
                     List<String> stringList = new ArrayList<>();
-                    String optionPrefix = prefix + entry.getKey() + "=";
+                    String optionPrefix = prefix + descriptor.getName() + "=";
                     for (Object rawValue : defaultValues) {
                         String value;
                         if (rawValue instanceof String) {
@@ -465,7 +483,7 @@ public class SubstrateOptionsParser {
                         helpMsg += "Default: - (disabled).";
                     }
                 }
-                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg + verboseHelp, wrapWidth);
+                printOption(out, prefix + "\u00b1" + descriptor.getName(), helpMsg + verboseHelp, wrapWidth);
             } else {
                 if (defaultValue == null) {
                     if (helpLen != 0) {
@@ -475,12 +493,12 @@ public class SubstrateOptionsParser {
                 }
                 helpMsg += verboseHelp;
                 if (stringifiedArrayValue || defaultValue == null) {
-                    printOption(out, prefix + entry.getKey() + "=...", helpMsg, wrapWidth);
+                    printOption(out, prefix + descriptor.getName() + "=...", helpMsg, wrapWidth);
                 } else {
                     if (defaultValue instanceof String) {
                         defaultValue = '"' + String.valueOf(defaultValue) + '"';
                     }
-                    printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg, wrapWidth);
+                    printOption(out, prefix + descriptor.getName() + "=" + defaultValue, helpMsg, wrapWidth);
                 }
             }
         }

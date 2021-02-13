@@ -195,10 +195,9 @@ public final class JavaNetSubstitutions {
                             return;
                         }
                         connected = true;
-                        Resources.ResourcesSupport support = ImageSingletons.lookup(Resources.ResourcesSupport.class);
                         // remove "resource:" from url to get the resource name
                         String resName = url.toString().substring(1 + JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
-                        final List<byte[]> bytes = support.resources.get(resName);
+                        final List<byte[]> bytes = Resources.get(resName);
                         if (bytes == null || bytes.size() < 1) {
                             throw new FileNotFoundException(url.toString());
                         }
