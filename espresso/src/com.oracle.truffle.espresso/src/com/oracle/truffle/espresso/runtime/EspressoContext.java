@@ -511,7 +511,8 @@ public final class EspressoContext {
         }
 
         List<String> available = new ArrayList<>();
-        ServiceLoader<NativeAccess.Provider> loader = ServiceLoader.load(NativeAccess.Provider.class);
+        // TODO(peterssen): Investigate which class loader is needed here and why.
+        ServiceLoader<NativeAccess.Provider> loader = ServiceLoader.load(NativeAccess.Provider.class, getClass().getClassLoader());
         for (NativeAccess.Provider provider : loader) {
             available.add(provider.id());
             if (nativeBackend.equals(provider.id())) {
