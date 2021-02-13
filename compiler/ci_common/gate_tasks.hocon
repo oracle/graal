@@ -5,7 +5,6 @@ builds += [
   ${gateTest}           ${oraclejdk8}      ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64", timelimit: "1:00:00"}
   ${gateTest}           ${labsjdk-ee-16}   ${gateDarwinAMD64}  {name: "gate-compiler-test-16-darwin-amd64", timelimit: "1:00:00"}
   ${gateTest}                              ${gateDarwinAMD64}  {name: "daily-compiler-test-16-darwin-amd64"} ${dailyJDK16}
-  ${gateTest}           ${openjdk8}        ${gateDarwinAMD64}  {name: "weekly-test-compiler-test-openjdk8-darwin-amd64"} ${graalWeekly}
   ${gateTest}           ${labsjdk-ee-11}   ${gateDarwinAMD64}  {name: "weekly-test-compiler-test-labsjdk-ee-11-darwin-amd64"} ${graalWeekly}
 # ${gateTestBenchmark}  ${oraclejdk8}      ${gateDarwinAMD64}  {name: "weekly-test-compiler-benchmarktest-8-darwin-amd64"} ${graalWeekly}
 
