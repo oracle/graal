@@ -26,9 +26,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 
 import com.oracle.truffle.espresso._native.NativeAccess;
-import com.oracle.truffle.espresso._native.NativeAccessProvider;
 import com.oracle.truffle.espresso._native.NativeSignature;
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -37,7 +35,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso._native.Buffer;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
@@ -131,7 +128,7 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
         }
     }
 
-    public final class Provider implements NativeAccessProvider {
+    public static final class Provider implements NativeAccess.Provider {
         @Override
         public String id() {
             return "nfi-dlmopen";

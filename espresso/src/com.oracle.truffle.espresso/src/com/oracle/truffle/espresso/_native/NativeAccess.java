@@ -30,6 +30,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * Encapsulates minimal functionality required to interface with the native world in the JVM.
@@ -170,5 +171,13 @@ public interface NativeAccess {
      */
     default void threadStart() {
         // nop
+    }
+
+    /**
+     * NativeAccess SPI.
+     */
+    interface Provider {
+        String id();
+        NativeAccess create(EspressoContext context);
     }
 }

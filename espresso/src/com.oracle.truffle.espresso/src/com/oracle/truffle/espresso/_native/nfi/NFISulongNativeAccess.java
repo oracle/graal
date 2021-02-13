@@ -3,13 +3,12 @@ package com.oracle.truffle.espresso._native.nfi;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso._native.NativeAccess;
-import com.oracle.truffle.espresso._native.NativeAccessProvider;
 import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 import java.nio.file.Path;
 
-final class NFISulongNativeAccess extends NFINativeAccess {
+public final class NFISulongNativeAccess extends NFINativeAccess {
 
     public NFISulongNativeAccess(EspressoContext context) {
         super(context);
@@ -22,7 +21,7 @@ final class NFISulongNativeAccess extends NFINativeAccess {
         return loadLibraryHelper(nfiSource);
     }
 
-    public final class Provider implements NativeAccessProvider {
+    public static final class Provider implements NativeAccess.Provider {
         @Override
         public String id() {
             return "nfi-sulong";
