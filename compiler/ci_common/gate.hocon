@@ -186,7 +186,7 @@ gateMathStubsListener: ${linux-amd64} {
   ]
 }
 
-dailyJDK16Debug: ${labsjdk-ee-16Debug} {
+dailyJDK16: ${labsjdk-ee-16} {
     targets: [daily]
     notify_emails: [
       "doug.simon@oracle.com"

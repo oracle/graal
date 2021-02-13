@@ -3,23 +3,23 @@
 builds += [
   # Darwin AMD64
   ${gateTest}           ${oraclejdk8}      ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64", timelimit: "1:00:00"}
-  # GR-25369 ${gateTest}           ${labsjdk-ee-16}   ${gateDarwinAMD64}  {name: "gate-compiler-test-16-darwin-amd64", timelimit: "1:00:00"}
-  ${gateTest}                              ${gateDarwinAMD64}  {name: "daily-compiler-test-16-darwin-amd64"} ${dailyJDK16Debug}
+  ${gateTest}           ${labsjdk-ee-16}   ${gateDarwinAMD64}  {name: "gate-compiler-test-16-darwin-amd64", timelimit: "1:00:00"}
+  ${gateTest}                              ${gateDarwinAMD64}  {name: "daily-compiler-test-16-darwin-amd64"} ${dailyJDK16}
   ${gateTest}           ${openjdk8}        ${gateDarwinAMD64}  {name: "weekly-test-compiler-test-openjdk8-darwin-amd64"} ${graalWeekly}
   ${gateTest}           ${labsjdk-ee-11}   ${gateDarwinAMD64}  {name: "weekly-test-compiler-test-labsjdk-ee-11-darwin-amd64"} ${graalWeekly}
 # ${gateTestBenchmark}  ${oraclejdk8}      ${gateDarwinAMD64}  {name: "weekly-test-compiler-benchmarktest-8-darwin-amd64"} ${graalWeekly}
 
   # Windows AMD64
   ${gateTest}          ${oraclejdk8}       ${gateWindowsAMD64} {name: "gate-compiler-test-8-windows-amd64", timelimit: "50:00"} ${devkits.windows-oraclejdk8}
-  # GR-25369 ${gateTest}          ${labsjdk-ee-16}    ${gateWindowsAMD64} {name: "gate-compiler-test-16-windows-amd64", timelimit: "50:00"} ${devkits.windows-jdk16}
-  ${gateTest}                              ${gateWindowsAMD64} {name: "daily-compiler-test-16-windows-amd64"} ${devkits.windows-jdk16} ${dailyJDK16Debug}
+  ${gateTest}          ${labsjdk-ee-16}    ${gateWindowsAMD64} {name: "gate-compiler-test-16-windows-amd64", timelimit: "50:00"} ${devkits.windows-jdk16}
+  ${gateTest}                              ${gateWindowsAMD64} {name: "daily-compiler-test-16-windows-amd64"} ${devkits.windows-jdk16} ${dailyJDK16}
 # GR-20001
 # ${gateTest}          ${labsjdk-ee-11}    ${gateWindowsAMD64} {name: "gate-compiler-test-labsjdk-ee-11-windows-amd64", timelimit: "50:00"} ${devkits.windows-jdk11}
 
   # Linux AMD64
   ${gateTest}          ${oraclejdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64", timelimit: "45:00"}
-  # GR-25369 ${gateTest}          ${labsjdk-ee-16}    ${gateLinuxAMD64}   {name: "gate-compiler-test-16-linux-amd64", timelimit: "50:00"}
-  ${gateTest}                              ${gateLinuxAMD64}   {name: "daily-compiler-test-16-linux-amd64"} ${dailyJDK16Debug}
+  ${gateTest}          ${labsjdk-ee-16}    ${gateLinuxAMD64}   {name: "gate-compiler-test-16-linux-amd64", timelimit: "50:00"}
+  ${gateTest}                              ${gateLinuxAMD64}   {name: "daily-compiler-test-16-linux-amd64"} ${dailyJDK16}
   ${gateTest}          ${openjdk8}         ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-openjdk8-linux-amd64"} ${graalWeekly}
   ${gateTestMaxVS}     ${oraclejdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-maxvectorsize"} ${graalWeekly}
   ${gateTestAVX0}      ${oraclejdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-avx0"} ${graalWeekly}
@@ -27,8 +27,8 @@ builds += [
   ${gateTest}          ${labsjdk-ee-11}    ${gateLinuxAMD64}   {name: "gate-compiler-test-labsjdk-ee-11-linux-amd64", timelimit: "45:00"}
   ${gateJavaBaseTest}  ${labsjdk-ee-11}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-javabasetest-labsjdk-ee-11-linux-amd64"} ${graalWeekly}
   ${gateTestCTW}       ${oraclejdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
-  # GR-25369 ${gateTestCTW}       ${labsjdk-ee-16}    ${gateLinuxAMD64}   {name: "gate-compiler-ctw-16-linux-amd64"}
-  ${gateTestCTW}                           ${gateLinuxAMD64}   {name: "daily-compiler-ctw-16-linux-amd64"} ${dailyJDK16Debug}
+  ${gateTestCTW}       ${labsjdk-ee-16}    ${gateLinuxAMD64}   {name: "gate-compiler-ctw-16-linux-amd64"}
+  ${gateTestCTW}                           ${gateLinuxAMD64}   {name: "daily-compiler-ctw-16-linux-amd64"} ${dailyJDK16}
   ${gateTestCTWWeekly} ${openjdk8}         ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-openjdk8-linux-amd64"} ${graalWeekly} {timelimit: "2:00:00"}
   ${gateTestCTWWeekly} ${labsjdk-ee-11}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-labsjdk-ee-11-linux-amd64"} ${graalWeekly}
   ${gateTest}          ${oraclejdk8Debug}  ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-fastdebug"} ${graalWeekly} {timelimit: "3:00:00"}
