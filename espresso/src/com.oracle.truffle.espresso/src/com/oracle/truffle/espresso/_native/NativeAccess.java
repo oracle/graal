@@ -163,4 +163,8 @@ public interface NativeAccess {
         }
         // @formatter:on
     }
+
+    default void threadStart() {
+        // nop
+    }
 }

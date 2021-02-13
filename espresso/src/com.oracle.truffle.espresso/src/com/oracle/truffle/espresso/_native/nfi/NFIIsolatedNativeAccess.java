@@ -51,6 +51,7 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
     final @Pointer TruffleObject malloc;
     final @Pointer TruffleObject free;
     final @Pointer TruffleObject realloc;
+    final @Pointer TruffleObject ctypeInit;
 
     public NFIIsolatedNativeAccess(EspressoContext context) {
         super(context);
@@ -60,6 +61,7 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
         this.malloc = lookupAndBindSymbol(edenLibrary, "malloc", NativeSignature.create(NativeType.POINTER, NativeType.LONG));
         this.realloc = lookupAndBindSymbol(edenLibrary, "realloc", NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.LONG));
         this.free = lookupAndBindSymbol(edenLibrary, "free", NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+        this.ctypeInit = lookupAndBindSymbol(edenLibrary, "ctypeInit", NativeSignature.create(NativeType.VOID));
     }
 
     @Override
@@ -115,6 +117,16 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
             return TruffleByteBuffer.wrap(address, Math.toIntExact(newSize));
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    @Override
+    public void threadStart() {
+        try {
+            uncachedInterop.execute(ctypeInit);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
         }
     }

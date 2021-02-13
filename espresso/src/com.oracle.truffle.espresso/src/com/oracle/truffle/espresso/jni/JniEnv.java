@@ -146,7 +146,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject popLong;
     private final @Pointer TruffleObject popObject;
 
-    private final @Pointer TruffleObject ctypeInit;
     private final @Pointer TruffleObject getSizeMax;
 
     private static final Map<String, JniSubstitutor.Factory> jniMethods = buildJniMethods();
@@ -402,14 +401,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         this.context = context;
         try {
             Path espressoLibraryPath = props.espressoHome().resolve("lib");
-            if (context.IsolatedNamespace) {
-                // libeden.so must be the first library loaded in the isolated namespace.
-                TruffleObject edenLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "eden", true);
-                ctypeInit = getNativeAccess().lookupAndBindSymbol(edenLibrary, "ctypeInit", NativeSignature.create(NativeType.VOID));
-            } else {
-                ctypeInit = null;
-            }
-
             nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
             initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "initializeNativeContext",
                     NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
@@ -509,18 +500,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
         assert jniEnvPtr == null;
-    }
-
-    public void ctypeInit() {
-        if (ctypeInit == null) {
-            return;
-        }
-        try {
-            getUncached().execute(ctypeInit);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
     }
 
     public long sizeMax() {
