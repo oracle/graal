@@ -45,6 +45,7 @@ import mx
 import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import mx_sdk_benchmark # pylint: disable=unused-import
 import datetime
 from mx_bisect import define_bisect_default_build_steps
 from mx_bisect_strategy import BuildStepsGraalVMStrategy
