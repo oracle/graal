@@ -73,10 +73,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
     }
 
-    public NativeImageKind getOutputKind() {
-        return kind;
-    }
-
     private static boolean removeUnusedSymbols() {
         if (SubstrateOptions.RemoveUnusedSymbols.hasBeenSet()) {
             return SubstrateOptions.RemoveUnusedSymbols.getValue();
@@ -146,7 +142,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         @Override
         protected void setOutputKind(List<String> cmd) {
-            switch (kind) {
+            switch (imageKind) {
                 case EXECUTABLE:
                     break;
                 case STATIC_EXECUTABLE:
@@ -229,7 +225,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         @Override
         protected void setOutputKind(List<String> cmd) {
-            switch (kind) {
+            switch (imageKind) {
                 case STATIC_EXECUTABLE:
                     throw UserError.abort("%s does not support building static executable images.", OS.getCurrent().name());
                 case SHARED_LIBRARY:
@@ -247,7 +243,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         @Override
         protected void setOutputKind(List<String> cmd) {
-            switch (kind) {
+            switch (imageKind) {
                 case EXECUTABLE:
                 case STATIC_EXECUTABLE:
                     // cmd.add("/MT");
@@ -315,7 +311,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
-            if (SubstrateOptions.EnableWildcardExpansion.getValue() && kind == NativeImageKind.EXECUTABLE) {
+            if (SubstrateOptions.EnableWildcardExpansion.getValue() && imageKind == NativeImageKind.EXECUTABLE) {
                 /*
                  * Enable wildcard expansion in command line arguments, see
                  * https://docs.microsoft.com/en-us/cpp/c-language/expanding-wildcard-arguments.
@@ -348,10 +344,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.additionalPreOptions.add(SubstrateOptions.AdditionalLinkerOptions.getValue());
         }
 
-        Path outputFile = outputDirectory.resolve(imageName + getBootImageKind().getFilenameSuffix());
+        Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
-        inv.setOutputKind(getOutputKind());
+        inv.setOutputKind(imageKind);
         inv.setTempDirectory(tempDirectory);
 
         inv.addLibPath(tempDirectory.toString());
