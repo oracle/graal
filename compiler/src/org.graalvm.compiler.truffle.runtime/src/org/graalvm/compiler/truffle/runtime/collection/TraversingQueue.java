@@ -30,69 +30,76 @@ import java.util.List;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 
 public class TraversingQueue<E> implements SerialQueue<E> {
-    List<E> entries = new LinkedList<>();
+    List<E> firstTierEntries = new LinkedList<>();
+    List<E> lastTierEntries = new LinkedList<>();
 
     @Override
     public void add(E x) {
-        entries.add(x);
-    }
-
-    @Override
-    public E poll() {
-        E peek = peek();
-        entries.remove(peek);
-        return peek;
-    }
-
-    @Override
-    public E peek() {
-        CompilationTask.ExecutorServiceWrapper firstTierMax = null;
-        int firstTierMaxInc = -1;
-        CompilationTask.ExecutorServiceWrapper lastTierMax = null;
-        int lastTierMaxInc = -1;
-        for (E entry : entries) {
-            CompilationTask compileTask = ((CompilationTask.ExecutorServiceWrapper) entry).getCompileTask();
-            if (compileTask == null) {
-                continue;
-            }
-            int increase = compileTask.getIncrease();
-            if (compileTask.isFirstTier()) {
-                if (increase > firstTierMaxInc) {
-                    firstTierMaxInc = increase;
-                    firstTierMax = (CompilationTask.ExecutorServiceWrapper) entry;
-                }
-            } else {
-                if (increase > lastTierMaxInc) {
-                    lastTierMaxInc = increase;
-                    lastTierMax = (CompilationTask.ExecutorServiceWrapper) entry;
-                }
-            }
-        }
-        if (firstTierMax != null) {
-            return (E) firstTierMax;
+        if (task(x).isFirstTier()) {
+            firstTierEntries.add(x);
         } else {
-            return (E) lastTierMax;
+            lastTierEntries.add(x);
         }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public E poll() {
+        return max(entries(), true);
+    }
+
+    private List<E> entries() {
+        return firstTierEntries.isEmpty() ? lastTierEntries : firstTierEntries;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public E peek() {
+        return max(entries(), false);
+    }
+
+    private E max(List<E> entries, boolean destructive) {
+        if (entries.isEmpty()) {
+            return null;
+        }
+        E max = entries.get(0);
+        int inc = task(max).getIncrease();
+        for (E entry : entries) {
+            CompilationTask task = task(entry);
+            int increase = task.getIncrease();
+            if (increase > inc) {
+                inc = increase;
+                max = entry;
+            }
+        }
+        if (destructive) {
+            entries.remove(max);
+        }
+        return max;
+    }
+
+    private CompilationTask task(E entry) {
+        return ((CompilationTask.ExecutorServiceWrapper) entry).getCompileTask();
     }
 
     @Override
     public void clear() {
-        entries.clear();
+        firstTierEntries.clear();
     }
 
     @Override
     public int size() {
-        return entries.size();
+        return firstTierEntries.size();
     }
 
     @Override
     public Object[] toArray() {
-        return entries.toArray();
+        return firstTierEntries.toArray();
     }
 
     @Override
     public <T> T[] toArray(T[] a) {
-        return entries.toArray(a);
+        return firstTierEntries.toArray(a);
     }
 
     @Override
