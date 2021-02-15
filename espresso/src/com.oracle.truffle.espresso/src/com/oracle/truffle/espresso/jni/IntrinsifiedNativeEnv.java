@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.jni;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -39,16 +42,49 @@ import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
 import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
+import com.oracle.truffle.espresso.substitutions.JniEnvCollector;
 
+/**
+ * Subclasses of this class are implementation of native interfaces (for example, {@link JniEnv} or
+ * {@link com.oracle.truffle.espresso.vm.VM}.
+ *
+ * Subclasses should be annotated with
+ * {@link com.oracle.truffle.espresso.substitutions.GenerateIntrinsification} to produce the
+ * boilerplate code used to juggle between native world and java world.
+ *
+ * Implementing a new native interface in Espresso requires:
+ * <li>Subclassing this class and annotating it with
+ * {@link com.oracle.truffle.espresso.substitutions.GenerateIntrinsification}, and implementing the
+ * native interface methods, along with annotating them with the annotation given to
+ * {@link GenerateIntrinsification#target()}.</li>
+ * <li>Implementing the {@link #getCollector()} method, by calling into the corresponding
+ * Collector.getCollector() method (/ex: {@link JniEnvCollector#getCollector()}</li>
+ * <li>Finally, implement the interface in native code (most likely in mokapot. See the management
+ * implementation there for reference.)</li>
+ */
 public abstract class IntrinsifiedNativeEnv extends NativeEnv implements ContextAccess {
 
-    protected static final int LOOKUP_VM_IMPL_PARAMETER_COUNT = 1;
+    protected static final int LOOKUP_CALLBACK_ARGS_COUNT = 1;
 
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
     private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
 
-    private final Callback lookupCallback = new Callback(LOOKUP_VM_IMPL_PARAMETER_COUNT, new Callback.Function() {
+    private Map<String, IntrinsicSubstitutor.Factory> methods = buildMethodsMap();
+
+    protected abstract List<IntrinsicSubstitutor.Factory> getCollector();
+
+    private Map<String, IntrinsicSubstitutor.Factory> buildMethodsMap() {
+        Map<String, IntrinsicSubstitutor.Factory> map = new HashMap<>();
+        for (IntrinsicSubstitutor.Factory method : getCollector()) {
+            assert !map.containsKey(method.methodName()) : "Substitution for " + method + " already exists";
+            map.put(method.methodName(), method);
+        }
+        return Collections.unmodifiableMap(map);
+    }
+
+    private final Callback lookupCallback = new Callback(LOOKUP_CALLBACK_ARGS_COUNT, new Callback.Function() {
         @Override
         public Object call(Object... args) {
             try {
@@ -68,8 +104,6 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         return lookupCallback;
     }
 
-    protected abstract Map<String, IntrinsicSubstitutor.Factory> getNativeMethodsMapping();
-
     protected final InteropLibrary getUncached() {
         return uncached;
     }
@@ -82,9 +116,13 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         return getContext().getJNI();
     }
 
+    public JNIHandles getHandles() {
+        return jni().getHandles();
+    }
+
     @TruffleBoundary
     private TruffleObject lookupIntrinsic(String methodName) {
-        IntrinsicSubstitutor.Factory factory = getNativeMethodsMapping().get(methodName);
+        IntrinsicSubstitutor.Factory factory = methods.get(methodName);
         // Dummy placeholder for unimplemented/unknown methods.
         if (factory == null) {
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);

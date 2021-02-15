@@ -36,7 +36,6 @@ import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
 
 import java.io.File;
-import java.lang.management.ThreadInfo;
 import java.lang.reflect.Array;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
@@ -49,14 +48,11 @@ import java.security.ProtectionDomain;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -109,7 +105,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
-import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.JniVersion;
@@ -159,8 +154,7 @@ import com.oracle.truffle.espresso.substitutions.VMCollector;
 public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
 
     private final @Pointer TruffleObject disposeMokapotContext;
-    private final @Pointer TruffleObject initializeManagementContext;
-    private final @Pointer TruffleObject disposeManagementContext;
+
     private final @Pointer TruffleObject getJavaVM;
     private final @Pointer TruffleObject mokapotAttachThread;
     private final @Pointer TruffleObject getPackageAt;
@@ -168,8 +162,8 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
     private final long rtldDefaultValue;
 
     private final JniEnv jniEnv;
+    private final Management management;
 
-    private @Pointer TruffleObject managementPtr;
     private @Pointer TruffleObject mokapotEnvPtr;
 
     // libjava must be loaded after mokapot.
@@ -198,10 +192,6 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
         public static long getID() {
             return id.incrementAndGet();
         }
-    }
-
-    public JNIHandles getHandles() {
-        return jniEnv.getHandles();
     }
 
     public @Pointer TruffleObject getJavaLibrary() {
@@ -263,14 +253,9 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
 
             if (jniEnv.getContext().EnableManagement) {
-                initializeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeManagementContext",
-                                NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
-
-                disposeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeManagementContext",
-                                NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
+                management = new Management(getContext(), mokapotLibrary);
             } else {
-                initializeManagementContext = null;
-                disposeManagementContext = null;
+                management = null;
             }
 
             getJavaVM = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
@@ -327,20 +312,9 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
         }
     }
 
-    private static Map<String, IntrinsicSubstitutor.Factory> buildVmMethods() {
-        Map<String, IntrinsicSubstitutor.Factory> map = new HashMap<>();
-        for (IntrinsicSubstitutor.Factory method : VMCollector.getCollector()) {
-            assert !map.containsKey(method.methodName()) : "VmImpl for " + method + " already exists";
-            map.put(method.methodName(), method);
-        }
-        return Collections.unmodifiableMap(map);
-    }
-
-    private static final Map<String, IntrinsicSubstitutor.Factory> vmMethods = buildVmMethods();
-
     @Override
-    protected Map<String, IntrinsicSubstitutor.Factory> getNativeMethodsMapping() {
-        return vmMethods;
+    protected List<IntrinsicSubstitutor.Factory> getCollector() {
+        return VMCollector.getCollector();
     }
 
     public static VM create(JniEnv jniEnv) {
@@ -1138,13 +1112,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
         try {
 
             if (getContext().EnableManagement) {
-                if (managementPtr != null) {
-                    getUncached().execute(disposeManagementContext, managementPtr, managementVersion, RawPointer.nullInstance());
-                    this.managementPtr = null;
-                    this.managementVersion = 0;
-                }
-            } else {
-                assert managementPtr == null;
+                management.dispose();
             }
 
             getUncached().execute(disposeMokapotContext, mokapotEnvPtr, RawPointer.nullInstance());
@@ -2209,534 +2177,17 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
 
     // region Management
 
-    // Partial/incomplete implementation disclaimer!
-    //
-    // This is a partial implementation of the {@link java.lang.management} APIs. Some APIs go
-    // beyond Espresso reach e.g. GC stats. Espresso could implement the hard bits by just
-    // forwarding to the host implementation, but this approach is not feasible:
-    // - In some cases it's not possible to gather stats per-context e.g. host GC stats are VM-wide.
-    // - SubstrateVM implements a bare-minimum subset of the management APIs.
-    //
-    // Some implementations below are just partially correct due to limitations of Espresso itself
-    // e.g. dumping stacktraces for all threads.
-
-    // @formatter:off
-    // enum jmmLongAttribute
-    public static final int JMM_CLASS_LOADED_COUNT             = 1;    /* Total number of loaded classes */
-    public static final int JMM_CLASS_UNLOADED_COUNT           = 2;    /* Total number of unloaded classes */
-    public static final int JMM_THREAD_TOTAL_COUNT             = 3;    /* Total number of threads that have been started */
-    public static final int JMM_THREAD_LIVE_COUNT              = 4;    /* Current number of live threads */
-    public static final int JMM_THREAD_PEAK_COUNT              = 5;    /* Peak number of live threads */
-    public static final int JMM_THREAD_DAEMON_COUNT            = 6;    /* Current number of daemon threads */
-    public static final int JMM_JVM_INIT_DONE_TIME_MS          = 7;    /* Time when the JVM finished initialization */
-    public static final int JMM_COMPILE_TOTAL_TIME_MS          = 8;    /* Total accumulated time spent in compilation */
-    public static final int JMM_GC_TIME_MS                     = 9;    /* Total accumulated time spent in collection */
-    public static final int JMM_GC_COUNT                       = 10;   /* Total number of collections */
-    public static final int JMM_JVM_UPTIME_MS                  = 11;   /* The JVM uptime in milliseconds */
-    public static final int JMM_INTERNAL_ATTRIBUTE_INDEX       = 100;
-    public static final int JMM_CLASS_LOADED_BYTES             = 101;  /* Number of bytes loaded instance classes */
-    public static final int JMM_CLASS_UNLOADED_BYTES           = 102;  /* Number of bytes unloaded instance classes */
-    public static final int JMM_TOTAL_CLASSLOAD_TIME_MS        = 103;  /* Accumulated VM class loader time (TraceClassLoadingTime) */
-    public static final int JMM_VM_GLOBAL_COUNT                = 104;  /* Number of VM internal flags */
-    public static final int JMM_SAFEPOINT_COUNT                = 105;  /* Total number of safepoints */
-    public static final int JMM_TOTAL_SAFEPOINTSYNC_TIME_MS    = 106;  /* Accumulated time spent getting to safepoints */
-    public static final int JMM_TOTAL_STOPPED_TIME_MS          = 107;  /* Accumulated time spent at safepoints */
-    public static final int JMM_TOTAL_APP_TIME_MS              = 108;  /* Accumulated time spent in Java application */
-    public static final int JMM_VM_THREAD_COUNT                = 109;  /* Current number of VM internal threads */
-    public static final int JMM_CLASS_INIT_TOTAL_COUNT         = 110;  /* Number of classes for which initializers were run */
-    public static final int JMM_CLASS_INIT_TOTAL_TIME_MS       = 111;  /* Accumulated time spent in class initializers */
-    public static final int JMM_METHOD_DATA_SIZE_BYTES         = 112;  /* Size of method data in memory */
-    public static final int JMM_CLASS_VERIFY_TOTAL_TIME_MS     = 113;  /* Accumulated time spent in class verifier */
-    public static final int JMM_SHARED_CLASS_LOADED_COUNT      = 114;  /* Number of shared classes loaded */
-    public static final int JMM_SHARED_CLASS_UNLOADED_COUNT    = 115;  /* Number of shared classes unloaded */
-    public static final int JMM_SHARED_CLASS_LOADED_BYTES      = 116;  /* Number of bytes loaded shared classes */
-    public static final int JMM_SHARED_CLASS_UNLOADED_BYTES    = 117;  /* Number of bytes unloaded shared classes */
-    public static final int JMM_OS_ATTRIBUTE_INDEX             = 200;
-    public static final int JMM_OS_PROCESS_ID                  = 201;  /* Process id of the JVM */
-    public static final int JMM_OS_MEM_TOTAL_PHYSICAL_BYTES    = 202;  /* Physical memory size */
-    public static final int JMM_GC_EXT_ATTRIBUTE_INFO_SIZE     = 401;  /* the size of the GC specific attributes for a given GC memory manager */
-    // @formatter:on
-
-    // enum jmmBoolAttribute
-    public static final int JMM_VERBOSE_GC = 21;
-    public static final int JMM_VERBOSE_CLASS = 22;
-    public static final int JMM_THREAD_CONTENTION_MONITORING = 23;
-    public static final int JMM_THREAD_CPU_TIME = 24;
-    public static final int JMM_THREAD_ALLOCATED_MEMORY = 25;
-
-    // enum
-    public static final int JMM_VERSION_1 = 0x20010000;
-    public static final int JMM_VERSION_1_0 = 0x20010000;
-    public static final int JMM_VERSION_1_1 = 0x20010100; // JDK 6
-    public static final int JMM_VERSION_1_2 = 0x20010200; // JDK 7
-    public static final int JMM_VERSION_1_2_1 = 0x20010201; // JDK 7 GA
-    public static final int JMM_VERSION_1_2_2 = 0x20010202;
-    public static final int JMM_VERSION_1_2_3 = 0x20010203;
-    public static final int JMM_VERSION_2 = 0x20020000; // JDK 10
-    public static final int JMM_VERSION_3 = 0x20030000; // JDK 11.7
-
-    @CompilerDirectives.CompilationFinal //
-    private int managementVersion;
-
-    /**
-     * Procedure to support a new management version in Espresso:
-     * <ul>
-     * <li>Add the new version to support in this method.</li>
-     * <li>Add the version to the version enum in <code>jmm_common.h</code> in the mokapot include
-     * directory.</li>
-     * <li>Create and update accordingly with the new changes (most certainly a new function)
-     * <code>jmm_.h</code> and <code>management_.c</code> in the mokapot include and source
-     * directory</li>
-     * <li>Add to <code>management.h</code> the new <code>initializeManagementContext_</code> and
-     * <code>disposeManagementContext_</code> functions.</li>
-     * <li>Update <code>management.c</code> to select these new method depending on the requested
-     * version</li>
-     * <li>Ideally implement the method in this class.</li>
-     * </ul>
-     */
-    private static boolean isSupportedManagementVersion(int version) {
-        return version == JMM_VERSION_1 || version == JMM_VERSION_2 || version == JMM_VERSION_3;
-    }
-
     @VmImpl
     @TruffleBoundary
     public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
-        if (!isSupportedManagementVersion(version)) {
-            return RawPointer.nullInstance();
-        }
         EspressoContext context = getContext();
         if (!context.EnableManagement) {
             getLogger().severe("JVM_GetManagement: Experimental support for java.lang.management native APIs is disabled.\n" +
                             "Use '--java.EnableManagement=true' to enable experimental support for j.l.management native APIs.");
             return RawPointer.nullInstance();
         }
-        if (managementPtr == null) {
-            try {
-                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, getLookupCallback(), version);
-                managementVersion = version;
-                assert getUncached().isPointer(managementPtr);
-            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-            assert managementPtr != null && !getUncached().isNull(managementPtr);
-        } else if (version != managementVersion) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            context.getLogger().warning("Asking for a different management version that previously requested.\n" +
-                            "Previously requested: " + managementVersion + ", currently requested: " + version);
-            return RawPointer.nullInstance();
-        }
-        return managementPtr;
-    }
-
-    @JniImpl
-    @VmImpl
-    public int GetVersion() {
-        if (managementVersion <= JMM_VERSION_1_2_3) {
-            return JMM_VERSION_1_2_3;
-        } else {
-            return managementVersion;
-        }
-    }
-
-    @JniImpl
-    @VmImpl
-    public int GetOptionalSupport(@Pointer TruffleObject /* jmmOptionalSupport **/ supportPtr) {
-        if (!getUncached().isNull(supportPtr)) {
-            ByteBuffer supportBuf = NativeUtils.directByteBuffer(supportPtr, 8);
-            supportBuf.putInt(0); // nothing optional is supported
-            return 0;
-        }
-        return -1;
-    }
-
-    private static void validateThreadIdArray(Meta meta, @Host(long[].class) StaticObject threadIds, SubstitutionProfiler profiler) {
-        assert threadIds.isArray();
-        int numThreads = threadIds.length();
-        for (int i = 0; i < numThreads; ++i) {
-            long tid = threadIds.<long[]> unwrap()[i];
-            if (tid <= 0) {
-                profiler.profile(3);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid thread ID entry");
-            }
-        }
-    }
-
-    private static void validateThreadInfoArray(Meta meta, @Host(ThreadInfo[].class) StaticObject infoArray, SubstitutionProfiler profiler) {
-        // check if the element of infoArray is of type ThreadInfo class
-        Klass infoArrayKlass = infoArray.getKlass();
-        if (infoArray.isArray()) {
-            Klass component = ((ArrayKlass) infoArrayKlass).getComponentType();
-            if (!meta.java_lang_management_ThreadInfo.equals(component)) {
-                profiler.profile(4);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
-            }
-        }
-    }
-
-    @JniImpl
-    @VmImpl
-    public int GetThreadInfo(@Host(long[].class) StaticObject ids, int maxDepth, @Host(Object[].class) StaticObject infoArray, @InjectProfile SubstitutionProfiler profiler) {
-        Meta meta = getMeta();
-        if (StaticObject.isNull(ids) || StaticObject.isNull(infoArray)) {
-            profiler.profile(0);
-            throw meta.throwNullPointerException();
-        }
-
-        if (maxDepth < -1) {
-            profiler.profile(1);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid maxDepth");
-        }
-
-        validateThreadIdArray(meta, ids, profiler);
-        validateThreadInfoArray(meta, infoArray, profiler);
-
-        if (ids.length() != infoArray.length()) {
-            profiler.profile(2);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
-        }
-
-        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name._init_, getSignatures().makeRaw(
-                        /* returns */Type._void,
-                        /* t */ Type.java_lang_Thread,
-                        /* state */ Type._int,
-                        /* lockObj */ Type.java_lang_Object,
-                        /* lockOwner */Type.java_lang_Thread,
-                        /* blockedCount */Type._long,
-                        /* blockedTime */Type._long,
-                        /* waitedCount */Type._long,
-                        /* waitedTime */Type._long,
-                        /* StackTraceElement[] */ Type.java_lang_StackTraceElement_array));
-
-        StaticObject[] activeThreads = getContext().getActiveThreads();
-        StaticObject currentThread = getContext().getCurrentThread();
-        for (int i = 0; i < ids.length(); ++i) {
-            long id = getInterpreterToVM().getArrayLong(i, ids);
-            StaticObject thread = StaticObject.NULL;
-
-            for (int j = 0; j < activeThreads.length; ++j) {
-                if (Target_java_lang_Thread.getThreadId(meta, activeThreads[j]) == id) {
-                    thread = activeThreads[j];
-                    break;
-                }
-            }
-
-            if (StaticObject.isNull(thread)) {
-                getInterpreterToVM().setArrayObject(StaticObject.NULL, i, infoArray);
-            } else {
-
-                int threadStatus = meta.java_lang_Thread_threadStatus.getInt(thread);
-                StaticObject lockObj = StaticObject.NULL;
-                StaticObject lockOwner = StaticObject.NULL;
-                int mask = State.BLOCKED.value | State.WAITING.value | State.TIMED_WAITING.value;
-                if ((threadStatus & mask) != 0) {
-                    lockObj = (StaticObject) meta.HIDDEN_THREAD_BLOCKED_OBJECT.getHiddenObject(thread);
-                    if (lockObj == null) {
-                        lockObj = StaticObject.NULL;
-                    }
-                    Thread hostOwner = StaticObject.isNull(lockObj)
-                                    ? null
-                                    : lockObj.getLock().getOwnerThread();
-                    if (hostOwner != null && hostOwner.isAlive()) {
-                        lockOwner = getContext().getGuestThreadFromHost(hostOwner);
-                        if (lockOwner == null) {
-                            lockOwner = StaticObject.NULL;
-                        }
-                    }
-                }
-
-                long blockedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_BLOCKED_COUNT);
-                long waitedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_WAITED_COUNT);
-
-                StaticObject stackTrace;
-                if (maxDepth != 0 && thread == currentThread) {
-                    stackTrace = (StaticObject) getMeta().java_lang_Throwable_getStackTrace.invokeDirect(Meta.initException(meta.java_lang_Throwable));
-                    if (stackTrace.length() > maxDepth && maxDepth != -1) {
-                        StaticObject[] unwrapped = stackTrace.unwrap();
-                        unwrapped = Arrays.copyOf(unwrapped, maxDepth);
-                        stackTrace = StaticObject.wrap(meta.java_lang_StackTraceElement.getArrayClass(), unwrapped);
-                    }
-                } else {
-                    stackTrace = meta.java_lang_StackTraceElement.allocateReferenceArray(0);
-                }
-
-                StaticObject threadInfo = meta.java_lang_management_ThreadInfo.allocateInstance();
-                init.invokeDirect( /* this */ threadInfo,
-                                /* t */ thread,
-                                /* state */ threadStatus,
-                                /* lockObj */ lockObj,
-                                /* lockOwner */ lockOwner,
-                                /* blockedCount */ blockedCount,
-                                /* blockedTime */ -1L,
-                                /* waitedCount */ waitedCount,
-                                /* waitedTime */ -1L,
-                                /* StackTraceElement[] */ stackTrace);
-                getInterpreterToVM().setArrayObject(threadInfo, i, infoArray);
-            }
-        }
-
-        return 0; // always 0
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(String[].class) StaticObject GetInputArgumentArray() {
-        return JVM_GetVmArguments();
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(String[].class) StaticObject GetInputArguments() {
-        return JVM_GetVmArguments();
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused,
-                    @GuestCall(target = "sun_management_ManagementFactory_createMemoryPool") DirectCallNode createMemoryPool) {
-        Klass memoryPoolMXBean = getMeta().resolveSymbolOrFail(Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL, StaticObject.NULL);
-        return memoryPoolMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int value) {
-                // (String name, boolean isHeap, long uThreshold, long gcThreshold)
-                return (StaticObject) createMemoryPool.call(
-                                /* String name */ getMeta().toGuestString("foo"),
-                                /* boolean isHeap */ true,
-                                /* long uThreshold */ -1L,
-                                /* long gcThreshold */ 0L);
-            }
-        });
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool,
-                    @GuestCall(target = "sun_management_ManagementFactory_createMemoryManager") DirectCallNode createMemoryManager) {
-        Klass memoryManagerMXBean = getMeta().resolveSymbolOrFail(Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL, StaticObject.NULL);
-        return memoryManagerMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int value) {
-                // (String name, String type)
-                return (StaticObject) createMemoryManager.call(
-                                /* String name */ getMeta().toGuestString("foo"));
-            }
-        });
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object.class) StaticObject GetMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
-        if (StaticObject.isNull(pool)) {
-            return StaticObject.NULL;
-        }
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
-        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
-        return instance;
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object.class) StaticObject GetPeakMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
-        if (StaticObject.isNull(pool)) {
-            return StaticObject.NULL;
-        }
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
-        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
-        return instance;
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
-        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
-        return instance;
-    }
-
-    @JniImpl
-    @VmImpl
-    @TruffleBoundary // Lots of SVM + Windows blacklisted methods.
-    public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj,
-                    /* jmmLongAttribute */ int att) {
-        switch (att) {
-            case JMM_JVM_INIT_DONE_TIME_MS:
-                return TimeUnit.NANOSECONDS.toMillis(getContext().initDoneTimeNanos);
-            case JMM_CLASS_LOADED_COUNT:
-                return getRegistries().getLoadedClassesCount();
-            case JMM_CLASS_UNLOADED_COUNT:
-                return 0L;
-            case JMM_JVM_UPTIME_MS:
-                long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
-                return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
-            case JMM_OS_PROCESS_ID:
-                String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-                String[] parts = processName.split("@");
-                return Long.parseLong(parts[0]);
-            case JMM_THREAD_DAEMON_COUNT:
-                int daemonCount = 0;
-                for (StaticObject t : getContext().getActiveThreads()) {
-                    if ((boolean) getMeta().java_lang_Thread_daemon.get(t)) {
-                        ++daemonCount;
-                    }
-                }
-                return daemonCount;
-
-            case JMM_THREAD_PEAK_COUNT:
-                return getContext().getPeakThreadCount();
-            case JMM_THREAD_LIVE_COUNT:
-                return getContext().getActiveThreads().length;
-            case JMM_THREAD_TOTAL_COUNT:
-                return getContext().getCreatedThreadCount();
-        }
-        throw EspressoError.unimplemented("GetLongAttribute " + att);
-    }
-
-    private boolean JMM_VERBOSE_GC_state = false;
-    private boolean JMM_VERBOSE_CLASS_state = false;
-    private boolean JMM_THREAD_CONTENTION_MONITORING_state = false;
-    private boolean JMM_THREAD_CPU_TIME_state = false;
-    private boolean JMM_THREAD_ALLOCATED_MEMORY_state = false;
-
-    @JniImpl
-    @VmImpl
-    public boolean GetBoolAttribute(/* jmmBoolAttribute */ int att) {
-        switch (att) {
-            case JMM_VERBOSE_GC:
-                return JMM_VERBOSE_GC_state;
-            case JMM_VERBOSE_CLASS:
-                return JMM_VERBOSE_CLASS_state;
-            case JMM_THREAD_CONTENTION_MONITORING:
-                return JMM_THREAD_CONTENTION_MONITORING_state;
-            case JMM_THREAD_CPU_TIME:
-                return JMM_THREAD_CPU_TIME_state;
-            case JMM_THREAD_ALLOCATED_MEMORY:
-                return JMM_THREAD_ALLOCATED_MEMORY_state;
-        }
-        throw EspressoError.unimplemented("GetBoolAttribute ", att);
-    }
-
-    @JniImpl
-    @VmImpl
-    public boolean SetBoolAttribute(/* jmmBoolAttribute */ int att, boolean flag) {
-        switch (att) {
-            case JMM_VERBOSE_GC:
-                return JMM_VERBOSE_GC_state = flag;
-            case JMM_VERBOSE_CLASS:
-                return JMM_VERBOSE_CLASS_state = flag;
-            case JMM_THREAD_CONTENTION_MONITORING:
-                return JMM_THREAD_CONTENTION_MONITORING_state = flag;
-            case JMM_THREAD_CPU_TIME:
-                return JMM_THREAD_CPU_TIME_state = flag;
-            case JMM_THREAD_ALLOCATED_MEMORY:
-                return JMM_THREAD_ALLOCATED_MEMORY_state = flag;
-        }
-        throw EspressoError.unimplemented("SetBoolAttribute ", att);
-    }
-
-    @JniImpl
-    @VmImpl
-    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count,
-                    @InjectProfile SubstitutionProfiler profiler) {
-        Meta meta = getMeta();
-        if (getUncached().isNull(globalsPtr)) {
-            profiler.profile(0);
-            throw meta.throwNullPointerException();
-        }
-        if (StaticObject.notNull(names)) {
-            if (!names.getKlass().equals(meta.java_lang_String.array())) {
-                profiler.profile(1);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Array element type is not String class");
-            }
-
-            StaticObject[] entries = names.unwrap();
-            for (StaticObject entry : entries) {
-                if (StaticObject.isNull(entry)) {
-                    profiler.profile(2);
-                    throw meta.throwNullPointerException();
-                }
-                getLogger().fine("GetVMGlobals: " + meta.toHostString(entry));
-            }
-        }
-        return 0;
-    }
-
-    @VmImpl
-    @JniImpl
-    @SuppressWarnings("unused")
-    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
-                    @InjectProfile SubstitutionProfiler profiler) {
-        StaticObject threadIds = ids;
-        if (StaticObject.isNull(threadIds)) {
-            StaticObject[] activeThreads = getContext().getActiveThreads();
-            threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length, getMeta());
-            for (int j = 0; j < activeThreads.length; ++j) {
-                long tid = Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]);
-                getInterpreterToVM().setArrayLong(tid, j, threadIds);
-            }
-        }
-        StaticObject result = getMeta().java_lang_management_ThreadInfo.allocateReferenceArray(threadIds.length());
-        if (GetThreadInfo(threadIds, 0, result, profiler) != JNI_OK) {
-            return StaticObject.NULL;
-        }
-        return result;
-    }
-
-    @VmImpl
-    @JniImpl
-    public long GetOneThreadAllocatedMemory(
-                    long threadId) {
-        StaticObject[] activeThreads = getContext().getActiveThreads();
-
-        StaticObject thread = StaticObject.NULL;
-
-        for (int j = 0; j < activeThreads.length; ++j) {
-            if (Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]) == threadId) {
-                thread = activeThreads[j];
-                break;
-            }
-        }
-        if (StaticObject.isNull(thread)) {
-            return -1L;
-        } else {
-            return 0L;
-        }
-    }
-
-    @VmImpl
-    @JniImpl
-    public void GetThreadAllocatedMemory(
-                    @Host(long[].class) StaticObject ids,
-                    @Host(long[].class) StaticObject sizeArray,
-                    @InjectProfile SubstitutionProfiler profiler) {
-        if (StaticObject.isNull(ids) || StaticObject.isNull(sizeArray)) {
-            profiler.profile(0);
-            throw Meta.throwException(getMeta().java_lang_NullPointerException);
-        }
-        validateThreadIdArray(getMeta(), ids, profiler);
-        if (ids.length() != sizeArray.length()) {
-            profiler.profile(1);
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "The length of the given long array does not match the length of the given array of thread IDs");
-        }
-        StaticObject[] activeThreads = getContext().getActiveThreads();
-
-        for (int i = 0; i < ids.length(); i++) {
-            long id = getInterpreterToVM().getArrayLong(i, ids);
-            StaticObject thread = StaticObject.NULL;
-
-            for (int j = 0; j < activeThreads.length; ++j) {
-                if (Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]) == id) {
-                    thread = activeThreads[j];
-                    break;
-                }
-            }
-            if (StaticObject.isNull(thread)) {
-                getInterpreterToVM().setArrayLong(-1L, i, sizeArray);
-            } else {
-                getInterpreterToVM().setArrayLong(0L, i, sizeArray);
-            }
-        }
+        assert management != null;
+        return management.getManagement(version);
     }
 
     // endregion Management

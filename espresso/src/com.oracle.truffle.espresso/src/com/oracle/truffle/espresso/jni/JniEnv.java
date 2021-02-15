@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -137,8 +138,8 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
     private static final Map<String, IntrinsicSubstitutor.Factory> jniMethods = buildJniMethods();
 
     @Override
-    protected Map<String, IntrinsicSubstitutor.Factory> getNativeMethodsMapping() {
-        return jniMethods;
+    protected List<IntrinsicSubstitutor.Factory> getCollector() {
+        return JniEnvCollector.getCollector();
     }
 
     private final WeakHandles<Field> fieldIds = new WeakHandles<>();
@@ -348,6 +349,7 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
         }
     }
 
+    @Override
     public JNIHandles getHandles() {
         return handles;
     }
