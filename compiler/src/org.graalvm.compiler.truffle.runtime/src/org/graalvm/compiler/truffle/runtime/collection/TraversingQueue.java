@@ -45,7 +45,19 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     @Override
     @SuppressWarnings("unchecked")
     public E poll() {
-        return max(entries(), true);
+        if (firstTierEntries.isEmpty()) {
+            return nextLastTier();
+        }
+        return maxFirstTier();
+    }
+
+    private E nextLastTier() {
+        if (lastTierEntries.isEmpty()) {
+            return null;
+        }
+        E e = lastTierEntries.get(0);
+        lastTierEntries.remove(e);
+        return e;
     }
 
     private List<E> entries() {
@@ -55,16 +67,13 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     @Override
     @SuppressWarnings("unchecked")
     public E peek() {
-        return max(entries(), false);
+        throw new UnsupportedOperationException("Peek not supported!");
     }
 
-    private E max(List<E> entries, boolean destructive) {
-        if (entries.isEmpty()) {
-            return null;
-        }
-        E max = entries.get(0);
+    private E maxFirstTier() {
+        E max = firstTierEntries.get(0);
         int inc = task(max).getIncrease();
-        for (E entry : entries) {
+        for (E entry : firstTierEntries) {
             CompilationTask task = task(entry);
             int increase = task.getIncrease();
             if (increase > inc) {
@@ -72,9 +81,7 @@ public class TraversingQueue<E> implements SerialQueue<E> {
                 max = entry;
             }
         }
-        if (destructive) {
-            entries.remove(max);
-        }
+        firstTierEntries.remove(max);
         return max;
     }
 
