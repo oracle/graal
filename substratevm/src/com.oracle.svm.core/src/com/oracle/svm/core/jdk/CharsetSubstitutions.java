@@ -33,11 +33,14 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.configure.ResourcesRegistry;
 
 @TargetClass(java.nio.charset.Charset.class)
 @SuppressWarnings({"unused"})
@@ -87,6 +90,15 @@ final class Target_java_nio_charset_Charset {
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private static boolean atBugLevel(String bl) {
         return false;
+    }
+}
+
+@AutomaticFeature
+class CharsetSubstitutionsFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        Class<?> clazz = access.findClassByName("java.lang.CharacterName");
+        access.registerReachabilityHandler(a -> ImageSingletons.lookup(ResourcesRegistry.class).addResources("java/lang/uniName.dat"), clazz);
     }
 }
 
