@@ -33,7 +33,7 @@ final class LinkedField extends StaticProperty {
     private final int slot;
 
     LinkedField(ParserField parserField, int slot, int offset) {
-        super(offset);
+        super(parserField.getKind(), offset);
         this.parserField = parserField;
         this.slot = slot;
     }

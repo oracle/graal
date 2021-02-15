@@ -50,7 +50,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
