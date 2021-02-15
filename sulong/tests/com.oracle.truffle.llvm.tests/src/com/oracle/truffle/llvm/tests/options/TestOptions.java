@@ -38,6 +38,7 @@ public final class TestOptions {
     public static final String TEST_AOT_ARGS = System.getProperty("sulongtest.testAOTArgs");
     public static final String TEST_FILTER = System.getProperty("sulongtest.testFilter");
     public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
+    public static final String CONFIG_ROOT = System.getProperty("sulongtest.configRoot");
     public static final String TEST_SUITE_PATH = getTestDistribution("SULONG_TEST_SUITES");
     public static final String EXTERNAL_TEST_SUITE_PATH = System.getProperty("sulongtest.externalTestSuitePath");
     public static final String TEST_SOURCE_PATH = System.getProperty("sulongtest.testSourcePath");

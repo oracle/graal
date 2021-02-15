@@ -160,9 +160,18 @@ def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses
     _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
 
 
+_sulongTestConfigRoot = os.path.join(_suite.dir, "tests", "excludes")
+
+
+def set_sulong_test_config_root(root):
+    global _sulongTestConfigRoot
+    _sulongTestConfigRoot = root
+
+
 def _unittest_config_participant(config):
     (vmArgs, mainClass, mainClassArgs) = config
     vmArgs += get_test_distribution_path_properties(_suite)
+    vmArgs += ['-Dsulongtest.configRoot={}'.format(_sulongTestConfigRoot)]
     return (vmArgs, mainClass, mainClassArgs)
 
 
