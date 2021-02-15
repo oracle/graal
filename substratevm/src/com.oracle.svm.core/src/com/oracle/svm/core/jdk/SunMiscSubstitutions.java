@@ -26,14 +26,24 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
-import java.security.ProtectionDomain;
-import java.util.function.Function;
-
+import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.util.VMError;
+import jdk.vm.ci.code.MemoryBarriers;
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -41,20 +51,12 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.code.MemoryBarriers;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.security.ProtectionDomain;
+import java.util.function.Function;
 
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method", "unused"})
@@ -209,12 +211,19 @@ final class Target_Unsafe_Core {
 
     @Substitute
     private long staticFieldOffset(Field f) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
+        ObjectLayout layout = ConfigurationValues.getObjectLayout();
+        final int baseOffset = layout.getArrayBaseOffset(JavaKind.fromJavaClass(f.getDeclaringClass()));
+        final long objOffset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(f);
+        return objOffset - baseOffset;
     }
 
     @Substitute
     private Object staticFieldBase(Field f) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
+        if (f.getType().isPrimitive()){
+            return StaticFieldsSupport.getStaticPrimitiveFields();
+        } else {
+            return StaticFieldsSupport.getStaticObjectFields();
+        }
     }
 
     @Substitute
