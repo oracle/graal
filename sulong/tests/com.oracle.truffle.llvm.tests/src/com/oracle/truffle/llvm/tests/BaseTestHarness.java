@@ -30,24 +30,14 @@
 package com.oracle.truffle.llvm.tests;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.junit.Test;
-
-import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 public abstract class BaseTestHarness {
 
@@ -61,7 +51,7 @@ public abstract class BaseTestHarness {
     public static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
     public static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
 
-    public static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
+    public static Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
         String testDiscoveryPath = TestOptions.TEST_DISCOVERY_PATH;
         if (testDiscoveryPath == null) {
             return collectRegularRun(configPath, suiteDir);
@@ -71,7 +61,7 @@ public abstract class BaseTestHarness {
         }
     }
 
-    public static final Collection<Object[]> collectRegularRun(Path configPath, Path suiteDir) throws AssertionError {
+    private static Collection<Object[]> collectRegularRun(Path configPath, Path suiteDir) throws AssertionError {
         Map<Path, Path> tests = getWhiteListTestFolders(configPath, suiteDir);
 
         // assert that all files on the whitelist exist
@@ -121,7 +111,7 @@ public abstract class BaseTestHarness {
     /**
      * Returns a Map whitelistEntry (relative path) -> testFolder (absolute path).
      */
-    public static final Map<Path, Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
+    private static Map<Path, Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
         return getWhiteListEntries(configDir).stream().collect(Collectors.toMap(wl -> wl, wl -> Paths.get(suiteDirectory.toString(), sourceFileNameToSuiteDirectory(wl.toString())).normalize()));
     }
 
