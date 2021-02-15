@@ -148,4 +148,8 @@ public final class SulongNFI extends TruffleLanguage<Env> {
         });
     }
 
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
 }
