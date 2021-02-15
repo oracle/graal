@@ -241,6 +241,12 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     class WindowsCCLinkerInvocation extends CCLinkerInvocation {
 
+        private final String imageName;
+
+        WindowsCCLinkerInvocation(String imageName) {
+            this.imageName = imageName;
+        }
+
         @Override
         protected void setOutputKind(List<String> cmd) {
             switch (imageKind) {
@@ -273,22 +279,25 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             List<String> cmd = new ArrayList<>(compilerCmd);
             setOutputKind(cmd);
 
-            // Add debugging info
-            cmd.add("/Zi");
-
             for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
                 cmd.add(staticLibrary.toString());
             }
 
+            /* Add linker options. */
             cmd.add("/link");
             cmd.add("/INCREMENTAL:NO");
             cmd.add("/NODEFAULTLIB:LIBCMT");
 
-            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                String outputFileString = getOutputFile().toString();
-                String outputFileSuffix = getOutputKind().getFilenameSuffix();
-                String pdbFile = outputFileString.substring(0, outputFileString.length() - outputFileSuffix.length()) + ".stripped.pdb";
-                cmd.add("/PDBSTRIPPED:" + pdbFile);
+            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                cmd.add("/DEBUG");
+
+                if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                    String pdbFile = imageName + ".pdb";
+                    /* We don't need a full PDB file, so leave it in a temp dir ... */
+                    cmd.add("/PDB:" + getTempDirectory().resolve(pdbFile));
+                    /* ... and provide the stripped PDB file instead. */
+                    cmd.add("/PDBSTRIPPED:" + getOutputFile().resolveSibling(pdbFile));
+                }
             }
 
             if (removeUnusedSymbols()) {
@@ -332,7 +341,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 inv = new DarwinCCLinkerInvocation();
                 break;
             case PECOFF:
-                inv = new WindowsCCLinkerInvocation();
+                inv = new WindowsCCLinkerInvocation(imageName);
                 break;
             case ELF:
             default:
