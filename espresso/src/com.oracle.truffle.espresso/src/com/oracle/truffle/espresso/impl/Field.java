@@ -155,81 +155,125 @@ public final class Field extends Member<Type> implements FieldRef {
 
     // region Generic
     public Object get(StaticObject obj) {
+        return get(obj, false);
+    }
+
+    public Object get(StaticObject obj, boolean forceVolatile) {
         // @formatter:off
         switch (getKind()) {
-            case Boolean : return getBoolean(obj);
-            case Byte    : return getByte(obj);
-            case Short   : return getShort(obj);
-            case Char    : return getChar(obj);
-            case Int     : return getInt(obj);
-            case Float   : return getFloat(obj);
-            case Long    : return getLong(obj);
-            case Double  : return getDouble(obj);
-            case Object  : return getObject(obj);
+            case Boolean : return getBoolean(obj, forceVolatile);
+            case Byte    : return getByte(obj, forceVolatile);
+            case Short   : return getShort(obj, forceVolatile);
+            case Char    : return getChar(obj, forceVolatile);
+            case Int     : return getInt(obj, forceVolatile);
+            case Float   : return getFloat(obj, forceVolatile);
+            case Long    : return getLong(obj, forceVolatile);
+            case Double  : return getDouble(obj, forceVolatile);
+            case Object  : return getObject(obj, forceVolatile);
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
 
     public void set(StaticObject obj, Object value) {
+        set(obj, value, false);
+    }
+
+    public void set(StaticObject obj, Object value, boolean forceVolatile) {
         // @formatter:off
         switch (getKind()) {
-            case Boolean : setBoolean(obj, (boolean) value);    break;
-            case Byte    : setByte(obj, (byte) value);          break;
-            case Short   : setShort(obj, (short) value);        break;
-            case Char    : setChar(obj, (char) value);          break;
-            case Int     : setInt(obj, (int) value);            break;
-            case Float   : setFloat(obj, (float) value);        break;
-            case Long    : setLong(obj, (long) value);          break;
-            case Double  : setDouble(obj, (double) value);      break;
-            case Object  : setObject(obj, value);               break;
+            case Boolean : setBoolean(obj, (boolean) value, forceVolatile);    break;
+            case Byte    : setByte(obj, (byte) value, forceVolatile);          break;
+            case Short   : setShort(obj, (short) value, forceVolatile);        break;
+            case Char    : setChar(obj, (char) value, forceVolatile);          break;
+            case Int     : setInt(obj, (int) value, forceVolatile);            break;
+            case Float   : setFloat(obj, (float) value, forceVolatile);        break;
+            case Long    : setLong(obj, (long) value, forceVolatile);          break;
+            case Double  : setDouble(obj, (double) value, forceVolatile);      break;
+            case Object  : setObject(obj, value, forceVolatile);               break;
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
 
     public boolean getAsBoolean(Meta meta, StaticObject obj, boolean defaultIfNull) {
-        Object val = get(obj);
+        return getAsBoolean(meta, obj, defaultIfNull, false);
+    }
+
+    public boolean getAsBoolean(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asBoolean(val, defaultIfNull);
     }
 
     public byte getAsByte(Meta meta, StaticObject obj, boolean defaultIfNull) {
-        Object val = get(obj);
+        return getAsByte(meta, obj, defaultIfNull, false);
+    }
+
+    public byte getAsByte(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asByte(val, defaultIfNull);
     }
 
     public short getAsShort(Meta meta, StaticObject obj, boolean defaultIfNull) {
-        Object val = get(obj);
+        return getAsShort(meta, obj, defaultIfNull, false);
+    }
+
+    public short getAsShort(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asShort(val, defaultIfNull);
     }
 
     public char getAsChar(Meta meta, StaticObject obj, boolean defaultIfNull) {
-        Object val = get(obj);
+        return getAsChar(meta, obj, defaultIfNull, false);
+    }
+
+    public char getAsChar(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asChar(val, defaultIfNull);
     }
 
     public int getAsInt(Meta meta, StaticObject obj, boolean defaultIfNull) {
-        Object val = get(obj);
+        return getAsInt(meta, obj, defaultIfNull, false);
+    }
+
+    public int getAsInt(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asInt(val, defaultIfNull);
     }
 
     public float getAsFloat(Meta meta, StaticObject obj, boolean defaultIfNull) {
-        Object val = get(obj);
+        return getAsFloat(meta, obj, defaultIfNull, false);
+    }
+
+    public float getAsFloat(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asFloat(val, defaultIfNull);
     }
 
     public long getAsLong(Meta meta, StaticObject obj, boolean defaultIfNull) {
-        Object val = get(obj);
+        return getAsLong(meta, obj, defaultIfNull, false);
+    }
+
+    public long getAsLong(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asLong(val, defaultIfNull);
     }
 
     public double getAsDouble(Meta meta, StaticObject obj, boolean defaultIfNull) {
-        Object val = get(obj);
+        return getAsDouble(meta, obj, defaultIfNull, false);
+    }
+
+    public double getAsDouble(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asDouble(val, defaultIfNull);
     }
 
     public StaticObject getAsObject(Meta meta, StaticObject obj) {
-        Object val = get(obj);
+        return getAsObject(meta, obj, false);
+    }
+
+    public StaticObject getAsObject(Meta meta, StaticObject obj, boolean forceVolatile) {
+        Object val = get(obj, forceVolatile);
         return meta.asObject(val);
     }
     // endregion Generic
