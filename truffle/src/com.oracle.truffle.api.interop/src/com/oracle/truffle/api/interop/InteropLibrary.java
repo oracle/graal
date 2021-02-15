@@ -861,6 +861,76 @@ public abstract class InteropLibrary extends Library {
         return false;
     }
 
+    // Hashes
+    @Abstract(ifExported = {"isHashValueReadable", "readHashValue", "isHashEntryModifiable", "isHashEntryInsertable",
+                    "writeHashEntry", "isHashEntryRemovable", "removeHashEntry", "getHashEntriesIterator"})
+    public boolean hasHashEntries(Object receiver) {
+        return false;
+    }
+
+    @Abstract(ifExported = "readHashValue")
+    public boolean isHashValueReadable(Object receiver, Object key) {
+        return false;
+    }
+
+    @Abstract(ifExported = "isHashValueReadable")
+    public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @Abstract(ifExported = {"writeHashEntry"})
+    public boolean isHashEntryModifiable(Object receiver, Object key) {
+        return false;
+    }
+
+    @Abstract(ifExported = "writeHashEntry")
+    public boolean isHashEntryInsertable(Object receiver, Object key) {
+        return false;
+    }
+
+    public boolean isHashEntryWritable(Object receiver, Object key) {
+        return isHashEntryModifiable(receiver, key) || isHashEntryInsertable(receiver, key);
+    }
+
+    @Abstract(ifExported = {"isHashEntryModifiable", "isHashEntryInsertable"})
+    public void writeHashEntry(Object receiver, Object key, Object value) throws UnsupportedMessageException, UnknownHashKeyException, UnsupportedTypeException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @Abstract(ifExported = "removeHashEntry")
+    public boolean isHashEntryRemovable(Object receiver, Object key) {
+        return false;
+    }
+
+    @Abstract(ifExported = "isHashEntryRemovable")
+    public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public boolean isHashEntryExisting(Object receiver, Object key) {
+        return isHashValueReadable(receiver, key) || isHashEntryModifiable(receiver, key) || isHashEntryRemovable(receiver, key);
+    }
+
+    @Abstract(ifExported = "hasHashEntries")
+    public Object getHashEntriesIterator(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @Abstract(ifExported = {"getHashEntryKey", "getHashEntryValue"})
+    public boolean isHashEntry(Object receiver) {
+        return false;
+    }
+
+    @Abstract(ifExported = {"isHashEntry"})
+    public Object getHashEntryKey(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @Abstract(ifExported = {"isHashEntry"})
+    public Object getHashEntryValue(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
     // Array Messages
 
     /**
@@ -3317,6 +3387,168 @@ public abstract class InteropLibrary extends Library {
             boolean result = delegate.isMemberInternal(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             return result;
+        }
+
+        @Override
+        public boolean hasHashEntries(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.hasHashEntries(receiver);
+        }
+
+        @Override
+        public boolean isHashValueReadable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashValueReadable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.readHashValue(receiver, key);
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean wasReadable = delegate.isHashValueReadable(receiver, key);
+            try {
+                Object result = delegate.readHashValue(receiver, key);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasReadable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownHashKeyException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryModifiable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryModifiable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public boolean isHashEntryInsertable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryInsertable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryExisting(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public void writeHashEntry(Object receiver, Object key, Object value) throws UnsupportedMessageException, UnknownHashKeyException, UnsupportedTypeException {
+            if (CompilerDirectives.inCompiledCode()) {
+                delegate.writeHashEntry(receiver, key, value);
+                return;
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            assert validArgument(receiver, value);
+            boolean wasWritable = delegate.isHashEntryModifiable(receiver, key) || delegate.isHashEntryInsertable(receiver, key);
+            try {
+                delegate.writeHashEntry(receiver, key, value);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasWritable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownHashKeyException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryRemovable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryRemovable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException {
+            if (CompilerDirectives.inCompiledCode()) {
+                delegate.removeHashEntry(receiver, key);
+                return;
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean wasRemovable = delegate.isHashEntryRemovable(receiver, key);
+            try {
+                delegate.removeHashEntry(receiver, key);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasRemovable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownHashKeyException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashEntriesIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashEntriesIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashEntriesIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntry(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isHashEntry(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getHashEntryKey(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashEntryKey(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashEntryKey(receiver);
+                assert delegate.isHashEntry(receiver) : violationInvariant(receiver);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.isHashEntry(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashEntryValue(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashEntryValue(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashEntryValue(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
         }
 
         @Override
