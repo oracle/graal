@@ -42,6 +42,15 @@ common_vm_windows-jdk11: ${common_vm} ${windows} ${devkits.windows-jdk11} {
   }
 }
 
+common_vm_windows-jdk16: ${common_vm} ${windows} ${devkits.windows-jdk16} {
+  downloads : {
+    MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
+  }
+  environment : {
+    PATH : "$MAVEN_HOME\bin;$JAVA_HOME\bin;$PATH"
+  }
+}
+
 # JS
 js_windows_common: {
   downloads: {
@@ -51,8 +60,21 @@ js_windows_common: {
 
 js_windows_jdk11: ${common_vm_windows-jdk11} ${js_windows_common} {
   setup: ${common_vm_windows-jdk11.setup} [
+    # Keep in sync with the "devkits" object defined in the top level common.json file.
+    # When this file has been converted to jsonnet, the value can be computed instead
+    # using Jsonnet std lib functions.
     ["set-export", "DEVKIT_ROOT", "$VS2017_15_9_24_1_0_ROOT"]
     ["set-export", "DEVKIT_VERSION", "2017"]
+  ]
+}
+
+js_windows_jdk16: ${common_vm_windows-jdk16} ${js_windows_common} {
+  setup: ${common_vm_windows-jdk16.setup} [
+    # Keep in sync with the "devkits" object defined in the top level common.json file.
+    # When this file has been converted to jsonnet, the value can be computed instead
+    # using Jsonnet std lib functions.
+    ["set-export", "DEVKIT_ROOT", "$VS2019_16_7_2_1_1_ROOT"]
+    ["set-export", "DEVKIT_VERSION", "2019"]
   ]
 }
 
@@ -164,6 +186,10 @@ vm_windows-jdk11: ${common_vm_windows-jdk11} {
   capabilities: [windows, amd64]
 }
 
+vm_windows-jdk16: ${common_vm_windows-jdk16} {
+  capabilities: [windows, amd64]
+}
+
 gate_vm_linux: ${vm_linux} {
   targets: [gate]
 }
@@ -217,6 +243,10 @@ deploy_daily_vm_windows: ${vm_windows} {
 }
 
 deploy_daily_vm_windows-jdk11: ${vm_windows-jdk11} {
+  targets: [deploy, daily]
+}
+
+deploy_daily_vm_windows-jdk16: ${vm_windows-jdk16} {
   targets: [deploy, daily]
 }
 
@@ -377,6 +407,22 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-ruby-java11-linux-amd64
   }
+  ${vm_java_16} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+    run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, graalvm-show]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
+    ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [graalvm-show]
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
+      ${notify-nexus-deploy}
+    ]
+    logs: ${common_vm.logs}
+    timelimit: "1:30:00"
+    name: deploy-vm-java16-linux-amd64
+  }
+
   # Linux/AARCH64
   ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
     run: [
@@ -394,6 +440,23 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-java11-linux-aarch64
   }
+  ${vm_java_16} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
+    run: [
+      [set-export, VM_ENV, "${VM_ENV}-aarch64"]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, graalvm-show]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
+    ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [graalvm-show]
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
+      ${notify-nexus-deploy}
+    ]
+    logs: ${common_vm.logs}
+    timelimit: "1:30:00"
+    name: deploy-vm-java16-linux-aarch64
+  }
+
   # Darwin/AMD64
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
@@ -427,6 +490,25 @@ builds += [
     timelimit: "2:00:00"
     name: deploy-vm-installable-java11-darwin-amd64
   }
+  ${vm_java_16} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+    run: ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:45:00"
+    name: deploy-vm-base-java16-darwin-amd64
+  }
+  ${vm_java_16} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+    run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "2:00:00"
+    name: deploy-vm-installable-java16-darwin-amd64
+  }
+
   # Windows/AMD64
   ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} {
     run: [
@@ -450,6 +532,17 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-java11-windows-amd64
   }
+  ${vm_java_16} ${deploy_daily_vm_windows-jdk16} ${svm-common-windows-jdk16} ${js_windows_jdk16} {
+    run: [
+      [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_sdk_base}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-base-java16-windows-amd64
+  }
+
   ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
@@ -471,6 +564,16 @@ builds += [
     ]
     timelimit: "1:30:00"
     name: deploy-vm-installable-java11-windows-amd64
+  }
+  ${vm_java_16} ${deploy_daily_vm_windows-jdk16} ${svm-common-windows-jdk16} ${js_windows_jdk16} {
+    run: [
+      [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-installable-java16-windows-amd64
   }
   #
   # Deploy GraalVM Complete (no FastR)
@@ -498,6 +601,17 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-java11-linux-amd64
   }
+  ${vm_java_16} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+    run: [
+      [set-export, VM_ENV, "${VM_ENV}-complete"]
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_sdk_base}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-no-fastr-java16-linux-amd64
+  }
+
   # Darwin/AMD64
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
@@ -509,5 +623,15 @@ builds += [
     ]
     timelimit: "2:30:00"
     name: deploy-vm-no-fastr-java11-darwin-amd64
+  }
+  ${vm_java_16} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+    run: [
+      [set-export, VM_ENV, "${VM_ENV}-complete"]
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_sdk_base}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "2:30:00"
+    name: deploy-vm-no-fastr-java16-darwin-amd64
   }
 ]

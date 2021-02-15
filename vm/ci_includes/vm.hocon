@@ -27,6 +27,9 @@ vm_java_16: ${labsjdk-ce-16} {
   }
 }
 vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
+# Keep in sync with the "devkits" object defined in the top level common.json file.
+# When this file has been converted to jsonnet, the value can be computed instead
+# using Jsonnet std lib functions.
 vm_windows_jdk8_devkit_var: "$VS2017_15_19_16_1_0_ROOT"
 
 svm_suite: /substratevm

@@ -173,6 +173,10 @@ svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${devkits.windows-jdk11
   timelimit: "45:00"
 }
 
+svm-common-windows-jdk16: ${svm-common} ${windows-amd64} ${devkits.windows-jdk16} {
+  timelimit: "45:00"
+}
+
 svm-common-sulong: {
   packages: {
     llvm: "==6.0.1"
