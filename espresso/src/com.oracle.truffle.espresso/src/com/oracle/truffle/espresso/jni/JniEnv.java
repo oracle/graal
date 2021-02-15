@@ -966,7 +966,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public @Host(Object.class) StaticObject GetStaticObjectField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        return (StaticObject) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
+        return field.getObject(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
@@ -1040,7 +1040,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Object.class) StaticObject GetObjectField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        return (StaticObject) field.get(object);
+        return field.getObject(object);
     }
 
     @JniImpl
@@ -1809,7 +1809,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (getJavaVersion().compactStringsEnabled()) {
             stringChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(str);
         } else {
-            stringChars = ((StaticObject) getMeta().java_lang_String_value.get(str));
+            stringChars = getMeta().java_lang_String_value.getObject(str);
         }
         int len = stringChars.length();
         ByteBuffer criticalRegion = allocateDirect(len, JavaKind.Char); // direct byte buffer
@@ -1858,7 +1858,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             StaticObject wrappedChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(string);
             chars = wrappedChars.unwrap();
         } else {
-            chars = ((StaticObject) getMeta().java_lang_String_value.get(string)).unwrap();
+            chars = getMeta().java_lang_String_value.getObject(string).unwrap();
         }
         // Add one for zero termination.
         ByteBuffer bb = allocateDirect(chars.length + 1, JavaKind.Char);
@@ -1922,7 +1922,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (getJavaVersion().compactStringsEnabled()) {
             chars = getMeta().toHostString(str).toCharArray();
         } else {
-            chars = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();
+            chars = getMeta().java_lang_String_value.getObject(str).unwrap();
         }
         if (start < 0 || start + (long) len > chars.length) {
             throw Meta.throwException(getMeta().java_lang_StringIndexOutOfBoundsException);

@@ -151,7 +151,7 @@ public class Target_java_lang_ref_Reference {
             StaticObject obj = (StaticObject) ref.get();
             return obj == null ? StaticObject.NULL : obj;
         } else {
-            return (StaticObject) meta.java_lang_ref_Reference_referent.get(self);
+            return meta.java_lang_ref_Reference_referent.getObject(self);
         }
     }
 
@@ -202,7 +202,7 @@ public class Target_java_lang_ref_Reference {
         if (meta.getJavaVersion().java9OrLater()) {
             meta.java_lang_ref_Reference_referent.set(self, StaticObject.NULL);
         }
-        StaticObject queue = (StaticObject) meta.java_lang_ref_Reference_queue.get(self);
+        StaticObject queue = meta.java_lang_ref_Reference_queue.getObject(self);
         Method m = queue.getKlass().vtableLookup(meta.java_lang_ref_ReferenceQueue_enqueue.getVTableIndex());
         return (boolean) m.invokeDirect(queue, self);
     }

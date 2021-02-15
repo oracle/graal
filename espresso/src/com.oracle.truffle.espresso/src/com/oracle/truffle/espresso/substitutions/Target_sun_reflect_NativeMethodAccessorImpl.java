@@ -227,13 +227,13 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         while (reflectedMethod == null) {
             reflectedMethod = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
             if (reflectedMethod == null) {
-                curMethod = (StaticObject) meta.java_lang_reflect_Method_root.get(curMethod);
+                curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
             }
         }
         if (reflectedMethod.isRemovedByRedefition()) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, "removed by class redefinition");
         }
-        Klass klass = ((StaticObject) meta.java_lang_reflect_Method_clazz.get(guestMethod)).getMirrorKlass();
+        Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass();
 
         if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
             StaticObject cause = Meta.initExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot reflectively invoke MethodHandle.{invoke,invokeExact}");
@@ -241,7 +241,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             throw Meta.throwException(invocationTargetException);
         }
 
-        StaticObject parameterTypes = (StaticObject) meta.java_lang_reflect_Method_parameterTypes.get(guestMethod);
+        StaticObject parameterTypes = meta.java_lang_reflect_Method_parameterTypes.getObject(guestMethod);
         StaticObject result = callMethodReflectively(meta, receiver, args, reflectedMethod, klass, parameterTypes);
         return result;
     }

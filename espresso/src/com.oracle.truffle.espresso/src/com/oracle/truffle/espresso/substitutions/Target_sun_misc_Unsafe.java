@@ -568,7 +568,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (StaticObject) f.get(holder);
+        return f.getObject(holder);
     }
 
     @Substitution(hasReceiver = true)

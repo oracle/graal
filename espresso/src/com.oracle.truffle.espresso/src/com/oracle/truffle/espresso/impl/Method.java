@@ -587,7 +587,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         while (target == null) {
             target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
             if (target == null) {
-                curMethod = (StaticObject) meta.java_lang_reflect_Method_root.get(curMethod);
+                curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
             }
         }
         return target;
@@ -600,7 +600,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         while (target == null) {
             target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);
             if (target == null) {
-                curMethod = (StaticObject) meta.java_lang_reflect_Constructor_root.get(curMethod);
+                curMethod = meta.java_lang_reflect_Constructor_root.getObject(curMethod);
             }
         }
         return target;

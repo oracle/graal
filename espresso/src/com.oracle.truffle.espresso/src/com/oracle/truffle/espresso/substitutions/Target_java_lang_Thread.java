@@ -304,7 +304,7 @@ public final class Target_java_lang_Thread {
         if (thread == null) {
             return "<unknown>";
         } else {
-            return meta.toHostString((StaticObject) meta.java_lang_Thread_name.get(thread));
+            return meta.toHostString(meta.java_lang_Thread_name.getObject(thread));
         }
     }
 

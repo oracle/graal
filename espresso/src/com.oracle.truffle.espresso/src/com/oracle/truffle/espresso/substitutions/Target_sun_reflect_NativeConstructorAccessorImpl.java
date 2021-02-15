@@ -34,14 +34,14 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
     @Substitution
     public static @Host(Object.class) StaticObject newInstance0(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0,
                     @InjectMeta Meta meta) {
-        Klass klass = ((StaticObject) meta.java_lang_reflect_Constructor_clazz.get(constructor)).getMirrorKlass();
+        Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass();
         klass.safeInitialize();
         if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
             throw Meta.throwException(meta.java_lang_InstantiationException);
         }
         Method reflectedMethod = Method.getHostReflectiveConstructorRoot(constructor, meta);
         StaticObject instance = klass.allocateInstance();
-        StaticObject parameterTypes = (StaticObject) meta.java_lang_reflect_Constructor_parameterTypes.get(constructor);
+        StaticObject parameterTypes = meta.java_lang_reflect_Constructor_parameterTypes.getObject(constructor);
         Target_sun_reflect_NativeMethodAccessorImpl.callMethodReflectively(meta, instance, args0, reflectedMethod, klass, parameterTypes);
         return instance;
     }
