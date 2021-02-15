@@ -42,6 +42,6 @@ public abstract class LLVMRaiseExceptionNode extends LLVMExpressionNode {
 
     @Specialization
     public Object doRaise(LLVMPointer unwindHeader, @Cached LLVMForeignExceptionAccessNode exceptionAccessNode) {
-        throw new LLVMUserException(this, unwindHeader, exceptionAccessNode.execute(unwindHeader));
+        throw new LLVMUserException(this, unwindHeader, () -> exceptionAccessNode.execute(unwindHeader));
     }
 }

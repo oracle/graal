@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
+import java.util.function.Supplier;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMUserExceptionAccessor;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
  */
-@ExportLibrary(value = InteropLibrary.class, delegateTo = "exceptionObjPtr")
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "exceptionAccessor")
 public final class LLVMUserException extends LLVMException {
 
     public static final String FRAME_SLOT_ID = "<function exception value>";
@@ -48,16 +51,17 @@ public final class LLVMUserException extends LLVMException {
     private static final long serialVersionUID = 1L;
 
     final LLVMPointer unwindHeader;
-    final LLVMPointer exceptionObjPtr;
+    final LLVMUserExceptionAccessor exceptionAccessor;
 
     public LLVMUserException(Node location, LLVMPointer unwindHeader) {
-        this(location, unwindHeader, unwindHeader);
+        this(location, unwindHeader, () -> unwindHeader);
     }
 
-    public LLVMUserException(Node location, LLVMPointer unwindHeader, LLVMPointer exceptionObjPtr) {
+    public LLVMUserException(Node location, LLVMPointer unwindHeader, Supplier<LLVMPointer> exceptionObjPtrSupplier) {
         super(location);
         this.unwindHeader = unwindHeader;
-        this.exceptionObjPtr = exceptionObjPtr;
+        this.exceptionAccessor = new LLVMUserExceptionAccessor(exceptionObjPtrSupplier);
+
     }
 
     public LLVMPointer getUnwindHeader() {
@@ -97,4 +101,5 @@ public final class LLVMUserException extends LLVMException {
     String getExceptionMessage() {
         return getMessage();
     }
+
 }
