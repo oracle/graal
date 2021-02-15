@@ -219,7 +219,7 @@ final class Target_Unsafe_Core {
 
     @Substitute
     private Object staticFieldBase(Field f) {
-        if (f.getType().isPrimitive()){
+        if (f.getType().isPrimitive()) {
             return StaticFieldsSupport.getStaticPrimitiveFields();
         } else {
             return StaticFieldsSupport.getStaticObjectFields();
