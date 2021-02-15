@@ -39,7 +39,6 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * Represents a resolved Espresso field.
@@ -187,6 +186,51 @@ public final class Field extends Member<Type> implements FieldRef {
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
+    }
+
+    public boolean getAsBoolean(Meta meta, StaticObject obj, boolean defaultIfNull) {
+        Object val = get(obj);
+        return meta.asBoolean(val, defaultIfNull);
+    }
+
+    public byte getAsByte(Meta meta, StaticObject obj, boolean defaultIfNull) {
+        Object val = get(obj);
+        return meta.asByte(val, defaultIfNull);
+    }
+
+    public short getAsShort(Meta meta, StaticObject obj, boolean defaultIfNull) {
+        Object val = get(obj);
+        return meta.asShort(val, defaultIfNull);
+    }
+
+    public char getAsChar(Meta meta, StaticObject obj, boolean defaultIfNull) {
+        Object val = get(obj);
+        return meta.asChar(val, defaultIfNull);
+    }
+
+    public int getAsInt(Meta meta, StaticObject obj, boolean defaultIfNull) {
+        Object val = get(obj);
+        return meta.asInt(val, defaultIfNull);
+    }
+
+    public float getAsFloat(Meta meta, StaticObject obj, boolean defaultIfNull) {
+        Object val = get(obj);
+        return meta.asFloat(val, defaultIfNull);
+    }
+
+    public long getAsLong(Meta meta, StaticObject obj, boolean defaultIfNull) {
+        Object val = get(obj);
+        return meta.asLong(val, defaultIfNull);
+    }
+
+    public double getAsDouble(Meta meta, StaticObject obj, boolean defaultIfNull) {
+        Object val = get(obj);
+        return meta.asDouble(val, defaultIfNull);
+    }
+
+    public StaticObject getAsObject(Meta meta, StaticObject obj) {
+        Object val = get(obj);
+        return meta.asObject(val);
     }
     // endregion Generic
 

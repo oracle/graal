@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -45,6 +46,8 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+
+import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -1635,4 +1638,201 @@ public final class Meta implements ContextAccess {
     }
 
     // endregion Guest boxing
+
+    // region Type conversions
+
+    /**
+     * Converts a boxed value to a boolean.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
+     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    public boolean asBoolean(Object value, boolean defaultIfNull) {
+        if (value instanceof Boolean) {
+            return (boolean) value;
+        }
+        return tryBitwiseConversionToLong(value, defaultIfNull) != 0; // == 1?
+    }
+
+    /**
+     * Converts a boxed value to a byte.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
+     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    public byte asByte(Object value, boolean defaultIfNull) {
+        if (value instanceof Byte) {
+            return (byte) value;
+        }
+        return (byte) tryBitwiseConversionToLong(value, defaultIfNull);
+    }
+
+    /**
+     * Converts a boxed value to a short.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
+     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    public short asShort(Object value, boolean defaultIfNull) {
+        if (value instanceof Short) {
+            return (short) value;
+        }
+        return (short) tryBitwiseConversionToLong(value, defaultIfNull);
+    }
+
+    /**
+     * Converts a boxed value to a char.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
+     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    public char asChar(Object value, boolean defaultIfNull) {
+        if (value instanceof Character) {
+            return (char) value;
+        }
+        return (char) tryBitwiseConversionToLong(value, defaultIfNull);
+    }
+
+    /**
+     * Converts a boxed value to an int.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
+     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    public int asInt(Object value, boolean defaultIfNull) {
+        if (value instanceof Integer) {
+            return (int) value;
+        }
+        return (int) tryBitwiseConversionToLong(value, defaultIfNull);
+    }
+
+    /**
+     * Converts a boxed value to a float.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
+     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    public float asFloat(Object value, boolean defaultIfNull) {
+        if (value instanceof Float) {
+            return (float) value;
+        }
+        return Float.intBitsToFloat((int) tryBitwiseConversionToLong(value, defaultIfNull));
+    }
+
+    /**
+     * Converts a boxed value to a double.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
+     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    public double asDouble(Object value, boolean defaultIfNull) {
+        if (value instanceof Double) {
+            return (double) value;
+        }
+        return Double.longBitsToDouble(tryBitwiseConversionToLong(value, defaultIfNull));
+    }
+
+    /**
+     * Converts a boxed value to a long.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
+     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    public long asLong(Object value, boolean defaultIfNull) {
+        if (value instanceof Long) {
+            return (long) value;
+        }
+        return tryBitwiseConversionToLong(value, defaultIfNull);
+    }
+
+    /**
+     * Converts a Object value to a StaticObject.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will return StaticObject.NULL when the Object value is not a
+     * StaticObject. If the conversion is not possible, throws {@link EspressoError}.
+     */
+    public StaticObject asObject(Object value) {
+        if (value instanceof StaticObject) {
+            return (StaticObject) value;
+        }
+        return hotSpotMaybeNull(value);
+    }
+
+    /**
+     * Bitwise conversion from a boxed value to a long.
+     *
+     * In {@link EspressoOptions.SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
+     * conversion is lax and will fill the upper bits with 0. If the conversion is not possible,
+     * throws {@link EspressoError}.
+     *
+     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
+     *            null}, the conversion will return the default value of the primitive type.
+     */
+    @CompilerDirectives.TruffleBoundary
+    private long tryBitwiseConversionToLong(Object value, boolean defaultIfNull) {
+        if (getContext().SpecCompliancyMode == HOTSPOT) {
+            // Checkstyle: stop
+            // @formatter:off
+            if (value instanceof Boolean)   return ((boolean) value) ? 1 : 0;
+            if (value instanceof Byte)      return (byte) value;
+            if (value instanceof Short)     return (short) value;
+            if (value instanceof Character) return (char) value;
+            if (value instanceof Integer)   return (int) value;
+            if (value instanceof Long)      return (long) value;
+            if (value instanceof Float)     return Float.floatToRawIntBits((float) value);
+            if (value instanceof Double)    return Double.doubleToRawLongBits((double) value);
+            // @formatter:on
+            // Checkstyle: resume
+            if (defaultIfNull) {
+                if (value instanceof StaticObject && StaticObject.isNull((StaticObject) value)) {
+                    return 0L;
+                }
+            }
+        }
+        throw EspressoError.shouldNotReachHere("Unexpected primitive value: " + value);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private StaticObject hotSpotMaybeNull(Object value) {
+        assert !(value instanceof StaticObject);
+        if (getContext().SpecCompliancyMode == HOTSPOT) {
+            return StaticObject.NULL;
+        }
+        throw EspressoError.shouldNotReachHere("Unexpected object:" + value);
+    }
+
+    // endregion Type conversions
 }
