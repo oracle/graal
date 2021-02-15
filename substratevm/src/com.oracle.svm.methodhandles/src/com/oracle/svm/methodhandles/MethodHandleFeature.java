@@ -31,13 +31,13 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 // Checkstyle: resume
 import java.util.Iterator;
-import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.util.ReflectionUtil;
 
 // Checkstyle: stop
@@ -76,7 +76,7 @@ public class MethodHandleFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return NativeImageOptions.areMethodHandlesSupported();
+        return SubstrateOptions.areMethodHandlesSupported();
     }
 
     @Override
@@ -218,19 +218,5 @@ public class MethodHandleFeature implements Feature {
         if (subtype.getPackage().getName().equals("java.lang.invoke") && subtype != access.findClassByName("java.lang.invoke.VarHandle")) {
             RuntimeReflection.register(subtype.getDeclaredMethods());
         }
-    }
-}
-
-class MethodHandlesSupported implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return NativeImageOptions.areMethodHandlesSupported();
-    }
-}
-
-class MethodHandlesNotSupported implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return !NativeImageOptions.areMethodHandlesSupported();
     }
 }

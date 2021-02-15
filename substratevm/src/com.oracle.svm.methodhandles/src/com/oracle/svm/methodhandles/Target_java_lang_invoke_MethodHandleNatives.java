@@ -51,6 +51,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesNotSupported;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK15OrEarlier;
 import com.oracle.svm.core.jdk.JDK16OrLater;
@@ -299,9 +302,9 @@ final class Util_java_lang_invoke_MethodHandleNatives {
         }
 
         /* Intrinsic methods */
-        self.intrinsic = MethodHandleIntrinsic.resolve(self);
+        self.intrinsic = MethodHandleIntrinsicImpl.resolve(self);
         if (self.intrinsic != null) {
-            self.flags |= self.intrinsic.variant.flags;
+            self.flags |= ((MethodHandleIntrinsicImpl) self.intrinsic).variant.flags;
             return self;
         }
 

@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.substitute;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
 import java.util.List;
 
@@ -42,6 +43,8 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.invoke.MethodHandleUtils;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -126,6 +129,17 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                  * to the expected type. However, since Native Image handles the return value as a
                  * boxed object, it needs to explicitly cast it to the required type to avoid tricky
                  * bugs to occur.
+                 *
+                 * In the example case above, we have a Short value being interpreted as an Integer.
+                 * This happens to almost work because they have similar layouts, but the high 16
+                 * bits of the Integer are not guaranteed to be zero.
+                 *
+                 * The only return types worth considering are Short, Int and Long. A Long return
+                 * type will always be wide enough to accomodate the full original value. In the
+                 * case of a Byte return type, there is no need to worry about this since the result
+                 * can only be truncated. In the Char case, the method handle invocation will return
+                 * a WrongMethodTypeException when trying to call a method handle with a boolean or
+                 * byte return type, so there's no need for special handling here.
                  */
                 case Short:
                 case Int:
@@ -133,7 +147,6 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                     ValueNode methodHandleOrMemberName;
                     ResolvedJavaMethod unboxMethod;
                     try {
-                        Class<?> mhIntrinsicClazz = Class.forName("com.oracle.svm.methodhandles.MethodHandleUtils");
                         String unboxMethodName = returnKind.toString() + "Unbox";
                         switch (substitutionBaseMethod.getName()) {
                             case "invokeBasic":
@@ -141,7 +154,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                             case "invoke":
                                 methodHandleOrMemberName = receiver;
                                 unboxMethod = metaAccess.lookupJavaMethod(
-                                                mhIntrinsicClazz.getMethod(unboxMethodName, Object.class, Class.forName("com.oracle.svm.methodhandles.Target_java_lang_invoke_MethodHandle")));
+                                                MethodHandleUtils.class.getMethod(unboxMethodName, Object.class, MethodHandle.class));
                                 break;
                             case "linkToVirtual":
                             case "linkToStatic":
@@ -149,12 +162,12 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                             case "linkToSpecial":
                                 methodHandleOrMemberName = args.get(args.size() - 1);
                                 unboxMethod = metaAccess.lookupJavaMethod(
-                                                mhIntrinsicClazz.getMethod(unboxMethodName, Object.class, Class.forName("com.oracle.svm.methodhandles.Target_java_lang_invoke_MemberName")));
+                                                MethodHandleUtils.class.getMethod(unboxMethodName, Object.class, Target_java_lang_invoke_MemberName.class));
                                 break;
                             default:
                                 throw shouldNotReachHere();
                         }
-                    } catch (NoSuchMethodException | ClassNotFoundException e) {
+                    } catch (NoSuchMethodException e) {
                         throw shouldNotReachHere();
                     }
                     retVal = kit.createInvokeWithExceptionAndUnwind(unboxMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), retVal, methodHandleOrMemberName);

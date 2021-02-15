@@ -22,18 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.methodhandles;
+package com.oracle.svm.core.invoke;
+
+import java.lang.invoke.MethodHandle;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.debug.GraalError;
+
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
+
 // Checkstyle: stop
 import sun.invoke.util.Wrapper;
 // Checkstyle: resume
 
 public class MethodHandleUtils {
     @AlwaysInline("constant fold as much as possible in signature polymorphic wrappers")
-    public static long longUnbox(Object retVal, Target_java_lang_invoke_MethodHandle methodHandle) {
-        return longUnbox(retVal, methodHandle.type.returnType());
+    public static long longUnbox(Object retVal, MethodHandle methodHandle) {
+        return longUnbox(retVal, methodHandle.type().returnType());
     }
 
     @AlwaysInline("constant fold as much as possible in signature polymorphic wrappers")
@@ -62,8 +68,8 @@ public class MethodHandleUtils {
     }
 
     @AlwaysInline("constant fold as much as possible in signature polymorphic wrappers")
-    public static int intUnbox(Object retVal, Target_java_lang_invoke_MethodHandle methodHandle) {
-        return intUnbox(retVal, methodHandle.type.returnType());
+    public static int intUnbox(Object retVal, MethodHandle methodHandle) {
+        return intUnbox(retVal, methodHandle.type().returnType());
     }
 
     @AlwaysInline("constant fold as much as possible in signature polymorphic wrappers")
@@ -90,8 +96,8 @@ public class MethodHandleUtils {
     }
 
     @AlwaysInline("constant fold as much as possible in signature polymorphic wrappers")
-    public static short shortUnbox(Object retVal, Target_java_lang_invoke_MethodHandle methodHandle) {
-        return shortUnbox(retVal, methodHandle.type.returnType());
+    public static short shortUnbox(Object retVal, MethodHandle methodHandle) {
+        return shortUnbox(retVal, methodHandle.type().returnType());
     }
 
     @AlwaysInline("constant fold as much as possible in signature polymorphic wrappers")
@@ -110,6 +116,20 @@ public class MethodHandleUtils {
                 return (short) retVal;
             default:
                 throw new GraalError("Unexpected type for unbox function: " + returnType);
+        }
+    }
+
+    public static class MethodHandlesSupported implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return SubstrateOptions.areMethodHandlesSupported();
+        }
+    }
+
+    public static class MethodHandlesNotSupported implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return !SubstrateOptions.areMethodHandlesSupported();
         }
     }
 }
