@@ -413,4 +413,10 @@ public final class GraalDirectives {
      */
     public static void ensureVirtualizedHere(@SuppressWarnings("unused") Object object) {
     }
+
+    /**
+     * Raise a SIGTRAP that can be used as a breakpoint for a native debugger such as gdb.
+     */
+    public static void breakpoint() {
+    }
 }
