@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,7 +58,7 @@ public final class ParserTortureSuite {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return BaseTestHarness.collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR, GCC_SOURCE_DIR);
+        return ExternalTestCaseCollector.collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR, GCC_SOURCE_DIR);
     }
 
     @Test

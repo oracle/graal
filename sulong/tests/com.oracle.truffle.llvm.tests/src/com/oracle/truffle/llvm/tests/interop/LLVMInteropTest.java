@@ -36,7 +36,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import com.oracle.truffle.llvm.tests.BaseTestHarness;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
