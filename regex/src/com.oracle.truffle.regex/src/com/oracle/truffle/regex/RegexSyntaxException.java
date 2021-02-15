@@ -91,7 +91,7 @@ public final class RegexSyntaxException extends AbstractTruffleException {
     @TruffleBoundary
     private RegexSyntaxException(String reason, Source src, int position) {
         super(reason);
-        assert position < src.getLength();
+        assert position <= src.getLength();
         this.sourceSection = src.createSection(position, src.getLength() - position);
     }
 
