@@ -186,6 +186,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isIteratorAccessible(HostAccess access);
 
+        public abstract boolean isMapAccessible(HostAccess access);
+
         public abstract Object getHostAccessImpl(HostAccess conf);
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);

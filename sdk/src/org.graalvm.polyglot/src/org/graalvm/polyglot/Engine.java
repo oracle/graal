@@ -690,6 +690,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isMapAccessible(HostAccess access) {
+            return access.allowMapAccess;
+        }
+
+        @Override
         public Object getHostAccessImpl(HostAccess conf) {
             return conf.impl;
         }

@@ -58,6 +58,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownHashKeyException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -84,6 +85,7 @@ import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
@@ -1756,6 +1758,223 @@ final class HostObject implements TruffleObject {
         }
     }
 
+    @ExportMessage
+    boolean hasHashEntries(@Shared("isMap") @Cached IsMapNode isMap) {
+        return isMap.execute(this);
+    }
+
+    @ExportMessage
+    boolean isHashValueReadable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
+        return containsKey.execute(this, key);
+    }
+
+    @ExportMessage
+    abstract static class ReadHashValue {
+
+        private static final Object UNDEFINED = new Object();
+
+        @SuppressWarnings("unchecked")
+        @Specialization(guards = "isMap.execute(receiver)", limit = "1")
+        protected static Object doMap(HostObject receiver, Object key,
+                        @Shared("isMap") @Cached IsMapNode isMap,
+                        @Shared("toHost") @Cached ToHostNode toHost,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest,
+                        @Shared("error") @Cached BranchProfile error) throws UnknownHashKeyException, UnsupportedTypeException {
+            Object hostKey;
+            try {
+                hostKey = toHost.execute(key, Object.class, null, receiver.languageContext, true);
+            } catch (PolyglotEngineException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{key}, getMessage(e));
+            }
+            Object hostResult = getImpl((Map<Object, Object>) receiver.obj, hostKey, UNDEFINED);
+            if (hostResult == UNDEFINED) {
+                error.enter();
+                throw UnknownHashKeyException.create(key);
+            }
+            return toGuest.execute(receiver.languageContext, hostResult);
+        }
+
+        @TruffleBoundary
+        private static Object getImpl(Map<Object, Object> map, Object key, Object defaultValue) {
+            return map.getOrDefault(key, defaultValue);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMap.execute(receiver)", limit = "1")
+        protected static Object doNotMap(HostObject receiver, Object key, @Shared("isMap") @Cached IsMapNode isMap) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isHashEntryModifiable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
+        return containsKey.execute(this, key);
+    }
+
+    @ExportMessage
+    boolean isHashEntryInsertable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
+        return !containsKey.execute(this, key);
+    }
+
+    @ExportMessage
+    abstract static class WriteHashEntry {
+
+        @SuppressWarnings("unchecked")
+        @Specialization(guards = "isMap.execute(receiver)", limit = "1")
+        protected static void doMap(HostObject receiver, Object key, Object value,
+                        @Shared("isMap") @Cached IsMapNode isMap,
+                        @Shared("toHost") @Cached ToHostNode toHost,
+                        @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException {
+
+            Object hostKey;
+            Object hostValue;
+            try {
+                hostKey = toHost.execute(key, Object.class, null, receiver.languageContext, true);
+            } catch (PolyglotEngineException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{key}, getMessage(e));
+            }
+            try {
+                hostValue = toHost.execute(value, Object.class, null, receiver.languageContext, true);
+            } catch (PolyglotEngineException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+            }
+            putImpl((Map<Object, Object>) receiver.obj, hostKey, hostValue);
+        }
+
+        @TruffleBoundary
+        private static void putImpl(Map<Object, Object> map, Object key, Object value) {
+            map.put(key, value);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMap.execute(receiver)", limit = "1")
+        protected static void doNotMap(HostObject receiver, Object key, Object value, @Shared("isMap") @Cached IsMapNode isMap) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isHashEntryRemovable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
+        return containsKey.execute(this, key);
+    }
+
+    @ExportMessage
+    abstract static class RemoveHashEntry {
+
+        @SuppressWarnings("unchecked")
+        @Specialization(guards = "isMap.execute(receiver)", limit = "1")
+        protected static void doMap(HostObject receiver, Object key,
+                        @Shared("isMap") @Cached IsMapNode isMap,
+                        @Shared("toHost") @Cached ToHostNode toHost,
+                        @Shared("error") @Cached BranchProfile error) throws UnknownHashKeyException, UnsupportedTypeException {
+            Object hostKey;
+            try {
+                hostKey = toHost.execute(key, Object.class, null, receiver.languageContext, true);
+            } catch (PolyglotEngineException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{key}, getMessage(e));
+            }
+            boolean removed = removeImpl((Map<Object, Object>) receiver.obj, hostKey);
+            if (!removed) {
+                error.enter();
+                throw UnknownHashKeyException.create(key);
+            }
+        }
+
+        @TruffleBoundary
+        private static boolean removeImpl(Map<?, ?> map, Object key) {
+            if (map.containsKey(key)) {
+                map.remove(key);
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMap.execute(receiver)", limit = "1")
+        protected static void doNotMap(HostObject receiver, Object key, @Shared("isMap") @Cached IsMapNode isMap) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    abstract static class GetHashEntriesIterator {
+
+        @SuppressWarnings("unchecked")
+        @Specialization(guards = "isMap.execute(receiver)", limit = "1")
+        protected static Object doMap(HostObject receiver,
+                        @Shared("isMap") @Cached IsMapNode isMap,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
+            return toGuest.execute(receiver.languageContext, iteratorImpl((Map<Object, Object>) receiver.obj));
+        }
+
+        @TruffleBoundary
+        private static Object iteratorImpl(Map<?, ?> map) {
+            return map.entrySet().iterator();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMap.execute(receiver)", limit = "1")
+        protected static Object doNotMap(HostObject receiver, @Shared("isMap") @Cached IsMapNode isMap) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isHashEntry(@Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
+        return isMapEntry.execute(this);
+    }
+
+    @ExportMessage
+    abstract static class GetHashEntryKey {
+
+        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
+        protected static Object doMapEntry(HostObject receiver,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
+            Object hostResult = getKeyImpl((Map.Entry<?, ?>) receiver.obj);
+            return toGuest.execute(receiver.languageContext, hostResult);
+        }
+
+        @TruffleBoundary
+        private static Object getKeyImpl(Map.Entry<?, ?> entry) {
+            return entry.getKey();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMapEntry.execute(receiver)", limit = "1")
+        protected static Object doNotMapEntry(HostObject receiver, @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    abstract static class GetHashEntryValue {
+
+        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
+        protected static Object doMapEntry(HostObject receiver,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
+            Object hostResult = getValueImpl((Map.Entry<?, ?>) receiver.obj);
+            return toGuest.execute(receiver.languageContext, hostResult);
+        }
+
+        @TruffleBoundary
+        private static Object getValueImpl(Map.Entry<?, ?> entry) {
+            return entry.getValue();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMapEntry.execute(receiver)", limit = "1")
+        protected static Object doNotMapEntry(HostObject receiver, @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasMetaObject() {
@@ -2278,6 +2497,64 @@ final class HostObject implements TruffleObject {
                         @Cached(value = "receiver.getHostClassCache().isIteratorAccess()", allowUncached = true) boolean isIteratorAccess) {
             assert receiver.getHostClassCache().isIteratorAccess() == isIteratorAccess;
             return isIteratorAccess && receiver.obj instanceof Iterator;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class IsMapNode extends Node {
+
+        public abstract boolean execute(HostObject receiver);
+
+        @Specialization
+        public boolean doDefault(HostObject receiver,
+                        @Cached(value = "receiver.getHostClassCache().isMapAccess()", allowUncached = true) boolean isMapAccess) {
+            assert receiver.getHostClassCache().isMapAccess() == isMapAccess;
+            return isMapAccess && receiver.obj instanceof Map;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class ContainsKeyNode extends Node {
+
+        public abstract boolean execute(HostObject receiver, Object key);
+
+        @Specialization(guards = "isMap.execute(receiver)", limit = "1")
+        protected static boolean doMap(HostObject receiver, Object key,
+                        @Shared("isMap") @Cached IsMapNode isMap,
+                        @Cached ToHostNode toHost,
+                        @Cached BranchProfile error) {
+            Object hostKey;
+            try {
+                hostKey = toHost.execute(key, Object.class, null, receiver.languageContext, true);
+            } catch (PolyglotEngineException e) {
+                error.enter();
+                return false;
+            }
+            return containsKeyImpl((Map<?, ?>) receiver.obj, hostKey);
+        }
+
+        @TruffleBoundary
+        private static boolean containsKeyImpl(Map<?, ?> map, Object key) {
+            return map.containsKey(key);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMap.execute(receiver)", limit = "1")
+        protected static boolean doNotMap(HostObject receiver, Object key, @Shared("isMap") @Cached IsMapNode isMap) {
+            return false;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class IsMapEntryNode extends Node {
+
+        public abstract boolean execute(HostObject receiver);
+
+        @Specialization
+        public boolean doDefault(HostObject receiver,
+                        @Cached(value = "receiver.getHostClassCache().isMapAccess()", allowUncached = true) boolean isMapAccess) {
+            assert receiver.getHostClassCache().isMapAccess() == isMapAccess;
+            return isMapAccess && receiver.obj instanceof Map.Entry;
         }
     }
 }

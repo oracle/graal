@@ -874,7 +874,7 @@ public abstract class InteropLibrary extends Library {
     }
 
     @Abstract(ifExported = "isHashValueReadable")
-    public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException {
+    public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException, UnsupportedTypeException {
         throw UnsupportedMessageException.create();
     }
 
@@ -903,7 +903,7 @@ public abstract class InteropLibrary extends Library {
     }
 
     @Abstract(ifExported = "isHashEntryRemovable")
-    public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException {
+    public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException, UnsupportedTypeException {
         throw UnsupportedMessageException.create();
     }
 
@@ -3405,7 +3405,7 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException {
+        public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException, UnsupportedTypeException {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.readHashValue(receiver, key);
             }
@@ -3419,7 +3419,7 @@ public abstract class InteropLibrary extends Library {
                 assert validReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
-                assert e instanceof UnsupportedMessageException || e instanceof UnknownHashKeyException : violationPost(receiver, e);
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownHashKeyException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
                 throw e;
             }
         }
@@ -3472,7 +3472,7 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException {
+        public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownHashKeyException, UnsupportedTypeException {
             if (CompilerDirectives.inCompiledCode()) {
                 delegate.removeHashEntry(receiver, key);
                 return;
@@ -3485,7 +3485,7 @@ public abstract class InteropLibrary extends Library {
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
                 assert wasRemovable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
             } catch (InteropException e) {
-                assert e instanceof UnsupportedMessageException || e instanceof UnknownHashKeyException : violationPost(receiver, e);
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownHashKeyException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
                 throw e;
             }
         }

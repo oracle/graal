@@ -63,7 +63,7 @@ public final class UnknownHashKeyException extends InteropException {
         this.unknownKey = unknownKey;
     }
 
-    private UnknownHashKeyException(String unknownKey, Throwable cause) {
+    private UnknownHashKeyException(Object unknownKey, Throwable cause) {
         super(null, cause);
         this.unknownKey = unknownKey;
     }
@@ -103,7 +103,7 @@ public final class UnknownHashKeyException extends InteropException {
      * @param unknownKey the key that could not be accessed
      * @since 21.1.0
      */
-    public static UnknownHashKeyException create(String unknownKey) {
+    public static UnknownHashKeyException create(Object unknownKey) {
         return new UnknownHashKeyException(unknownKey);
     }
 
@@ -130,7 +130,7 @@ public final class UnknownHashKeyException extends InteropException {
      * @since 21.1.0
      */
     @SuppressWarnings("deprecation")
-    public static UnknownHashKeyException create(String unknownKey, Throwable cause) {
+    public static UnknownHashKeyException create(Object unknownKey, Throwable cause) {
         return new UnknownHashKeyException(unknownKey, cause);
     }
 
