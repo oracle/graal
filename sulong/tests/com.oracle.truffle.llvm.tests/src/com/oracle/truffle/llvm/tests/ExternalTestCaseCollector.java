@@ -67,7 +67,7 @@ public abstract class ExternalTestCaseCollector {
             System.err.println(String.format("Collected %d test folders.", tests.size()));
         }
 
-        return tests.keySet().stream().sorted().map(f -> new Object[]{tests.get(f), f.toString()}).collect(Collectors.toList());
+        return tests.keySet().stream().sorted().map(f -> new Object[]{tests.get(f), f.toString(), null}).collect(Collectors.toList());
     }
 
     private static Collection<Object[]> collectDiscoverRun(Path configPath, Path suiteDir, Path sourceDir, String testDiscoveryPath) throws AssertionError {
@@ -87,7 +87,7 @@ public abstract class ExternalTestCaseCollector {
         return greyList.stream().sorted().map(
                         t -> new Object[]{t, availableSourceFilesRelative.stream().filter(s -> {
                             return s.toString().startsWith(getRelative(suiteDir.toUri(), t.toUri()).toString());
-                        }).findAny().get().toString()}).collect(
+                        }).findAny().get().toString(), null}).collect(
                                         Collectors.toList());
     }
 

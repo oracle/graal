@@ -35,6 +35,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -48,10 +50,12 @@ public final class FixtureUtils {
 
     public static Collection<Object[]> getFixtureObjects(Class<?> testSuiteClass, Path suitesPath, Predicate<? super Path> predicate) {
         try {
-            Set<String> excludedTests = getExcludedTests(testSuiteClass);
+            Map<String, String> excludedTests = getExcludedTests(testSuiteClass);
             Stream<Path> destDirs = Files.walk(suitesPath).filter(predicate).map(Path::getParent);
-            return destDirs.filter(testPath -> !excludedTests.contains(
-                            getTestCaseName(suitesPath, testPath))).map(testPath -> new Object[]{testPath, getTestCaseName(suitesPath, testPath)}).collect(Collectors.toList());
+            return destDirs.map(testPath -> {
+                String testCaseName = getTestCaseName(suitesPath, testPath);
+                return new Object[]{testPath, testCaseName, excludedTests.get(testCaseName)};
+            }).collect(Collectors.toList());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
@@ -61,12 +65,25 @@ public final class FixtureUtils {
         return suitesPath.relativize(testPath).toString();
     }
 
-    private static Set<String> getExcludedTests(Class<?> testSuiteClass) {
+    /**
+     * Returns a map from excluded test to the exclude file that caused the exclusion.
+     */
+    private static Map<String, String> getExcludedTests(Class<?> testSuiteClass) {
         try {
             Path excludeDirectory = Paths.get(TestOptions.CONFIG_ROOT, testSuiteClass.getSimpleName());
-            return Files.walk(excludeDirectory).filter(path -> path.toString().endsWith(".exclude")).flatMap(path -> readAllLines(path)).collect(Collectors.toSet());
+            Map<String, String> excludeTestToFile = new HashMap<>();
+            // walk all exclude files in the exclude directory
+            Files.walk(excludeDirectory).filter(path -> path.toString().endsWith(".exclude")).forEach(path -> {
+                // add all entries in the exclude file the the map
+                String excludeFile = Paths.get(TestOptions.CONFIG_ROOT).relativize(path).toString();
+                readAllLines(path).forEach(excludeTest -> {
+                    String oldReason = excludeTestToFile.get(excludeTest);
+                    excludeTestToFile.put(excludeTest, oldReason == null ? excludeFile : oldReason + ", " + excludeFile);
+                });
+            });
+            return excludeTestToFile;
         } catch (IOException e) {
-            return Collections.emptySet();
+            return Collections.emptyMap();
         }
     }
 

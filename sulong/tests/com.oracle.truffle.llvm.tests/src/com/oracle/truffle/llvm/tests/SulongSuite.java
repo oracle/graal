@@ -183,7 +183,7 @@ public class SulongSuite extends BaseSuiteHarness {
     protected static Collection<Object[]> getData(Path suitesPath, Set<String> blacklist) {
         try (Stream<Path> files = Files.walk(suitesPath)) {
             Stream<Path> destDirs = files.filter(SulongSuite::isReference).map(Path::getParent);
-            Collection<Object[]> collection = destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
+            Collection<Object[]> collection = destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString(), null}).collect(Collectors.toList());
             collection.removeIf(d -> blacklist.contains(d[1]));
             return collection;
         } catch (IOException e) {
