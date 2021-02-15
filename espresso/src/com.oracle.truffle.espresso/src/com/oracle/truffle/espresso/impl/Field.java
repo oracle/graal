@@ -116,43 +116,6 @@ public final class Field extends Member<Type> implements FieldRef {
         return "EspressoField<" + getDeclaringKlass() + "." + getName() + ":" + getType() + ">";
     }
 
-    public Object get(StaticObject self) {
-        assert getDeclaringKlass().isAssignableFrom(self.getKlass());
-        // @formatter:off
-        switch (getKind()) {
-            case Boolean : return InterpreterToVM.getFieldBoolean(self, this);
-            case Byte    : return InterpreterToVM.getFieldByte(self, this);
-            case Short   : return InterpreterToVM.getFieldShort(self, this);
-            case Char    : return InterpreterToVM.getFieldChar(self, this);
-            case Int     : return InterpreterToVM.getFieldInt(self, this);
-            case Float   : return InterpreterToVM.getFieldFloat(self, this);
-            case Long    : return InterpreterToVM.getFieldLong(self, this);
-            case Double  : return InterpreterToVM.getFieldDouble(self, this);
-            case Object  : return InterpreterToVM.getFieldObject(self, this);
-            default      : throw EspressoError.shouldNotReachHere();
-        }
-        // @formatter:on
-    }
-
-    public void set(StaticObject self, Object value) {
-        assert value != null;
-        assert getDeclaringKlass().isAssignableFrom(self.getKlass());
-        // @formatter:off
-        switch (getKind()) {
-            case Boolean : InterpreterToVM.setFieldBoolean((boolean) value, self, this); break;
-            case Byte    : InterpreterToVM.setFieldByte((byte) value, self, this);       break;
-            case Short   : InterpreterToVM.setFieldShort((short) value, self, this);     break;
-            case Char    : InterpreterToVM.setFieldChar((char) value, self, this);       break;
-            case Int     : InterpreterToVM.setFieldInt((int) value, self, this);         break;
-            case Float   : InterpreterToVM.setFieldFloat((float) value, self, this);     break;
-            case Long    : InterpreterToVM.setFieldLong((long) value, self, this);       break;
-            case Double  : InterpreterToVM.setFieldDouble((double) value, self, this);   break;
-            case Object  : InterpreterToVM.setFieldObject((StaticObject) value, self, this); break;
-            default      : throw EspressoError.shouldNotReachHere();
-        }
-        // @formatter:on
-    }
-
     public Klass resolveTypeKlass() {
         Klass tk = typeKlassCache;
         if (tk == null) {
@@ -190,6 +153,42 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     // region Field accesses
+
+    // region Generic
+    public Object get(StaticObject obj) {
+        // @formatter:off
+        switch (getKind()) {
+            case Boolean : return getBoolean(obj);
+            case Byte    : return getByte(obj);
+            case Short   : return getShort(obj);
+            case Char    : return getChar(obj);
+            case Int     : return getInt(obj);
+            case Float   : return getFloat(obj);
+            case Long    : return getLong(obj);
+            case Double  : return getDouble(obj);
+            case Object  : return getObject(obj);
+            default      : throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+    }
+
+    public void set(StaticObject obj, Object value) {
+        // @formatter:off
+        switch (getKind()) {
+            case Boolean : setBoolean(obj, (boolean) value);    break;
+            case Byte    : setByte(obj, (byte) value);          break;
+            case Short   : setShort(obj, (short) value);        break;
+            case Char    : setChar(obj, (char) value);          break;
+            case Int     : setInt(obj, (int) value);            break;
+            case Float   : setFloat(obj, (float) value);        break;
+            case Long    : setLong(obj, (long) value);          break;
+            case Double  : setDouble(obj, (double) value);      break;
+            case Object  : setObject(obj, value);               break;
+            default      : throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+    }
+    // endregion Generic
 
     // region Object
 
