@@ -44,16 +44,12 @@ import java.util.stream.StreamSupport;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
 public class SulongSuite extends BaseSuiteHarness {
-
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
@@ -210,15 +206,5 @@ public class SulongSuite extends BaseSuiteHarness {
             boolean isOut = f.getFileName().toString().endsWith(".out");
             return isBC || (isOut && !Platform.isDarwin());
         };
-    }
-
-    @Override
-    protected Path getTestDirectory() {
-        return path;
-    }
-
-    @Override
-    protected String getTestName() {
-        return testName;
     }
 }

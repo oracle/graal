@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ import java.util.Collection;
 import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -48,26 +47,13 @@ public final class NWCCSuite extends BaseSuiteHarness {
     private static final Path NWCC_SOURCE_DIR = new File(TestOptions.TEST_SOURCE_PATH).toPath();
     private static final Path NWCC_CONFIG_DIR = new File(TestOptions.TEST_CONFIG_PATH).toPath();
 
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
-
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         return ExternalTestCaseCollector.collectTestCases(NWCC_CONFIG_DIR, NWCC_SUITE_DIR, NWCC_SOURCE_DIR);
     }
 
-    @Override
-    protected Path getTestDirectory() {
-        return path;
-    }
-
     @AfterClass
     public static void printStatistics() {
         printStatistics("NWCC", NWCC_SOURCE_DIR, NWCC_CONFIG_DIR, f -> true);
-    }
-
-    @Override
-    protected String getTestName() {
-        return testName;
     }
 }

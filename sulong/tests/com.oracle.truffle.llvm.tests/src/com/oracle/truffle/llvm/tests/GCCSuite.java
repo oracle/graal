@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,6 @@ import java.util.function.Predicate;
 import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -51,17 +50,9 @@ public final class GCCSuite extends BaseSuiteHarness {
     private static final Path GCC_SOURCE_DIR = new File(TestOptions.TEST_SOURCE_PATH).toPath();
     private static final Path GCC_CONFIG_DIR = new File(TestOptions.TEST_CONFIG_PATH).toPath();
 
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
-
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         return ExternalTestCaseCollector.collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR, GCC_SOURCE_DIR);
-    }
-
-    @Override
-    protected Path getTestDirectory() {
-        return path;
     }
 
     @Override
@@ -83,10 +74,5 @@ public final class GCCSuite extends BaseSuiteHarness {
         printStatistics("gcc.c-torture/execute", Paths.get(GCC_SOURCE_DIR.toAbsolutePath().toString(), "gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute"),
                         Paths.get(GCC_CONFIG_DIR.toAbsolutePath().toString(), "gcc.c-torture", "execute"),
                         t -> true);
-    }
-
-    @Override
-    protected String getTestName() {
-        return testName;
     }
 }

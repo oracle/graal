@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,17 +49,29 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runners.Parameterized.Parameter;
 
+import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
-import org.junit.Assume;
 
 public abstract class BaseSuiteHarness {
+
+    @Parameter(value = 0) public Path path;
+    @Parameter(value = 1) public String testName;
+
+    protected Path getTestDirectory() {
+        return path;
+    }
+
+    protected String getTestName() {
+        return testName;
+    }
 
     private static final List<Path> passingTests = new ArrayList<>();
     private static final List<Path> failingTests = new ArrayList<>();
@@ -105,10 +117,6 @@ public abstract class BaseSuiteHarness {
             throw fail(getTestName(), e);
         }
     }
-
-    protected abstract Path getTestDirectory();
-
-    protected abstract String getTestName();
 
     protected Map<String, String> getContextOptions() {
         return Collections.emptyMap();
