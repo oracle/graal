@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle Tools versions.
 ## Version 21.1.0
 
 * Use `--heap.dump=/path/to/file/to/generate.hprof` to enable [Heap Dumping via Insight](docs/Insight-Manual.md#Heap-Dumping)
+* [Insight object API](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html) provides access to `charIndex`, `charLength` and `charEndIndex`
 
 ## Version 21.0.0
 
