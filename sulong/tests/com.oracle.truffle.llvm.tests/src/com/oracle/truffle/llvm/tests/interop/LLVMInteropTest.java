@@ -37,6 +37,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
+import com.oracle.truffle.llvm.tests.BaseTestHarness;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -1694,7 +1695,7 @@ public class LLVMInteropTest {
         }
 
         Runner(String testName, Map<String, String> options) {
-            this.testName = testName + BaseSuiteHarness.TEST_DIR_EXT;
+            this.testName = testName + BaseTestHarness.TEST_DIR_EXT;
             this.context = Context.newBuilder().options(options).allowAllAccess(true).build();
             this.library = null;
         }

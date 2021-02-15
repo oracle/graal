@@ -34,23 +34,23 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.junit.ClassRule;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.tests.BaseTestHarness;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.TruffleRunner;
-import org.graalvm.polyglot.Value;
 
 public class InteropTestBase {
 
@@ -65,7 +65,7 @@ public class InteropTestBase {
     public static final String TEST_FILE_NAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     protected static Object loadTestBitcodeInternal(String name) {
-        File file = Paths.get(testBase.toString(), name + BaseSuiteHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = Paths.get(testBase.toString(), name + BaseTestHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         CallTarget target = getTestBitcodeCallTarget(file);
         return target.call();
     }
@@ -81,7 +81,7 @@ public class InteropTestBase {
     }
 
     protected static Value loadTestBitcodeValue(String name) {
-        File file = Paths.get(testBase.toString(), name + BaseSuiteHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = Paths.get(testBase.toString(), name + BaseTestHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();

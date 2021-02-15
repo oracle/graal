@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,31 +60,6 @@ public abstract class BaseTestHarness {
     public static final Predicate<? super Path> isExcludeFile = f -> f.getFileName().toString().endsWith(".exclude");
     public static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
     public static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
-
-    protected abstract Path getTestDirectory();
-
-    protected abstract String getTestName();
-
-    @Test
-    public abstract void test() throws IOException;
-
-    protected Map<String, String> getContextOptions() {
-        return Collections.emptyMap();
-    }
-
-    /**
-     * This function can be overwritten to specify a filter on test file names. E.g. if one wants to
-     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.bc") </code>
-     *
-     * @return a filter predicate
-     */
-    protected Predicate<String> filterFileName() {
-        if (TestOptions.TEST_FILTER != null && !TestOptions.TEST_FILTER.isEmpty()) {
-            return s -> s.endsWith(TestOptions.TEST_FILTER);
-        } else {
-            return s -> true;
-        }
-    }
 
     public static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
         String testDiscoveryPath = TestOptions.TEST_DISCOVERY_PATH;

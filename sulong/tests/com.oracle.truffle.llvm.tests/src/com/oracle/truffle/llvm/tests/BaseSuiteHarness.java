@@ -35,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,7 @@ import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 import org.junit.Assume;
 
-public abstract class BaseSuiteHarness extends BaseTestHarness {
+public abstract class BaseSuiteHarness {
 
     private static final List<Path> passingTests = new ArrayList<>();
     private static final List<Path> failingTests = new ArrayList<>();
@@ -102,6 +103,28 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             Assert.assertEquals(testName, referenceResult, candidateResult);
         } catch (AssertionError e) {
             throw fail(getTestName(), e);
+        }
+    }
+
+    protected abstract Path getTestDirectory();
+
+    protected abstract String getTestName();
+
+    protected Map<String, String> getContextOptions() {
+        return Collections.emptyMap();
+    }
+
+    /**
+     * This function can be overwritten to specify a filter on test file names. E.g. if one wants to
+     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.bc") </code>
+     *
+     * @return a filter predicate
+     */
+    protected Predicate<String> filterFileName() {
+        if (TestOptions.TEST_FILTER != null && !TestOptions.TEST_FILTER.isEmpty()) {
+            return s -> s.endsWith(TestOptions.TEST_FILTER);
+        } else {
+            return s -> true;
         }
     }
 
@@ -160,7 +183,6 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         }
     }
 
-    @Override
     @Test
     public void test() throws IOException {
         Path referenceBinary;
@@ -176,7 +198,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         }
 
         try (Stream<Path> walk = Files.list(getTestDirectory())) {
-            List<Path> testCandidates = walk.filter(isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
+            List<Path> testCandidates = walk.filter(BaseTestHarness.isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
             Assert.assertFalse("candidate list empty", testCandidates.isEmpty());
             for (Path candidate : testCandidates) {
                 runCandidate(referenceBinary, referenceResult, candidate);
@@ -186,11 +208,11 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
     }
 
     protected Predicate<? super Path> getIsSulongFilter() {
-        return isSulong;
+        return BaseTestHarness.isSulong;
     }
 
     protected Predicate<? super Path> getIsExecutableFilter() {
-        return isExecutable;
+        return BaseTestHarness.isExecutable;
     }
 
     protected static AssertionError fail(String testName, AssertionError error) {
@@ -227,18 +249,18 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
     private static final int PERCENT = 100;
 
     protected static void printStatistics(String name, Path source, Path config, Predicate<Path> filter) {
-        Set<Path> whiteList = getListEntries(source, config, isIncludeFile);
-        Set<Path> blackList = getListEntries(source, config, isExcludeFile);
-        Set<Path> files = getFiles(source);
-        Map<String, Integer> statisticTotalFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
-        Map<String, Integer> statisticTotalNoExcludeFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
-        Map<String, Integer> statisticSupportedFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+        Set<Path> whiteList = getListEntries(source, config, BaseTestHarness.isIncludeFile);
+        Set<Path> blackList = getListEntries(source, config, BaseTestHarness.isExcludeFile);
+        Set<Path> files = BaseTestHarness.getFiles(source);
+        Map<String, Integer> statisticTotalFiles = BaseTestHarness.supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+        Map<String, Integer> statisticTotalNoExcludeFiles = BaseTestHarness.supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+        Map<String, Integer> statisticSupportedFiles = BaseTestHarness.supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
 
         // count available test files
         for (Path f : files) {
             if (filter.test(f)) {
-                String fileEnding = getFileEnding(f.toString());
-                if (supportedFiles.contains(fileEnding)) {
+                String fileEnding = BaseTestHarness.getFileEnding(f.toString());
+                if (BaseTestHarness.supportedFiles.contains(fileEnding)) {
                     statisticTotalFiles.put(fileEnding, statisticTotalFiles.get(fileEnding) + 1);
                 }
             }
@@ -247,8 +269,8 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         // count available test files minus blackList
         for (Path f : files) {
             if (filter.test(f) && !blackList.contains(f)) {
-                String fileEnding = getFileEnding(f.toString());
-                if (supportedFiles.contains(fileEnding)) {
+                String fileEnding = BaseTestHarness.getFileEnding(f.toString());
+                if (BaseTestHarness.supportedFiles.contains(fileEnding)) {
                     statisticTotalNoExcludeFiles.put(fileEnding, statisticTotalNoExcludeFiles.get(fileEnding) + 1);
                 }
             }
@@ -257,8 +279,8 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         // count running test files
         for (Path f : whiteList) {
             if (filter.test(f)) {
-                String fileEnding = getFileEnding(f.toString());
-                if (supportedFiles.contains(fileEnding)) {
+                String fileEnding = BaseTestHarness.getFileEnding(f.toString());
+                if (BaseTestHarness.supportedFiles.contains(fileEnding)) {
                     statisticSupportedFiles.put(fileEnding, statisticSupportedFiles.get(fileEnding) + 1);
                 }
             }
@@ -268,7 +290,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         System.out.println(String.format("================================= Statistics for %s suite ======================================", name));
         System.out.println("\tFILE\t|\tALL\t|\tRUNABLE\t|\tOK\t|\tOK/ALL\t|\tOK/RUNABLE\t");
         System.out.println("===================================================================================================");
-        for (String kind : supportedFiles) {
+        for (String kind : BaseTestHarness.supportedFiles) {
             double total = statisticTotalFiles.get(kind);
             double totalNoExclude = statisticTotalNoExcludeFiles.get(kind);
             double supported = statisticSupportedFiles.get(kind);
