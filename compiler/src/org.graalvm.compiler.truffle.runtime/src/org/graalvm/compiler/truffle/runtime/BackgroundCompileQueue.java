@@ -44,6 +44,7 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.collection.BTreeQueue;
 import org.graalvm.compiler.truffle.runtime.collection.DelegatingBlockingQueue;
+import org.graalvm.compiler.truffle.runtime.collection.TraversingQueue;
 
 /**
  * The compilation queue accepts compilation requests, and schedules compilations.
@@ -132,7 +133,7 @@ public class BackgroundCompileQueue {
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
             if (callTarget.getOptionValue(PolyglotCompilerOptions.ConfigurableCompilationQueue)) {
-                this.compilationQueue = new DelegatingBlockingQueue<>(new BTreeQueue<>());
+                this.compilationQueue = new DelegatingBlockingQueue<>(new TraversingQueue<>());
             } else {
                 this.compilationQueue = new IdlingPriorityBlockingQueue<>();
             }
