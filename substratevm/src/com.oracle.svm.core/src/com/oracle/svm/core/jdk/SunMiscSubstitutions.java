@@ -187,7 +187,7 @@ final class Target_Unsafe_Core {
 
     @Substitute
     public void storeFence() {
-        final int fence = MemoryBarriers.STORE_LOAD | MemoryBarriers.STORE_STORE;
+        final int fence = MemoryBarriers.STORE_STORE | MemoryBarriers.LOAD_STORE;
         MembarNode.memoryBarrier(fence);
     }
 
