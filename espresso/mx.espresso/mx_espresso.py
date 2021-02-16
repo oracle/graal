@@ -166,6 +166,7 @@ espresso_library_config = mx_sdk_vm.LibraryConfig(
         '--language:java',
         '--tool:all',
         '-H:+EnableSignalAPI',
+        '-R:+InstallSegfaultHandler',
     ],
     home_finder=True,
 )
