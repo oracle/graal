@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.replacements.jdk9.test;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
@@ -123,18 +121,15 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testCompareAndSet() {
-        if (target.arch instanceof AMD64) {
-            testGraph("unsafeCompareAndSetFloat");
-            testGraph("unsafeCompareAndSetDouble");
-        }
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
-            testGraph("unsafeCompareAndSetBoolean");
-            testGraph("unsafeCompareAndSetByte");
-            testGraph("unsafeCompareAndSetChar");
-            testGraph("unsafeCompareAndSetShort");
-            testGraph("unsafeCompareAndSetInt");
-            testGraph("unsafeCompareAndSetLong");
-        }
+        testGraph("unsafeCompareAndSetBoolean");
+        testGraph("unsafeCompareAndSetByte");
+        testGraph("unsafeCompareAndSetChar");
+        testGraph("unsafeCompareAndSetShort");
+        testGraph("unsafeCompareAndSetInt");
+        testGraph("unsafeCompareAndSetLong");
+        testGraph("unsafeCompareAndSetFloat");
+        testGraph("unsafeCompareAndSetDouble");
+
         test("unsafeCompareAndSetBoolean");
         test("unsafeCompareAndSetByte");
         test("unsafeCompareAndSetChar");
@@ -435,42 +430,39 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testWeakCompareAndSet() {
-        if (target.arch instanceof AMD64) {
-            testGraph("unsafeWeakCompareAndSetFloat");
-            testGraph("unsafeWeakCompareAndSetFloatAcquire");
-            testGraph("unsafeWeakCompareAndSetFloatPlain");
-            testGraph("unsafeWeakCompareAndSetFloatRelease");
-            testGraph("unsafeWeakCompareAndSetDouble");
-            testGraph("unsafeWeakCompareAndSetDoubleAcquire");
-            testGraph("unsafeWeakCompareAndSetDoublePlain");
-            testGraph("unsafeWeakCompareAndSetDoubleRelease");
-        }
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
-            testGraph("unsafeWeakCompareAndSetBoolean");
-            testGraph("unsafeWeakCompareAndSetBooleanAcquire");
-            testGraph("unsafeWeakCompareAndSetBooleanPlain");
-            testGraph("unsafeWeakCompareAndSetBooleanRelease");
-            testGraph("unsafeWeakCompareAndSetByte");
-            testGraph("unsafeWeakCompareAndSetByteAcquire");
-            testGraph("unsafeWeakCompareAndSetBytePlain");
-            testGraph("unsafeWeakCompareAndSetByteRelease");
-            testGraph("unsafeWeakCompareAndSetChar");
-            testGraph("unsafeWeakCompareAndSetCharAcquire");
-            testGraph("unsafeWeakCompareAndSetCharPlain");
-            testGraph("unsafeWeakCompareAndSetCharRelease");
-            testGraph("unsafeWeakCompareAndSetShort");
-            testGraph("unsafeWeakCompareAndSetShortAcquire");
-            testGraph("unsafeWeakCompareAndSetShortPlain");
-            testGraph("unsafeWeakCompareAndSetShortRelease");
-            testGraph("unsafeWeakCompareAndSetInt");
-            testGraph("unsafeWeakCompareAndSetIntAcquire");
-            testGraph("unsafeWeakCompareAndSetIntPlain");
-            testGraph("unsafeWeakCompareAndSetIntRelease");
-            testGraph("unsafeWeakCompareAndSetLong");
-            testGraph("unsafeWeakCompareAndSetLongAcquire");
-            testGraph("unsafeWeakCompareAndSetLongPlain");
-            testGraph("unsafeWeakCompareAndSetLongRelease");
-        }
+        testGraph("unsafeWeakCompareAndSetBoolean");
+        testGraph("unsafeWeakCompareAndSetBooleanAcquire");
+        testGraph("unsafeWeakCompareAndSetBooleanPlain");
+        testGraph("unsafeWeakCompareAndSetBooleanRelease");
+        testGraph("unsafeWeakCompareAndSetByte");
+        testGraph("unsafeWeakCompareAndSetByteAcquire");
+        testGraph("unsafeWeakCompareAndSetBytePlain");
+        testGraph("unsafeWeakCompareAndSetByteRelease");
+        testGraph("unsafeWeakCompareAndSetChar");
+        testGraph("unsafeWeakCompareAndSetCharAcquire");
+        testGraph("unsafeWeakCompareAndSetCharPlain");
+        testGraph("unsafeWeakCompareAndSetCharRelease");
+        testGraph("unsafeWeakCompareAndSetShort");
+        testGraph("unsafeWeakCompareAndSetShortAcquire");
+        testGraph("unsafeWeakCompareAndSetShortPlain");
+        testGraph("unsafeWeakCompareAndSetShortRelease");
+        testGraph("unsafeWeakCompareAndSetInt");
+        testGraph("unsafeWeakCompareAndSetIntAcquire");
+        testGraph("unsafeWeakCompareAndSetIntPlain");
+        testGraph("unsafeWeakCompareAndSetIntRelease");
+        testGraph("unsafeWeakCompareAndSetLong");
+        testGraph("unsafeWeakCompareAndSetLongAcquire");
+        testGraph("unsafeWeakCompareAndSetLongPlain");
+        testGraph("unsafeWeakCompareAndSetLongRelease");
+        testGraph("unsafeWeakCompareAndSetFloat");
+        testGraph("unsafeWeakCompareAndSetFloatAcquire");
+        testGraph("unsafeWeakCompareAndSetFloatPlain");
+        testGraph("unsafeWeakCompareAndSetFloatRelease");
+        testGraph("unsafeWeakCompareAndSetDouble");
+        testGraph("unsafeWeakCompareAndSetDoubleAcquire");
+        testGraph("unsafeWeakCompareAndSetDoublePlain");
+        testGraph("unsafeWeakCompareAndSetDoubleRelease");
+
         test("unsafeWeakCompareAndSetFloat");
         test("unsafeWeakCompareAndSetFloatAcquire");
         test("unsafeWeakCompareAndSetFloatPlain");
@@ -627,34 +619,30 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testCompareAndExchange() {
-        if (target.arch instanceof AMD64) {
-            testGraph("unsafeCompareAndExchangeFloat");
-            testGraph("unsafeCompareAndExchangeFloatAcquire");
-            testGraph("unsafeCompareAndExchangeFloatRelease");
-            testGraph("unsafeCompareAndExchangeDouble");
-            testGraph("unsafeCompareAndExchangeDoubleAcquire");
-            testGraph("unsafeCompareAndExchangeDoubleRelease");
-        }
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
-            testGraph("unsafeCompareAndExchangeBoolean");
-            testGraph("unsafeCompareAndExchangeBooleanAcquire");
-            testGraph("unsafeCompareAndExchangeBooleanRelease");
-            testGraph("unsafeCompareAndExchangeByte");
-            testGraph("unsafeCompareAndExchangeByteAcquire");
-            testGraph("unsafeCompareAndExchangeByteRelease");
-            testGraph("unsafeCompareAndExchangeChar");
-            testGraph("unsafeCompareAndExchangeCharAcquire");
-            testGraph("unsafeCompareAndExchangeCharRelease");
-            testGraph("unsafeCompareAndExchangeShort");
-            testGraph("unsafeCompareAndExchangeShortAcquire");
-            testGraph("unsafeCompareAndExchangeShortRelease");
-            testGraph("unsafeCompareAndExchangeInt");
-            testGraph("unsafeCompareAndExchangeIntAcquire");
-            testGraph("unsafeCompareAndExchangeIntRelease");
-            testGraph("unsafeCompareAndExchangeLong");
-            testGraph("unsafeCompareAndExchangeLongAcquire");
-            testGraph("unsafeCompareAndExchangeLongRelease");
-        }
+        testGraph("unsafeCompareAndExchangeBoolean");
+        testGraph("unsafeCompareAndExchangeBooleanAcquire");
+        testGraph("unsafeCompareAndExchangeBooleanRelease");
+        testGraph("unsafeCompareAndExchangeByte");
+        testGraph("unsafeCompareAndExchangeByteAcquire");
+        testGraph("unsafeCompareAndExchangeByteRelease");
+        testGraph("unsafeCompareAndExchangeChar");
+        testGraph("unsafeCompareAndExchangeCharAcquire");
+        testGraph("unsafeCompareAndExchangeCharRelease");
+        testGraph("unsafeCompareAndExchangeShort");
+        testGraph("unsafeCompareAndExchangeShortAcquire");
+        testGraph("unsafeCompareAndExchangeShortRelease");
+        testGraph("unsafeCompareAndExchangeInt");
+        testGraph("unsafeCompareAndExchangeIntAcquire");
+        testGraph("unsafeCompareAndExchangeIntRelease");
+        testGraph("unsafeCompareAndExchangeLong");
+        testGraph("unsafeCompareAndExchangeLongAcquire");
+        testGraph("unsafeCompareAndExchangeLongRelease");
+        testGraph("unsafeCompareAndExchangeFloat");
+        testGraph("unsafeCompareAndExchangeFloatAcquire");
+        testGraph("unsafeCompareAndExchangeFloatRelease");
+        testGraph("unsafeCompareAndExchangeDouble");
+        testGraph("unsafeCompareAndExchangeDoubleAcquire");
+        testGraph("unsafeCompareAndExchangeDoubleRelease");
 
         test("unsafeCompareAndExchangeBoolean");
         test("unsafeCompareAndExchangeBooleanAcquire");
@@ -715,13 +703,12 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndAdd() {
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
-            testGraph("unsafeGetAndAddByte");
-            testGraph("unsafeGetAndAddChar");
-            testGraph("unsafeGetAndAddShort");
-            testGraph("unsafeGetAndAddInt");
-            testGraph("unsafeGetAndAddLong");
-        }
+        testGraph("unsafeGetAndAddByte");
+        testGraph("unsafeGetAndAddChar");
+        testGraph("unsafeGetAndAddShort");
+        testGraph("unsafeGetAndAddInt");
+        testGraph("unsafeGetAndAddLong");
+
         test("unsafeGetAndAddByte");
         test("unsafeGetAndAddBytePlusOne");
         test("unsafeGetAndAddChar");
@@ -768,14 +755,13 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndSet() {
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
-            testGraph("unsafeGetAndSetBoolean");
-            testGraph("unsafeGetAndSetByte");
-            testGraph("unsafeGetAndSetChar");
-            testGraph("unsafeGetAndSetShort");
-            testGraph("unsafeGetAndSetInt");
-            testGraph("unsafeGetAndSetLong");
-        }
+        testGraph("unsafeGetAndSetBoolean");
+        testGraph("unsafeGetAndSetByte");
+        testGraph("unsafeGetAndSetChar");
+        testGraph("unsafeGetAndSetShort");
+        testGraph("unsafeGetAndSetInt");
+        testGraph("unsafeGetAndSetLong");
+
         test("unsafeGetAndSetBoolean");
         test("unsafeGetAndSetByte");
         test("unsafeGetAndSetBytePlusOne");
@@ -1099,12 +1085,10 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testUnsafeGetPutUnaligned() {
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
-            testGraph("unsafeGetPutShortUnaligned");
-            testGraph("unsafeGetPutCharUnaligned");
-            testGraph("unsafeGetPutIntUnaligned");
-            testGraph("unsafeGetPutLongUnaligned");
-        }
+        testGraph("unsafeGetPutShortUnaligned");
+        testGraph("unsafeGetPutCharUnaligned");
+        testGraph("unsafeGetPutIntUnaligned");
+        testGraph("unsafeGetPutLongUnaligned");
 
         test("unsafeGetPutShortUnaligned");
         test("unsafeGetPutCharUnaligned");
