@@ -162,6 +162,10 @@ public final class Arguments {
                         // skip: previously handled
                     } else if (optionString.equals("--polyglot")) {
                         // skip: handled by mokapot
+                    } else if (optionString.equals("--native")) {
+                        // skip: silently succeed.
+                    } else if (optionString.equals("--jvm")) {
+                        throw abort("Unsupported flag: '--jvm' mode is not supported with this launcher.");
                     } else {
                         handler.parsePolyglotOption(optionString);
                     }
