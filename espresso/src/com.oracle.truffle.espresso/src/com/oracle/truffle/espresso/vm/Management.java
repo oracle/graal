@@ -168,7 +168,7 @@ public class Management extends IntrinsifiedNativeEnv {
      * <li>Ideally implement the method in this class.</li>
      * </ul>
      */
-    private static boolean isSupportedManagementVersion(int version) {
+    public static boolean isSupportedManagementVersion(int version) {
         return version == JMM_VERSION_1 || version == JMM_VERSION_2 || version == JMM_VERSION_3;
     }
 

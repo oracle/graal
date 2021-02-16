@@ -112,7 +112,7 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         return logger;
     }
 
-    private JniEnv jni() {
+    protected JniEnv jni() {
         return getContext().getJNI();
     }
 
@@ -161,7 +161,7 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         subst = factory.create(getMeta());
                     }
-                    return subst.invoke(this, args);
+                    return subst.invoke(IntrinsifiedNativeEnv.this, args);
                 } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
                     if (isJni) {
                         // This will most likely SOE again. Nothing we can do about that

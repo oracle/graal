@@ -142,6 +142,11 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
         return JniEnvCollector.getCollector();
     }
 
+    @Override
+    protected JniEnv jni() {
+        return this;
+    }
+
     private final WeakHandles<Field> fieldIds = new WeakHandles<>();
     private final WeakHandles<Method> methodIds = new WeakHandles<>();
 

@@ -37,6 +37,10 @@ SUNWprivate_1.1 {
                 # Espresso management native API
                 initializeManagementContext;
                 disposeManagementContext;
+                
+                # Espresso jvmti native API
+                initializeJvmtiContext;
+                disposeJvmtiContext;
 
                 # JNI
                 JNI_CreateJavaVM;

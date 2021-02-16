@@ -163,6 +163,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
 
     private final JniEnv jniEnv;
     private final Management management;
+    private final JVMTI.JvmtiFactory jvmti;
 
     private @Pointer TruffleObject mokapotEnvPtr;
 
@@ -257,6 +258,8 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
             } else {
                 management = null;
             }
+
+            jvmti = new JVMTI.JvmtiFactory(getContext(), mokapotLibrary);
 
             getJavaVM = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getJavaVM",
@@ -756,6 +759,13 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
     @TruffleBoundary
     public int GetEnv(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject envPtr, int version) {
         assert NativeUtils.interopAsPointer(getJavaVM()) == NativeUtils.interopAsPointer(vmPtr_);
+        if (JVMTI.isSupportedJvmtiVersion(version)) {
+            // JVMTI is requested before the main thread is created.
+            LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
+            TruffleObject interopPtr = jvmti.create(version);
+            buf.put(interopAsPointer(interopPtr));
+            return JNI_OK;
+        }
         StaticObject currentThread = getContext().getGuestThreadFromHost(Thread.currentThread());
         if (currentThread == null) {
             return JNI_EDETACHED;
@@ -1110,11 +1120,13 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
     public void dispose() {
         assert !getUncached().isNull(mokapotEnvPtr) : "Mokapot already disposed";
         try {
-
-            if (getContext().EnableManagement) {
+            if (management != null) {
+                assert getContext().EnableManagement;
                 management.dispose();
             }
-
+            if (jvmti != null) {
+                jvmti.dispose();
+            }
             getUncached().execute(disposeMokapotContext, mokapotEnvPtr, RawPointer.nullInstance());
             this.mokapotEnvPtr = RawPointer.nullInstance();
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
