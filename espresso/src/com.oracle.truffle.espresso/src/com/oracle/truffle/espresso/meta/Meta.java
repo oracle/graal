@@ -1802,7 +1802,7 @@ public final class Meta implements ContextAccess {
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
      */
-    @CompilerDirectives.TruffleBoundary
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
     private long tryBitwiseConversionToLong(Object value, boolean defaultIfNull) {
         if (getContext().SpecCompliancyMode == HOTSPOT) {
             // Checkstyle: stop
@@ -1826,7 +1826,7 @@ public final class Meta implements ContextAccess {
         throw EspressoError.shouldNotReachHere("Unexpected primitive value: " + value);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @CompilerDirectives.TruffleBoundary(allowInlining = true)
     private StaticObject hotSpotMaybeNull(Object value) {
         assert !(value instanceof StaticObject);
         if (getContext().SpecCompliancyMode == HOTSPOT) {
