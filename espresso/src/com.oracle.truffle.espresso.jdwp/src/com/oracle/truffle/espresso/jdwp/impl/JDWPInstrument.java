@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,16 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
-
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Callable;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 @TruffleInstrument.Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = DebuggerController.class)
 public final class JDWPInstrument extends TruffleInstrument implements Runnable {
@@ -108,8 +109,12 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     public void init(JDWPContext jdwpContext) {
         this.context = jdwpContext;
         try {
-            if (controller.isServer() || controller.shouldWaitForAttach()) {
-                doConnect(true, controller.isServer());
+            if (controller.isSuspend()) {
+                try {
+                    doConnect(true, controller.isServer());
+                } catch (ConnectException ex) {
+                    handleConnectException(ex, false);
+                }
             } else {
                 // don't suspend until debugger attaches, so fire up deamon thread
                 Thread handshakeThread = new Thread(this, "jdwp-handshake-thread");
@@ -119,6 +124,21 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         } catch (IOException e) {
             printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
             printStackTrace(e);
+        }
+    }
+
+    private void handleConnectException(ConnectException ex, boolean swallowExitException) {
+        System.err.println("ERROR: transport error 202: connect failed: " + ex.getMessage());
+        System.err.println("ERROR: JDWP Transport dt_socket failed to initialize, TRANSPORT_INIT(510)");
+        System.err.println("JDWP exit error AGENT_ERROR_TRANSPORT_INIT(197): No transports initialized");
+        try {
+            context.abort(197);
+        } catch (Throwable t) {
+            if (swallowExitException) {
+                // swallow if thread will exit anyway
+            } else {
+                throw t;
+            }
         }
     }
 
@@ -143,7 +163,9 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     @Override
     public void run() {
         try {
-            doConnect(false, false);
+            doConnect(false, controller.isServer());
+        } catch (ConnectException ex) {
+            handleConnectException(ex, true);
         } catch (IOException e) {
             printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
             printStackTrace(e);

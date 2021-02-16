@@ -53,6 +53,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -150,6 +151,10 @@ public final class Target_java_lang_Class {
             throw e;
         } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
+            if (e instanceof EspressoExitException) {
+                // rethrow immediately without logging
+                throw e;
+            }
             meta.getContext().getLogger().log(Level.WARNING, "Host exception happened in Class.forName: {}", e);
             throw e;
         }
