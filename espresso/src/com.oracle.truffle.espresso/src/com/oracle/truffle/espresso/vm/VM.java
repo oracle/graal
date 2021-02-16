@@ -108,6 +108,7 @@ import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.JniVersion;
+import com.oracle.truffle.espresso.jvmti.JVMTI;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -746,7 +747,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
      * <h3>jint GetEnv(JavaVM *vm, void **env, jint version);</h3>
      *
      * @param vmPtr_ The virtual machine instance from which the interface will be retrieved.
-     * @param envPtr pointer to the location where the JNI interface pointer for the current thread
+     * @param envPtr pointer to the location where the env interface pointer for the current thread
      *            will be placed.
      * @param version The requested JNI version.
      *
@@ -761,9 +762,9 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
         assert NativeUtils.interopAsPointer(getJavaVM()) == NativeUtils.interopAsPointer(vmPtr_);
         if (JVMTI.isSupportedJvmtiVersion(version)) {
             // JVMTI is requested before the main thread is created.
-            LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
+            LongBuffer buf = NativeUtils.directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
             TruffleObject interopPtr = jvmti.create(version);
-            buf.put(interopAsPointer(interopPtr));
+            buf.put(NativeUtils.interopAsPointer(interopPtr));
             return JNI_OK;
         }
         StaticObject currentThread = getContext().getGuestThreadFromHost(Thread.currentThread());

@@ -146,10 +146,10 @@ public class Management extends IntrinsifiedNativeEnv {
         assert context.EnableManagement;
         this.context = context;
         this.initializeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeMokapotContext",
-                        NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER));
+                        NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
 
         this.disposeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeMokapotContext",
-                        NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
+                        NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
     }
 
     /**

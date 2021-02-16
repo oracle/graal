@@ -37,8 +37,8 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ReferenceType;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
 /**
@@ -51,7 +51,7 @@ public final class IntrinsicsProcessor extends EspressoProcessor {
     private static final String HANDLE = JNI_PACKAGE + "." + "Handle";
     private static final String JNI_IMPL = JNI_PACKAGE + "." + "JniImpl";
 
-    private static final String SUBSTITUTOR_PACKAGE = "com.oracle.truffle.espresso.substitutions";
+    private static final String SUBSTITUTIONS_PACKAGE = "com.oracle.truffle.espresso.substitutions";
     private static final String SUBSTITUTOR = "IntrinsicSubstitutor";
 
     private static final String ENV_ARG_NAME = "env";
@@ -122,7 +122,7 @@ public final class IntrinsicsProcessor extends EspressoProcessor {
     }
 
     public IntrinsicsProcessor() {
-        super(SUBSTITUTOR_PACKAGE, SUBSTITUTOR);
+        super(SUBSTITUTIONS_PACKAGE, SUBSTITUTOR);
     }
 
     protected void initNfiType() {

@@ -21,15 +21,19 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.vm;
+package com.oracle.truffle.espresso.jvmti;
 
-import static java.lang.annotation.ElementType.METHOD;
+class JvmtiVersion {
+    private static final int JVMTI_VERSION_1 = 0x30010000;
+    private static final int JVMTI_VERSION_1_0 = 0x30010000;
+    private static final int JVMTI_VERSION_1_1 = 0x30010100;
+    private static final int JVMTI_VERSION_1_2 = 0x30010200;
+    private static final int JVMTI_VERSION_9 = 0x30090000;
+    private static final int JVMTI_VERSION_11 = 0x300B0000;
+    /* version: 11.0. 0 */
+    private static final int JVMTI_VERSION = 0x30000000 + (11 * 0x10000) + (0 * 0x100) + 0;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {METHOD})
-public @interface JvmtiImpl {
+    public static boolean isSupportedJvmtiVersion(int version) {
+        return version == JVMTI_VERSION || version == JVMTI_VERSION_1_1;
+    }
 }
