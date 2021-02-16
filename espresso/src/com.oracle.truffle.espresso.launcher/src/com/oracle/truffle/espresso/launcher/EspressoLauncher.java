@@ -521,7 +521,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     }
                 }
             } catch (PolyglotException e) {
-                if (!e.isExit()) {
+                if (e.isInternalError()) {
+                    e.printStackTrace();
+                } else if (!e.isExit()) {
                     handleMainUncaught(context, e);
                 }
             } finally {
@@ -536,6 +538,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     if (e.isExit()) {
                         rc = e.getExitStatus();
                     } else {
+                        e.printStackTrace();
                         throw handleUnexpectedDestroy(e);
                     }
                 }
