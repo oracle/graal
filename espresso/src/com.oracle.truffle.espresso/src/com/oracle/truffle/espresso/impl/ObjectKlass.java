@@ -596,7 +596,7 @@ public final class ObjectKlass extends Klass {
 
     public Field lookupHiddenField(Symbol<Name> fieldName) {
         // Hidden fields are (usually) located at the end of the field table.
-        for (int i = fieldTable.length - 1; i > 0; i--) {
+        for (int i = fieldTable.length - 1; i >= 0; i--) {
             Field f = fieldTable[i];
             if (f.getName() == fieldName && f.isHidden()) {
                 return f;
