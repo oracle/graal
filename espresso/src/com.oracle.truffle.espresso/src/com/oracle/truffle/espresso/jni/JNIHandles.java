@@ -148,6 +148,18 @@ public final class JNIHandles {
         getGlobals().destroy(-handle);
     }
 
+    public static int toIntHandle(long value) {
+        if ((int) value != value) {
+            throw new IllegalArgumentException(handleErrorString(value));
+        }
+        return (int) value;
+    }
+
+    @TruffleBoundary
+    private static String handleErrorString(long value) {
+        return String.format("Bad handle: 0x%x", value);
+    }
+
     public int getObjectRefType(int handle) {
         if (handle > 0) {
             assert getLocals().validHandle(handle);
