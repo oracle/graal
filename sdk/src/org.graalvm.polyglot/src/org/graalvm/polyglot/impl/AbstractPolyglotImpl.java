@@ -819,6 +819,30 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean hasIteratorNextElement(Object receiver);
 
         public abstract Value getIteratorNextElement(Object receiver);
+
+        public boolean hasHashEntries(Object receiver) {
+            return false;
+        }
+
+        public boolean hasHashEntry(Object receiver, Object key) {
+            return false;
+        }
+
+        public abstract Value getHashValue(Object receiver, Object key);
+
+        public abstract void putHashEntry(Object receiver, Object key, Object value);
+
+        public abstract boolean removeHashEntry(Object receiver, Object key);
+
+        public abstract Value getHashEntriesIterator(Object receiver);
+
+        public boolean isHashEntry(Object receiver) {
+            return false;
+        }
+
+        public abstract Value getHashEntryKey(Object receiver);
+
+        public abstract Value getHashEntryValue(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

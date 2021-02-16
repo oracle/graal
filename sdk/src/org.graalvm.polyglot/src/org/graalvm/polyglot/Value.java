@@ -1854,6 +1854,42 @@ public final class Value {
         return impl.getIteratorNextElement(receiver);
     }
 
+    public boolean hasHashEntries() {
+        return impl.hasHashEntries(receiver);
+    }
+
+    public boolean hasHashEntry(Object key) {
+        return impl.hasHashEntry(receiver, key);
+    }
+
+    public Value getHashValue(Object key) throws IllegalArgumentException, UnsupportedOperationException {
+        return impl.getHashValue(receiver, key);
+    }
+
+    public void putHashEntry(Object key, Object value) throws UnsupportedOperationException {
+        impl.putHashEntry(receiver, key, value);
+    }
+
+    public boolean removeHashEntry(Object key) throws UnsupportedOperationException {
+        return impl.removeHashEntry(receiver, key);
+    }
+
+    public Value getHashEntriesIterator() throws UnsupportedOperationException {
+        return impl.getHashEntriesIterator(receiver);
+    }
+
+    public boolean isHashEntry() {
+        return impl.isHashEntry(receiver);
+    }
+
+    public Value getHashEntryKey() throws UnsupportedOperationException {
+        return impl.getHashEntryKey(receiver);
+    }
+
+    public Value getHashEntryValue() throws UnsupportedOperationException {
+        return impl.getHashEntryValue(receiver);
+    }
+
     /**
      * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
      * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
