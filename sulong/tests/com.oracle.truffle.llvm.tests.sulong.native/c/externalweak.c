@@ -33,10 +33,12 @@
 __attribute__((weak)) int foo();
 
 int main() {
+#ifdef __linux__
     if (foo) {
         printf("External weak function is defined!\n");
     } else {
         printf("External weak function is NOT defined!\n");
     }
+#endif
     return 0;
 }
