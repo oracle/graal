@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -534,10 +534,34 @@ suite = {
     "com.oracle.truffle.nfi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "jniHeaders" : True,
+      "dependencies" : [
+        "com.oracle.truffle.nfi.api",
+        "com.oracle.truffle.nfi.backend.spi",
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle",
+    },
+
+    "com.oracle.truffle.nfi.api" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
-        "com.oracle.truffle.nfi.spi",
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle",
+    },
+
+    "com.oracle.truffle.nfi.backend.libffi" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "jniHeaders" : True,
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
@@ -557,7 +581,7 @@ suite = {
       },
     },
 
-    "com.oracle.truffle.nfi.spi" : {
+    "com.oracle.truffle.nfi.backend.spi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -582,7 +606,7 @@ suite = {
       "deliverable" : "trufflenfi",
       "buildDependencies" : [
         "libffi",
-        "com.oracle.truffle.nfi",
+        "com.oracle.truffle.nfi.backend.libffi",
       ],
       "os_arch" : {
         "windows" : {
@@ -878,10 +902,33 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_NFI_NATIVE",
       ],
+      "description" : """Native function interface for the Truffle framework.""",
+      "allowsJavadocWarnings": True,
+    },
+
+    "TRUFFLE_NFI_LIBFFI" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.truffle_nfi_libffi",
+        "requiresConcealed" : {
+          "org.graalvm.truffle" : [
+            "com.oracle.truffle.api"
+          ],
+        }
+      },
+      "subDir" : "src",
+      "javaCompliance" : "8+",
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.libffi",
+      ],
+      "distDependencies" : [
+        "TRUFFLE_NFI",
+        "TRUFFLE_NFI_NATIVE",
+      ],
       "javaProperties" : {
           "truffle.nfi.library" : "<path:TRUFFLE_NFI_NATIVE>/bin/<lib:trufflenfi>"
       },
-      "description" : """Native function interface for the Truffle framework.""",
+      "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
     },
 
@@ -898,7 +945,7 @@ suite = {
         "include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
       },
       "include_dirs" : ["include"],
-      "description" : "Contains the native library needed by truffle-nfi.",
+      "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
       "maven": True,
     },
 
@@ -1090,6 +1137,7 @@ suite = {
          "TRUFFLE_TCK_COMMON",
          "TRUFFLE_TCK_TESTS",
          "TRUFFLE_NFI",
+         "TRUFFLE_NFI_LIBFFI",
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",

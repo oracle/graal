@@ -1378,6 +1378,7 @@ suite = {
       "distDependencies" : [
         "SULONG_CORE",
         "truffle:TRUFFLE_NFI",
+        "truffle:TRUFFLE_NFI_LIBFFI",
       ],
       "license" : "BSD-new",
     },

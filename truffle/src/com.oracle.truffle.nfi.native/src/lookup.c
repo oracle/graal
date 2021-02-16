@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,7 @@ static void* loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfN
 
 #endif // defined(ENABLE_ISOLATED_NAMESPACE)
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     void *handle = NULL;
@@ -109,7 +109,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(
     return (jlong) handle;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
     dlclose((void*) handle);
 }
 
@@ -132,7 +132,7 @@ static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
     return (jlong) check_intrinsify(ctx, ret);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
     if (library == 0) {
         return lookup(env, context, RTLD_DEFAULT, name);
     } else {

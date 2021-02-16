@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_tPointer;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError;
+import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
 
@@ -106,8 +106,8 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
      */
     private static PointerBase loadLibraryInNamespace(long nativeContext, String name, int mode) {
         assert (mode & isolatedNamespaceFlag) == 0;
-        Target_com_oracle_truffle_nfi_impl_NFIContextLinux context = //
-                        KnownIntrinsics.convertUnknownValue(getContext(nativeContext), Target_com_oracle_truffle_nfi_impl_NFIContextLinux.class);
+        Target_com_oracle_truffle_nfi_backend_libffi_NFIContextLinux context = //
+                        KnownIntrinsics.convertUnknownValue(getContext(nativeContext), Target_com_oracle_truffle_nfi_backend_libffi_NFIContextLinux.class);
 
         // Double-checked locking on the NFI context instance.
         long namespaceId = context.isolatedNamespaceId;
@@ -152,7 +152,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         if (handle.equal(WordFactory.zero())) {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error), RuntimeException.class);
+            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(error), RuntimeException.class);
         }
         return handle.rawValue();
     }
@@ -179,7 +179,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
             if (error != null) {
-                throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error), RuntimeException.class);
+                throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(error), RuntimeException.class);
             }
         }
         return ret.rawValue();

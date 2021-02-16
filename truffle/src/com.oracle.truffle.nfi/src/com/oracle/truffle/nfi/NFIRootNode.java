@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,8 +59,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LoadLibraryNodeGen;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LookupAndBindNodeGen;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackend;
-import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.backend.spi.NFIBackend;
+import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 
 class NFIRootNode extends RootNode {
 
