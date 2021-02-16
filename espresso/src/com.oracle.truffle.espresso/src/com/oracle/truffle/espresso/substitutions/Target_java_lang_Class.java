@@ -147,14 +147,10 @@ public final class Target_java_lang_Class {
                 klass.safeInitialize();
             }
             return klass.mirror();
-        } catch (EspressoException e) {
+        } catch (EspressoException | EspressoExitException e) {
             throw e;
         } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
-            if (e instanceof EspressoExitException) {
-                // rethrow immediately without logging
-                throw e;
-            }
             meta.getContext().getLogger().log(Level.WARNING, "Host exception happened in Class.forName: {}", e);
             throw e;
         }
