@@ -57,6 +57,13 @@ suite = {
                 ]
             },
             {
+                "name": "sulong",
+                "subdir": True,
+                "urls": [
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
                 "name" : "java-benchmarks",
                 "subdir": True,
                 "urls": [
@@ -87,7 +94,8 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "com.oracle.truffle.espresso.jdwp"
+                "com.oracle.truffle.espresso.jdwp",
+                "sulong:SULONG_NFI"
             ],
             "uses": [
                 "com.oracle.truffle.espresso._native.NativeAccess.Provider",
