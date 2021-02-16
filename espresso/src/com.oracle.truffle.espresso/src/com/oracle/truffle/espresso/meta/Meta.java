@@ -498,6 +498,16 @@ public final class Meta implements ContextAccess {
         sun_misc_VM = knownKlassDiffVersion(Type.sun_misc_VM, Type.jdk_internal_misc_VM);
         sun_misc_VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
 
+        sun_misc_Signal = knownKlassDiffVersion(Type.sun_misc_Signal, Type.jdk_internal_misc_Signal);
+        sun_misc_Signal_name = sun_misc_Signal.lookupDeclaredField(Name.name, Type.java_lang_String);
+        sun_misc_Signal_init_String = sun_misc_Signal.lookupDeclaredMethod(Name._init_, Signature._void_String);
+        sun_misc_NativeSignalHandler = knownKlassDiffVersion(Type.sun_misc_NativeSignalHandler, Type.jdk_internal_misc_Signal$NativeHandler);
+        sun_misc_NativeSignalHandler_handler = sun_misc_Signal.lookupDeclaredField(Name.handler, Type._long);
+        sun_misc_SignalHandler = knownKlassDiffVersion(Type.sun_misc_SignalHandler, Type.jdk_internal_misc_Signal$Handler);
+        sun_misc_SignalHandler_handle = lookupMethodDiffVersion(sun_misc_SignalHandler, Name.handle, Signature._void_sun_misc_Signal, Name.handle, Signature._void_jdk_internal_misc_Signal);
+        sun_misc_SignalHandler_SIG_DFL = lookupFieldDiffVersion(sun_misc_SignalHandler, Name.SIG_DFL, Type.sun_misc_SignalHandler, Name.SIG_DFL, Type.jdk_internal_misc_Signal$Handler);
+        sun_misc_SignalHandler_SIG_IGN = lookupFieldDiffVersion(sun_misc_SignalHandler, Name.SIG_IGN, Type.sun_misc_SignalHandler, Name.SIG_IGN, Type.jdk_internal_misc_Signal$Handler);
+
         sun_reflect_ConstantPool = knownKlassDiffVersion(Type.sun_reflect_ConstantPool, Type.jdk_internal_reflect_ConstantPool);
         sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
 
@@ -596,6 +606,16 @@ public final class Meta implements ContextAccess {
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
+    }
+
+    private Method lookupMethodDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Signature> s1, Symbol<Name> n2, Symbol<Signature> s2) {
+        if (getJavaVersion().java8OrEarlier()) {
+            return klass.lookupDeclaredMethod(n1, s1);
+        } else if (getJavaVersion().java9OrLater()) {
+            return klass.lookupDeclaredMethod(n2, s2);
+        } else {
+            throw EspressoError.shouldNotReachHere();
+        }
     }
 
     private Field lookupFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
@@ -893,6 +913,16 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass sun_misc_VM;
     public final Method sun_misc_VM_toThreadState;
     public final ObjectKlass sun_reflect_ConstantPool;
+
+    public final ObjectKlass sun_misc_Signal;
+    public final Field sun_misc_Signal_name;
+    public final Method sun_misc_Signal_init_String;
+    public final ObjectKlass sun_misc_NativeSignalHandler;
+    public final Field sun_misc_NativeSignalHandler_handler;
+    public final ObjectKlass sun_misc_SignalHandler;
+    public final Method sun_misc_SignalHandler_handle;
+    public final Field sun_misc_SignalHandler_SIG_DFL;
+    public final Field sun_misc_SignalHandler_SIG_IGN;
 
     public final ObjectKlass java_lang_System;
     public final Method java_lang_System_initializeSystemClass;
