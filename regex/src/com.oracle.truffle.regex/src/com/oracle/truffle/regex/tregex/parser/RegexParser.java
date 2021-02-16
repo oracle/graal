@@ -924,11 +924,22 @@ public final class RegexParser {
             return;
         }
         ArrayList<Sequence> newAlternatives = null;
+        // This optimization could change the order in which different paths are explored during
+        // backtracking and therefore change the semantics of the expression. After the
+        // optimization, the resulting regex will first try to match the prefix and then try to
+        // continue with any of the possible suffixes before backtracking and trying different
+        // branches in the prefix. However, the original regex will first completely exhaust all
+        // options in the prefix while retaining the first suffix.
+        // See the example: /.+(?=bar)|.+/.exec("foobar"), in which it is important to try to
+        // backtrack the .+ prefix to just "foo" and then satisfy the lookahead.
+        // In order to handle this, we limit this optimization so that only deterministic prefixes
+        // are considered.
+        IsDeterministicVisitor isDeterministicVisitor = new IsDeterministicVisitor();
         int lastEnd = 0;
         int begin = 0;
         while (begin + 1 < group.size()) {
             int end = findMatchingAlternatives(group, begin);
-            if (end < 0) {
+            if (end < 0 || !isDeterministicVisitor.isDeterministic(group.getAlternatives().get(begin).getFirstTerm())) {
                 begin++;
             } else {
                 if (newAlternatives == null) {
@@ -939,7 +950,7 @@ public final class RegexParser {
                 }
                 lastEnd = end;
                 int prefixSize = 1;
-                while (alternativesAreEqualAt(group, begin, end, prefixSize)) {
+                while (alternativesAreEqualAt(group, begin, end, prefixSize) && isDeterministicVisitor.isDeterministic(group.getAlternatives().get(begin).get(prefixSize))) {
                     prefixSize++;
                 }
                 Sequence prefixSeq = ast.createSequence();
@@ -1007,6 +1018,52 @@ public final class RegexParser {
                 newAlternatives.add(group.getAlternatives().get(i));
             }
             group.setAlternatives(newAlternatives);
+        }
+    }
+
+    private static final class IsDeterministicVisitor extends DepthFirstTraversalRegexASTVisitor {
+
+        private boolean result;
+
+        public boolean isDeterministic(RegexASTNode node) {
+            result = true;
+            run(node);
+            return result;
+        }
+
+        private static boolean hasNonDeterministicQuantifier(QuantifiableTerm term) {
+            if (term.hasQuantifier()) {
+                Token.Quantifier quantifier = term.getQuantifier();
+                if (quantifier.getMin() != quantifier.getMax()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        protected void visit(BackReference backReference) {
+            if (hasNonDeterministicQuantifier(backReference)) {
+                result = false;
+            }
+        }
+
+        @Override
+        protected void visit(Group group) {
+            if (hasNonDeterministicQuantifier(group)) {
+                result = false;
+                return;
+            }
+            if (group.getAlternatives().size() > 1) {
+                result = false;
+            }
+        }
+
+        @Override
+        protected void visit(CharacterClass characterClass) {
+            if (hasNonDeterministicQuantifier(characterClass)) {
+                result = false;
+            }
         }
     }
 
