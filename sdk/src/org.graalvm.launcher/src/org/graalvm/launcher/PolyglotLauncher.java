@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -194,7 +194,8 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
 
     private void launchImpl(List<String> argumentsList) {
         if (isAOT()) {
-            maybeNativeExec(argumentsList, true, Collections.emptyMap());
+            List<String> originalArgs = Collections.unmodifiableList(new ArrayList<>(argumentsList));
+            maybeNativeExec(originalArgs, argumentsList, true);
         }
 
         final Deque<String> arguments = new ArrayDeque<>(argumentsList);
@@ -303,7 +304,7 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
     private static Class<AbstractLanguageLauncher> getLauncherClass(String launcherName, ClassLoader loader) {
         try {
             Class<?> launcherClass = Class.forName(launcherName, false, loader);
-            if (launcherClass != null && !AbstractLanguageLauncher.class.isAssignableFrom(launcherClass)) {
+            if (!AbstractLanguageLauncher.class.isAssignableFrom(launcherClass)) {
                 throw new RuntimeException("Launcher class " + launcherName + " does not extend AbstractLanguageLauncher");
             }
             return (Class<AbstractLanguageLauncher>) launcherClass;
@@ -337,9 +338,6 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
             });
             URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
             launcherClass = getLauncherClass(launcherName, loader);
-            if (launcherClass == null) {
-                throw abort("Could not find class '" + launcherName + "'.");
-            }
         }
         AbstractLanguageLauncher launcher;
         try {
@@ -425,9 +423,9 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
     }
 
     private void runShell(Context.Builder contextBuilder) {
-        try (Context context = contextBuilder.build()) {
-            MultiLanguageShell polyglotShell = new MultiLanguageShell(context, System.in, System.out, mainLanguage);
-            throw exit(polyglotShell.readEvalPrint());
+        try (Context context = contextBuilder.build();
+                        MultiLanguageShell polyglotShell = new MultiLanguageShell(context, mainLanguage)) {
+            throw exit(polyglotShell.runRepl());
         } catch (IOException e) {
             throw abort(e);
         }

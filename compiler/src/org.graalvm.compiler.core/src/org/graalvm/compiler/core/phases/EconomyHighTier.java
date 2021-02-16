@@ -35,6 +35,6 @@ public class EconomyHighTier extends BaseTier<HighTierContext> {
     public EconomyHighTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase(options);
         appendPhase(canonicalizer);
-        appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));
+        appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER, true));
     }
 }

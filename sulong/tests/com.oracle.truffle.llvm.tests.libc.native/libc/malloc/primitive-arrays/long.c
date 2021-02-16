@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,8 @@
 #include <stdlib.h>
 
 int main() {
-  volatile long *arr = malloc(10 * sizeof(long));
-  arr[5] = 23;
-  arr[4] = 65;
-  return arr[5] + arr[4];
+    volatile long *arr = malloc(10 * sizeof(long));
+    arr[5] = 23;
+    arr[4] = 65;
+    return arr[5] + arr[4];
 }

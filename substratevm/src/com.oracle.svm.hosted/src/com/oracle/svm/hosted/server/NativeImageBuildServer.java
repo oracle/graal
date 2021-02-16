@@ -72,10 +72,11 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageBuildTask;
-import com.oracle.svm.hosted.NativeImageClassLoader;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 import com.oracle.svm.util.ModuleSupport;
@@ -159,6 +160,11 @@ public final class NativeImageBuildServer {
         ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.text.spi", false);
         if (JavaVersionUtil.JAVA_SPEC >= 14) {
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
+        }
+        if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.reflect.annotation", false);
+            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.security.jca", false);
+            ModuleSupport.exportAndOpenPackageToUnnamed("jdk.jdeps", "com.sun.tools.classfile", false);
         }
 
         if (!verifyValidJavaVersionAndPlatform()) {
@@ -395,19 +401,19 @@ public final class NativeImageBuildServer {
     }
 
     private static Integer executeCompilation(ArrayList<String> arguments) {
-        final String[] classpath = NativeImageGeneratorRunner.extractImageClassPath(arguments);
-        NativeImageClassLoader imageClassLoader;
+        String[] classpath = NativeImageGeneratorRunner.extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath);
-            final ImageBuildTask task = loadCompilationTask(arguments, imageClassLoader);
+            ImageClassLoader imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath, new String[0]);
+            ImageBuildTask task = loadCompilationTask(arguments, imageClassLoader.getClassLoader());
             try {
                 tasks.add(task);
-                return task.build(arguments.toArray(new String[arguments.size()]), classpath, imageClassLoader);
+                return task.build(arguments.toArray(new String[0]), imageClassLoader);
             } finally {
                 tasks.remove(task);
             }
         } finally {
+            NativeImageGeneratorRunner.uninstallNativeImageClassLoader();
             Thread.currentThread().setContextClassLoader(applicationClassLoader);
         }
     }
@@ -542,7 +548,7 @@ public final class NativeImageBuildServer {
     private static ImageBuildTask loadCompilationTask(ArrayList<String> arguments, ClassLoader classLoader) {
         Optional<String> taskParameter = arguments.stream().filter(arg -> arg.startsWith(TASK_PREFIX)).findFirst();
         if (!taskParameter.isPresent()) {
-            throw UserError.abort("image building task not specified. Provide the fully qualified task name after the \"" + TASK_PREFIX + "\" argument.");
+            throw UserError.abort("Image building task not specified. Provide the fully qualified task name after the \"%s\" argument.", TASK_PREFIX);
         }
         arguments.removeAll(arguments.stream().filter(arg -> arg.startsWith(TASK_PREFIX)).collect(Collectors.toList()));
         final String task = taskParameter.get().substring(TASK_PREFIX.length());
@@ -550,9 +556,9 @@ public final class NativeImageBuildServer {
             Class<?> imageTaskClass = Class.forName(task, true, classLoader);
             return (ImageBuildTask) imageTaskClass.getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
-            throw UserError.abort("image building task " + task + " can not be found. Make sure that " + task + " is present on the classpath.");
+            throw UserError.abort("Image building task %1$s can not be found. Make sure that %1$s is present on the classpath.", task);
         } catch (IllegalArgumentException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-            throw UserError.abort("image building task " + task + " must have a public constructor without parameters.");
+            throw UserError.abort("Image building task %s must have a public constructor without parameters.", task);
         }
     }
 }

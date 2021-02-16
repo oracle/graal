@@ -42,14 +42,12 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.regex.runtime.nodes.LazyCaptureGroupGetResultNode;
 import com.oracle.truffle.regex.runtime.nodes.TraceFinderGetResultNode;
 
-@ReportPolymorphism
 @GenerateUncached
 abstract class RegexResultGetEndNode extends Node {
 
@@ -64,7 +62,7 @@ abstract class RegexResultGetEndNode extends Node {
 
     @Specialization
     static int doSingleResult(SingleResult receiver, int groupNumber,
-                    @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
+                    @Cached ConditionProfile boundsProfile) {
         if (boundsProfile.profile(groupNumber == 0)) {
             return receiver.getEnd();
         } else {
@@ -74,7 +72,7 @@ abstract class RegexResultGetEndNode extends Node {
 
     @Specialization
     static int doSingleResultLazyStart(SingleResultLazyStart receiver, int groupNumber,
-                    @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
+                    @Cached ConditionProfile boundsProfile) {
         if (boundsProfile.profile(groupNumber == 0)) {
             return receiver.getEnd();
         } else {
@@ -96,7 +94,7 @@ abstract class RegexResultGetEndNode extends Node {
     @Specialization
     static int doLazyCaptureGroups(LazyCaptureGroupsResult receiver, int groupNumber,
                     @Cached LazyCaptureGroupGetResultNode getResultNode) {
-        return fromSingleArray(getResultNode.execute(receiver), groupNumber) - 1;
+        return fromSingleArray(getResultNode.execute(receiver), groupNumber);
     }
 
     private static int fromSingleArray(int[] array, int groupNumber) {

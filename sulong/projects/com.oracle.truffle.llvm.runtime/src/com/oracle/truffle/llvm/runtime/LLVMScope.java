@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -44,7 +45,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -55,10 +57,12 @@ public class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
+    private final HashMap<String, String> linkageNames;
 
     public LLVMScope() {
         this.symbols = new HashMap<>();
         this.functionKeys = new ArrayList<>();
+        this.linkageNames = new HashMap<>();
     }
 
     @TruffleBoundary
@@ -72,7 +76,8 @@ public class LLVMScope implements TruffleObject {
     }
 
     /**
-     * Lookup a function in the scope by name.
+     * Lookup a function in the scope by name. If not found, interpret the name as linkageName and
+     * lookup the function by its original name.
      *
      * @param name Function name to lookup.
      * @return A handle to the function if found, null otherwise.
@@ -83,7 +88,26 @@ public class LLVMScope implements TruffleObject {
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
         }
+        final String newName = linkageNames.get(name);
+        if (newName != null) {
+            symbol = get(newName);
+            if (symbol != null && symbol.isFunction()) {
+                return symbol.asFunction();
+            }
+        }
+
         return null;
+    }
+
+    /**
+     * Add a tuple of function name and function linkage name to the map.
+     *
+     * @param name Function name as specified in original (e.g. C/C++) source.
+     * @param linkageName Function name in LLVM code if @param name has been changed during
+     *            compilation to LLVM bitcode.
+     */
+    public void registerLinkageName(String name, String linkageName) {
+        linkageNames.put(name, linkageName);
     }
 
     /**
@@ -128,9 +152,20 @@ public class LLVMScope implements TruffleObject {
     }
 
     @TruffleBoundary
+    public void addMissingLinkageName(LLVMScope other) {
+        for (Entry<String, String> entry : other.linkageNames.entrySet()) {
+            linkageNames.putIfAbsent(entry.getKey(), entry.getValue());
+        }
+    }
+
+    @TruffleBoundary
     public void addMissingEntries(LLVMScope other) {
         for (Entry<String, LLVMSymbol> entry : other.symbols.entrySet()) {
             symbols.putIfAbsent(entry.getKey(), entry.getValue());
+        }
+
+        for (Entry<String, String> entry : other.linkageNames.entrySet()) {
+            linkageNames.putIfAbsent(entry.getKey(), entry.getValue());
         }
     }
 
@@ -145,7 +180,7 @@ public class LLVMScope implements TruffleObject {
         register(symbol);
     }
 
-    public TruffleObject getKeys() {
+    public Object getKeys() {
         return new Keys(this);
     }
 
@@ -160,7 +195,8 @@ public class LLVMScope implements TruffleObject {
         }
     }
 
-    private void remove(String name) {
+    @TruffleBoundary
+    public void remove(String name) {
         assert symbols.containsKey(name);
         LLVMSymbol removedSymbol = symbols.remove(name);
 
@@ -168,6 +204,26 @@ public class LLVMScope implements TruffleObject {
             boolean contained = functionKeys.remove(name);
             assert contained;
         }
+    }
+
+    @ExportMessage
+    final boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return LLVMLanguage.class;
+    }
+
+    @ExportMessage
+    final boolean isScope() {
+        return true;
+    }
+
+    @ExportMessage
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "llvm-global";
     }
 
     @ExportMessage
@@ -193,16 +249,13 @@ public class LLVMScope implements TruffleObject {
         if (contains(globalName)) {
             LLVMSymbol symbol = get(globalName);
             if (symbol != null && symbol.isFunction()) {
-                if (symbol.hasValidIndexAndID()) {
-                    int index = symbol.getSymbolIndex(false);
-                    int bitcodeID = symbol.getBitcodeID(false);
-                    if (context.symbolTableExists(bitcodeID)) {
-                        AssumedValue<LLVMPointer>[] symbolTable = context.findSymbolTable(bitcodeID);
-                        if (index < symbolTable.length) {
-                            LLVMPointer pointer = symbolTable[index].get();
-                            return LLVMManagedPointer.cast(pointer).getObject();
-                        }
+                try {
+                    LLVMPointer value = context.getSymbol(symbol);
+                    if (value != null) {
+                        return LLVMManagedPointer.cast(value).getObject();
                     }
+                } catch (LLVMLinkerException | LLVMIllegalSymbolIndexException e) {
+                    // fallthrough
                 }
                 exception.enter();
                 throw UnknownIdentifierException.create(globalName);

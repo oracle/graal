@@ -36,7 +36,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig;
+import com.oracle.svm.core.graal.aarch64.AArch64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
 import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
@@ -46,13 +46,13 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 
-@Platforms(Platform.LINUX_AARCH64.class)
+@Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
 @AutomaticFeature
 class AArch64UContextRegisterDumperFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        VMError.guarantee(AArch64.r27.equals(SubstrateAArch64RegisterConfig.HEAP_BASE_REGISTER_CANDIDATE));
-        VMError.guarantee(AArch64.r28.equals(SubstrateAArch64RegisterConfig.THREAD_REGISTER_CANDIDATE));
+        VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
+        VMError.guarantee(AArch64.r28.equals(AArch64ReservedRegisters.THREAD_REGISTER_CANDIDATE));
         ImageSingletons.add(RegisterDumper.class, new AArch64UContextRegisterDumper());
     }
 }

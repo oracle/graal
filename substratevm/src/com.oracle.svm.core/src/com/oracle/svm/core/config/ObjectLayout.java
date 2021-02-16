@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.config;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -52,17 +53,14 @@ public final class ObjectLayout {
     private final int firstFieldOffset;
     private final int arrayLengthOffset;
     private final int arrayBaseOffset;
-    private final int arrayZeroingStartOffset;
-    private final boolean useExplicitIdentityHashCodeField;
-    private final int instanceIdentityHashCodeOffset;
-    private final int arrayIdentityHashcodeOffset;
+    private final int identityHashCodeOffset;
 
     public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
-                    int arrayZeroingStartOffset, boolean useExplicitIdentityHashCodeField, int instanceIdentityHashCodeOffset, int arrayIdentityHashcodeOffset) {
+                    int identityHashCodeOffset) {
         assert CodeUtil.isPowerOf2(referenceSize);
         assert CodeUtil.isPowerOf2(objectAlignment);
         assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset;
-        assert arrayIdentityHashcodeOffset > 0;
+        assert identityHashCodeOffset > 0 && identityHashCodeOffset < arrayLengthOffset;
 
         this.target = target;
         this.referenceSize = referenceSize;
@@ -72,10 +70,7 @@ public final class ObjectLayout {
         this.firstFieldOffset = firstFieldOffset;
         this.arrayLengthOffset = arrayLengthOffset;
         this.arrayBaseOffset = arrayBaseOffset;
-        this.arrayZeroingStartOffset = arrayZeroingStartOffset;
-        this.useExplicitIdentityHashCodeField = useExplicitIdentityHashCodeField;
-        this.instanceIdentityHashCodeOffset = instanceIdentityHashCodeOffset;
-        this.arrayIdentityHashcodeOffset = arrayIdentityHashcodeOffset;
+        this.identityHashCodeOffset = identityHashCodeOffset;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -150,20 +145,12 @@ public final class ObjectLayout {
         return arrayLengthOffset;
     }
 
-    public int getArrayZeroingStartOffset() {
-        return arrayZeroingStartOffset;
-    }
-
-    public boolean useExplicitIdentityHashCodeField() {
-        return useExplicitIdentityHashCodeField;
-    }
-
-    public int getInstanceIdentityHashCodeOffset() {
-        return instanceIdentityHashCodeOffset;
-    }
-
-    public int getArrayIdentityHashcodeOffset() {
-        return arrayIdentityHashcodeOffset;
+    /**
+     * Returns the offset of the identity hash code field.
+     */
+    @Fold
+    public int getIdentityHashCodeOffset() {
+        return identityHashCodeOffset;
     }
 
     public int getArrayBaseOffset(JavaKind kind) {
@@ -177,6 +164,18 @@ public final class ObjectLayout {
     public long getArraySize(JavaKind kind, int length) {
         assert length >= 0;
         return alignUp(getArrayBaseOffset(kind) + ((long) length << getArrayIndexShift(kind)));
+    }
+
+    public int getMinimumInstanceObjectSize() {
+        return alignUp(firstFieldOffset); // assumes there are no always-present "synthetic fields"
+    }
+
+    public int getMinimumArraySize() {
+        return NumUtil.safeToInt(getArraySize(JavaKind.Byte, 0));
+    }
+
+    public int getMinimumObjectSize() {
+        return Math.min(getMinimumArraySize(), getMinimumInstanceObjectSize());
     }
 
     public static JavaKind getCallSignatureKind(boolean isEntryPoint, ResolvedJavaType type, MetaAccessProvider metaAccess, TargetDescription target) {

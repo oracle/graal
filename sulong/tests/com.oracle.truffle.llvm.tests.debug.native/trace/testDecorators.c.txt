@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 38 CONTINUE "start"
+BREAK 37 CONTINUE "start"
     OPEN_SCOPE
         MEMBER int "volatile int" "volatileVal" "756"
         MEMBER int "const myUnsignedInt" "cuVal" "128"

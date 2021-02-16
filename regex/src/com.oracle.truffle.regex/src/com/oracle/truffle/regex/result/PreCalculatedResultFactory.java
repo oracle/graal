@@ -40,15 +40,14 @@
  */
 package com.oracle.truffle.regex.result;
 
+import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
-import java.util.Arrays;
-
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Predefined lists of capture group start and end indices. Used for regular expressions like
@@ -101,7 +100,7 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
         this.length = length;
     }
 
-    public void updateIndices(CompilationFinalBitSet updateIndices, int index) {
+    public void updateIndices(TBitSet updateIndices, int index) {
         for (int i : updateIndices) {
             indices[i] = index;
         }

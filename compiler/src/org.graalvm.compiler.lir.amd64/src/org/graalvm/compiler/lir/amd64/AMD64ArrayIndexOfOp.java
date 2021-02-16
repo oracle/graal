@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,11 +95,11 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value vectorArray3;
     @Temp({REG, ILLEGAL}) protected Value vectorArray4;
 
-    public AMD64ArrayIndexOfOp(JavaKind arrayKind, JavaKind valueKind, boolean findTwoConsecutive, int maxVectorSize, LIRGeneratorTool tool,
+    public AMD64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, int maxVectorSize, LIRGeneratorTool tool,
                     Value result, Value arrayPtr, Value arrayLength, Value fromIndex, Value... searchValues) {
         super(TYPE);
         this.valueKind = valueKind;
-        this.arrayBaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(arrayKind);
+        this.arrayBaseOffset = arrayBaseOffset;
         this.arrayIndexScale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind)));
         this.findTwoConsecutive = findTwoConsecutive;
         assert 0 < searchValues.length && searchValues.length <= 4;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,15 +43,17 @@ package org.graalvm.wasm;
 public final class ImportDescriptor {
     public final String moduleName;
     public final String memberName;
+    public final int identifier;
 
-    public ImportDescriptor(String moduleName, String memberName) {
+    public ImportDescriptor(String moduleName, String memberName, int identifier) {
         this.moduleName = moduleName;
         this.memberName = memberName;
+        this.identifier = identifier;
     }
 
     @Override
     public int hashCode() {
-        return moduleName.hashCode() ^ memberName.hashCode();
+        return moduleName.hashCode() ^ memberName.hashCode() ^ Integer.hashCode(identifier);
     }
 
     @Override
@@ -60,7 +62,7 @@ public final class ImportDescriptor {
             return false;
         }
         final ImportDescriptor that = (ImportDescriptor) object;
-        return that.moduleName.equals(this.moduleName) && that.memberName.equals(this.memberName);
+        return that.moduleName.equals(this.moduleName) && that.memberName.equals(this.memberName) && that.identifier == this.identifier;
     }
 
     @Override

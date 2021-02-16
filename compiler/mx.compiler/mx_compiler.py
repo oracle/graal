@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@
 from __future__ import print_function
 import os
 from os.path import join, exists, getmtime, basename, dirname, isdir
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
 import zipfile
@@ -47,6 +47,7 @@ import mx_sdk_vm
 import mx
 import mx_gate
 from mx_gate import Task
+from mx import SafeDirectoryUpdater
 
 import mx_unittest
 from mx_unittest import unittest
@@ -55,6 +56,7 @@ from mx_javamodules import as_java_module
 from mx_updategraalinopenjdk import updategraalinopenjdk
 from mx_renamegraalpackages import renamegraalpackages
 from mx_sdk_vm import jlink_new_jdk
+import mx_sdk_vm_impl
 
 import mx_jaotc
 
@@ -63,7 +65,6 @@ import mx_graal_tools #pylint: disable=unused-import
 
 import argparse
 import shlex
-import glob
 
 # Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
 if sys.version_info[0] < 3:
@@ -106,67 +107,6 @@ if jdk.javaCompliance < '1.8':
 #: JDK9 or later is being used (checked above).
 isJDK8 = jdk.javaCompliance < '1.9'
 
-class SafeDirectoryUpdater(object):
-    """
-    Multi-thread safe context manager for creating/updating a directory.
-
-    :Example:
-    # Compiles `sources` into `dst` with javac. If multiple threads/processes are
-    # performing this compilation concurrently, the contents of `dst`
-    # will reflect the complete results of one of the compilations
-    # from the perspective of other threads/processes.
-    with SafeDirectoryUpdater(dst) as sdu:
-        mx.run([jdk.javac, '-d', sdu.directory, sources])
-
-    """
-    def __init__(self, directory, create=False):
-        """
-
-        :param directory: the target directory that will be created/updated within the context.
-                          The working copy of the directory is accessed via `self.directory`
-                          within the context.
-        """
-
-        self.target = directory
-        self.workspace = None
-        self.directory = None
-        self.create = create
-
-    def __enter__(self):
-        parent = dirname(self.target)
-        self.workspace = tempfile.mkdtemp(dir=parent)
-        self.directory = join(self.workspace, basename(self.target))
-        if self.create:
-            mx.ensure_dir_exists(self.directory)
-        self.target_timestamp = mx.TimeStampFile(self.target)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is not None:
-            mx.rmtree(self.workspace)
-            raise
-
-        # Try delete the target directory if it existed prior to creating
-        # self.workspace and has not been modified in between.
-        if self.target_timestamp.timestamp is not None and self.target_timestamp.timestamp == mx.TimeStampFile(self.target).timestamp:
-            old_target = join(self.workspace, 'to_delete_' + basename(self.target))
-            try:
-                os.rename(self.target, old_target)
-            except:
-                # Silently assume another process won the race to rename dst_jdk_dir
-                pass
-
-        # Try atomically move self.directory to self.target
-        try:
-            os.rename(self.directory, self.target)
-        except:
-            if not exists(self.target):
-                raise
-            else:
-                # Silently assume another process won the race to create self.target
-                pass
-
-        mx.rmtree(self.workspace)
 
 def _check_jvmci_version(jdk):
     """
@@ -208,7 +148,8 @@ def _check_jvmci_version(jdk):
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
-mx_gate.add_jacoco_includes(['org.graalvm.compiler.*'])
+mx_gate.add_jacoco_includes(['org.graalvm.*'])
+mx_gate.add_jacoco_excludes(['com.oracle.truffle.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
 def _get_XX_option_value(vmargs, name, default):
@@ -357,84 +298,24 @@ def ctw(args, extraVMarguments=None):
 
     run_vm(vmargs + mainClassAndArgs)
 
-def verify_jvmci_ci_versions(args):
-    """
-    Checks that the jvmci versions used in various ci files agree.
-
-    If the ci.hocon files use a -dev version, it allows the travis ones to use the previous version.
-    For example, if ci.hocon uses jvmci-0.24-dev, travis may use either jvmci-0.24-dev or jvmci-0.23
-    """
-    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<major>\d*)(?:\.|-b)(?P<minor>\d*)(?P<dev>-dev)?')
-
-    def _grep_version(files, msg):
-        version = None
-        dev = None
-        last = None
-        linenr = 0
-        for filename in files:
-            for line in open(filename):
-                m = version_pattern.search(line)
-                if m:
-                    new_major = m.group('major')
-                    new_minor = m.group('minor')
-                    new_version = (new_major, new_minor)
-                    new_dev = bool(m.group('dev'))
-                    if (version and version != new_version) or (dev is not None and dev != new_dev):
-                        mx.abort(
-                            os.linesep.join([
-                                "Multiple JVMCI versions found in {0} files:".format(msg),
-                                "  {0} in {1}:{2}:    {3}".format(version + ('-dev' if dev else ''), *last), # pylint: disable=not-an-iterable
-                                "  {0} in {1}:{2}:    {3}".format(new_version + ('-dev' if new_dev else ''), filename, linenr, line),
-                            ]))
-                    last = (filename, linenr, line.rstrip())
-                    version = new_version
-                    dev = new_dev
-                linenr += 1
-        if not version:
-            mx.abort("No JVMCI version found in {0} files!".format(msg))
-        return version, dev
-
-    primary_suite = mx.primary_suite()
-    hocon_version, hocon_dev = _grep_version(
-        [join(primary_suite.vc_dir, 'common.json')] +
-        glob.glob(join(primary_suite.vc_dir, '*.hocon')) +
-        glob.glob(join(primary_suite.dir, 'ci*.hocon')) +
-        glob.glob(join(primary_suite.dir, 'ci*/*.hocon')), 'hocon')
-    travis_version, travis_dev = _grep_version([join(primary_suite.vc_dir, '.travis.yml')], 'TravisCI')
-
-    if hocon_version != travis_version or hocon_dev != travis_dev:
-        versions_ok = False
-        if not travis_dev and hocon_dev:
-            travis_major, travis_minor = travis_version # pylint: disable=unpacking-non-sequence
-            next_travis_minor = str(int(travis_minor) + 1)
-            next_travis_version = (travis_major, next_travis_minor)
-            if next_travis_version == hocon_version:
-                versions_ok = True
-        if not versions_ok:
-            mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(str(travis_version) + ('-dev' if travis_dev else ''), str(hocon_version) + ('-dev' if hocon_dev else '')))
-    mx.log('JVMCI versions are ok!')
-
-
 class UnitTestRun:
     def __init__(self, name, args, tags):
         self.name = name
         self.args = args
         self.tags = tags
 
-    def run(self, suites, tasks, extraVMarguments=None):
+    def run(self, suites, tasks, extraVMarguments=None, extraUnitTestArguments=None):
         for suite in suites:
-            if suite == 'truffle' and mx.get_os() == 'windows':
-                continue  # necessary until Truffle is fully supported (GR-7941)
             with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
                 if mx_gate.Task.verbose:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if Task.tags is None or 'coverage' not in Task.tags:
+                if Task.tags is None or 'coverage' not in Task.tags: # pylint: disable=unsupported-membership-test
                     # If this is a coverage execution, we want maximal coverage
                     # and thus must not fail fast.
                     extra_args += ['--fail-fast']
-                if t: unittest(['--suite', suite] + extra_args + self.args + _remove_empty_entries(extraVMarguments))
+                if t: unittest(['--suite', suite] + extra_args + self.args + _remove_empty_entries(extraVMarguments) + _remove_empty_entries(extraUnitTestArguments))
 
 class BootstrapTest:
     def __init__(self, name, args, tags, suppress=None):
@@ -486,7 +367,7 @@ def _gate_java_benchmark(args, successRe):
         if jvmErrorFile:
             jvmErrorFile = jvmErrorFile.group()
             mx.log('Dumping ' + jvmErrorFile)
-            with open(jvmErrorFile, 'rb') as fp:
+            with open(jvmErrorFile) as fp:
                 mx.log(fp.read())
             os.unlink(jvmErrorFile)
 
@@ -531,19 +412,14 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 
-def jvmci_ci_version_gate_runner(tasks):
-    # Check that travis and ci.hocon use the same JVMCI version
-    with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
-        if t: verify_jvmci_ci_versions([])
-
-def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
+def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':
         with Task('JDK_java_base_test', tasks, tags=['javabasetest']) as t:
             if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 
     # Run unit tests in hosted mode
     for r in unit_test_runs:
-        r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
+        r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments), extraUnitTestArguments=extraUnitTestArguments)
 
     # Run selected tests (initially those from GR-6581) under -Xcomp
     xcompTests = [
@@ -588,7 +464,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
         # metadata package was deprecated, exclude it
-        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
+        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java,com.oracle.truffle.api.object.dsl'], quietForNoPackages=True)
 
 
 def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
@@ -628,12 +504,18 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         'scalariform':1,
         'scalatest':  1,
         'scalaxb':    1,
+        'specs':      1,
         'tmt':        1,
         'actors':     1,
     }
     if not jdk_includes_corba(jdk):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
         del scala_dacapos['actors']
+
+    if jdk.javaCompliance >= "16":
+        # See GR-29222 for details.
+        mx.warn('Removing scaladacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
+        del scala_dacapos['specs']
 
     for name, iterations in sorted(scala_dacapos.items()):
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
@@ -651,12 +533,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
                 try:
-                    _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    _gate_dacapo('pmd', 3, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
                     with open(logFile) as fp:
                         haystack = fp.read()
                         needle = 'MoveOperations (dynamic counters)'
                         if needle not in haystack:
-                            mx.abort('Expected to see "' + needle + '" in output:\n' + haystack)
+                            mx.abort('Expected to see "' + needle + '" in output of length ' + len(haystack) + ':\n' + haystack)
                 finally:
                     os.remove(logFile)
 
@@ -692,7 +574,6 @@ graal_unit_test_runs = [
 ]
 
 _registers = {
-    'sparcv9': 'o0,o1,o2,o3,f8,f9,d32,d34',
     'amd64': 'rbx,r11,r10,r14,xmm3,xmm11,xmm14',
     'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
 }
@@ -727,9 +608,8 @@ def _is_jaotc_supported():
     return exists(jdk.exe_path('jaotc'))
 
 def _graal_gate_runner(args, tasks):
-    compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
     compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
-    jvmci_ci_version_gate_runner(tasks)
     if _is_jaotc_supported():
         mx_jaotc.jaotc_gate_runner(tasks)
 
@@ -749,6 +629,7 @@ class ShellEscapedStringAction(argparse.Action):
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 mx_gate.add_gate_argument('--extra-vm-argument', action=ShellEscapedStringAction, help='add extra vm arguments to gate tasks if applicable')
+mx_gate.add_gate_argument('--extra-unittest-argument', action=ShellEscapedStringAction, help='add extra unit test arguments to gate tasks if applicable')
 
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
     run_vm(vmArgs + [mainClass] + mainClassArgs)
@@ -814,6 +695,12 @@ def _unittest_config_participant(config):
     if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
         vmArgs.append('-XX:-UseJVMCICompiler')
 
+    # The type-profile width 8 is the default when using the JVMCI compiler.
+    # This value must be forced, because we do not used the JVMCI compiler
+    # in the unit tests by default.
+    if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
+        vmArgs.append('-XX:TypeProfileWidth=8')
+
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -876,6 +763,10 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
         argsPrefix.append('-Dgraal.PrintGraph=Network')
 
+    # Likewise, one can assume that objdump is safe to access when using mx.
+    if not any(a.startswith('-Dgraal.ObjdumpExecutables=') for a in args):
+        argsPrefix.append('-Dgraal.ObjdumpExecutables=objdump,gobjdump')
+
     return argsPrefix + args
 
 def _check_bootstrap_config(args):
@@ -924,24 +815,40 @@ class StdoutUnstripping:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.mapFiles and self.capture:
+        if self.mapFiles and self.capture and len(self.capture.data):
+            data = self.capture.data
+            tmp_fd, tmp_file = tempfile.mkstemp(suffix='.txt', prefix='unstrip')
+            os.close(tmp_fd) # Don't leak file descriptors
             try:
-                with tempfile.NamedTemporaryFile(mode='w') as inputFile:
-                    data = self.capture.data
-                    if len(data) != 0:
-                        inputFile.write(data)
-                        inputFile.flush()
-                        retraceOut = mx.OutputCapture()
-                        unstrip_args = [m for m in set(self.mapFiles)] + [inputFile.name]
-                        mx.unstrip(unstrip_args, out=retraceOut)
-                        if data != retraceOut.data:
-                            mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
-                            mx.log(retraceOut.data)
-                            mx.log('<<<< END UNSTRIPPED OUTPUT')
+                with open(tmp_file, 'w') as fp:
+                    fp.write(data)
+                retraceOut = mx.OutputCapture()
+                unstrip_args = list(set(self.mapFiles)) + [tmp_file]
+                mx.unstrip(unstrip_args, out=retraceOut)
+                retraceOut = retraceOut.data
+                if data != retraceOut and mx.is_windows():
+                    # On Windows, ReTrace might duplicate line endings
+                    dedupOut = retraceOut.replace(os.linesep + os.linesep, os.linesep)
+                    if data == dedupOut:
+                        retraceOut = dedupOut
+                if data != retraceOut:
+                    mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
+                    mx.log(retraceOut)
+                    mx.log('<<<< END UNSTRIPPED OUTPUT')
             except BaseException as e:
                 mx.log('Error unstripping output from VM execution with stripped jars: ' + str(e))
+            finally:
+                os.remove(tmp_file)
 
 _graaljdk_override = None
+
+def _graaljdk_home(base_name):
+    graaljdks = [d for d in mx.sorted_dists() if isinstance(d, mx_sdk_vm_impl.GraalVmLayoutDistribution) and d.base_name == base_name]
+    if not graaljdks:
+        raise mx.abort("Cannot find GraalJDK images with base name '{}'".format(base_name))
+    if len(graaljdks) > 1:
+        raise mx.abort("Found multiple GraalJDKs with the same base name '{}'".format(base_name))
+    return join(graaljdks[0].output, graaljdks[0].jdk_base)
 
 def get_graaljdk():
     if _graaljdk_override is None:
@@ -951,17 +858,94 @@ def get_graaljdk():
         graaljdk = _graaljdk_override
     return graaljdk
 
+def collate_metrics(args):
+    """
+    collates files created by the AggregatedMetricsFile option for one or more executions
+
+    The collated results file will have rows of the format:
+
+    <name>;<value1>;<value2>;...;<valueN>;<unit>
+
+    where <value1> is from the first <filename>, <value2> is from the second
+    <filename> etc. 0 is inserted for missing values.
+
+    """
+    parser = ArgumentParser(prog='mx collate-metrics')
+    parser.add_argument('filenames', help='per-execution values passed to AggregatedMetricsFile',
+                        nargs=REMAINDER, metavar='<path>')
+    args = parser.parse_args(args)
+
+    results = {}
+    units = {}
+
+    filename_index = 0
+    for filename in args.filenames:
+        if not filename.endswith('.csv'):
+            mx.abort('Cannot collate metrics from non-CSV files: ' + filename)
+
+        # Keep in sync with org.graalvm.compiler.debug.GlobalMetrics.print(OptionValues)
+        abs_filename = join(os.getcwd(), filename)
+        directory = dirname(abs_filename)
+        rootname = basename(filename)[0:-len('.csv')]
+        isolate_metrics_re = re.compile(rootname + r'@\d+\.csv')
+        for entry in os.listdir(directory):
+            m = isolate_metrics_re.match(entry)
+            if m:
+                isolate_metrics = join(directory, entry)
+                with open(isolate_metrics) as fp:
+                    line_no = 1
+                    for line in fp.readlines():
+                        values = line.strip().split(';')
+                        if len(values) != 3:
+                            mx.abort('{}:{}: invalid line: {}'.format(isolate_metrics, line_no, line))
+                        if len(values) != 3:
+                            mx.abort('{}:{}: expected 3 semicolon separated values: {}'.format(isolate_metrics, line_no, line))
+                        name, metric, unit = values
+
+                        series = results.get(name, None)
+                        if series is None:
+                            series = [0 for _ in range(filename_index)] + [int(metric)]
+                            results[name] = series
+                        else:
+                            while len(series) < filename_index + 1:
+                                series.append(0)
+                            assert len(series) == filename_index + 1, '{}, {}'.format(name, series)
+                            series[filename_index] += int(metric)
+                        if units.get(name, unit) != unit:
+                            mx.abort('{}:{}: inconsistent units for {}: {} != {}'.format(isolate_metrics, line_no, name, unit, units.get(name)))
+                        units[name] = unit
+        filename_index += 1
+
+    if args.filenames:
+        collated_filename = args.filenames[0][:-len('.csv')] + '.collated.csv'
+        with open(collated_filename, 'w') as fp:
+            for n, series in sorted(results.items()):
+                while len(series) < len(args.filenames):
+                    series.append(0)
+                print(n +';' + ';'.join((str(v) for v in series)) + ';' + units[n], file=fp)
+        mx.log('Collated metrics into ' + collated_filename)
+
 def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
     graaljdk = get_graaljdk()
-    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
     add_exports = join(graaljdk.home, '.add_exports')
     if exists(add_exports):
         args = ['@' + add_exports] + args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
     map_file = join(graaljdk.home, 'proguard.map')
+
     with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
-        return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
+        try:
+            return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
+        finally:
+            # Collate AggratedMetricsFile
+            for a in vm_args:
+                if a.startswith('-Dgraal.AggregatedMetricsFile='):
+                    metrics_file = a[len('-Dgraal.AggregatedMetricsFile='):]
+                    if metrics_file:
+                        collate_metrics([metrics_file])
 
 _JVMCI_JDK_TAG = 'jvmci'
 
@@ -993,6 +977,12 @@ class GraalJDKFactory(mx.JDKFactory):
 def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
+
+def run_vm_with_jvmci_compiler(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
+    """run a Java program by executing the java executable in a JVMCI JDK,
+    with the JVMCI compiler selected by default"""
+    jvmci_args = ['-XX:+UseJVMCICompiler'] + args
+    return run_vm(jvmci_args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout, debugLevel=debugLevel, vmbuild=vmbuild)
 
 class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
@@ -1026,7 +1016,7 @@ class GraalArchiveParticipant:
                         services = self.services.setdefault(int(version), {})
                         services.setdefault(service, []).append(provider)
             return True
-        elif arcname.endswith('_OptionDescriptors.class'):
+        elif arcname.endswith('_OptionDescriptors.class') and not arcname.startswith('META-INF/'):
             if self.isTest:
                 mx.warn('@Option defined in test code will be ignored: ' + arcname)
             else:
@@ -1077,10 +1067,6 @@ def java_base_unittest(args):
             mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
     finally:
         _graaljdk_override = None
-
-def microbench(*args):
-    mx.abort("`mx microbench` is deprecated.\n" +
-             "Use `mx benchmark jmh-whitebox:*` and `mx benchmark jmh-dist:*` instead!")
 
 def javadoc(args):
     # metadata package was deprecated, exclude it
@@ -1192,11 +1178,13 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         graalvm_compiler_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components() if isinstance(c, mx_sdk_vm.GraalVmJvmciComponent) and c.graal_compiler]
         jdk_suffix = '-'.join(graalvm_compiler_short_names)
         if root_module_names:
-            jdk_suffix = jdk_suffix + '-' + hashlib.sha1(_encode(','.join(root_module_names))).hexdigest()
+            jdk_suffix += '-' + hashlib.sha1(_encode(','.join(root_module_names))).hexdigest()
+        if mx.get_opts().strip_jars:
+            jdk_suffix += '-stripped'
         dst_jdk_dir = join(graaljdks_dir, 'jdk{}-{}'.format(src_jdk.javaCompliance, jdk_suffix))
         if dst_jdk_dir == src_jdk.home:
             # Avoid overwriting source JDK
-            dst_jdk_dir = dst_jdk_dir + '_new'
+            dst_jdk_dir += '_new'
     else:
         if dst_jdk_dir == src_jdk.home:
             mx.abort("Cannot overwrite source JDK: {}".format(src_jdk))
@@ -1255,7 +1243,10 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
         vm_name = 'Server VM Graal'
         for d in _graal_config().jvmci_dists:
-            s = ':' + d.suite.name + '_' + d.suite.version()
+            version = d.suite.version()
+            s = ':' + d.suite.name
+            if version:
+                s += '_' + d.suite.version()
             if s not in vm_name:
                 vm_name = vm_name + s
 
@@ -1323,16 +1314,18 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         with open(join(tmp_dst_jdk_dir, 'release.jvmci'), 'w') as fp:
             for d in _graal_config().jvmci_dists:
                 s = d.suite
-                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
+                if s.vc:
+                    print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
             for d in _graal_config().boot_dists + _graal_config().truffle_dists:
                 s = d.suite
-                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
+                if s.vc:
+                    print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
 
         assert exists(jvmlib), jvmlib + ' does not exist'
         out = mx.LinesOutputCapture()
         mx.run([jdk.java, '-version'], err=out)
         line = None
-        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ |[a-zA-Z]+ )?\((?:[a-zA-Z]+ )?build.*')
+        pattern = re.compile(r'(.* )(?:Server|Graal) VM .*\((?:.+ )?build.*')
         for line in out.lines:
             m = pattern.match(line)
             if m:
@@ -1400,57 +1393,75 @@ def _graal_config():
     return __graal_config
 
 def _jvmci_jars():
-    if not isJDK8 and _is_jaotc_supported():
-        return [
-            'compiler:GRAAL',
-            'compiler:GRAAL_MANAGEMENT',
-            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-            'compiler:JAOTC',
-        ]
-    else:
-        # JAOTC is JDK 9+
-        return [
-            'compiler:GRAAL',
-            'compiler:GRAAL_MANAGEMENT',
-            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-        ]
+    return [
+        'compiler:GRAAL',
+        'compiler:GRAAL_MANAGEMENT',
+        'compiler:GRAAL_TRUFFLE_JFR_IMPL',
+    ] + (['compiler:JAOTC'] if not isJDK8 and _is_jaotc_supported() else [])
 
 # The community compiler component
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
-    suite=_suite,
-    name='GraalVM compiler',
-    short_name='cmp',
-    dir_name='graal',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['Truffle'],
-    jar_distributions=[  # Dev jars (annotation processors)
-        'compiler:GRAAL_PROCESSOR',
-    ],
-    jvmci_jars=_jvmci_jars(),
-    graal_compiler='graal',
-))
+cmp_ce_components = [
+    mx_sdk_vm.GraalVmJvmciComponent(
+        suite=_suite,
+        name='GraalVM compiler',
+        short_name='cmp',
+        dir_name='graal',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['Truffle'],
+        jar_distributions=[  # Dev jars (annotation processors)
+            'compiler:GRAAL_PROCESSOR',
+        ],
+        jvmci_jars=_jvmci_jars(),
+        graal_compiler='graal',
+    ),
+    mx_sdk_vm.GraalVmComponent(
+        suite=_suite,
+        name='Disassembler',
+        short_name='dis',
+        dir_name='graal',
+        license_files=[],
+        third_party_license_files=[],
+        support_libraries_distributions=['compiler:HSDIS'],
+    )
+]
+
+for cmp_ce_component in cmp_ce_components:
+    mx_sdk_vm.register_graalvm_component(cmp_ce_component)
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    graal_jdk_dist = mx_sdk_vm_impl.GraalVmLayoutDistribution(base_name="GraalJDK_CE", components=cmp_ce_components)
+    graal_jdk_dist.description = "GraalJDK CE distribution"
+    graal_jdk_dist.maven = {'groupId': 'org.graalvm', 'tag': 'graaljdk'}
+    register_distribution(graal_jdk_dist)
+
+def print_graaljdk_home(args):
+    parser = ArgumentParser(description='Print the GraalJDK home directory')
+    parser.add_argument('--edition', choices=['ce', 'ee'], default='ce', help='GraalJDK CE or EE')
+    args = parser.parse_args(args)
+    print(_graaljdk_home('GraalJDK_{}'.format(args.edition.upper())))
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
-    'vm': [run_vm, '[-options] class [args...]'],
+    'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
     'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
     'jaotc-test': [mx_jaotc.jaotc_test, ''],
+    'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
-    'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
     'renamegraalpackages' : [renamegraalpackages, '[options]'],
-    'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk_cli, '[options]'],
+    'graaljdk-home': [print_graaljdk_home, '[options]'],
 })
 
 def mx_post_parse_cmd_line(opts):
     mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
-        dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
+        if hasattr(dist, 'set_archiveparticipant'):
+            dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
     global _vm_prefix
     _vm_prefix = opts.vm_prefix

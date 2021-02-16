@@ -65,8 +65,9 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.debug.Breakpoint.BreakpointConditionFailure;
 import com.oracle.truffle.api.debug.DebuggerNode.InputValuesProvider;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -80,6 +81,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -182,6 +184,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class DebuggerSession implements Closeable {
 
     private static final AtomicInteger SESSIONS = new AtomicInteger(0);
+    private static final ThreadLocal<Boolean> inEvalInContext = new ThreadLocal<>();
 
     static final Set<SuspendAnchor> ANCHOR_SET_BEFORE = Collections.singleton(SuspendAnchor.BEFORE);
     static final Set<SuspendAnchor> ANCHOR_SET_AFTER = Collections.singleton(SuspendAnchor.AFTER);
@@ -206,7 +209,8 @@ public final class DebuggerSession implements Closeable {
     private volatile boolean suspendAll;
     private final StableBoolean stepping = new StableBoolean(false);
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
-    private boolean includeInternal = false;
+    private volatile boolean includeInternal = false;
+    private volatile boolean showHostStackFrames = false;
     private Predicate<Source> sourceFilter;
     @CompilationFinal private volatile Assumption suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
     private final StableBoolean alwaysHaltBreakpointsActive = new StableBoolean(true);
@@ -282,16 +286,15 @@ public final class DebuggerSession implements Closeable {
             return null;
         }
         try {
-            Iterable<Scope> scopes = debugger.getEnv().findTopScopes(languageId);
-            Iterator<Scope> it = scopes.iterator();
-            if (!it.hasNext()) {
+            Object scope = debugger.getEnv().getScope(info);
+            if (scope == null) {
                 return null;
             }
-            return new DebugScope(it.next(), it, this, info);
+            return new DebugScope(scope, this, info);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(this, ex, info, null, true, null);
+            throw DebugException.create(this, ex, info);
         }
     }
 
@@ -322,6 +325,23 @@ public final class DebuggerSession implements Closeable {
                 return polyglotBindings.getProperty(name);
             }
         };
+    }
+
+    /**
+     * Set to provide host information in stack traces. When <code>true</code>,
+     * {@link DebugStackFrame#isHost() host frames} and {@link DebugStackTraceElement#isHost() host
+     * trace elements} are provided, when available.
+     *
+     * @since 20.3
+     * @see DebugStackFrame#isHost()
+     * @see DebugStackTraceElement#isHost()
+     */
+    public void setShowHostStackFrames(boolean showHostStackFrames) {
+        this.showHostStackFrames = showHostStackFrames;
+    }
+
+    boolean isShowHostStackFrames() {
+        return showHostStackFrames;
     }
 
     /**
@@ -381,6 +401,89 @@ public final class DebuggerSession implements Closeable {
 
         suspendNext = true;
         updateStepping();
+    }
+
+    /**
+     * Suspend immediately at the current location of the current execution thread. A {@link Node}
+     * argument can be provided as an exact current location, if known. This method can be called on
+     * the guest execution thread only.
+     * <p>
+     * This method calls {@link SuspendedCallback#onSuspend(SuspendedEvent)} synchronously, with
+     * {@link SuspendedEvent} created at the actual location of the current thread. This method can
+     * not be called from an existing {@link SuspendedCallback#onSuspend(SuspendedEvent) callback}.
+     *
+     * @param node the top Node of the execution, or <code>null</code>
+     * @return <code>true</code> when there is a guest code execution on the current thread and
+     *         {@link SuspendedCallback} was called, <code>false</code> otherwise.
+     * @throws IllegalStateException when the current thread is suspended already
+     * @throws IllegalArgumentException when a node with no {@link RootNode} is provided, or it's
+     *             root node does not match the current execution root, or the node does not match
+     *             the current call node, if known.
+     * @since 20.3
+     */
+    public boolean suspendHere(Node node) {
+        SuspendedEvent event = currentSuspendedEventMap.get(Thread.currentThread());
+        if (event != null) {
+            throw new IllegalStateException("Suspended already");
+        }
+        RootNode nodeRoot = null;
+        if (node != null) {
+            nodeRoot = node.getRootNode();
+            if (nodeRoot == null) {
+                throw new IllegalArgumentException(String.format("The node %s does not have a root.", node));
+            }
+        }
+        FrameInstance frameInstance = Truffle.getRuntime().getCurrentFrame();
+        if (frameInstance == null) {
+            return false;
+        }
+        RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+        if (!includeInternal) {
+            if (root.isInternal()) {
+                // In an internal code, we need to iterate stack to find non-internal location
+                frameInstance = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
+                    int startDepth = 1;
+
+                    @Override
+                    public FrameInstance visitFrame(FrameInstance fi) {
+                        if (startDepth-- > 0) {
+                            return null;
+                        }
+                        if (!((RootCallTarget) fi.getCallTarget()).getRootNode().isInternal()) {
+                            return fi;
+                        }
+                        return null;
+                    }
+                });
+                if (frameInstance == null) {
+                    return false;
+                } else {
+                    root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                }
+            }
+        }
+        if (nodeRoot != null && nodeRoot != root) {
+            throw new IllegalArgumentException(String.format("The node %s belongs to a root %s, which is different from the current root %s.", node, nodeRoot, root));
+        }
+        Node callNode = frameInstance.getCallNode();
+        if (callNode == null) {
+            callNode = node;
+            if (callNode == null) {
+                // We have no idea where in the function we are.
+                callNode = root;
+            }
+        }
+        if (node != null && node != callNode) {
+            throw new IllegalArgumentException(String.format("The node %s does not match the current known call node %s.", node, callNode));
+        }
+        Node icallNode = InstrumentableNode.findInstrumentableParent(callNode);
+        if (icallNode != null) {
+            callNode = icallNode;
+        }
+        MaterializedFrame frame = frameInstance.getFrame(FrameAccess.READ_WRITE).materialize();
+        SuspendedContext context = SuspendedContext.create(callNode, null);
+        doSuspend(context, SuspendAnchor.BEFORE, frame, null);
+        return true;
     }
 
     /**
@@ -997,7 +1100,7 @@ public final class DebuggerSession implements Closeable {
         // Fake the caller context
         Caller caller = findCurrentCaller(this, includeInternal);
         SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
-        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
+        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode);
     }
 
     static Caller findCurrentCaller(DebuggerSession session, boolean includeInternal) {
@@ -1137,9 +1240,15 @@ public final class DebuggerSession implements Closeable {
                 breakpointFailures.put(fb, failure.getConditionFailure());
             }
         }
+        if (breaks == null) {
+            breaks = Collections.emptyList();
+        }
+        if (breakpointFailures == null) {
+            breakpointFailures = Collections.emptyMap();
+        }
 
         boolean hitStepping = s.step(this, source.getContext(), suspendAnchor);
-        boolean hitBreakpoint = breaks != null && !breaks.isEmpty();
+        boolean hitBreakpoint = !breaks.isEmpty();
         Object newReturnValue = returnValue;
         if (hitStepping || hitBreakpoint) {
             s.consume();
@@ -1151,9 +1260,13 @@ public final class DebuggerSession implements Closeable {
             }
         }
         if (s.isKill()) {   // ComposedStrategy can become kill
-            throw new KillException(source.getContext().getInstrumentedNode());
+            performKill(source.getContext().getInstrumentedNode());
         }
         return newReturnValue;
+    }
+
+    private Object doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame, InsertableNode insertableNode) {
+        return doSuspend(context, suspendAnchor, frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
     }
 
     private Object doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame,
@@ -1207,13 +1320,22 @@ public final class DebuggerSession implements Closeable {
 
         setSteppingStrategy(currentThread, strategy, true);
         if (strategy.isKill()) {
-            throw new KillException(context.getInstrumentedNode());
+            performKill(context.getInstrumentedNode());
         } else if (strategy.isUnwind()) {
             ThreadDeath unwind = context.createUnwind(null, syntaxElementsBinding);
             ((SteppingStrategy.Unwind) strategy).unwind = unwind;
             throw unwind;
         }
         return newReturnValue;
+    }
+
+    private void performKill(Node location) {
+        if (Boolean.TRUE.equals(inEvalInContext.get())) {
+            throw new KillException(location);
+        } else {
+            TruffleContext truffleContext = debugger.getEnv().getEnteredContext();
+            truffleContext.closeCancelled(location, KillException.MESSAGE);
+        }
     }
 
     private List<DebuggerNode> collectDebuggerNodes(DebuggerNode source, SuspendAnchor suspendAnchor) {
@@ -1298,9 +1420,10 @@ public final class DebuggerSession implements Closeable {
             frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
         }
         try {
+            inEvalInContext.set(Boolean.TRUE);
             return evalInContext(ev, node, frame, code);
         } catch (KillException kex) {
-            throw new DebugException(ev.getSession(), "Evaluation was killed.", null, true, null);
+            throw DebugException.create(ev.getSession(), "Evaluation was killed.");
         } catch (IllegalStateException ex) {
             throw ex;
         } catch (Throwable ex) {
@@ -1309,7 +1432,9 @@ public final class DebuggerSession implements Closeable {
             if (root != null) {
                 language = root.getLanguageInfo();
             }
-            throw new DebugException(ev.getSession(), ex, language, null, true, null);
+            throw DebugException.create(ev.getSession(), ex, language);
+        } finally {
+            inEvalInContext.remove();
         }
     }
 
@@ -1373,11 +1498,6 @@ public final class DebuggerSession implements Closeable {
 
         SteppingNode(EventContext context) {
             super(context);
-        }
-
-        @Override
-        EventBinding<?> getBinding() {
-            return syntaxElementsBinding;
         }
 
         @Override
@@ -1525,9 +1645,10 @@ public final class DebuggerSession implements Closeable {
         @TruffleBoundary
         private void doReturn(MaterializedFrame frame, Object result) {
             SteppingStrategy steppingStrategy;
+            Object newResult = null;
             try {
                 if (hasRootElement) {
-                    doStepAfter(frame, result);
+                    newResult = doStepAfter(frame, result);
                 }
             } finally {
                 steppingStrategy = strategyMap.get(Thread.currentThread());
@@ -1537,7 +1658,7 @@ public final class DebuggerSession implements Closeable {
                 }
             }
             if (steppingStrategy != null && steppingStrategy.isStopAfterCall()) {
-                Object newResult = notifyCallerReturn(context, steppingStrategy, this, SuspendAnchor.AFTER, result);
+                newResult = notifyCallerReturn(context, steppingStrategy, this, SuspendAnchor.AFTER, newResult != null ? newResult : result);
                 if (newResult != result) {
                     throw getContext().createUnwind(new ChangedReturnInfo(newResult));
                 }

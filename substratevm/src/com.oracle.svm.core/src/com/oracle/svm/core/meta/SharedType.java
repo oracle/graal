@@ -40,31 +40,6 @@ public interface SharedType extends ResolvedJavaType {
     DynamicHub getHub();
 
     /**
-     * Gets the start of the type-ID range for instance-of checks. If the type-ID of the object in
-     * question is within this range then the object is an instance of this type.
-     * <p>
-     * Now if there is not a single type-ID range to be used for the check (e.g. for interface
-     * types), then the instance-of check must be done with a bit test. In this case
-     * {@link #getInstanceOfNumTypeIDs()} return -1 and this method returns the bit number to check
-     * in the bit-set of the object's {@link DynamicHub}.
-     */
-    int getInstanceOfFromTypeID();
-
-    /**
-     * Returns the size of the type-ID range for instance-of checks. Specifically:
-     * <ul>
-     * <li>0: there are no instantiated objects of that type and the instance-of check fails always
-     * </li>
-     * <li>-1: the instance-of check must be done with a bit test and
-     * {@link #getInstanceOfFromTypeID()} returns the bit number</li>
-     * <li>< -1: this type should not be in any type checks</li>
-     * </ul>
-     *
-     * @see #getInstanceOfFromTypeID()
-     */
-    int getInstanceOfNumTypeIDs();
-
-    /**
      * The kind of the field in memory (in contrast to {@link #getJavaKind()}, which is the kind of
      * the field on the Java type system level).
      */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.time.Duration;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
@@ -69,6 +70,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
  * error. For syntax errors a {@link #getSourceLocation() location} may be available.
  * <li>{@link #isIncompleteSource() Incomplete Source}: Is <code>true</code> if this returns a
  * {@link #isSyntaxError() syntax error} that indicates that the source is incomplete.
+ * <li>{@link #isResourceExhausted() Resource exhausted}: Is <code>true</code> if a resource limit
+ * e.g. the maximum memory was exhausted.
  * <li>{@link #isInternalError() Internal Error}: Is <code>true</code> if an internal implementation
  * error occurred in the polyglot runtime, the guest language or an instrument. It is not
  * recommended to show such errors to the user in production. Please consider filing issues for
@@ -274,6 +277,31 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
+     * Returns <code>true</code> if this exception indicates that a resource limit was exceeded,
+     * else <code>false</code>. Resource limit exceeded errors may be raised for the following
+     * reasons:
+     * <ul>
+     * <li>The host runtime run out of memory or stack space. For example if host runtime throws
+     * {@link OutOfMemoryError} or {@link StackOverflowError}, then they will be translated to a
+     * {@link PolyglotException} that return <code>true</code> for {@link #isResourceExhausted()}.
+     * <li>A configured {@link ResourceLimits resource limit} was exceeded.
+     * <li>A runtime specific per context resource limit was exceeded. Depending on the host runtime
+     * implementation additional options to restrict the resource usage of a context may be
+     * specified using options.
+     * </ul>
+     * <p>
+     * Resource limit exceptions may be originating from the {@link #isHostException() host} or
+     * {@link #isGuestException() guest}. Resource limit exceeded errors are never
+     * {@link #isInternalError() internal}, but may have caused the context to be
+     * {@link #isCancelled() cancelled} such that it is no longer usable.
+     *
+     * @since 20.2
+     */
+    public boolean isResourceExhausted() {
+        return impl.isResourceExhausted();
+    }
+
+    /**
      * Returns <code>true</code> if the execution was cancelled. The execution can be cancelled by
      * {@link Context#close(boolean) closing} a context, if an instrument such as a debugger decides
      * to cancel the current execution or if a {@link ResourceLimits resource limit} was exceeded.
@@ -283,6 +311,17 @@ public final class PolyglotException extends RuntimeException {
      */
     public boolean isCancelled() {
         return impl.isCancelled();
+    }
+
+    /**
+     * Returns <code>true</code> if the current application thread was interrupted by an
+     * {@link InterruptedException}, or by calling {@link Context#interrupt(Duration)} from the
+     * host.
+     *
+     * @since 20.3
+     */
+    public boolean isInterrupted() {
+        return impl.isInterrupted();
     }
 
     /**

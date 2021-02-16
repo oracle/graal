@@ -38,6 +38,7 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
 
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.graal.lir.DeoptEntryOp;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -120,6 +121,8 @@ class Instance {
                             debug.log("remove slot %d: %s", offset, stackSlot);
                             cleanedStackSlots.remove(offset);
                         } else if (ValueUtil.isConstantJavaValue(value) || ValueUtil.isIllegalJavaValue(value)) {
+                            /* Nothing to do. */
+                        } else if (ReservedRegisters.singleton().isAllowedInFrameState(value)) {
                             /* Nothing to do. */
                         } else {
                             throw shouldNotReachHere("unknown value in deopt target: " + value);

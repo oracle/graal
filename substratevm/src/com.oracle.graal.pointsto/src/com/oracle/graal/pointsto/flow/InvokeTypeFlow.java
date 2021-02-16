@@ -29,7 +29,6 @@ import static jdk.vm.ci.common.JVMCIError.guarantee;
 import java.util.Collection;
 import java.util.Collections;
 
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -63,25 +62,9 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
     protected final AnalysisType receiverType;
     protected final AnalysisMethod targetMethod;
 
-    /**
-     * The {@link #source} is used for all sorts of call stack printing (for error messages and
-     * diagnostics), so we must have a non-null {@BytecodePosition}.
-     */
-    private static BytecodePosition findBytecodePosition(Invoke invoke) {
-        if (invoke == null) {
-            /* The context insensitive invoke flow doesn't have an invoke node. */
-            return null;
-        }
-        BytecodePosition result = invoke.asFixedNode().getNodeSourcePosition();
-        if (result == null) {
-            result = new BytecodePosition(null, invoke.asFixedNode().graph().method(), invoke.bci());
-        }
-        return result;
-    }
-
-    protected InvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(findBytecodePosition(invoke), null);
+        super(invokeLocation, null);
         this.originalInvoke = null;
         this.location = location;
         this.receiverType = receiverType;
@@ -292,7 +275,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
         boolean triviallyStaticallyBound = targetMethod.canBeStaticallyBound();
         if (triviallyStaticallyBound) {
             /*
-             * The check bellow is "size <= 1" and not "size == 1" because a method can be reported
+             * The check below is "size <= 1" and not "size == 1" because a method can be reported
              * as trivially statically bound by the host VM but unreachable in the analysis.
              */
             assert getCallees().size() <= 1 : "Statically bound result mismatch between analysis and host VM.";
@@ -313,7 +296,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * the receiver type of the method, i.e., its declaring class. Therefore this invoke will link
      * with all possible callees.
      */
-    public static AbstractVirtualInvokeTypeFlow createContextInsensitiveInvoke(BigBang bb, AnalysisMethod method) {
+    public static AbstractVirtualInvokeTypeFlow createContextInsensitiveInvoke(BigBang bb, AnalysisMethod method, BytecodePosition originalLocation) {
         /*
          * The context insensitive invoke has actual parameters and return flows that will be linked
          * to the original actual parameters and return flows at each call site where it will be
@@ -338,7 +321,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
             actualReturn = new ActualReturnTypeFlow(returnType);
         }
 
-        AbstractVirtualInvokeTypeFlow invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(null, receiverType, method,
+        AbstractVirtualInvokeTypeFlow invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(originalLocation, receiverType, method,
                         actualParameters, actualReturn, BytecodeLocation.UNKNOWN_BYTECODE_LOCATION);
         invoke.markAsContextInsensitive();
 
@@ -367,9 +350,9 @@ abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
      */
     protected AnalysisContext callerContext;
 
-    protected DirectInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         callerContext = null;
     }
 
@@ -398,9 +381,9 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
 
     private AnalysisContext calleeContext;
 
-    protected StaticInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected StaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         calleeContext = null;
     }
 

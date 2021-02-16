@@ -46,15 +46,18 @@ import com.oracle.svm.graal.GraalSupport;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 public class SubstratePEGraphDecoder extends PEGraphDecoder {
 
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = EconomicMap.create();
 
     public SubstratePEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining,
-                    ResolvedJavaMethod peRootForAgnosticInlining, SourceLanguagePositionProvider sourceLanguagePosition) {
+                    SourceLanguagePositionProvider sourceLanguagePosition, ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
+                    ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginsCache) {
         super(architecture, graph, providers, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins,
-                        peRootForInlining, peRootForAgnosticInlining, sourceLanguagePosition);
+                        peRootForInlining, sourceLanguagePosition, specialCallTargetCache, invocationPluginsCache);
     }
 
     @Override

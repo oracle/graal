@@ -34,10 +34,7 @@ import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
@@ -54,12 +51,12 @@ import org.graalvm.compiler.nodes.StructuredGraph.Builder;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -203,6 +200,12 @@ public class ReplacementsParseTest extends ReplacementsTest {
         }
     }
 
+    static class TestForeignCallDescriptor extends ForeignCallDescriptor {
+        TestForeignCallDescriptor(boolean reexecutable, boolean canDeoptimize, boolean safepoint, String name, Class<?> resultType, Class<?>... argumentTypes) {
+            super(name, resultType, argumentTypes, reexecutable, new LocationIdentity[0], canDeoptimize, safepoint);
+        }
+    }
+
     @ClassSubstitution(TestObject.class)
     static class TestObjectSubstitutions {
 
@@ -308,7 +311,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
             nonVoidIntrinsicWithCallStub(STUB_CALL, zLen);
         }
 
-        static final ForeignCallDescriptor STUB_CALL = new ForeignCallDescriptor("stubCall", void.class, int.class);
+        static final ForeignCallDescriptor STUB_CALL = new ForeignCallDescriptor("stubCall", void.class, new Class<?>[]{int.class}, false, new LocationIdentity[0], false, false);
 
         @NodeIntrinsic(ForeignCallNode.class)
         private static native void nonVoidIntrinsicWithCallStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, int zLen);
@@ -319,7 +322,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         BytecodeProvider replacementBytecodeProvider = getSystemClassLoaderBytecodeProvider();
         Registration r = new Registration(invocationPlugins, TestObject.class, getReplacements(), replacementBytecodeProvider);
-        NodeIntrinsicPluginFactory.InjectionProvider injections = new DummyInjectionProvider();
+        GeneratedPluginInjectionProvider injections = new DummyInjectionProvider();
         new PluginFactory_ReplacementsParseTest().registerPlugins(invocationPlugins, injections);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "nextAfter", double.class, double.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "stringize", Object.class);
@@ -646,52 +649,14 @@ public class ReplacementsParseTest extends ReplacementsTest {
         }
     }
 
-    private class DummyInjectionProvider implements NodeIntrinsicPluginFactory.InjectionProvider {
+    private class DummyInjectionProvider implements GeneratedPluginInjectionProvider {
         @SuppressWarnings("unchecked")
         @Override
         public <T> T getInjectedArgument(Class<T> type) {
-            if (type == ForeignCallsProvider.class) {
-                return (T) new ForeignCallsProvider() {
-                    @Override
-                    public LIRKind getValueKind(JavaKind javaKind) {
-                        return null;
-                    }
-
-                    @Override
-                    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
-                        return false;
-                    }
-
-                    @Override
-                    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
-                        return new LocationIdentity[0];
-                    }
-
-                    @Override
-                    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
-                        return false;
-                    }
-
-                    @Override
-                    public boolean isGuaranteedSafepoint(ForeignCallDescriptor descriptor) {
-                        return false;
-                    }
-
-                    @Override
-                    public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-                        return null;
-                    }
-
-                    @Override
-                    public boolean isAvailable(ForeignCallDescriptor descriptor) {
-                        return true;
-                    }
-                };
-            }
             if (type == SnippetReflectionProvider.class) {
                 return (T) getSnippetReflection();
             }
-            return null;
+            throw new InternalError("missing injection " + type);
         }
 
         @Override

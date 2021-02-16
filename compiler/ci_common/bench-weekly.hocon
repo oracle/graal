@@ -1,14 +1,8 @@
-bench-perftag : {
-  environment : {
-    BENCH_SERVER_EXTRAS : "target:weekly-perf"
-  }
-}
-
 bench-dacapo-hwloc-forks : ${bench-dacapo-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-dacapo-hwloc.setup}
-  timelimit: "01:45:00"
-  environment : ${bench-dacapo-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  timelimit: "02:45:00"
+  environment : ${bench-dacapo-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/dacapo_forks.json"
   }
 }
@@ -17,61 +11,52 @@ bench-scala-dacapo-hwloc-forks : ${bench-scala-dacapo-hwloc} ${weeklys-bench-not
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-scala-dacapo-hwloc.setup}
   timelimit: "03:30:00"
-  environment : ${bench-scala-dacapo-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-scala-dacapo-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/scala_dacapo_forks.json"
   }
 }
 
-bench-scala-dacapo-all-hwloc-forks : ${bench-scala-dacapo-all-hwloc} ${weeklys-bench-notifications} {
+bench-specjvm2008-Single-hwloc-forks-batch0 : ${bench-specjvm2008-Single-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-scala-dacapo-all-hwloc.setup}
-  timelimit: "03:30:00"
-  environment : ${bench-scala-dacapo-all-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/scala_dacapo_forks.json"
-  }
-}
-
-bench-specjvm2008-Single-forks-batch0 : ${bench-specjvm2008-Single} ${weeklys-bench-notifications} {
-  targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
+  setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch0.json"
   }
 }
 
-bench-specjvm2008-Single-forks-batch1 : ${bench-specjvm2008-Single} ${weeklys-bench-notifications} {
+bench-specjvm2008-Single-hwloc-forks-batch1 : ${bench-specjvm2008-Single-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
+  setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch1.json"
   }
 }
 
-bench-specjvm2008-Single-forks-batch2 : ${bench-specjvm2008-Single} ${weeklys-bench-notifications} {
+bench-specjvm2008-Single-hwloc-forks-batch2 : ${bench-specjvm2008-Single-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
+  setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch2.json"
   }
 }
 
-bench-specjvm2008-Single-forks-batch3 : ${bench-specjvm2008-Single} ${weeklys-bench-notifications} {
+bench-specjvm2008-Single-hwloc-forks-batch3 : ${bench-specjvm2008-Single-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
+  setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch3.json"
   }
 }
 
-bench-specjvm2008-Single-forks-batch4 : ${bench-specjvm2008-Single} ${weeklys-bench-notifications} {
+bench-specjvm2008-Single-hwloc-forks-batch4 : ${bench-specjvm2008-Single-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
+  setup: ${fork-counts.setup} ${bench-specjvm2008-Single-hwloc.setup}
   timelimit: "06:00:00"
-  environment : ${bench-specjvm2008-Single.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjvm2008-Single-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjvm2008_forks_batch4.json"
   }
 }
@@ -80,7 +65,7 @@ bench-renaissance-hwloc-forks-batch0 : ${bench-renaissance-hwloc} ${weeklys-benc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch0.json"
   }
 }
@@ -89,7 +74,7 @@ bench-renaissance-hwloc-forks-batch1 : ${bench-renaissance-hwloc} ${weeklys-benc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch1.json"
   }
 }
@@ -98,7 +83,7 @@ bench-renaissance-hwloc-forks-batch2 : ${bench-renaissance-hwloc} ${weeklys-benc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch2.json"
   }
 }
@@ -107,7 +92,7 @@ bench-renaissance-hwloc-forks-batch3 : ${bench-renaissance-hwloc} ${weeklys-benc
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch3.json"
   }
 }
@@ -116,7 +101,7 @@ bench-renaissance-legacy-hwloc-forks-batch0 : ${bench-renaissance-legacy-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_legacy_forks_batch0.json"
   }
 }
@@ -124,7 +109,7 @@ bench-renaissance-legacy-hwloc-forks-batch1 : ${bench-renaissance-legacy-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_legacy_forks_batch1.json"
   }
 }
@@ -132,7 +117,7 @@ bench-renaissance-legacy-hwloc-forks-batch2 : ${bench-renaissance-legacy-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_legacy_forks_batch2.json"
   }
 }
@@ -140,25 +125,25 @@ bench-renaissance-legacy-hwloc-forks-batch3 : ${bench-renaissance-legacy-hwloc} 
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
-  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_legacy_forks_batch3.json"
   }
 }
 
-bench-specjbb2005-forks : ${bench-specjbb2005} ${weeklys-bench-notifications} {
+bench-specjbb2005-hwloc-forks : ${bench-specjbb2005-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-specjbb2005.setup}
+  setup: ${fork-counts.setup} ${bench-specjbb2005-hwloc.setup}
   timelimit: "20:00:00"
-  environment : ${bench-specjbb2005.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjbb2005-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjbb2005_forks.json"
   }
 }
 
-bench-specjbb2015-forks : ${bench-specjbb2015} ${weeklys-bench-notifications} {
+bench-specjbb2015-hwloc-forks : ${bench-specjbb2015-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-specjbb2015.setup}
+  setup: ${fork-counts.setup} ${bench-specjbb2015-hwloc.setup}
   timelimit: "20:00:00"
-  environment : ${bench-specjbb2015.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+  environment : ${bench-specjbb2015-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/specjbb2015_forks.json"
   }
 }
@@ -168,11 +153,11 @@ builds += [
   # jargraal
   ${x52.tmpfs10g} ${bench-dacapo-hwloc-forks}                        ${oraclejdk8} { name: "bench-forks-compiler-dacapo-linux-x52" }
   ${x52.tmpfs10g} ${bench-scala-dacapo-hwloc-forks}                  ${oraclejdk8} { name: "bench-forks-compiler-scala-dacapo-linux-x52" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch0}            ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch0" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch1}            ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch1" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch2}            ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch2" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch3}            ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch3" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch4}            ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch4" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch0}      ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch0" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch1}      ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch1" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch2}      ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch2" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch3}      ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch3" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch4}      ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch4" }
   ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch0}            ${oraclejdk8} { name: "bench-forks-compiler-renaissance-linux-x52-batch0" }
   ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch1}            ${oraclejdk8} { name: "bench-forks-compiler-renaissance-linux-x52-batch1" }
   ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch2}            ${oraclejdk8} { name: "bench-forks-compiler-renaissance-linux-x52-batch2" }
@@ -181,17 +166,17 @@ builds += [
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch1}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch1" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch2}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch2" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch3}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch3" }
-  ${x52.default} ${bench-specjbb2005-forks}                          ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-linux-x52" }
-  ${x52.default} ${bench-specjbb2015-forks}                          ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-linux-x52" }
+  ${x52.default} ${bench-specjbb2005-hwloc-forks}                    ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-linux-x52" }
+  ${x52.default} ${bench-specjbb2015-hwloc-forks}                    ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-linux-x52" }
 
   ## libgraal
   ${x52.tmpfs10g-libgraal} ${bench-dacapo-hwloc-forks}                      ${oraclejdk8} { name: "bench-forks-compiler-dacapo-libgraal-linux-x52" }
   ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-hwloc-forks}                ${oraclejdk8} { name: "bench-forks-compiler-scala-dacapo-libgraal-linux-x52" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch0}          ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch0" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch1}          ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch1" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch2}          ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch2" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch3}          ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch3" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch4}          ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch4" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch0}    ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch0" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch1}    ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch1" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch2}    ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch2" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch3}    ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch3" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch4}    ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch4" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch0}          ${oraclejdk8} { name: "bench-forks-compiler-renaissance-libgraal-linux-x52-batch0" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch1}          ${oraclejdk8} { name: "bench-forks-compiler-renaissance-libgraal-linux-x52-batch1" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch2}          ${oraclejdk8} { name: "bench-forks-compiler-renaissance-libgraal-linux-x52-batch2" }
@@ -200,18 +185,18 @@ builds += [
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch1}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch1" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch2}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch2" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch3}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch3" }
-  ${x52.default-libgraal} ${bench-specjbb2005-forks}                        ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-libgraal-linux-x52" }
-  ${x52.default-libgraal} ${bench-specjbb2015-forks}                        ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-libgraal-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjbb2005-hwloc-forks}                  ${oraclejdk8} { name: "bench-forks-compiler-specjbb2005-libgraal-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjbb2015-hwloc-forks}                  ${oraclejdk8} { name: "bench-forks-compiler-specjbb2015-libgraal-linux-x52" }
 
   # JDK 11
   # jargraal
   ${x52.tmpfs10g} ${bench-dacapo-hwloc-forks}                        ${labsjdk11} { name: "bench-forks-compiler-dacapo-11-linux-x52" }
-  ${x52.tmpfs10g} ${bench-scala-dacapo-all-hwloc-forks}              ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch0}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch0" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch1}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch1" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch2}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch2" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch3}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch3" }
-  ${x52.default} ${bench-specjvm2008-Single-forks-batch4}            ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch4" }
+  ${x52.tmpfs10g} ${bench-scala-dacapo-hwloc-forks}                  ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-11-linux-x52" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch0}      ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch0" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch1}      ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch1" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch2}      ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch2" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch3}      ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch3" }
+  ${x52.default} ${bench-specjvm2008-Single-hwloc-forks-batch4}      ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-11-linux-x52-batch4" }
   ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch0}            ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch0" }
   ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch1}            ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch1" }
   ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks-batch2}            ${labsjdk11} { name: "bench-forks-compiler-renaissance-11-linux-x52-batch2" }
@@ -220,17 +205,17 @@ builds += [
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch1}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch1" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch2}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch2" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch3}     ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-11-linux-x52-batch3" }
-  ${x52.default} ${bench-specjbb2005-forks}                          ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52" }
-  ${x52.default} ${bench-specjbb2015-forks}                          ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52" }
+  ${x52.default} ${bench-specjbb2005-hwloc-forks}                    ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-11-linux-x52" }
+  ${x52.default} ${bench-specjbb2015-hwloc-forks}                    ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-11-linux-x52" }
 
   ## libgraal
   ${x52.tmpfs10g-libgraal} ${bench-dacapo-hwloc-forks}                      ${labsjdk11} { name: "bench-forks-compiler-dacapo-libgraal-11-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-all-hwloc-forks}            ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-libgraal-11-linux-x52" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch0}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch0" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch1}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch1" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch2}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch2" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch3}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch3" }
-  ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch4}          ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch4" }
+  ${x52.tmpfs10g-libgraal} ${bench-scala-dacapo-hwloc-forks}                ${labsjdk11} { name: "bench-forks-compiler-scala-dacapo-libgraal-11-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch0}    ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch0" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch1}    ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch1" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch2}    ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch2" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch3}    ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch3" }
+  ${x52.default-libgraal} ${bench-specjvm2008-Single-hwloc-forks-batch4}    ${labsjdk11} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-11-linux-x52-batch4" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch0}          ${labsjdk11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch0" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch1}          ${labsjdk11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch1" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks-batch2}          ${labsjdk11} { name: "bench-forks-compiler-renaissance-libgraal-11-linux-x52-batch2" }
@@ -239,6 +224,6 @@ builds += [
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch1}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch1" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch2}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch2" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch3}   ${labsjdk11} { name: "bench-forks-compiler-renaissance-legacy-libgraal-11-linux-x52-batch3" }
-  ${x52.default-libgraal} ${bench-specjbb2005-forks}                        ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-libgraal-11-linux-x52" }
-  ${x52.default-libgraal} ${bench-specjbb2015-forks}                        ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-libgraal-11-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjbb2005-hwloc-forks}                  ${labsjdk11} { name: "bench-forks-compiler-specjbb2005-libgraal-11-linux-x52" }
+  ${x52.default-libgraal} ${bench-specjbb2015-hwloc-forks}                  ${labsjdk11} { name: "bench-forks-compiler-specjbb2015-libgraal-11-linux-x52" }
 ]

@@ -41,7 +41,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 
 /**
@@ -79,10 +78,5 @@ public final class ThrowBytecodeExceptionNode extends ControlSinkNode implements
     public void setStateBefore(FrameState f) {
         updateUsages(stateBefore, f);
         stateBefore = f;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 }

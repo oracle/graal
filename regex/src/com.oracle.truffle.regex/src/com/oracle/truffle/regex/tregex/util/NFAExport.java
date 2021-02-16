@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -144,7 +145,7 @@ public final class NFAExport {
             case REGULAR:
                 return "circle";
             default:
-                throw new IllegalStateException();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -317,7 +318,7 @@ public final class NFAExport {
             case REGULAR:
                 return "state";
             default:
-                throw new IllegalStateException();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -389,7 +390,7 @@ public final class NFAExport {
     private String labelTransition(NFAStateTransition transition, int priority) {
         StringBuilder sb = new StringBuilder();
         if (!(transition.getTarget(forward).isFinalState(forward))) {
-            sb.append(transition.getTarget(forward).getCharSet());
+            sb.append(transition.getCodePointSet());
         }
         if (fullLabels) {
             sb.append(", p").append(priority).append(", ").append(transition.getGroupBoundaries());

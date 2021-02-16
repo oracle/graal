@@ -17,6 +17,8 @@ Open IntelliJ and go to **Preferences > Plugins > Browse Repositories**. Install
 * [Python Plugin](https://plugins.jetbrains.com/idea/plugin/631-python): python plugin
 * [Markdown Navigator](https://plugins.jetbrains.com/plugin/7896-markdown-navigator): markdown plugin
 
+Check that the bundled Ant plugin is enabled in **Preferences > Plugins > Installed** (you may get `Unknown artifact properties: ant-postprocessing.` errors in your project artifacts otherwise).
+
 Make sure you have [`mx`](https://github.com/graalvm/mx) installed and updated (`mx update`). Then, to initialize IntelliJ project files, go to the root of your project and invoke: `mx intellijinit`
 
 Open the folder of your freshly initialized project from IntelliJ (**IntelliJ IDEA > File > Open…**). All depending projects will be included automatically.

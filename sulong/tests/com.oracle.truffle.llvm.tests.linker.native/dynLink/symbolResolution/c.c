@@ -31,13 +31,13 @@
 #include <stdio.h>
 
 static void myprint_libc(char *str) {
-  printf("libC print: %s", str);
+    printf("libC print: %s", str);
 }
 
 void (*myprint)(char *) = myprint_libc;
 
 __attribute__((constructor)) static void beginC(void) {
-  myprint("ctor c\n");
-  myprint = myprint_libc;
-  myprint("ctor c\n");
+    myprint("ctor c\n");
+    myprint = myprint_libc;
+    myprint("ctor c\n");
 }

@@ -118,10 +118,10 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     private int nextDumpId() {
         int depth = previousInlineContext.size();
-        if (dumpIds.length < depth) {
-            dumpIds = Arrays.copyOf(dumpIds, depth);
+        if (dumpIds.length < depth + 1) {
+            dumpIds = Arrays.copyOf(dumpIds, depth + 1);
         }
-        return dumpIds[depth - 1]++;
+        return dumpIds[depth]++;
     }
 
     @Override
@@ -186,10 +186,9 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             try (DebugContext.Scope s = debug.sandbox("PrintingGraph", null)) {
                 // Finally, output the graph.
                 Map<Object, Object> properties = new HashMap<>();
-                properties.put("graph", graph.toString());
                 properties.put("scope", currentScopeName);
+                graph.getDebugProperties(properties);
                 if (graph instanceof StructuredGraph) {
-                    properties.put("compilationIdentifier", ((StructuredGraph) graph).compilationId());
                     try {
                         int size = NodeCostUtil.computeGraphSize((StructuredGraph) graph);
                         properties.put("node-cost graph size", size);
@@ -257,13 +256,13 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                     lastMethodOrGraph = o;
                 }
             }
-            if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
-                result.clear();
-                result.add("Graal Graphs");
-            }
             if (result.isEmpty()) {
                 result.add(graph.toString());
                 graphSeen = true;
+            }
+            // Truffle compilations don't have a standard inline context.
+            if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
+                result.clear();
             }
             // Reverse list such that inner method comes after outer method.
             Collections.reverse(result);

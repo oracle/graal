@@ -47,7 +47,8 @@ OPT_FLAGS=-mem2reg -globalopt -simplifycfg -constprop -instcombine -dse -loop-si
 
 LD_FLAGS+=$(EXTRA_LDFLAGS)
 
-CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.bitcode -fPIC $(EXTRA_CFLAGS)
+CPPFLAGS+=-I${VPATH}/include
+CFLAGS+=-gdwarf-5 -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.bitcode -fPIC $(EXTRA_CFLAGS)
 CXXFLAGS+=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE $(EXTRA_CXXFLAGS)
 
 DEPFLAGS = -MT $@ -MMD -MP -MF deps/$*.Td
@@ -55,7 +56,7 @@ POSTCOMPILE = @mv -f deps/$*.Td deps/$*.d && touch $@
 $(shell mkdir -p deps bin >/dev/null)
 
 ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 ORIGIN_TOKEN='@loader_path'
 LD_FLAGS+=-Wl,-sectcreate,__LLVM,__bundle,$< -Wl,-undefined,suppress -Wl,-flat_namespace -Wl,-install_name,@rpath/$(notdir $@)
 else
@@ -80,7 +81,7 @@ bin/%.bc: bin/%.noopt.bc
 	$(QUIETLY) $(OPT) -o $@ $+ ${OPT_FLAGS}
 
 bin/%.noopt.bc: src/%.c deps/%.d
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -c -emit-llvm -o $@ -I${VPATH}/include ${CFLAGS} ${DEPFLAGS} $<
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -c -emit-llvm -o $@ ${CPPFLAGS} ${CFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 bin/%.noopt.bc: libsulongxx/%.cpp deps/%.d

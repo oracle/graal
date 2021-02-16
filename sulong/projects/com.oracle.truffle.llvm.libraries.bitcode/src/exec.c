@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,37 +32,37 @@
 #include <unistd.h>
 
 int execl(const char *path, const char *arg0, ...) {
-  fprintf(stderr, "ERROR: execl is unsupported!\n");
-  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, arg0);
-  abort();
+    fprintf(stderr, "ERROR: execl is unsupported!\n");
+    fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, arg0);
+    abort();
 }
 int execle(const char *path, const char *arg0, ...) {
-  fprintf(stderr, "ERROR: execle is unsupported!\n");
-  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, arg0);
-  abort();
+    fprintf(stderr, "ERROR: execle is unsupported!\n");
+    fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, arg0);
+    abort();
 }
 int execlp(const char *file, const char *arg0, ...) {
-  fprintf(stderr, "ERROR: execlp is unsupported!\n");
-  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", file, arg0);
-  abort();
+    fprintf(stderr, "ERROR: execlp is unsupported!\n");
+    fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", file, arg0);
+    abort();
 }
 int execv(const char *path, char *const argv[]) {
-  fprintf(stderr, "ERROR: execv is unsupported!\n");
-  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, *argv);
-  abort();
+    fprintf(stderr, "ERROR: execv is unsupported!\n");
+    fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, *argv);
+    abort();
 }
 int execve(const char *path, char *const argv[], char *const envp[]) {
-  fprintf(stderr, "ERROR: execve is unsupported!\n");
-  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, *argv);
-  abort();
+    fprintf(stderr, "ERROR: execve is unsupported!\n");
+    fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, *argv);
+    abort();
 }
 int execvp(const char *file, char *const argv[]) {
-  fprintf(stderr, "ERROR: execvp is unsupported!\n");
-  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", file, *argv);
-  abort();
+    fprintf(stderr, "ERROR: execvp is unsupported!\n");
+    fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", file, *argv);
+    abort();
 }
 int fexecve(int fd, char *const argv[], char *const envp[]) {
-  fprintf(stderr, "ERROR: fexecve is unsupported!\n");
-  fprintf(stderr, "Tried to execute fd %d with arg0 '%s'\n", fd, *argv);
-  abort();
+    fprintf(stderr, "ERROR: fexecve is unsupported!\n");
+    fprintf(stderr, "Tried to execute fd %d with arg0 '%s'\n", fd, *argv);
+    abort();
 }

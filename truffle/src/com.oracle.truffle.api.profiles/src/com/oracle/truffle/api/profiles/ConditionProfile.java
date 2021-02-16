@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ public abstract class ConditionProfile extends Profile {
      */
     public static ConditionProfile createCountingProfile() {
         if (Profile.isProfilingEnabled()) {
-            return Counting.create();
+            return Counting.createLazyLoadClass();
         } else {
             return Disabled.INSTANCE;
         }
@@ -112,10 +112,21 @@ public abstract class ConditionProfile extends Profile {
      */
     public static ConditionProfile createBinaryProfile() {
         if (Profile.isProfilingEnabled()) {
-            return Binary.create();
+            return Binary.createLazyLoadClass();
         } else {
             return Disabled.INSTANCE;
         }
+    }
+
+    /**
+     * Creates a binary ConditionProfile using {@link #createBinaryProfile()}. This is a convenience
+     * method so it can be used as {@code @Cached ConditionProfile myProfile} instead of the much
+     * longer {@code @Cached("createBinaryProfile()") ConditionProfile myProfile}.
+     *
+     * @since 20.2
+     */
+    public static ConditionProfile create() {
+        return createBinaryProfile();
     }
 
     /**
@@ -205,6 +216,22 @@ public abstract class ConditionProfile extends Profile {
             }
         }
 
+        @Override
+        public void disable() {
+            if (this.trueCount == 0) {
+                this.trueCount = 1;
+            }
+            if (this.falseCount == 0) {
+                this.falseCount = 1;
+            }
+        }
+
+        @Override
+        public void reset() {
+            this.trueCount = 0;
+            this.falseCount = 0;
+        }
+
         int getTrueCount() {
             return trueCount;
         }
@@ -223,7 +250,7 @@ public abstract class ConditionProfile extends Profile {
         }
 
         /* Needed for lazy class loading. */
-        static ConditionProfile create() {
+        static ConditionProfile createLazyLoadClass() {
             return new Counting();
         }
     }
@@ -259,6 +286,18 @@ public abstract class ConditionProfile extends Profile {
             }
         }
 
+        @Override
+        public void disable() {
+            this.wasFalse = true;
+            this.wasTrue = true;
+        }
+
+        @Override
+        public void reset() {
+            this.wasFalse = false;
+            this.wasTrue = false;
+        }
+
         boolean wasTrue() {
             return wasTrue;
         }
@@ -273,7 +312,7 @@ public abstract class ConditionProfile extends Profile {
         }
 
         /* Needed for lazy class loading. */
-        static ConditionProfile create() {
+        static ConditionProfile createLazyLoadClass() {
             return new Binary();
         }
     }

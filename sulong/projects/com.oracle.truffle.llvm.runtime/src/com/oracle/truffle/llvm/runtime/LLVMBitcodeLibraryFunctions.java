@@ -46,7 +46,7 @@ public final class LLVMBitcodeLibraryFunctions {
             if (function == null) {
                 throw new LLVMLinkerException("Function not found: " + name);
             }
-            LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(function);
+            LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(function, new LLVMFunctionCode(function));
             callNode = DirectCallNode.create(descriptor.getFunctionCode().getLLVMIRFunctionSlowPath());
         }
 
@@ -61,7 +61,7 @@ public final class LLVMBitcodeLibraryFunctions {
             super(context, "sulong_eh_canCatch");
         }
 
-        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMPointer catchType) {
+        public int canCatch(LLVMStack stack, Object unwindHeader, LLVMPointer catchType) {
             return (int) execute(stack, unwindHeader, catchType.copy());
         }
     }

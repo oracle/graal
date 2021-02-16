@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * The parameters of a `workspace/didChangeWorkspaceFolders` notification.
  */
-public class DidChangeWorkspaceFoldersParams {
-
-    final JSONObject jsonData;
+public class DidChangeWorkspaceFoldersParams extends JSONBase {
 
     DidChangeWorkspaceFoldersParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -71,7 +69,7 @@ public class DidChangeWorkspaceFoldersParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 47 * hash + Objects.hashCode(this.getEvent());
+        hash = 53 * hash + Objects.hashCode(this.getEvent());
         return hash;
     }
 

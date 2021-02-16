@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,30 @@
  */
 package org.graalvm.polyglot.impl;
 
+import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
+import org.graalvm.polyglot.ResourceLimitEvent;
+import org.graalvm.polyglot.ResourceLimits;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
+import org.graalvm.polyglot.management.ExecutionEvent;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,6 +74,7 @@ import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.Instant;
@@ -62,33 +87,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import org.graalvm.collections.UnmodifiableEconomicSet;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.ResourceLimitEvent;
-import org.graalvm.polyglot.ResourceLimits;
-import org.graalvm.polyglot.PolyglotException.StackFrame;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.TypeLiteral;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.MessageTransport;
-import org.graalvm.polyglot.io.ProcessHandler;
-import org.graalvm.polyglot.management.ExecutionEvent;
 
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
@@ -112,7 +113,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract static class IOAccess {
         protected IOAccess() {
-            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.ProcessHandler.ProcessCommand.IOAccessImpl")) {
+            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.IOHelper.IOAccessImpl")) {
                 throw new AssertionError("Only one implementation of IOAccess allowed. " + getClass().getCanonicalName());
             }
         }
@@ -145,7 +146,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value newValue(Object value, AbstractValueImpl impl);
 
-        public abstract Source newSource(String language, Object impl);
+        public abstract Source newSource(Object impl);
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
 
@@ -178,6 +179,12 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isArrayAccessible(HostAccess access);
 
         public abstract boolean isListAccessible(HostAccess access);
+
+        public abstract boolean isBufferAccessible(HostAccess access);
+
+        public abstract boolean isIterableAccessible(HostAccess access);
+
+        public abstract boolean isIteratorAccessible(HostAccess access);
 
         public abstract Object getHostAccessImpl(HostAccess conf);
 
@@ -224,7 +231,7 @@ public abstract class AbstractPolyglotImpl {
     public final IOAccess getIO() {
         if (io == null) {
             try {
-                Class.forName(ProcessHandler.ProcessCommand.class.getName(), true, getClass().getClassLoader());
+                Class.forName("org.graalvm.polyglot.io.IOHelper", true, getClass().getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e);
             }
@@ -235,10 +242,9 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
-                    Object logHandlerOrStream,
-                    HostAccess conf);
+    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions,
+                    boolean boundEngine,
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
 
     public abstract void preInitializeEngine();
 
@@ -311,9 +317,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int getLength(Object impl);
 
-        public abstract CharSequence getCode(Object impl);
+        public abstract CharSequence getCharacters(Object impl);
 
-        public abstract CharSequence getCode(Object impl, int lineNumber);
+        public abstract CharSequence getCharacters(Object impl, int lineNumber);
 
         public abstract int getLineCount(Object impl);
 
@@ -350,6 +356,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean hasBytes(Object impl);
 
         public abstract String getMimeType(Object impl);
+
+        public abstract String getLanguage(Object impl);
 
     }
 
@@ -403,9 +411,13 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value eval(String language, Object sourceImpl);
 
+        public abstract Value parse(String language, Object sourceImpl);
+
         public abstract Engine getEngineImpl(Context sourceContext);
 
         public abstract void close(Context sourceContext, boolean interuptExecution);
+
+        public abstract boolean interrupt(Context sourceContext, Duration timeout);
 
         public abstract Value asValue(Object hostValue);
 
@@ -418,6 +430,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract Value getPolyglotBindings();
 
         public abstract void resetLimits();
+
     }
 
     public abstract static class AbstractEngineImpl {
@@ -449,6 +462,8 @@ public abstract class AbstractPolyglotImpl {
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader);
 
         public abstract String getImplementationName();
+
+        public abstract Set<Source> getCachedSources();
 
     }
 
@@ -489,6 +504,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract Throwable asHostException();
 
         public abstract SourceSection getSourceLocation();
+
+        public abstract boolean isResourceExhausted();
+
+        public abstract boolean isInterrupted();
 
     }
 
@@ -570,6 +589,42 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean removeArrayElement(Object receiver, long index);
 
         public abstract long getArraySize(Object receiver);
+
+        // region Buffer Methods
+
+        public boolean hasBufferElements(Object receiver) {
+            return false;
+        }
+
+        public abstract boolean isBufferWritable(Object receiver);
+
+        public abstract long getBufferSize(Object receiver);
+
+        public abstract byte readBufferByte(Object receiver, long byteOffset);
+
+        public abstract void writeBufferByte(Object receiver, long byteOffset, byte value);
+
+        public abstract short readBufferShort(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value);
+
+        public abstract int readBufferInt(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value);
+
+        public abstract long readBufferLong(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value);
+
+        public abstract float readBufferFloat(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value);
+
+        public abstract double readBufferDouble(Object receiver, ByteOrder order, long byteOffset);
+
+        public abstract void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value);
+
+        // endregion
 
         public boolean hasMembers(Object receiver) {
             return false;
@@ -748,6 +803,20 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean equalsImpl(Object receiver, Object obj);
 
         public abstract int hashCodeImpl(Object receiver);
+
+        public boolean hasIterator(Object receiver) {
+            return false;
+        }
+
+        public abstract Value getIterator(Object receiver);
+
+        public boolean isIterator(Object receiver) {
+            return false;
+        }
+
+        public abstract boolean hasIteratorNextElement(Object receiver);
+
+        public abstract Value getIteratorNextElement(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);
@@ -758,10 +827,12 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Value asValue(Object o);
 
-    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
+    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence);
 
-    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit);
+    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit);
 
     public abstract Context getLimitEventContext(Object impl);
+
+    public abstract FileSystem newDefaultFileSystem();
 
 }

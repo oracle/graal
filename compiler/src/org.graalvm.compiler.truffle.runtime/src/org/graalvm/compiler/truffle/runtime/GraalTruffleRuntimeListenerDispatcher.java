@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,11 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 
 import com.oracle.truffle.api.frame.Frame;
 
@@ -49,99 +50,98 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
 
     @Override
     public void onCompilationSplit(OptimizedDirectCallNode callNode) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationSplit(callNode);
-        }
+        invokeListeners((l) -> l.onCompilationSplit(callNode));
     }
 
     @Override
     public void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationSplitFailed(callNode, reason);
-        }
+        invokeListeners((l) -> l.onCompilationSplitFailed(callNode, reason));
     }
 
     @Override
-    public void onCompilationQueued(OptimizedCallTarget target) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationQueued(target);
-        }
+    public void onCompilationQueued(OptimizedCallTarget target, int tier) {
+        invokeListeners((l) -> l.onCompilationQueued(target, tier));
     }
 
     @Override
-    public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationDequeued(target, source, reason);
-        }
+    public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
+        invokeListeners((l) -> l.onCompilationDequeued(target, source, reason, tier));
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationFailed(target, reason, bailout, permanent);
-        }
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent, int tier) {
+        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent, tier));
     }
 
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationStarted(target);
-        }
+    public void onCompilationStarted(OptimizedCallTarget target, int tier) {
+        invokeListeners((l) -> l.onCompilationStarted(target, tier));
     }
 
     @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationTruffleTierFinished(target, inliningDecision, graph);
-        }
+        invokeListeners((l) -> l.onCompilationTruffleTierFinished(target, inliningDecision, graph));
     }
 
     @Override
     public void onCompilationGraalTierFinished(OptimizedCallTarget target, GraphInfo graph) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationGraalTierFinished(target, graph);
-        }
+        invokeListeners((l) -> l.onCompilationGraalTierFinished(target, graph));
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationSuccess(target, inliningDecision, graph, result);
-        }
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
+        invokeListeners((l) -> l.onCompilationSuccess(target, inliningDecision, graph, result, tier));
     }
 
     @Override
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationInvalidated(target, source, reason);
-        }
+        invokeListeners((l) -> l.onCompilationInvalidated(target, source, reason));
     }
 
     @Override
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationDeoptimized(target, frame);
-        }
+        invokeListeners((l) -> l.onCompilationDeoptimized(target, frame));
     }
 
     @Override
     public void onShutdown() {
-        for (GraalTruffleRuntimeListener l : this) {
-            l.onShutdown();
-        }
+        invokeListeners((l) -> l.onShutdown());
     }
 
     @Override
     public void onEngineClosed(EngineData runtimeData) {
+        invokeListeners((l) -> l.onEngineClosed(runtimeData));
+    }
+
+    private void invokeListeners(Consumer<? super GraalTruffleRuntimeListener> action) {
+        Throwable exception = null;
         for (GraalTruffleRuntimeListener l : this) {
-            l.onEngineClosed(runtimeData);
+            try {
+                action.accept(l);
+            } catch (ThreadDeath t) {
+                throw t;
+            } catch (Throwable t) {
+                if (exception == null) {
+                    exception = t;
+                } else {
+                    exception.addSuppressed(t);
+                }
+            }
         }
+        if (exception != null) {
+            throw sthrow(RuntimeException.class, exception);
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <E extends Throwable> RuntimeException sthrow(Class<E> type, Throwable ex) throws E {
+        throw (E) ex;
     }
 
     // Conversion from TruffleCompilerListener events to GraalTruffleRuntimeListener events
 
     @Override
-    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph) {
+    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph) {
         onCompilationTruffleTierFinished((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph);
     }
 
@@ -151,12 +151,18 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph, CompilationResultInfo result) {
-        onCompilationSuccess((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph, result);
+    public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo result, int tier) {
+        onCompilationSuccess((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph, result, tier);
     }
 
     @Override
-    public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
-        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout);
+    public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier);
+    }
+
+    @Override
+    public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
+        onCompilationQueued((OptimizedCallTarget) compilable, tier);
+        onCompilationStarted((OptimizedCallTarget) compilable, tier);
     }
 }

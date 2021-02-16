@@ -27,6 +27,9 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 /**
@@ -93,14 +96,31 @@ public abstract class WithExceptionNode extends ControlSplitNode {
     }
 
     /**
-     * Replace this node with a variant with the same semantics but without an exception edge.
+     * Converts this node into a variant with the same semantics but without an exception edge. The
+     * default implementation does not change the node class, but instead only marks the exception
+     * path as unused. A later lowering of the node needs to take care of the actual removal of the
+     * exception path, e.g., by lowering into a {@link ForeignCallWithExceptionNode}.
      */
-    public abstract FixedNode replaceWithNonThrowing();
+    public FixedNode replaceWithNonThrowing() {
+        killExceptionEdge();
+        AbstractBeginNode newExceptionEdge = graph().add(new UnreachableBeginNode());
+        newExceptionEdge.setNext(graph().add(new UnreachableControlSinkNode()));
+        setExceptionEdge(newExceptionEdge);
+        return this;
+    }
 
     /**
      * Create a begin node appropriate as this node's next successor. In particular, if this node is
      * a memory kill, this should create a {@link KillingBeginNode} or {@link MultiKillingBeginNode}
      * with the appropriate location identities.
      */
-    public abstract AbstractBeginNode createNextBegin();
+    public AbstractBeginNode createNextBegin() {
+        if (this instanceof SingleMemoryKill) {
+            return KillingBeginNode.create(((SingleMemoryKill) this).getKilledLocationIdentity());
+        } else if (this instanceof MultiMemoryKill) {
+            return MultiKillingBeginNode.create(((MultiMemoryKill) this).getKilledLocationIdentities());
+        } else {
+            return new BeginNode();
+        }
+    }
 }

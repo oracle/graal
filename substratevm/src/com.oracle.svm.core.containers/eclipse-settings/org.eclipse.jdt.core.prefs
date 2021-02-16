@@ -1,0 +1,3 @@
+org.eclipse.jdt.core.compiler.doc.comment.support=disabled
+org.eclipse.jdt.core.compiler.problem.missingOverrideAnnotationForInterfaceMethodImplementation=disabled
+org.eclipse.jdt.core.compiler.problem.reportMethodCanBeStatic=ignore

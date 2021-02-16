@@ -25,7 +25,6 @@
 package com.oracle.svm.core.option;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -40,9 +39,9 @@ import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionType;
@@ -114,8 +113,8 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
     public OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
-        Collection<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
-        List<org.graalvm.options.OptionDescriptor> graalvmDescriptors = new ArrayList<>(descriptors.size());
+        Iterable<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
+        List<org.graalvm.options.OptionDescriptor> graalvmDescriptors = new ArrayList<>();
         for (OptionDescriptor descriptor : descriptors) {
             if (classes.contains(getOptionClass(descriptor))) {
                 org.graalvm.options.OptionDescriptor.Builder builder = org.graalvm.options.OptionDescriptor.newBuilder(asGraalVMOptionKey(descriptor), descriptor.getName());
@@ -125,6 +124,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
                     helpMsg += '.';
                 }
                 builder.help(helpMsg);
+                builder.deprecated(descriptor.isDeprecated());
                 graalvmDescriptors.add(builder.build());
             }
         }

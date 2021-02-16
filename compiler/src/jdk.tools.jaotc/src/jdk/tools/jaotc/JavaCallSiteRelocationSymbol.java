@@ -25,6 +25,8 @@
 
 package jdk.tools.jaotc;
 
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
+
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.Symbol;
 import jdk.vm.ci.code.site.Call;
@@ -136,7 +138,7 @@ final class JavaCallSiteRelocationSymbol extends CallSiteRelocationSymbol {
     private static String getResolveSymbolName(CompiledMethodInfo mi, Call call) {
         String resolveSymbolName;
         if (CallInfo.isStaticCall(call)) {
-            assert mi.hasMark(call, MarkId.INVOKESTATIC);
+            assert mi.hasMark(call, HotSpotMarkId.INVOKESTATIC);
             resolveSymbolName = BinaryContainer.getResolveStaticEntrySymbolName();
         } else if (CallInfo.isSpecialCall(call)) {
             resolveSymbolName = BinaryContainer.getResolveOptVirtualEntrySymbolName();

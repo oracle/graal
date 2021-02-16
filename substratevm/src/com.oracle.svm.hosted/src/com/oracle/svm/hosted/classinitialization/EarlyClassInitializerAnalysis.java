@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.graph.Graph;
@@ -100,7 +101,7 @@ class EarlyClassInitializerAnalysis {
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendInlineInvokePlugin(new AbortOnRecursiveInliningPlugin());
         plugins.setClassInitializationPlugin(new AbortOnUnitializedClassPlugin());
-        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess()));
+        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess(), originalProviders.getSnippetReflection()));
 
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
         context = new HighTierContext(originalProviders, null, OptimisticOptimizations.NONE);
@@ -158,7 +159,7 @@ class EarlyClassInitializerAnalysis {
     }
 }
 
-class ClassInitalizerHasSideEffectsException extends RuntimeException {
+class ClassInitalizerHasSideEffectsException extends GraalBailoutException {
     private static final long serialVersionUID = 1L;
 
     ClassInitalizerHasSideEffectsException(String message) {

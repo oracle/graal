@@ -55,7 +55,7 @@ char pattern[PATTERN_LENGTH + 1];
 const char* characters =
   "!@#$%^&*()_[]{}~@^\\ qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890\x7f";
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 10;
 }
 
@@ -80,7 +80,7 @@ void benchmarkSetupEach() {
   pattern[PATTERN_LENGTH] = (char) 0x00;
 }
 
-void benchmarkTeardownEach() {
+void benchmarkTeardownEach(char* outputFile) {
 }
 
 int benchmarkRun() {

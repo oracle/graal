@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,12 +50,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ShortCircuitOrNodeTest extends GraalCompilerTest {
 
-    static boolean shortCircuitOr(boolean b1, boolean b2) {
+    public static boolean shortCircuitOr(boolean b1, boolean b2) {
         return b1 || b2;
     }
 
-    @Override
-    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
+    public static void registerShortCircuitOrPlugin(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, ShortCircuitOrNodeTest.class);
         r.register2("shortCircuitOr", boolean.class, boolean.class, new InvocationPlugin() {
             @Override
@@ -67,6 +66,11 @@ public class ShortCircuitOrNodeTest extends GraalCompilerTest {
                 return true;
             }
         });
+    }
+
+    @Override
+    public void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
+        registerShortCircuitOrPlugin(invocationPlugins);
         super.registerInvocationPlugins(invocationPlugins);
     }
 

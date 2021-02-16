@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,17 +43,19 @@ package com.oracle.truffle.api.object.dsl.test;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.dsl.Layout;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ImplicitCastTest {
+    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface NoCastLayout {
 
         String LONG_VALUE_IDENTIFIER = "long-value";
@@ -71,7 +73,8 @@ public class ImplicitCastTest {
 
     }
 
-    @Layout(implicitCastIntToLong = true, implicitCastIntToDouble = true)
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout(implicitCastIntToLong = true, implicitCastIntToDouble = true)
     public interface CastLayout {
 
         String LONG_VALUE_IDENTIFIER = "long-value";
@@ -108,7 +111,7 @@ public class ImplicitCastTest {
     public void testCanAssignIntToLong() {
         final DynamicObject object = CAST_LAYOUT.createCast(14, 14.2);
         final Shape shapeBefore = object.getShape();
-        assertTrue(object.set(CastLayout.LONG_VALUE_IDENTIFIER, 14));
+        assertTrue(LIBRARY.putIfPresent(object, CastLayout.LONG_VALUE_IDENTIFIER, 14));
         assertEquals(shapeBefore, object.getShape());
     }
 
@@ -116,7 +119,7 @@ public class ImplicitCastTest {
     public void testCanAssignIntToDouble() {
         final DynamicObject object = CAST_LAYOUT.createCast(14, 14.2);
         final Shape shapeBefore = object.getShape();
-        assertTrue(object.set(CastLayout.DOUBLE_VALUE_IDENTIFIER, 14));
+        assertTrue(LIBRARY.putIfPresent(object, CastLayout.DOUBLE_VALUE_IDENTIFIER, 14));
         assertEquals(shapeBefore, object.getShape());
     }
 

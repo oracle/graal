@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,8 +59,11 @@ public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
         return str.length();
     }
 
+    /**
+     * @param value @NodeChild
+     * @see LLVMPolyglotGetStringSize
+     */
     @Fallback
-    @SuppressWarnings("unused")
     public long fallback(Object value) {
         throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
     }

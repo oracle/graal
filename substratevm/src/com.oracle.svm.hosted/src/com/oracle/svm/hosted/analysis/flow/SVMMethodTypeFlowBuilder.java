@@ -25,11 +25,14 @@
 
 package com.oracle.svm.hosted.analysis.flow;
 
-import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -37,15 +40,21 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
+import com.oracle.graal.pointsto.flow.SourceTypeFlow;
+import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOf;
+import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
@@ -63,8 +72,8 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     }
 
     @Override
-    public void registerUsedElements(EconomicMap<JavaConstant, BytecodePosition> objectConstants) {
-        super.registerUsedElements(objectConstants);
+    public void registerUsedElements(boolean registerEmbeddedRoots) {
+        super.registerUsedElements(registerEmbeddedRoots);
 
         for (Node n : graph.getNodes()) {
             if (n instanceof ConstantNode) {
@@ -107,20 +116,21 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     @Override
     protected void checkUnsafeOffset(ValueNode base, ValueNode offsetNode) {
         if (!NativeImageOptions.ThrowUnsafeOffsetErrors.getValue()) {
-            /* Skip the checks bellow. */
+            /* Skip the checks below. */
             return;
         }
 
         /*
-         * Offset fields used in unsafe operations need value recomputation. Check that they are
-         * properly intercepted. Detection of offset fields that need value re-computation is best
-         * effort. For some node types (e.g., SignExtendNode, LoadFieldNode, InvokeNode, AddNode,
-         * ParameterNode, AndNode, ValueProxyNode, LoadIndexedNode) that can be used as an offset in
-         * an unsafe operation we cannot determine if the value was properly intercepted or not by
-         * simply looking at the node itself.
+         * Offset static fields that are initialized at build time and used in unsafe operations
+         * need value recomputation. Check that they are properly intercepted. Detection of offset
+         * fields that need value re-computation is best effort. For some node types (e.g.,
+         * SignExtendNode, LoadFieldNode, InvokeNode, AddNode, ParameterNode, AndNode,
+         * ValueProxyNode, LoadIndexedNode) that can be used as an offset in an unsafe operation we
+         * cannot determine if the value was properly intercepted or not by simply looking at the
+         * node itself.
          *
          * Determining if an offset that comes from a ConstantNode was properly intercepted is not
-         * reliable . First the canonicalization in UnsafeAccessNode tries to replace the unsafe
+         * reliable. First the canonicalization in UnsafeAccessNode tries to replace the unsafe
          * access with a field access when the offset is a constant. Thus, we don't actually see the
          * unsafe access node. Second if the field is intercepted but RecomputeFieldValue.isFinal is
          * set to true then the recomputed value is constant folded, i.e., there is no load of the
@@ -135,8 +145,9 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         if (offsetNode instanceof LoadFieldNode) {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
-            if (!field.getDeclaringClass().unsafeFieldsRecomputed() &&
+            if (field.isStatic() &&
                             !getHostVM().getClassInitializationSupport().shouldInitializeAtRuntime(field.getDeclaringClass()) &&
+                            !field.getDeclaringClass().unsafeFieldsRecomputed() &&
                             !(field.wrapped instanceof ComputedValueField) &&
                             !(base.isConstant() && base.asConstant().isDefaultForKind())) {
                 String message = String.format("Field %s is used as an offset in an unsafe operation, but no value recomputation found.%n Wrapped field: %s", field, field.wrapped);
@@ -158,5 +169,40 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             }
         }
 
+    }
+
+    @Override
+    protected void delegateNodeProcessing(FixedNode n, MethodTypeFlowBuilder.TypeFlowsOfNodes state) {
+        if (n instanceof LoadVMThreadLocalNode) {
+            LoadVMThreadLocalNode node = (LoadVMThreadLocalNode) n;
+            Stamp stamp = node.stamp(NodeView.DEFAULT);
+            if (stamp instanceof ObjectStamp) {
+                ObjectStamp objStamp = (ObjectStamp) stamp;
+                VMError.guarantee(!objStamp.isEmpty());
+
+                TypeFlowBuilder<?> result;
+                if (objStamp.isExactType()) {
+                    /* The node has an exact type. Create a source type flow. */
+                    result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
+                        SourceTypeFlow src = new SourceTypeFlow(node, TypeState.forExactType(bb, (AnalysisType) objStamp.type(), !objStamp.nonNull()));
+                        methodFlow.addSource(src);
+                        return src;
+                    });
+                } else {
+                    /* Use a type state which consists of the entire node's type hierarchy. */
+                    AnalysisType type = (AnalysisType) (objStamp.type() == null ? bb.getObjectType() : objStamp.type());
+                    result = TypeFlowBuilder.create(bb, node, ProxyTypeFlow.class, () -> {
+                        ProxyTypeFlow proxy = new ProxyTypeFlow(node, type.getTypeFlow(bb, false));
+                        methodFlow.addMiscEntry(proxy);
+                        return proxy;
+                    });
+                }
+                state.add(node, result);
+            }
+
+        } else if (n instanceof SubstrateArraysCopyOf) {
+            SubstrateArraysCopyOf node = (SubstrateArraysCopyOf) n;
+            processArraysCopyOf(n, node.getOriginal(), node.getNewArrayType(), state);
+        }
     }
 }

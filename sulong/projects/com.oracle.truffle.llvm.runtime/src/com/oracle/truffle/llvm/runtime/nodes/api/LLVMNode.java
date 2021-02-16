@@ -35,10 +35,12 @@ import java.util.Arrays;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -47,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @TypeSystemReference(LLVMTypes.class)
@@ -193,12 +195,13 @@ public abstract class LLVMNode extends Node {
         if (CompilerDirectives.inCompiledCode() && language.getNoDerefHandleAssumption().isValid()) {
             return false;
         }
-        return LLVMNativeMemory.isDerefHandleMemory(addr);
+        return LLVMHandleMemoryBase.isDerefHandleMemory(addr);
     }
 
     /**
      * Get the closest parent of {@code node} with the given type, or {@code null} is no node in the
-     * parent chain has the given type.
+     * parent chain has the given type. This method will also look into wrapped parents, returning
+     * the delegate node if it has the given type.
      */
     public static <T extends Node> T getParent(Node node, Class<T> clazz) {
         Node current = node;
@@ -206,8 +209,18 @@ public abstract class LLVMNode extends Node {
             if (clazz.isInstance(current)) {
                 return clazz.cast(current);
             }
+            if (current instanceof WrapperNode) {
+                Node delegate = ((WrapperNode) current).getDelegateNode();
+                if (clazz.isInstance(delegate)) {
+                    return clazz.cast(delegate);
+                }
+            }
             current = current.getParent();
         }
         return null;
+    }
+
+    public static Assumption singleContextAssumption() {
+        return LLVMLanguage.getLanguage().singleContextAssumption;
     }
 }

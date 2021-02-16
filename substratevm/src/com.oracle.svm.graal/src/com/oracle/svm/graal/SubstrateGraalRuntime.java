@@ -32,12 +32,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
-import com.oracle.svm.core.util.Replaced;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
 
-public class SubstrateGraalRuntime implements GraalRuntime, RuntimeProvider, Replaced {
+public class SubstrateGraalRuntime implements GraalRuntime, RuntimeProvider {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateGraalRuntime() {

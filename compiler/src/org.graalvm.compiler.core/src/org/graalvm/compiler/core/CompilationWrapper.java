@@ -173,135 +173,182 @@ public abstract class CompilationWrapper<T> {
      */
     protected abstract DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues options, PrintStream logStream);
 
+    /**
+     * Entry point for handling a compilation failure.
+     *
+     * A subclass can use this to implement control over logging/dumping. This is important for
+     * example when an embedder wants to prevent flooding logging mechanisms in the embedding
+     * environment.
+     *
+     * @return the value returned by {@code failure.handle()}
+     */
+    protected T onCompilationFailure(Failure failure) {
+        return failure.handle(false);
+    }
+
+    /**
+     * Call back for {@linkplain #handle(boolean) handling} a compilation failure.
+     */
+    public final class Failure {
+        /**
+         * The cause of the failure.
+         */
+        public final Throwable cause;
+
+        private final DebugContext debug;
+
+        Failure(Throwable cause, DebugContext debug) {
+            this.cause = cause;
+            this.debug = debug;
+        }
+
+        /**
+         * Handles the compilation failure.
+         *
+         * @param silent suppresses all logging and dumping iff {@code true}
+         * @return a value representing the result of the failed compilation (may be {@code null})
+         */
+        public T handle(boolean silent) {
+            if (silent) {
+                return handleException(cause);
+            }
+            return handleFailure(debug, cause);
+        }
+    }
+
     @SuppressWarnings("try")
     public final T run(DebugContext initialDebug) {
         try {
             return performCompilation(initialDebug);
         } catch (Throwable cause) {
-            OptionValues initialOptions = initialDebug.getOptions();
+            return onCompilationFailure(new Failure(cause, initialDebug));
+        }
+    }
 
-            synchronized (CompilationFailureAction) {
-                // Serialize all compilation failure handling.
-                // This prevents retry compilation storms and interleaving
-                // of compilation exception messages.
-                // It also allows for reliable testing of CompilationWrapper
-                // by avoiding a race whereby retry compilation output from a
-                // forced crash (i.e., use of GraalCompilerOptions.CrashAt)
-                // is truncated.
+    private T handleFailure(DebugContext initialDebug, Throwable cause) {
+        OptionValues initialOptions = initialDebug.getOptions();
 
-                ExceptionAction action = lookupAction(initialOptions, cause);
+        synchronized (CompilationFailureAction) {
+            // Serialize all compilation failure handling.
+            // This prevents retry compilation storms and interleaving
+            // of compilation exception messages.
+            // It also allows for reliable testing of CompilationWrapper
+            // by avoiding a race whereby retry compilation output from a
+            // forced crash (i.e., use of GraalCompilerOptions.CrashAt)
+            // is truncated.
 
-                action = adjustAction(initialOptions, action);
+            ExceptionAction action = lookupAction(initialOptions, cause);
 
-                if (action == ExceptionAction.Silent) {
-                    return handleException(cause);
-                }
+            action = adjustAction(initialOptions, action);
 
-                if (action == ExceptionAction.Print) {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    try (PrintStream ps = new PrintStream(baos)) {
-                        ps.printf("%s: Compilation of %s failed: ", Thread.currentThread(), this);
-                        cause.printStackTrace(ps);
-                        ps.printf("To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
-                                        CompilationFailureAction.getName(), ExceptionAction.Silent,
-                                        CompilationFailureAction.getName(), ExceptionAction.Silent);
-                        ps.printf("To capture more information for diagnosing or reporting a compilation failure, " +
-                                        "set %s to %s or %s (e.g., -Dgraal.%s=%s).%n",
-                                        CompilationFailureAction.getName(), ExceptionAction.Diagnose,
-                                        ExceptionAction.ExitVM,
-                                        CompilationFailureAction.getName(), ExceptionAction.Diagnose);
-                    }
-                    TTY.print(baos.toString());
-                    return handleException(cause);
-                }
+            if (action == ExceptionAction.Silent) {
+                return handleException(cause);
+            }
 
-                // action is Diagnose or ExitVM
-
-                if (Dump.hasBeenSet(initialOptions)) {
-                    // If dumping is explicitly enabled, Graal is being debugged
-                    // so don't interfere with what the user is expecting to see.
-                    return handleException(cause);
-                }
-
-                File dumpPath = null;
-                try {
-                    String dir = this.outputDirectory.getPath();
-                    if (dir != null) {
-                        String dumpName = PathUtilities.sanitizeFileName(toString());
-                        dumpPath = new File(dir, dumpName);
-                        dumpPath.mkdirs();
-                        if (!dumpPath.exists()) {
-                            TTY.println("Warning: could not create diagnostics directory " + dumpPath);
-                            dumpPath = null;
-                        }
-                    }
-                } catch (Throwable t) {
-                    TTY.println("Warning: could not create Graal diagnostic directory");
-                    t.printStackTrace(TTY.out);
-                }
-
-                String message;
+            if (action == ExceptionAction.Print) {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 try (PrintStream ps = new PrintStream(baos)) {
-                    // This output is used by external tools to detect compilation failures.
-                    ps.println("[[[Graal compilation failure]]]");
-
-                    ps.printf("%s: Compilation of %s failed:%n", Thread.currentThread(), this);
+                    ps.printf("%s: Compilation of %s failed: ", Thread.currentThread(), this);
                     cause.printStackTrace(ps);
                     ps.printf("To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
                                     CompilationFailureAction.getName(), ExceptionAction.Silent,
                                     CompilationFailureAction.getName(), ExceptionAction.Silent);
-                    ps.printf("To print a message for a compilation failure without retrying the compilation, " +
-                                    "set %s to %s (e.g., -Dgraal.%s=%s).%n",
-                                    CompilationFailureAction.getName(), ExceptionAction.Print,
-                                    CompilationFailureAction.getName(), ExceptionAction.Print);
-                    if (dumpPath != null) {
-                        ps.println("Retrying compilation of " + this);
-                    } else {
-                        ps.println("Not retrying compilation of " + this + " as the dump path could not be created.");
+                    ps.printf("To capture more information for diagnosing or reporting a compilation failure, " +
+                                    "set %s to %s or %s (e.g., -Dgraal.%s=%s).%n",
+                                    CompilationFailureAction.getName(), ExceptionAction.Diagnose,
+                                    ExceptionAction.ExitVM,
+                                    CompilationFailureAction.getName(), ExceptionAction.Diagnose);
+                }
+                TTY.print(baos.toString());
+                return handleException(cause);
+            }
+
+            // action is Diagnose or ExitVM
+
+            if (Dump.hasBeenSet(initialOptions)) {
+                // If dumping is explicitly enabled, Graal is being debugged
+                // so don't interfere with what the user is expecting to see.
+                return handleException(cause);
+            }
+
+            File dumpPath = null;
+            try {
+                String dir = this.outputDirectory.getPath();
+                if (dir != null) {
+                    String dumpName = PathUtilities.sanitizeFileName(toString());
+                    dumpPath = new File(dir, dumpName);
+                    dumpPath.mkdirs();
+                    if (!dumpPath.exists()) {
+                        TTY.println("Warning: could not create diagnostics directory " + dumpPath);
+                        dumpPath = null;
                     }
-                    message = baos.toString();
                 }
+            } catch (Throwable t) {
+                TTY.println("Warning: could not create Graal diagnostic directory");
+                t.printStackTrace(TTY.out);
+            }
 
-                TTY.print(message);
-                if (dumpPath == null) {
-                    return handleException(cause);
+            String message;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (PrintStream ps = new PrintStream(baos)) {
+                // This output is used by external tools to detect compilation failures.
+                ps.println("[[[Graal compilation failure]]]");
+
+                ps.printf("%s: Compilation of %s failed:%n", Thread.currentThread(), this);
+                cause.printStackTrace(ps);
+                ps.printf("To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                                CompilationFailureAction.getName(), ExceptionAction.Silent,
+                                CompilationFailureAction.getName(), ExceptionAction.Silent);
+                ps.printf("To print a message for a compilation failure without retrying the compilation, " +
+                                "set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                                CompilationFailureAction.getName(), ExceptionAction.Print,
+                                CompilationFailureAction.getName(), ExceptionAction.Print);
+                if (dumpPath != null) {
+                    ps.println("Retrying compilation of " + this);
+                } else {
+                    ps.println("Not retrying compilation of " + this + " as the dump path could not be created.");
                 }
+                message = baos.toString();
+            }
 
-                File retryLogFile = new File(dumpPath, "retry.log");
-                try (PrintStream ps = new PrintStream(new FileOutputStream(retryLogFile))) {
-                    ps.print(message);
-                } catch (IOException ioe) {
-                    TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
-                }
+            TTY.print(message);
+            if (dumpPath == null) {
+                return handleException(cause);
+            }
 
-                OptionValues retryOptions = new OptionValues(initialOptions,
-                                Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
-                                MethodFilter, null,
-                                DumpPath, dumpPath.getPath(),
-                                TrackNodeSourcePosition, true);
+            File retryLogFile = new File(dumpPath, "retry.log");
+            try (PrintStream ps = new PrintStream(new FileOutputStream(retryLogFile))) {
+                ps.print(message);
+            } catch (IOException ioe) {
+                TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
+            }
 
-                ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
-                PrintStream ps = new PrintStream(logBaos);
-                try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
-                    T res = performCompilation(retryDebug);
-                    ps.println("There was no exception during retry.");
-                    maybeExitVM(action);
-                    return res;
+            OptionValues retryOptions = new OptionValues(initialOptions,
+                            Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
+                            MethodFilter, null,
+                            DumpPath, dumpPath.getPath(),
+                            TrackNodeSourcePosition, true);
+
+            ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
+            PrintStream ps = new PrintStream(logBaos);
+            try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
+                T res = performCompilation(retryDebug);
+                ps.println("There was no exception during retry.");
+                maybeExitVM(action);
+                return res;
+            } catch (Throwable e) {
+                ps.println("Exception during retry:");
+                e.printStackTrace(ps);
+                // Failures during retry are silent
+                T res = handleException(cause);
+                maybeExitVM(action);
+                return res;
+            } finally {
+                ps.close();
+                try (FileOutputStream fos = new FileOutputStream(retryLogFile, true)) {
+                    fos.write(logBaos.toByteArray());
                 } catch (Throwable e) {
-                    ps.println("Exception during retry:");
-                    e.printStackTrace(ps);
-                    // Failures during retry are silent
-                    T res = handleException(cause);
-                    maybeExitVM(action);
-                    return res;
-                } finally {
-                    ps.close();
-                    try (FileOutputStream fos = new FileOutputStream(retryLogFile, true)) {
-                        fos.write(logBaos.toByteArray());
-                    } catch (Throwable e) {
-                        TTY.printf("Error writing to %s: %s%n", retryLogFile, e);
-                    }
+                    TTY.printf("Error writing to %s: %s%n", retryLogFile, e);
                 }
             }
         }

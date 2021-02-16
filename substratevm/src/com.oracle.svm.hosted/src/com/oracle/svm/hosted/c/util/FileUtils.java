@@ -31,8 +31,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 
 public class FileUtils {
 
@@ -65,6 +75,57 @@ public class FileUtils {
             return result;
         } catch (IOException ex) {
             throw shouldNotReachHere(ex);
+        }
+    }
+
+    public static Process executeCommand(String... args) throws IOException, InterruptedException {
+        return executeCommand(Arrays.asList(args));
+    }
+
+    public static Process executeCommand(List<String> args) throws IOException, InterruptedException {
+        ProcessBuilder command = prepareCommand(args, null).redirectErrorStream(true);
+
+        traceCommand(command);
+
+        Process process = command.start();
+
+        try (InputStream inputStream = process.getInputStream()) {
+            traceCommandOutput(readAllLines(inputStream));
+        }
+
+        process.waitFor();
+
+        return process;
+    }
+
+    public static ProcessBuilder prepareCommand(List<String> args, Path commandDir) throws IOException {
+        ProcessBuilder command = new ProcessBuilder().command(args);
+
+        Path tempDir;
+        if (commandDir != null) {
+            tempDir = commandDir;
+        } else {
+            Path temp = ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory();
+            tempDir = temp.resolve(Paths.get(args.get(0)).getFileName());
+        }
+        Files.createDirectories(tempDir);
+        command.directory(tempDir.toFile());
+
+        return command;
+    }
+
+    public static void traceCommand(ProcessBuilder command) {
+        if (SubstrateOptions.TraceNativeToolUsage.getValue()) {
+            String commandLine = SubstrateUtil.getShellCommandString(command.command(), false);
+            System.out.printf(">> %s%n", commandLine);
+        }
+    }
+
+    public static void traceCommandOutput(List<String> lines) {
+        if (SubstrateOptions.TraceNativeToolUsage.getValue()) {
+            for (String line : lines) {
+                System.out.printf("># %s%n", line);
+            }
         }
     }
 }

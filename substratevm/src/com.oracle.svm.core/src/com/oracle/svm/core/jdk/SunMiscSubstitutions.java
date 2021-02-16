@@ -29,12 +29,12 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.security.ProtectionDomain;
 import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -121,50 +121,32 @@ final class Target_Unsafe_Core {
 
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        MemoryUtil.copyConjointMemoryAtomic(
-                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes));
+        MemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copyMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        MemoryUtil.copyConjointMemoryAtomic(
-                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes));
+        MemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        MemoryUtil.copyConjointSwap(
-                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
+        MemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
     }
 
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void setMemory(Object destBase, long destOffset, long bytes, byte bvalue) {
-        MemoryUtil.fillToMemoryAtomic(
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes), bvalue);
+        MemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void setMemory0(Object destBase, long destOffset, long bytes, byte bvalue) {
-        MemoryUtil.fillToMemoryAtomic(
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes), bvalue);
+        MemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
     }
 
     @Substitute
@@ -313,9 +295,12 @@ final class Target_Unsafe_Core {
     @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private native int addressSize0();
 
-    @Delete
+    @Substitute
+    @SuppressWarnings("unused")
     @TargetElement(onlyWith = JDK11OrLater.class)
-    private native Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain);
+    private Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
+        throw VMError.unsupportedFeature("Target_Unsafe_Core.defineClass0(String, byte[], int, int, ClassLoader, ProtectionDomain)");
+    }
 
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
@@ -383,6 +368,48 @@ final class Target_jdk_internal_perf_PerfCounter {
     @Substitute
     public void add(@SuppressWarnings("unused") long var1) {
     }
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "Perf")
+final class Target_jdk_internal_perf_Perf {
+
+    /*
+     * The Perf class is not supported. We are defensive and also handle native methods by marking
+     * them as deleted. We do not want to fail with a linking error.
+     */
+
+    @Delete
+    private native ByteBuffer attach(String user, int lvmid, int mode);
+
+    @Delete
+    private native void detach(ByteBuffer bb);
+
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private ByteBuffer createLong(String name, int variability, int units, long value) {
+        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.createLong(String, int, int, long)");
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength) {
+        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.createByteArray(String, int, int, byte[], int)");
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private long highResCounter() {
+        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.highResCounter()");
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private long highResFrequency() {
+        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.highResFrequency()");
+    }
+
+    @Delete
+    private static native void registerNatives();
 }
 
 @TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "SharedSecrets")

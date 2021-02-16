@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.graal.snippets.DeoptTester;
@@ -49,11 +48,6 @@ public final class DeoptTestNode extends AbstractStateSplit implements Lowerable
 
     public DeoptTestNode() {
         super(TYPE, StampFactory.forVoid());
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

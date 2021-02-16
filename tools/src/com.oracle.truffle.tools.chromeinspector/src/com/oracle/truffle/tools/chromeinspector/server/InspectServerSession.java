@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,7 +68,7 @@ public final class InspectServerSession implements MessageEndpoint {
     private volatile MessageEndpoint messageEndpoint;
     private volatile JSONMessageListener jsonMessageListener;
     private volatile CommandProcessThread processThread;
-    private Runnable onClose;
+    private volatile Runnable onClose;
 
     private InspectServerSession(RuntimeDomain runtime, DebuggerDomain debugger, ProfilerDomain profiler,
                     InspectorExecutionContext context, ReadWriteLock domainLock) {
@@ -91,9 +91,32 @@ public final class InspectServerSession implements MessageEndpoint {
         this.onClose = onCloseTask;
     }
 
+    private static IOException createClosedException() {
+        return new IOException("The endpoint is closed.");
+    }
+
     @Override
-    public void sendClose() {
-        Runnable onCloseRunnable = null;
+    public void sendClose() throws IOException {
+        if (processThread == null) {
+            throw createClosedException();
+        }
+        Runnable onCloseRunnable = onClose;
+        dispose();
+        if (onCloseRunnable != null) {
+            onCloseRunnable.run();
+        }
+    }
+
+    boolean isClosed() {
+        return processThread == null;
+    }
+
+    // For tests only
+    public DebuggerDomain getDebugger() {
+        return debugger;
+    }
+
+    public void dispose() {
         Lock lock = domainLock.writeLock();
         lock.lock();
         try {
@@ -104,37 +127,50 @@ public final class InspectServerSession implements MessageEndpoint {
             lock.unlock();
         }
         context.reset();
+        CommandProcessThread cmdProcessThread;
         synchronized (this) {
-            messageEndpoint = null;
-            processThread.dispose();
-            processThread = null;
-            onCloseRunnable = onClose;
+            this.messageEndpoint = null;
+            this.onClose = null;
+            cmdProcessThread = processThread;
+            if (cmdProcessThread != null) {
+                cmdProcessThread.dispose();
+                processThread = null;
+            }
         }
-        if (onCloseRunnable != null) {
-            onCloseRunnable.run();
+        if (cmdProcessThread != null) {
+            try {
+                cmdProcessThread.join();
+            } catch (InterruptedException e) {
+            }
         }
     }
 
-    // For tests only
-    public DebuggerDomain getDebugger() {
-        return debugger;
+    synchronized void clearMessageEndpoint() {
+        this.messageEndpoint = null;
     }
 
-    public synchronized void setMessageListener(MessageEndpoint messageListener) {
+    /**
+     * Open the communication with a {@link MessageEndpoint}.
+     */
+    public synchronized void open(MessageEndpoint messageListener) {
+        assert messageListener != null : "Message listener must not be null";
         this.messageEndpoint = messageListener;
-        if (messageListener != null && processThread == null) {
-            EventHandler eh = new EventHandlerImpl();
-            runtime.setEventHandler(eh);
-            debugger.setEventHandler(eh);
-            profiler.setEventHandler(eh);
-            processThread = new CommandProcessThread();
-            processThread.start();
-        }
+        startUp();
     }
 
-    public synchronized void setJSONMessageListener(JSONMessageListener messageListener) {
+    /**
+     * Open the communication with a {@link JSONMessageListener}.
+     */
+    public synchronized void open(JSONMessageListener messageListener) {
+        assert messageListener != null : "Message listener must not be null";
+        assert this.jsonMessageListener == null : "A message listener was set already.";
         this.jsonMessageListener = messageListener;
-        if (messageListener != null && processThread == null) {
+        startUp();
+    }
+
+    private void startUp() {
+        assert Thread.holdsLock(this);
+        if (processThread == null) {
             EventHandler eh = new EventHandlerImpl();
             runtime.setEventHandler(eh);
             debugger.setEventHandler(eh);
@@ -145,7 +181,10 @@ public final class InspectServerSession implements MessageEndpoint {
     }
 
     @Override
-    public void sendText(String message) {
+    public void sendText(String message) throws IOException {
+        if (processThread == null) {
+            throw createClosedException();
+        }
         Command cmd;
         try {
             cmd = new Command(message);
@@ -224,11 +263,17 @@ public final class InspectServerSession implements MessageEndpoint {
     }
 
     @Override
-    public void sendPing(ByteBuffer data) {
+    public void sendPing(ByteBuffer data) throws IOException {
+        if (processThread == null) {
+            throw createClosedException();
+        }
     }
 
     @Override
-    public void sendPong(ByteBuffer data) {
+    public void sendPong(ByteBuffer data) throws IOException {
+        if (processThread == null) {
+            throw createClosedException();
+        }
     }
 
     private JSONObject processCommand(Command cmd, CommandPostProcessor postProcessor) {

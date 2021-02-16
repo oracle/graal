@@ -76,7 +76,7 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
              * Annotation elements that have a Class type can reference classes that are missing at
              * runtime. We declare the corresponding fields with the Object type to be able to store
              * a TypeNotPresentExceptionProxy which we then use to generate the
-             * TypeNotPresentException at runtime (see bellow).
+             * TypeNotPresentException at runtime (see below).
              */
             return metaAccess.lookupJavaType(Object.class);
         }
@@ -94,7 +94,7 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
              */
             try {
                 /*
-                 * The code bellow assumes that the annotations have already been parsed and the
+                 * The code below assumes that the annotations have already been parsed and the
                  * result cached in the AnnotationInvocationHandler.memberValues field. The parsing
                  * is triggered, at the least, during object graph checking in
                  * Inflation.checkType(), or earlier when the type annotations are accessed for the

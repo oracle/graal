@@ -29,6 +29,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -67,6 +69,16 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
  * </pre>
  */
 public abstract class Log implements AutoCloseable {
+
+    /**
+     * If {@link ImageSingletons#contains} returns {@code false} for {@code LogHandler.class}, then
+     * this method installs a {@link FunctionPointerLogHandler} that delegates to {@code handler}.
+     */
+    public static void finalizeDefaultLogHandler(LogHandler handler) {
+        if (!ImageSingletons.contains(LogHandler.class)) {
+            ImageSingletons.add(LogHandler.class, new FunctionPointerLogHandler(handler));
+        }
+    }
 
     public static final int NO_ALIGN = 0;
     public static final int LEFT_ALIGN = 1;

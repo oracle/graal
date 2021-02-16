@@ -44,9 +44,9 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class WrappedConstantPool implements ConstantPool {
+public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
-    private final Universe universe;
+    protected final Universe universe;
     protected final ConstantPool wrapped;
     private final WrappedJavaType defaultAccessingClass;
 
@@ -68,6 +68,7 @@ public class WrappedConstantPool implements ConstantPool {
      * late to change the API, so we need to invoke this method using reflection.
      */
     private static final Method hsLoadReferencedType;
+    private static final Method hsLookupReferencedType;
 
     static {
         try {
@@ -76,6 +77,14 @@ public class WrappedConstantPool implements ConstantPool {
         } catch (ClassNotFoundException | ReflectionUtilError ex) {
             throw GraalError.shouldNotReachHere("JVMCI 0.47 or later, or JDK 11 is required for Substrate VM: could not find method HotSpotConstantPool.loadReferencedType");
         }
+
+        Method lookupReferencedType = null;
+        try {
+            Class<?> hsConstantPool = Class.forName("jdk.vm.ci.hotspot.HotSpotConstantPool");
+            lookupReferencedType = ReflectionUtil.lookupMethod(hsConstantPool, "lookupReferencedType", int.class, int.class);
+        } catch (ClassNotFoundException | ReflectionUtilError ex) {
+        }
+        hsLookupReferencedType = lookupReferencedType;
     }
 
     public static void loadReferencedType(ConstantPool cp, int cpi, int opcode, boolean initialize) {
@@ -189,5 +198,27 @@ public class WrappedConstantPool implements ConstantPool {
         } else {
             throw unimplemented();
         }
+    }
+
+    @Override
+    public JavaType lookupReferencedType(int index, int opcode) {
+        if (hsLookupReferencedType != null) {
+            try {
+                JavaType type = null;
+                if (wrapped instanceof WrappedConstantPool) {
+                    type = ((WrappedConstantPool) wrapped).lookupReferencedType(index, opcode);
+                } else {
+                    try {
+                        type = (JavaType) hsLookupReferencedType.invoke(wrapped, index, opcode);
+                    } catch (Throwable ex) {
+                    }
+                }
+                if (type != null) {
+                    return universe.lookupAllowUnresolved(type);
+                }
+            } catch (TypeNotFoundError e) {
+            }
+        }
+        return null;
     }
 }

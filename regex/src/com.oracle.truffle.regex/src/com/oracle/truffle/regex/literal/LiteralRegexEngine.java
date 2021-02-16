@@ -41,18 +41,19 @@
 package com.oracle.truffle.regex.literal;
 
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyEndsWith;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyEquals;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyIndexOf;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyStartsWith;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EndsWith;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.Equals;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfString;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.RegionMatches;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.StartsWith;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.EmptyEndsWith;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.EmptyEquals;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.EmptyIndexOf;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.EmptyStartsWith;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.EndsWith;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.Equals;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.IndexOfString;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.RegionMatches;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode.StartsWith;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
  * This regex engine is designed for very simple cases, where the regular expression can be directly
@@ -71,20 +72,21 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
  */
 public final class LiteralRegexEngine {
 
-    public static LiteralRegexExecRootNode createNode(RegexLanguage language, RegexAST ast) {
+    public static LiteralRegexExecNode createNode(RegexLanguage language, RegexAST ast) {
         /*
          * Bail out if the search string would be huge. This can occur with expressions like
          * /a{1000000}/.
          */
         RegexProperties props = ast.getProperties();
-        if (ast.isLiteralString() && props.isFixedCodePointWidthUTF16() && props.isFixedCodePointWidthUTF8() && (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
+        if (ast.isLiteralString() && props.isFixedCodePointWidth() && (ast.getEncoding() == Encodings.UTF_16_RAW || !props.hasLoneSurrogates()) &&
+                        (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
             return createLiteralNode(language, ast);
         } else {
             return null;
         }
     }
 
-    private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast) {
+    private static LiteralRegexExecNode createLiteralNode(RegexLanguage language, RegexAST ast) {
         PreCalcResultVisitor preCalcResultVisitor = PreCalcResultVisitor.run(ast, true);
         boolean caret = ast.getRoot().startsWithCaret();
         boolean dollar = ast.getRoot().endsWithDollar();
@@ -112,7 +114,7 @@ public final class LiteralRegexEngine {
         if (ast.getFlags().isSticky()) {
             return new RegionMatches(language, ast, preCalcResultVisitor);
         }
-        if (preCalcResultVisitor.getLiteral().length() <= 64) {
+        if (preCalcResultVisitor.getLiteral().encodedLength() <= 64) {
             return new IndexOfString(language, ast, preCalcResultVisitor);
         }
         return null;

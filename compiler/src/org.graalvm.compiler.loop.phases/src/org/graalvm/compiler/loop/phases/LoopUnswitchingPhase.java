@@ -30,14 +30,15 @@ import java.util.List;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopPolicies;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopsData;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
-public class LoopUnswitchingPhase extends ContextlessLoopPhase<LoopPolicies> {
+public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
     private static final CounterKey UNSWITCHED = DebugContext.counter("Unswitched");
     private static final CounterKey UNSWITCH_CANDIDATES = DebugContext.counter("UnswitchCandidates");
     private static final CounterKey UNSWITCH_EARLY_REJECTS = DebugContext.counter("UnswitchEarlyRejects");
@@ -47,13 +48,13 @@ public class LoopUnswitchingPhase extends ContextlessLoopPhase<LoopPolicies> {
     }
 
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         DebugContext debug = graph.getDebug();
         if (graph.hasLoops()) {
             boolean unswitched;
             do {
                 unswitched = false;
-                final LoopsData dataUnswitch = new LoopsData(graph);
+                final LoopsData dataUnswitch = context.getLoopsDataProvider().getLoopsData(graph);
                 for (LoopEx loop : dataUnswitch.outerFirst()) {
                     if (getPolicies().shouldTryUnswitch(loop)) {
                         List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);

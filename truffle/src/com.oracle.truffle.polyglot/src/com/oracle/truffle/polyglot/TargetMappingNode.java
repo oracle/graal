@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,17 +59,24 @@ abstract class TargetMappingNode extends Node {
 
     public static final Object NO_RESULT = new Object();
 
-    abstract Object execute(Object value, Class<?> targetType, PolyglotLanguageContext languageContext, InteropLibrary interop, boolean checkOnly);
+    abstract Object execute(Object value, Class<?> targetType, PolyglotLanguageContext languageContext, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "targetType != null")
     @ExplodeLoop
-    protected Object doCached(Object operand, Class<?> targetType, PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly,
+    protected Object doCached(Object operand, Class<?> targetType, PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority,
                     @Cached(value = "getMappings(context, targetType)", dimensions = 1) PolyglotTargetMapping[] mappings,
                     @Cached(value = "createMappingNodes(mappings)") SingleMappingNode[] mappingNodes) {
+        assert startPriority <= endPriority;
         Object result = NO_RESULT;
         if (mappingNodes != null) {
             for (int i = 0; i < mappingNodes.length; i++) {
+                PolyglotTargetMapping mapping = mappings[i];
+                if (mapping.hostPriority < startPriority) {
+                    continue; // skip
+                } else if (mapping.hostPriority > endPriority) {
+                    break; // break because mappings are ordered by hostPriority
+                }
                 result = mappingNodes[i].execute(operand, mappings[i], context, interop, checkOnly);
                 if (result != NO_RESULT) {
                     break;
@@ -82,12 +89,19 @@ abstract class TargetMappingNode extends Node {
     @Specialization(replaces = "doCached")
     @SuppressWarnings("unused")
     @TruffleBoundary
-    protected Object doUncached(Object operand, Class<?> targetType, PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly) {
+    protected Object doUncached(Object operand, Class<?> targetType, PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority) {
+        assert startPriority <= endPriority;
         Object result = NO_RESULT;
         PolyglotTargetMapping[] mappings = getMappings(context, targetType);
         if (mappings != null) {
             SingleMappingNode uncachedNode = SingleMappingNodeGen.getUncached();
             for (int i = 0; i < mappings.length; i++) {
+                PolyglotTargetMapping mapping = mappings[i];
+                if (mapping.hostPriority < startPriority) {
+                    continue; // skip
+                } else if (mapping.hostPriority > endPriority) {
+                    break; // break because mappings are ordered by hostPriority
+                }
                 result = uncachedNode.execute(operand, mappings[i], context, interop, checkOnly);
                 if (result != NO_RESULT) {
                     break;
@@ -134,13 +148,13 @@ abstract class TargetMappingNode extends Node {
         @Specialization
         protected Object doDefault(Object receiver, @SuppressWarnings("unused") PolyglotTargetMapping cachedMapping,
                         PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly,
-                        @Cached("createBinaryProfile()") ConditionProfile acceptsProfile,
+                        @Cached ConditionProfile acceptsProfile,
                         @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) boolean allowsImplementation,
                         @Cached ToHostNode toHostRecursive) {
             CompilerAsserts.partialEvaluationConstant(checkOnly);
             Object convertedValue = NO_RESULT;
             if (acceptsProfile.profile(ToHostNode.canConvert(receiver, cachedMapping.sourceType, cachedMapping.sourceType,
-                            allowsImplementation, context, ToHostNode.MAX, interop, null))) {
+                            allowsImplementation, context, ToHostNode.LOWEST, interop, null))) {
                 if (!checkOnly || cachedMapping.accepts != null) {
                     convertedValue = toHostRecursive.execute(receiver, cachedMapping.sourceType, cachedMapping.sourceType, context, false);
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,8 @@
 #include <stdio.h>
 
 int main() {
-  char str[100];
-  int retVal = snprintf(str, 100, "%s %d", "this is the number: ", 1231);
-  printf("%s\n", str);
-  return retVal;
+    char str[100];
+    int retVal = snprintf(str, 100, "%s %d", "this is the number: ", 1231);
+    printf("%s\n", str);
+    return retVal;
 }

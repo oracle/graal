@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 #include "nanolibc.h"
 
 int main(void) {
-  uid_t uid = getuid();
-  printf("uid: %d\n", uid);
-  return 0;
+    uid_t uid = getuid();
+    printf("uid: %d\n", uid);
+    return 0;
 }

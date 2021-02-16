@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,10 +28,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int arg1 = 0x70000000;
-  int arg2 = 7;
-  int mulLo = 0;
-  int mulHi = 0;
-  __asm__("imull %%ebx;" : "=a"(mulLo), "=d"(mulHi) : "a"(arg1), "b"(arg2));
-  return (mulLo == 0x10000000) && (mulHi == 0x3);
+    int arg1 = 0x70000000;
+    int arg2 = 7;
+    int mulLo = 0;
+    int mulHi = 0;
+    __asm__("imull %%ebx;" : "=a"(mulLo), "=d"(mulHi) : "a"(arg1), "b"(arg2));
+    return (mulLo == 0x10000000) && (mulHi == 0x3);
 }

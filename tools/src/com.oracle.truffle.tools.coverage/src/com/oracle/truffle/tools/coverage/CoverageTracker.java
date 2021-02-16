@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -72,6 +74,7 @@ public final class CoverageTracker implements AutoCloseable {
     private EventBinding<LoadSourceSectionListener> loadedRootsBinding;
     private EventBinding<ExecutionEventNodeFactory> coveredBinding;
     private EventBinding<LoadSourceSectionListener> loadedStatementBinding;
+    private Assumption noReset;
 
     private CoverageTracker(Env env) {
         this.env = env;
@@ -108,13 +111,13 @@ public final class CoverageTracker implements AutoCloseable {
         return sectionCoverage;
     }
 
-    private static AbstractCoverageNode makeCoverageNode(EventContext context, Config config) {
+    private static AbstractCoverageNode makeCoverageNode(EventContext context, Config config, Assumption noReset) {
         final boolean isRoot = context.hasTag(StandardTags.RootTag.class);
         final boolean isStatement = context.hasTag(StandardTags.StatementTag.class);
         if (config.count) {
             return new CountingCoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode(), isRoot, isStatement);
         } else {
-            return new BooleanCoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode(), isRoot, isStatement);
+            return new BooleanCoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode(), isRoot, isStatement, noReset);
         }
     }
 
@@ -139,6 +142,7 @@ public final class CoverageTracker implements AutoCloseable {
         }
         clearData();
         tracking = true;
+        noReset = Truffle.getRuntime().createAssumption("No reset assumption");
         final Instrumenter instrumenter = env.getInstrumenter();
         instrument(config, instrumenter);
     }
@@ -169,13 +173,26 @@ public final class CoverageTracker implements AutoCloseable {
      * @since 19.3.0
      */
     public synchronized SourceCoverage[] getCoverage() {
-        return sourceCoverage(mapping());
+        return sourceCoverage(mapping(false));
     }
 
-    private Map<Source, Map<SourceSection, RootData>> mapping() {
+    /**
+     * Destructive read of the coverage data thus far (i.e. since beginning execution or or last
+     * reset)
+     * 
+     * @return the coverage gathered since last reset or beginning of execution.
+     * @since 20.3.0
+     */
+    public synchronized SourceCoverage[] resetCoverage() {
+        SourceCoverage[] coverages = sourceCoverage(mapping(true));
+        noReset.invalidate();
+        return coverages;
+    }
+
+    private Map<Source, Map<SourceSection, RootData>> mapping(boolean reset) {
         Map<Source, Map<SourceSection, RootData>> sourceCoverage = new HashMap<>();
         processLoaded(sourceCoverage);
-        processCovered(sourceCoverage);
+        processCovered(sourceCoverage, reset);
         return sourceCoverage;
     }
 
@@ -210,7 +227,7 @@ public final class CoverageTracker implements AutoCloseable {
         }
     }
 
-    private void processCovered(Map<Source, Map<SourceSection, RootData>> mapping) {
+    private void processCovered(Map<Source, Map<SourceSection, RootData>> mapping, boolean reset) {
         for (AbstractCoverageNode coverageNode : coverageNodes) {
             final SourceSection section = coverageNode.sourceSection;
             final Source source = section.getSource();
@@ -224,13 +241,12 @@ public final class CoverageTracker implements AutoCloseable {
             if (coverageNode.isRoot && coverageNode.isCovered()) {
                 rootData.covered = true;
                 rootData.count = count;
-                continue;
-            }
-            if (coverageNode.isStatement) {
+            } else if (coverageNode.isStatement) {
                 rootData.coveredStatements.put(section, count);
-                continue;
             }
-            throw new IllegalStateException("Found a node without adequate tag.");
+            if (reset) {
+                coverageNode.reset();
+            }
         }
     }
 
@@ -263,7 +279,7 @@ public final class CoverageTracker implements AutoCloseable {
         coveredBinding = instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
-                final AbstractCoverageNode coverageNode = makeCoverageNode(context, config);
+                final AbstractCoverageNode coverageNode = makeCoverageNode(context, config, noReset);
                 addCoverageNode(coverageNode);
                 return coverageNode;
             }

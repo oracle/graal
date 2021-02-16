@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@
 #include <stdint.h>
 
 struct foo {
-  int *ptr;
+    int *ptr;
 };
 
 int a = 2;
@@ -40,7 +40,7 @@ struct foo *c = &b;
 long d = 99;
 
 int main() {
-  intptr_t z = (intptr_t)c;
-  intptr_t z2 = (z + d);
-  return z2 > 1;
+    intptr_t z = (intptr_t) c;
+    intptr_t z2 = (z + d);
+    return z2 > 1;
 }

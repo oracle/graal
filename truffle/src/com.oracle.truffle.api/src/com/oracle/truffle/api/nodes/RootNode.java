@@ -41,6 +41,8 @@
 package com.oracle.truffle.api.nodes;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
@@ -49,7 +51,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -123,9 +127,11 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public abstract class RootNode extends ExecutableNode {
 
-    private volatile RootCallTarget callTarget;
+    private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");
+
+    @CompilationFinal private volatile RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
-    final ReentrantLock lock = new ReentrantLock();
+    private volatile ReentrantLock lock;
 
     volatile byte instrumentationBits;
 
@@ -169,7 +175,7 @@ public abstract class RootNode extends ExecutableNode {
     @SuppressWarnings("deprecation")
     @Deprecated
     public final <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
-        if (language == null) {
+        if (getLanguage() == null) {
             return null;
         }
         return getLanguage(languageClass).getContextReference().get();
@@ -371,6 +377,27 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
+     * Is this root node to be considered trivial by the runtime.
+     *
+     * A trivial root node is defined as a root node that:
+     * <ol>
+     * <li>Never increases code size when inlined, i.e. is always less complex then the call.</li>
+     * <li>Never performs guest language calls.</li>
+     * <li>Never contains loops.</li>
+     * <li>Is small (for a language-specific definition of small).</li>
+     * </ol>
+     *
+     * An good example of trivial root nodes would be getters and setters in java.
+     *
+     * @since 20.3.0
+     * @return <code>true </code>if this root node should be considered trivial by the runtime.
+     *         <code>false</code> otherwise.
+     */
+    protected boolean isTrivial() {
+        return false;
+    }
+
+    /**
      * Provide a list of stack frames that led to a schedule of asynchronous execution of this root
      * node on the provided frame. The asynchronous frames are expected to be found here when
      * {@link Env#getAsynchronousStackDepth()} is positive. The language is free to provide
@@ -389,6 +416,63 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
+     * Translates the {@link TruffleStackTraceElement} into an interop object supporting the
+     * {@code hasExecutableName} and potentially {@code hasDeclaringMetaObject} and
+     * {@code hasSourceLocation} messages. An executable name must be provided, whereas the
+     * declaring meta object and source location is optional. Guest languages may typically return
+     * their function objects that typically already implement the required contracts.
+     * <p>
+     * The intention of this method is to provide a guest language object for other languages that
+     * they can inspect using interop. An implementation of this method is expected to not fail with
+     * a guest error. Implementations are allowed to do {@link ContextReference#get() context
+     * reference lookups} in the implementation of the method. This may be useful to access the
+     * function objects needed to resolve the stack trace element.
+     *
+     * @see TruffleStackTraceElement#getGuestObject() to access the guest object of a stack trace
+     *      element.
+     * @since 20.3
+     */
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        Node location = element.getLocation();
+        return NodeAccessor.EXCEPTION.createDefaultStackTraceElementObject(element.getTarget().getRootNode(), location != null ? location.getEncapsulatingSourceSection() : null);
+    }
+
+    /**
+     * Allows languages to perform actions before a root node is attempted to be compiled without
+     * prior call to {@link #execute(VirtualFrame)}. By default this method returns
+     * <code>null</code> to indicate that AOT compilation is not supported. Any non-null value
+     * indicates that compilation without execution is supported for this root node. This method is
+     * guaranteed to not be invoked prior to any calls to {@link #execute(VirtualFrame) execute}.
+     * <p>
+     * Common tasks that need to be performed by this method:
+     * <ul>
+     * <li>Initialize local variable types in the {@link FrameDescriptor} of the root node. Without
+     * that any access to the frame will invalidate the code on first execute.
+     * <li>Initialize specializing nodes with profiles that do not invalidate on first execution.
+     * For initialization of Truffle DSL nodes see {@link com.oracle.truffle.api.dsl.AOTSupport}.
+     * <li>Compute the expected execution signature of a root node and return it.
+     * </ul>
+     * <p>
+     * If possible an {@link ExecutionSignature execution signature} should be returned for better
+     * call efficiency. If the argument and return profile is not available or cannot be derived the
+     * {@link ExecutionSignature#GENERIC} can be used to indicate that any value needs to be
+     * expected for as argument from or as return value of the method. To indicate that a type is
+     * unknown a <code>null</code> return or argument type should be used. The type
+     * <code>Object</code> type should not be used in that case.
+     * <p>
+     * This method is invoked when no context is currently {@link TruffleContext#enter(Node)
+     * entered} therefore no guest application code must be executed. The execution might happen on
+     * any thread, even threads unknown to the guest language implementation. It is allowed to
+     * create new {@link CallTarget call targets} during preparation of the root node or perform
+     * modifications to the {@link TruffleLanguage language} of this root node.
+     *
+     * @since 20.3
+     */
+    protected ExecutionSignature prepareForAOT() {
+        return null;
+    }
+
+    /**
      * Helper method to create a root node that always returns the same value. Certain operations
      * (especially {@link com.oracle.truffle.api.interop inter-operability} API) require return of
      * stable {@link RootNode root nodes}. To simplify creation of such nodes, here is a factory
@@ -400,6 +484,23 @@ public abstract class RootNode extends ExecutableNode {
      */
     public static RootNode createConstantNode(Object constant) {
         return new Constant(constant);
+    }
+
+    final ReentrantLock getLazyLock() {
+        ReentrantLock l = this.lock;
+        if (l == null) {
+            l = initializeLock();
+        }
+        return l;
+    }
+
+    private ReentrantLock initializeLock() {
+        ReentrantLock l = new ReentrantLock();
+        if (!RootNode.LOCK_UPDATER.compareAndSet(this, null, l)) {
+            // if CAS failed, lock is already initialized; cannot be null after that.
+            l = Objects.requireNonNull(this.lock);
+        }
+        return l;
     }
 
     private static final class Constant extends RootNode {
@@ -416,4 +517,5 @@ public abstract class RootNode extends ExecutableNode {
             return value;
         }
     }
+
 }

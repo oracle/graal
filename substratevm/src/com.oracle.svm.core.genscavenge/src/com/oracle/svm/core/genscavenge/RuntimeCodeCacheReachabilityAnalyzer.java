@@ -29,14 +29,14 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.hub.DynamicHub;
 
-import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-
-class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
+@DuplicatedInNativeCode
+final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
     private boolean unreachableObjects;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -73,26 +73,23 @@ class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
             return true;
         }
 
-        Space space = HeapChunk.getEnclosingHeapChunk(ptrToObj, header).getSpace();
-        if (!space.isFrom()) {
+        Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(ptrToObj, header));
+        if (!space.isFromSpace()) {
             return true;
         }
 
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));
-        return isWhitelistedClass(clazz);
+        return isAssumedReachable(clazz);
     }
 
-    /**
-     * Checks if the unreachable object is one of the following whitelisted classes:
-     * <ul>
-     * <li>{@link SpeculationReason} objects are embedded in the code and only needed when a
-     * deoptimization is triggered.</li>
-     * <li>{@link SharedRuntimeMethod} objects are sometimes used as artifical methods (e.g., for
-     * adapter code) and are located in the frame info object constants.</li>
-     * </ul>
-     */
-    private static boolean isWhitelistedClass(Class<?> clazz) {
-        return SpeculationReason.class.isAssignableFrom(clazz) || SharedRuntimeMethod.class.isAssignableFrom(clazz);
+    private static boolean isAssumedReachable(Class<?> clazz) {
+        Class<?>[] classesAssumedReachable = RuntimeCodeCacheCleaner.CLASSES_ASSUMED_REACHABLE;
+        for (int i = 0; i < classesAssumedReachable.length; i++) {
+            if (classesAssumedReachable[i].isAssignableFrom(clazz)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

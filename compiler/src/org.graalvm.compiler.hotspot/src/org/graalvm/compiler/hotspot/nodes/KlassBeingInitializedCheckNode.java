@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo(cycles = CYCLES_4, size = SIZE_16)
 public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable {
@@ -55,8 +54,4 @@ public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNod
         return true;
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
 }

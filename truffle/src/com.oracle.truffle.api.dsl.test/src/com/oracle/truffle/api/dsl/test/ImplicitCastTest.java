@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,10 @@ package com.oracle.truffle.api.dsl.test;
 
 import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
 
-import java.lang.reflect.Field;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -461,6 +461,21 @@ public class ImplicitCastTest {
     }
 
     @TypeSystemReference(ImplicitCast4Types.class)
+    public abstract static class ImplicitCastExecuteTestNode extends Node {
+
+        public abstract Object execute(int duration);
+
+        public abstract Object execute(long duration);
+
+        public abstract Object execute(Object duration);
+
+        @Specialization
+        public long sleep(long duration) {
+            return duration;
+        }
+    }
+
+    @TypeSystemReference(ImplicitCast4Types.class)
     public abstract static class ExecuteChildWithImplicitCast1Node extends ExampleNode {
 
         @Specialization
@@ -634,17 +649,17 @@ public class ImplicitCastTest {
     }
 
     @Test
-    public void test33Bits() throws NoSuchFieldException, SecurityException {
+    public void test33Bits() {
+        Assume.assumeTrue(StateBitTest.getStateBitWidth() >= 32);
         ExampleNode node = ThirtyThreeBitsNodeGen.create(null);
-        Field stateField = node.getClass().getDeclaredField("state_");
-        Assert.assertEquals(long.class, stateField.getType());
+        StateBitTest.assertStateFields(node, 33);
     }
 
     @Test
-    public void test32Bits() throws NoSuchFieldException, SecurityException {
+    public void test32Bits() {
+        Assume.assumeTrue(StateBitTest.getStateBitWidth() >= 32);
         ExampleNode node = ThirtyTwoBitsNodeGen.create(null);
-        Field stateField = node.getClass().getDeclaredField("state_");
-        Assert.assertEquals(int.class, stateField.getType());
+        StateBitTest.assertStateFields(node, 32);
     }
 
     @TypeSystem

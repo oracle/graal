@@ -53,17 +53,20 @@ public final class InstalledCodeObserverSupport {
     InstalledCodeObserverSupport() {
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void addObserverFactory(InstalledCodeObserver.Factory observerFactory) {
         observerFactories.add(observerFactory);
     }
 
-    public InstalledCodeObserver[] createObservers(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code) {
-        InstalledCodeObserver[] observers = new InstalledCodeObserver[observerFactories.size()];
-        int index = 0;
+    public InstalledCodeObserver[] createObservers(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code, int codeSize) {
+        List<InstalledCodeObserver> observers = new ArrayList<>();
         for (InstalledCodeObserver.Factory factory : observerFactories) {
-            observers[index++] = factory.create(debug, method, compilation, code);
+            InstalledCodeObserver observer = factory.create(debug, method, compilation, code, codeSize);
+            if (observer != null) {
+                observers.add(observer);
+            }
         }
-        return observers;
+        return observers.toArray(new InstalledCodeObserver[0]);
     }
 
     public static NonmovableArray<InstalledCodeObserverHandle> installObservers(InstalledCodeObserver[] observers) {

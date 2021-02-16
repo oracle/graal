@@ -1,0 +1,153 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface com.oracle.truffle.api.TruffleException
+ anno 0 java.lang.Deprecated()
+meth public abstract com.oracle.truffle.api.nodes.Node getLocation()
+ anno 0 java.lang.Deprecated()
+meth public boolean isCancelled()
+ anno 0 java.lang.Deprecated()
+meth public boolean isExit()
+ anno 0 java.lang.Deprecated()
+meth public boolean isIncompleteSource()
+ anno 0 java.lang.Deprecated()
+meth public boolean isInternalError()
+ anno 0 java.lang.Deprecated()
+meth public boolean isSyntaxError()
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.source.SourceSection getSourceLocation()
+ anno 0 java.lang.Deprecated()
+meth public int getExitStatus()
+ anno 0 java.lang.Deprecated()
+meth public int getStackTraceElementLimit()
+ anno 0 java.lang.Deprecated()
+meth public java.lang.Object getExceptionObject()
+ anno 0 java.lang.Deprecated()
+
+CLSS public abstract com.oracle.truffle.api.exception.AbstractTruffleException
+cons protected init()
+cons protected init(com.oracle.truffle.api.exception.AbstractTruffleException)
+cons protected init(com.oracle.truffle.api.nodes.Node)
+cons protected init(java.lang.String)
+cons protected init(java.lang.String,com.oracle.truffle.api.nodes.Node)
+cons protected init(java.lang.String,java.lang.Throwable,int,com.oracle.truffle.api.nodes.Node)
+fld public final static int UNLIMITED_STACK_TRACE = -1
+intf com.oracle.truffle.api.TruffleException
+intf com.oracle.truffle.api.interop.TruffleObject
+meth public final boolean isCancelled()
+ anno 0 java.lang.Deprecated()
+meth public final boolean isExit()
+ anno 0 java.lang.Deprecated()
+meth public final boolean isIncompleteSource()
+ anno 0 java.lang.Deprecated()
+meth public final boolean isInternalError()
+ anno 0 java.lang.Deprecated()
+meth public final boolean isSyntaxError()
+ anno 0 java.lang.Deprecated()
+meth public final com.oracle.truffle.api.nodes.Node getLocation()
+meth public final com.oracle.truffle.api.source.SourceSection getSourceLocation()
+ anno 0 java.lang.Deprecated()
+meth public final int getExitStatus()
+ anno 0 java.lang.Deprecated()
+meth public final int getStackTraceElementLimit()
+meth public final java.lang.Object getExceptionObject()
+ anno 0 java.lang.Deprecated()
+meth public final java.lang.Throwable fillInStackTrace()
+meth public final java.lang.Throwable getCause()
+meth public final java.lang.Throwable initCause(java.lang.Throwable)
+ anno 0 java.lang.Deprecated()
+supr java.lang.RuntimeException
+hfds cause,lazyStackTrace,location,stackTraceElementLimit
+
+CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
+
+CLSS public abstract interface java.io.Serializable
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public java.lang.Exception
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Throwable
+hfds serialVersionUID
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public java.lang.RuntimeException
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Exception
+hfds serialVersionUID
+
+CLSS public java.lang.Throwable
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+intf java.io.Serializable
+meth public final java.lang.Throwable[] getSuppressed()
+meth public final void addSuppressed(java.lang.Throwable)
+meth public java.lang.StackTraceElement[] getStackTrace()
+meth public java.lang.String getLocalizedMessage()
+meth public java.lang.String getMessage()
+meth public java.lang.String toString()
+meth public java.lang.Throwable fillInStackTrace()
+meth public java.lang.Throwable getCause()
+meth public java.lang.Throwable initCause(java.lang.Throwable)
+meth public void printStackTrace()
+meth public void printStackTrace(java.io.PrintStream)
+meth public void printStackTrace(java.io.PrintWriter)
+meth public void setStackTrace(java.lang.StackTraceElement[])
+supr java.lang.Object
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
+

@@ -25,9 +25,9 @@
 package com.oracle.truffle.tools.chromeinspector.server;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.tools.chromeinspector.instrument.Token;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 
@@ -38,47 +38,58 @@ import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection
  */
 public final class WSInterceptorServer implements InspectorWSConnection, MessageEndpoint {
 
-    private final URI uri;
+    private final int port;
+    private final Token token;
     private final ConnectionWatcher connectionWatcher;
     private InspectServerSession iss;
     private MessageEndpoint inspectEndpoint;
 
-    public WSInterceptorServer(URI uri, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
-        this.uri = uri;
+    public WSInterceptorServer(int port, Token token, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
+        this.port = port;
+        this.token = token;
         this.connectionWatcher = connectionWatcher;
         this.iss = iss;
-        iss.setMessageListener(this);
+        iss.open(this);
+    }
+
+    public void resetSessionEndpoint() {
+        iss.clearMessageEndpoint();
     }
 
     public void newSession(InspectServerSession newIss) {
-        this.iss.setMessageListener(null);
+        assert this.iss.isClosed();
         this.iss = newIss;
-        this.iss.setMessageListener(this);
+        this.iss.open(this);
     }
 
     public void opened(MessageEndpoint endpoint) {
         this.inspectEndpoint = endpoint;
-        iss.setMessageListener(this);
+        this.iss.open(endpoint);
         this.connectionWatcher.notifyOpen();
     }
 
     @Override
     public int getPort() {
-        return uri.getPort();
+        return port;
     }
 
     @Override
-    public void close(String path) throws IOException {
-        iss.setMessageListener(null);
+    public void close(Token tokenToClose) throws IOException {
+        iss.dispose();
         if (inspectEndpoint != null) {
-            if (path.equals(uri.getPath())) {
+            if (tokenToClose.equals(this.token)) {
                 inspectEndpoint.sendClose();
             }
         }
     }
 
     @Override
-    public void consoleAPICall(String wsspath, String type, Object text) {
+    public void dispose() {
+        iss.dispose();
+    }
+
+    @Override
+    public void consoleAPICall(Token tokenToCall, String type, Object text) {
         iss.consoleAPICall(type, text);
     }
 

@@ -27,32 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #include <stdlib.h>
 
 typedef struct {
-  size_t ob_refcnt;
+    size_t ob_refcnt;
 } PyObject;
 
 typedef struct {
-  PyObject base;
-  size_t flags;
+    PyObject base;
+    size_t flags;
 } PyMemoryViewObject;
 
 POLYGLOT_DECLARE_TYPE(PyMemoryViewObject);
 
 PyObject *getPyObjectImplicitType() {
-  PyMemoryViewObject *obj = (PyMemoryViewObject *) malloc(sizeof(PyMemoryViewObject));
-  obj->base.ob_refcnt = 1;
-  obj->flags = 42;
-  return obj;
+    PyMemoryViewObject *obj = (PyMemoryViewObject *) malloc(sizeof(PyMemoryViewObject));
+    obj->base.ob_refcnt = 1;
+    obj->flags = 42;
+    return (PyObject *) obj;
 }
 
 PyObject *getPyObjectExplicitType() {
-  PyMemoryViewObject *obj = getPyObjectImplicitType();
-  return polyglot_from_PyMemoryViewObject(obj);
+    PyMemoryViewObject *obj = (PyMemoryViewObject *) getPyObjectImplicitType();
+    return polyglot_from_PyMemoryViewObject(obj);
 }
 
 void freePyObject(PyObject *obj) {
-  free(obj);
+    free(obj);
 }

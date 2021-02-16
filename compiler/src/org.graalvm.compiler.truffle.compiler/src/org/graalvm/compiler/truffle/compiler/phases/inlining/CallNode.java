@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +33,9 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSuccessorList;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -43,15 +43,15 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
+import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class CallNode extends Node {
+public final class CallNode extends Node implements Comparable<CallNode> {
 
     private static final NodeClass<CallNode> TYPE = NodeClass.create(CallNode.class);
     private final TruffleCallNode truffleCaller;
@@ -59,6 +59,10 @@ public final class CallNode extends Node {
     private final TruffleCallNode[] truffleCallees;
     private final double rootRelativeFrequency;
     private final int depth;
+    private final int id;
+    // Should be final, but needs to be mutable to be corrected if the language marks a non-trivial
+    // root node as trivial
+    private boolean trivial;
     // Effectively final, populated only as part of expansion. Cannot be final because of Successor
     // annotation
     @Successor private NodeSuccessorList<CallNode> children;
@@ -76,7 +80,7 @@ public final class CallNode extends Node {
     private Invoke invoke;
 
     // Needs to be protected because of the @NodeInfo annotation
-    protected CallNode(TruffleCallNode truffleCaller, CompilableTruffleAST truffleAST, double rootRelativeFrequency, int depth) {
+    protected CallNode(TruffleCallNode truffleCaller, CompilableTruffleAST truffleAST, double rootRelativeFrequency, int depth, int id) {
         super(TYPE);
         this.state = State.Cutoff;
         this.recursionDepth = -1;
@@ -84,8 +88,10 @@ public final class CallNode extends Node {
         this.truffleCaller = truffleCaller;
         this.truffleAST = truffleAST;
         this.truffleCallees = truffleAST == null ? new TruffleCallNode[0] : truffleAST.getCallNodes();
+        this.trivial = truffleAST != null && truffleAST.isTrivial();
         this.children = new NodeSuccessorList<>(this, 0);
         this.depth = depth;
+        this.id = id;
     }
 
     /**
@@ -94,39 +100,39 @@ public final class CallNode extends Node {
     static CallNode makeRoot(CallTree callTree, PartialEvaluator.Request request) {
         Objects.requireNonNull(callTree);
         Objects.requireNonNull(request);
-        CallNode root = new CallNode(null, request.compilable, 1, 0);
+        CallNode root = new CallNode(null, request.compilable, 1, 0, callTree.nextId());
         callTree.add(root);
         root.ir = request.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
-        root.addChildren();
-        EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = callTree.getGraphManager().peRoot();
-        for (CallNode child : root.children) {
-            Invoke invoke = truffleCallNodeToInvoke.get(child.getTruffleCaller());
-            child.setInvokeOrRemove(invoke);
-        }
+        final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
+        EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
+        root.verifyTrivial(entry);
+        addChildren(root, invokeToTruffleCallNode);
         root.state = State.Inlined;
         callTree.getPolicy().afterExpand(root);
+        callTree.frontierSize = root.children.size();
         return root;
+    }
+
+    private static void addChildren(CallNode node, EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode) {
+        for (Invoke invoke : invokeToTruffleCallNode.getKeys()) {
+            if (!invoke.isAlive()) {
+                continue;
+            }
+            final TruffleCallNode childCallNode = invokeToTruffleCallNode.get(invoke);
+            double relativeFrequency = calculateFrequency(node.truffleAST, childCallNode);
+            double childFrequency = relativeFrequency * node.rootRelativeFrequency;
+            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), childFrequency, node.depth + 1, node.getCallTree().nextId());
+            node.getCallTree().add(callNode);
+            node.children.add(callNode);
+            callNode.policyData = node.getPolicy().newCallNodeData(callNode);
+            callNode.setInvokeOrRemove(invoke);
+        }
+        node.getPolicy().afterAddChildren(node);
     }
 
     private static double calculateFrequency(CompilableTruffleAST target, TruffleCallNode callNode) {
         return (double) Math.max(1, callNode.getCallCount()) / (double) Math.max(1, target.getCallCount());
-    }
-
-    private static void handleInlineDecisionNode(Invoke invoke) {
-        NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
-        ValueNode argument = arguments.get(1);
-        if (!(argument instanceof InlineDecisionInjectNode)) {
-            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
-        }
-        InlineDecisionInjectNode injectNode = (InlineDecisionInjectNode) argument;
-        ValueNode maybeDecision = injectNode.getDecision();
-        if (!(maybeDecision instanceof InlineDecisionNode)) {
-            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
-        }
-        InlineDecisionNode inlineDecisionNode = (InlineDecisionNode) maybeDecision;
-        inlineDecisionNode.inlined();
-        injectNode.resolve();
     }
 
     public CompilableTruffleAST getTruffleAST() {
@@ -175,19 +181,6 @@ public final class CallNode extends Node {
         }
     }
 
-    private void addChildren() {
-        // In the current implementation, this may be called only once.
-        for (TruffleCallNode childCallNode : truffleCallees) {
-            double relativeFrequency = calculateFrequency(truffleAST, childCallNode);
-            double childFrequency = relativeFrequency * rootRelativeFrequency;
-            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), childFrequency, depth + 1);
-            getCallTree().add(callNode);
-            children.add(callNode);
-            callNode.policyData = getPolicy().newCallNodeData(callNode);
-        }
-        getPolicy().afterAddChildren(this);
-    }
-
     public int getDepth() {
         return depth;
     }
@@ -212,7 +205,7 @@ public final class CallNode extends Node {
     private void addIndirectChildren(GraphManager.Entry entry) {
         for (Invoke indirectInvoke : entry.indirectInvokes) {
             if (indirectInvoke != null && indirectInvoke.isAlive()) {
-                CallNode child = new CallNode(null, null, 0, depth + 1);
+                CallNode child = new CallNode(null, null, 0, depth + 1, getCallTree().nextId());
                 child.state = State.Indirect;
                 child.invoke = indirectInvoke;
                 getCallTree().add(child);
@@ -226,30 +219,41 @@ public final class CallNode extends Node {
         assert getParent() != null;
         state = State.Expanded;
         getCallTree().expanded++;
-        addChildren();
         assert state == State.Expanded;
         assert ir == null;
-        GraphManager.Entry entry = getCallTree().getGraphManager().pe(truffleAST);
-        ir = copyGraphAndUpdateInvokes(entry);
+        GraphManager.Entry entry;
+        try {
+            entry = getCallTree().getGraphManager().pe(truffleAST);
+        } catch (PermanentBailoutException e) {
+            state = State.BailedOut;
+            return;
+        }
+        verifyTrivial(entry);
+        ir = copyGraphAndAddChildren(entry);
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
     }
 
-    private StructuredGraph copyGraphAndUpdateInvokes(GraphManager.Entry entry) {
+    private void verifyTrivial(GraphManager.Entry entry) {
+        if (trivial && !entry.trivial) {
+            trivial = false;
+            PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.TRIVIAL_FAIL, truffleAST, Collections.emptyList(),
+                            "Root node of target marked trivial but not trivial after PE", Collections.emptyMap());
+        }
+    }
+
+    private StructuredGraph copyGraphAndAddChildren(GraphManager.Entry entry) {
         StructuredGraph graph = entry.graph;
         return (StructuredGraph) graph.copy(new Consumer<UnmodifiableEconomicMap<Node, Node>>() {
             @Override
             public void accept(UnmodifiableEconomicMap<Node, Node> duplicates) {
-                for (CallNode child : children) {
-                    TruffleCallNode childTruffleCallNode = child.getTruffleCaller();
-                    Invoke original = entry.truffleCallNodeToInvoke.get(childTruffleCallNode);
-                    if (original == null || !original.isAlive()) {
-                        child.remove();
-                    } else {
-                        Invoke replacement = (Invoke) duplicates.get((Node) original);
-                        child.setInvokeOrRemove(replacement);
-                    }
+                final EconomicMap<Invoke, TruffleCallNode> replacements = EconomicMap.create();
+                for (Invoke original : entry.invokeToTruffleCallNode.getKeys()) {
+                    final TruffleCallNode truffleCallNode = entry.invokeToTruffleCallNode.get(original);
+                    Invoke replacement = (Invoke) duplicates.get((Node) original);
+                    replacements.put(replacement, truffleCallNode);
                 }
+                addChildren(CallNode.this, replacements);
             }
         }, graph.getDebug());
     }
@@ -261,11 +265,11 @@ public final class CallNode extends Node {
             remove();
             return;
         }
-        handleInlineDecisionNode(invoke);
         UnmodifiableEconomicMap<Node, Node> replacements = getCallTree().getGraphManager().doInline(invoke, ir, truffleAST);
         updateChildInvokes(replacements);
         state = State.Inlined;
         getCallTree().inlined++;
+        getCallTree().frontierSize += children.size() - 1;
     }
 
     private void updateChildInvokes(UnmodifiableEconomicMap<Node, Node> replacements) {
@@ -279,17 +283,6 @@ public final class CallNode extends Node {
                 Invoke replacementInvoke = (Invoke) replacements.get(childInvoke);
                 child.setInvokeOrRemove(replacementInvoke);
             }
-        }
-    }
-
-    /**
-     * A large number of call targets seem to have a single known callsite in most code. However,
-     * some targets have many callsites, and it is usually important to compile them separately even
-     * though they are inlined into one of their callsites.
-     */
-    void cancelCompilationIfSingleCallsite() {
-        if (truffleAST != getCallTree().getRoot().truffleAST && truffleAST.getKnownCallSiteCount() == 1) {
-            truffleAST.cancelInstalledTask();
         }
     }
 
@@ -332,10 +325,6 @@ public final class CallNode extends Node {
         return (CallTree) graph();
     }
 
-    private TruffleCallNode getTruffleCaller() {
-        return truffleCaller;
-    }
-
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
@@ -360,6 +349,10 @@ public final class CallNode extends Node {
         return rootRelativeFrequency;
     }
 
+    public boolean isTrivial() {
+        return trivial;
+    }
+
     public Object getPolicyData() {
         return policyData;
     }
@@ -378,11 +371,52 @@ public final class CallNode extends Node {
                         '}';
     }
 
+    @Override
+    public int compareTo(CallNode o) {
+        return Integer.compare(id, o.id);
+    }
+
+    public void finalizeGraph() {
+        if (state == State.Inlined) {
+            for (CallNode child : children) {
+                child.finalizeGraph();
+            }
+        }
+        if (state == State.Cutoff || state == State.Expanded || state == State.BailedOut) {
+            if (invoke.isAlive()) {
+                getCallTree().getGraphManager().finalizeGraph(invoke, truffleAST);
+            } else {
+                state = State.Removed;
+            }
+        }
+    }
+
+    void collectTargetsToDequeue(TruffleMetaAccessProvider provider) {
+        if (state == State.Inlined) {
+            if (truffleAST != getCallTree().getRoot().truffleAST && truffleAST.getKnownCallSiteCount() == 1) {
+                provider.addTargetToDequeue(truffleAST);
+            }
+            for (CallNode child : children) {
+                child.collectTargetsToDequeue(provider);
+            }
+        }
+    }
+
+    public void collectInlinedTargets(TruffleMetaAccessProvider inliningPlan) {
+        if (state == State.Inlined) {
+            inliningPlan.addInlinedTarget(truffleAST);
+            for (CallNode child : children) {
+                child.collectInlinedTargets(inliningPlan);
+            }
+        }
+    }
+
     public enum State {
         Cutoff,
         Expanded,
         Inlined,
         Removed,
+        BailedOut,
         Indirect
     }
 }

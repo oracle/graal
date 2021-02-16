@@ -34,7 +34,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
@@ -46,7 +49,12 @@ import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
@@ -89,6 +97,24 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     public String getSourceName() {
         final String scopeName = sourceFunction.getName();
         return SourceFunction.DEFAULT_SOURCE_NAME.equals(scopeName) ? null : scopeName;
+    }
+
+    public String getDisplayName() {
+        /*
+         * For LLVM code produced from C++ sources, function.name stores the linkage name, but not
+         * 'original' C++ name.
+         */
+        if (mdAttachments != null && mdAttachments.size() > 0) {
+            for (MDAttachment mdAttachment : mdAttachments) {
+                if (mdAttachment.getValue() instanceof MDSubprogram) {
+                    MDSubprogram mdSubprogram = (MDSubprogram) mdAttachment.getValue();
+                    if (mdSubprogram.getName() instanceof MDString) {
+                        return ((MDString) mdSubprogram.getName()).getString();
+                    }
+                }
+            }
+        }
+        return getSourceName();
     }
 
     @Override
@@ -196,5 +222,11 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     @Override
     public boolean isExternal() {
         return Linkage.isExternal(getLinkage());
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        LLVMFunction value = runtime.lookupFunction(getName());
+        return CommonNodeFactory.createLiteral(value, getType());
     }
 }

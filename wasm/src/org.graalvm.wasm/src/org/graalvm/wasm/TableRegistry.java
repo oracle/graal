@@ -41,22 +41,21 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.exception.WasmValidationException;
 
 public class TableRegistry {
     private static final int INITIAL_TABLES_SIZE = 8;
 
-    @CompilationFinal(dimensions = 1) private Table[] tables;
+    @CompilationFinal(dimensions = 1) private WasmTable[] tables;
     private int numTables;
 
     public TableRegistry() {
-        this.tables = new Table[INITIAL_TABLES_SIZE];
+        this.tables = new WasmTable[INITIAL_TABLES_SIZE];
         this.numTables = 0;
     }
 
     private void ensureCapacity() {
         if (numTables == tables.length) {
-            final Table[] updatedTables = new Table[tables.length * 2];
+            final WasmTable[] updatedTables = new WasmTable[tables.length * 2];
             System.arraycopy(tables, 0, updatedTables, 0, tables.length);
             tables = updatedTables;
         }
@@ -66,59 +65,21 @@ public class TableRegistry {
         return numTables;
     }
 
-    public Table allocateTable(int initSize, int maxSize) {
+    public int register(WasmTable table) {
         ensureCapacity();
-        int index = numTables;
-        tables[numTables] = new Table(index, initSize, maxSize);
+        final int index = numTables;
+        tables[index] = table;
         numTables++;
-        return tables[index];
+        return index;
     }
 
-    public Table table(int index) {
+    public int registerExternal(WasmTable table) {
+        return register(table);
+    }
+
+    public WasmTable table(int index) {
         assert index < numTables;
         return tables[index];
     }
 
-    public static final class Table {
-        private final int tableIndex;
-        private final int maxSize;
-        @CompilationFinal(dimensions = 1) private Object[] elements;
-
-        public Table(int tableIndex, int initSize, int maxSize) {
-            this.tableIndex = tableIndex;
-            this.elements = new Object[initSize];
-            this.maxSize = maxSize;
-        }
-
-        public void ensureSizeAtLeast(int targetSize) {
-            if (maxSize >= 0 && targetSize > maxSize) {
-                throw new WasmValidationException("Table " + tableIndex + " cannot be resized to " + targetSize + ", " +
-                                "declared maximum size is " + maxSize);
-            }
-            if (elements.length < targetSize) {
-                Object[] newElements = new Object[targetSize];
-                System.arraycopy(elements, 0, newElements, 0, elements.length);
-                elements = newElements;
-            }
-        }
-
-        public int tableIndex() {
-            return tableIndex;
-        }
-
-        public int maxSize() {
-            return maxSize;
-        }
-
-        public Object[] elements() {
-            return elements;
-        }
-
-        public void set(int i, WasmFunction function) {
-            if (elements[i] != null) {
-                throw new WasmValidationException("Table " + tableIndex + " already has an element at index " + i + ".");
-            }
-            elements[i] = function;
-        }
-    }
 }

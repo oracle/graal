@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -198,10 +198,10 @@ public class G1BarrierSet implements BarrierSet {
                 // The pre barrier does nothing if the value being read is null, so it can
                 // be explicitly skipped when this is an initializing store.
                 G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-                graph.addBeforeFixed(write.asNode(), g1ArrayRangePreWriteBarrier);
+                graph.addBeforeFixed(write.preBarrierInsertionPosition(), g1ArrayRangePreWriteBarrier);
             }
             G1ArrayRangePostWriteBarrier g1ArrayRangePostWriteBarrier = graph.add(new G1ArrayRangePostWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-            graph.addAfterFixed(write.asNode(), g1ArrayRangePostWriteBarrier);
+            graph.addAfterFixed(write.postBarrierInsertionPosition(), g1ArrayRangePostWriteBarrier);
         }
     }
 

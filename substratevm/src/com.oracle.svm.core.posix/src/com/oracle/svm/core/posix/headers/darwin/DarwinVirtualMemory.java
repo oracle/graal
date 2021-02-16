@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix.headers.darwin;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
@@ -41,11 +40,5 @@ public class DarwinVirtualMemory {
     public static native int mach_task_self();
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int vm_allocate(int targetTask, WordPointer address, UnsignedWord size, boolean anywhere);
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int vm_copy(int targetTask, WordBase sourceAddress, UnsignedWord count, WordBase destAddress);
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int vm_deallocate(int targetTask, WordBase address, UnsignedWord size);
 }

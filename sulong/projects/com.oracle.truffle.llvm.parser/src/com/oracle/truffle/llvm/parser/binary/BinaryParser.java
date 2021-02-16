@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.parser.scanner.BitStream;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
+import com.oracle.truffle.llvm.runtime.Magic;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import java.nio.file.Path;
@@ -54,50 +55,21 @@ import java.util.List;
  */
 public final class BinaryParser {
 
-    public enum Magic {
-        BC_MAGIC_WORD(0xdec04342L), // 'BC' c0de
-        WRAPPER_MAGIC_WORD(0x0B17C0DEL),
-        ELF_MAGIC_WORD(0x464C457FL),
-        MH_MAGIC(0xFEEDFACEL),
-        MH_CIGAM(0xCEFAEDFEL),
-        MH_MAGIC_64(0xFEEDFACFL),
-        MH_CIGAM_64(0xCFFAEDFEL),
-        XAR_MAGIC(0x21726178L),
-        UNKNOWN(0);
-
-        public final long magic;
-
-        Magic(long magic) {
-            this.magic = magic;
-        }
-
-        private static final Magic[] VALUES = values();
-
-        public static Magic get(long magic) {
-            for (Magic m : VALUES) {
-                if (m.magic == magic) {
-                    return m;
-                }
-            }
-            return UNKNOWN;
-        }
-
-        public static Magic get(BitStream b) {
-            try {
-                return get(Integer.toUnsignedLong((int) b.read(0, Integer.SIZE)));
-            } catch (Exception e) {
-                /*
-                 * An exception here means we can't read at least 4 bytes from the file. That means
-                 * it is definitely not a bitcode or ELF file.
-                 */
-                return UNKNOWN;
-            }
-        }
-    }
-
     private ArrayList<String> libraries = new ArrayList<>();
     private ArrayList<String> paths = new ArrayList<>();
     private LibraryLocator locator = DefaultLibraryLocator.INSTANCE;
+
+    public static Magic getMagic(BitStream b) {
+        try {
+            return Magic.get(Integer.toUnsignedLong((int) b.read(0, Integer.SIZE)));
+        } catch (Exception e) {
+            /*
+             * An exception here means we can't read at least 4 bytes from the file. That means it
+             * is definitely not a bitcode or ELF file.
+             */
+            return Magic.UNKNOWN;
+        }
+    }
 
     public static BinaryParserResult parse(ByteSequence bytes, Source bcSource, LLVMContext context) {
         return new BinaryParser().parseInternal(bytes, bcSource, context);
@@ -134,7 +106,7 @@ public final class BinaryParser {
 
     private ByteSequence parseBitcode(ByteSequence bytes, Source source) {
         BitStream b = BitStream.create(bytes);
-        Magic magicWord = Magic.get(b);
+        Magic magicWord = getMagic(b);
         switch (magicWord) {
             case BC_MAGIC_WORD:
                 return bytes;

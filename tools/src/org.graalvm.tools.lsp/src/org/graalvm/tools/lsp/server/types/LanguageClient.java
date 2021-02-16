@@ -36,6 +36,8 @@ public interface LanguageClient {
 
     void logMessage(LogMessageParams params);
 
+    CompletableFuture<Void> createProgress(WorkDoneProgressCreateParams params);
+
     // Telemetry related methods
     void event(Object object);
 
@@ -53,4 +55,6 @@ public interface LanguageClient {
 
     // Diagnostics related methods
     void publishDiagnostics(PublishDiagnosticsParams params);
+
+    void sendCustomNotification(String method, Object params);
 }

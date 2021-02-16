@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,40 +29,30 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 
-public class LLVMStatementRootNode extends RootNode {
+public class LLVMStatementRootNode extends LLVMRootNode {
 
-    @Child LLVMStatementNode statement;
+    @Child private LLVMStatementNode statement;
 
-    public LLVMStatementRootNode(LLVMLanguage language, LLVMStatementNode statement, FrameDescriptor descriptor) {
-        super(language, descriptor);
+    public LLVMStatementRootNode(LLVMLanguage language, LLVMStatementNode statement, FrameDescriptor descriptor, LLVMStackAccess stackAccess) {
+        super(language, descriptor, stackAccess);
         this.statement = statement;
-    }
-
-    @CompilationFinal private FrameSlot stackPointerSlot;
-
-    private FrameSlot getStackPointerSlot() {
-        if (stackPointerSlot == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointerSlot = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
-            assert stackPointerSlot != null;
-        }
-        return stackPointerSlot;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        frame.setObject(getStackPointerSlot(), frame.getArguments()[0]);
-        statement.execute(frame);
+        stackAccess.executeEnter(frame);
+        try {
+            statement.execute(frame);
+        } finally {
+            stackAccess.executeExit(frame);
+        }
         return null;
     }
 }

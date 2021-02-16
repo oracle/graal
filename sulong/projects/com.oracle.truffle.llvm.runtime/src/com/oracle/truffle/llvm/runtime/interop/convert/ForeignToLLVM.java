@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -52,10 +51,6 @@ public abstract class ForeignToLLVM extends LLVMNode {
     public abstract Object executeWithType(Object value, LLVMInteropType.Structured type);
 
     public abstract Object executeWithForeignToLLVMType(Object value, LLVMInteropType.Structured type, ForeignToLLVMType ftlType);
-
-    protected static boolean notLLVM(Object value) {
-        return LLVMExpressionNode.notLLVM(value);
-    }
 
     protected char getSingleStringCharacter(String value) {
         if (value.length() == 1) {

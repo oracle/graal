@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,21 +28,28 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int main() {
-  char name[L_tmpnam];
-  FILE *file = fopen(tmpnam(name), "w");
-  if (file == NULL) {
-    printf("Failed to open file\n");
-    abort();
-  }
-  fputc('\n', file);
-  fclose(file);
-  FILE *read = fopen(name, "r");
-  char buf[200];
-  while (fgets(buf, 200, read) != NULL) {
-    printf("%s\n", buf);
-  }
-  fclose(read);
-  unlink(name);
+    char name[] = "fgets-only-newline-XXXXXX";
+    int fd = mkstemp(name);
+    if (fd == -1) {
+        printf("Failed to create temporary file\n");
+        abort();
+    }
+    FILE *file = fdopen(fd, "w");
+    if (file == NULL) {
+        printf("Failed to open file\n");
+        abort();
+    }
+    fputc('\n', file);
+    fclose(file);
+    FILE *read = fopen(name, "r");
+    char buf[200];
+    while (fgets(buf, 200, read) != NULL) {
+        printf("%s\n", buf);
+    }
+    fclose(read);
+    unlink(name);
 }

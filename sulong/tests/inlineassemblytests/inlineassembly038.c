@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int out;
-  __asm__("xorl %%eax, %%eax; movb $1, %%ah; movb %%ah, %%al; xorb %%ah, %%ah;" : "=a"(out));
-  return out;
+    int out;
+    __asm__("xorl %%eax, %%eax; movb $1, %%ah; movb %%ah, %%al; xorb %%ah, %%ah;" : "=a"(out));
+    return out;
 }

@@ -40,33 +40,56 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.collection.BooleanArrayList;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.collection.LongArrayList;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.nodes.WasmBlockNode;
 
 import java.util.ArrayList;
 
+import static java.lang.Integer.compareUnsigned;
+
 public class ExecutionState {
-    private int stackSize;
-    private int maxStackSize;
     private int profileCount;
-    private final ByteArrayList byteConstants;
     private final IntArrayList intConstants;
-    private final LongArrayList longConstants;
-    private final IntArrayList stackStates;
-    private final IntArrayList continuationReturnLength;
     private final ArrayList<int[]> branchTables;
+    private final ByteArrayList stack;
+
+    /**
+     * Maximum number of values ever pushed on the stack during this execution.
+     */
+    private int maxStackSize;
+
+    /**
+     * Stack size at the beginning of each parent block.
+     */
+    private final IntArrayList ancestorsStackSizes;
+
+    /**
+     * Whereas each parent block is a loop body or not.
+     */
+    private final BooleanArrayList ancestorsIsLoop;
+
+    /**
+     * Current {@link WasmBlockNode}'s inclusive ancestors.
+     */
+    private final ArrayList<WasmBlockNode> ancestors;
+
+    /**
+     * Whereas the current point in code is reachable or not.
+     */
     private boolean reachable;
 
     public ExecutionState() {
-        this.stackSize = 0;
+        this.stack = new ByteArrayList();
         this.maxStackSize = 0;
         this.profileCount = 0;
-        this.byteConstants = new ByteArrayList();
         this.intConstants = new IntArrayList();
-        this.longConstants = new LongArrayList();
-        this.stackStates = new IntArrayList();
-        this.continuationReturnLength = new IntArrayList();
+        this.ancestorsStackSizes = new IntArrayList();
+        this.ancestorsIsLoop = new BooleanArrayList();
+        this.ancestors = new ArrayList<>();
         this.branchTables = new ArrayList<>();
         this.reachable = true;
     }
@@ -76,112 +99,132 @@ public class ExecutionState {
     }
 
     public void setReachable(boolean reachable) {
+        if (!reachable) {
+            unwindStack(getStackSize(0));
+        }
         this.reachable = reachable;
     }
 
-    public void push() {
-        stackSize++;
-        maxStackSize = Math.max(stackSize, maxStackSize);
+    public void push(byte type) {
+        stack.push(type);
+        maxStackSize = Math.max(stack.size(), maxStackSize);
     }
 
-    public void push(int n) {
-        stackSize += n;
-        maxStackSize = Math.max(stackSize, maxStackSize);
+    public byte pop() {
+        final int blockStackSize = stack.size() - getStackSize(0);
+        if (!isReachable() && blockStackSize == 0) {
+            return -1;
+        }
+        Assert.assertIntGreater(blockStackSize, 0, "Cannot pop from the stack", Failure.TYPE_MISMATCH);
+        return stack.popBack();
     }
 
-    public void pop() {
-        stackSize--;
+    public void popChecked(byte expectedType) {
+        assertTypesEqual(expectedType, pop());
     }
 
-    public void pop(int n) {
-        stackSize -= n;
+    private static void assertTypesEqual(byte expectedType, byte actualType) {
+        if (expectedType != -1 && actualType != -1 && expectedType != actualType) {
+            throw WasmException.format(Failure.TYPE_MISMATCH, "Expected type %s but got %s.", WasmType.toString(expectedType), WasmType.toString(actualType));
+        }
     }
 
-    public void setStackSize(int stackSize) {
-        this.stackSize = stackSize;
-    }
-
-    public void useByteConstant(byte constant) {
-        byteConstants.add(constant);
+    public void unwindStack(int size) {
+        assert compareUnsigned(size, stackSize()) <= 0 : "invalid stack shrink size";
+        while (stackSize() > size) {
+            stack.popBack();
+        }
     }
 
     public void useIntConstant(int constant) {
         intConstants.add(constant);
     }
 
-    public void pushStackState(int stackPosition) {
-        stackStates.add(stackPosition);
+    public int depth() {
+        return ancestors.size();
     }
 
-    public void popStackState() {
-        stackStates.popBack();
+    public int getStackSize(int offset) {
+        Assert.assertUnsignedIntLess(offset, depth(), Failure.UNKNOWN_LABEL);
+        return ancestorsStackSizes.get(depth() - 1 - offset);
     }
 
-    public int stackStateCount() {
-        return stackStates.size();
+    public int getCurrentBlockStackSize() {
+        return stackSize() - getStackSize(0);
     }
 
-    public int getStackState(int level) {
-        if (stackStates.size() < level + 1) {
-            Assert.fail("Branch to level " + level + " larger than the nesting " + stackStates.size());
+    public void startBlock(WasmBlockNode block, boolean isLoopBody) {
+        ancestors.add(block);
+        ancestorsIsLoop.add(isLoopBody);
+        ancestorsStackSizes.add(stackSize());
+    }
+
+    public void endBlock() {
+        final WasmBlockNode currentBlock = ancestors.get(ancestors.size() - 1);
+        if (currentBlock.returnLength() == 1) {
+            popChecked(currentBlock.returnTypeId());
         }
-        return stackStates.get(stackStates.size() - 1 - level);
+        Assert.assertIntEqual(getCurrentBlockStackSize(), 0, Failure.TYPE_MISMATCH);
+        if (currentBlock.returnLength() == 1) {
+            push(currentBlock.returnTypeId());
+        }
+
+        ancestorsStackSizes.popBack();
+        ancestorsIsLoop.popBack();
+        ancestors.remove(ancestors.size() - 1);
     }
 
-    public void pushContinuationReturnLength(int n) {
-        continuationReturnLength.add(n);
+    /**
+     * The continuation length is the number of values that should be on the stack when breaking
+     * from a break (BR, BR_IF or BR_TABLE) instruction to this block.
+     * <p>
+     * Given a block with type t1 -> t2, this is t2 ({@link WasmBlockNode#returnLength}) if block is
+     * a normal block or the body of a condition, or t1 ({@link WasmBlockNode#inputLength()}) if it
+     * is the body of a loop.
+     */
+    public int getContinuationLength(int unwindLevel) {
+        final int index = depth() - 1 - unwindLevel;
+        final boolean isLoop = ancestorsIsLoop.get(index);
+        final WasmBlockNode block = ancestors.get(index);
+        return isLoop ? block.inputLength() : block.returnLength();
     }
 
-    public void popContinuationReturnLength() {
-        continuationReturnLength.popBack();
-    }
-
-    public int getContinuationReturnLength(int offset) {
-        return continuationReturnLength.get(continuationReturnLength.size() - 1 - offset);
+    public void checkContinuationType(int unwindLevel) {
+        final int index = depth() - 1 - unwindLevel;
+        final boolean isLoop = ancestorsIsLoop.get(index);
+        final WasmBlockNode block = ancestors.get(index);
+        if (!isLoop && block.returnLength() == 1) {
+            popChecked(block.returnTypeId());
+            push(block.returnTypeId());
+        }
     }
 
     public int getRootBlockReturnLength() {
-        return continuationReturnLength.get(0);
+        return ancestors.get(0).returnLength();
     }
 
     public int stackSize() {
-        return stackSize;
+        return stack.size();
     }
 
     public int maxStackSize() {
         return maxStackSize;
     }
 
-    public int byteConstantOffset() {
-        return byteConstants.size();
-    }
-
     public int intConstantOffset() {
         return intConstants.size();
-    }
-
-    public byte[] byteConstants() {
-        return byteConstants.toArray();
     }
 
     public int[] intConstants() {
         return intConstants.toArray();
     }
 
-    public void useLongConstant(long literal) {
-        longConstants.add(literal);
-    }
-
-    public int longConstantOffset() {
-        return longConstants.size();
-    }
-
-    public long[] longConstants() {
-        return longConstants.toArray();
-    }
-
     public void saveBranchTable(int[] branchTable) {
         branchTables.add(branchTable);
+    }
+
+    public int[] branchTable(int index) {
+        return branchTables.get(index);
     }
 
     public int branchTableOffset() {

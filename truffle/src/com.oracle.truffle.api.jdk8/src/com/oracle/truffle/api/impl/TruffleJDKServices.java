@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -119,7 +119,7 @@ final class TruffleJDKServices {
             Method m = servicesClass.getDeclaredMethod("load", Class.class);
             return (Iterable<Service>) m.invoke(null, serviceClass);
         } catch (Throwable e) {
-            throw (InternalError) new InternalError().initCause(e);
+            throw new InternalError(e);
         }
     }
 

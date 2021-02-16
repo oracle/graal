@@ -33,11 +33,21 @@
 
 #define BitsPerByte 8
 
+#ifdef JNI_VERSION_9
+    #define JVM_INTERFACE_VERSION 6
+#else
+    #define JVM_INTERFACE_VERSION 4
+#endif
+
 static int _processor_count = 0;
 static jlong _performance_frequency = 0L;
 
 jlong jlong_from(DWORD high, DWORD low) {
     return ((((uint64_t)high) << 32) | low);
+}
+
+JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
+    return JVM_INTERFACE_VERSION;
 }
 
 jlong as_long(LARGE_INTEGER x) {

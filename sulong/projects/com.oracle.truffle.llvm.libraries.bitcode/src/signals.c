@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,32 +33,32 @@
 void (*__sulong_signal(int, void (*)(int)))(int);
 
 void (*signal(int sig, void (*handler)(int)))(int) {
-  void (*old_handler)(int) = __sulong_signal(sig, handler);
+    void (*old_handler)(int) = __sulong_signal(sig, handler);
 
-  if (old_handler == SIG_ERR) {
-    errno = EINVAL;
-  }
+    if (old_handler == SIG_ERR) {
+        errno = EINVAL;
+    }
 
-  return old_handler;
+    return old_handler;
 }
 
 int sigaction(int sig, const struct sigaction *restrict act, struct sigaction *restrict oact) {
-  if (act->sa_flags & SA_SIGINFO) {
-    errno = ENOTSUP;
-    return -1;
-  }
+    if (act->sa_flags & SA_SIGINFO) {
+        errno = ENOTSUP;
+        return -1;
+    }
 
-  /* reuse our implementation of signal() */
-  void (*old_handler)(int) = signal(sig, act->sa_handler);
+    /* reuse our implementation of signal() */
+    void (*old_handler)(int) = signal(sig, act->sa_handler);
 
-  if (old_handler == SIG_ERR) {
-    /* errno is already set from our signal() implementation */
-    return -1;
-  }
+    if (old_handler == SIG_ERR) {
+        /* errno is already set from our signal() implementation */
+        return -1;
+    }
 
-  if (oact) {
-    oact->sa_handler = old_handler;
-  }
+    if (oact) {
+        oact->sa_handler = old_handler;
+    }
 
-  return 0;
+    return 0;
 }

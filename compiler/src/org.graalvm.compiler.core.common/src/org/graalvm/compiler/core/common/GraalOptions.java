@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,8 +93,8 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPeeling = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> ReassociateInvariants = new OptionKey<>(true);
+    @Option(help = "Re-associate loop invariants and constants.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> ReassociateExpressions = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> FullUnroll = new OptionKey<>(true);
@@ -113,6 +113,12 @@ public final class GraalOptions {
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseLoopLimitChecks = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> LoopPredication = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> LoopPredicationMainPath = new OptionKey<>(true);
 
     // debugging settings
     @Option(help = "", type = OptionType.Debug)
@@ -198,6 +204,9 @@ public final class GraalOptions {
     @Option(help = "Generate position independent code", type = OptionType.Expert)
     public static final OptionKey<Boolean> GeneratePIC = new OptionKey<>(false);
 
+    @Option(help = "Generate verify oop checks in AOT code", type = OptionType.Expert)
+    public static final OptionKey<Boolean> AOTVerifyOops = new OptionKey<>(false);
+
     // Runtime settings
     @Option(help = "", type = OptionType.Expert)
     public static final OptionKey<Boolean> SupportJsrBytecodes = new OptionKey<>(true);
@@ -270,4 +279,10 @@ public final class GraalOptions {
 
     @Option(help = "Alignment in bytes for loop header blocks.", type = OptionType.Expert)
     public static final OptionKey<Integer> LoopHeaderAlignment = new OptionKey<>(16);
+
+    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
+    public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
+    
+    @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)//
+    public static final OptionKey<Boolean> EmitStringSubstitutions = new OptionKey<>(true);
 }

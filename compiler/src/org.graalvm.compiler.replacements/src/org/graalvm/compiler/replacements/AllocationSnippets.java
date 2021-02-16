@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,33 +74,34 @@ public abstract class AllocationSnippets implements Snippets {
     protected Object allocateArrayImpl(Word hub,
                     Word prototypeMarkWord,
                     int length,
-                    int headerSize,
+                    int arrayBaseOffset,
                     int log2ElementSize,
                     boolean fillContents,
                     int fillStartOffset,
                     boolean emitMemoryBarrier,
                     boolean maybeUnroll,
                     boolean supportsBulkZeroing,
+                    boolean supportsOptimizedFilling,
                     AllocationProfilingData profilingData) {
         Word thread = getTLABInfo();
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
-        ReplacementsUtil.runtimeAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
+        ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         // A negative array length will result in an array size larger than the largest possible
         // TLAB. Therefore, this case will always end up in the stub call.
-        UnsignedWord allocationSize = arrayAllocationSize(length, headerSize, log2ElementSize);
+        UnsignedWord allocationSize = arrayAllocationSize(length, arrayBaseOffset, log2ElementSize);
         Word newTop = top.add(allocationSize);
 
         Object result;
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
-            result = formatArray(hub, prototypeMarkWord, allocationSize, length, top, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+            result = formatArray(hub, prototypeMarkWord, allocationSize, length, top, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
                             profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewArrayStub(hub, length);
+            result = callNewArrayStub(hub, length, fillStartOffset);
         }
         profileAllocation(profilingData, allocationSize);
         return verifyOop(result);
@@ -115,17 +116,17 @@ public abstract class AllocationSnippets implements Snippets {
         return callNewMultiArrayStub(hub, rank, dims);
     }
 
-    private UnsignedWord arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
+    private UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
         int alignment = objectAlignment();
-        return WordFactory.unsigned(arrayAllocationSize(length, headerSize, log2ElementSize, alignment));
+        return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
     }
 
     /**
      * We do an unsigned multiplication so that a negative array length will result in an array size
      * greater than Integer.MAX_VALUE.
      */
-    public static long arrayAllocationSize(int length, int headerSize, int log2ElementSize, int alignment) {
-        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + headerSize + (alignment - 1);
+    public static long arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize, int alignment) {
+        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset + (alignment - 1);
         long mask = ~(alignment - 1);
         long result = size & mask;
         return result;
@@ -142,11 +143,12 @@ public abstract class AllocationSnippets implements Snippets {
      * that stores are aligned.
      *
      * @param memory beginning of object which is being zeroed
-     * @param startOffset offset to begin zeroing (inclusive). May not be word aligned.
-     * @param endOffset offset to stop zeroing (exclusive). May not be word aligned.
+     * @param startOffset offset to begin zeroing (inclusive). Does not have to be word-aligned.
+     * @param endOffset offset to stop zeroing (exclusive). Does not have to be word-aligned.
      * @param isEndOffsetConstant is {@code endOffset} known to be constant in the snippet
      * @param manualUnroll maximally unroll zeroing
      * @param supportsBulkZeroing whether bulk zeroing is supported by the backend
+     * @param supportsOptimizedFilling whether optimized memory filling is supported by the backend
      */
     private void zeroMemory(Word memory,
                     int startOffset,
@@ -154,8 +156,9 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean isEndOffsetConstant,
                     boolean manualUnroll,
                     boolean supportsBulkZeroing,
+                    boolean supportsOptimizedFilling,
                     AllocationSnippetCounters snippetCounters) {
-        fillMemory(0, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, supportsBulkZeroing, snippetCounters);
+        fillMemory(0, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
     }
 
     private void fillMemory(long value,
@@ -165,43 +168,71 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean isEndOffsetConstant,
                     boolean manualUnroll,
                     boolean supportsBulkZeroing,
+                    boolean supportsOptimizedFilling,
                     AllocationSnippetCounters snippetCounters) {
-        ReplacementsUtil.runtimeAssert(endOffset.and(0x7).equal(0), "unaligned object size");
+        ReplacementsUtil.dynamicAssert(endOffset.and(0x7).equal(0), "unaligned object size");
         UnsignedWord offset = WordFactory.unsigned(startOffset);
         if (offset.and(0x7).notEqual(0)) {
             memory.writeInt(offset, (int) value, LocationIdentity.init());
             offset = offset.add(4);
         }
-        ReplacementsUtil.runtimeAssert(offset.and(0x7).equal(0), "unaligned offset");
+        ReplacementsUtil.dynamicAssert(offset.and(0x7).equal(0), "unaligned offset");
         UnsignedWord remainingSize = endOffset.subtract(offset);
         if (manualUnroll && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
             ReplacementsUtil.staticAssert(!isEndOffsetConstant, "size shouldn't be constant at instantiation time");
-            // This case handles arrays of constant length. Instead of having a snippet variant for
-            // each length, generate a chain of stores of maximum length. Once it's inlined the
-            // break statement will trim excess stores.
-            snippetCounters.unrolledInit.inc();
-
-            explodeLoop();
-            for (int i = 0; i < MAX_UNROLLED_OBJECT_ZEROING_STORES; i++, offset = offset.add(8)) {
-                if (offset.equal(endOffset)) {
-                    break;
-                }
-                memory.initializeLong(offset, value, LocationIdentity.init());
-            }
+            fillMemoryAlignedUnrollable(value, memory, offset, endOffset, supportsOptimizedFilling, snippetCounters);
         } else {
-            if (supportsBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, remainingSize.aboveOrEqual(getMinimalBulkZeroingSize()))) {
-                snippetCounters.bulkInit.inc();
-                ZeroMemoryNode.zero(memory.add(offset), remainingSize.rawValue(), true, LocationIdentity.init());
+            fillMemoryAligned(value, memory, offset, endOffset, isEndOffsetConstant, remainingSize, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected void fillMemoryAlignedUnrollable(
+                    long value,
+                    Word memory,
+                    UnsignedWord fromOffset,
+                    UnsignedWord endOffset,
+                    boolean supportsOptimizedFilling,
+                    AllocationSnippetCounters snippetCounters) {
+        // This case handles arrays of constant length. Instead of having a snippet variant for
+        // each length, generate a chain of stores of maximum length. Once it's inlined the
+        // break statement will trim excess stores.
+        snippetCounters.unrolledInit.inc();
+
+        explodeLoop();
+        UnsignedWord offset = fromOffset;
+        for (int i = 0; i < MAX_UNROLLED_OBJECT_ZEROING_STORES; i++, offset = offset.add(8)) {
+            if (offset.equal(endOffset)) {
+                break;
+            }
+            memory.initializeLong(offset, value, LocationIdentity.init());
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected void fillMemoryAligned(
+                    long value,
+                    Word memory,
+                    UnsignedWord fromOffset,
+                    UnsignedWord endOffset,
+                    boolean isEndOffsetConstant,
+                    UnsignedWord remainingSize,
+                    boolean supportsBulkZeroing,
+                    boolean supportsOptimizedFilling,
+                    AllocationSnippetCounters snippetCounters) {
+        if (supportsBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, remainingSize.aboveOrEqual(getMinimalBulkZeroingSize()))) {
+            snippetCounters.bulkInit.inc();
+            ZeroMemoryNode.zero(memory.add(fromOffset), remainingSize.rawValue(), true, LocationIdentity.init());
+        } else {
+            if (isEndOffsetConstant && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
+                snippetCounters.unrolledInit.inc();
+                explodeLoop();
             } else {
-                if (isEndOffsetConstant && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
-                    snippetCounters.unrolledInit.inc();
-                    explodeLoop();
-                } else {
-                    snippetCounters.loopInit.inc();
-                }
-                for (; offset.belowThan(endOffset); offset = offset.add(8)) {
-                    memory.initializeLong(offset, value, LocationIdentity.init());
-                }
+                snippetCounters.loopInit.inc();
+            }
+            UnsignedWord offset = fromOffset;
+            for (; offset.belowThan(endOffset); offset = offset.add(8)) {
+                memory.initializeLong(offset, value, LocationIdentity.init());
             }
         }
     }
@@ -211,19 +242,22 @@ public abstract class AllocationSnippets implements Snippets {
      * necessary and ensuring that stores are aligned.
      *
      * @param memory beginning of object which is being zeroed
-     * @param startOffset offset to begin filling garbage value (inclusive). May not be word
-     *            aligned.
-     * @param endOffset offset to stop filling garbage value (exclusive). May not be word aligned.
-     * @param isEndOffsetConstant is {@code  endOffset} known to be constant in the snippet
+     * @param startOffset offset to begin filling garbage value (inclusive). Does not have to be
+     *            word-aligned.
+     * @param endOffset offset to stop filling garbage value (exclusive). Does not have to be
+     *            word-aligned.
+     * @param isEndOffsetConstant is {@code endOffset} known to be constant in the snippet
      * @param manualUnroll maximally unroll zeroing
+     * @param supportsOptimizedFilling whether optimized memory filling is supported by the backend
      */
     private void fillWithGarbage(Word memory,
                     int startOffset,
                     UnsignedWord endOffset,
                     boolean isEndOffsetConstant,
                     boolean manualUnroll,
+                    boolean supportsOptimizedFilling,
                     AllocationSnippetCounters snippetCounters) {
-        fillMemory(0xfefefefefefefefeL, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, false, snippetCounters);
+        fillMemory(0xfefefefefefefefeL, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, false, supportsOptimizedFilling, snippetCounters);
     }
 
     /**
@@ -240,9 +274,9 @@ public abstract class AllocationSnippets implements Snippets {
         initializeObjectHeader(memory, hub, prototypeMarkWord, false);
         int headerSize = instanceHeaderSize();
         if (fillContents) {
-            zeroMemory(memory, headerSize, size, constantSize, false, false, snippetCounters);
+            zeroMemory(memory, headerSize, size, constantSize, false, false, false, snippetCounters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
-            fillWithGarbage(memory, headerSize, size, constantSize, false, snippetCounters);
+            fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
         }
         if (emitMemoryBarrier) {
             MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
@@ -263,15 +297,16 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean emitMemoryBarrier,
                     boolean maybeUnroll,
                     boolean supportsBulkZeroing,
+                    boolean supportsOptimizedFilling,
                     AllocationSnippetCounters snippetCounters) {
         memory.writeInt(arrayLengthOffset(), length, LocationIdentity.init());
         // Store hub last as the concurrent garbage collectors assume length is valid if hub field
         // is not null.
         initializeObjectHeader(memory, hub, prototypeMarkWord, true);
         if (fillContents) {
-            zeroMemory(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, snippetCounters);
+            zeroMemory(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
-            fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, snippetCounters);
+            fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
         if (emitMemoryBarrier) {
             MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
@@ -279,7 +314,7 @@ public abstract class AllocationSnippets implements Snippets {
         return memory.toObjectNonNull();
     }
 
-    protected void emitPrefetchAllocate(Word address, boolean isArray) {
+    public void emitPrefetchAllocate(Word address, boolean isArray) {
         if (getPrefetchStyle() > 0) {
             // Insert a prefetch for each allocation only on the fast-path
             // Generate several prefetch instructions.
@@ -302,25 +337,25 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract int getPrefetchDistance();
 
-    protected abstract boolean useTLAB();
+    public abstract boolean useTLAB();
 
     protected abstract boolean shouldAllocateInTLAB(UnsignedWord allocationSize, boolean isArray);
 
-    protected abstract Word getTLABInfo();
+    public abstract Word getTLABInfo();
 
-    protected abstract Word readTlabTop(Word tlabInfo);
+    public abstract Word readTlabTop(Word tlabInfo);
 
-    protected abstract Word readTlabEnd(Word tlabInfo);
+    public abstract Word readTlabEnd(Word tlabInfo);
 
-    protected abstract void writeTlabTop(Word tlabInfo, Word newTop);
+    public abstract void writeTlabTop(Word tlabInfo, Word newTop);
 
     protected abstract int instanceHeaderSize();
 
-    protected abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
+    public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
 
     protected abstract Object callNewInstanceStub(Word hub);
 
-    protected abstract Object callNewArrayStub(Word hub, int length);
+    protected abstract Object callNewArrayStub(Word hub, int length, int fillStartOffset);
 
     protected abstract Object callNewMultiArrayStub(Word hub, int rank, Word dims);
 
@@ -330,7 +365,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract Object verifyOop(Object obj);
 
-    protected abstract int arrayLengthOffset();
+    public abstract int arrayLengthOffset();
 
     protected abstract int objectAlignment();
 

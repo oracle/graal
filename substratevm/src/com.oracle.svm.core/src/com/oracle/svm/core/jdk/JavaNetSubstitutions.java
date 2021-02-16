@@ -27,12 +27,14 @@ package com.oracle.svm.core.jdk;
 // Checkstyle: allow reflection
 
 import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
+import java.net.URLStreamHandlerFactory;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -68,6 +70,12 @@ final class Target_java_net_URL {
          * available, and how to add a protocol at image build time.
          */
         return JavaNetSubstitutions.getURLStreamHandler(protocol);
+    }
+
+    @Substitute
+    @SuppressWarnings("unused")
+    public static void setURLStreamHandlerFactory(URLStreamHandlerFactory fac) {
+        VMError.unsupportedFeature("Setting a custom URLStreamHandlerFactory.");
     }
 }
 
@@ -179,21 +187,27 @@ public final class JavaNetSubstitutions {
             @Override
             protected URLConnection openConnection(URL url) throws IOException {
                 return new URLConnection(url) {
+                    private InputStream in;
+
                     @Override
                     public void connect() throws IOException {
+                        if (connected) {
+                            return;
+                        }
+                        connected = true;
+                        // remove "resource:" from url to get the resource name
+                        String resName = url.toString().substring(1 + JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
+                        final List<byte[]> bytes = Resources.get(resName);
+                        if (bytes == null || bytes.size() < 1) {
+                            throw new FileNotFoundException(url.toString());
+                        }
+                        in = new ByteArrayInputStream(bytes.get(0));
                     }
 
                     @Override
                     public InputStream getInputStream() throws IOException {
-                        Resources.ResourcesSupport support = ImageSingletons.lookup(Resources.ResourcesSupport.class);
-                        // remove "protcol:" from url to get the resource name
-                        String resName = url.toString().substring(1 + JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
-                        final List<byte[]> bytes = support.resources.get(resName);
-                        if (bytes == null || bytes.size() < 1) {
-                            return null;
-                        } else {
-                            return new ByteArrayInputStream(bytes.get(0));
-                        }
+                        connect();
+                        return in;
                     }
                 };
             }

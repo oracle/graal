@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,9 +32,9 @@
 #include <stdlib.h>
 
 int main() {
-  volatile unsigned short s = USHRT_MAX;
-  volatile float f = s;
-  if (f != USHRT_MAX) {
-    abort();
-  }
+    volatile unsigned short s = USHRT_MAX;
+    volatile float f = s;
+    if (f != USHRT_MAX) {
+        abort();
+    }
 }

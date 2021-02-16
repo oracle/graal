@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
@@ -48,12 +47,11 @@ import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptor;
@@ -61,6 +59,8 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.io.FileSystem;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextLocalFactory;
+import com.oracle.truffle.api.TruffleLanguage.ContextThreadLocalFactory;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -75,6 +75,13 @@ import com.oracle.truffle.api.source.SourceSection;
 final class LanguageAccessor extends Accessor {
 
     static final LanguageAccessor ACCESSOR = new LanguageAccessor();
+
+    static final NodeSupport NODES = ACCESSOR.nodeSupport();
+    static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
+    static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
+    static final JDKSupport JDK = ACCESSOR.jdkSupport();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
+    static final InteropSupport INTEROP = ACCESSOR.interopSupport();
 
     private LanguageAccessor() {
     }
@@ -93,6 +100,10 @@ final class LanguageAccessor extends Accessor {
 
     static InteropSupport interopAccess() {
         return ACCESSOR.interopSupport();
+    }
+
+    static ExceptionSupport exceptionAccess() {
+        return ACCESSOR.exceptionSupport();
     }
 
     static IOSupport ioAccess() {
@@ -140,6 +151,18 @@ final class LanguageAccessor extends Accessor {
             impl.languageInfo = language;
             impl.reference = engineAccess().getCurrentContextReference(polyglotLanguage);
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
+            if (impl.contextLocals == null) {
+                impl.contextLocals = Collections.emptyList();
+            } else {
+                ENGINE.initializeLanguageContextLocal(impl.contextLocals, polyglotLanguageInstance);
+                impl.contextLocals = Collections.unmodifiableList(impl.contextLocals);
+            }
+            if (impl.contextThreadLocals == null) {
+                impl.contextThreadLocals = Collections.emptyList();
+            } else {
+                ENGINE.initializeLanguageContextThreadLocal(impl.contextThreadLocals, polyglotLanguageInstance);
+                impl.contextThreadLocals = Collections.unmodifiableList(impl.contextThreadLocals);
+            }
         }
 
         @SuppressWarnings("deprecation")
@@ -160,6 +183,16 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public Object getPolyglotLanguageContext(Env env) {
+            return env.getPolyglotLanguageContext();
+        }
+
+        @Override
+        public Object getFileSystemContext(TruffleFile file) {
+            return file.getFileSystemContext();
+        }
+
+        @Override
         public Object getLanguageView(Env env, Object value) {
             Object c = env.getLanguageContext();
             if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
@@ -176,7 +209,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object getScopedView(Env env, Node location, Frame frame, Object value) {
+        @SuppressWarnings("deprecation")
+        public Object getLegacyScopedView(Env env, Node location, Frame frame, Object value) {
             Object c = env.getLanguageContext();
             if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
                 CompilerDirectives.transferToInterpreter();
@@ -187,16 +221,52 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public Object getScope(Env env) {
+            Object c = env.getLanguageContext();
+            if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
+                CompilerDirectives.transferToInterpreter();
+                return null;
+            } else {
+                Object result = env.getSpi().getScope(c);
+                assert ACCESSOR.interopSupport().isScopeObject(result) : String.format("%s is not a scope", result);
+                return result;
+            }
+        }
+
+        @Override
+        public Object getPolyglotContext(TruffleContext context) {
+            return context.polyglotContext;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object invokeContextLocalFactory(Object factory, Object contextImpl) {
+            Object result = ((ContextLocalFactory<Object, Object>) factory).create(contextImpl);
+            if (result == null) {
+                throw new IllegalStateException(String.format("%s.create is not allowed to return null.", ContextLocalFactory.class.getSimpleName()));
+            }
+            return result;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object invokeContextThreadLocalFactory(Object factory, Object contextImpl, Thread thread) {
+            Object result = ((ContextThreadLocalFactory<Object, Object>) factory).create(contextImpl, thread);
+            if (result == null) {
+                throw new IllegalStateException(String.format("%s.create is not allowed to return null.", ContextThreadLocalFactory.class.getSimpleName()));
+            }
+            return result;
+        }
+
+        @Override
         public TruffleLanguage<?> getSPI(TruffleLanguage.Env env) {
             return env.getSpi();
         }
 
         @Override
         public TruffleLanguage.Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config,
-                        OptionValues options, String[] applicationArguments, FileSystem fileSystem, FileSystem internalFileSystem,
-                        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
-            TruffleLanguage.Env env = new TruffleLanguage.Env(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments, fileSystem, internalFileSystem,
-                            fileTypeDetectors);
+                        OptionValues options, String[] applicationArguments) {
+            TruffleLanguage.Env env = new TruffleLanguage.Env(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             LanguageInfo info = language.languageInfo;
             instrumentAccess().collectEnvServices(collectedServices, ACCESSOR.nodeSupport().getPolyglotLanguage(info), language);
@@ -221,8 +291,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleContext createTruffleContext(Object impl) {
-            return new TruffleContext(impl);
+        public TruffleContext createTruffleContext(Object impl, boolean creator) {
+            return new TruffleContext(impl, creator);
         }
 
         @Override
@@ -366,11 +436,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Iterable<Scope> findLocalScopes(TruffleLanguage.Env env, Node node, Frame frame) {
+        @SuppressWarnings("deprecation")
+        public Iterable<Scope> findLegacyLocalScopes(TruffleLanguage.Env env, Node node, Frame frame) {
             return env.findLocalScopes(node, frame);
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
             return env.findTopScopes();
         }
@@ -399,8 +471,7 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public TruffleLanguage.Env patchEnvContext(TruffleLanguage.Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem, FileSystem internalFileSystem,
-                        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
+                        String[] applicationArguments) {
             assert env.spi != null;
             final TruffleLanguage.Env newEnv = createEnv(
                             env.polyglotLanguageContext,
@@ -410,39 +481,40 @@ final class LanguageAccessor extends Accessor {
                             stdIn,
                             config,
                             options,
-                            applicationArguments, fileSystem, internalFileSystem, fileTypeDetectors);
+                            applicationArguments);
 
             newEnv.initialized = env.initialized;
             newEnv.context = env.context;
-            env.valid = false;
-            return env.getSpi().patchContext(env.context, newEnv) ? newEnv : null;
-        }
-
-        @Override
-        public Object createFileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
-            return new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectors);
-        }
-
-        @Override
-        public Object getCurrentFileSystemContext() {
-            Object polyglotContextImpl = engineAccess().getCurrentOuterContext();
-            if (polyglotContextImpl == null) {
-                throw new IllegalStateException("No current context");
+            boolean success = env.getSpi().patchContext(env.context, newEnv);
+            if (success) {
+                env.valid = false;
+                return newEnv;
+            } else {
+                return null;
             }
-            FileSystem fileSystem = engineAccess().getFileSystem(polyglotContextImpl);
-            Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = engineAccess().getFileTypeDetectorsSupplier(polyglotContextImpl);
-            return new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
         }
 
         @Override
-        public String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
-            return file.getMimeType(validMimeTypes);
+        public Object createFileSystemContext(Object engineFileSystemContext, FileSystem fileSystem) {
+            return new TruffleFile.FileSystemContext(engineFileSystemContext, fileSystem);
         }
 
         @Override
-        public Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
-            String useMimeType = mimeType == null ? file.getMimeType() : mimeType;
-            return useMimeType == null ? null : file.getEncoding(useMimeType);
+        public Object getFileSystemEngineObject(Object fileSystemContext) {
+            return ((TruffleFile.FileSystemContext) fileSystemContext).engineObject;
+        }
+
+        @Override
+        public String detectMimeType(TruffleFile file, Set<String> validMimeTypes) {
+            return file.detectMimeType(validMimeTypes);
+        }
+
+        @Override
+        public Charset detectEncoding(TruffleFile file, String mimeType) {
+            if (mimeType == null) {
+                throw new IllegalArgumentException("MimeType must be non null.");
+            }
+            return file.detectEncoding(mimeType);
         }
 
         @Override
@@ -473,7 +545,7 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
+        public TruffleFile getTruffleFile(Object fileSystemContext, URI uri) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
             try {
                 return new TruffleFile(ctx, ctx.fileSystem.parsePath(uri));
@@ -489,15 +561,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier) {
-            TruffleFile.FileSystemContext ctx = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
-            return getTruffleFile(path, ctx);
-        }
-
-        @Override
-        public TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier) {
-            TruffleFile.FileSystemContext ctx = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
-            return getTruffleFile(uri, ctx);
+        public TruffleFile getTruffleFile(Object context, String path) {
+            return getTruffleFile(path, context);
         }
 
         @Override
@@ -518,11 +583,6 @@ final class LanguageAccessor extends Accessor {
         @Override
         public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
             return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
-        }
-
-        @Override
-        public SecurityException throwSecurityException(String message) {
-            throw new TruffleSecurityException(message);
         }
 
         @Override

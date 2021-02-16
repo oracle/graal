@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.regex.util;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.util.Map;
 import java.util.Set;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class Boundaries {
 

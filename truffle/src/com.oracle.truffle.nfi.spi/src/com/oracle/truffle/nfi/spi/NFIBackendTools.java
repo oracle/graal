@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,12 +59,4 @@ public abstract class NFIBackendTools {
      * code.
      */
     public abstract Object createBindableSymbol(Object symbol);
-
-    /**
-     * Create an object wrapping a native symbol that is already bound to a signature.
-     *
-     * The returned object has the same properties as if created with {@link #createBindableSymbol}.
-     * Additionally, it is executable.
-     */
-    public abstract Object createBoundSymbol(Object symbol, Object signature);
 }

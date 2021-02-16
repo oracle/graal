@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,10 @@
  */
 
 int main() {
-  int a = 3;
-  int b = !!4;
-  int sum = a == b;
-  sum += 0 || b;
-  sum += a || b;
-  return sum;
+    int a = 3;
+    int b = !!4;
+    int sum = a == b;
+    sum += 0 || b;
+    sum += a || b;
+    return sum;
 }

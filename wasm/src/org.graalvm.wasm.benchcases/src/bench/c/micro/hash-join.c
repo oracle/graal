@@ -253,7 +253,7 @@ int hash_join() {
   return (int32_t) checksum;
 }
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 40;
 }
 
@@ -275,7 +275,7 @@ void benchmarkSetupOnce() {
 void benchmarkSetupEach() {
 }
 
-void benchmarkTeardownEach() {
+void benchmarkTeardownEach(char* outputFile) {
 }
 
 int benchmarkRun() {

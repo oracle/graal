@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -48,22 +49,23 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
+ * <p>
+ * A Java instanceof test normally returns {@code false} when the tested object is {@code null}.
+ * However, if the node {@linkplain #allowsNull() allows null}, the test should return {@code true}
+ * for {@code null} values.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
+@NodeIntrinsicFactory
+public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
     private final ObjectStamp checkedStamp;
@@ -107,11 +109,6 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         } else {
             return new InstanceOfNode(checkedStamp, object, profile, anchor);
         }
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -166,15 +163,6 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     }
 
     @Override
-    public void virtualize(VirtualizerTool tool) {
-        ValueNode alias = tool.getAlias(getValue());
-        TriState fold = tryFold(alias.stamp(NodeView.DEFAULT));
-        if (fold != TriState.UNKNOWN) {
-            tool.replaceWithValue(LogicConstantNode.forBoolean(fold.isTrue(), graph()));
-        }
-    }
-
-    @Override
     public Stamp getSucceedingStampForValue(boolean negated) {
         if (negated) {
             return null;
@@ -226,8 +214,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     @NodeIntrinsic
     public static native boolean doInstanceof(@ConstantNodeParameter ResolvedJavaType type, Object object);
 
-    @SuppressWarnings("unused")
-    static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ResolvedJavaType type, ValueNode object) {
+    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaType type, ValueNode object) {
         InstanceOfNode node = new InstanceOfNode(StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), type)), object, null, null);
         node = b.add(node);
         b.addPush(JavaKind.Int, ConditionalNode.create(node, NodeView.DEFAULT));

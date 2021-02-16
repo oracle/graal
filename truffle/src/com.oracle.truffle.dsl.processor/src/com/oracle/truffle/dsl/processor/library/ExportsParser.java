@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -70,6 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -123,46 +125,69 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         }
 
         parsedNodeCache.clear();
-        Element packageElement = ElementUtils.findPackageElement(type);
-        List<Element> members = loadMembers(type);
-        Map<String, List<Element>> potentiallyMissedOverrides = new LinkedHashMap<>();
 
-        TypeElement currentType = ElementUtils.getSuperType(type);
-        while (currentType != null) {
-            List<AnnotationMirror> exportedLibraries = getRepeatedAnnotation(currentType.getAnnotationMirrors(), types.ExportLibrary);
-            if (!exportedLibraries.isEmpty()) {
-                List<Element> foundInvisibleMembers = new ArrayList<>();
-                List<Element> superTypeMembers = loadMembers(currentType);
-                for (Element superTypeMember : superTypeMembers) {
-                    List<AnnotationMirror> exportedMessages = getRepeatedAnnotation(superTypeMember.getAnnotationMirrors(), types.ExportMessage);
-                    if (!exportedMessages.isEmpty()) {
-                        if (!ElementUtils.isVisible(packageElement, superTypeMember)) {
-                            foundInvisibleMembers.add(superTypeMember);
-                        } else if (superTypeMember.getKind().isClass()) {
-                            for (Element specializationMember : loadMembers((TypeElement) superTypeMember)) {
-                                if (ElementUtils.findAnnotationMirror(specializationMember, types.Specialization) != null && !ElementUtils.isVisible(packageElement, specializationMember)) {
-                                    foundInvisibleMembers.add(specializationMember);
-                                }
+        // set of types that contribute members
+        Set<TypeElement> declaringTypes = new HashSet<>();
+        Set<TypeElement> declaringInTemplateTypes = new HashSet<>();
+        declaringInTemplateTypes.add(type);
+        for (ExportsLibrary library : model.getExportedLibraries().values()) {
+            declaringTypes.addAll(library.getDeclaringTypes());
+            if (library.isDeclaredInTemplate()) {
+                declaringInTemplateTypes.addAll(library.getDeclaringTypes());
+            }
+        }
+        Element packageElement = ElementUtils.findPackageElement(type);
+
+        for (TypeElement currentType : declaringInTemplateTypes) {
+            if (ElementUtils.elementEquals(currentType, element)) {
+                // current type always visible
+                continue;
+            }
+            List<Element> foundInvisibleMembers = new ArrayList<>();
+            List<? extends Element> superTypeMembers = loadMembers(null, currentType);
+            for (Element superTypeMember : superTypeMembers) {
+                List<AnnotationMirror> exportedMessages = getRepeatedAnnotation(superTypeMember.getAnnotationMirrors(), types.ExportMessage);
+                if (!exportedMessages.isEmpty()) {
+                    if (!ElementUtils.isVisible(packageElement, superTypeMember)) {
+                        foundInvisibleMembers.add(superTypeMember);
+                    } else if (superTypeMember.getKind().isClass()) {
+                        for (Element specializationMember : loadMembers(null, (TypeElement) superTypeMember)) {
+                            if (ElementUtils.findAnnotationMirror(specializationMember, types.Specialization) != null && !ElementUtils.isVisible(packageElement, specializationMember)) {
+                                foundInvisibleMembers.add(specializationMember);
                             }
                         }
                     }
                 }
-                if (!foundInvisibleMembers.isEmpty()) {
-                    StringBuilder b = new StringBuilder();
-                    for (Element invisibleMember : foundInvisibleMembers) {
-                        b.append(System.lineSeparator()).append("   - ");
-                        b.append(ElementUtils.getReadableReference(element, invisibleMember));
-                    }
-                    model.addError("Found invisible exported elements in super type '%s': %s%nIncrease their visibility to resolve this problem.", ElementUtils.getSimpleName(currentType),
-                                    b.toString());
+            }
+            if (!foundInvisibleMembers.isEmpty()) {
+                StringBuilder b = new StringBuilder();
+                for (Element invisibleMember : foundInvisibleMembers) {
+                    b.append(System.lineSeparator()).append("   - ");
+                    b.append(ElementUtils.getReadableReference(element, invisibleMember));
+                }
+                model.addError("Found invisible exported elements in super type '%s': %s%nIncrease their visibility to resolve this problem.", ElementUtils.getSimpleName(currentType),
+                                b.toString());
+            }
+        }
+
+        if (model.getExportedLibraries().isEmpty()) {
+            for (Element member : loadMembers(null, type)) {
+                List<AnnotationMirror> exportedMessageMirrors = getRepeatedAnnotation(member.getAnnotationMirrors(), types.ExportMessage);
+                if (!exportedMessageMirrors.isEmpty()) {
+                    model.addError("Class declares @%s annotations but does not export any libraries. "//
+                                    + "Exported messages cannot be resoved without exported library. "//
+                                    + "Add @%s(MyLibrary.class) to the class ot resolve this.", getSimpleName(types.ExportMessage), getSimpleName(types.ExportLibrary));
+                    return model;
                 }
             }
-            currentType = ElementUtils.getSuperType(currentType);
         }
+
+        List<? extends Element> members = loadMembers(declaringInTemplateTypes, type);
 
         /*
          * First pass: element creation
          */
+        Map<String, List<Element>> potentiallyMissedOverrides = new LinkedHashMap<>();
         List<ExportMessageData> exportedElements = new ArrayList<>();
         for (Element member : members) {
             List<AnnotationMirror> exportedMessageMirrors = getRepeatedAnnotation(member.getAnnotationMirrors(), types.ExportMessage);
@@ -188,9 +213,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
-        /*
-         * Second pass: duplication checks and resolve re-exports in subclasses.
-         */
         for (ExportMessageData exportedMessage : exportedElements) {
             Element member = exportedMessage.getMessageElement();
             String messageName = exportedMessage.getResolvedMessage().getName();
@@ -257,13 +279,67 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
+        for (ExportsLibrary exportsLibrary : model.getExportedLibraries().values()) {
+            if (!exportsLibrary.isDeclaredInTemplate()) {
+                for (ExportMessageData message : exportsLibrary.getExportedMessages().values()) {
+                    if (elementEquals(message.getMessageElement().getEnclosingElement(), type)) {
+                        message.addError("The @%s declaration is missing for this exported message. "//
+                                        + "Add @%s(%s.class) to the enclosing class %s to resolve this.",
+                                        getSimpleName(types.ExportLibrary),
+                                        getSimpleName(types.ExportLibrary),
+                                        getSimpleName(exportsLibrary.getLibrary().getTemplateType()),
+                                        getSimpleName(type));
+                    }
+                }
+            }
+        }
+        // avoid removal of elements if errors occured.
+        if (model.hasErrors()) {
+            return model;
+        }
+
+        for (ExportsLibrary exportsLibrary : model.getExportedLibraries().values()) {
+            if (exportsLibrary.isBuiltinDefaultExport()) {
+                // we don't print unused warnings for builtin defaults.
+                continue;
+            }
+            if (exportsLibrary.isDeclaredInTemplate()) {
+                boolean foundDeclared = false;
+                for (ExportMessageData message : exportsLibrary.getExportedMessages().values()) {
+                    if (message.isDeclared()) {
+                        foundDeclared = true;
+                        break;
+                    }
+                }
+
+                if (!foundDeclared) {
+                    exportsLibrary.addWarning("Exported library %s does not export any messages and therefore has no effect. Remove the export declaration to resolve this.",
+                                    getSimpleName(exportsLibrary.getLibrary().getTemplateType()));
+                }
+            }
+        }
+
+        // avoid removal of elements if errors occured.
+        if (model.hasErrors()) {
+            return model;
+        }
+
+        /*
+         * filter elements that come from exports not relevant for this class. Remove all export
+         * declarations not relevant for this type.
+         */
+        Set<ExportsLibrary> declaredExports = model.getExportedLibraries().values().stream().filter(ExportsLibrary::isDeclaredInTemplate).collect(Collectors.toSet());
+        model.getExportedLibraries().values().removeIf((e) -> !declaredExports.contains(e));
+        exportedElements = exportedElements.stream().filter((e) -> declaredExports.contains(e.getExportsLibrary())).collect(Collectors.toList());
+
         /*
          * Third pass: initialize and further parsing that need both method and node to be
          * available.
          */
         for (ExportMessageData exportedElement : exportedElements) {
             if (exportedElement.isOverriden()) {
-                // must not initialize overriden elements because otherwise the parsedNodeCache gets
+                // must not initialize overridden elements because otherwise the parsedNodeCache
+                // gets
                 // confused.
                 continue;
             }
@@ -374,22 +450,47 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
+        if (isGenerateSlowPathOnly(type)) {
+            for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
+                for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+                    if (export.isClass() && export.getSpecializedNode() != null) {
+                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode());
+                    }
+                }
+            }
+        }
         return model;
     }
 
-    private List<Element> loadMembers(TypeElement templateType) {
-        List<Element> elements = new ArrayList<>(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType));
-        Iterator<Element> elementIterator = elements.iterator();
+    private List<? extends Element> loadMembers(Set<TypeElement> relevantTypes, TypeElement templateType) {
+        List<? extends Element> elements;
+        if (relevantTypes != null && relevantTypes.isEmpty()) {
+            return Collections.emptyList();
+        } else if (relevantTypes == null || (relevantTypes.size() == 1 && elementEquals(relevantTypes.iterator().next(), templateType))) {
+            elements = CompilerFactory.getCompiler(templateType).getEnclosedElementsInDeclarationOrder(templateType);
+        } else {
+            elements = CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType);
+        }
+        elements = new ArrayList<>(elements);
+
+        Set<String> relevantTypeIds = null;
+        if (relevantTypes != null) {
+            relevantTypeIds = new HashSet<>();
+            for (TypeElement element : relevantTypes) {
+                relevantTypeIds.add(ElementUtils.getTypeId(element.asType()));
+            }
+        }
+
+        Iterator<? extends Element> elementIterator = elements.iterator();
         while (elementIterator.hasNext()) {
             Element element = elementIterator.next();
-            // not interested in methods of Node
-            if (typeEquals(element.getEnclosingElement().asType(), types.Node)) {
+            TypeMirror enclosingType = element.getEnclosingElement().asType();
+            if (relevantTypeIds != null && !relevantTypeIds.contains(ElementUtils.getTypeId(enclosingType))) {
                 elementIterator.remove();
-            } else
-            // not interested in methods of Object
-            if (typeEquals(element.getEnclosingElement().asType(), context.getType(Object.class))) {
+            } else if (!ElementUtils.typeEquals(templateType.asType(), enclosingType) && !ElementUtils.isVisible(templateType, element)) {
                 elementIterator.remove();
-            } else if (!ElementUtils.typeEquals(templateType.asType(), element.getEnclosingElement().asType()) && !ElementUtils.isVisible(templateType, element)) {
+            } else if (ElementUtils.isObject(enclosingType)) {
+                // not interested in object methods
                 elementIterator.remove();
             }
         }
@@ -411,26 +512,34 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             return model;
         }
 
-        List<AnnotationMirror> mirrors = new ArrayList<>(elementMirrors);
+        Map<AnnotationMirror, TypeElement> mirrors = new LinkedHashMap<>();
+        for (AnnotationMirror annotationMirror : elementMirrors) {
+            mirrors.put(annotationMirror, type);
+        }
+
         TypeElement superType = type;
         while ((superType = getSuperType(superType)) != null) {
-            mirrors.addAll(getRepeatedAnnotation(superType.getAnnotationMirrors(), types.ExportLibrary));
+            for (AnnotationMirror mirror : getRepeatedAnnotation(superType.getAnnotationMirrors(), types.ExportLibrary)) {
+                mirrors.put(mirror, superType);
+            }
         }
 
-        Map<String, AnnotationMirror> mappedMirrors = new LinkedHashMap<>();
-        for (AnnotationMirror mirror : mirrors) {
+        Map<String, List<AnnotationMirror>> mappedMirrors = new LinkedHashMap<>();
+        for (AnnotationMirror mirror : mirrors.keySet()) {
             TypeMirror library = getAnnotationValue(TypeMirror.class, mirror, "value");
-            mappedMirrors.putIfAbsent(getTypeId(library), mirror);
+            mappedMirrors.computeIfAbsent(getTypeId(library), (id) -> new ArrayList<>()).add(mirror);
         }
 
-        for (Entry<String, AnnotationMirror> entry : mappedMirrors.entrySet()) {
-            AnnotationMirror exportAnnotationMirror = entry.getValue();
+        for (Entry<String, List<AnnotationMirror>> entry : mappedMirrors.entrySet()) {
             String libraryId = entry.getKey();
-            TypeMirror libraryMirror = getAnnotationValue(TypeMirror.class, exportAnnotationMirror, "value");
-            AnnotationValue receiverClassValue = getAnnotationValue(exportAnnotationMirror, "receiverType");
+            List<AnnotationMirror> annotationMirrors = entry.getValue();
+            AnnotationMirror annotationMirror = annotationMirrors.get(0);
+
+            TypeMirror libraryMirror = getAnnotationValue(TypeMirror.class, annotationMirror, "value");
+            AnnotationValue receiverClassValue = getAnnotationValue(annotationMirror, "receiverType");
             boolean explicitReceiver;
 
-            TypeMirror receiverClass = getAnnotationValue(TypeMirror.class, exportAnnotationMirror, "receiverType", false);
+            TypeMirror receiverClass = getAnnotationValue(TypeMirror.class, annotationMirror, "receiverType", false);
             if (receiverClass == null) {
                 explicitReceiver = false;
                 receiverClass = type.asType();
@@ -438,14 +547,18 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 explicitReceiver = true;
             }
 
-            LibraryParser parser = new LibraryParser();
-            LibraryData libraryData = parser.parse(fromTypeMirror(libraryMirror));
+            Map<TypeElement, LibraryData> libraryCache = ProcessorContext.getInstance().getCacheMap(LibraryParser.class);
+            LibraryData libraryData = libraryCache.computeIfAbsent(fromTypeMirror(libraryMirror), (t) -> new LibraryParser().parse(t));
 
-            ExportsLibrary lib = new ExportsLibrary(context, type, exportAnnotationMirror, model, libraryData, receiverClass, explicitReceiver);
+            ExportsLibrary lib = new ExportsLibrary(context, type, annotationMirror, model, libraryData, receiverClass, explicitReceiver);
             ExportsLibrary otherLib = model.getExportedLibraries().get(libraryId);
+
+            for (AnnotationMirror mirror : annotationMirrors) {
+                lib.getDeclaringTypes().add(mirrors.get(mirror));
+            }
             model.getExportedLibraries().put(libraryId, lib);
 
-            Integer priority = getAnnotationValue(Integer.class, exportAnnotationMirror, "priority", false);
+            Integer priority = getAnnotationValue(Integer.class, annotationMirror, "priority", false);
             if (priority == null && lib.needsDefaultExportProvider()) {
                 lib.addError("The priority property must be set for default exports based on service providers. "//
                                 + "See @%s(priority=...) for details.",
@@ -453,7 +566,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 continue;
             } else if (priority != null) {
                 int prio = priority;
-                AnnotationValue annotationValue = getAnnotationValue(exportAnnotationMirror, "priority");
+                AnnotationValue annotationValue = getAnnotationValue(annotationMirror, "priority");
                 if (prio < 0) {
                     LibraryDefaultExportData builtinDefaultExport = libraryData.getBuiltinDefaultExport(receiverClass);
                     if (builtinDefaultExport != null) {
@@ -477,7 +590,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
 
             if (ElementUtils.isPrimitive(receiverClass)) {
-                lib.addError(exportAnnotationMirror, receiverClassValue, "Primitive receiver types are not supported yet.");
+                lib.addError(annotationMirror, receiverClassValue, "Primitive receiver types are not supported yet.");
                 continue;
             }
 
@@ -495,7 +608,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                 }
                 if (foundInvalidExportsOnReceiver) {
-                    lib.addError(exportAnnotationMirror, receiverClassValue, "An explicit receiver type must not export any libraries other than %s.",
+                    lib.addError(annotationMirror, receiverClassValue, "An explicit receiver type must not export any libraries other than %s.",
                                     types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
                     continue;
                 }
@@ -517,8 +630,9 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
 
             if (explicitReceiver) {
-                if (!isSubtype(receiverClass, libraryData.getSignatureReceiverType())) {
-                    lib.addError(exportAnnotationMirror, receiverClassValue, "The export receiver type %s is not compatible with the library receiver type '%s' of library '%s'. ",
+                TypeMirror receiverTypeErasure = context.getEnvironment().getTypeUtils().erasure(libraryData.getSignatureReceiverType());
+                if (!isSubtype(receiverClass, receiverTypeErasure)) {
+                    lib.addError(annotationMirror, receiverClassValue, "The export receiver type %s is not compatible with the library receiver type '%s' of library '%s'. ",
                                     getSimpleName(receiverClass),
                                     getSimpleName(libraryData.getSignatureReceiverType()),
                                     getSimpleName(libraryData.getTemplateType().asType()));
@@ -534,7 +648,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 }
             }
 
-            String transitionLimit = ElementUtils.getAnnotationValue(String.class, exportAnnotationMirror, "transitionLimit", false);
+            String transitionLimit = ElementUtils.getAnnotationValue(String.class, annotationMirror, "transitionLimit", false);
             if (transitionLimit != null) {
                 DSLExpressionResolver resolver = new DSLExpressionResolver(context, model.getTemplateType(),
                                 NodeParser.importVisibleStaticMembers(model.getTemplateType(), model.getTemplateType(), false));
@@ -543,14 +657,14 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     expression.accept(resolver);
                     lib.setTransitionLimit(expression);
                 } catch (InvalidExpressionException e) {
-                    AnnotationValue allowTransition = ElementUtils.getAnnotationValue(exportAnnotationMirror, "transitionLimit");
-                    model.addError(exportAnnotationMirror, allowTransition, "Error parsing expression '%s': %s", transitionLimit, e.getMessage());
+                    AnnotationValue allowTransition = ElementUtils.getAnnotationValue(annotationMirror, "transitionLimit");
+                    model.addError(annotationMirror, allowTransition, "Error parsing expression '%s': %s", transitionLimit, e.getMessage());
                 }
             }
 
-            String delegateTo = ElementUtils.getAnnotationValue(String.class, exportAnnotationMirror, "delegateTo", false);
+            String delegateTo = ElementUtils.getAnnotationValue(String.class, annotationMirror, "delegateTo", false);
             if (delegateTo != null) {
-                AnnotationValue delegateToValue = ElementUtils.getAnnotationValue(exportAnnotationMirror, "delegateTo");
+                AnnotationValue delegateToValue = ElementUtils.getAnnotationValue(annotationMirror, "delegateTo");
                 if (receiverClass.getKind() != TypeKind.DECLARED) {
                     lib.addError(delegateToValue, "The receiver type must be declared type for delegation.");
                     continue;
@@ -806,7 +920,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             exportElement.addError("Inner message node class must be static.");
             return;
         }
-        List<Element> typeMembers = loadMembers(exportedTypeElement);
+        List<? extends Element> typeMembers = loadMembers(null, exportedTypeElement);
 
         boolean hasSpecialization = false;
         boolean hasExecute = false;
@@ -978,7 +1092,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     // we only want to generate code for this once.
     final Map<String, NodeData> parsedNodeCache = new HashMap<>();
 
-    private NodeData parseNode(TypeElement nodeType, ExportMessageData exportedMessage, List<Element> members) {
+    private NodeData parseNode(TypeElement nodeType, ExportMessageData exportedMessage, List<? extends Element> members) {
         String nodeTypeId = ElementUtils.getTypeId(nodeType.asType());
         // we skip the node cache for generated accepts messages
         if (!exportedMessage.isGenerated()) {
@@ -1060,6 +1174,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         AnnotationMirror reportPolymorphismExclude = findAnnotationMirror(nodeType, types.ReportPolymorphism_Exclude);
         if (reportPolymorphismExclude != null) {
             clonedType.getAnnotationMirrors().add(reportPolymorphismExclude);
+        }
+        AnnotationMirror reportPolymorphismMegamorphic = findAnnotationMirror(nodeType, types.ReportPolymorphism_Megamorphic);
+        if (reportPolymorphismMegamorphic != null) {
+            clonedType.getAnnotationMirrors().add(reportPolymorphismMegamorphic);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
-#include <truffle.h>
+#include <graalvm/llvm/polyglot.h>
+#include <graalvm/llvm/handles.h>
+#include <stdlib.h>
 
 int main() {
-  void *p = polyglot_import("object");
-  void *p1 = truffle_handle_for_managed(p);
-  void *p2 = truffle_deref_handle_for_managed(p);
-  long l_p1 = (long)p1;
-  long l_p2 = (long)p2;
-  void *n = calloc(sizeof(char), 2);
+    void *p = polyglot_import("object");
+    void *p1 = create_handle(p);
+    void *p2 = create_deref_handle(p);
+    long l_p1 = (long) p1;
+    long l_p2 = (long) p2;
+    void *n = calloc(sizeof(char), 2);
 
-  if (!truffle_is_handle_to_managed(p1)) {
-      return 1;
-  }
-  if (!truffle_is_handle_to_managed(l_p1)) {
-      return 2;
-  }
-  if (!truffle_is_handle_to_managed(p2)) {
-      return 3;
-  }
-  if (!truffle_is_handle_to_managed(l_p2)) {
-      return 4;
-  }
-  if (truffle_is_handle_to_managed(p)) {
-      return 5;
-  }
-  if (truffle_is_handle_to_managed(n)) {
-      return 6;
-  }
-  free(n);
+    if (!is_handle(p1)) {
+        return 1;
+    }
+    if (!is_handle((void *) l_p1)) {
+        return 2;
+    }
+    if (!is_handle(p2)) {
+        return 3;
+    }
+    if (!is_handle((void *) l_p2)) {
+        return 4;
+    }
+    if (is_handle(p)) {
+        return 5;
+    }
+    if (is_handle(n)) {
+        return 6;
+    }
+    free(n);
 
-  return 0;
+    return 0;
 }

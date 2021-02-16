@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import java.lang.ref.WeakReference;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -83,6 +82,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import java.io.File;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import org.junit.Assume;
 
 public class LoggingTest {
 
@@ -365,9 +368,9 @@ public class LoggingTest {
     @Test
     public void testParametersPrimitive() {
         final Object[] expected = new Object[]{1, 1L, null, 1.1, 1.1d, "test", 't', null, true};
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
             @Override
-            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 for (TruffleLogger logger : loggers) {
                     logger.log(Level.WARNING, "Parameters", Arrays.copyOf(expected, expected.length));
                 }
@@ -389,9 +392,9 @@ public class LoggingTest {
 
     @Test
     public void testParametersObjects() {
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
             @Override
-            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 for (TruffleLogger logger : loggers) {
                     logger.log(Level.WARNING, "Parameters", new LoggingLanguageObject("passed"));
                 }
@@ -413,17 +416,17 @@ public class LoggingTest {
 
     @Test
     public void testInnerContextLogging() {
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
             @Override
-            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 TruffleContext tc = context.getEnv().newContextBuilder().build();
-                final Object prev = tc.enter();
+                final Object prev = tc.enter(null);
                 try {
                     for (TruffleLogger logger : loggers) {
                         logger.log(Level.FINEST, "INNER: " + logger.getName());
                     }
                 } finally {
-                    tc.leave(prev);
+                    tc.leave(null, prev);
                     tc.close();
                 }
                 return true;
@@ -443,8 +446,9 @@ public class LoggingTest {
 
     @Test
     public void testPolyglotLogHandler() {
+        Assume.assumeTrue(System.getProperty("polyglot.log.file") == null);
         CloseableByteArrayOutputStream err = new CloseableByteArrayOutputStream();
-        testLogToStream(newContextBuilder().err(err), err, false);
+        testLogToStream(newContextBuilder().err(err), err, false, true);
     }
 
     @Test
@@ -493,16 +497,16 @@ public class LoggingTest {
     @Test
     public void testLogToStream() {
         CloseableByteArrayOutputStream stream = new CloseableByteArrayOutputStream();
-        testLogToStream(newContextBuilder().logHandler(stream), stream, true);
+        testLogToStream(newContextBuilder().logHandler(stream), stream, true, false);
         stream = new CloseableByteArrayOutputStream();
         try (Engine engine = newEngineBuilder().logHandler(stream).build()) {
-            testLogToStream(newContextBuilder().engine(engine), stream, false);
+            testLogToStream(newContextBuilder().engine(engine), stream, false, false);
             stream.clear();
             CloseableByteArrayOutputStream innerStream = new CloseableByteArrayOutputStream();
-            testLogToStream(newContextBuilder().engine(engine).logHandler(innerStream), innerStream, true);
+            testLogToStream(newContextBuilder().engine(engine).logHandler(innerStream), innerStream, true, false);
             Assert.assertFalse(stream.isClosed());
             Assert.assertEquals(0, stream.toByteArray().length);
-            testLogToStream(newContextBuilder().engine(engine), stream, false);
+            testLogToStream(newContextBuilder().engine(engine), stream, false, false);
         }
         Assert.assertTrue(stream.isClosed());
     }
@@ -827,10 +831,11 @@ public class LoggingTest {
         try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
                         engineHandler).build()) {
             AtomicReference<TruffleLogger> loggerRef = new AtomicReference<>();
-            LoggingLanguageFirst.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+            LoggingLanguageFirst.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
                 @Override
-                public boolean test(LoggingContext ctx, Collection<TruffleLogger> loggers) {
-                    loggerRef.set(loggers.iterator().next());
+                public boolean test(LoggingContext ctx, TruffleLogger[] loggers) {
+                    Assert.assertTrue(loggers.length > 0);
+                    loggerRef.set(loggers[0]);
                     return true;
                 }
             };
@@ -896,6 +901,7 @@ public class LoggingTest {
 
     @Test
     public void testErrorStream() {
+        Assume.assumeTrue(System.getProperty("polyglot.log.file") == null);
         ByteArrayOutputStream errConsumer = new ByteArrayOutputStream();
         ProxyInstrument delegate = new ProxyInstrument();
         delegate.setOnCreate(new Consumer<TruffleInstrument.Env>() {
@@ -919,9 +925,9 @@ public class LoggingTest {
     public void testInvalidId() {
         Context.Builder builder = newContextBuilder();
         TestHandler handler = new TestHandler();
-        LoggingLanguageFirst.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+        LoggingLanguageFirst.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
             @Override
-            public boolean test(LoggingContext ctx, Collection<TruffleLogger> defaultLoggers) {
+            public boolean test(LoggingContext ctx, TruffleLogger[] defaultLoggers) {
                 try {
                     TruffleLogger.getLogger("LoggingTest-Invalid-Id");
                     Assert.fail("Expected IllegalArgumentException");
@@ -948,6 +954,87 @@ public class LoggingTest {
         }
     }
 
+    @Test
+    public void testLogFileOption() throws IOException {
+        File f = File.createTempFile(getClass().getSimpleName(), "log");
+        String expectedMessage = "expected_message";
+        AbstractLoggingLanguage.action = createCustomLogging(
+                        new String[]{LoggingLanguageFirst.ID},
+                        new String[]{null},
+                        new String[]{expectedMessage});
+        try (Context ctx = newContextBuilder().option("log.file", f.getAbsolutePath()).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+        List<String> lines = Files.readAllLines(f.toPath());
+        Assert.assertEquals(1, lines.size());
+        Assert.assertTrue(lines.get(0).contains(expectedMessage));
+    }
+
+    @Test
+    public void testLogFileOptionMultpileContexts() throws IOException {
+        File f = File.createTempFile(getClass().getSimpleName(), "log");
+        String expectedMessageFirstCtx = "expected_message1";
+        String expectedMessageSecondCtx = "expected_message2";
+        AbstractLoggingLanguage.action = createCustomLogging(
+                        new String[]{LoggingLanguageFirst.ID},
+                        new String[]{null},
+                        new String[]{expectedMessageFirstCtx});
+        try (Context ctx = newContextBuilder().option("log.file", f.getAbsolutePath()).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+        AbstractLoggingLanguage.action = createCustomLogging(
+                        new String[]{LoggingLanguageFirst.ID},
+                        new String[]{null},
+                        new String[]{expectedMessageSecondCtx});
+        try (Context ctx = newContextBuilder().option("log.file", f.getAbsolutePath()).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+        List<String> lines = Files.readAllLines(f.toPath());
+        Assert.assertEquals(2, lines.size());
+        Assert.assertTrue(lines.get(0).contains(expectedMessageFirstCtx));
+        Assert.assertTrue(lines.get(1).contains(expectedMessageSecondCtx));
+    }
+
+    @Test
+    public void testLogFileOptionMultpileContextsNested() throws IOException {
+        File f = File.createTempFile(getClass().getSimpleName(), "log");
+        String expectedMessageFirstCtx = "expected_message1";
+        String expectedMessageSecondCtx = "expected_message2";
+        AbstractLoggingLanguage.action = createCustomLogging(
+                        new String[]{LoggingLanguageFirst.ID},
+                        new String[]{null},
+                        new String[]{expectedMessageFirstCtx});
+        try (Context ctx = newContextBuilder().option("log.file", f.getAbsolutePath()).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            AbstractLoggingLanguage.action = createCustomLogging(
+                            new String[]{LoggingLanguageFirst.ID},
+                            new String[]{null},
+                            new String[]{expectedMessageSecondCtx});
+            try (Context ctx2 = newContextBuilder().option("log.file", f.getAbsolutePath()).build()) {
+                ctx2.eval(LoggingLanguageFirst.ID, "");
+            }
+        }
+        List<String> lines = Files.readAllLines(f.toPath());
+        Assert.assertEquals(2, lines.size());
+        Assert.assertTrue(lines.get(0).contains(expectedMessageFirstCtx));
+        Assert.assertTrue(lines.get(1).contains(expectedMessageSecondCtx));
+    }
+
+    @Test
+    public void testLogFileOptionNonWritableFile() throws IOException {
+        File f = File.createTempFile(getClass().getSimpleName(), "log");
+        f.setWritable(false);
+        // Some file systems does not support non writable files
+        Assume.assumeFalse("File cannot be writeable.", f.canWrite());
+        AbstractPolyglotTest.assertFails(() -> {
+            try (Context ctx = newContextBuilder().option("log.file", f.getAbsolutePath()).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+            }
+        }, IllegalArgumentException.class, (e) -> {
+            Assert.assertTrue(e.getMessage().contains("Cannot open log file"));
+        });
+    }
+
     @SuppressWarnings("all")
     private static boolean assertionsEnabled() {
         boolean assertionsEnabled = false;
@@ -955,21 +1042,45 @@ public class LoggingTest {
         return assertionsEnabled;
     }
 
-    private static void testLogToStream(Context.Builder contextBuilder, CloseableByteArrayOutputStream stream, boolean expectStreamClosed) {
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+    private static BiPredicate<LoggingContext, TruffleLogger[]> createCustomLogging(String[] loggerIds, String[] loggerNames, String[] messages) {
+        if (loggerIds.length != loggerNames.length || loggerNames.length != messages.length) {
+            throw new IllegalArgumentException("loggerIds, loggerNames and messages hsve to have same length.");
+        }
+        return new BiPredicate<LoggingContext, TruffleLogger[]>() {
             @Override
             @CompilerDirectives.TruffleBoundary
-            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
-                TruffleLogger.getLogger(LoggingLanguageFirst.ID).warning(LoggingLanguageFirst.ID);
-                TruffleLogger.getLogger(LoggingLanguageFirst.ID, "package.class").warning(LoggingLanguageFirst.ID + "::package.class");
+            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
+                for (int i = 0; i < loggerIds.length; i++) {
+                    String loggerId = loggerIds[i];
+                    String loggerName = loggerNames[i];
+                    String message = messages[i];
+                    if (loggerName == null) {
+                        TruffleLogger.getLogger(loggerId).warning(message);
+                    } else {
+                        TruffleLogger.getLogger(loggerId, loggerName).warning(message);
+                    }
+                }
                 return false;
             }
         };
+    }
+
+    private static void testLogToStream(Context.Builder contextBuilder, CloseableByteArrayOutputStream stream,
+                    boolean expectStreamClosed, boolean expectRedirectMessage) {
+        AbstractLoggingLanguage.action = createCustomLogging(
+                        new String[]{LoggingLanguageFirst.ID, LoggingLanguageFirst.ID},
+                        new String[]{null, "package.class"},
+                        new String[]{LoggingLanguageFirst.ID, LoggingLanguageFirst.ID + "::package.class"});
         try (Context ctx = contextBuilder.build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
         }
         Assert.assertEquals(expectStreamClosed, stream.isClosed());
-        final String output = new String(stream.toByteArray());
+        String output = new String(stream.toByteArray());
+        if (expectRedirectMessage) {
+            String redirectMessage = getRedirectMessage();
+            Assert.assertTrue(output.startsWith(redirectMessage));
+            output = output.substring(redirectMessage.length());
+        }
         final Pattern p = Pattern.compile("\\[(.*)\\]\\sWARNING:\\s(.*)");
         for (String line : output.split("\n")) {
             final Matcher m = p.matcher(line.trim());
@@ -977,6 +1088,18 @@ public class LoggingTest {
             final String loggerName = m.group(1);
             final String message = m.group(2);
             Assert.assertEquals(message, loggerName);
+        }
+    }
+
+    private static String getRedirectMessage() {
+        try {
+            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers$RedirectNotificationOutputStream");
+            Field fld = clz.getDeclaredField("REDIRECT_FORMAT");
+            fld.setAccessible(true);
+            String format = (String) fld.get(null);
+            return String.format(format);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Cannot read redirect log message.", e);
         }
     }
 
@@ -1042,7 +1165,7 @@ public class LoggingTest {
             // Expected
         }
         try {
-            r.setThreadID(10);
+            setLoggerRecordThreadID(r);
             Assert.fail("Should not reach here.");
         } catch (UnsupportedOperationException e) {
             // Expected
@@ -1053,6 +1176,11 @@ public class LoggingTest {
         } catch (UnsupportedOperationException e) {
             // Expected
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void setLoggerRecordThreadID(final LogRecord r) {
+        r.setThreadID(10);
     }
 
     @SuppressWarnings("deprecation")
@@ -1218,15 +1346,15 @@ public class LoggingTest {
     public abstract static class AbstractLoggingLanguage extends TruffleLanguage<LoggingContext> {
         static final String[] LOGGER_NAMES = {"a", "a.a", "a.b", "a.a.a", "b", "b.a", "b.a.a.a"};
         static final Level[] LOGGER_LEVELS = {Level.FINEST, Level.FINER, Level.FINE, Level.INFO, Level.SEVERE, Level.WARNING};
-        static BiPredicate<LoggingContext, Collection<TruffleLogger>> action;
-        private final Collection<TruffleLogger> allLoggers;
+        static BiPredicate<LoggingContext, TruffleLogger[]> action;
+        private final TruffleLogger[] allLoggers;
 
         AbstractLoggingLanguage(final String id) {
-            final Collection<TruffleLogger> loggers = new ArrayList<>(LOGGER_NAMES.length);
+            final ArrayList<TruffleLogger> loggers = new ArrayList<>(LOGGER_NAMES.length);
             for (String loggerName : LOGGER_NAMES) {
                 loggers.add(TruffleLogger.getLogger(id, loggerName));
             }
-            allLoggers = loggers;
+            allLoggers = loggers.toArray(new TruffleLogger[0]);
         }
 
         @Override
@@ -1377,7 +1505,7 @@ public class LoggingTest {
         }
     }
 
-    private static final class LookupInstrumentAction implements BiPredicate<LoggingContext, Collection<TruffleLogger>> {
+    private static final class LookupInstrumentAction implements BiPredicate<LoggingContext, TruffleLogger[]> {
 
         private final boolean performDefaultLogging;
 
@@ -1386,7 +1514,7 @@ public class LoggingTest {
         }
 
         @Override
-        public boolean test(LoggingContext ctx, Collection<TruffleLogger> loggers) {
+        public boolean test(LoggingContext ctx, TruffleLogger[] loggers) {
             TruffleLanguage.Env env = ctx.getEnv();
             InstrumentInfo instrumentInfo = env.getInstruments().get(ProxyInstrument.ID);
             env.lookup(instrumentInfo, ProxyInstrument.Initialize.class);

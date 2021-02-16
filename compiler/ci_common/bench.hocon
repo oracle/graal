@@ -1,10 +1,11 @@
 # DaCapo-related targets
 
-bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
+bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "--profiler=${MX_PROFILER}", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "-Dgraal.CompilationFailureAction=Diagnose", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
 
 bench-jvmci : {
   mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
+  mx-awfy : ${bench-jvmci.mx-benchmark} ["awfy:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
   mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:*"]
@@ -12,17 +13,23 @@ bench-jvmci : {
   mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
-  mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
-  mx-renaissance-no-db-shootout: ${bench-jvmci.mx-benchmark} ["renaissance:~db-shootout"]
+  mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*", "--bench-suite-version=$RENAISSANCE_VERSION"]
+  mx-renaissance-no-db-shootout: ${bench-jvmci.mx-benchmark} ["renaissance:~db-shootout", "--bench-suite-version=$RENAISSANCE_VERSION"]
   mx-renaissance-legacy: ${bench-jvmci.mx-benchmark} ["renaissance-legacy:*"]
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
-  mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:*"]
+  mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS"]
   mx-teardown : ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
 }
 
 bench-common : ${compilerCommon} {
+  docker : {
+    "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol8",
+    "mount_modules": true
+  }
   environment: {
+    MX_PYTHON_VERSION : "3",
+    BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json",
     BENCH_RESULTS_FILE_PATH : "bench-results.json"
   }
   setup: ${compilerCommon.setup} [
@@ -55,6 +62,14 @@ default-heap: {
   }
 }
 
+bench-awfy: ${bench-common} ${default-heap} ${awfy-bench-notifications} {
+  targets : [bench, daily]
+  run: [
+    ${bench-jvmci.mx-dacapo} ${bench-arguments}
+  ]
+  timelimit: "30:00"
+}
+
 bench-dacapo: ${bench-common} ${default-heap} ${dacapo-bench-notifications} {
   targets : [bench, post-merge]
   run: [
@@ -75,14 +90,16 @@ bench-scala-dacapo: ${bench-common} ${default-heap} ${scala-dacapo-bench-notific
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
-  ]
+  ],
+  timelimit: "45:00"
 }
 
 bench-scala-dacapo-timing: ${bench-common} ${default-heap} ${scala-dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
-  ]
+  ],
+  timelimit: "45:00"
 }
 
 # SPECjbb2005-related targets
@@ -119,7 +136,7 @@ bench-specjvm2008-Single: ${bench-specjvm2008} ${specjvm-bench-notifications} {
 }
 
 bench-specjvm2008-OneVM: ${bench-specjvm2008} ${specjvm-bench-notifications} {
-  targets: [bench, weekly]
+  targets: [bench]
   run: [
     ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} [
       "--", "-it", "240s", "-wt", "120s"
@@ -135,7 +152,7 @@ bench-specjbb2015: ${bench-common} ${specjbb-large-heap} ${specjbb-bench-notific
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
   ]
   downloads: {
-    SPECJBB2015: { name: specjbb2015, version: "1.02" }
+    SPECJBB2015: { name: specjbb2015, version: "1.03" }
   }
   timelimit: "3:00:00"
 }
@@ -161,6 +178,9 @@ bench-micros-graal-dist: ${bench-common} ${default-heap} ${micros-bench-notifica
 # Renaissance-related targets
 
 bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  environment: {
+    SPARK_LOCAL_IP: "127.0.0.1"
+  }
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-renaissance} ${bench-arguments}
@@ -168,7 +188,19 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
   timelimit: "3:00:00"
 }
 
-bench-renaissance-no-db-shootout: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+bench-renaissance-0-10-0: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  environment: {
+    SPARK_LOCAL_IP: "127.0.0.1"
+    RENAISSANCE_VERSION: "0.10.0"
+  }
+  targets: [bench, weekly]
+  run: [
+    ${bench-jvmci.mx-renaissance} ${bench-arguments}
+  ]
+  timelimit: "3:00:00"
+}
+
+bench-renaissance-no-db-shootout: ${bench-renaissance} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-renaissance-no-db-shootout} ${bench-arguments}
@@ -177,6 +209,9 @@ bench-renaissance-no-db-shootout: ${bench-common} ${default-heap} ${renaissance-
 }
 
 bench-renaissance-legacy: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  environment: {
+    SPARK_LOCAL_IP: "127.0.0.1"
+  }
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments}

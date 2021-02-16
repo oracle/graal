@@ -47,6 +47,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class BitSets {
 
+    public static int highByte(int c) {
+        return c >> Byte.SIZE;
+    }
+
+    public static int lowByte(int c) {
+        return c & 0xff;
+    }
+
     public static long[] createBitSetArray(int nbits) {
         return new long[wordIndex(nbits - 1) + 1];
     }
@@ -322,6 +330,25 @@ public final class BitSets {
         public void remove() {
             clear(words, last);
         }
+    }
+
+    @TruffleBoundary
+    public static String toString(long[] bs) {
+        StringBuilder sb = new StringBuilder("[ ");
+        int last = -2;
+        int rangeBegin = -2;
+        PrimitiveIterator.OfInt it = new BitSetIterator(bs);
+        while (it.hasNext()) {
+            int b = it.nextInt();
+            if (b != last + 1) {
+                appendRange(sb, rangeBegin, last);
+                rangeBegin = b;
+            }
+            last = b;
+        }
+        appendRange(sb, rangeBegin, last);
+        sb.append(']');
+        return sb.toString();
     }
 
     @TruffleBoundary

@@ -32,6 +32,7 @@ import java.lang.ref.SoftReference;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -39,7 +40,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -67,32 +67,63 @@ public final class ReferenceInternals {
         return SubstrateUtil.cast(instance, Reference.class);
     }
 
-    public static <T> void clear(Reference<T> instance) {
-        cast(instance).referent = null;
-    }
-
-    /** Barrier-less read of {@link Target_java_lang_ref_Reference#referent} as pointer. */
+    /** Barrier-less read of {@link Target_java_lang_ref_Reference#referent} as a pointer. */
     public static <T> Pointer getReferentPointer(Reference<T> instance) {
         return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset)));
     }
 
-    /** Barrier-less write of {@link Target_java_lang_ref_Reference#referent} as pointer. */
-    public static <T> void setReferentPointer(Reference<T> instance, Pointer value) {
-        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value.toObject());
+    @SuppressWarnings("unchecked")
+    public static <T> T getReferent(Reference<T> instance) {
+        return (T) SubstrateUtil.cast(instance, Target_java_lang_ref_Reference.class).referent;
+    }
+
+    /** Write {@link Target_java_lang_ref_Reference#referent}. */
+    @SuppressWarnings("unchecked")
+    public static void setReferent(Reference<?> instance, Object value) {
+        BarrieredAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value);
+    }
+
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
+    public static boolean refersTo(Reference<?> instance, Object value) {
+        // JDK-8188055
+        return value == ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset));
+    }
+
+    public static void clear(Reference<?> instance) {
+        /*
+         * `Reference.clear0` was added to fix following issues:
+         *
+         * JDK-8256517: This issue only affects GCs that do the reference processing concurrently
+         * (i.e., Shenandoah and ZGC). G1 only processes references at safepoints, so this shouldn't
+         * be an issue for Native Image
+         *
+         * JDK-8240696: This issue affects G1.
+         *
+         * This barrier-less write is to resolve JDK-8240696.
+         */
+        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), null);
     }
 
     public static <T> Pointer getReferentFieldAddress(Reference<T> instance) {
         return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
     }
 
-    /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered}. */
-    public static <T> Reference<?> getNextDiscovered(Reference<T> instance) {
-        return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)), Reference.class);
+    public static long getReferentFieldOffset() {
+        return Target_java_lang_ref_Reference.referentFieldOffset;
     }
 
-    /** Barrier-less write of {@link Target_java_lang_ref_Reference#discovered}. */
+    /** Read {@link Target_java_lang_ref_Reference#discovered}. */
+    public static <T> Reference<?> getNextDiscovered(Reference<T> instance) {
+        return uncast(cast(instance).discovered);
+    }
+
+    public static long getNextDiscoveredFieldOffset() {
+        return Target_java_lang_ref_Reference.discoveredFieldOffset;
+    }
+
+    /** Write {@link Target_java_lang_ref_Reference#discovered}. */
     public static <T> void setNextDiscovered(Reference<T> instance, Reference<?> newNext) {
-        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset), newNext);
+        BarrieredAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset), newNext);
     }
 
     public static boolean hasQueue(Reference<?> instance) {
@@ -143,8 +174,13 @@ public final class ReferenceInternals {
                     synchronized (processPendingLock) {
                         processPendingLock.notifyAll();
                     }
-                } else if (hasQueue(uncast(ref))) {
-                    enqueueDirectly(ref);
+                } else {
+                    @SuppressWarnings("unchecked")
+                    Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
+                    if (queue != Target_java_lang_ref_ReferenceQueue.NULL) {
+                        // Enqueues, avoiding the potentially overridden Reference.enqueue().
+                        queue.enqueue(ref);
+                    }
                 }
             }
         } catch (Throwable t) {
@@ -155,11 +191,6 @@ public final class ReferenceInternals {
                 processPendingLock.notifyAll();
             }
         }
-    }
-
-    /** Enqueues, avoiding the potentially overridden {@link Reference#enqueue()}. */
-    private static <T> void enqueueDirectly(Target_java_lang_ref_Reference<T> ref) {
-        ref.queue.enqueue(ref);
     }
 
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")

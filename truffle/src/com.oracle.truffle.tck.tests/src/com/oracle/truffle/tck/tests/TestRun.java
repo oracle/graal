@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ public class TestRun {
 
     private final Entry<String, ? extends Snippet> snippet;
     private final List<Entry<String, ? extends Snippet>> arguments;
+    private volatile String cachedToString;
 
     TestRun(
                     final Entry<String, ? extends Snippet> snippet,
@@ -137,14 +138,19 @@ public class TestRun {
 
     @Override
     public String toString() {
-        return arguments.stream().map(new Function<Entry<String, ? extends Snippet>, String>() {
-            @Override
-            public String apply(Entry<String, ? extends Snippet> e) {
-                return e.getKey() + "::" + e.getValue().getId();
-            }
-        }).collect(Collectors.joining(
-                        ", ",
-                        snippet.getKey() + "::" + snippet.getValue().getId() + "(",
-                        ")"));
+        String res = cachedToString;
+        if (res == null) {
+            res = arguments.stream().map(new Function<Entry<String, ? extends Snippet>, String>() {
+                @Override
+                public String apply(Entry<String, ? extends Snippet> e) {
+                    return e.getKey() + "::" + e.getValue().getId();
+                }
+            }).collect(Collectors.joining(
+                            ", ",
+                            snippet.getKey() + "::" + snippet.getValue().getId() + "(",
+                            ")"));
+            cachedToString = res;
+        }
+        return res;
     }
 }

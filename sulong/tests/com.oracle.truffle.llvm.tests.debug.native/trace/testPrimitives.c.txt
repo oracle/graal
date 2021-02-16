@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 107 CONTINUE "start"
+BREAK 106 CONTINUE "start"
     OPEN_SCOPE
         MEMBER int "long int" "l1" "-9223372036854775808"
         MEMBER int "long int" "l2" "1"

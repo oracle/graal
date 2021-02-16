@@ -24,23 +24,78 @@
  */
 package com.oracle.svm.core.deopt;
 
-import jdk.vm.ci.code.CodeCacheProvider;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeCache;
+
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Interface for objects representing runtime-compiled code that can be installed in the
+ * {@linkplain RuntimeCodeCache runtime code cache}. This interface is intentionally compatible with
+ * the class {@link InstalledCode}, but can be implemented in an existing class hierarchy. Code also
+ * has native structures associated with it, see {@link CodeInfo} and {@link CodeInfoAccess}.
+ * <p>
+ * Assume that methods such as {@link #isValid}, {@link #isAlive} or {@link #getEntryPoint} return
+ * stale values because generally, their internal state can change at any safepoint. Consistent
+ * reads of such values require ensuring the absence of safepoint checks and preventing floating
+ * reads and read elimination.
+ */
 public interface SubstrateInstalledCode {
 
     String getName();
 
+    /** The entry point address of this code if {@linkplain #isValid valid}, or 0 otherwise. */
+    long getEntryPoint();
+
+    /** The address of this code if {@linkplain #isAlive alive}, or 0 otherwise. */
     long getAddress();
 
+    /**
+     * Returns the last method object passed to {@link #setAddress}. The return value might be
+     * passed as the argument to future calls to {@link #setAddress}.
+     * <p>
+     * May return {@code null} if the subclass does not have a use for the method object (also not
+     * in {@link #setAddress}) and therefore no need to retain it. Expected to return {@code null}
+     * if {@link #setAddress} has never been called, or after {@link #clearAddress} has been called.
+     */
+    ResolvedJavaMethod getMethod();
+
+    /**
+     * Called during code installation: initialize this instance with the given address where its
+     * instructions are, and the method it was compiled from. Afterwards, {@link #getAddress()} and
+     * {@link #getEntryPoint()} return the given address, and {@link #isValid()} and
+     * {@link #isAlive()} return {@code true}.
+     */
     void setAddress(long address, ResolvedJavaMethod method);
 
+    /**
+     * This method is called during code uninstallation. Consider {@link #invalidate()} instead.
+     * <p>
+     * Reset this instance so that {@link #getAddress()} and {@link #getEntryPoint()} return 0, and
+     * {@link #isValid()} and {@link #isAlive()} return {@code false}.
+     */
     void clearAddress();
 
+    /** Whether the code represented by this object exists and can be invoked. */
     boolean isValid();
 
+    /**
+     * Invalidates this installed code and deoptimizes all live invocations, after which both
+     * {@link #isValid} and {@link #isAlive} return {@code false}.
+     */
     void invalidate();
+
+    /** Whether the code represented by this object exists and could have live invocations. */
+    boolean isAlive();
+
+    /**
+     * Make this code non-entrant, but let live invocations continue execution. Afterwards,
+     * {@link #isValid()} returns {@code false}, {@link #isAlive()} returns {@code true}, and
+     * {@link #getEntryPoint()} returns 0.
+     */
+    void invalidateWithoutDeoptimization();
 
     SubstrateSpeculationLog getSpeculationLog();
 
@@ -48,11 +103,9 @@ public interface SubstrateInstalledCode {
      * Provides access to a {@link SubstrateInstalledCode}.
      *
      * Introduced when {@code OptimizedCallTarget} was changed to no longer extend
-     * {@link InstalledCode}. This change means we now need a bridge from the {@link InstalledCode}
-     * object (passed to {@link CodeCacheProvider}) to the object that is actually installed in the
-     * SVM code cache.
+     * {@link InstalledCode}.
      */
-    interface Access {
-        SubstrateInstalledCode getSubstrateInstalledCode();
+    interface Factory {
+        SubstrateInstalledCode createSubstrateInstalledCode();
     }
 }

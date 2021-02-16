@@ -1,9 +1,6 @@
                     THIRD PARTY LICENSE information
 
-This project contains code copied from libc++ and libc++abi part of LLVM project.
-This code is licensed as follows:
-
-LLVM 9.0.0
+LLVM 10.0.0
 
 ==============================================================================
 The LLVM Project is under the Apache License v2.0 with LLVM Exceptions:

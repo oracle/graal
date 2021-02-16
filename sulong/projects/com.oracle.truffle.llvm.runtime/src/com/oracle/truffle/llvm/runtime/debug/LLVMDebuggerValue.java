@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -142,7 +142,7 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
+    @SuppressWarnings("static-method")
     public final boolean hasLanguage() {
         return true;
     }
@@ -155,7 +155,7 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    public final String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+    public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
     }
 }

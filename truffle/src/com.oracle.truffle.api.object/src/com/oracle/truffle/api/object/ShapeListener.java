@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,9 @@ package com.oracle.truffle.api.object;
  * A listener to be notified of property transitions.
  *
  * @since 0.8 or earlier
+ * @deprecated consider using {@link Shape#getPropertyAssumption(Object)} instead.
  */
+@Deprecated
 public interface ShapeListener {
     /**
      * Called when a property is added, removed, or replaced.

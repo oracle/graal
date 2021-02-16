@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.annotation.Annotation;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -37,7 +38,6 @@ import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.core.util.Replaced;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeCloneable;
@@ -49,7 +49,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SubstrateField implements SharedField, Replaced {
+public class SubstrateField implements SharedField {
 
     protected static final SubstrateField[] EMPTY_ARRAY = new SubstrateField[0];
 
@@ -72,6 +72,8 @@ public class SubstrateField implements SharedField, Replaced {
     final boolean truffleCloneableField;
 
     public SubstrateField(MetaAccessProvider originalMetaAccess, ResolvedJavaField original, int modifiers, HostedStringDeduplication stringTable) {
+        VMError.guarantee(!original.isInternal(), "Internal fields are not supported for JIT compilation");
+
         this.modifiers = modifiers;
         this.name = stringTable.deduplicate(original.getName(), true);
         this.hashCode = original.hashCode();
@@ -147,12 +149,12 @@ public class SubstrateField implements SharedField, Replaced {
 
     @Override
     public int getOffset() {
-        throw unimplemented();
+        return getLocation();
     }
 
     @Override
     public boolean isInternal() {
-        throw unimplemented();
+        return false;
     }
 
     @Override

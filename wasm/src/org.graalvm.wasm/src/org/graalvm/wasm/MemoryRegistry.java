@@ -66,12 +66,16 @@ public class MemoryRegistry {
         return numMemories;
     }
 
-    public int allocateMemory(WasmMemory memory) {
+    public int register(WasmMemory memory) {
         ensureCapacity();
-        memories[numMemories] = memory;
-        int idx = numMemories;
+        final int index = numMemories;
+        memories[index] = memory;
         numMemories++;
-        return idx;
+        return index;
+    }
+
+    public int registerExternal(WasmMemory externalMemory) {
+        return register(externalMemory);
     }
 
     public WasmMemory memory(int index) {

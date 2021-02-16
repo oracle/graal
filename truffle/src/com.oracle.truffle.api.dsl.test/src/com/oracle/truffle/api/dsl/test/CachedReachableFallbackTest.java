@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,10 +62,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 
 public class CachedReachableFallbackTest {
 
-    static final String CACHED_GUARD_FALLBACK_ERROR = "Some guards for the following specializations could not be negated for the @Fallback specialization: [s1]. " +
-                    "Guards cannot be negated for the @Fallback when they bind @Cached parameters and the specialization may consist of multiple instances. " +
-                    "To fix this limit the number of instances to '1' or introduce a more generic specialization declared between this specialization and the fallback. " +
-                    "Alternatively the use of @Fallback can be avoided by declaring a @Specialization with manually specified negated guards.";
+    static final String CACHED_GUARD_FALLBACK_ERROR = "Some guards for the following specializations could not be negated for the @Fallback specialization: [s1].%";
 
     @SuppressWarnings("unused")
     abstract static class ValidWithGenericNode extends Node {

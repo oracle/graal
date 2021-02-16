@@ -24,11 +24,12 @@
  */
 package org.graalvm.tools.lsp.server.request;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.instrumentation.EventBinding;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -41,10 +42,13 @@ import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
@@ -75,42 +79,51 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
                     variableNames.add(varInfo.getName());
                 }
             }
-            LinkedList<Scope> scopesOuterToInner = getScopesOuterToInner(surrogate, nodeAtCaret);
+            Object scope = getScope(surrogate, nodeAtCaret);
             List<DocumentHighlight> highlights = new ArrayList<>();
-            for (Scope scope : scopesOuterToInner) {
-                Node scopeRoot = scope.getNode();
-                if (scopeRoot != null) {
-                    scopeRoot.accept(new NodeVisitor() {
-
-                        @Override
-                        public boolean visit(Node node) {
-                            if (node instanceof InstrumentableNode) {
-                                InstrumentableNode instrumentableNode = (InstrumentableNode) node;
-                                if (instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ||
-                                                instrumentableNode.hasTag(StandardTags.ReadVariableTag.class)) {
-                                    InteropUtils.VariableInfo[] variables = InteropUtils.getNodeObjectVariables(instrumentableNode);
-                                    assert variables.length > 0 : instrumentableNode.getClass().getCanonicalName() + ": " + instrumentableNode.toString();
-                                    for (InteropUtils.VariableInfo varInfo : variables) {
-                                        if (variableNames.contains(varInfo.getName())) {
-                                            SourceSection sourceSection = varInfo.getSourceSection();
-                                            if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
-                                                Range range = SourceUtils.sourceSectionToRange(sourceSection);
-                                                DocumentHighlightKind kind = instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ? DocumentHighlightKind.Write : DocumentHighlightKind.Read;
-                                                DocumentHighlight highlight = DocumentHighlight.create(range, kind);
-                                                highlights.add(highlight);
+            while (scope != null) {
+                InteropLibrary interop = InteropLibrary.getUncached(scope);
+                if (interop.hasSourceLocation(scope)) {
+                    try {
+                        SourceSection sourceLocation = interop.getSourceLocation(scope);
+                        Node[] nodeLocation = new Node[]{null};
+                        EventBinding<LoadSourceSectionListener> binding = env.getInstrumenter().attachLoadSourceSectionListener(
+                                        SourceSectionFilter.newBuilder().sourceSectionEquals(sourceLocation).build(), e -> {
+                                            Node node = e.getNode();
+                                            if (nodeLocation[0] == null || isParent(node, nodeLocation[0])) {
+                                                nodeLocation[0] = node;
                                             }
-                                        }
-                                    }
-                                }
-                            }
-                            return true;
-                        }
-                    });
+                                        }, true);
+                        binding.dispose();
+                        addHighlights(nodeLocation[0], variableNames, highlights);
+                    } catch (UnsupportedMessageException e) {
+                        throw CompilerDirectives.shouldNotReachHere(e);
+                    }
+                }
+                if (interop.hasScopeParent(scope)) {
+                    try {
+                        scope = interop.getScopeParent(scope);
+                    } catch (UnsupportedMessageException e) {
+                        throw CompilerDirectives.shouldNotReachHere(e);
+                    }
+                } else {
+                    scope = null;
                 }
             }
             return highlights;
         }
         return Collections.emptyList();
+    }
+
+    private static boolean isParent(Node candidate, Node child) {
+        Node parent = child.getParent();
+        while (parent != null) {
+            if (parent == candidate) {
+                return true;
+            }
+            parent = parent.getParent();
+        }
+        return false;
     }
 
     private static boolean contains(SourceSection sourceSection, int zeroBasedLineNumber, int zeroBasedColumnNumber) {
@@ -120,5 +133,36 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
         int endLine = sourceSection.getEndLine();
         return (startLine < line || startLine == line && sourceSection.getStartColumn() <= column) &&
                         (line < endLine || line == endLine && column <= sourceSection.getEndColumn());
+    }
+
+    private void addHighlights(Node scopeRoot, Set<String> variableNames, List<DocumentHighlight> highlights) {
+        if (scopeRoot != null) {
+            scopeRoot.accept(new NodeVisitor() {
+
+                @Override
+                public boolean visit(Node node) {
+                    if (node instanceof InstrumentableNode) {
+                        InstrumentableNode instrumentableNode = (InstrumentableNode) node;
+                        if (instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ||
+                                        instrumentableNode.hasTag(StandardTags.ReadVariableTag.class)) {
+                            InteropUtils.VariableInfo[] variables = InteropUtils.getNodeObjectVariables(instrumentableNode);
+                            assert variables.length > 0 : instrumentableNode.getClass().getCanonicalName() + ": " + instrumentableNode.toString();
+                            for (InteropUtils.VariableInfo varInfo : variables) {
+                                if (variableNames.contains(varInfo.getName())) {
+                                    SourceSection sourceSection = varInfo.getSourceSection();
+                                    if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
+                                        Range range = SourceUtils.sourceSectionToRange(sourceSection);
+                                        DocumentHighlightKind kind = instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ? DocumentHighlightKind.Write : DocumentHighlightKind.Read;
+                                        DocumentHighlight highlight = DocumentHighlight.create(range, kind);
+                                        highlights.add(highlight);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return true;
+                }
+            });
+        }
     }
 }

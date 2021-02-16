@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -73,6 +73,10 @@ final class TestUtil {
     }
 
     static Set<? extends String> getRequiredLanguages(final TestContext context) {
+        Set<String> installedProviders = context.getInstalledProviders().keySet();
+        if (LANGUAGE != null && !installedProviders.contains(LANGUAGE)) {
+            throw providerNotFound("tck.language", Collections.singleton(LANGUAGE), installedProviders);
+        }
         return filterLanguages(
                         context,
                         LANGUAGE == null ? null : new Predicate<String>() {
@@ -88,6 +92,11 @@ final class TestUtil {
         if (VALUES != null) {
             final Set<String> requiredValues = new HashSet<>();
             Collections.addAll(requiredValues, VALUES.split(","));
+            Set<String> installedProviders = context.getInstalledProviders().keySet();
+            if (!installedProviders.containsAll(requiredValues)) {
+                requiredValues.removeAll(installedProviders);
+                throw providerNotFound("tck.values", requiredValues, installedProviders);
+            }
             predicate = new Predicate<String>() {
                 @Override
                 public boolean test(String lang) {
@@ -109,7 +118,7 @@ final class TestUtil {
                     final Set<? extends String> requiredValueLanguages,
                     final Function<String, ? extends Collection<? extends Snippet>> snippetsProvider,
                     final Function<String, ? extends Collection<? extends Snippet>> valuesProvider) {
-        final Collection<TestRun> testRuns = new LinkedHashSet<>();
+        final Collection<TestRun> testRuns = new TreeSet<>((a, b) -> a.toString().compareTo(b.toString()));
         for (String opLanguage : requiredLanguages) {
             for (Snippet operator : snippetsProvider.apply(opLanguage)) {
                 for (String parLanguage : requiredValueLanguages) {
@@ -260,6 +269,15 @@ final class TestUtil {
                     final Predicate<String> predicte) {
         final Set<? extends String> installedLangs = context.getInstalledProviders().keySet();
         return predicte == null ? installedLangs : installedLangs.stream().filter(predicte).collect(Collectors.toSet());
+    }
+
+    private static IllegalStateException providerNotFound(String property, Set<String> providerIds, Set<String> installedProviders) {
+        throw new IllegalStateException(String.format(
+                        "Following providers %s required by the '%s' property are not installed.%n" +
+                                        "Installed providers are %s",
+                        String.join(", ", providerIds),
+                        property,
+                        String.join(", ", installedProviders)));
     }
 
     abstract static class CollectingMatcher<T> extends BaseMatcher<T> implements Consumer<Map.Entry<T, Boolean>> {

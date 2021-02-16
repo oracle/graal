@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,9 +31,9 @@
 #include <math.h>
 
 int main() {
-  char str[80];
+    char str[80];
 
-  int length = sprintf(str, "asdfasdf %d %s\n", 43, "asdfasdfvyx");
-  puts(str);
-  return length;
+    int length = sprintf(str, "asdfasdf %d %s\n", 43, "asdfasdfvyx");
+    puts(str);
+    return length;
 }

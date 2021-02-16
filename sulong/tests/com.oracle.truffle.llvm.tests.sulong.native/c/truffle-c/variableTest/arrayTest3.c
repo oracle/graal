@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,7 +28,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int array[] = { 1, 2, 3 };
-  int *ptr = array;
-  return array[2];
+    int array[] = { 1, 2, 3 };
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+    int *ptr = array;
+#pragma clang diagnostic pop
+    return array[2];
 }

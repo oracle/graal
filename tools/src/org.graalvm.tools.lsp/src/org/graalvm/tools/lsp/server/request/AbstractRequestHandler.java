@@ -25,7 +25,6 @@
 package org.graalvm.tools.lsp.server.request;
 
 import java.io.PrintWriter;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -40,12 +39,15 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder.NearestSections;
 
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -93,8 +95,14 @@ public abstract class AbstractRequestHandler {
         try {
             return future.get();
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof RuntimeException && e instanceof TruffleException) {
-                throw (RuntimeException) e.getCause();
+            Throwable cause = e.getCause();
+            InteropLibrary interopLib = InteropLibrary.getUncached();
+            if (cause != null && interopLib.isException(cause)) {
+                try {
+                    throw interopLib.throwException(cause);
+                } catch (UnsupportedMessageException ume) {
+                    throw CompilerDirectives.shouldNotReachHere(ume);
+                }
             } else {
                 e.printStackTrace(err);
             }
@@ -103,7 +111,7 @@ public abstract class AbstractRequestHandler {
         return null;
     }
 
-    protected final LinkedList<Scope> getScopesOuterToInner(TextDocumentSurrogate surrogate, InstrumentableNode node) {
+    protected static Object getScope(TextDocumentSurrogate surrogate, InstrumentableNode node) {
         List<CoverageData> coverageData = surrogate.getCoverageData(((Node) node).getSourceSection());
         MaterializedFrame frame = null;
         if (coverageData != null) {
@@ -112,12 +120,16 @@ public abstract class AbstractRequestHandler {
                 frame = data.getFrame();
             }
         }
-        Iterable<Scope> scopesInnerToOuter = env.findLocalScopes((Node) node, frame);
-        LinkedList<Scope> scopesOuterToInner = new LinkedList<>();
-        for (Scope scope : scopesInnerToOuter) {
-            scopesOuterToInner.addFirst(scope);
+        NodeLibrary nodeLibrary = NodeLibrary.getUncached(node);
+        if (nodeLibrary.hasScope(node, frame)) {
+            try {
+                return nodeLibrary.getScope(node, frame, true);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        } else {
+            return null;
         }
-        return scopesOuterToInner;
     }
 
     protected final SourcePredicateBuilder newDefaultSourcePredicateBuilder() {

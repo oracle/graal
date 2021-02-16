@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -766,7 +766,7 @@ public class ContextPolicyTest {
         @TruffleBoundary
         private void leaveInner(Object prev) {
             if (context != null) {
-                context.leave(prev);
+                context.leave(null, prev);
             }
         }
 
@@ -775,7 +775,7 @@ public class ContextPolicyTest {
         private Object enterInner() {
             Object prev = null;
             if (context != null) {
-                prev = context.enter();
+                prev = context.enter(null);
                 assertSame(expectedLanguage, ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()));
                 assertSame(expectedEnvironment, ExclusiveLanguage0.getCurrentContext(expectedLanguage.getClass()));
             }
@@ -845,7 +845,7 @@ public class ContextPolicyTest {
             }
             Object prev = null;
             if (context != null) {
-                prev = context.enter();
+                prev = context.enter(this);
             }
             try {
                 SharedObject obj = new SharedObject(
@@ -855,7 +855,7 @@ public class ContextPolicyTest {
                 return obj;
             } finally {
                 if (context != null) {
-                    context.leave(prev);
+                    context.leave(this, prev);
                 }
             }
 

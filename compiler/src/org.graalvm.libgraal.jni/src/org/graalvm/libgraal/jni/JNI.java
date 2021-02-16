@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -52,6 +53,9 @@ public final class JNI {
     }
 
     public interface JMethodID extends PointerBase {
+    }
+
+    public interface JFieldID extends PointerBase {
     }
 
     public interface JObject extends PointerBase {
@@ -98,7 +102,7 @@ public final class JNI {
      * } jvalue;
      * </pre>
      */
-    @CContext(JNIHeaderDirectives.class)
+    @CContext(LibGraalJNIHeaderDirectives.class)
     @CStruct("jvalue")
     public interface JValue extends PointerBase {
         // @formatter:off
@@ -129,14 +133,14 @@ public final class JNI {
         JValue addressOf(int index);
     }
 
-    @CContext(JNIHeaderDirectives.class)
+    @CContext(LibGraalJNIHeaderDirectives.class)
     @CStruct(value = "JNIEnv_", addStructKeyword = true)
     public interface JNIEnv extends PointerBase {
         @CField("functions")
         JNINativeInterface getFunctions();
     }
 
-    @CContext(JNIHeaderDirectives.class)
+    @CContext(LibGraalJNIHeaderDirectives.class)
     @CStruct(value = "JNINativeInterface_", addStructKeyword = true)
     public interface JNINativeInterface extends PointerBase {
 
@@ -230,6 +234,9 @@ public final class JNI {
         @CField("GetMethodID")
         GetMethodID getGetMethodID();
 
+        @CField("GetStaticFieldID")
+        GetStaticFieldID getGetStaticFieldID();
+
         @CField("CallStaticBooleanMethodA")
         CallStaticBooleanMethodA getCallStaticBooleanMethodA();
 
@@ -247,6 +254,12 @@ public final class JNI {
 
         @CField("CallObjectMethodA")
         CallObjectMethodA getCallObjectMethodA();
+
+        @CField("GetStaticBooleanField")
+        GetStaticBooleanField getGetStaticBooleanField();
+
+        @CField("SetStaticBooleanField")
+        SetStaticBooleanField getSetStaticBooleanField();
 
         @CField("ExceptionCheck")
         ExceptionCheck getExceptionCheck();
@@ -485,8 +498,28 @@ public final class JNI {
         VoidPointer call(JNIEnv env, JObject buf);
     }
 
-    static class JNIHeaderDirectives implements CContext.Directives {
+    public interface GetStaticFieldID extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JFieldID call(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
+    }
+
+    public interface GetStaticBooleanField extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean call(JNIEnv env, JClass clazz, JFieldID fieldID);
+    }
+
+    public interface SetStaticBooleanField extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void call(JNIEnv env, JClass clazz, JFieldID fieldID, boolean value);
+    }
+
+    static class LibGraalJNIHeaderDirectives implements CContext.Directives {
         private static final String[] INCLUDES = {"jni.h", "jni_md.h"};
+
+        @Override
+        public boolean isInConfiguration() {
+            return jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+        }
 
         @Override
         public List<String> getOptions() {

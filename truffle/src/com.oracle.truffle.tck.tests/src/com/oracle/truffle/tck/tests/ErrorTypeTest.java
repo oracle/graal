@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,11 +48,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Function;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
@@ -74,7 +74,7 @@ public class ErrorTypeTest {
     public static Collection<? extends TestRun> createErrorTypeTests() {
         context = new TestContext(ErrorTypeTest.class);
         final Set<? extends String> requiredLanguages = TestUtil.getRequiredLanguages(context);
-        final Collection<TestRun> testRuns = new LinkedHashSet<>();
+        final Collection<TestRun> testRuns = new TreeSet<>((a, b) -> a.toString().compareTo(b.toString()));
         for (String snippetLanguage : requiredLanguages) {
             Collection<? extends Snippet> snippets = context.getExpressions(null, null, snippetLanguage);
             Map<String, Collection<? extends Snippet>> overloads = computeOverloads(snippets);
@@ -103,7 +103,7 @@ public class ErrorTypeTest {
                 if (snippetLanguage.equals(parLanguage)) {
                     continue;
                 }
-                final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new ArrayList<>();
+                final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new TreeSet<>((a, b) -> a.getValue().getId().compareTo(b.getValue().getId()));
                 for (Snippet valueConstructor : context.getValueConstructors(null, parLanguage)) {
                     valueConstructors.add(new AbstractMap.SimpleImmutableEntry<>(parLanguage, valueConstructor));
                 }

@@ -35,10 +35,10 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
@@ -58,9 +58,8 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
         RootCallTarget[] targets = context.getDestructorFunctions();
         for (int i = targets.length - 1; i >= 0; i--) {
             RootCallTarget target = targets[i];
-            try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
-                callNode.call(target, new Object[]{stackPointer});
-            }
+            LLVMStack stack = context.getThreadingStack().getStack();
+            callNode.call(target, new Object[]{stack});
         }
     }
 }

@@ -42,12 +42,6 @@ public class KnownIntrinsics {
     public static native Pointer heapBase();
 
     /**
-     * Returns the length of the given array. It does not check if the provided object is an array,
-     * so the caller has to check that beforehand.
-     */
-    public static native int readArrayLength(Object array);
-
-    /**
      * Returns the hub of the given object.
      */
     public static native DynamicHub readHub(Object obj);
@@ -130,4 +124,16 @@ public class KnownIntrinsics {
         return (T) obj;
     }
 
+    /**
+     * Casts the given object to the exact class represented by {@code clazz}. The cast succeeds
+     * only if {@code object == null || object.getClass() == clazz} and thus fails for any subclass.
+     *
+     * @param object the object to be cast
+     * @param clazz the class to check against, must not be null
+     * @return the object after casting
+     * @throws ClassCastException if the object is non-null and not exactly of the given class
+     * @throws NullPointerException if the class argument is null
+     * @see Class#cast(Object)
+     */
+    public static native <T> T castExact(Object object, Class<T> clazz);
 }

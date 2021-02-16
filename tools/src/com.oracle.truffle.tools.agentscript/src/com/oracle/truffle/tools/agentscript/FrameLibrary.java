@@ -25,12 +25,13 @@
 package com.oracle.truffle.tools.agentscript;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
@@ -94,6 +95,21 @@ public abstract class FrameLibrary extends Library {
     }
 
     /**
+     * Assigns new value to an existing local variable.
+     * 
+     * @param env location, environment, etc. to read values from
+     * @param member the name of the variable to modify
+     * @param value new value for the variable
+     * @throws com.oracle.truffle.api.interop.UnknownIdentifierException if the variable doesn't
+     *             exist
+     * @throws com.oracle.truffle.api.interop.UnsupportedTypeException if the type isn't appropriate
+     * @since 20.1
+     */
+    public void writeMember(Query env, String member, Object value) throws UnknownIdentifierException, UnsupportedTypeException {
+        getUncached().writeMember(env, member, value);
+    }
+
+    /**
      * Collect names of local variables.
      * 
      * @param env location, environment, etc. to read values from
@@ -127,12 +143,13 @@ public abstract class FrameLibrary extends Library {
         }
 
         /**
-         * Access to current and enclosing {@link Scope}.
+         * Access to current and enclosing Scope.
          * 
          * @return iterable providing access to the frames.
          * @since 20.1
          */
-        public Iterable<Scope> findLocalScopes() {
+        @SuppressWarnings("deprecation")
+        public Iterable<com.oracle.truffle.api.Scope> findLocalScopes() {
             return env != null ? env.findLocalScopes(where, frame) : Collections.emptySet();
         }
 
@@ -164,10 +181,11 @@ public abstract class FrameLibrary extends Library {
         }
 
         @CompilerDirectives.TruffleBoundary
+        @SuppressWarnings("deprecation")
         @Override
         public Object readMember(Query env, String member) throws UnknownIdentifierException {
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-            for (Scope scope : env.findLocalScopes()) {
+            for (com.oracle.truffle.api.Scope scope : env.findLocalScopes()) {
                 if (scope == null) {
                     continue;
                 }
@@ -187,10 +205,30 @@ public abstract class FrameLibrary extends Library {
         }
 
         @CompilerDirectives.TruffleBoundary
+        @SuppressWarnings("deprecation")
+        @Override
+        public void writeMember(Query env, String member, Object value) throws UnknownIdentifierException, UnsupportedTypeException {
+            InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+            for (com.oracle.truffle.api.Scope scope : env.findLocalScopes()) {
+                if (scope == null) {
+                    continue;
+                }
+                if (writeMemberImpl(member, value, scope.getVariables(), iop)) {
+                    return;
+                }
+                if (writeMemberImpl(member, value, scope.getArguments(), iop)) {
+                    return;
+                }
+            }
+            throw UnknownIdentifierException.create(member);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @SuppressWarnings("deprecation")
         @Override
         public void collectNames(Query env, Set<String> names) throws InteropException {
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-            for (Scope scope : env.findLocalScopes()) {
+            for (com.oracle.truffle.api.Scope scope : env.findLocalScopes()) {
                 if (scope == null) {
                     continue;
                 }
@@ -217,6 +255,18 @@ public abstract class FrameLibrary extends Library {
                 }
             }
             return null;
+        }
+
+        static boolean writeMemberImpl(String name, Object value, Object map, InteropLibrary iop) throws UnknownIdentifierException, UnsupportedTypeException {
+            if (map != null && iop.hasMembers(map)) {
+                try {
+                    iop.writeMember(map, name, value);
+                    return true;
+                } catch (UnsupportedMessageException ex) {
+                    return false;
+                }
+            }
+            return false;
         }
 
         static void readMemberNames(Set<String> names, Object map, InteropLibrary iop) throws InteropException {

@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class MatcherBuilderTest {
 
@@ -110,25 +111,26 @@ public class MatcherBuilderTest {
     }
 
     private static void checkInverse(CodePointSet a, int... values) {
-        checkMatch("inverse(" + a + ")", a.createInverse(), values);
+        checkMatch("inverse(" + a + ")", a.createInverse(Encodings.UTF_16), values);
     }
 
     private static void checkIntersection(CodePointSet a, CodePointSet b, int... values) {
-        CodePointSet intersection = a.createIntersection(b, new CompilationBuffer());
+        CompilationBuffer compilationBuffer = new CompilationBuffer(Encodings.UTF_16);
+        CodePointSet intersection = a.createIntersection(b, compilationBuffer);
         checkMatch("intersection(" + a + "," + b + ")", intersection, values);
         assertTrue("intersection(" + a + "," + b + ")", a.intersects(b) == intersection.matchesSomething());
-        CodePointSet.IntersectAndSubtractResult<CodePointSet> result = a.intersectAndSubtract(b, new CompilationBuffer());
-        checkMatch("intersectAndSubtract(" + a + "," + b + ")[0]", result.subtractedA, a.subtract(intersection, new CompilationBuffer()));
-        checkMatch("intersectAndSubtract(" + a + "," + b + ")[1]", result.subtractedB, b.subtract(intersection, new CompilationBuffer()));
+        CodePointSet.IntersectAndSubtractResult<CodePointSet> result = a.intersectAndSubtract(b, compilationBuffer);
+        checkMatch("intersectAndSubtract(" + a + "," + b + ")[0]", result.subtractedA, a.subtract(intersection, compilationBuffer));
+        checkMatch("intersectAndSubtract(" + a + "," + b + ")[1]", result.subtractedB, b.subtract(intersection, compilationBuffer));
         checkMatch("intersectAndSubtract(" + a + "," + b + ")[2]", result.intersection, intersection);
     }
 
     private static void checkSubtraction(CodePointSet a, CodePointSet b, int... values) {
-        checkMatch("subtraction(" + a + "," + b + ")", a.subtract(b, new CompilationBuffer()), values);
+        checkMatch("subtraction(" + a + "," + b + ")", a.subtract(b, new CompilationBuffer(Encodings.UTF_16)), values);
     }
 
     private static void checkUnion(CodePointSet a, CodePointSet b, int... values) {
-        checkMatch("union(" + a + "," + b + ")", a.union(b, new CompilationBuffer()), values);
+        checkMatch("union(" + a + "," + b + ")", a.union(b, new CompilationBuffer(Encodings.UTF_16)), values);
     }
 
     @Test

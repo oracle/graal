@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,10 @@ import java.util.Objects;
  * either provide `changes` or `documentChanges`. If documentChanges are present they are preferred
  * over `changes` if the client can handle versioned document edits.
  */
-public class WorkspaceEdit {
-
-    final JSONObject jsonData;
+public class WorkspaceEdit extends JSONBase {
 
     WorkspaceEdit(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -67,15 +65,17 @@ public class WorkspaceEdit {
     }
 
     public WorkspaceEdit setChanges(Map<String, List<TextEdit>> changes) {
-        final JSONObject json = new JSONObject();
-        for (Map.Entry<String, List<TextEdit>> entry : changes.entrySet()) {
-            final JSONArray jsonArr = new JSONArray();
-            for (TextEdit textEdit : entry.getValue()) {
-                jsonArr.put(textEdit.jsonData);
+        if (changes != null) {
+            final JSONObject json = new JSONObject();
+            for (Map.Entry<String, List<TextEdit>> entry : changes.entrySet()) {
+                final JSONArray jsonArr = new JSONArray();
+                for (TextEdit textEdit : entry.getValue()) {
+                    jsonArr.put(textEdit.jsonData);
+                }
+                json.put(entry.getKey(), jsonArr);
             }
-            json.put(entry.getKey(), jsonArr);
+            jsonData.put("changes", json);
         }
-        jsonData.put("changes", json);
         return this;
     }
 
@@ -139,12 +139,12 @@ public class WorkspaceEdit {
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 7;
         if (this.getChanges() != null) {
-            hash = 89 * hash + Objects.hashCode(this.getChanges());
+            hash = 97 * hash + Objects.hashCode(this.getChanges());
         }
         if (this.getDocumentChanges() != null) {
-            hash = 89 * hash + Objects.hashCode(this.getDocumentChanges());
+            hash = 97 * hash + Objects.hashCode(this.getDocumentChanges());
         }
         return hash;
     }

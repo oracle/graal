@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package com.oracle.objectfile;
 
-import java.io.Closeable;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -46,13 +46,12 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.compiler.debug.DebugContext;
+
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
-
-import sun.nio.ch.DirectBuffer;
-import org.graalvm.compiler.debug.DebugContext;
 
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
@@ -247,31 +246,28 @@ public abstract class ObjectFile {
          * The relocation's symbol provides an address whose absolute value (plus addend) supplies
          * the fixup bytes.
          */
-        DIRECT,
+        DIRECT_1,
+        DIRECT_2,
+        DIRECT_4,
+        DIRECT_8,
         /**
-         * The relocation's symbol provides high fixup bytes.
+         * The index of the object file section containing the relocation's symbol supplies the
+         * fixup bytes. (used in CodeView debug information)
          */
-        DIRECT_HI,
+        SECTION_2,
         /**
-         * The relocation's symbol provides low fixup bytes.
+         * The address of the object file section containing the relocation's symbol (plus addend)
+         * supplies the fixup bytes. (used in CodeView debug information)
          */
-        DIRECT_LO,
+        SECREL_4,
         /**
          * The relocation's symbol provides an address whose PC-relative value (plus addend)
          * supplies the fixup bytes.
          */
-        PC_RELATIVE,
-        /**
-         * The relocation's symbol is ignored; the load-time offset of the program (FIXME: or shared
-         * object), plus addend, supplies the fixup bytes.
-         */
-        PROGRAM_BASE {
-
-            @Override
-            public boolean usesSymbolValue() {
-                return false;
-            }
-        },
+        PC_RELATIVE_1,
+        PC_RELATIVE_2,
+        PC_RELATIVE_4,
+        PC_RELATIVE_8,
         AARCH64_R_MOVW_UABS_G0,
         AARCH64_R_MOVW_UABS_G0_NC,
         AARCH64_R_MOVW_UABS_G1,
@@ -289,15 +285,66 @@ public abstract class ObjectFile {
         AARCH64_R_AARCH64_LDST8_ABS_LO12_NC,
         AARCH64_R_AARCH64_LDST128_ABS_LO12_NC;
 
-        /**
-         * Generally, relocation records come with symbols whose value is used to compute the
-         * fixed-up bytes at the relocation site. In some cases, though, no such symbol is needed.
-         *
-         * @return Whether the value of any symbol attached to the relocation record affects the
-         *         fixed-up contents of the relocation site.
-         */
-        public boolean usesSymbolValue() {
-            return true;
+        public static RelocationKind getDirect(int relocationSize) {
+            switch (relocationSize) {
+                case 1:
+                    return DIRECT_1;
+                case 2:
+                    return DIRECT_2;
+                case 4:
+                    return DIRECT_4;
+                case 8:
+                    return DIRECT_8;
+                default:
+                    return UNKNOWN;
+            }
+        }
+
+        public static RelocationKind getPCRelative(int relocationSize) {
+            switch (relocationSize) {
+                case 1:
+                    return PC_RELATIVE_1;
+                case 2:
+                    return PC_RELATIVE_2;
+                case 4:
+                    return PC_RELATIVE_4;
+                case 8:
+                    return PC_RELATIVE_8;
+                default:
+                    return UNKNOWN;
+            }
+        }
+
+        public static boolean isPCRelative(RelocationKind kind) {
+            switch (kind) {
+                case PC_RELATIVE_1:
+                case PC_RELATIVE_2:
+                case PC_RELATIVE_4:
+                case PC_RELATIVE_8:
+                    return true;
+            }
+            return false;
+        }
+
+        public static int getRelocationSize(RelocationKind kind) {
+            switch (kind) {
+                case DIRECT_1:
+                case PC_RELATIVE_1:
+                    return 1;
+                case DIRECT_2:
+                case PC_RELATIVE_2:
+                case SECTION_2:
+                    return 2;
+                case DIRECT_4:
+                case PC_RELATIVE_4:
+                case SECREL_4:
+                    return 4;
+                case DIRECT_8:
+                case PC_RELATIVE_8:
+                    return 8;
+            }
+            // other types should not be queried
+            throw new IllegalArgumentException("Invalid RelocationKind provided: " + kind);
         }
     }
 
@@ -306,13 +353,9 @@ public abstract class ObjectFile {
      */
     public interface RelocationMethod {
 
-        RelocationKind getKind();
-
         boolean canUseImplicitAddend();
 
         boolean canUseExplicitAddend();
-
-        int getRelocatedByteSize();
 
         /*
          * If we were implementing a linker, we'd have a method something like
@@ -328,10 +371,6 @@ public abstract class ObjectFile {
     public interface RelocationSiteInfo {
 
         long getOffset();
-
-        int getRelocatedByteSize();
-
-        RelocationKind getKind();
     }
 
     /**
@@ -362,7 +401,6 @@ public abstract class ObjectFile {
          * this is true of our native native image code.
          *
          * @param offset the offset into the section contents of the beginning of the fixed-up bytes
-         * @param length the length of byte sequence to be fixed up
          * @param bb the byte buffer representing the encoded section contents, at least as far as
          *            offset + length bytes
          * @param k the kind of fixup to be applied
@@ -372,7 +410,7 @@ public abstract class ObjectFile {
          * @param explicitAddend a full-width addend, or null if useImplicitAddend is true
          * @return the relocation record created (or found, if it exists already)
          */
-        RelocationRecord markRelocationSite(int offset, int length, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
+        RelocationRecord markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
 
         /**
          * Force the creation of a relocation section/element for this section, and return it. This
@@ -403,7 +441,7 @@ public abstract class ObjectFile {
          * passed a buffer. It uses the byte array accessed by {@link #getContent} and
          * {@link #setContent}.
          */
-        RelocationRecord markRelocationSite(int offset, int length, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
+        RelocationRecord markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
     }
 
     public interface NobitsSectionImpl extends ElementImpl {
@@ -1092,7 +1130,7 @@ public abstract class ObjectFile {
     /**
      * API method provided to allow a native image generator to provide details of types, code and
      * heap data inserted into a native image.
-     * 
+     *
      * @param debugInfoProvider an implementation of the provider interface that communicates
      *            details of the relevant types, code and heap data.
      */
@@ -1228,12 +1266,32 @@ public abstract class ObjectFile {
         int totalSize = bake(sortedObjectFileElements);
         try {
             ByteBuffer buffer = outputChannel.map(MapMode.READ_WRITE, 0, totalSize);
-            try (Closeable ignored = () -> ((DirectBuffer) buffer).cleaner().clean()) {
+            try {
                 writeBuffer(sortedObjectFileElements, buffer);
+            } finally {
+                cleanBuffer(buffer); // unmap immediately
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void cleanBuffer(ByteBuffer buffer) throws IOException {
+        // The Cleaner class returned by DirectBuffer.cleaner() was moved from to jdk.internal from
+        // sun.misc, so we need to call it reflectively to ensure binary compatibility between JDKs
+        Object cleaner;
+        try {
+            cleaner = getMethodAndSetAccessible(buffer.getClass(), "cleaner").invoke(buffer);
+            getMethodAndSetAccessible(cleaner.getClass(), "clean").invoke(cleaner);
+        } catch (ReflectiveOperationException e) {
+            throw new IOException("Could not clean mapped ByteBuffer", e);
+        }
+    }
+
+    private static Method getMethodAndSetAccessible(Class<?> clazz, String name, Class<?>... parameterTypes) throws NoSuchMethodException {
+        Method method = clazz.getMethod(name, parameterTypes);
+        method.setAccessible(true);
+        return method;
     }
 
     /*
@@ -1750,7 +1808,7 @@ public abstract class ObjectFile {
      * Allows a task to be executed with a debug context in a named subscope bound to the object
      * file and accessible to code executed during the lifetime of the task. Invoked code may obtain
      * access to the debug context using method {@link #debugContext}.
-     * 
+     *
      * @param context a context to be bound to the object file for the duration of the task
      *            execution.
      * @param scopeName a name to be used to define a subscope current while the task is being
@@ -1772,7 +1830,7 @@ public abstract class ObjectFile {
     /**
      * Allows a consumer to retrieve the debug context currently bound to this object file. This
      * method must only called underneath an invocation of method {@link #withDebugContext}.
-     * 
+     *
      * @param scopeName a name to be used to define a subscope current while the consumer is active.
      * @param action an action parameterised by the debug context.
      */

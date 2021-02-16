@@ -50,12 +50,6 @@ public enum ELFMachine/* implements Integral */ {
         Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
             return ELFAArch64Relocation.class;
         }
-    },
-    CAVA {
-        @Override
-        Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
-            return ELFCavaRelocation.class;
-        }
     };
 
     abstract Class<? extends Enum<? extends RelocationMethod>> relocationTypes();
@@ -72,63 +66,38 @@ public enum ELFMachine/* implements Integral */ {
         throw new IllegalStateException("unknown CPU type: " + s);
     }
 
-    public static ELFRelocationMethod getRelocation(ELFMachine m, RelocationKind k, int sizeInBytes) {
+    public static ELFRelocationMethod getRelocation(ELFMachine m, RelocationKind k) {
         switch (m) {
             case X86_64:
                 switch (k) {
-                    case DIRECT:
-                        switch (sizeInBytes) {
-                            case 8:
-                                return ELFX86_64Relocation.R_64;
-                            case 4:
-                                return ELFX86_64Relocation.R_32;
-                            case 2:
-                                return ELFX86_64Relocation.R_16;
-                            case 1:
-                                return ELFX86_64Relocation.R_8;
-                            default:
-                                return ELFX86_64Relocation.R_NONE;
-                        }
-                    case PC_RELATIVE:
-                        switch (sizeInBytes) {
-                            case 8:
-                                return ELFX86_64Relocation.R_PC64;
-                            case 4:
-                                return ELFX86_64Relocation.R_PC32;
-                            case 2:
-                                return ELFX86_64Relocation.R_PC16;
-                            case 1:
-                                return ELFX86_64Relocation.R_PC8;
-                            default:
-                                return ELFX86_64Relocation.R_NONE;
-                        }
-                    case PROGRAM_BASE:
-                        switch (sizeInBytes) {
-                            case 8:
-                                return ELFX86_64Relocation.R_RELATIVE64;
-                            case 4:
-                                return ELFX86_64Relocation.R_RELATIVE;
-                            default:
-                                return ELFX86_64Relocation.R_NONE;
-                        }
+                    case DIRECT_1:
+                        return ELFX86_64Relocation.R_8;
+                    case DIRECT_2:
+                        return ELFX86_64Relocation.R_16;
+                    case DIRECT_4:
+                        return ELFX86_64Relocation.R_32;
+                    case DIRECT_8:
+                        return ELFX86_64Relocation.R_64;
+                    case PC_RELATIVE_1:
+                        return ELFX86_64Relocation.R_PC8;
+                    case PC_RELATIVE_2:
+                        return ELFX86_64Relocation.R_PC16;
+                    case PC_RELATIVE_4:
+                        return ELFX86_64Relocation.R_PC32;
+                    case PC_RELATIVE_8:
+                        return ELFX86_64Relocation.R_PC64;
                     default:
                     case UNKNOWN:
                         throw new IllegalArgumentException("cannot map unknown relocation kind to an ELF x86-64 relocation type");
                 }
             case AArch64:
                 switch (k) {
-                    case DIRECT:
-                        switch (sizeInBytes) {
-                            case 8:
-                                return ELFAArch64Relocation.R_AARCH64_ABS64;
-                            case 4:
-                                return ELFAArch64Relocation.R_AARCH64_ABS32;
-                            case 2:
-                                return ELFAArch64Relocation.R_AARCH64_ABS16;
-                            case 1:
-                            default:
-                                return ELFAArch64Relocation.R_AARCH64_NONE;
-                        }
+                    case DIRECT_2:
+                        return ELFAArch64Relocation.R_AARCH64_ABS16;
+                    case DIRECT_4:
+                        return ELFAArch64Relocation.R_AARCH64_ABS32;
+                    case DIRECT_8:
+                        return ELFAArch64Relocation.R_AARCH64_ABS64;
                     case AARCH64_R_MOVW_UABS_G0:
                         return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G0;
                     case AARCH64_R_MOVW_UABS_G0_NC:
@@ -166,25 +135,6 @@ public enum ELFMachine/* implements Integral */ {
                         throw new IllegalArgumentException("cannot map unknown relocation kind to an ELF aarch64 relocation type: " + k);
 
                 }
-            case CAVA:
-                switch (k) {
-                    case DIRECT_LO:
-                        switch (sizeInBytes) {
-                            case 2:
-                                return ELFCavaRelocation.R_CAVA_OFFSET;
-                            default:
-                                throw new RuntimeException(Integer.toString(sizeInBytes));
-                        }
-                    case DIRECT_HI:
-                        switch (sizeInBytes) {
-                            case 2:
-                                return ELFCavaRelocation.R_CAVA_HIGH;
-                            default:
-                                throw new RuntimeException(Integer.toString(sizeInBytes));
-                        }
-                    default:
-                        throw new RuntimeException(k.toString());
-                }
             default:
             case NONE:
                 return ELFDummyRelocation.R_NONE;
@@ -196,7 +146,7 @@ public enum ELFMachine/* implements Integral */ {
         switch (m) {
             case 0:
                 return NONE;
-            case 62:
+            case 0x3E:
                 return X86_64;
             case 0xB7:
                 return AArch64;
@@ -207,15 +157,11 @@ public enum ELFMachine/* implements Integral */ {
 
     public short toShort() {
         if (this == NONE) {
-            return (short) 0;
+            return 0;
         } else if (this == AArch64) {
             return 0xB7;
         } else if (this == X86_64) {
-            return 62;
-        } else if (this == AArch64) {
-            return (short) 0xB7;
-        } else if (this == CAVA) {
-            return (short) 0xcafe;
+            return 0x3E;
         } else {
             throw new IllegalStateException("should not reach here");
         }
@@ -234,11 +180,6 @@ enum ELFDummyRelocation implements ELFRelocationMethod {
     R_NONE;
 
     @Override
-    public RelocationKind getKind() {
-        return RelocationKind.UNKNOWN;
-    }
-
-    @Override
     public boolean canUseExplicitAddend() {
         return true;
     }
@@ -252,11 +193,6 @@ enum ELFDummyRelocation implements ELFRelocationMethod {
     public long toLong() {
         return ordinal();
     }
-
-    @Override
-    public int getRelocatedByteSize() {
-        throw new UnsupportedOperationException();
-    }
 }
 
 enum ELFX86_64Relocation implements ELFRelocationMethod {
@@ -264,102 +200,21 @@ enum ELFX86_64Relocation implements ELFRelocationMethod {
     // but we just use R_... to keep it short.
     // We need the "R_" because some begin with digits.
     R_NONE,
-    R_64 {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 8;
-        }
-    },
-    R_PC32 {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.PC_RELATIVE;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 4;
-        }
-    },
+    R_64,
+    R_PC32,
     R_GOT32,
     R_PLT32,
     R_COPY,
     R_GLOB_DAT,
     R_JUMP_SLOT,
-    R_RELATIVE {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.PROGRAM_BASE;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 8;
-        }
-
-    },
+    R_RELATIVE,
     R_GOTPCREL,
-    R_32 {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 4;
-        }
-    },
+    R_32,
     R_32S,
-    R_16 {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 2;
-        }
-    },
-    R_PC16 {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.PC_RELATIVE;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 2;
-        }
-    },
-    R_8 {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 1;
-        }
-    },
-    R_PC8 {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.PC_RELATIVE;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 1;
-        }
-    },
+    R_16,
+    R_PC16,
+    R_8,
+    R_PC8,
     R_DTPMOD64,
     R_DTPOFF64,
     R_TPOFF64,
@@ -368,17 +223,7 @@ enum ELFX86_64Relocation implements ELFRelocationMethod {
     R_DTPOFF32,
     R_GOTTPOFF,
     R_TPOFF32,
-    R_PC64 {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.PC_RELATIVE;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 8;
-        }
-    },
+    R_PC64,
     R_GOTOFF64,
     R_GOTPC32,
     R_GOT64,
@@ -400,11 +245,6 @@ enum ELFX86_64Relocation implements ELFRelocationMethod {
         assert R_COUNT.ordinal() == 39;
     }
 
-    @Override
-    public RelocationKind getKind() {
-        return RelocationKind.UNKNOWN;
-    }
-
     /*
      * x86-64 relocs always use explicit addends.
      */
@@ -422,11 +262,6 @@ enum ELFX86_64Relocation implements ELFRelocationMethod {
     public long toLong() {
         return ordinal();
     }
-
-    @Override
-    public int getRelocatedByteSize() {
-        throw new UnsupportedOperationException(); // better safe than sorry
-    }
 }
 
 /**
@@ -434,145 +269,25 @@ enum ELFX86_64Relocation implements ELFRelocationMethod {
  */
 enum ELFAArch64Relocation implements ELFRelocationMethod {
     R_AARCH64_NONE(0),
-    R_AARCH64_ABS64(0x101) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 8;
-        }
-    },
-    R_AARCH64_ABS32(0x102) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 4;
-        }
-    },
-    R_AARCH64_ABS16(0x103) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 2;
-        }
-    },
+    R_AARCH64_ABS64(0x101),
+    R_AARCH64_ABS32(0x102),
+    R_AARCH64_ABS16(0x103),
     R_AARCH64_PREL64(0x104),
     R_AARCH64_PREL32(0x105),
     R_AARCH64_PREL16(0x106),
-    R_AARCH64_MOVW_UABS_G0(0x107) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 2;
-        }
-    },
-    R_AARCH64_MOVW_UABS_G0_NC(0x108) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 2;
-        }
-    },
-    R_AARCH64_MOVW_UABS_G1(0x109) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 4;
-        }
-    },
-    R_AARCH64_MOVW_UABS_G1_NC(0x10a) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 4;
-        }
-    },
-    R_AARCH64_MOVW_UABS_G2(0x10b) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 6;
-        }
-    },
-    R_AARCH64_MOVW_UABS_G2_NC(0x10c) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 6;
-        }
-    },
-    R_AARCH64_MOVW_UABS_G3(0x10d) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.DIRECT;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 8;
-        }
-    },
+    R_AARCH64_MOVW_UABS_G0(0x107),
+    R_AARCH64_MOVW_UABS_G0_NC(0x108),
+    R_AARCH64_MOVW_UABS_G1(0x109),
+    R_AARCH64_MOVW_UABS_G1_NC(0x10a),
+    R_AARCH64_MOVW_UABS_G2(0x10b),
+    R_AARCH64_MOVW_UABS_G2_NC(0x10c),
+    R_AARCH64_MOVW_UABS_G3(0x10d),
     R_AARCH64_MOVW_SABS_G0(0x10e),
     R_AARCH64_MOVW_SABS_G1(0x10f),
     R_AARCH64_MOVW_SABS_G2(0x110),
-    R_AARCH64_LD_PREL_LO19(0x111) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.PC_RELATIVE;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 8; // no, 19 bits
-        }
-    },
+    R_AARCH64_LD_PREL_LO19(0x111),
     R_AARCH64_ADR_PREL_LO21(0x112),
-    R_AARCH64_ADR_PREL_PG_HI21(0x113) {
-        @Override
-        public RelocationKind getKind() {
-            return RelocationKind.PC_RELATIVE;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            return 8; // no, 21 bits
-        }
-    },
+    R_AARCH64_ADR_PREL_PG_HI21(0x113),
     R_AARCH64_ADR_PREL_PG_HI21_NC(0x114),
     R_AARCH64_ADD_ABS_LO12_NC(0x115),
     R_AARCH64_LDST8_ABS_LO12_NC(0x116),
@@ -684,11 +399,6 @@ enum ELFAArch64Relocation implements ELFRelocationMethod {
     }
 
     @Override
-    public RelocationKind getKind() {
-        return RelocationKind.UNKNOWN;
-    }
-
-    @Override
     public boolean canUseImplicitAddend() {
         return false;
     }
@@ -699,88 +409,7 @@ enum ELFAArch64Relocation implements ELFRelocationMethod {
     }
 
     @Override
-    public int getRelocatedByteSize() {
-        throw new UnsupportedOperationException(); // better safe than sorry
-    }
-
-    @Override
     public long toLong() {
         return code;
-    }
-}
-
-enum ELFCavaRelocation implements ELFRelocationMethod {
-    R_CAVA_16(0),
-    R_CAVA_24(1),
-    R_CAVA_32(2),
-    R_CAVA_64(3),
-    R_CAVA_AOP(4),
-    R_CAVA_BOP(5),
-    R_CAVA_COP(6),
-    R_CAVA_QOP(7),
-    R_CAVA_SOP(8),
-    R_CAVA_TOP(9),
-    R_CAVA_A(10),
-    R_CAVA_B(11),
-    R_CAVA_C(12),
-    R_CAVA_CALL(13),
-    R_CAVA_D(14),
-    R_CAVA_GOTO(15),
-    R_CAVA_HIGH(16),
-    R_CAVA_HIGHER(17),
-    R_CAVA_HIGHEST(18),
-    R_CAVA_OFFSET(19),
-    R_CAVA_SA5(20),
-    R_CAVA_SA6(21),
-    R_CAVA_SCALE(22),
-    R_CAVA_SCMP5(23),
-    R_CAVA_SIMM16(24),
-    R_CAVA_TARGET(25),
-    R_CAVA_UCMP5(26),
-    R_CAVA_UCST5(27),
-    R_CAVA_UIMM10(28),
-    R_CAVA_UIMM16(29),
-    R_CAVA_UIMM16A(30),
-    R_CAVA_UIMM16B(31),
-    R_CAVA_UIMM16C(32),
-    R_CAVA_UIMM16D(33),
-    R_CAVA_UIMM5(34),
-    R_CAVA_VTABLE_INHERIT(35),
-    R_CAVA_VTABLE_ENTRY(36);
-
-    private final int id;
-
-    @Override
-    public long toLong() {
-        return id;
-    }
-
-    @Override
-    public RelocationKind getKind() {
-        return RelocationKind.UNKNOWN;
-    }
-
-    @Override
-    public boolean canUseImplicitAddend() {
-        /*
-         * after some tests it seems that the implicit addend is always used, even if there is an
-         * explicit one so we must be careful with what we leave there. In particular, don't leave
-         * some dead beef or old cafe!
-         */
-        return true;
-    }
-
-    @Override
-    public boolean canUseExplicitAddend() {
-        return true;
-    }
-
-    @Override
-    public int getRelocatedByteSize() {
-        return -1;
-    }
-
-    ELFCavaRelocation(int id) {
-        this.id = id;
     }
 }

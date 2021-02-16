@@ -42,7 +42,11 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 public final class SingleResultLazyStart extends LazyResult {
 
     private int start = -1;
@@ -71,16 +75,17 @@ public final class SingleResultLazyStart extends LazyResult {
         return start;
     }
 
+    public void setStart(int start) {
+        assert start >= 0;
+        this.start = start;
+    }
+
     public CallTarget getFindStartCallTarget() {
         return findStartCallTarget;
     }
 
     public Object[] createArgsFindStart() {
-        return new Object[]{getInput(), getEnd() - 1, getFromIndex()};
-    }
-
-    public void applyFindStartResult(int findStartResult) {
-        this.start = findStartResult + 1;
+        return new Object[]{getInput(), getFromIndex(), getEnd()};
     }
 
     /**
@@ -91,7 +96,7 @@ public final class SingleResultLazyStart extends LazyResult {
     @Override
     public void debugForceEvaluation() {
         if (!isStartCalculated()) {
-            applyFindStartResult((int) findStartCallTarget.call(createArgsFindStart()));
+            setStart((int) findStartCallTarget.call(createArgsFindStart()));
         }
     }
 
@@ -102,5 +107,15 @@ public final class SingleResultLazyStart extends LazyResult {
             debugForceEvaluation();
         }
         return "[" + start + ", " + getEnd() + "]";
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    @Override
+    public Object toDisplayString(boolean allowSideEffects) {
+        if (allowSideEffects) {
+            return "TRegexLazyResult" + toString();
+        }
+        return "TRegexLazyResult[" + (isStartCalculated() ? start : "_not computed yet_") + ", " + getEnd() + ']';
     }
 }

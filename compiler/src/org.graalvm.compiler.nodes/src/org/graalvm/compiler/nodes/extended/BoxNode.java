@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,15 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import java.util.Collections;
 
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -42,7 +45,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -56,8 +58,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
  * methods in Integer, Long, etc.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
-public abstract class BoxNode extends AbstractBoxingNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
+@NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_16, allowedUsageTypes = {InputType.Memory, InputType.Value})
+public abstract class BoxNode extends AbstractBoxingNode implements IterableNodeType, VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
 
@@ -70,16 +72,16 @@ public abstract class BoxNode extends AbstractBoxingNode implements Virtualizabl
         this.value = value;
     }
 
+    private BoxNode(NodeClass<? extends BoxNode> c, ValueNode value, JavaKind boxingKind, Stamp s, LocationIdentity accessedLocation) {
+        super(c, value, boxingKind, s, accessedLocation);
+        this.value = value;
+    }
+
     public static BoxNode create(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
         if (boxingKind == JavaKind.Boolean) {
             return new PureBoxNode(value, resultType, boxingKind);
         }
         return new AllocatingBoxNode(value, resultType, boxingKind);
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -115,6 +117,10 @@ public abstract class BoxNode extends AbstractBoxingNode implements Virtualizabl
             super(TYPE, value, resultType, boxingKind);
         }
 
+        @Override
+        public BoxNode createOptimizedBox(ValueNode dominatingBoxedValue) {
+            return this;
+        }
     }
 
     @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
@@ -123,6 +129,10 @@ public abstract class BoxNode extends AbstractBoxingNode implements Virtualizabl
 
         protected AllocatingBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
             super(TYPE, value, resultType, boxingKind);
+        }
+
+        protected AllocatingBoxNode(NodeClass<? extends AllocatingBoxNode> c, ValueNode value, JavaKind boxingKind, Stamp s, LocationIdentity location) {
+            super(c, value, boxingKind, s, location);
         }
 
         @Override
@@ -135,5 +145,34 @@ public abstract class BoxNode extends AbstractBoxingNode implements Virtualizabl
             return getLocationIdentity();
         }
 
+    }
+
+    public BoxNode createOptimizedBox(ValueNode dominatingBoxedValue) {
+        return new OptimizedAllocatingBoxNode(getValue(), dominatingBoxedValue, boxingKind, stamp(NodeView.DEFAULT), getLocationIdentity());
+    }
+
+    @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
+    public static class OptimizedAllocatingBoxNode extends AllocatingBoxNode implements SingleMemoryKill {
+        public static final NodeClass<OptimizedAllocatingBoxNode> TYPE = NodeClass.create(OptimizedAllocatingBoxNode.class);
+        @Input protected ValueNode dominatingBoxedValue;
+
+        protected OptimizedAllocatingBoxNode(ValueNode value, ValueNode dominatingBoxedValue, JavaKind boxingKind, Stamp s, LocationIdentity location) {
+            super(TYPE, value, boxingKind, s, location);
+            this.dominatingBoxedValue = dominatingBoxedValue;
+        }
+
+        public ValueNode getDominatingBoxedValue() {
+            return dominatingBoxedValue;
+        }
+
+        @Override
+        public LocationIdentity getLocationIdentity() {
+            return LocationIdentity.INIT_LOCATION;
+        }
+
+        @Override
+        public LocationIdentity getKilledLocationIdentity() {
+            return getLocationIdentity();
+        }
     }
 }

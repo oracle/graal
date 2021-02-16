@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.aarch64.AArch64HotSpotBackend;
@@ -50,7 +50,6 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentation;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -61,10 +60,10 @@ public class AArch64TruffleCallBoundaryInstumentationFactory extends TruffleCall
     public CompilationResultBuilderFactory create(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
         return new TruffleCompilationResultBuilderFactory(metaAccess, config, registers) {
             @Override
-            public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
+            public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
                             FrameContext frameContext,
                             OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
-                return new TruffleCallBoundaryInstrumentation(metaAccess, codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
+                return new TruffleCallBoundaryInstrumentation(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
                     @Override
                     protected void injectTailCallCode(int installedCodeOffset, int entryPointOffset) {
                         AArch64MacroAssembler masm = (AArch64MacroAssembler) this.asm;
@@ -76,13 +75,13 @@ public class AArch64TruffleCallBoundaryInstumentationFactory extends TruffleCall
                             Label doProlog = new Label();
                             if (config.useCompressedOops) {
                                 CompressEncoding encoding = config.getOopEncoding();
-                                masm.ldr(32, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(thisRegister, installedCodeOffset));
+                                masm.ldr(32, spillRegister, AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset));
                                 Register base = encoding.hasBase() ? registers.getHeapBaseRegister() : null;
                                 AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm, spillRegister, spillRegister, base, encoding.getShift(), true);
                             } else {
-                                masm.ldr(64, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(thisRegister, installedCodeOffset));
+                                masm.ldr(64, spillRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset));
                             }
-                            masm.ldr(64, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(spillRegister, entryPointOffset));
+                            masm.ldr(64, spillRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, spillRegister, entryPointOffset));
                             masm.cbz(64, spillRegister, doProlog);
                             masm.jmp(spillRegister);
                             masm.nop();

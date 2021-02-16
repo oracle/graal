@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * Defines the capabilities provided by the client.
  */
-public class ClientCapabilities {
-
-    final JSONObject jsonData;
+public class ClientCapabilities extends JSONBase {
 
     ClientCapabilities(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -59,6 +57,18 @@ public class ClientCapabilities {
 
     public ClientCapabilities setTextDocument(TextDocumentClientCapabilities textDocument) {
         jsonData.putOpt("textDocument", textDocument != null ? textDocument.jsonData : null);
+        return this;
+    }
+
+    /**
+     * Window specific client capabilities.
+     */
+    public WindowCapabilities getWindow() {
+        return jsonData.has("window") ? new WindowCapabilities(jsonData.optJSONObject("window")) : null;
+    }
+
+    public ClientCapabilities setWindow(WindowCapabilities window) {
+        jsonData.putOpt("window", window != null ? window.jsonData : null);
         return this;
     }
 
@@ -92,6 +102,9 @@ public class ClientCapabilities {
         if (!Objects.equals(this.getTextDocument(), other.getTextDocument())) {
             return false;
         }
+        if (!Objects.equals(this.getWindow(), other.getWindow())) {
+            return false;
+        }
         if (!Objects.equals(this.getExperimental(), other.getExperimental())) {
             return false;
         }
@@ -100,15 +113,18 @@ public class ClientCapabilities {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 2;
         if (this.getWorkspace() != null) {
-            hash = 79 * hash + Objects.hashCode(this.getWorkspace());
+            hash = 53 * hash + Objects.hashCode(this.getWorkspace());
         }
         if (this.getTextDocument() != null) {
-            hash = 79 * hash + Objects.hashCode(this.getTextDocument());
+            hash = 53 * hash + Objects.hashCode(this.getTextDocument());
+        }
+        if (this.getWindow() != null) {
+            hash = 53 * hash + Objects.hashCode(this.getWindow());
         }
         if (this.getExperimental() != null) {
-            hash = 79 * hash + Objects.hashCode(this.getExperimental());
+            hash = 53 * hash + Objects.hashCode(this.getExperimental());
         }
         return hash;
     }
@@ -116,5 +132,55 @@ public class ClientCapabilities {
     public static ClientCapabilities create() {
         final JSONObject json = new JSONObject();
         return new ClientCapabilities(json);
+    }
+
+    public static class WindowCapabilities extends JSONBase {
+
+        WindowCapabilities(JSONObject jsonData) {
+            super(jsonData);
+        }
+
+        /**
+         * Whether client supports handling progress notifications. If set servers are allowed to
+         * report in `workDoneProgress` property in the request specific server capabilities.
+         *
+         * Since 3.15.0
+         */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
+        public Boolean getWorkDoneProgress() {
+            return jsonData.has("workDoneProgress") ? jsonData.getBoolean("workDoneProgress") : null;
+        }
+
+        public WindowCapabilities setWorkDoneProgress(Boolean workDoneProgress) {
+            jsonData.putOpt("workDoneProgress", workDoneProgress);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (this.getClass() != obj.getClass()) {
+                return false;
+            }
+            WindowCapabilities other = (WindowCapabilities) obj;
+            if (!Objects.equals(this.getWorkDoneProgress(), other.getWorkDoneProgress())) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            if (this.getWorkDoneProgress() != null) {
+                hash = 43 * hash + Boolean.hashCode(this.getWorkDoneProgress());
+            }
+            return hash;
+        }
     }
 }

@@ -1,113 +1,53 @@
 language: java
 python:
   - "2.7"
-addons:
-  apt:
-    packages:
-      - python-pip
-      - python-virtualenv
-      - wget
-      - mercurial
 
-# Use Trusty to get enough RAM
-sudo: required
-dist: trusty
+os: linux
+dist: bionic # 18.04
 
-jdk:
-    - openjdk11
-
-env:
-  global:
-    - JVMCI_VERSION="jvmci-20.1-b01"
-    - JDK8_UPDATE_VERSION="242"
-    - JDK8_UPDATE_VERSION_SUFFIX=""
-
-matrix:
+jobs:
   include:
-  - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,test,helloworld_debug" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
+  - os: linux
+    env:
+      - JDK="labsjdk-ce-11" GATE="build,debuginfotest" PRIMARY="substratevm"
+    arch:
+      - arm64
     addons:
       apt:
         packages:
-          - python-pip
-          - libc++1
-          - libc++abi1
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
-    addons:
-      apt:
-        sources:
-          - ubuntu-toolchain-r-test
-        packages:
-          - libc++1
-          - libc++abi1
-  - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
-  - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
-  - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+          - gdb
   - os: linux
     arch: arm64
-    env: JDK="jdk11" GATE="fullbuild,test" PRIMARY="compiler"
+    env: JDK="labsjdk-ce-11" GATE="fullbuild,test:1:100" PRIMARY="compiler"
   - os: linux
     arch: arm64
-    env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
-# GR-16977
-#  - env: JDK="jdk11" GATE="build,test,helloworld" PRIMARY="substratevm"
+    env: JDK="labsjdk-ce-11" GATE="build,test:0:1" PRIMARY="compiler"
+  - os: linux
+    arch: arm64
+    env: JDK="labsjdk-ce-11" GATE="build,bootstraplite" PRIMARY="compiler"
 
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
-      git clone https://github.com/graalvm/mx.git ${MX_PATH}
+      git clone --depth 1 https://github.com/graalvm/mx.git ${MX_PATH}
       export PATH=${PATH}:${MX_PATH}
   - |
-      if [[ ${GATE} == *style* ]]
-      then
-        virtualenv venv
-        source venv/bin/activate
-        pip install astroid==1.1.0
-        pip install pylint==1.1.0
-
-        export ECLIPSE_TAR=${TRAVIS_BUILD_DIR}/../eclipse.tar.gz
-        wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.5.2-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${ECLIPSE_TAR}
-        export ECLIPSE_EXE=${TRAVIS_BUILD_DIR}/../eclipse/eclipse
-
-        # the style gate needs the full commit history for checking copyright years
-        git fetch --unshallow
-      fi
-  - |
-      if [[ ${GATE} == *fullbuild* ]]
-      then
-        # Only test JDT on JDK8
-        if [ "${JDK}" == "jdk8" ]
-        then
-          export JDT=${MX_PATH}/ecj.jar
-          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
-        fi
-      fi
-  - |
-      if [ "${JDK}" == "jdk8" ]
-      then
-        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
-        export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
-      fi
-  - |
-      if [ "${JDK}" == "jdk11" ]
-      then
-        # Set the JAVA_HOME to openjdk11 if it is not set
-        if [ "${JAVA_HOME}" == "" ]
-        then
-          export JAVA_HOME=$(realpath $(dirname $(which java | xargs realpath))/../)
-        fi
-      fi
+      mx -y  --no-warning fetch-jdk --java-distribution ${JDK} --to ${TRAVIS_BUILD_DIR}/.. --alias jdk
+      export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk
 
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - |
+      mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*
+notifications:
+  # Send a notification of a build failure on the master branch to
+  # travis-ci channel in public GraalVM workspace
+  slack:
+    secure: RqC8efMebgYxxZeS63zTpNFIrJtgisOEjHNzlQBRDgIZ2JXcIoRL3xL6d3I+BoW8iGdOPJuNGC1WgDr8O4ZJOf5A32xZKpLU+aVR79Lq5LOezsoa8PCNXlZmxcc9oKFaM1a0cJGxLLg3F1wq9RUUHwfOMS8YuW7dmqFCtUOGmcIF1Rsal8vHyOqCYbiu7wxmUNmkqlJtXnztgQhLCGhd6ya0k6Dw8EVYoMWpHOTB6+9irNAp0BP0b1SvPQm9a5KzuASXSahapt/6CeCSrizN5RBKrMzVjcZhTarLm0Lt+3Ah7j1BQw2YBcDVYIEFUqABquXnuKb4+Hu6L8QRfmJzJ2w1cxC49WTEWWZu31gk2/0oSMsH58LovFG21ZHgQ/UZH1N7UYzS/rnHr2dzjZHaBIiWsRADoqSg9eNoz0ld2k8Up6k/T9YxUYN72+/TWKmRUDGF7gpkN097G1klaJb1MiLXDE5bvxbnH3+wVmfpzAVkE5Q0nfkZL53B5ymw1E8EtGvppcbnvHv0L3ccyRiX3iIgJcvINf+6sRXBqdB7HSZOEmRGiH7EsaUOdMxRhfLo1zA5xK+7k0fRBhViPJKEosflRkG7qhUNeqXDH6lrlCee5yqLoBsn0Xb6WDgCBQrVOSj2sHrvp0qO0UWKH8InDkhMPXddVq5RECnMjsusQ5g=
+    if: branch = master AND repo = oracle/graal
+    on_failure: always
+    on_success: never
+    on_pull_requests: false

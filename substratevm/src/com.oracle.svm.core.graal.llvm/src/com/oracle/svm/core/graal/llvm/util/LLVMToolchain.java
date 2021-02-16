@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -35,6 +34,8 @@ import java.util.List;
 
 import org.graalvm.home.HomeFinder;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
 public class LLVMToolchain {
@@ -54,20 +55,35 @@ public class LLVMToolchain {
     public static String runCommand(Path directory, List<String> cmd) throws RunFailureException {
         int status;
         String output;
-        try (OutputStream os = new ByteArrayOutputStream()) {
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.redirectErrorStream(true);
-            if (directory != null) {
-                pb.directory(directory.toFile());
+
+        Process llvmProcess = null;
+        try {
+            ProcessBuilder llvmCommand = FileUtils.prepareCommand(cmd, directory);
+            llvmCommand.redirectErrorStream(true);
+
+            FileUtils.traceCommand(llvmCommand);
+
+            llvmProcess = llvmCommand.start();
+
+            try (InputStream inputStream = llvmProcess.getInputStream()) {
+                List<String> lines = FileUtils.readAllLines(inputStream);
+
+                FileUtils.traceCommandOutput(lines);
+
+                output = String.join(System.lineSeparator(), lines);
             }
 
-            Process p = pb.start();
-            FileUtils.drainInputStream(p.getInputStream(), os);
-            status = p.waitFor();
-            output = os.toString().trim();
-        } catch (IOException | InterruptedException e) {
+            status = llvmProcess.waitFor();
+        } catch (IOException e) {
             status = -1;
             output = e.getMessage();
+        } catch (InterruptedException e) {
+            String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
+            throw new InterruptImageBuilding("Interrupted during llvm command execution: " + commandLine);
+        } finally {
+            if (llvmProcess != null) {
+                llvmProcess.destroy();
+            }
         }
 
         if (status != 0) {

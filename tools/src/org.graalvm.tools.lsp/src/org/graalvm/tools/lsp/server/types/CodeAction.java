@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,10 @@ import java.util.Objects;
  * A CodeAction must set either `edit` and/or a `command`. If both are supplied, the `edit` is
  * applied first, then the `command` is executed.
  */
-public class CodeAction {
-
-    final JSONObject jsonData;
+public class CodeAction extends JSONBase {
 
     CodeAction(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -99,6 +97,26 @@ public class CodeAction {
     }
 
     /**
+     * Marks this as a preferred action. Preferred actions are used by the `auto fix` command and
+     * can be targeted by keybindings.
+     *
+     * A quick fix should be marked preferred if it properly addresses the underlying error. A
+     * refactoring should be marked preferred if it is the most reasonable choice of actions to
+     * take.
+     *
+     * @since 3.15.0
+     */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
+    public Boolean getIsPreferred() {
+        return jsonData.has("isPreferred") ? jsonData.getBoolean("isPreferred") : null;
+    }
+
+    public CodeAction setIsPreferred(Boolean isPreferred) {
+        jsonData.putOpt("isPreferred", isPreferred);
+        return this;
+    }
+
+    /**
      * The workspace edit this code action performs.
      */
     public WorkspaceEdit getEdit() {
@@ -144,6 +162,9 @@ public class CodeAction {
         if (!Objects.equals(this.getDiagnostics(), other.getDiagnostics())) {
             return false;
         }
+        if (!Objects.equals(this.getIsPreferred(), other.getIsPreferred())) {
+            return false;
+        }
         if (!Objects.equals(this.getEdit(), other.getEdit())) {
             return false;
         }
@@ -155,19 +176,22 @@ public class CodeAction {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 47 * hash + Objects.hashCode(this.getTitle());
+        int hash = 5;
+        hash = 11 * hash + Objects.hashCode(this.getTitle());
         if (this.getKind() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getKind());
+            hash = 11 * hash + Objects.hashCode(this.getKind());
         }
         if (this.getDiagnostics() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getDiagnostics());
+            hash = 11 * hash + Objects.hashCode(this.getDiagnostics());
+        }
+        if (this.getIsPreferred() != null) {
+            hash = 11 * hash + Boolean.hashCode(this.getIsPreferred());
         }
         if (this.getEdit() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getEdit());
+            hash = 11 * hash + Objects.hashCode(this.getEdit());
         }
         if (this.getCommand() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getCommand());
+            hash = 11 * hash + Objects.hashCode(this.getCommand());
         }
         return hash;
     }

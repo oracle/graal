@@ -39,12 +39,11 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
+import com.oracle.svm.hosted.meta.HostedField;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -91,11 +90,7 @@ class VMThreadLocalCollector implements Function<Object, Object> {
         return result;
     }
 
-    public List<VMThreadLocalInfo> sortThreadLocals(Feature.CompilationAccess config) {
-        return sortThreadLocals(config, null);
-    }
-
-    public List<VMThreadLocalInfo> sortThreadLocals(Feature.CompilationAccess a, FastThreadLocal first) {
+    public List<VMThreadLocalInfo> sortThreadLocals(Feature.CompilationAccess a) {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
 
         sealed = true;
@@ -105,9 +100,9 @@ class VMThreadLocalCollector implements Function<Object, Object> {
          * make the layout of VMThread deterministic.
          */
         for (ResolvedJavaField f : config.getFields()) {
-            SharedField field = (SharedField) f;
+            HostedField field = (HostedField) f;
             if (field.isStatic() && field.getStorageKind() == JavaKind.Object) {
-                Object fieldValue = SubstrateObjectConstant.asObject(((ReadableJavaField) field).readValue(null));
+                Object fieldValue = SubstrateObjectConstant.asObject(field.readValue(null));
                 if (fieldValue instanceof FastThreadLocal) {
                     FastThreadLocal threadLocal = (FastThreadLocal) fieldValue;
                     VMThreadLocalInfo info = threadLocals.get(threadLocal);
@@ -138,12 +133,6 @@ class VMThreadLocalCollector implements Function<Object, Object> {
 
         List<VMThreadLocalInfo> sortedThreadLocals = new ArrayList<>(threadLocals.values());
         sortedThreadLocals.sort(VMThreadLocalCollector::compareThreadLocal);
-        if (first != null) {
-            VMThreadLocalInfo info = threadLocals.get(first);
-            assert info != null && sortedThreadLocals.contains(info);
-            sortedThreadLocals.remove(info);
-            sortedThreadLocals.add(0, info);
-        }
         return sortedThreadLocals;
     }
 
@@ -152,17 +141,21 @@ class VMThreadLocalCollector implements Function<Object, Object> {
             return 0;
         }
 
-        /* Order by size to avoid padding. */
-        int result = -Integer.compare(info1.sizeInBytes, info2.sizeInBytes);
+        /* Order by priority: lower maximum offsets first. */
+        int result = Integer.compare(info1.maxOffset, info2.maxOffset);
         if (result == 0) {
-            /* Ensure that all objects are contiguous. */
-            result = -Boolean.compare(info1.isObject, info2.isObject);
+            /* Order by size to avoid padding. */
+            result = -Integer.compare(info1.sizeInBytes, info2.sizeInBytes);
             if (result == 0) {
-                /*
-                 * Make the order deterministic by sorting by name. This is arbitrary, we can come
-                 * up with any better ordering.
-                 */
-                result = info1.name.compareTo(info2.name);
+                /* Ensure that all objects are contiguous. */
+                result = -Boolean.compare(info1.isObject, info2.isObject);
+                if (result == 0) {
+                    /*
+                     * Make the order deterministic by sorting by name. This is arbitrary, we can
+                     * come up with any better ordering.
+                     */
+                    result = info1.name.compareTo(info2.name);
+                }
             }
         }
         assert result != 0 : "not distinguishable: " + info1 + ", " + info2;

@@ -32,6 +32,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.heap.Heap;
 
 /**
  * Provides new instances of the image heap for creating isolates. The same image heap provider
@@ -42,6 +43,14 @@ public interface ImageHeapProvider {
     static ImageHeapProvider get() {
         return ImageSingletons.lookup(ImageHeapProvider.class);
     }
+
+    /**
+     * Returns whether this provider, when not already supplied a reserved address space by
+     * {@link CommittedMemoryProvider}, will always ensure a heap address space alignment of
+     * {@link Heap#getPreferredAddressSpaceAlignment()} at image runtime.
+     */
+    @Fold
+    boolean guaranteesHeapPreferredAddressSpaceAlignment();
 
     /**
      * Creates a new instance of the image heap.

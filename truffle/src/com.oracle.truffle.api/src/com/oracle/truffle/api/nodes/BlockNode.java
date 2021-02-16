@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -270,7 +270,7 @@ public abstract class BlockNode<T extends Node> extends Node {
         if (elements.length == 0) {
             throw new IllegalArgumentException("Empty blocks are not allowed.");
         }
-        return NodeAccessor.ACCESSOR.createBlockNode(elements, executor);
+        return NodeAccessor.RUNTIME.createBlockNode(elements, executor);
     }
 
     /**
@@ -530,7 +530,7 @@ class BlockNodeSnippets {
                     return e.result;
                 }
             } else {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new AssertionError("Invalid start index");
             }
         }

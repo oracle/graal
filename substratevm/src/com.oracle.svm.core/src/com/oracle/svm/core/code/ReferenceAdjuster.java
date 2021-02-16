@@ -54,7 +54,7 @@ public interface ReferenceAdjuster {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default <T extends Constant> NonmovableObjectArray<Object> copyOfObjectConstantArray(T[] constants) {
-        NonmovableObjectArray<Object> objects = NonmovableArrays.createObjectArray(constants.length);
+        NonmovableObjectArray<Object> objects = NonmovableArrays.createObjectArray(Object[].class, constants.length);
         for (int i = 0; i < constants.length; i++) {
             setConstantTargetInArray(objects, i, (SubstrateObjectConstant) constants[i]);
         }

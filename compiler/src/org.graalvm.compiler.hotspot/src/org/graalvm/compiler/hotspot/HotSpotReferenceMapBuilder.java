@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 
@@ -112,7 +113,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             } else {
                 Location base = null;
                 if (kind.isDerivedReference()) {
-                    Variable baseVariable = (Variable) kind.getDerivedReferenceBase();
+                    Variable baseVariable = LIRValueUtil.asVariable(kind.getDerivedReferenceBase());
                     Value baseValue = state.getLiveBasePointers().get(baseVariable.index);
                     assert baseValue.getPlatformKind().getVectorLength() == 1 &&
                                     ((LIRKind) baseValue.getValueKind()).isReference(0) &&

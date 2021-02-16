@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -38,19 +38,20 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.memory.ByteArraySupport;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromString.ReadBytesNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromStringNodeGen.PutCharNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromStringNodeGen.ReadBytesWithLengthNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromStringNodeGen.ReadZeroTerminatedBytesNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadCharsetNode.LLVMCharset;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode.LLVMI16OffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -71,13 +72,12 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
     }
 
     @Specialization
-    LLVMManagedPointer doFromString(LLVMCharset charset, ByteBuffer rawString) {
+    LLVMManagedPointer doFromString(LLVMCharset charset, byte[] rawString) {
         return LLVMManagedPointer.create(charset.decode(rawString));
     }
 
     abstract static class ReadBytesNode extends LLVMNode {
-
-        protected abstract ByteBuffer execute(VirtualFrame frame, LLVMCharset charset);
+        protected abstract byte[] execute(VirtualFrame frame, LLVMCharset charset);
     }
 
     @NodeChild(type = LLVMReadCharsetNode.class)
@@ -85,20 +85,16 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
     @NodeChild(value = "len", type = LLVMExpressionNode.class)
     abstract static class ReadBytesWithLengthNode extends ReadBytesNode {
 
-        @Child private LLVMLoadNode load = LLVMI8LoadNode.create();
+        @Child private LLVMI8OffsetLoadNode load = LLVMI8OffsetLoadNode.create();
 
         @Specialization
-        ByteBuffer doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string, long len) {
-            ByteBuffer buffer = ByteBuffer.allocate((int) len);
+        byte[] doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string, long len) {
+            byte[] buffer = new byte[(int) len];
 
-            LLVMPointer ptr = string;
             for (int i = 0; i < len; i++) {
-                byte value = (byte) load.executeWithTarget(ptr);
-                ptr = ptr.increment(Byte.BYTES);
-                buffer.put(value);
+                buffer[i] = load.executeWithTarget(string, i * Byte.BYTES);
             }
 
-            buffer.flip();
             return buffer;
         }
     }
@@ -107,106 +103,123 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
     @NodeChild(type = LLVMExpressionNode.class)
     abstract static class ReadZeroTerminatedBytesNode extends ReadBytesNode {
 
-        @CompilationFinal int bufferSize = 8;
+        @CompilationFinal private int bufferSize = 8;
+        @CompilationFinal private BranchProfile trimProfile = BranchProfile.create();
 
-        @Specialization(limit = "4", guards = "charset.zeroTerminatorLen == increment")
-        ByteBuffer doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string,
-                        @Cached("charset.zeroTerminatorLen") int increment,
-                        @Cached("createLoad(increment)") LLVMLoadNode load,
-                        @Cached("create()") PutCharNode put) {
-            int currentBufferSize = bufferSize;
-            ByteBuffer result = ByteBuffer.allocate(currentBufferSize).order(ByteOrder.nativeOrder());
-
-            LLVMPointer ptr = string;
-            Object value;
-            do {
-                value = load.executeWithTarget(ptr);
-                ptr = ptr.increment(increment);
-
-                if (result.remaining() < increment) {
-                    // buffer overflow, allocate a bigger buffer
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    currentBufferSize *= 2;
-                    ByteBuffer prev = result;
-                    result = ByteBuffer.allocate(currentBufferSize).order(ByteOrder.nativeOrder());
-                    prev.flip();
-                    result.put(prev);
-                }
-
-            } while (put.execute(result, value));
-
-            if (currentBufferSize > bufferSize) {
-                // next time, start with a bigger buffer
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                bufferSize = currentBufferSize;
+        private static ByteArraySupport nativeOrder() {
+            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                return ByteArraySupport.bigEndian();
+            } else {
+                return ByteArraySupport.littleEndian();
             }
+        }
 
-            result.flip();
+        private static byte[] ensureCapacity(byte[] result, int size, int elementSize) {
+            if (result.length - size < elementSize) {
+                // buffer overflow, allocate a bigger buffer
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return Arrays.copyOf(result, result.length * 2);
+            }
             return result;
         }
 
-        protected static LLVMLoadNode createLoad(int increment) {
-            switch (increment) {
-                case 1:
-                    return LLVMI8LoadNode.create();
-                case 2:
-                    return LLVMI16LoadNode.create();
-                case 4:
-                    return LLVMI32LoadNode.create();
-                case 8:
-                    return LLVMI64LoadNode.create();
-                default:
-                    throw new AssertionError("should not reach here");
+        private byte[] trimResult(byte[] blockedResult, int size) {
+            byte[] result = blockedResult;
+
+            if (result.length > size) {
+                trimProfile.enter();
+                // shrink the space we had allocated to the exact size
+                result = Arrays.copyOf(result, size);
             }
-        }
-    }
 
-    abstract static class PutCharNode extends LLVMNode {
-
-        protected abstract boolean execute(ByteBuffer target, Object value);
-
-        @Specialization
-        boolean doByte(ByteBuffer target, byte value) {
-            if (value == 0) {
-                return false;
-            } else {
-                target.put(value);
-                return true;
+            if (result.length > bufferSize) {
+                // next time, start with a bigger buffer
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                bufferSize = result.length;
+                trimProfile = BranchProfile.create();
             }
+            return result;
         }
 
-        @Specialization
-        boolean doShort(ByteBuffer target, short value) {
-            if (value == 0) {
-                return false;
-            } else {
-                target.putShort(value);
-                return true;
+        @Specialization(guards = "charset.zeroTerminatorLen == 1")
+        byte[] doReadI8(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string,
+                        @Cached LLVMI8OffsetLoadNode load) {
+            ByteArraySupport byteArraySupport = nativeOrder();
+            byte[] result = new byte[bufferSize];
+            int size = 0;
+            while (true) {
+                byte value = load.executeWithTarget(string, size);
+                /*
+                 * It's important to check the size before "ensureCapacity", otherwise we might
+                 * encounter repeated deopts.
+                 */
+                if (value == 0) {
+                    break;
+                }
+                result = ensureCapacity(result, size, 1);
+                byteArraySupport.putByte(result, size, value);
+                size += 1;
             }
+
+            return trimResult(result, size);
         }
 
-        @Specialization
-        boolean doInt(ByteBuffer target, int value) {
-            if (value == 0) {
-                return false;
-            } else {
-                target.putInt(value);
-                return true;
+        @Specialization(guards = "charset.zeroTerminatorLen == 2")
+        byte[] doReadI16(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string,
+                        @Cached LLVMI16OffsetLoadNode load) {
+            ByteArraySupport byteArraySupport = nativeOrder();
+            byte[] result = new byte[bufferSize];
+            int size = 0;
+            while (true) {
+                short value = load.executeWithTarget(string, size);
+                if (value == 0) {
+                    break;
+                }
+                result = ensureCapacity(result, size, 2);
+                byteArraySupport.putShort(result, size, value);
+                size += 2;
             }
+
+            return trimResult(result, size);
         }
 
-        @Specialization
-        boolean doLong(ByteBuffer target, long value) {
-            if (value == 0) {
-                return false;
-            } else {
-                target.putLong(value);
-                return true;
+        @Specialization(guards = "charset.zeroTerminatorLen == 4")
+        byte[] doReadI32(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string,
+                        @Cached LLVMI32OffsetLoadNode load) {
+            ByteArraySupport byteArraySupport = nativeOrder();
+            byte[] result = new byte[bufferSize];
+            int size = 0;
+            while (true) {
+                int value = load.executeWithTarget(string, size);
+                if (value == 0) {
+                    break;
+                }
+                result = ensureCapacity(result, size, 4);
+                byteArraySupport.putInt(result, size, value);
+                size += 4;
             }
+
+            return trimResult(result, size);
         }
 
-        public static PutCharNode create() {
-            return PutCharNodeGen.create();
+        @Specialization(guards = "charset.zeroTerminatorLen == 8")
+        byte[] doReadI64(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string,
+                        @Cached LLVMI64OffsetLoadNode load,
+                        @Cached LLVMToNativeNode toNative) {
+            ByteArraySupport byteArraySupport = nativeOrder();
+            byte[] result = new byte[bufferSize];
+            int size = 0;
+            while (true) {
+                long value = toNative.executeWithTarget(load.executeWithTargetGeneric(string, size)).asNative();
+                if (value == 0) {
+                    break;
+                }
+                result = ensureCapacity(result, size, 8);
+                byteArraySupport.putLong(result, size, value);
+                size += 8;
+            }
+
+            return trimResult(result, size);
         }
     }
 }

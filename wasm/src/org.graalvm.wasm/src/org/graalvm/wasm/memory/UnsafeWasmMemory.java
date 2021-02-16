@@ -40,299 +40,318 @@
  */
 package org.graalvm.wasm.memory;
 
-import java.lang.reflect.Field;
-
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import org.graalvm.wasm.exception.WasmTrap;
-import org.graalvm.wasm.WasmTracing;
+import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import sun.misc.Unsafe;
 
-public class UnsafeWasmMemory extends WasmMemory {
+import java.lang.reflect.Field;
+
+import static java.lang.Integer.compareUnsigned;
+import static java.lang.StrictMath.addExact;
+import static java.lang.StrictMath.multiplyExact;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
+
+public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
+    /**
+     * @see #declaredMinSize()
+     */
+    private final int declaredMinSize;
+
+    /**
+     * @see #declaredMaxSize()
+     */
+    private final int declaredMaxSize;
     private final Unsafe unsafe;
     private long startAddress;
-    private long pageSize;
-    private final long maxPageSize;
-    private final ConditionProfile outOfBoundsAccesses = ConditionProfile.createBinaryProfile();
+    private int size;
 
-    public UnsafeWasmMemory(long initPageSize, long maxPageSize) {
+    /**
+     * The maximum practical size of this memory instance (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
+     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
+     * API for example has lower limits).
+     * <p>
+     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     */
+    private final int maxAllowedSize;
+
+    private UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+        assert compareUnsigned(declaredMinSize, initialSize) <= 0;
+        assert compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
+        assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
+        assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
+
         try {
-            Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
             unsafe = (Unsafe) f.get(null);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        this.pageSize = initPageSize;
-        this.maxPageSize = maxPageSize;
-        long byteSize = byteSize();
+
+        this.declaredMinSize = declaredMinSize;
+        this.declaredMaxSize = declaredMaxSize;
+        this.size = declaredMinSize;
+        this.maxAllowedSize = maxAllowedSize;
+        final long byteSize = byteSize();
         this.startAddress = unsafe.allocateMemory(byteSize);
         unsafe.setMemory(startAddress, byteSize, (byte) 0);
     }
 
-    @Override
-    public void validateAddress(Node node, long address, long offset) {
-        WasmTracing.trace("validating memory address: 0x%016X (%d)", address, address);
-        if (outOfBoundsAccesses.profile(address < 0 || address + offset > this.byteSize())) {
-            trapOutOfBounds(node, address, offset);
+    public UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
+    }
+
+    public void validateAddress(Node node, int address, int offset) {
+        if (address < 0 || address + offset > this.byteSize()) {
+            throw trapOutOfBounds(node, address, offset);
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private void trapOutOfBounds(Node node, long address, long offset) {
-        String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
+    @TruffleBoundary
+    private WasmException trapOutOfBounds(Node node, int address, int offset) {
+        throw WasmException.format(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, "%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
                         offset, address, address, byteSize());
-        throw new WasmTrap(node, message);
     }
 
     @Override
-    public void copy(Node node, long src, long dst, long n) {
-        WasmTracing.trace("memcopy from = %d, to = %d, n = %d", src, dst, n);
+    public void copy(Node node, int src, int dst, int n) {
         validateAddress(node, src, n);
         validateAddress(node, dst, n);
         unsafe.copyMemory(startAddress + src, startAddress + dst, n);
     }
 
     @Override
-    public void clear() {
-        unsafe.setMemory(startAddress, byteSize(), (byte) 0);
+    public void reset() {
+        size = declaredMinSize;
+        unsafe.freeMemory(startAddress);
+        startAddress = unsafe.allocateMemory(byteSize());
     }
 
     @Override
-    public long pageSize() {
-        return pageSize;
+    public int size() {
+        return size;
     }
 
     @Override
-    public long byteSize() {
-        return pageSize * PAGE_SIZE;
+    public int byteSize() {
+        return size * MEMORY_PAGE_SIZE;
     }
 
     @Override
-    public long maxPageSize() {
-        return maxPageSize;
+    public int declaredMinSize() {
+        return declaredMinSize;
     }
 
     @Override
-    public boolean grow(long extraPageSize) {
-        if (extraPageSize < 0) {
-            throw new WasmTrap(null, "Extra size cannot be negative.");
-        }
-        long targetSize = byteSize() + extraPageSize * PAGE_SIZE;
-        if (maxPageSize >= 0 && targetSize > maxPageSize * PAGE_SIZE) {
-            // Cannot grow the memory beyond maxPageSize bytes.
+    public int declaredMaxSize() {
+        return declaredMaxSize;
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean grow(int extraPageSize) {
+        if (extraPageSize == 0) {
+            return true;
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
+            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
+            // computation of targetByteSize does not overflow.
+            final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final long updatedStartAddress = unsafe.allocateMemory(targetByteSize);
+            unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
+            unsafe.setMemory(updatedStartAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
+            unsafe.freeMemory(startAddress);
+            startAddress = updatedStartAddress;
+            size += extraPageSize;
+            return true;
+        } else {
             return false;
         }
-        if (targetSize * PAGE_SIZE == byteSize()) {
-            return true;
-        }
-        long updatedStartAddress = unsafe.allocateMemory(targetSize);
-        unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
-        unsafe.setMemory(updatedStartAddress + byteSize(), targetSize - byteSize(), (byte) 0);
-        unsafe.freeMemory(startAddress);
-        startAddress = updatedStartAddress;
-        pageSize += extraPageSize;
-        return true;
     }
 
-    // Checkstyle: stop
     @Override
-    public int load_i32(Node node, long address) {
-        WasmTracing.trace("load.i32 address = %d", address);
+    public int load_i32(Node node, int address) {
         validateAddress(node, address, 4);
-        int value = unsafe.getInt(startAddress + address);
-        WasmTracing.trace("load.i32 value = 0x%08X (%d)", value, value);
+        final int value = unsafe.getInt(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64(Node node, long address) {
-        WasmTracing.trace("load.i64 address = %d", address);
+    public long load_i64(Node node, int address) {
         validateAddress(node, address, 8);
-        long value = unsafe.getLong(startAddress + address);
-        WasmTracing.trace("load.i64 value = 0x%016X (%d)", value, value);
+        final long value = unsafe.getLong(startAddress + address);
         return value;
     }
 
     @Override
-    public float load_f32(Node node, long address) {
-        WasmTracing.trace("load.f32 address = %d", address);
+    public float load_f32(Node node, int address) {
         validateAddress(node, address, 4);
-        float value = unsafe.getFloat(startAddress + address);
-        WasmTracing.trace("load.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value);
+        final float value = unsafe.getFloat(startAddress + address);
         return value;
     }
 
     @Override
-    public double load_f64(Node node, long address) {
-        WasmTracing.trace("load.f64 address = %d", address);
+    public double load_f64(Node node, int address) {
         validateAddress(node, address, 8);
-        double value = unsafe.getDouble(startAddress + address);
-        WasmTracing.trace("load.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value);
+        final double value = unsafe.getDouble(startAddress + address);
         return value;
     }
 
     @Override
-    public int load_i32_8s(Node node, long address) {
-        WasmTracing.trace("load.i32_8s address = %d", address);
+    public int load_i32_8s(Node node, int address) {
         validateAddress(node, address, 1);
-        int value = unsafe.getByte(startAddress + address);
-        WasmTracing.trace("load.i32_8s value = 0x%02X (%d)", value, value);
+        final int value = unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
-    public int load_i32_8u(Node node, long address) {
-        WasmTracing.trace("load.i32_8u address = %d", address);
+    public int load_i32_8u(Node node, int address) {
         validateAddress(node, address, 1);
-        int value = 0x0000_00ff & unsafe.getByte(startAddress + address);
-        WasmTracing.trace("load.i32_8u value = 0x%02X (%d)", value, value);
+        final int value = 0x0000_00ff & unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
-    public int load_i32_16s(Node node, long address) {
-        WasmTracing.trace("load.i32_16s address = %d", address);
+    public int load_i32_16s(Node node, int address) {
         validateAddress(node, address, 2);
-        int value = unsafe.getShort(startAddress + address);
-        WasmTracing.trace("load.i32_16s value = 0x%04X (%d)", value, value);
+        final int value = unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
-    public int load_i32_16u(Node node, long address) {
-        WasmTracing.trace("load.i32_16u address = %d", address);
+    public int load_i32_16u(Node node, int address) {
         validateAddress(node, address, 2);
-        int value = 0x0000_ffff & unsafe.getShort(startAddress + address);
-        WasmTracing.trace("load.i32_16u value = 0x%04X (%d)", value, value);
+        final int value = 0x0000_ffff & unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_8s(Node node, long address) {
-        WasmTracing.trace("load.i64_8s address = %d", address);
+    public long load_i64_8s(Node node, int address) {
         validateAddress(node, address, 1);
-        long value = unsafe.getByte(startAddress + address);
-        WasmTracing.trace("load.i64_8s value = 0x%02X (%d)", value, value);
+        final long value = unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_8u(Node node, long address) {
-        WasmTracing.trace("load.i64_8u address = %d", address);
+    public long load_i64_8u(Node node, int address) {
         validateAddress(node, address, 1);
-        long value = 0x0000_0000_0000_00ffL & unsafe.getByte(startAddress + address);
-        WasmTracing.trace("load.i64_8u value = 0x%02X (%d)", value, value);
+        final long value = 0x0000_0000_0000_00ffL & unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_16s(Node node, long address) {
-        WasmTracing.trace("load.i64_16s address = %d", address);
+    public long load_i64_16s(Node node, int address) {
         validateAddress(node, address, 2);
-        long value = unsafe.getShort(startAddress + address);
-        WasmTracing.trace("load.i64_16s value = 0x%04X (%d)", value, value);
+        final long value = unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_16u(Node node, long address) {
-        WasmTracing.trace("load.i64_16u address = %d", address);
+    public long load_i64_16u(Node node, int address) {
         validateAddress(node, address, 2);
-        long value = 0x0000_0000_0000_ffffL & unsafe.getShort(startAddress + address);
-        WasmTracing.trace("load.i64_16u value = 0x%04X (%d)", value, value);
+        final long value = 0x0000_0000_0000_ffffL & unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_32s(Node node, long address) {
-        WasmTracing.trace("load.i64_32s address = %d", address);
+    public long load_i64_32s(Node node, int address) {
         validateAddress(node, address, 4);
-        long value = unsafe.getInt(startAddress + address);
-        WasmTracing.trace("load.i64_32s value = 0x%08X (%d)", value, value);
+        final long value = unsafe.getInt(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_32u(Node node, long address) {
-        WasmTracing.trace("load.i64_32u address = %d", address);
+    public long load_i64_32u(Node node, int address) {
         validateAddress(node, address, 4);
-        long value = 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
-        WasmTracing.trace("load.i64_32u value = 0x%08X (%d)", value, value);
+        final long value = 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
         return value;
     }
 
     @Override
-    public void store_i32(Node node, long address, int value) {
-        WasmTracing.trace("store.i32 address = %d, value = 0x%08X (%d)", address, value, value);
+    public void store_i32(Node node, int address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
     }
 
     @Override
-    public void store_i64(Node node, long address, long value) {
-        WasmTracing.trace("store.i64 address = %d, value = 0x%016X (%d)", address, value, value);
+    public void store_i64(Node node, int address, long value) {
         validateAddress(node, address, 8);
         unsafe.putLong(startAddress + address, value);
 
     }
 
     @Override
-    public void store_f32(Node node, long address, float value) {
-        WasmTracing.trace("store.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value);
+    public void store_f32(Node node, int address, float value) {
         validateAddress(node, address, 4);
         unsafe.putFloat(startAddress + address, value);
 
     }
 
     @Override
-    public void store_f64(Node node, long address, double value) {
-        WasmTracing.trace("store.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value);
+    public void store_f64(Node node, int address, double value) {
         validateAddress(node, address, 8);
         unsafe.putDouble(startAddress + address, value);
     }
 
     @Override
-    public void store_i32_8(Node node, long address, byte value) {
-        WasmTracing.trace("store.i32_8 address = %d, value = 0x%02X (%d)", address, value, value);
+    public void store_i32_8(Node node, int address, byte value) {
         validateAddress(node, address, 1);
         unsafe.putByte(startAddress + address, value);
     }
 
     @Override
-    public void store_i32_16(Node node, long address, short value) {
-        WasmTracing.trace("store.i32_16 address = %d, value = 0x%04X (%d)", address, value, value);
+    public void store_i32_16(Node node, int address, short value) {
         validateAddress(node, address, 2);
         unsafe.putShort(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_8(Node node, long address, byte value) {
-        WasmTracing.trace("store.i64_8 address = %d, value = 0x%02X (%d)", address, value, value);
+    public void store_i64_8(Node node, int address, byte value) {
         validateAddress(node, address, 1);
         unsafe.putByte(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_16(Node node, long address, short value) {
-        WasmTracing.trace("store.i64_16 address = %d, value = 0x%04X (%d)", address, value, value);
+    public void store_i64_16(Node node, int address, short value) {
         validateAddress(node, address, 2);
         unsafe.putShort(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_32(Node node, long address, int value) {
-        WasmTracing.trace("store.i64_32 address = %d, value = 0x%08X (%d)", address, value, value);
+    public void store_i64_32(Node node, int address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
     }
-    // Checkstyle: resume
 
     @Override
     public WasmMemory duplicate() {
-        final UnsafeWasmMemory other = new UnsafeWasmMemory(pageSize, maxPageSize);
+        final UnsafeWasmMemory other = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize);
         unsafe.copyMemory(this.startAddress, other.startAddress, this.byteSize());
         return other;
+    }
+
+    public void free() {
+        unsafe.freeMemory(this.startAddress);
+        startAddress = 0;
+        size = 0;
+    }
+
+    public boolean freed() {
+        return startAddress == 0;
+    }
+
+    @Override
+    public void close() {
+        if (!freed()) {
+            free();
+        }
     }
 }

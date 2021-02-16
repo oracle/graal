@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -56,25 +56,13 @@
   (type (;14;) (func (param i64 i32) (result i32)))
   (type (;15;) (func (param i32 i32 i32 i32 i32)))
   (type (;16;) (func (param f64 i32) (result f64)))
-  (import "env" "abort" (func (;0;) (type 5)))
-  (import "env" "_gettimeofday" (func (;1;) (type 8)))
-  (import "env" "___setErrNo" (func (;2;) (type 5)))
-  (import "env" "abortOnCannotGrowMemory" (func (;3;) (type 0)))
-  (import "env" "_emscripten_resize_heap" (func (;4;) (type 0)))
-  (import "env" "_emscripten_memcpy_big" (func (;5;) (type 1)))
-  (import "env" "_emscripten_get_heap_size" (func (;6;) (type 7)))
-  (import "env" "___wasi_fd_write" (func (;7;) (type 6)))
-  (import "env" "___unlock" (func (;8;) (type 5)))
-  (import "env" "___lock" (func (;9;) (type 5)))
-  (import "env" "memory" (memory (;0;) 256 256))
-  (import "env" "table" (table (;0;) 16 16 funcref))
   (global (;0;) i32 (i32.const 0))
   (global (;1;) i32 (i32.const 5024))
   (global (;2;) (mut i32) (i32.const 5056))
-  (func (;10;) (type 7) (result i32)
+  (func (;0;) (type 7) (result i32)
     i32.const 814
-    call 11)
-  (func (;11;) (type 0) (param i32) (result i32)
+    call 1)
+  (func (;1;) (type 0) (param i32) (result i32)
     (local i32)
     i32.const 3244
     i32.const 3244
@@ -103,21 +91,21 @@
         i32.xor
         i32.store
         i32.const 6
-        call 12
+        call 2
       else
         i32.const 3240
         local.get 0
         i32.store
         i32.const 5
-        call 12
+        call 2
       end
     else
-      call 13
+      call 3
     end)
-  (func (;12;) (type 0) (param i32) (result i32)
+  (func (;2;) (type 0) (param i32) (result i32)
     (local i32)
     local.get 0
-    call 14
+    call 4
     local.tee 0
     if (result i32)  ;; label = @1
       local.get 0
@@ -139,7 +127,7 @@
     else
       i32.const 0
     end)
-  (func (;13;) (type 7) (result i32)
+  (func (;3;) (type 7) (result i32)
     (local i32)
     i32.const 3224
     i32.const 3224
@@ -157,7 +145,7 @@
     i32.store offset=16
     local.get 0
     i32.load)
-  (func (;14;) (type 0) (param i32) (result i32)
+  (func (;4;) (type 0) (param i32) (result i32)
     (local i32 i32 i32 i32)
     global.get 2
     local.set 1
@@ -195,14 +183,14 @@
       i32.store
       i32.const 2082
       local.get 2
-      call 15
+      call 5
       i32.const 0
     end
     local.set 4
     local.get 1
     global.set 2
     local.get 4)
-  (func (;15;) (type 3) (param i32 i32)
+  (func (;5;) (type 3) (param i32 i32)
     (local i32)
     global.get 2
     local.set 2
@@ -215,7 +203,9 @@
     i32.store
     local.get 2
     global.set 2)
-  (export "_main" (func 10))
+  (export "_main" (func 0))
+  (memory (;0;) 4)
+  (export "memory" (memory 0))
   (data (;0;) (i32.const 1024) "0ABCDEFGHIJKLMNOPQRSTUVWXYZ\00\00\00\00\00\0a")
   (data (;1;) (i32.const 1104) "\11\00\0a\00\11\11\11\00\00\00\00\05\00\00\00\00\00\00\09\00\00\00\00\0b")
   (data (;2;) (i32.const 1136) "\11\00\0f\0a\11\11\11\03\0a\07\00\01\13\09\0b\0b\00\00\09\06\0b\00\00\0b\00\06\11\00\00\00\11\11\11")

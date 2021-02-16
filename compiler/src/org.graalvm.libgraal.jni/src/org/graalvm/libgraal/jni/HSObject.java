@@ -36,10 +36,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.word.WordFactory;
 
 /**
  * Encapsulates a JNI handle to an object in the HotSpot heap. Depending on which constructor is
- * used, the handle is either local to a {@link HotSpotToSVMScope} and thus invalid once the scope
+ * used, the handle is either local to a {@link JNILibGraalScope} and thus invalid once the scope
  * exits or a global JNI handle that is only released sometime after the {@link HSObject} dies.
  */
 public abstract class HSObject {
@@ -56,9 +57,9 @@ public abstract class HSObject {
 
     /**
      * Link to next the next scope local object. The head of the list is in
-     * {@link HotSpotToSVMScope#locals}. The handle of a scope local object is only valid for the
-     * lifetime of a {@link HotSpotToSVMScope}. A self-reference (i.e. {@code this.next == this})
-     * denotes an object whose {@link HotSpotToSVMScope} has closed.
+     * {@link JNILibGraalScope#locals}. The handle of a scope local object is only valid for the
+     * lifetime of a {@link JNILibGraalScope}. A self-reference (i.e. {@code this.next == this})
+     * denotes an object whose {@link JNILibGraalScope} has closed.
      *
      * This field is {@code null} for a non-scope local object.
      */
@@ -69,7 +70,7 @@ public abstract class HSObject {
      */
     protected HSObject(JNIEnv env, JObject handle) {
         cleanHandles(env);
-        if (Assertions.assertionsEnabled() || JNIUtil.tracingAt(1)) {
+        if (checkingGlobalDuplicates()) {
             checkNonExistingGlobalReference(env, handle);
         }
         this.handle = NewGlobalRef(env, handle, this.getClass().getSimpleName());
@@ -78,12 +79,16 @@ public abstract class HSObject {
         next = null;
     }
 
+    private static boolean checkingGlobalDuplicates() {
+        return Assertions.assertionsEnabled() || JNIUtil.tracingAt(1);
+    }
+
     /**
      * Creates an object encapsulating a {@code handle} whose lifetime is limited to {@code scope}.
      * Once {@code scope.close()} is called, any attempt to {@linkplain #getHandle() use} the handle
      * will result in an {@link IllegalArgumentException}.
      */
-    protected <T extends Enum<T>> HSObject(HotSpotToSVMScope<T> scope, JObject handle) {
+    protected <T extends Enum<T>> HSObject(JNILibGraalScope<T> scope, JObject handle) {
         this.handle = handle;
         next = scope.locals;
         scope.locals = this;
@@ -141,8 +146,10 @@ public abstract class HSObject {
 
     private static void checkNonExistingGlobalReference(JNIEnv env, JObject handle) {
         for (Cleaner cleaner : CLEANERS) {
-            if (JNIUtil.IsSameObject(env, handle, cleaner.handle)) {
-                throw new IllegalArgumentException("Global JNI handle already exists for object referenced by " + handle.rawValue());
+            synchronized (cleaner) {
+                if (cleaner.handle.isNonNull() && JNIUtil.IsSameObject(env, handle, cleaner.handle)) {
+                    throw new IllegalArgumentException("Global JNI handle already exists for object referenced by " + handle.rawValue());
+                }
             }
         }
     }
@@ -159,7 +166,7 @@ public abstract class HSObject {
     private static final ReferenceQueue<HSObject> CLEANERS_QUEUE = new ReferenceQueue<>();
 
     private static final class Cleaner extends PhantomReference<HSObject> {
-        private final JObject handle;
+        private JObject handle;
 
         Cleaner(HSObject referent, JObject handle) {
             super(referent, CLEANERS_QUEUE);
@@ -168,7 +175,14 @@ public abstract class HSObject {
 
         void clean(JNIEnv env) {
             if (CLEANERS.remove(this)) {
-                DeleteGlobalRef(env, handle);
+                if (checkingGlobalDuplicates()) {
+                    synchronized (this) {
+                        DeleteGlobalRef(env, handle);
+                        handle = WordFactory.nullPointer();
+                    }
+                } else {
+                    DeleteGlobalRef(env, handle);
+                }
             }
         }
     }

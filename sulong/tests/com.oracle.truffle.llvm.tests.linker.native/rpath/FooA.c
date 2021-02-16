@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,6 @@
 int bar(int a, int b);
 
 int foo(int a, int b) {
-  printf("fooA\n");
-  return (b - a) + bar(3, 9);
+    printf("fooA\n");
+    return (b - a) + bar(3, 9);
 }

@@ -1,41 +1,85 @@
-bench_vm_linux_base: ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${common_vm_linux} { # repeat 'common_vm_linux' to override packages loaded by 'svm-common-linux'
+vm_bench_common: {
   result_file: results.json
-  setup: ${common_vm.setup} [
-    ${mx_vm_common} [build]
-  ]
-  upload: [bench-uploader.py, ${bench_vm_linux_base.result_file}]
-  logs: [${bench_vm_linux_base.result_file}]
+  upload: [bench-uploader.py, ${vm_bench_common.result_file}]
   capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
-}
-
-bench_js_octane_linux: ${bench_vm_linux_base} {
-  cmd_base: ${mx_vm_common} [--dynamicimports, js-benchmarks, benchmark, --results-file, ${bench_vm_linux_base.result_file}]
-  config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}"]
-  cmd: ${bench_js_octane_linux.cmd_base} ["octane:*", --] ${bench_js_octane_linux.config_base}
-  setup: ${bench_vm_linux_base.setup} [
-    [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/js-benchmarks.git"], ../../js-benchmarks]
-  ]
+  targets: [bench]
   timelimit: "1:00:00"
 }
 
-builds += [
-  ${bench_vm_linux} ${bench_vm_linux_base} ${bench_js_octane_linux} {
-    run: [
-      ${bench_js_octane_linux.cmd} ["--jvm-config=jvm"]
-      ${bench_vm_linux_base.upload}
-      ${bench_js_octane_linux.cmd} ["--jvm-config=native"]
-      ${bench_vm_linux_base.upload}
-    ]
-    name: bench-vm-${vm_setup.short_name}-js-linux
-    timelimit: "1:30:00"
+vm_bench_js_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} {
+  cmd_base: ${mx_vm_common} [--dynamicimports, js-benchmarks, benchmark, --results-file, ${vm_bench_common.result_file}]
+  config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}"]
+  cmd: ${vm_bench_js_linux.cmd_base} ["${BENCH_SUITE}:*", --] ${vm_bench_js_linux.config_base}
+  setup: ${common_vm.setup} [
+    ${mx_vm_common} [build]
+    [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/js-benchmarks.git"], ../../js-benchmarks]
+  ]
+  run: [
+      ${vm_bench_js_linux.cmd} ["--jvm-config=jvm-interpreter"]
+      ${vm_bench_common.upload}
+      ${vm_bench_js_linux.cmd} ["--jvm-config=native-interpreter"]
+      ${vm_bench_common.upload}
+  ]
+}
+
+vm_bench_polybench_linux_common: ${vm_bench_common} ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} {
+  base_cmd: [mx, --env, "polybench-${VM_ENV}"]
+  downloads: {
+    WABT_DIR: {name: wabt, version: "1.0.12", platformspecific: true},
   }
-  ${bench_daily_vm_linux} ${bench_vm_linux_base} {
+  setup: ${common_vm.setup} [
+    ${vm_bench_polybench_linux_common.base_cmd} [build]
+    ${vm_bench_polybench_linux_common.base_cmd} [build, "--dependencies=POLYBENCH_BENCHMARKS"]
+  ]
+  notify_emails: [ "aleksandar.prokopec@oracle.com" ]
+  targets: [bench, daily]
+}
+
+vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_java_8} {
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:~compiler/dispatch.js", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
+  run: [
+    ${vm_bench_polybench_linux_interpreter.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_interpreter.bench_cmd} ["--polybench-vm-config=native-interpreter"]
+    ${vm_bench_common.upload}
+  ]
+}
+
+vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_11} {
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "-w", "0", "-i", "10", "--polybench-vm=graalvm-${VM_ENV}-java11"]
+  run: [
+    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=compilation-time"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=compilation-time"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=partial-evaluation-time"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=partial-evaluation-time"]
+    ${vm_bench_common.upload}
+  ]
+}
+
+builds += [
+  # We need to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: octane },    name: bench-vm-${vm_setup.short_name}-js-octane-linux},
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: jetstream }, name: bench-vm-${vm_setup.short_name}-js-jetstream-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: jetstream2}, name: bench-vm-${vm_setup.short_name}-js-jetstream2-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: micro },     name: bench-vm-${vm_setup.short_name}-js-micro-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: v8js },      name: bench-vm-${vm_setup.short_name}-js-v8js-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: misc },      name: bench-vm-${vm_setup.short_name}-js-misc-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: npm-regex }, name: bench-vm-${vm_setup.short_name}-js-npm-regex-linux}
+
+  ${common_vm_linux} ${vm_bench_polybench_linux_interpreter} {name: bench-vm-${vm_setup.short_name}-polybench-linux}
+  ${common_vm_linux} ${vm_bench_polybench_linux_compiler} {name: bench-vm-${vm_setup.short_name}-polybench-compiler-linux}
+
+  ${bench_daily_vm_linux} ${vm_bench_js_linux} {
     run: [
-      ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=jvm", "--js=graal-js", "--js-config=default"]
-      ${bench_vm_linux_base.upload}
-      ${mx_vm_common} [benchmark, --results-file, ${bench_vm_linux_base.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=native", "--js=graal-js", "--js-config=default"]
-      ${bench_vm_linux_base.upload}
+      ${mx_vm_common} [benchmark, --results-file, ${vm_bench_js_linux.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=jvm", "--js=graal-js", "--js-config=default"]
+      ${vm_bench_common.upload}
+      ${mx_vm_common} [benchmark, --results-file, ${vm_bench_js_linux.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=native", "--js=graal-js", "--js-config=default"]
+      ${vm_bench_common.upload}
     ]
+    targets: [bench, daily]
     timelimit: "45:00"
     name: bench-vm-${vm_setup.short_name}-agentscript-js-java8-linux-amd64
   }

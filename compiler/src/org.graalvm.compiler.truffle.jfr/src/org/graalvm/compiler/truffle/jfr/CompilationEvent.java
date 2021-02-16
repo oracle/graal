@@ -46,4 +46,6 @@ public interface CompilationEvent extends RootFunctionEvent {
     void setGraalNodeCount(int count);
 
     void setPartialEvaluationNodeCount(int count);
+
+    void setPartialEvaluationTime(long time);
 }

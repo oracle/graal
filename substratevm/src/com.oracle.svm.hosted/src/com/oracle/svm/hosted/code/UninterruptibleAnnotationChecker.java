@@ -69,7 +69,7 @@ public final class UninterruptibleAnnotationChecker {
             for (String violation : violations) {
                 message = message + System.lineSeparator() + violation;
             }
-            throw UserError.abort(message);
+            throw UserError.abort("%s", message);
         }
     }
 

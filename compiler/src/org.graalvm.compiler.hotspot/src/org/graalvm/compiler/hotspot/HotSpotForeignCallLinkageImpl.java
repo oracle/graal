@@ -30,10 +30,10 @@ import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEff
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
@@ -47,7 +47,6 @@ import jdk.vm.ci.hotspot.HotSpotForeignCallTarget;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -58,7 +57,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     /**
      * The descriptor of the call.
      */
-    protected final ForeignCallDescriptor descriptor;
+    protected final HotSpotForeignCallDescriptor descriptor;
 
     /**
      * Non-null (eventually) iff this is a call to a compiled {@linkplain Stub stub}.
@@ -78,19 +77,10 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
 
     private final RegisterEffect effect;
 
-    private final Transition transition;
-
     /**
      * The registers and stack slots defined/killed by the call.
      */
     private Value[] temporaries = AllocatableValue.NONE;
-
-    /**
-     * The memory locations killed by the call.
-     */
-    private final LocationIdentity[] killedLocations;
-
-    private final Reexecutability reexecutability;
 
     /**
      * Creates a {@link HotSpotForeignCallLinkage}.
@@ -101,19 +91,12 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
      *            temporaries which are always destroyed)
      * @param outgoingCcType outgoing (caller) calling convention type
      * @param incomingCcType incoming (callee) calling convention type (can be null)
-     * @param transition specifies if this is a {@linkplain #needsDebugInfo() leaf} call
-     * @param reexecutability specifies if the call can be re-executed without (meaningful) side
-     *            effects. Deoptimization will not return to a point before a call that cannot be
-     *            re-executed.
-     * @param killedLocations the memory locations killed by the call
      */
     public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, HotSpotForeignCallsProvider foreignCalls,
-                    ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, Reexecutability reexecutability,
-                    LocationIdentity... killedLocations) {
+                    HotSpotForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType) {
         CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, wordTypes, foreignCalls, descriptor, outgoingCcType);
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, wordTypes, foreignCalls, descriptor, incomingCcType);
-        HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, transition, reexecutability, outgoingCc, incomingCc,
-                        killedLocations);
+        HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, outgoingCc, incomingCc);
         if (outgoingCcType == HotSpotCallingConventionType.NativeCall) {
             linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
         }
@@ -137,25 +120,21 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     private static JavaType asJavaType(Class<?> type, MetaAccessProvider metaAccess, WordTypes wordTypes) {
-        ResolvedJavaType javaType = metaAccess.lookupJavaType(type);
-        if (wordTypes.isWord(javaType)) {
-            javaType = metaAccess.lookupJavaType(wordTypes.getWordKind().toJavaClass());
+        if (wordTypes.isWord(type)) {
+            return metaAccess.lookupJavaType(wordTypes.getWordKind().toJavaClass());
         }
-        return javaType;
+        return metaAccess.lookupJavaType(type);
     }
 
-    public HotSpotForeignCallLinkageImpl(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, Reexecutability reexecutability,
-                    CallingConvention outgoingCallingConvention, CallingConvention incomingCallingConvention, LocationIdentity... killedLocations) {
+    public HotSpotForeignCallLinkageImpl(HotSpotForeignCallDescriptor descriptor, long address, RegisterEffect effect,
+                    CallingConvention outgoingCallingConvention, CallingConvention incomingCallingConvention) {
         super(address);
         this.descriptor = descriptor;
         this.address = address;
         this.effect = effect;
-        this.transition = transition;
-        this.reexecutability = reexecutability;
         assert outgoingCallingConvention != null : "only incomingCallingConvention can be null";
         this.outgoingCallingConvention = outgoingCallingConvention;
         this.incomingCallingConvention = incomingCallingConvention != null ? incomingCallingConvention : outgoingCallingConvention;
-        this.killedLocations = killedLocations;
     }
 
     @Override
@@ -174,23 +153,8 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     @Override
-    public boolean isReexecutable() {
-        return reexecutability == Reexecutability.REEXECUTABLE;
-    }
-
-    @Override
-    public boolean isGuaranteedSafepoint() {
-        return transition == Transition.SAFEPOINT;
-    }
-
-    @Override
     public RegisterEffect getEffect() {
         return effect;
-    }
-
-    @Override
-    public LocationIdentity[] getKilledLocations() {
-        return killedLocations;
     }
 
     @Override
@@ -217,7 +181,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     @Override
-    public ForeignCallDescriptor getDescriptor() {
+    public HotSpotForeignCallDescriptor getDescriptor() {
         return descriptor;
     }
 
@@ -278,17 +242,17 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
 
     @Override
     public boolean needsDebugInfo() {
-        return transition == Transition.SAFEPOINT;
+        return descriptor.canDeoptimize();
     }
 
     @Override
     public boolean mayContainFP() {
-        return transition != Transition.LEAF_NO_VZERO;
+        return descriptor.getTransition() != HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
     }
 
     @Override
     public boolean needsJavaFrameAnchor() {
-        if (transition == Transition.SAFEPOINT || transition == Transition.STACK_INSPECTABLE_LEAF) {
+        if (descriptor.getTransition() == HotSpotForeignCallDescriptor.Transition.SAFEPOINT || descriptor.getTransition() == HotSpotForeignCallDescriptor.Transition.STACK_INSPECTABLE_LEAF) {
             if (stub != null) {
                 // The stub will do the JavaFrameAnchor management
                 // around the runtime call(s) it makes
@@ -309,4 +273,5 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     public boolean needsClearUpperVectorRegisters() {
         return isCompiledStub() && mayContainFP();
     }
+
 }

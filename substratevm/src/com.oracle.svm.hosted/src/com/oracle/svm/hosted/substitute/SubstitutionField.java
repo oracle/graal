@@ -70,6 +70,14 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
         return value;
     }
 
+    public ResolvedJavaField getOriginal() {
+        return original;
+    }
+
+    public ResolvedJavaField getAnnotated() {
+        return annotated;
+    }
+
     @Override
     public int getModifiers() {
         return annotated.getModifiers();

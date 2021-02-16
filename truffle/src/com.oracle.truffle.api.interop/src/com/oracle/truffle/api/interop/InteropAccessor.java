@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -48,6 +49,10 @@ import com.oracle.truffle.api.nodes.Node;
 final class InteropAccessor extends Accessor {
 
     static final InteropAccessor ACCESSOR = new InteropAccessor();
+
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
 
     private InteropAccessor() {
     }
@@ -61,13 +66,13 @@ final class InteropAccessor extends Accessor {
         if (AssertUtils.isInteropValue(obj)) {
             return true;
         }
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         Class<?> clazz = obj != null ? obj.getClass() : null;
         return yieldAnError(clazz);
     }
 
+    @TruffleBoundary
     private static boolean yieldAnError(Class<?> clazz) {
-        CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append(clazz == null ? "null" : clazz.getName());
         sb.append(" isn't allowed Truffle interop type!\n");
@@ -94,8 +99,19 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
+        public boolean isInteropType(Object result) {
+            return AssertUtils.isInteropValue(result);
+        }
+
+        @Override
         public boolean isExecutableObject(Object value) {
-            return InteropLibrary.getFactory().getUncached().isExecutable(value);
+            return InteropLibrary.getUncached().isExecutable(value);
+        }
+
+        @Override
+        public boolean isScopeObject(Object receiver) {
+            InteropLibrary interop = InteropLibrary.getUncached();
+            return interop.isScope(receiver) && interop.hasMembers(receiver);
         }
 
         @Override
@@ -116,6 +132,10 @@ final class InteropAccessor extends Accessor {
             return receiver;
         }
 
+        @Override
+        public Object createDefaultIterator(Object receiver) {
+            return new ArrayIterator(receiver);
+        }
     }
 
     static final class EmptyTruffleObject implements TruffleObject {

@@ -29,7 +29,6 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -51,7 +50,11 @@ public class IndexAddressNode extends AddressNode implements Lowerable {
     }
 
     public IndexAddressNode(ValueNode array, ValueNode index, JavaKind arrayKind, JavaKind elementKind) {
-        super(TYPE);
+        this(TYPE, array, index, arrayKind, elementKind);
+    }
+
+    protected IndexAddressNode(NodeClass<? extends IndexAddressNode> c, ValueNode array, ValueNode index, JavaKind arrayKind, JavaKind elementKind) {
+        super(c);
         this.array = array;
         this.index = index;
         this.arrayKind = arrayKind;
@@ -85,8 +88,4 @@ public class IndexAddressNode extends AddressNode implements Lowerable {
         return elementKind;
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
 }

@@ -29,19 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr;
 
+import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
-
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class DebugExprParser {
 
@@ -63,13 +59,11 @@ public class DebugExprParser {
     private final DebugExpressionLexer lexer;
     private final String asmSnippet;
 
-    public DebugExprParser(InlineParsingRequest request, Iterable<Scope> globalScopes, LLVMContext context) {
+    public DebugExprParser(InlineParsingRequest request, Object globalScope) {
         asmSnippet = request.getSource().getCharacters().toString();
         lexer = new DebugExpressionLexer(CharStreams.fromString(asmSnippet));
         parser = new DebugExpressionParser(new CommonTokenStream(lexer));
-
-        final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), context);
-        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(scopes, globalScopes);
+        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(globalScope, request.getFrame(), request.getLocation());
         parser.setNodeFactory(nodeFactory);
     }
 

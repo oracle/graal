@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.nfi.SignatureRootNode.BuildSignatureNode;
 import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,16 +52,11 @@ import java.util.List;
 final class NativeSource {
 
     private final String nfiId;
-    private final NativeLibraryDescriptor libraryDescriptor;
+    private final Content content;
 
-    private final List<String> preBoundSymbols;
-    private final List<String> preBoundSignatures;
-
-    NativeSource(String nfiId, NativeLibraryDescriptor libraryDescriptor) {
+    NativeSource(String nfiId, Content content) {
         this.nfiId = nfiId;
-        this.libraryDescriptor = libraryDescriptor;
-        this.preBoundSymbols = new ArrayList<>();
-        this.preBoundSignatures = new ArrayList<>();
+        this.content = content;
     }
 
     public boolean isDefaultBackend() {
@@ -71,24 +67,57 @@ final class NativeSource {
         return nfiId;
     }
 
-    public NativeLibraryDescriptor getLibraryDescriptor() {
-        return libraryDescriptor;
+    public Content getContent() {
+        return content;
     }
 
-    public int preBoundSymbolsLength() {
-        return preBoundSymbols.size();
+    abstract static class Content {
     }
 
-    public String getPreBoundSymbol(int i) {
-        return preBoundSymbols.get(i);
+    static final class ParsedSignature extends Content {
+
+        private final BuildSignatureNode buildSignature;
+
+        ParsedSignature(BuildSignatureNode buildSignature) {
+            this.buildSignature = buildSignature;
+        }
+
+        public BuildSignatureNode getBuildSignatureNode() {
+            return buildSignature;
+        }
     }
 
-    public String getPreBoundSignature(int i) {
-        return preBoundSignatures.get(i);
-    }
+    static final class ParsedLibrary extends Content {
+        private final NativeLibraryDescriptor libraryDescriptor;
 
-    void register(String symbol, String signature) {
-        preBoundSymbols.add(symbol);
-        preBoundSignatures.add(signature);
+        private final List<String> preBoundSymbols;
+        private final List<String> preBoundSignatures;
+
+        ParsedLibrary(NativeLibraryDescriptor libraryDescriptor) {
+            this.libraryDescriptor = libraryDescriptor;
+            this.preBoundSymbols = new ArrayList<>();
+            this.preBoundSignatures = new ArrayList<>();
+        }
+
+        public NativeLibraryDescriptor getLibraryDescriptor() {
+            return libraryDescriptor;
+        }
+
+        public int preBoundSymbolsLength() {
+            return preBoundSymbols.size();
+        }
+
+        public String getPreBoundSymbol(int i) {
+            return preBoundSymbols.get(i);
+        }
+
+        public String getPreBoundSignature(int i) {
+            return preBoundSignatures.get(i);
+        }
+
+        void register(String symbol, String signature) {
+            preBoundSymbols.add(symbol);
+            preBoundSignatures.add(signature);
+        }
     }
 }

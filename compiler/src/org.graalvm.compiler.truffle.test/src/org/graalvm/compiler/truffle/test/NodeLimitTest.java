@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,34 +25,35 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.function.Supplier;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.polyglot.Context;
 
 public class NodeLimitTest extends PartialEvaluationTest {
 
     @Before
     public void before() {
         setupContext();
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
-        Assume.assumeFalse(callTarget.getOptionValue(PolyglotCompilerOptions.CompileImmediately));
+        Assume.assumeFalse(dummyTarget().getOptionValue(PolyglotCompilerOptions.CompileImmediately));
+    }
+
+    private static OptimizedCallTarget dummyTarget() {
+        return (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
     }
 
     @Test
@@ -63,22 +64,6 @@ public class NodeLimitTest extends PartialEvaluationTest {
     @Test
     public void oneRootNodeTestEnoughGraalNodeCount() {
         expectAllOK(NodeLimitTest::createRootNode);
-    }
-
-    @Test
-    @SuppressWarnings("try")
-    public void testWithTruffleInlining() {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumInlineNodeCount", "10").build());
-        RootNode rootNode = createRootNodeWithCall(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                CompilerAsserts.neverPartOfCompilation();
-                return null;
-            }
-        });
-        RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNode);
-        final Object[] arguments = {1};
-        partialEval((OptimizedCallTarget) target, arguments, CompilationIdentifier.INVALID_COMPILATION_ID);
     }
 
     @Test(expected = PermanentBailoutException.class)
@@ -169,17 +154,4 @@ public class NodeLimitTest extends PartialEvaluationTest {
         partialEval((OptimizedCallTarget) target, arguments, CompilationIdentifier.INVALID_COMPILATION_ID);
     }
 
-    private static RootNode createRootNodeWithCall(final RootNode rootNode) {
-        return new TestRootNode() {
-
-            @Child DirectCallNode call = Truffle.getRuntime().createDirectCallNode(Truffle.getRuntime().createCallTarget(rootNode));
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                foo();
-                call.call(new Object[0]);
-                return null;
-            }
-        };
-    }
 }

@@ -30,15 +30,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@ServiceProvider(TruffleInvocationPluginProvider.class)
-public class TruffleAMD64InvocationPlugins implements TruffleInvocationPluginProvider {
+@ServiceProvider(GraphBuilderInvocationPluginProvider.class)
+public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPluginProvider {
 
     @Override
     public void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification) {
@@ -56,5 +56,14 @@ public class TruffleAMD64InvocationPlugins implements TruffleInvocationPluginPro
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", byte[].class, int.class, byte[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", char[].class, int.class, char[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", String.class, int.class, String.class, int.class, int.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", byte[].class, int.class, int.class, byte.class, byte.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", char[].class, int.class, int.class, char.class, char.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", String.class, int.class, int.class, char.class, char.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf2ConsecutiveWithOrMask", byte[].class, int.class, int.class, byte.class, byte.class, byte.class, byte.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf2ConsecutiveWithOrMask", char[].class, int.class, int.class, char.class, char.class, char.class, char.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf2ConsecutiveWithOrMask", String.class, int.class, int.class, char.class, char.class, char.class, char.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", byte[].class, int.class, byte[].class, int.class, byte[].class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", char[].class, int.class, char[].class, int.class, char[].class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", String.class, int.class, String.class, int.class, String.class);
     }
 }

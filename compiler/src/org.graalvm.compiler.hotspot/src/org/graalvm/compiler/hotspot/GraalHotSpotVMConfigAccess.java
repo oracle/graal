@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Formatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version2;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version3;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -88,9 +90,6 @@ public class GraalHotSpotVMConfigAccess {
             case "x86_64":
                 arch = "amd64";
                 break;
-            case "sparcv9":
-                arch = "sparc";
-                break;
         }
         osArch = arch;
         assert KNOWN_ARCHITECTURES.contains(arch) : arch;
@@ -112,8 +111,8 @@ public class GraalHotSpotVMConfigAccess {
         return getProperty(name, null);
     }
 
-    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "sparc", "aarch64"));
-    public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin", "solaris"));
+    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "aarch64"));
+    public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin"));
 
     /**
      * Name for current OS. Will be a value in {@value #KNOWN_OS_NAMES}.
@@ -126,6 +125,9 @@ public class GraalHotSpotVMConfigAccess {
     public final String osArch;
 
     protected static final Version JVMCI_0_55 = new Version2(0, 55);
+    public static final Version JVMCI_20_3_b04 = new Version3(20, 3, 4);
+    protected static final Version JVMCI_20_2_b04 = new Version3(20, 2, 4);
+    protected static final Version JVMCI_20_2_b01 = new Version3(20, 2, 1);
     protected static final Version JVMCI_20_1_b01 = new Version3(20, 1, 1);
     protected static final Version JVMCI_20_0_b03 = new Version3(20, 0, 3);
     protected static final Version JVMCI_19_3_b03 = new Version3(19, 3, 3);
@@ -133,19 +135,20 @@ public class GraalHotSpotVMConfigAccess {
     protected static final Version JVMCI_19_3_b07 = new Version3(19, 3, 7);
 
     public static boolean jvmciGE(Version v) {
-        return JVMCI_PRERELEASE || !JVMCI_VERSION.isLessThan(v);
+        return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }
 
     public static final int JDK = JavaVersionUtil.JAVA_SPEC;
+    public static final int JDK_UPDATE = GraalServices.getJavaUpdateVersion();
     public static final boolean IS_OPENJDK = getProperty("java.vm.name", "").startsWith("OpenJDK");
     public static final Version JVMCI_VERSION;
     public static final boolean JVMCI;
-    public static final boolean JVMCI_PRERELEASE;
+    public static final boolean JDK_PRERELEASE;
     static {
         String vmVersion = getProperty("java.vm.version");
         JVMCI_VERSION = Version.parse(vmVersion);
-        JVMCI_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("internal") || vmVersion.contains("-dev");
-        JVMCI = JVMCI_VERSION != null || JVMCI_PRERELEASE;
+        JDK_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("-dev");
+        JVMCI = JVMCI_VERSION != null;
     }
 
     private final List<String> missing = new ArrayList<>();
@@ -176,7 +179,7 @@ public class GraalHotSpotVMConfigAccess {
     private boolean deferErrors = this instanceof GraalHotSpotVMConfig;
 
     private void recordError(String name, List<String> list, String unexpectedValue) {
-        if (JVMCI_PRERELEASE) {
+        if (JDK_PRERELEASE) {
             return;
         }
         String message = name;
@@ -221,7 +224,29 @@ public class GraalHotSpotVMConfigAccess {
                 messages.add(String.format("VM config values not expected to be present in %s:%n    %s", runtime,
                                 unexpected.stream().sorted().collect(Collectors.joining(System.lineSeparator() + "    "))));
             }
-            throw new JVMCIError(String.join(System.lineSeparator(), messages));
+            reportError(String.join(System.lineSeparator(), messages));
+        }
+    }
+
+    static void reportError(String rawErrorMessage) {
+        String value = System.getenv("JVMCI_CONFIG_CHECK");
+        Formatter errorMessage = new Formatter().format(rawErrorMessage);
+        String javaHome = getProperty("java.home");
+        String vmName = getProperty("java.vm.name");
+        errorMessage.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
+        errorMessage.format("this error or to \"warn\" to emit a warning and continue execution.%n");
+        errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
+        errorMessage.format("Currently used VM configuration is: %s%n", vmName);
+        if ("ignore".equals(value)) {
+            return;
+        } else if ("warn".equals(value) || JDK_PRERELEASE) {
+            System.err.println(errorMessage.toString());
+        } else if (!JVMCI && Assertions.assertionsEnabled()) {
+            // We cannot control when VM config updates are made in non JVMCI JDKs so
+            // only issue a warning and only when assertions are enabled.
+            System.err.println(errorMessage.toString());
+        } else if (JVMCI) {
+            throw new JVMCIError(errorMessage.toString());
         }
     }
 

@@ -40,25 +40,20 @@
  */
 package com.oracle.truffle.regex.tregex;
 
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_AUTOMATON_SIZES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_PHASES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TREGEX_COMPILATIONS;
-
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.regex.CompiledRegexObject;
-import com.oracle.truffle.regex.RegexExecRootNode;
+import com.oracle.truffle.regex.RegexExecNode;
+import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.analysis.RegexUnifier;
-import com.oracle.truffle.regex.dead.DeadRegexExecRootNode;
+import com.oracle.truffle.regex.dead.DeadRegexExecNode;
 import com.oracle.truffle.regex.literal.LiteralRegexEngine;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode;
+import com.oracle.truffle.regex.literal.LiteralRegexExecNode;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
@@ -68,7 +63,7 @@ import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
 import com.oracle.truffle.regex.tregex.nfa.PureNFA;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
@@ -82,6 +77,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTLaTexExportVisitor
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.Loggers;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 
@@ -94,41 +90,48 @@ public final class TRegexCompilationRequest {
 
     private final DebugUtil.Timer timer = shouldLogPhases() ? new DebugUtil.Timer() : null;
 
-    private final TRegexCompiler tRegexCompiler;
-
+    private final RegexLanguage language;
     private final RegexSource source;
     private RegexAST ast = null;
     private PureNFAMap pureNFA = null;
     private NFA nfa = null;
     private NFA traceFinderNFA = null;
-    private TRegexExecRootNode root = null;
+    private TRegexExecNode root = null;
     private TRegexDFAExecutorNode executorNodeForward = null;
     private TRegexDFAExecutorNode executorNodeBackward = null;
     private TRegexDFAExecutorNode executorNodeCaptureGroups = null;
-    private final CompilationBuffer compilationBuffer = new CompilationBuffer();
+    private final CompilationBuffer compilationBuffer;
 
-    TRegexCompilationRequest(TRegexCompiler tRegexCompiler, RegexSource source) {
-        this.tRegexCompiler = tRegexCompiler;
+    TRegexCompilationRequest(RegexLanguage language, RegexSource source) {
+        this.language = language;
         this.source = source;
+        this.compilationBuffer = new CompilationBuffer(source.getEncoding());
+        assert source.getEncoding() != null;
     }
 
-    TRegexCompilationRequest(TRegexCompiler tRegexCompiler, NFA nfa) {
-        this.tRegexCompiler = tRegexCompiler;
+    TRegexCompilationRequest(RegexLanguage language, NFA nfa) {
+        this.language = language;
         this.source = nfa.getAst().getSource();
         this.ast = nfa.getAst();
         this.nfa = nfa;
+        this.compilationBuffer = new CompilationBuffer(nfa.getAst().getEncoding());
+        assert source.getEncoding() != null;
     }
 
-    public TRegexExecRootNode getRoot() {
+    public TRegexExecNode getRoot() {
         return root;
     }
 
+    public RegexAST getAst() {
+        return ast;
+    }
+
     @TruffleBoundary
-    CompiledRegexObject compile() {
+    RegexExecNode compile() {
         try {
-            RegexExecRootNode compiledRegex = compileInternal();
+            RegexExecNode compiledRegex = compileInternal();
             logAutomatonSizes(compiledRegex);
-            return new CompiledRegexObject(tRegexCompiler.getLanguage(), compiledRegex);
+            return compiledRegex;
         } catch (UnsupportedRegexException e) {
             logAutomatonSizes(null);
             e.setReason("TRegex: " + e.getReason());
@@ -138,8 +141,8 @@ public final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    private RegexExecRootNode compileInternal() {
-        LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
+    private RegexExecNode compileInternal() {
+        Loggers.LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
         RegexParser regexParser = createParser();
         phaseStart("Parser");
         try {
@@ -150,9 +153,9 @@ public final class TRegexCompilationRequest {
         }
         debugAST();
         if (ast.getRoot().isDead()) {
-            return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
+            return new DeadRegexExecNode(language, source);
         }
-        LiteralRegexExecRootNode literal = LiteralRegexEngine.createNode(tRegexCompiler.getLanguage(), ast);
+        LiteralRegexExecNode literal = LiteralRegexEngine.createNode(language, ast);
         if (literal != null) {
             return literal;
         }
@@ -160,14 +163,14 @@ public final class TRegexCompilationRequest {
             try {
                 createNFA();
                 if (nfa.isDead()) {
-                    return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
+                    return new DeadRegexExecNode(language, source);
                 }
-                return new TRegexExecRootNode(tRegexCompiler, ast, new TRegexNFAExecutorNode(nfa));
+                return new TRegexExecNode(ast, new TRegexNFAExecutorNode(nfa));
             } catch (UnsupportedRegexException e) {
                 // fall back to backtracking executor
             }
         }
-        return new TRegexExecRootNode(tRegexCompiler, ast, compileBacktrackingExecutor());
+        return new TRegexExecNode(ast, compileBacktrackingExecutor());
     }
 
     public TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor() {
@@ -188,17 +191,16 @@ public final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    TRegexExecRootNode.LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(TRegexExecRootNode rootNode, boolean allowSimpleCG) {
+    TRegexExecNode.LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(TRegexExecNode rootNode, boolean allowSimpleCG) {
         assert ast != null;
         assert nfa != null;
         this.root = rootNode;
         RegexProperties properties = ast.getProperties();
         PreCalculatedResultFactory[] preCalculatedResults = null;
-        if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
+        if (!(properties.hasAlternations() || properties.hasLookAroundAssertions()) && properties.isFixedCodePointWidth()) {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
-        if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops() &&
-                        properties.isFixedCodePointWidthUTF16() && properties.isFixedCodePointWidthUTF8()) {
+        if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops() && properties.isFixedCodePointWidth()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
@@ -207,7 +209,7 @@ public final class TRegexCompilationRequest {
                 debugTraceFinder();
             } catch (UnsupportedRegexException e) {
                 phaseEnd("TraceFinder NFA Bailout");
-                LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getReason() + ": " + source);
+                Loggers.LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getReason() + ": " + source);
                 // handle with capture group aware DFA, bailout will always happen before
                 // assigning preCalculatedResults
             }
@@ -224,8 +226,8 @@ public final class TRegexCompilationRequest {
             executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()));
         }
         logAutomatonSizes(rootNode);
-        return new TRegexExecRootNode.LazyCaptureGroupRegexSearchNode(
-                        tRegexCompiler.getLanguage(), source, ast.getFlags(), preCalculatedResults,
+        return new TRegexExecNode.LazyCaptureGroupRegexSearchNode(
+                        language, source, ast.getFlags(), preCalculatedResults,
                         rootNode.createEntryNode(executorNodeForward),
                         rootNode.createEntryNode(executorNodeBackward),
                         rootNode.createEntryNode(executorNodeCaptureGroups),
@@ -247,7 +249,7 @@ public final class TRegexCompilationRequest {
         RegexProperties p = ast.getProperties();
         return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
                         ast.getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
-                        !(p.hasBackReferences() ||
+                        !(ast.getRoot().hasBackReferences() ||
                                         p.hasLargeCountedRepetitions() ||
                                         p.hasNegativeLookAheadAssertions() ||
                                         p.hasNonLiteralLookBehindAssertions() ||
@@ -268,7 +270,7 @@ public final class TRegexCompilationRequest {
     }
 
     private RegexParser createParser() {
-        return new RegexParser(source, tRegexCompiler.getOptions(), compilationBuffer);
+        return new RegexParser(language, source, RegexFlags.parseFlags(source), compilationBuffer);
     }
 
     private void createNFA() {
@@ -283,11 +285,11 @@ public final class TRegexCompilationRequest {
 
     private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG) {
         return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, genericCG, allowSimpleCG,
-                        tRegexCompiler.getOptions().isRegressionTestMode(), nfaArg.getAst().getRoot().getMinPath()), null);
+                        source.getOptions().isRegressionTestMode(), nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {
-        DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer, tRegexCompiler.getOptions());
+        DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer);
         phaseStart(dfa.getDebugDumpName(debugDumpName) + " DFA");
         TRegexDFAExecutorNode executorNode;
         try {
@@ -301,7 +303,7 @@ public final class TRegexCompilationRequest {
     }
 
     private void debugAST() {
-        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
             TruffleFile file = env.getPublicTruffleFile("./ast.tex");
             ASTLaTexExportVisitor.exportLatex(ast, file);
@@ -311,7 +313,7 @@ public final class TRegexCompilationRequest {
     }
 
     private void debugPureNFA() {
-        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
             TruffleFile file = env.getPublicTruffleFile("pure_nfa.json");
             Json.obj(Json.prop("dfa", Json.obj(
@@ -321,7 +323,7 @@ public final class TRegexCompilationRequest {
     }
 
     private void debugNFA() {
-        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
             TruffleFile file = env.getPublicTruffleFile("./nfa.gv");
             NFAExport.exportDot(nfa, file, true, false);
@@ -335,7 +337,7 @@ public final class TRegexCompilationRequest {
     }
 
     private void debugTraceFinder() {
-        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
             TruffleFile file = env.getPublicTruffleFile("./trace_finder.gv");
             NFAExport.exportDotReverse(traceFinderNFA, file, true, false);
@@ -345,7 +347,7 @@ public final class TRegexCompilationRequest {
     }
 
     private void debugDFA(DFAGenerator dfa, String debugDumpName) {
-        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
             TruffleFile file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".gv");
             DFAExport.exportDot(dfa, file, false);
@@ -355,24 +357,24 @@ public final class TRegexCompilationRequest {
     }
 
     private static boolean shouldLogPhases() {
-        return LOG_PHASES.isLoggable(Level.FINER);
+        return Loggers.LOG_PHASES.isLoggable(Level.FINER);
     }
 
     private void phaseStart(String phase) {
         if (shouldLogPhases()) {
-            LOG_PHASES.finer(phase + " Start");
+            Loggers.LOG_PHASES.finer(phase + " Start");
             timer.start();
         }
     }
 
     private void phaseEnd(String phase) {
         if (shouldLogPhases()) {
-            LOG_PHASES.finer(phase + " End, elapsed: " + timer.elapsedToString());
+            Loggers.LOG_PHASES.finer(phase + " End, elapsed: " + timer.elapsedToString());
         }
     }
 
-    private void logAutomatonSizes(RegexExecRootNode result) {
-        LOG_AUTOMATON_SIZES.finer(() -> Json.obj(
+    private void logAutomatonSizes(RegexExecNode result) {
+        Loggers.LOG_AUTOMATON_SIZES.finer(() -> Json.obj(
                         Json.prop("pattern", source.getPattern().length() > 200 ? source.getPattern().substring(0, 200) + "..." : source.getPattern()),
                         Json.prop("flags", source.getFlags()),
                         Json.prop("props", ast == null ? new RegexProperties() : ast.getProperties()),
@@ -387,12 +389,12 @@ public final class TRegexCompilationRequest {
                         Json.prop("compilerResult", compilerResultToString(result))).toString() + ",");
     }
 
-    private static String compilerResultToString(RegexExecRootNode result) {
-        if (result instanceof TRegexExecRootNode) {
+    private static String compilerResultToString(RegexExecNode result) {
+        if (result instanceof TRegexExecNode) {
             return "tregex";
-        } else if (result instanceof LiteralRegexExecRootNode) {
+        } else if (result instanceof LiteralRegexExecNode) {
             return "literal";
-        } else if (result instanceof DeadRegexExecRootNode) {
+        } else if (result instanceof DeadRegexExecNode) {
             return "dead";
         } else {
             return "bailout";

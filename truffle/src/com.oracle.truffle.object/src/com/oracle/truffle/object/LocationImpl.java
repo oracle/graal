@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.object;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Shape;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
@@ -85,7 +86,21 @@ public abstract class LocationImpl extends Location {
     /** @since 0.17 or earlier */
     @Override
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-        setInternal(store, value);
+        set(store, value, checkShape(store, shape));
+    }
+
+    @Override
+    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
+        if (canStore(value)) {
+            LayoutImpl.ACCESS.growAndSetShape(store, oldShape, newShape);
+            try {
+                setInternal(store, value);
+            } catch (IncompatibleLocationException ex) {
+                throw new IllegalStateException();
+            }
+        } else {
+            throw incompatibleLocation();
+        }
     }
 
     /** @since 0.17 or earlier */
@@ -94,9 +109,49 @@ public abstract class LocationImpl extends Location {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Get object value as object at this location in store. For internal use only.
+     *
+     * @param condition the result of a shape check or {@code false}
+     */
+    @Override
+    public abstract Object get(DynamicObject store, boolean condition);
+
+    protected long getLong(DynamicObject store, boolean condition) throws UnexpectedResultException {
+        return expectLong(get(store, condition));
+    }
+
+    protected int getInt(DynamicObject store, boolean condition) throws UnexpectedResultException {
+        return expectInteger(get(store, condition));
+    }
+
+    protected double getDouble(DynamicObject store, boolean condition) throws UnexpectedResultException {
+        return expectDouble(get(store, condition));
+    }
+
+    protected boolean getBoolean(DynamicObject store, boolean condition) throws UnexpectedResultException {
+        return expectBoolean(get(store, condition));
+    }
+
+    @SuppressWarnings("unused")
+    protected void set(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        setInternal(store, value, condition);
+    }
+
+    protected abstract void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException;
+
+    /**
+     * Equivalent to {@link Shape#check(DynamicObject)}.
+     */
+    protected static final boolean checkShape(DynamicObject store, Shape shape) {
+        return store.getShape() == shape;
+    }
+
     /** @since 0.17 or earlier */
     @Override
-    protected abstract void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException;
+    protected final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
+        setInternal(store, value, false);
+    }
 
     /** @since 0.17 or earlier */
     @Override
@@ -215,20 +270,102 @@ public abstract class LocationImpl extends Location {
      */
     public abstract void accept(LocationVisitor locationVisitor);
 
-    /**
-     * Boxed values need to be compared by value not by reference.
-     *
-     * The first parameter should be the one with the more precise type information.
-     *
-     * For sets to final locations, otherValue.equals(thisValue) seems more beneficial, since we
-     * usually know more about the value to be set.
-     *
-     * @since 0.17 or earlier
-     * @deprecated equivalent to {@link java.util.Objects#equals(Object, Object)}
-     */
-    @Deprecated
-    @TruffleBoundary // equals is blacklisted
-    public static boolean valueEquals(Object val1, Object val2) {
-        return val1 == val2 || (val1 != null && val1.equals(val2));
+    protected LocationImpl getInternalLocation() {
+        return this;
+    }
+
+    static boolean isSameLocation(LocationImpl loc1, LocationImpl loc2) {
+        return loc1 == loc2 || loc1.getInternalLocation().equals(loc2.getInternalLocation());
+    }
+
+    @SuppressWarnings("unused")
+    protected void setInt(DynamicObject store, int value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        set(store, value, condition);
+    }
+
+    @SuppressWarnings("unused")
+    protected void setLong(DynamicObject store, long value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        set(store, value, condition);
+    }
+
+    @SuppressWarnings("unused")
+    protected void setDouble(DynamicObject store, double value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        set(store, value, condition);
+    }
+
+    protected boolean isIntLocation() {
+        return false;
+    }
+
+    protected boolean isLongLocation() {
+        return false;
+    }
+
+    protected boolean isDoubleLocation() {
+        return false;
+    }
+
+    protected boolean isImplicitCastIntToLong() {
+        return false;
+    }
+
+    protected boolean isImplicitCastIntToDouble() {
+        return false;
+    }
+
+    static boolean expectBoolean(Object value) throws UnexpectedResultException {
+        if (value instanceof Boolean) {
+            return (boolean) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    static int expectInteger(Object value) throws UnexpectedResultException {
+        if (value instanceof Integer) {
+            return (int) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    static double expectDouble(Object value) throws UnexpectedResultException {
+        if (value instanceof Double) {
+            return (double) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    static long expectLong(Object value) throws UnexpectedResultException {
+        if (value instanceof Long) {
+            return (long) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    public Class<?> getType() {
+        return null;
+    }
+
+    @Override
+    public Assumption getFinalAssumption() {
+        return neverValidAssumption();
+    }
+
+    /** Not using NeverValidAssumption.INSTANCE in order not to pollute profiles. */
+    protected static Assumption neverValidAssumption() {
+        return NEVER_VALID_ASSUMPTION;
+    }
+
+    /** Not using AlwaysValidAssumption.INSTANCE in order not to pollute profiles. */
+    protected static Assumption alwaysValidAssumption() {
+        return ALWAYS_VALID_ASSUMPTION;
+    }
+
+    private static final Assumption NEVER_VALID_ASSUMPTION;
+    private static final Assumption ALWAYS_VALID_ASSUMPTION;
+
+    static {
+        NEVER_VALID_ASSUMPTION = Truffle.getRuntime().createAssumption("never valid");
+        NEVER_VALID_ASSUMPTION.invalidate();
+        ALWAYS_VALID_ASSUMPTION = Truffle.getRuntime().createAssumption("always valid");
     }
 }

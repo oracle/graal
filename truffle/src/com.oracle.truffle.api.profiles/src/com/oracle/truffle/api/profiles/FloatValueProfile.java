@@ -116,7 +116,7 @@ public abstract class FloatValueProfile extends Profile {
 
         @CompilationFinal private float cachedValue;
         @CompilationFinal private int cachedRawValue;
-        @CompilationFinal private byte state = 0;
+        @CompilationFinal private byte state = UNINITIALIZED;
 
         @Override
         public float profile(float value) {
@@ -145,6 +145,16 @@ public abstract class FloatValueProfile extends Profile {
 
         boolean isUninitialized() {
             return state == UNINITIALIZED;
+        }
+
+        @Override
+        public void disable() {
+            this.state = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            this.state = UNINITIALIZED;
         }
 
         float getCachedValue() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1522,6 +1522,34 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    /**
+     * VEX-encoded vector gather instructions with an operand order of RMV.
+     */
+    public static final class VexGatherOp extends VexOp {
+        // @formatter:off
+        public static final VexGatherOp VPGATHERDD = new VexGatherOp("VPGATHERDD", P_66, M_0F38, W0, 0x90, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VPGATHERQD = new VexGatherOp("VPGATHERQD", P_66, M_0F38, W0, 0x91, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VPGATHERDQ = new VexGatherOp("VPGATHERDQ", P_66, M_0F38, W1, 0x90, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VPGATHERQQ = new VexGatherOp("VPGATHERQQ", P_66, M_0F38, W1, 0x91, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VGATHERDPD = new VexGatherOp("VGATHERDPD", P_66, M_0F38, W1, 0x92, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VGATHERQPD = new VexGatherOp("VGATHERQPD", P_66, M_0F38, W1, 0x93, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VGATHERDPS = new VexGatherOp("VGATHERDPS", P_66, M_0F38, W0, 0x92, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VGATHERQPS = new VexGatherOp("VGATHERQPS", P_66, M_0F38, W0, 0x93, VEXOpAssertion.AVX2);
+        // @formatter:on
+
+        protected VexGatherOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
+            super(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, WIG);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address address, Register mask) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, mask, null, null);
+            assert size == AVXSize.XMM || size == AVXSize.YMM;
+            asm.vexPrefix(dst, mask, address, size, pp, mmmmm, w, wEvex, true);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, address, 0);
+        }
+    }
+
     public static final class VexGeneralPurposeRMOp extends VexRMOp {
         // @formatter:off
         public static final VexGeneralPurposeRMOp BLSI    = new VexGeneralPurposeRMOp("BLSI",   P_,    M_0F38, WIG, 0xF3, 3, VEXOpAssertion.BMI1);
@@ -2198,11 +2226,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         if (base.equals(AMD64.rip)) {
             return 5;
         } else if (base.isValid()) {
-            final boolean isZeroDisplacement = disp == 0 && !base.equals(rbp) && !base.equals(r13);
+            final boolean isZeroDisplacement = addr.getDisplacementAnnotation() == null && disp == 0 && !base.equals(rbp) && !base.equals(r13);
+            boolean isByteDisplacement = addr.getDisplacementAnnotation() == null && isByte(disp);
             if (index.isValid()) {
                 if (isZeroDisplacement) {
                     return 2;
-                } else if (isByte(disp)) {
+                } else if (isByteDisplacement) {
                     return 3;
                 } else {
                     return 6;
@@ -2210,7 +2239,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             } else if (base.equals(rsp) || base.equals(r12)) {
                 if (disp == 0) {
                     return 2;
-                } else if (isByte(disp)) {
+                } else if (isByteDisplacement) {
                     return 3;
                 } else {
                     return 6;
@@ -2218,7 +2247,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             } else {
                 if (isZeroDisplacement) {
                     return 1;
-                } else if (isByte(disp)) {
+                } else if (isByteDisplacement) {
                     return 2;
                 } else {
                     return 5;
@@ -2277,6 +2306,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         simdPrefix(dst, Register.None, src, PS, P_0F, false);
         emitByte(0x28);
         emitModRM(dst, src);
+    }
+
+    public final void movb(Register dst, AMD64Address src) {
+        prefixb(src, dst);
+        emitByte(0x8A);
+        emitOperandHelper(dst, src, 0);
     }
 
     public final void movb(AMD64Address dst, int imm8) {
@@ -3924,13 +3959,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     @Override
+    public AMD64Address makeAddress(int transferSize, Register base, int displacement) {
+        return makeAddress(base, displacement);
+    }
+
     public AMD64Address makeAddress(Register base, int displacement) {
         return new AMD64Address(base, displacement);
     }
 
     @Override
     public AMD64Address getPlaceholder(int instructionStartPosition) {
-        return new AMD64Address(AMD64.rip, Register.None, Scale.Times1, 0, instructionStartPosition);
+        return new AMD64Address(AMD64.rip, Register.None, Scale.Times1, 0, null, instructionStartPosition);
     }
 
     private void prefetchPrefix(AMD64Address src) {
@@ -3984,6 +4023,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public void rdtsc() {
         emitByte(0x0F);
         emitByte(0x31);
+    }
+
+    public void rdtscp() {
+        emitByte(0x0F);
+        emitByte(0x01);
+        emitByte(0xF9);
     }
 
     /**

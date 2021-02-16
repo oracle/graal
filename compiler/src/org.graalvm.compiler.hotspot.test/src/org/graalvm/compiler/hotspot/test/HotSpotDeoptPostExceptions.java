@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfigurat
 
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.hotspot.meta.HotSpotNodePlugin;
+import org.graalvm.compiler.hotspot.meta.HotSpotExceptionDispatchPlugin;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -66,7 +66,7 @@ public class HotSpotDeoptPostExceptions extends GraalCompilerTest {
 
     @Test
     public void testPost() {
-        OptionValues options = new OptionValues(getInitialOptions(), HotSpotNodePlugin.Options.HotSpotPostOnExceptions, true);
+        OptionValues options = new OptionValues(getInitialOptions(), HotSpotExceptionDispatchPlugin.Options.HotSpotPostOnExceptions, true);
         test(options, "snippet", (Object) null);
     }
 }

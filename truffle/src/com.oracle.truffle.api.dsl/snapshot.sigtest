@@ -1,13 +1,25 @@
 #Signature file v4.1
 #Version 
 
+CLSS public final com.oracle.truffle.api.dsl.AOTSupport
+meth public static void prepareForAOT(com.oracle.truffle.api.nodes.RootNode)
+supr java.lang.Object
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Bind
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String value()
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Cached
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
 innr public abstract interface static !annotation Exclusive
 innr public abstract interface static !annotation Shared
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean adopt()
 meth public abstract !hasdefault boolean allowUncached()
+meth public abstract !hasdefault boolean weak()
 meth public abstract !hasdefault int dimensions()
 meth public abstract !hasdefault java.lang.String uncached()
 meth public abstract !hasdefault java.lang.String value()
@@ -53,6 +65,23 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Fallback
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateAOT
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Exclude
+innr public abstract interface static Provider
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.GenerateAOT$Exclude
+ outer com.oracle.truffle.api.dsl.GenerateAOT
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static com.oracle.truffle.api.dsl.GenerateAOT$Provider
+ outer com.oracle.truffle.api.dsl.GenerateAOT
+meth public abstract void prepareForAOT(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.nodes.RootNode)
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateNodeFactory
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
@@ -108,6 +137,7 @@ meth public boolean isActive()
 meth public boolean isExcluded()
 meth public int getInstances()
 meth public java.lang.String getMethodName()
+meth public java.lang.String toString()
 meth public java.util.List<java.lang.Object> getCachedData(int)
 supr java.lang.Object
 hfds cachedData,methodName,state
@@ -153,6 +183,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ReportPoly
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 innr public abstract interface static !annotation Exclude
+innr public abstract interface static !annotation Megamorphic
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.ReportPolymorphism$Exclude
@@ -162,8 +193,14 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.Rep
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, TYPE])
 intf java.lang.annotation.Annotation
 
-CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Specialization
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.ReportPolymorphism$Megamorphic
+ outer com.oracle.truffle.api.dsl.ReportPolymorphism
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Specialization
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.Class<? extends java.lang.Throwable>[] rewriteOn()
@@ -172,6 +209,34 @@ meth public abstract !hasdefault java.lang.String limit()
 meth public abstract !hasdefault java.lang.String[] assumptions()
 meth public abstract !hasdefault java.lang.String[] guards()
 meth public abstract !hasdefault java.lang.String[] replaces()
+
+CLSS public final com.oracle.truffle.api.dsl.SpecializationStatistics
+innr public abstract interface static !annotation AlwaysEnabled
+innr public abstract static NodeStatistics
+meth public boolean hasData()
+meth public com.oracle.truffle.api.dsl.SpecializationStatistics enter()
+meth public static com.oracle.truffle.api.dsl.SpecializationStatistics create()
+meth public void leave(com.oracle.truffle.api.dsl.SpecializationStatistics)
+meth public void printHistogram(java.io.PrintStream)
+meth public void printHistogram(java.io.PrintWriter)
+supr java.lang.Object
+hfds STATISTICS,classStatistics,uncachedStatistics
+hcls DisabledNodeStatistics,EnabledNodeStatistics,IntStatistics,NodeClassHistogram,NodeClassStatistics,TypeCombination,UncachedNodeStatistics
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.SpecializationStatistics$AlwaysEnabled
+ outer com.oracle.truffle.api.dsl.SpecializationStatistics
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract static com.oracle.truffle.api.dsl.SpecializationStatistics$NodeStatistics
+ outer com.oracle.truffle.api.dsl.SpecializationStatistics
+meth public abstract !varargs void acceptExecute(int,java.lang.Class<?>[])
+meth public abstract java.lang.Class<?> resolveValueClass(java.lang.Object)
+meth public abstract void acceptExecute(int,java.lang.Class<?>)
+meth public abstract void acceptExecute(int,java.lang.Class<?>,java.lang.Class<?>)
+meth public static com.oracle.truffle.api.dsl.SpecializationStatistics$NodeStatistics create(com.oracle.truffle.api.nodes.Node,java.lang.String[])
+supr java.lang.Object
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.TypeCast
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
@@ -205,8 +270,6 @@ meth public java.lang.Object[] getSuppliedValues()
 meth public java.lang.String getMessage()
 supr java.lang.RuntimeException
 hfds node,serialVersionUID,suppliedNodes,suppliedValues
-
-CLSS abstract interface com.oracle.truffle.api.dsl.package-info
 
 CLSS public abstract interface java.io.Serializable
 

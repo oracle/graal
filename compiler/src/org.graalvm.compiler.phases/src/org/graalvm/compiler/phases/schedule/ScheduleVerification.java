@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MemoryProxyNode;
@@ -134,6 +135,15 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                 for (Node usage : n.usages()) {
                     Node usageNode = usage;
 
+                    if (!(usage instanceof GuardNode) && usage.hasNoUsages()) {
+                        /*
+                         * We do not want to run the schedule behind the verification with dead code
+                         * elimination, i.e., floating nodes without usages are not removed, thus we
+                         * must handle the case that a floating node without a usage occurs here.
+                         */
+                        continue;
+                    }
+
                     if (usageNode instanceof PhiNode) {
                         PhiNode phiNode = (PhiNode) usage;
                         usageNode = phiNode.merge();
@@ -146,6 +156,8 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                         }
                     }
                     Block usageBlock = nodeMap.get(usageNode);
+
+                    assert usageBlock != null || usage instanceof ProxyNode : "Usage " + usageNode + " of node " + n + " has no block";
 
                     Loop<Block> usageLoop = null;
                     if (usageNode instanceof ProxyNode) {

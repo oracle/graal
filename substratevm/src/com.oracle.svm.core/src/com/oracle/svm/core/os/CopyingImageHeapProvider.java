@@ -24,93 +24,19 @@
  */
 package com.oracle.svm.core.os;
 
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
-import static com.oracle.svm.core.util.PointerUtils.roundUp;
-
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
-import com.oracle.svm.core.util.UnsignedUtils;
 
-/**
- * Platform independent image heap provider that copies the image heap to memory.
- */
-public class CopyingImageHeapProvider implements ImageHeapProvider {
+/** Platform independent image heap provider that deep-copies the image heap memory. */
+public class CopyingImageHeapProvider extends AbstractCopyingImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
-    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
-        int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
-        Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
-        Word imageHeapSizeInFile = IMAGE_HEAP_END.get().subtract(imageHeapBegin);
-
-        Pointer heap;
-        Pointer allocatedMemory = WordFactory.nullPointer();
-        if (reservedAddressSpace.isNull()) {
-            assert imageHeapOffsetInAddressSpace == 0;
-            heap = allocatedMemory = VirtualMemoryProvider.get().commit(WordFactory.nullPointer(), imageHeapSizeInFile, Access.READ | Access.WRITE);
-        } else {
-            Word requiredReservedSize = imageHeapSizeInFile.add(imageHeapOffsetInAddressSpace);
-            if (reservedAddressSpace.isNonNull() && reservedSize.belowThan(requiredReservedSize)) {
-                return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
-            }
-
-            PointerBase mappedImageHeapBegin = reservedAddressSpace.add(imageHeapOffsetInAddressSpace);
-            heap = VirtualMemoryProvider.get().commit(mappedImageHeapBegin, imageHeapSizeInFile, Access.READ | Access.WRITE);
-        }
-
-        if (heap.isNull()) {
-            return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
-        }
-
-        MemoryUtil.copyConjointMemoryAtomic(imageHeapBegin, heap, imageHeapSizeInFile);
-
-        UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin), pageSize);
-        if (writableBeginPageOffset.aboveThan(0)) {
-            if (VirtualMemoryProvider.get().protect(heap, writableBeginPageOffset, Access.READ) != 0) {
-                freeImageHeap(allocatedMemory);
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-        }
-        UnsignedWord writableEndPageOffset = UnsignedUtils.roundUp(IMAGE_HEAP_WRITABLE_END.get().subtract(imageHeapBegin), pageSize);
-        if (writableEndPageOffset.belowThan(imageHeapSizeInFile)) {
-            Pointer afterWritableBoundary = heap.add(writableEndPageOffset);
-            Word afterWritableSize = imageHeapSizeInFile.subtract(writableEndPageOffset);
-            if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
-                freeImageHeap(allocatedMemory);
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-        }
-
-        basePointer.write(heap.subtract(imageHeapOffsetInAddressSpace));
-        if (endPointer.isNonNull()) {
-            endPointer.write(roundUp(heap.add(imageHeapSizeInFile), pageSize));
-        }
-        return CEntryPointErrors.NO_ERROR;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called during isolate tear-down.")
-    public int freeImageHeap(PointerBase imageHeap) {
-        if (imageHeap.isNonNull()) {
-            assert Heap.getHeap().getImageHeapOffsetInAddressSpace() == 0;
-            Word imageHeapSizeInFile = IMAGE_HEAP_END.get().subtract(IMAGE_HEAP_BEGIN.get());
-            if (VirtualMemoryProvider.get().free(imageHeap, imageHeapSizeInFile) != 0) {
-                return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
-            }
-        }
+    protected int copyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
+        MemoryUtil.copy(loadedImageHeap, newImageHeap, imageHeapSize);
         return CEntryPointErrors.NO_ERROR;
     }
 }

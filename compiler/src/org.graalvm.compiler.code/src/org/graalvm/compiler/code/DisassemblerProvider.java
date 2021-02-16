@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.code;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
+import org.graalvm.compiler.options.OptionValues;
 
 /**
  * Interface providing capability for disassembling machine code.
@@ -35,12 +36,13 @@ public interface DisassemblerProvider {
     /**
      * Gets a textual disassembly of a given compilation result.
      *
+     * @param options the option configuration for the disassembler context
      * @param codeCache the object used for code {@link CodeCacheProvider#addCode code installation}
      * @param compResult a compilation result
      * @return a non-zero length string containing a disassembly of {@code compResult} or null it
      *         could not be disassembled
      */
-    default String disassembleCompiledCode(CodeCacheProvider codeCache, CompilationResult compResult) {
+    default String disassembleCompiledCode(OptionValues options, CodeCacheProvider codeCache, CompilationResult compResult) {
         return null;
     }
 
@@ -63,4 +65,14 @@ public interface DisassemblerProvider {
      * Gets the name denoting the format of the disassembly returned by this object.
      */
     String getName();
+
+    /**
+     * Indicates whether the DisassemblerProvider is usable in the current context.
+     *
+     * @param options the option configuration for the disassembler context
+     * @return whether the DisassemblerProvider is available or not.
+     */
+    default boolean isAvailable(OptionValues options) {
+        return true;
+    }
 }

@@ -15,5 +15,5 @@ insight.on('return', function checkLogging(ev, frame) {
     }
 }, {
     roots: true,
-    rootNameFilter: (n) => n === 'log'
+    rootNameFilter: 'log'
 });

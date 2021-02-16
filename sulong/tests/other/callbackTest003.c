@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,7 @@ typedef void (*myfunc)();
 
 int nullPointerFunctionTest(void (*foo)());
 
-int main(int argc, char **argv) {
-  myfunc foo = (myfunc)0;
-  return nullPointerFunctionTest(foo);
+int main() {
+    myfunc foo = (myfunc) 0;
+    return nullPointerFunctionTest(foo);
 }

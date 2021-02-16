@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -324,6 +324,15 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     interface ExportsType {
     }
 
+    interface ExportsGenericInterface<T> {
+    }
+
+    class ExportsClass {
+    }
+
+    class ExportsGenericClass<T> {
+    }
+
     @ExpectError("Invalid type. Valid declared type expected.")
     @GenerateLibrary(receiverType = int.class)
     public abstract static class ExportsTypeLibraryError1 extends Library {
@@ -371,6 +380,51 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
     }
 
+    @GenerateLibrary()
+    @DefaultExport(ExportsGenericInterfaceDefaultLibrary.class)
+    public abstract static class ExportsGenericInterfaceLibrary extends Library {
+
+        public abstract void foo(ExportsGenericInterface<?> receiver);
+
+    }
+
+    @ExportLibrary(value = ExportsGenericInterfaceLibrary.class, receiverType = ExportsGenericInterface.class)
+    public static class ExportsGenericInterfaceDefaultLibrary {
+        @ExportMessage
+        static void foo(ExportsGenericInterface<?> receiver) {
+        }
+    }
+
+    @DefaultExport(ExportsClassDefaultLibrary.class)
+    @GenerateLibrary(receiverType = ExportsClass.class)
+    public abstract static class ExportsClassLibrary extends Library {
+        public void foo(Object receiver) {
+        }
+    }
+
+    // Tests also that ExportsClassDefaultLibraryGen has methods with proper signatures.
+    @ExportLibrary(value = ExportsClassLibrary.class, receiverType = ExportsClass.class)
+    public static class ExportsClassDefaultLibrary {
+        @ExportMessage
+        static void foo(ExportsClass receiver) {
+        }
+    }
+
+    @GenerateLibrary()
+    @DefaultExport(ExportsGenericClassDefaultLibrary.class)
+    public abstract static class ExportsGenericClassLibrary extends Library {
+
+        public abstract void foo(ExportsGenericClass<?> receiver);
+
+    }
+
+    @ExportLibrary(value = ExportsGenericClassLibrary.class, receiverType = ExportsGenericClass.class)
+    public static class ExportsGenericClassDefaultLibrary {
+        @ExportMessage
+        static void foo(ExportsGenericClass<?> receiver) {
+        }
+    }
+
     @GenerateLibrary
     @DefaultExport(InvalidDefaultReceiverType.class)
     public abstract static class InvalidDefaultReceiverTypeLibrary extends Library {
@@ -395,7 +449,9 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError("The following message(s) of library AbstractErrorLibrary1 are abstract and must be exported using:%")
+    @ExpectError({"The following message(s) of library AbstractErrorLibrary1 are abstract and must be exported using:%",
+                    "Exported library AbstractErrorLibrary1 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."
+    })
     @ExportLibrary(AbstractErrorLibrary1.class)
     public static class AbstractErrorTest1 {
     }
@@ -415,6 +471,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     }
 
     // should compile no abstract methods
+    @ExpectError("Exported library AbstractErrorLibrary2 does not export any messages and therefore has no effect. Remove the export declaration to resolve this.")
     @ExportLibrary(AbstractErrorLibrary2.class)
     public static class AbstractErrorTest2 {
     }

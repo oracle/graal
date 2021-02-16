@@ -41,7 +41,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.meta.SharedMethod;
 
-import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -57,11 +56,12 @@ public final class RuntimeConfiguration {
 
     private int vtableBaseOffset;
     private int vtableEntrySize;
-    private int instanceOfBitsOffset;
+    private int typeIDSlotsOffset;
     private int componentHubOffset;
     private int javaFrameAnchorLastSPOffset;
     private int javaFrameAnchorLastIPOffset;
     private int vmThreadStatusOffset;
+    private int imageCodeInfoCodeStartOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, SubstrateBackend> backends, WordTypes wordTypes) {
@@ -77,18 +77,18 @@ public final class RuntimeConfiguration {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int instanceOfBitsOffset, int componentHubOffset,
-                    int javaFrameAnchorLastSPOffset, int javaFrameAnchorLastIPOffset,
-                    int vmThreadStatusOffset) {
+    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int typeIDSlotsOffset, int componentHubOffset,
+                    int javaFrameAnchorLastSPOffset, int javaFrameAnchorLastIPOffset, int vmThreadStatusOffset, int imageCodeInfoCodeStartOffset) {
         assert !isFullyInitialized();
 
         this.vtableBaseOffset = vtableBaseOffset;
         this.vtableEntrySize = vtableEntrySize;
-        this.instanceOfBitsOffset = instanceOfBitsOffset;
+        this.typeIDSlotsOffset = typeIDSlotsOffset;
         this.componentHubOffset = componentHubOffset;
         this.javaFrameAnchorLastSPOffset = javaFrameAnchorLastSPOffset;
         this.javaFrameAnchorLastIPOffset = javaFrameAnchorLastIPOffset;
         this.vmThreadStatusOffset = vmThreadStatusOffset;
+        this.imageCodeInfoCodeStartOffset = imageCodeInfoCodeStartOffset;
 
         assert isFullyInitialized();
     }
@@ -126,9 +126,9 @@ public final class RuntimeConfiguration {
         return vtableBaseOffset + vTableIndex * vtableEntrySize;
     }
 
-    public int getInstanceOfBitOffset(int bitIndex) {
+    public int getTypeIDSlotsOffset() {
         assert isFullyInitialized();
-        return instanceOfBitsOffset + bitIndex / 8;
+        return typeIDSlotsOffset;
     }
 
     public int getComponentHubOffset() {
@@ -151,14 +151,9 @@ public final class RuntimeConfiguration {
         return vmThreadStatusOffset;
     }
 
-    public Register getThreadRegister() {
-        Register result = getThreadRegister(ConfigKind.NORMAL);
-        assert result.equals(getThreadRegister(ConfigKind.NATIVE_TO_JAVA));
-        return result;
-    }
-
-    private Register getThreadRegister(ConfigKind config) {
-        return ((SubstrateRegisterConfig) backends.get(config).getCodeCache().getRegisterConfig()).getThreadRegister();
+    public int getImageCodeInfoCodeStartOffset() {
+        assert isFullyInitialized();
+        return imageCodeInfoCodeStartOffset;
     }
 
     public SnippetReflectionProvider getSnippetReflection() {

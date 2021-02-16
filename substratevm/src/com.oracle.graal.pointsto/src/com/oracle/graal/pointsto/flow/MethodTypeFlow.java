@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
@@ -54,9 +53,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
-
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     protected MethodFlowsGraph originalMethodFlows;
@@ -64,9 +60,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private int localCallingContextDepth;
 
     private final AnalysisMethod method;
-    protected EconomicMap<JavaConstant, BytecodePosition> objectConstants;
 
-    private volatile boolean methodParsed;
+    private volatile boolean typeFlowCreated;
     private InvokeTypeFlow parsingReason;
 
     private ParameterNode returnedParameter;
@@ -81,10 +76,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     public AnalysisMethod getMethod() {
         return method;
-    }
-
-    public EconomicMap<JavaConstant, BytecodePosition> getObjectConstants() {
-        return objectConstants;
     }
 
     public InvokeTypeFlow getParsingReason() {
@@ -109,7 +100,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
         // make sure that the method is parsed before attempting to clone it;
         // the parsing should always happen on the same thread
-        this.ensureParsed(bb, reason);
+        this.ensureTypeFlowCreated(bb, reason);
 
         AnalysisContext newContext = bb.contextPolicy().peel(calleeContext, localCallingContextDepth);
 
@@ -186,7 +177,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         originalMethodFlows.addClone(sourceFlow);
     }
 
-    protected void addSource(SourceTypeFlow sourceFlow) {
+    public void addSource(SourceTypeFlow sourceFlow) {
         originalMethodFlows.addSource(sourceFlow);
     }
 
@@ -194,7 +185,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         originalMethodFlows.addInstanceOf(key, instanceOf);
     }
 
-    protected void addMiscEntry(TypeFlow<?> input) {
+    public void addMiscEntry(TypeFlow<?> input) {
         originalMethodFlows.addMiscEntryFlow(input);
     }
 
@@ -306,15 +297,15 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return returnedParameter;
     }
 
-    public void ensureParsed(BigBang bb, InvokeTypeFlow reason) {
-        if (!methodParsed) {
-            doParse(bb, reason);
+    public void ensureTypeFlowCreated(BigBang bb, InvokeTypeFlow reason) {
+        if (!typeFlowCreated) {
+            createTypeFlow(bb, reason);
         }
     }
 
     /* All threads that try to parse the current method synchronize and only the first parses. */
-    private synchronized void doParse(BigBang bb, InvokeTypeFlow reason) {
-        if (!methodParsed) {
+    private synchronized void createTypeFlow(BigBang bb, InvokeTypeFlow reason) {
+        if (!typeFlowCreated) {
             parsingReason = reason;
             StructuredGraph graph = null;
             try {
@@ -346,7 +337,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
             returnedParameter = computeReturnedParameter(graph);
 
-            methodParsed = true;
+            typeFlowCreated = true;
         }
     }
 

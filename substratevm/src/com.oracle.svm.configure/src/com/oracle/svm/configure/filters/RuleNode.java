@@ -59,6 +59,10 @@ public final class RuleNode {
         public String toString() {
             return s;
         }
+
+        public Inclusion invert() {
+            return (this == Include) ? Exclude : Include;
+        }
     }
 
     /** The non-qualified name. The qualified name is derived from the names of all parents. */
@@ -285,9 +289,6 @@ public final class RuleNode {
                 inheritedInclusion = current.descendantsInclusion;
             }
             String part = tokenizer.nextToken();
-            if (part.indexOf('*') != -1) {
-                throw new IllegalArgumentException("Patterns are not allowed for querying");
-            }
             RuleNode child = (current.children != null) ? current.children.get(part) : null;
             if (child == null) {
                 boolean isDirectChild = !tokenizer.hasMoreTokens();

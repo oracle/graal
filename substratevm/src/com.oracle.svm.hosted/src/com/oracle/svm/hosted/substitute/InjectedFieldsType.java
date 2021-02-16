@@ -258,6 +258,21 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
+    public void link() {
+        original.link();
+    }
+
+    @Override
+    public boolean hasDefaultMethods() {
+        return original.hasDefaultMethods();
+    }
+
+    @Override
+    public boolean declaresDefaultMethods() {
+        return original.declaresDefaultMethods();
+    }
+
+    @Override
     public boolean isCloneableWithAllocation() {
         throw JVMCIError.unimplemented();
     }

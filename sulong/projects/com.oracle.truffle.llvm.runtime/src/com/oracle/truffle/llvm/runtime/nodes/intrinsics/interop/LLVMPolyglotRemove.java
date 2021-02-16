@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -68,13 +68,17 @@ public final class LLVMPolyglotRemove {
                 return false;
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not remove member '%s' from polyglot value.", id);
+                throw new LLVMPolyglotException(this, "Cannot remove member '%s' from polyglot value.", id);
             }
         }
 
+        /**
+         * @param value @NodeChild
+         * @param id @NodeChild
+         * @see LLVMPolyglotRemoveMember
+         */
         @Fallback
         @TruffleBoundary
-        @SuppressWarnings("unused")
         public boolean error(Object value, Object id) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
@@ -99,13 +103,17 @@ public final class LLVMPolyglotRemove {
                 return false;
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not remove index %d from polyglot value.", idx);
+                throw new LLVMPolyglotException(this, "Cannot remove index %d from polyglot value.", idx);
             }
         }
 
+        /**
+         * @param value @NodeChild
+         * @param id @NodeChild
+         * @see LLVMPolyglotRemoveArrayElement
+         */
         @Fallback
         @TruffleBoundary
-        @SuppressWarnings("unused")
         public boolean fallback(Object value, Object id) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }

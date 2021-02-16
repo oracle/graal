@@ -85,7 +85,6 @@ import com.oracle.svm.util.ImageGeneratorThreadMarker;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 
@@ -96,6 +95,8 @@ public abstract class BigBang {
     private final DebugContext debug;
     private final HostedProviders providers;
     private final Replacements replacements;
+
+    private final HeapScanningPolicy heapScanningPolicy;
 
     /** The type of {@link java.lang.Object}. */
     private final AnalysisType objectType;
@@ -124,6 +125,8 @@ public abstract class BigBang {
 
     public final Timer typeFlowTimer;
     public final Timer checkObjectsTimer;
+    public final Timer processFeaturesTimer;
+    public final Timer analysisTimer;
 
     public BigBang(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures) {
@@ -134,6 +137,8 @@ public abstract class BigBang {
         String imageName = hostVM.getImageName();
         this.typeFlowTimer = new Timer(imageName, "(typeflow)", false);
         this.checkObjectsTimer = new Timer(imageName, "(objects)", false);
+        this.processFeaturesTimer = new Timer(imageName, "(features)", false);
+        this.analysisTimer = new Timer(imageName, "analysis", true);
 
         this.universe = universe;
         this.metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
@@ -163,6 +168,14 @@ public abstract class BigBang {
         executor = new CompletionExecutor(this, executorService, heartbeatCallback);
         executor.init(timing);
         this.heartbeatCallback = heartbeatCallback;
+
+        heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
+                        ? HeapScanningPolicy.scanAll()
+                        : HeapScanningPolicy.skipTypes(skippedHeapTypes());
+    }
+
+    public AnalysisType[] skippedHeapTypes() {
+        return new AnalysisType[]{metaAccess.lookupJavaType(String.class)};
     }
 
     public Runnable getHeartbeatCallback() {
@@ -193,12 +206,6 @@ public abstract class BigBang {
         return new MethodTypeFlowBuilder(bb, methodFlow);
     }
 
-    /** Associates a JavaConstant with a root. */
-    public abstract boolean addRoot(JavaConstant constant, Object root);
-
-    /** Retrieves a root associated with a JavaConstant. */
-    public abstract Object getRoot(JavaConstant constant);
-
     public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
         unsafeLoads.putIfAbsent(unsafeLoad, true);
     }
@@ -228,18 +235,28 @@ public abstract class BigBang {
 
         // force update of the unsafe loads
         for (AbstractUnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
-            TypeFlow<?> receiverFlow = unsafeLoad.receiver();
-            // post the receiver object flow for update; an update of the receiver object
-            // flow will trigger an updated of the observers, i.e., of the unsafe load
-            this.postFlow(receiverFlow);
+            /* Force update for unsafe accessed static fields. */
+            unsafeLoad.initClone(this);
+
+            /*
+             * Force update for unsafe accessed instance fields: post the receiver object flow for
+             * update; an update of the receiver object flow will trigger an updated of the
+             * observers, i.e., of the unsafe load.
+             */
+            this.postFlow(unsafeLoad.receiver());
         }
 
         // force update of the unsafe stores
         for (AbstractUnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
-            TypeFlow<?> receiverFlow = unsafeStore.receiver();
-            // post the receiver object flow for update; an update of the receiver object
-            // flow will trigger an updated of the observers, i.e., of the unsafe store
-            this.postFlow(receiverFlow);
+            /* Force update for unsafe accessed static fields. */
+            unsafeStore.initClone(this);
+
+            /*
+             * Force update for unsafe accessed instance fields: post the receiver object flow for
+             * update; an update of the receiver object flow will trigger an updated of the
+             * observers, i.e., of the unsafe store.
+             */
+            this.postFlow(unsafeStore.receiver());
         }
     }
 
@@ -415,7 +432,9 @@ public abstract class BigBang {
     }
 
     public AnalysisType addSystemClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
-        return addSystemClass(metaAccess.lookupJavaType(clazz), addFields, addArrayClass);
+        AnalysisType type = metaAccess.lookupJavaType(clazz);
+        type.registerAsReachable();
+        return addSystemClass(type, addFields, addArrayClass);
     }
 
     @SuppressWarnings({"try"})
@@ -504,8 +523,6 @@ public abstract class BigBang {
     public CompletionExecutor getExecutor() {
         return executor;
     }
-
-    public abstract boolean isValidClassLoader(Object valueObj);
 
     public void checkUserLimitations() {
     }
@@ -617,6 +634,10 @@ public abstract class BigBang {
             objectScanner.scanBootImageHeapRoots(null);
         }
         AnalysisType.updateAssignableTypes(this);
+    }
+
+    public HeapScanningPolicy scanningPolicy() {
+        return heapScanningPolicy;
     }
 
     /**

@@ -159,7 +159,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
                     Object... params);
 
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
+    @TargetElement(onlyWith = JDK11To14.class) //
     static native void config(Class<? extends Object> caller, String message);
 
     /**

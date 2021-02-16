@@ -31,6 +31,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
@@ -112,6 +114,7 @@ public abstract class TruffleLSPTest {
             public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached) {
                 try (Context newContext = contextBuilder.build()) {
                     newContext.enter();
+                    newContext.initialize("sl");
                     try {
                         return CompletableFuture.completedFuture(taskWithResult.call());
                     } catch (Exception e) {
@@ -120,6 +123,31 @@ public abstract class TruffleLSPTest {
                         return cf;
                     } finally {
                         newContext.leave();
+                    }
+                }
+            }
+
+            @Override
+            public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, int timeoutMillis, Callable<T> onTimeoutTask) {
+                if (timeoutMillis <= 0) {
+                    return executeWithNestedContext(taskWithResult, false);
+                } else {
+                    CompletableFuture<Future<T>> future = CompletableFuture.supplyAsync(() -> executeWithNestedContext(taskWithResult, false));
+                    try {
+                        return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+                    } catch (TimeoutException e) {
+                        future.cancel(true);
+                        try {
+                            return CompletableFuture.completedFuture(onTimeoutTask.call());
+                        } catch (Exception timeoutTaskException) {
+                            CompletableFuture<T> cf = new CompletableFuture<>();
+                            cf.completeExceptionally(timeoutTaskException);
+                            return cf;
+                        }
+                    } catch (InterruptedException | ExecutionException e) {
+                        CompletableFuture<T> cf = new CompletableFuture<>();
+                        cf.completeExceptionally(e);
+                        return cf;
                     }
                 }
             }

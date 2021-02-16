@@ -29,39 +29,36 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class PointerType extends AggregateType {
     public static final PointerType I8 = new PointerType(PrimitiveType.I8);
     public static final PointerType VOID = new PointerType(VoidType.INSTANCE);
 
-    @CompilationFinal private Type pointeeType;
-    @CompilationFinal private Assumption pointeeTypeAssumption;
+    private Type pointeeType;
 
     public PointerType(Type pointeeType) {
-        this.pointeeTypeAssumption = Truffle.getRuntime().createAssumption("PointerType.pointeeType");
         this.pointeeType = pointeeType;
     }
 
     public Type getPointeeType() {
-        if (!pointeeTypeAssumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
+        CompilerAsserts.neverPartOfCompilation();
         return pointeeType;
     }
 
     public void setPointeeType(Type type) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        this.pointeeTypeAssumption.invalidate();
+        CompilerAsserts.neverPartOfCompilation();
+        verifyCycleFree(type);
         this.pointeeType = type;
-        this.pointeeTypeAssumption = Truffle.getRuntime().createAssumption("PointerType.pointeeType");
     }
 
     @Override
@@ -119,5 +116,10 @@ public final class PointerType extends AggregateType {
     @Override
     public boolean equals(Object obj) {
         return obj instanceof PointerType;
+    }
+
+    @Override
+    public LLVMExpressionNode createNullConstant(NodeFactory nodeFactory, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        return CommonNodeFactory.createSimpleConstantNoArray(null, this);
     }
 }

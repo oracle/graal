@@ -209,28 +209,49 @@ CLSS public abstract interface org.graalvm.nativeimage.Platform
 fld public final static java.lang.String PLATFORM_PROPERTY_NAME = "svm.platform"
 innr public abstract interface static AARCH64
 innr public abstract interface static AMD64
+innr public abstract interface static ANDROID
 innr public abstract interface static DARWIN
+innr public abstract interface static IOS
 innr public abstract interface static LINUX
 innr public abstract interface static WINDOWS
+innr public final static ANDROID_AARCH64
 innr public final static DARWIN_AARCH64
+innr public final static DARWIN_AMD64
 innr public final static HOSTED_ONLY
+innr public final static IOS_AARCH64
 innr public final static LINUX_AARCH64
-innr public static DARWIN_AMD64
+innr public final static WINDOWS_AMD64
 innr public static LINUX_AMD64
-innr public static WINDOWS_AMD64
+meth public java.lang.String getArchitecture()
+meth public java.lang.String getOS()
 meth public static boolean includedIn(java.lang.Class<? extends org.graalvm.nativeimage.Platform>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$AARCH64
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
+meth public java.lang.String getArchitecture()
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$AMD64
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
+meth public java.lang.String getArchitecture()
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$ANDROID
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform$LINUX
+meth public java.lang.String getOS()
+
+CLSS public final static org.graalvm.nativeimage.Platform$ANDROID_AARCH64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AARCH64
+intf org.graalvm.nativeimage.Platform$ANDROID
+supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
+meth public java.lang.String getOS()
 
 CLSS public final static org.graalvm.nativeimage.Platform$DARWIN_AARCH64
  outer org.graalvm.nativeimage.Platform
@@ -239,7 +260,7 @@ intf org.graalvm.nativeimage.Platform$AARCH64
 intf org.graalvm.nativeimage.Platform$DARWIN
 supr java.lang.Object
 
-CLSS public static org.graalvm.nativeimage.Platform$DARWIN_AMD64
+CLSS public final static org.graalvm.nativeimage.Platform$DARWIN_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
@@ -251,9 +272,22 @@ CLSS public final static org.graalvm.nativeimage.Platform$HOSTED_ONLY
 intf org.graalvm.nativeimage.Platform
 supr java.lang.Object
 
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$IOS
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform$DARWIN
+meth public java.lang.String getOS()
+
+CLSS public final static org.graalvm.nativeimage.Platform$IOS_AARCH64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AARCH64
+intf org.graalvm.nativeimage.Platform$IOS
+supr java.lang.Object
+
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
+meth public java.lang.String getOS()
 
 CLSS public final static org.graalvm.nativeimage.Platform$LINUX_AARCH64
  outer org.graalvm.nativeimage.Platform
@@ -272,8 +306,9 @@ supr java.lang.Object
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
+meth public java.lang.String getOS()
 
-CLSS public static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
+CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
@@ -291,16 +326,16 @@ meth public !varargs static void exec(java.nio.file.Path,java.lang.String[])
 meth public static boolean destroy(long)
 meth public static boolean destroyForcibly(long)
 meth public static boolean isAlive(long)
+meth public static boolean setArgumentVectorProgramName(java.lang.String)
+meth public static int getArgumentVectorBlockSize()
 meth public static int waitForProcessExit(long)
+meth public static java.lang.String getArgumentVectorProgramName()
 meth public static java.lang.String getExecutableName()
 meth public static java.lang.String getObjectFile(java.lang.String)
 meth public static java.lang.String getObjectFile(org.graalvm.nativeimage.c.function.CEntryPointLiteral<?>)
 meth public static java.lang.String setLocale(java.lang.String,java.lang.String)
 meth public static long getProcessID()
 meth public static long getProcessID(java.lang.Process)
-meth public static boolean setArgumentVectorProgramName(java.lang.String)
-meth public static java.lang.String getArgumentVectorProgramName()
-meth public static int getArgumentVectorBlockSize()
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.RuntimeOptions
@@ -351,9 +386,9 @@ meth public static void free(org.graalvm.word.PointerBase)
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.VMRuntime
+meth public static void dumpHeap(java.lang.String,boolean) throws java.io.IOException
 meth public static void initialize()
 meth public static void shutdown()
-meth public static void dumpHeap(java.lang.String,boolean)
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.CContext
@@ -407,8 +442,6 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.constant.CE
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
-
-CLSS abstract interface org.graalvm.nativeimage.c.constant.package-info
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CEntryPoint
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -504,10 +537,6 @@ meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CFunction$Tr
 CLSS public abstract interface org.graalvm.nativeimage.c.function.RelocatedPointer
 intf org.graalvm.word.ComparableWord
 
-CLSS abstract interface org.graalvm.nativeimage.c.function.package-info
-
-CLSS abstract interface org.graalvm.nativeimage.c.package-info
-
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.AllowNarrowingCast
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
@@ -593,8 +622,6 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.Uniq
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
-
-CLSS abstract interface org.graalvm.nativeimage.c.struct.package-info
 
 CLSS public abstract interface org.graalvm.nativeimage.c.type.CCharPointer
 intf org.graalvm.word.PointerBase
@@ -728,8 +755,6 @@ meth public abstract void write(int,org.graalvm.word.WordBase)
 meth public abstract void write(org.graalvm.word.SignedWord,org.graalvm.word.WordBase)
 meth public abstract void write(org.graalvm.word.WordBase)
 
-CLSS abstract interface org.graalvm.nativeimage.c.type.package-info
-
 CLSS public abstract interface org.graalvm.nativeimage.hosted.Feature
 innr public abstract interface static AfterAnalysisAccess
 innr public abstract interface static AfterCompilationAccess
@@ -739,6 +764,7 @@ innr public abstract interface static AfterRegistrationAccess
 innr public abstract interface static BeforeAnalysisAccess
 innr public abstract interface static BeforeCompilationAccess
 innr public abstract interface static BeforeImageWriteAccess
+innr public abstract interface static BeforeUniverseBuildingAccess
 innr public abstract interface static CompilationAccess
 innr public abstract interface static DuringAnalysisAccess
 innr public abstract interface static DuringSetupAccess
@@ -756,6 +782,7 @@ meth public void afterRegistration(org.graalvm.nativeimage.hosted.Feature$AfterR
 meth public void beforeAnalysis(org.graalvm.nativeimage.hosted.Feature$BeforeAnalysisAccess)
 meth public void beforeCompilation(org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess)
 meth public void beforeImageWrite(org.graalvm.nativeimage.hosted.Feature$BeforeImageWriteAccess)
+meth public void beforeUniverseBuilding(org.graalvm.nativeimage.hosted.Feature$BeforeUniverseBuildingAccess)
 meth public void cleanup()
 meth public void duringAnalysis(org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess)
 meth public void duringSetup(org.graalvm.nativeimage.hosted.Feature$DuringSetupAccess)
@@ -792,12 +819,17 @@ meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
 meth public abstract void registerMethodOverrideReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.reflect.Executable>,java.lang.reflect.Executable)
 meth public abstract void registerSubtypeReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.Class<?>>,java.lang.Class<?>)
+meth public abstract void registerClassInitializerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$CompilationAccess
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeImageWriteAccess
+ outer org.graalvm.nativeimage.hosted.Feature
+intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
+
+CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeUniverseBuildingAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
 
@@ -822,6 +854,9 @@ meth public abstract void registerObjectReplacer(java.util.function.Function<jav
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$FeatureAccess
  outer org.graalvm.nativeimage.hosted.Feature
 meth public abstract java.lang.Class<?> findClassByName(java.lang.String)
+meth public abstract java.lang.ClassLoader getApplicationClassLoader()
+meth public abstract java.util.List<java.nio.file.Path> getApplicationClassPath()
+meth public abstract java.util.List<java.nio.file.Path> getApplicationModulePath()
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$IsInConfigurationAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -849,6 +884,7 @@ supr java.lang.Object
 hfds MESSAGE
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeReflection
+meth public !varargs static void register(boolean,boolean,java.lang.reflect.Field[])
 meth public !varargs static void register(boolean,java.lang.reflect.Field[])
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
@@ -856,16 +892,12 @@ meth public !varargs static void register(java.lang.reflect.Field[])
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object
 
-CLSS abstract interface org.graalvm.nativeimage.hosted.package-info
-
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
 innr public abstract interface static PLATFORM_JNI
 
 CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
  outer org.graalvm.nativeimage.impl.InternalPlatform
 intf org.graalvm.nativeimage.Platform
-
-CLSS abstract interface org.graalvm.nativeimage.package-info
 
 CLSS public abstract interface org.graalvm.word.ComparableWord
 intf org.graalvm.word.WordBase

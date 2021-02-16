@@ -45,6 +45,8 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public class DotExport {
 
     public static void printConnection(BufferedWriter writer, String from, String to, String label) throws IOException {
@@ -67,7 +69,7 @@ public class DotExport {
                     replacement = "\\\\\\\\";
                     break;
                 default:
-                    throw new IllegalStateException();
+                    throw CompilerDirectives.shouldNotReachHere();
             }
             m.appendReplacement(escapedString, replacement);
         }

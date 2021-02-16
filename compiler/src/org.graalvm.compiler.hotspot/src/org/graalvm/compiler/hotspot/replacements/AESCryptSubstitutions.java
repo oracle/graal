@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,23 +97,6 @@ public class AESCryptSubstitutions {
     @MethodSubstitution(isStatic = false)
     static void implDecryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, false, false);
-    }
-
-    /**
-     * Variation for platforms (e.g. SPARC) that need do key expansion in stubs due to compatibility
-     * issues between Java key expansion and hardware crypto instructions.
-     */
-    @MethodSubstitution(value = "decryptBlock", isStatic = false)
-    static void decryptBlockWithOriginalKey(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        crypt(rcvr, in, inOffset, out, outOffset, false, true);
-    }
-
-    /**
-     * @see #decryptBlockWithOriginalKey(Object, byte[], int, byte[], int)
-     */
-    @MethodSubstitution(value = "implDecryptBlock", isStatic = false)
-    static void implDecryptBlockWithOriginalKey(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        crypt(rcvr, in, inOffset, out, outOffset, false, true);
     }
 
     private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt, boolean withOriginalKey) {

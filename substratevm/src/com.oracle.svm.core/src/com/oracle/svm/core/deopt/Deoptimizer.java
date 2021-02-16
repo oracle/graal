@@ -50,6 +50,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Specialize;
@@ -291,7 +292,7 @@ public final class Deoptimizer {
         /* Handle my own thread specially, because I do not have a JavaFrameAnchor. */
         Pointer sp = KnownIntrinsics.readCallerStackPointer();
 
-        StackFrameVisitor currentThreadDeoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll);
+        StackFrameVisitor currentThreadDeoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, CurrentIsolate.getCurrentThread());
         JavaStackWalker.walkCurrentThread(sp, currentThreadDeoptVisitor);
 
         /* If I am multi-threaded, deoptimize this method on all the other stacks. */
@@ -300,7 +301,7 @@ public final class Deoptimizer {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
-                StackFrameVisitor deoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll);
+                StackFrameVisitor deoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, vmThread);
                 JavaStackWalker.walkThread(vmThread, deoptVisitor);
             }
         }
@@ -309,15 +310,18 @@ public final class Deoptimizer {
         }
     }
 
-    private static StackFrameVisitor getStackFrameVisitor(Pointer fromIp, Pointer toIp, boolean deoptAll) {
-        return (frameSp, frameIp, codeInfo, deoptFrame) -> {
-            Pointer ip = (Pointer) frameIp;
-            if (deoptFrame == null && ((ip.aboveOrEqual(fromIp) && ip.belowThan(toIp)) || deoptAll)) {
-                CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, frameIp);
-                Deoptimizer deoptimizer = new Deoptimizer(frameSp, queryResult);
-                deoptimizer.deoptSourceFrame(frameIp, deoptAll);
+    private static StackFrameVisitor getStackFrameVisitor(Pointer fromIp, Pointer toIp, boolean deoptAll, IsolateThread targetThread) {
+        return new StackFrameVisitor() {
+            @Override
+            public boolean visitFrame(Pointer frameSp, CodePointer frameIp, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
+                Pointer ip = (Pointer) frameIp;
+                if (deoptFrame == null && ((ip.aboveOrEqual(fromIp) && ip.belowThan(toIp)) || deoptAll)) {
+                    CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, frameIp);
+                    Deoptimizer deoptimizer = new Deoptimizer(frameSp, queryResult, targetThread);
+                    deoptimizer.deoptSourceFrame(frameIp, deoptAll);
+                }
+                return true;
             }
-            return true;
         };
     }
 
@@ -335,35 +339,42 @@ public final class Deoptimizer {
             registerSpeculationFailure(deoptFrame.getSourceInstalledCode(), speculation);
             return;
         }
-        JavaVMOperation.enqueueBlockingSafepoint("DeoptimizeFrame", () -> Deoptimizer.deoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation));
+
+        /*
+         * Note that the thread needs to be read outside of the VMOperation, since the operation can
+         * run in any different thread.
+         */
+        IsolateThread targetThread = CurrentIsolate.getCurrentThread();
+
+        JavaVMOperation.enqueueBlockingSafepoint("DeoptimizeFrame", () -> Deoptimizer.deoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, targetThread));
     }
 
-    private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
+    private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread targetThread) {
         VMOperation.guaranteeInProgress("doDeoptimizeFrame");
         CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-        deoptimizeFrame(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress);
+        deoptimizeFrame(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, targetThread);
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private static void deoptimizeFrame(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress) {
+    private static void deoptimizeFrame(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress, IsolateThread targetThread) {
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(returnAddress);
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
             CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-            deoptimize(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, info);
+            deoptimize(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, info, targetThread);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
     }
 
     @Uninterruptible(reason = "Pass the now protected CodeInfo object to interruptible code.", calleeMustBe = false)
-    private static void deoptimize(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress, CodeInfo info) {
-        deoptimize0(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, info);
+    private static void deoptimize(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress, CodeInfo info, IsolateThread targetThread) {
+        deoptimize0(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, info, targetThread);
     }
 
-    private static void deoptimize0(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress, CodeInfo info) {
+    private static void deoptimize0(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress, CodeInfo info, IsolateThread targetThread) {
         CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(info, returnAddress);
-        Deoptimizer deoptimizer = new Deoptimizer(sourceSp, queryResult);
+        Deoptimizer deoptimizer = new Deoptimizer(sourceSp, queryResult, targetThread);
         DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(returnAddress, ignoreNonDeoptimizable);
         if (sourceFrame != null) {
             registerSpeculationFailure(sourceFrame.getSourceInstalledCode(), speculation);
@@ -449,10 +460,13 @@ public final class Deoptimizer {
      */
     protected static long deoptStubFrameSize = 0L;
 
-    public Deoptimizer(Pointer sourceSp, CodeInfoQueryResult sourceChunk) {
+    private final IsolateThread targetThread;
+
+    public Deoptimizer(Pointer sourceSp, CodeInfoQueryResult sourceChunk, IsolateThread targetThread) {
         VMError.guarantee(sourceChunk != null, "Must not be null.");
         this.sourceSp = sourceSp;
         this.sourceChunk = sourceChunk;
+        this.targetThread = targetThread;
         /* Lazily initialize constant values I can only get at run time. */
         if (deoptStubFrameSize == 0L) {
             CodeInfo info = CodeInfoTable.getImageCodeInfo();
@@ -848,6 +862,13 @@ public final class Deoptimizer {
                         DeoptimizationCounters.counters().constantValueCount.inc();
                         break;
 
+                    case ReservedRegister:
+                        /*
+                         * Nothing to do, the register will automatically be correct when execution
+                         * resumes in the target frame.
+                         */
+                        break;
+
                     default:
                         /*
                          * There must not be any other target value types because deoptimization
@@ -898,6 +919,15 @@ public final class Deoptimizer {
             case StackSlot:
             case Register:
                 return readConstant(sourceSp, WordFactory.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference());
+            case ReservedRegister:
+                if (ReservedRegisters.singleton().getThreadRegister() != null && ReservedRegisters.singleton().getThreadRegister().number == valueInfo.getData()) {
+                    return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), targetThread.rawValue());
+                } else if (ReservedRegisters.singleton().getHeapBaseRegister() != null && ReservedRegisters.singleton().getHeapBaseRegister().number == valueInfo.getData()) {
+                    return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), CurrentIsolate.getIsolate().rawValue());
+                } else {
+                    throw VMError.shouldNotReachHere("Unexpected reserved register: " + valueInfo.getData());
+                }
+
             case VirtualObject:
                 Object obj = materializeObject(TypeConversion.asS4(valueInfo.getData()), sourceFrame);
                 return SubstrateObjectConstant.forObject(obj, valueInfo.isCompressedReference());
@@ -930,15 +960,12 @@ public final class Deoptimizer {
         DynamicHub hub = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame)), DynamicHub.class);
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
 
-        boolean materializingByteArray = false;
-
         int curIdx;
         UnsignedWord curOffset;
         if (LayoutEncoding.isArray(hub.getLayoutEncoding())) {
             /* For arrays, the second encoded value is the array length. */
             int length = readValue(encodings[1], sourceFrame).asInt();
             obj = Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
-            materializingByteArray = obj.getClass() == byte[].class;
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             curIdx = 2;
         } else {
@@ -960,66 +987,12 @@ public final class Deoptimizer {
             ValueInfo value = encodings[curIdx];
             JavaKind kind = value.getKind();
             JavaConstant con = readValue(value, sourceFrame);
-            if (materializingByteArray && kind.isPrimitive()) {
-                /* Escape analysis of byte arrays needs special care. */
-                int byteCount = restoreEscapedByteArrayWriteByteCount(encodings, curIdx);
-                con = restoreByteArrayWriteValue(con, byteCount);
-                /* Realign. curIdx gets reincremented, so we compensate. */
-                curIdx = curIdx + byteCount - 1;
-            }
             writeValueInMaterializedObj(obj, curOffset, con);
             curOffset = curOffset.add(objectLayout.sizeInBytes(kind));
             curIdx++;
         }
 
         return obj;
-    }
-
-    /**
-     * Virtualized byte arrays might look like:
-     * <p>
-     * [b1, b2, INT, ILLEGAL, ILLEGAL, ILLEGAL, b7, b8]
-     * <p>
-     * This indicates that an int was written over 4 slots of a byte array, and this write was
-     * escape analysed.
-     *
-     * The written int should write over the 3 illegals, and we can then simply ignore them
-     * afterwards.
-     */
-    private static int restoreEscapedByteArrayWriteByteCount(ValueInfo[] encodings, int curIdx) {
-        int index = curIdx + 1;
-        while (index < encodings.length &&
-                        encodings[index].getKind() == JavaKind.Illegal) {
-            index++;
-        }
-        return index - curIdx;
-    }
-
-    /**
-     * Given a written value to an escaped byte array and a bytecount, returns a correctly-sized
-     * value to write at once in the array.
-     */
-    private static JavaConstant restoreByteArrayWriteValue(JavaConstant con, int byteCount) {
-        switch (byteCount) {
-            case 1:
-                return JavaConstant.forByte((byte) con.asInt());
-            case 2:
-                return JavaConstant.forChar((char) con.asInt());
-            case 4:
-                if (con.getJavaKind().isNumericFloat()) {
-                    return JavaConstant.forFloat(con.asFloat());
-                } else {
-                    return JavaConstant.forInt(con.asInt());
-                }
-            case 8:
-                if (con.getJavaKind().isNumericFloat()) {
-                    return JavaConstant.forDouble(con.asDouble());
-                } else {
-                    return JavaConstant.forLong(con.asLong());
-                }
-            default:
-                throw VMError.shouldNotReachHere();
-        }
     }
 
     /**

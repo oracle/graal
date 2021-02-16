@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,9 @@
 char arr[3] = { 'a', 'b', 'c' };
 
 int foo(char *p) {
-  return p[2];
+    return p[2];
 }
 
 int main() {
-  return foo(arr);
+    return foo(arr);
 }

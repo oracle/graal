@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class ContextThreadLocalTest {
 
-    private static final String CLASS_NAME = "com.oracle.truffle.polyglot.ContextThreadLocal";
+    private static final String CLASS_NAME = "com.oracle.truffle.polyglot.PolyglotContextThreadLocal";
     private static final String CONTEXT_CLASS = "com.oracle.truffle.polyglot.PolyglotContextImpl";
 
     @Before
@@ -94,7 +94,7 @@ public class ContextThreadLocalTest {
 
     Object setReturnParent(ThreadLocal<Object> tl, Object value) {
         try {
-            Method method = tl.getClass().getDeclaredMethod("setReturnParent", Object.class);
+            Method method = tl.getClass().getDeclaredMethod("setReturnParent", Class.forName(CONTEXT_CLASS));
             method.setAccessible(true);
             return method.invoke(tl, value);
         } catch (Exception e) {

@@ -26,15 +26,18 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import org.graalvm.compiler.debug.DebugContext;
-
 import java.nio.ByteOrder;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
+
+import org.graalvm.compiler.debug.DebugContext;
+
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
 /**
  * An abstract class which indexes the information presented by the DebugInfoProvider in an
@@ -86,6 +89,14 @@ public abstract class DebugInfoBase {
     /**
      * List of class entries detailing class info for primary ranges.
      */
+    private LinkedList<TypeEntry> types = new LinkedList<>();
+    /**
+     * index of already seen classes.
+     */
+    private Map<String, TypeEntry> typesIndex = new HashMap<>();
+    /**
+     * List of class entries detailing class info for primary ranges.
+     */
     private LinkedList<ClassEntry> primaryClasses = new LinkedList<>();
     /**
      * index of already seen classes.
@@ -99,9 +110,45 @@ public abstract class DebugInfoBase {
      * List of of files which contain primary or secondary ranges.
      */
     private LinkedList<FileEntry> files = new LinkedList<>();
+    /**
+     * Flag set to true if heap references are stored as addresses relative to a heap base register
+     * otherwise false.
+     */
+    private boolean useHeapBase;
+    /**
+     * Number of bits oops are left shifted by when using compressed oops.
+     */
+    private int oopCompressShift;
+    /**
+     * Number of low order bits used for tagging oops.
+     */
+    private int oopTagsCount;
+    /**
+     * Number of bytes used to store an oop reference.
+     */
+    private int oopReferenceSize;
+    /**
+     * Number of bytes used to store a raw pointer.
+     */
+    private int pointerSize;
+    /**
+     * Alignment of object memory area (and, therefore, of any oop) in bytes.
+     */
+    private int oopAlignment;
+    /**
+     * Number of bits in oop which are guaranteed 0 by virtue of alignment.
+     */
+    private int oopAlignShift;
 
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
+        this.useHeapBase = true;
+        this.oopTagsCount = 0;
+        this.oopCompressShift = 0;
+        this.oopReferenceSize = 0;
+        this.pointerSize = 0;
+        this.oopAlignment = 0;
+        this.oopAlignShift = 0;
     }
 
     /**
@@ -119,125 +166,250 @@ public abstract class DebugInfoBase {
          */
 
         /*
-         * Ensure we have a null string in the string section.
+         * Track whether we need to use a heap base register.
          */
+        useHeapBase = debugInfoProvider.useHeapBase();
+
+        /*
+         * Save count of low order tag bits that may appear in references.
+         */
+        int oopTagsMask = debugInfoProvider.oopTagsMask();
+
+        /* Tag bits must be between 1 and 32 for us to emit as DW_OP_lit<n>. */
+        assert oopTagsMask > 0 && oopTagsMask < 32;
+        /* Mask must be contiguous from bit 0. */
+        assert ((oopTagsMask + 1) & oopTagsMask) == 0;
+
+        oopTagsCount = Integer.bitCount(oopTagsMask);
+
+        /* Save amount we need to shift references by when loading from an object field. */
+        oopCompressShift = debugInfoProvider.oopCompressShift();
+
+        /* shift bit count must be either 0 or 3 */
+        assert (oopCompressShift == 0 || oopCompressShift == 3);
+
+        /* Save number of bytes in a reference field. */
+        oopReferenceSize = debugInfoProvider.oopReferenceSize();
+
+        /* Save pointer size of current target. */
+        pointerSize = debugInfoProvider.pointerSize();
+
+        /* Save alignment of a reference. */
+        oopAlignment = debugInfoProvider.oopAlignment();
+
+        /* Save alignment of a reference. */
+        oopAlignShift = Integer.bitCount(oopAlignment - 1);
+
+        /* Reference alignment must be 8 bytes. */
+        assert oopAlignment == 8;
+
+        /* Ensure we have a null string in the string section. */
         stringTable.uniqueDebugString("");
+
+        /* Create all the types. */
+        debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
+            String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
+            typeName = stringTable.uniqueDebugString(typeName);
+            DebugTypeKind typeKind = debugTypeInfo.typeKind();
+            int byteSize = debugTypeInfo.size();
+
+            debugContext.log(DebugContext.INFO_LEVEL, "Register %s type %s ", typeKind.toString(), typeName);
+            String fileName = debugTypeInfo.fileName();
+            Path filePath = debugTypeInfo.filePath();
+            Path cachePath = debugTypeInfo.cachePath();
+            addTypeEntry(typeName, fileName, filePath, cachePath, byteSize, typeKind);
+        }));
+
+        /* Now we can cross reference static and instance field details. */
+        debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
+            String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
+            DebugTypeKind typeKind = debugTypeInfo.typeKind();
+
+            debugContext.log(DebugContext.INFO_LEVEL, "Process %s type %s ", typeKind.toString(), typeName);
+            TypeEntry typeEntry = lookupTypeEntry(typeName);
+            typeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
+        }));
 
         debugInfoProvider.codeInfoProvider().forEach(debugCodeInfo -> debugCodeInfo.debugContext((debugContext) -> {
             /*
-             * primary file name and full method name need to be written to the debug_str section
+             * Primary file name and full method name need to be written to the debug_str section.
              */
             String fileName = debugCodeInfo.fileName();
             Path filePath = debugCodeInfo.filePath();
-            // switch '$' in class names for '.'
-            String className = debugCodeInfo.className().replaceAll("\\$", ".");
+            Path cachePath = debugCodeInfo.cachePath();
+            String className = TypeEntry.canonicalize(debugCodeInfo.className());
             String methodName = debugCodeInfo.methodName();
-            String paramNames = debugCodeInfo.paramNames();
-            String returnTypeName = debugCodeInfo.returnTypeName();
+            String symbolName = debugCodeInfo.symbolNameForMethod();
+            String paramSignature = debugCodeInfo.paramSignature();
+            String returnTypeName = TypeEntry.canonicalize(debugCodeInfo.returnTypeName());
             int lo = debugCodeInfo.addressLo();
             int hi = debugCodeInfo.addressHi();
             int primaryLine = debugCodeInfo.line();
+            boolean isDeoptTarget = debugCodeInfo.isDeoptTarget();
+            int modifiers = debugCodeInfo.getModifiers();
 
-            Range primaryRange = new Range(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, primaryLine);
+            /* Search for a method defining this primary range. */
+            ClassEntry classEntry = ensureClassEntry(className);
+            FileEntry fileEntry = ensureFileEntry(fileName, filePath, cachePath);
+            Range primaryRange = classEntry.makePrimaryRange(methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntry, lo, hi, primaryLine, modifiers, isDeoptTarget);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
-            addRange(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
+            classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
                 String fileNameAtLine = debugLineInfo.fileName();
                 Path filePathAtLine = debugLineInfo.filePath();
-                // Switch '$' in class names for '.'
-                String classNameAtLine = debugLineInfo.className().replaceAll("\\$", ".");
+                String classNameAtLine = TypeEntry.canonicalize(debugLineInfo.className());
                 String methodNameAtLine = debugLineInfo.methodName();
+                String symbolNameAtLine = debugLineInfo.symbolNameForMethod();
                 int loAtLine = lo + debugLineInfo.addressLo();
                 int hiAtLine = lo + debugLineInfo.addressHi();
                 int line = debugLineInfo.line();
+                Path cachePathAtLine = debugLineInfo.cachePath();
                 /*
                  * Record all subranges even if they have no line or file so we at least get a
-                 * symbol for them.
+                 * symbol for them and don't see a break in the address range.
                  */
-                Range subRange = new Range(fileNameAtLine, filePathAtLine, classNameAtLine, methodNameAtLine, "", "", stringTable, loAtLine, hiAtLine, line, primaryRange);
-                addSubRange(primaryRange, subRange);
+                FileEntry subFileEntry = ensureFileEntry(fileNameAtLine, filePathAtLine, cachePathAtLine);
+                Range subRange = new Range(classNameAtLine, methodNameAtLine, symbolNameAtLine, stringTable, subFileEntry, loAtLine, hiAtLine, line, primaryRange);
+                classEntry.indexSubRange(subRange);
                 try (DebugContext.Scope s = debugContext.scope("Subranges")) {
                     debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]", classNameAtLine, methodNameAtLine, filePathAtLine, fileNameAtLine, line, loAtLine, hiAtLine);
                 }
             });
         }));
-        /*
-         * This will be needed once we add support for data info:
-         *
-         * DebugDataInfoProvider dataInfoProvider = debugInfoProvider.dataInfoProvider(); for
-         * (DebugDataInfo debugDataInfo : dataInfoProvider) { install details of heap elements
-         * String name = debugDataInfo.toString(); }
-         */
+
+        debugInfoProvider.dataInfoProvider().forEach(debugDataInfo -> debugDataInfo.debugContext((debugContext) -> {
+            String provenance = debugDataInfo.getProvenance();
+            String typeName = debugDataInfo.getTypeName();
+            String partitionName = debugDataInfo.getPartition();
+            /* Address is heap-register relative pointer. */
+            long address = debugDataInfo.getAddress();
+            long size = debugDataInfo.getSize();
+            debugContext.log(DebugContext.INFO_LEVEL, "Data: address 0x%x size 0x%x type %s partition %s provenance %s ", address, size, typeName, partitionName, provenance);
+        }));
     }
 
-    private ClassEntry ensureClassEntry(Range range) {
-        String className = range.getClassName();
-        /*
-         * See if we already have an entry.
-         */
+    private TypeEntry createTypeEntry(String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
+        TypeEntry typeEntry = null;
+        switch (typeKind) {
+            case INSTANCE: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath, cachePath);
+                typeEntry = new ClassEntry(typeName, fileEntry, size);
+                break;
+            }
+            case INTERFACE: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath, cachePath);
+                typeEntry = new InterfaceClassEntry(typeName, fileEntry, size);
+                break;
+            }
+            case ENUM: {
+                FileEntry fileEntry = addFileEntry(fileName, filePath, cachePath);
+                typeEntry = new EnumClassEntry(typeName, fileEntry, size);
+                break;
+            }
+            case PRIMITIVE:
+                assert fileName.length() == 0;
+                assert filePath == null;
+                typeEntry = new PrimitiveTypeEntry(typeName, size);
+                break;
+            case ARRAY:
+                assert fileName.length() == 0;
+                assert filePath == null;
+                typeEntry = new ArrayTypeEntry(typeName, size);
+                break;
+            case HEADER:
+                assert fileName.length() == 0;
+                assert filePath == null;
+                typeEntry = new HeaderTypeEntry(typeName, size);
+                break;
+        }
+        return typeEntry;
+    }
+
+    private TypeEntry addTypeEntry(String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
+        TypeEntry typeEntry = typesIndex.get(typeName);
+        if (typeEntry == null) {
+            typeEntry = createTypeEntry(typeName, fileName, filePath, cachePath, size, typeKind);
+            types.add(typeEntry);
+            typesIndex.put(typeName, typeEntry);
+        } else {
+            if (!(typeEntry.isClass())) {
+                assert ((ClassEntry) typeEntry).getFileName().equals(fileName);
+            }
+        }
+        return typeEntry;
+    }
+
+    public TypeEntry lookupTypeEntry(String typeName) {
+        TypeEntry typeEntry = typesIndex.get(typeName);
+        if (typeEntry == null) {
+            throw new RuntimeException("type entry not found " + typeName);
+        }
+        return typeEntry;
+    }
+
+    ClassEntry lookupClassEntry(String typeName) {
+        TypeEntry typeEntry = typesIndex.get(typeName);
+        if (typeEntry == null || !(typeEntry.isClass())) {
+            throw new RuntimeException("class entry not found " + typeName);
+        }
+        return (ClassEntry) typeEntry;
+    }
+
+    private ClassEntry ensureClassEntry(String className) {
+        /* See if we already have an entry. */
         ClassEntry classEntry = primaryClassesIndex.get(className);
         if (classEntry == null) {
-            /*
-             * Create and index the entry associating it with the right file.
-             */
-            FileEntry fileEntry = ensureFileEntry(range);
-            classEntry = new ClassEntry(className, fileEntry);
+            TypeEntry typeEntry = typesIndex.get(className);
+            assert (typeEntry != null && typeEntry.isClass());
+            classEntry = (ClassEntry) typeEntry;
             primaryClasses.add(classEntry);
             primaryClassesIndex.put(className, classEntry);
         }
-        assert classEntry.getClassName().equals(className);
+        assert (classEntry.getTypeName().equals(className));
         return classEntry;
     }
 
-    private FileEntry ensureFileEntry(Range range) {
-        String fileName = range.getFileName();
-        if (fileName == null) {
-            return null;
+    private FileEntry addFileEntry(String fileName, Path filePath, Path cachePath) {
+        assert fileName != null;
+        Path fileAsPath;
+        if (filePath != null) {
+            fileAsPath = filePath.resolve(fileName);
+        } else {
+            fileAsPath = Paths.get(fileName);
         }
-        Path filePath = range.getFilePath();
-        Path fileAsPath = range.getFileAsPath();
-        /*
-         * Ensure we have an entry.
-         */
         FileEntry fileEntry = filesIndex.get(fileAsPath);
         if (fileEntry == null) {
             DirEntry dirEntry = ensureDirEntry(filePath);
-            fileEntry = new FileEntry(fileName, dirEntry);
+            /* Ensure file and cachepath are added to the debug_str section. */
+            uniqueDebugString(fileName);
+            uniqueDebugString(cachePath.toString());
+            fileEntry = new FileEntry(fileName, dirEntry, cachePath);
             files.add(fileEntry);
-            /*
-             * Index the file entry by file path.
-             */
+            /* Index the file entry by file path. */
             filesIndex.put(fileAsPath, fileEntry);
-            if (!range.isPrimary()) {
-                /* Check we have a file for the corresponding primary range. */
-                Range primaryRange = range.getPrimary();
-                FileEntry primaryFileEntry = filesIndex.get(primaryRange.getFileAsPath());
-                assert primaryFileEntry != null;
-            }
+        } else {
+            assert (filePath == null ||
+                            fileEntry.getDirEntry().getPath().equals(filePath));
         }
         return fileEntry;
     }
 
-    private void addRange(Range primaryRange, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, int frameSize) {
-        assert primaryRange.isPrimary();
-        ClassEntry classEntry = ensureClassEntry(primaryRange);
-        classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
-    }
-
-    private void addSubRange(Range primaryRange, Range subrange) {
-        assert primaryRange.isPrimary();
-        assert !subrange.isPrimary();
-        String className = primaryRange.getClassName();
-        ClassEntry classEntry = primaryClassesIndex.get(className);
-        FileEntry subrangeFileEntry = ensureFileEntry(subrange);
-        /*
-         * The primary range should already have been seen and associated with a primary class
-         * entry.
-         */
-        assert classEntry.primaryIndexFor(primaryRange) != null;
-        if (subrangeFileEntry != null) {
-            classEntry.addSubRange(subrange, subrangeFileEntry);
+    protected FileEntry ensureFileEntry(String fileName, Path filePath, Path cachePath) {
+        if (fileName == null || fileName.length() == 0) {
+            return null;
         }
+        Path fileAsPath;
+        if (filePath == null) {
+            fileAsPath = Paths.get(fileName);
+        } else {
+            fileAsPath = filePath.resolve(fileName);
+        }
+        /* Reuse any existing entry. */
+        FileEntry fileEntry = findFile(fileAsPath);
+        if (fileEntry == null) {
+            fileEntry = addFileEntry(fileName, filePath, cachePath);
+        }
+        return fileEntry;
     }
 
     private DirEntry ensureDirEntry(Path filePath) {
@@ -246,6 +418,8 @@ public abstract class DebugInfoBase {
         }
         DirEntry dirEntry = dirsIndex.get(filePath);
         if (dirEntry == null) {
+            /* Ensure dir path is entered into the debug_str section. */
+            uniqueDebugString(filePath.toString());
             dirEntry = new DirEntry(filePath);
             dirsIndex.put(filePath, dirEntry);
         }
@@ -255,6 +429,10 @@ public abstract class DebugInfoBase {
     /* Accessors to query the debug info model. */
     public ByteOrder getByteOrder() {
         return byteOrder;
+    }
+
+    public LinkedList<TypeEntry> getTypes() {
+        return types;
     }
 
     public LinkedList<ClassEntry> getPrimaryClasses() {
@@ -279,10 +457,66 @@ public abstract class DebugInfoBase {
      * Indirects this call to the string table.
      *
      * @param string the string whose index is required.
+     */
+    public String uniqueDebugString(String string) {
+        return stringTable.uniqueDebugString(string);
+    }
+
+    /**
+     * Indirects this call to the string table.
+     *
+     * @param string the string whose index is required.
      *
      * @return the offset of the string in the .debug_str section.
      */
     public int debugStringIndex(String string) {
         return stringTable.debugStringIndex(string);
+    }
+
+    public boolean useHeapBase() {
+        return useHeapBase;
+    }
+
+    public byte oopTagsMask() {
+        return (byte) ((1 << oopTagsCount) - 1);
+    }
+
+    public byte oopTagsShift() {
+        return (byte) oopTagsCount;
+    }
+
+    public int oopCompressShift() {
+        return oopCompressShift;
+    }
+
+    public int oopReferenceSize() {
+        return oopReferenceSize;
+    }
+
+    public int pointerSize() {
+        return pointerSize;
+    }
+
+    public int oopAlignment() {
+        return oopAlignment;
+    }
+
+    public int oopAlignShift() {
+        return oopAlignShift;
+    }
+
+    public boolean isHubClassEntry(ClassEntry classEntry) {
+        return classEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
+    }
+
+    public int classLayoutAbbrevCode(ClassEntry classEntry) {
+        if (useHeapBase & isHubClassEntry(classEntry)) {
+            /*
+             * This layout adds special logic to remove tag bits from indirect pointers to this
+             * type.
+             */
+            return DwarfDebugInfo.DW_ABBREV_CODE_class_layout2;
+        }
+        return DwarfDebugInfo.DW_ABBREV_CODE_class_layout1;
     }
 }

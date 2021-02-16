@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,10 @@ import java.util.Objects;
 /**
  * The change text document notification's parameters.
  */
-public class DidChangeTextDocumentParams {
-
-    final JSONObject jsonData;
+public class DidChangeTextDocumentParams extends JSONBase {
 
     DidChangeTextDocumentParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -57,8 +55,9 @@ public class DidChangeTextDocumentParams {
 
     /**
      * The actual content changes. The content changes describe single state changes to the
-     * document. So if there are two content changes c1 and c2 for a document in state S then c1
-     * move the document to S' and c2 to S''.
+     * document. So if there are two content changes c1 (at array index 0) and c2 (at array index 1)
+     * for a document in state S then c1 moves the document from S to S' and c2 from S' to S''. So
+     * c1 is computed on the state S and c2 is computed on the state S'.
      */
     public List<TextDocumentContentChangeEvent> getContentChanges() {
         final JSONArray json = jsonData.getJSONArray("contentChanges");
@@ -102,8 +101,8 @@ public class DidChangeTextDocumentParams {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 41 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 41 * hash + Objects.hashCode(this.getContentChanges());
+        hash = 53 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 53 * hash + Objects.hashCode(this.getContentChanges());
         return hash;
     }
 

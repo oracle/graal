@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-
-import java.util.Map;
 
 /**
  * Allows the parsing and translating of a foreign regular expression into an ECMAScript regular
@@ -91,7 +92,7 @@ public interface RegexFlavorProcessor {
      * regular expression. The returned object responds to 'READ' messages on names which correspond
      * to the names of the flags as used in the language from which the flavor originates.
      */
-    TruffleObject getFlags();
+    AbstractRegexObject getFlags();
 
     /**
      * Returns {@code true} if the generated ECMAScript pattern is a Unicode pattern (matches

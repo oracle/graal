@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -81,15 +82,19 @@ public final class SpecializationData extends TemplateMethod {
     private final Set<SpecializationData> excludedBy = new LinkedHashSet<>();
     private String insertBeforeName;
     private SpecializationData insertBefore;
+    private boolean replaced;
     private boolean reachable;
     private boolean reachesFallback;
     private int index;
     private DSLExpression limitExpression;
-    private SpecializationData excludeCompanion;
+    private SpecializationData uncachedSpecialization;
     private final boolean reportPolymorphism;
+    private final boolean reportMegamorphism;
+
+    private boolean aotReachable;
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
-                    boolean reportPolymorphism) {
+                    boolean reportPolymorphism, boolean reportMegamorphism) {
         super(template);
         this.node = node;
         this.kind = kind;
@@ -97,13 +102,15 @@ public final class SpecializationData extends TemplateMethod {
         this.hasUnexpectedResultRewrite = hasUnexpectedResultRewrite;
         this.index = template.getNaturalOrder();
         this.reportPolymorphism = reportPolymorphism;
+        this.reportMegamorphism = reportMegamorphism;
     }
 
     public SpecializationData copy() {
-        SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite, reportPolymorphism);
+        SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite, reportPolymorphism, reportMegamorphism);
         copy.guards.addAll(guards);
         copy.caches = new ArrayList<>(caches);
         copy.assumptionExpressions = new ArrayList<>(assumptionExpressions);
+        copy.replaced = replaced;
         copy.replaces.addAll(replaces);
         copy.replacesNames.addAll(replacesNames);
         copy.excludedBy.addAll(excludedBy);
@@ -112,15 +119,81 @@ public final class SpecializationData extends TemplateMethod {
         copy.reachesFallback = reachesFallback;
         copy.index = index;
         copy.limitExpression = limitExpression;
+        copy.aotReachable = aotReachable;
         return copy;
     }
 
-    public void setExcludeCompanion(SpecializationData removeCompanion) {
-        this.excludeCompanion = removeCompanion;
+    public boolean isPrepareForAOT() {
+        return aotReachable;
     }
 
-    public SpecializationData getExcludeCompanion() {
-        return excludeCompanion;
+    public void setPrepareForAOT(boolean prepareForAOT) {
+        this.aotReachable = prepareForAOT;
+    }
+
+    public void setUncachedSpecialization(SpecializationData removeCompanion) {
+        this.uncachedSpecialization = removeCompanion;
+    }
+
+    public SpecializationData getUncachedSpecialization() {
+        return uncachedSpecialization;
+    }
+
+    public boolean needsVirtualFrame() {
+        if (getFrame() != null && ElementUtils.typeEquals(getFrame().getType(), types.VirtualFrame)) {
+            // not supported for frames
+            return true;
+        }
+        return false;
+    }
+
+    public boolean needsTruffleBoundary() {
+        for (CacheExpression cache : caches) {
+            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean needsPushEncapsulatingNode() {
+        for (CacheExpression cache : caches) {
+            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary() && cache.isCachedLibrary()) {
+                if (cache.getCachedLibrary().isPushEncapsulatingNode()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isAnyLibraryBoundInGuard() {
+        for (CacheExpression cache : getCaches()) {
+            if (!cache.isCachedLibrary()) {
+                continue;
+            }
+            if (isLibraryBoundInGuard(cache)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isLibraryBoundInGuard(CacheExpression cachedLibrary) {
+        if (!cachedLibrary.isCachedLibrary()) {
+            return false;
+        }
+        for (GuardExpression guard : getGuards()) {
+            if (guard.isLibraryAcceptsGuard()) {
+                continue;
+            }
+            for (CacheExpression cacheExpression : getBoundCaches(guard.getExpression(), true)) {
+                if (cacheExpression.getParameter().equals(cachedLibrary.getParameter())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public boolean isTrivialExpression(DSLExpression expression) {
@@ -158,72 +231,30 @@ public final class SpecializationData extends TemplateMethod {
         return reportPolymorphism;
     }
 
+    public boolean isReportMegamorphism() {
+        return reportMegamorphism;
+    }
+
     public boolean isReachesFallback() {
         return reachesFallback;
     }
 
-    public boolean isCacheBoundByGuard(CacheExpression cacheExpression) {
-        if (cacheExpression.isAlwaysInitialized()) {
-            return false;
-        }
-        VariableElement cachedVariable = cacheExpression.getParameter().getVariableElement();
-
-        for (GuardExpression expression : getGuards()) {
-            if (expression.getExpression().findBoundVariableElements().contains(cachedVariable)) {
-                return true;
-            }
-        }
-
-        for (AssumptionExpression expression : getAssumptionExpressions()) {
-            if (expression.getExpression().findBoundVariableElements().contains(cachedVariable)) {
-                return true;
-            }
-        }
-
-        // check all next binding caches if they are bound to a guard and use this cache variable
-        boolean found = false;
-        for (CacheExpression expression : getCaches()) {
-            if (cacheExpression == expression) {
-                found = true;
-            } else if (found) {
-                if (expression.getDefaultExpression().findBoundVariableElements().contains(cachedVariable)) {
-                    if (isCacheBoundByGuard(expression)) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
     public boolean isGuardBoundWithCache(GuardExpression guardExpression) {
-        List<CacheExpression> resolvedCaches = getCaches();
-        if (resolvedCaches.isEmpty()) {
-            return false;
-        }
-        Set<VariableElement> boundVars = guardExpression.getExpression().findBoundVariableElements();
-        if (boundVars.isEmpty()) {
-            return false;
-        }
-        for (CacheExpression cache : resolvedCaches) {
+        for (CacheExpression cache : getBoundCaches(guardExpression.getExpression(), false)) {
             if (cache.isAlwaysInitialized()) {
                 continue;
             }
-            VariableElement cacheVar = cache.getParameter().getVariableElement();
-            if (boundVars.contains(cacheVar)) {
-                // bound caches for caches are returned before
-                return true;
-            }
+            // bound caches for caches are returned before
+            return true;
         }
         return false;
     }
 
-    public Set<CacheExpression> getBoundCaches(DSLExpression guardExpression) {
-        return getBoundCachesImpl(new HashSet<>(), guardExpression);
+    public Set<CacheExpression> getBoundCaches(DSLExpression guardExpression, boolean transitiveCached) {
+        return getBoundCachesImpl(new HashSet<>(), guardExpression, transitiveCached);
     }
 
-    private Set<CacheExpression> getBoundCachesImpl(Set<DSLExpression> visitedExpressions, DSLExpression guardExpression) {
+    private Set<CacheExpression> getBoundCachesImpl(Set<DSLExpression> visitedExpressions, DSLExpression guardExpression, boolean transitiveCached) {
         List<CacheExpression> resolvedCaches = getCaches();
         if (resolvedCaches.isEmpty()) {
             return Collections.emptySet();
@@ -234,9 +265,10 @@ public final class SpecializationData extends TemplateMethod {
         for (CacheExpression cache : resolvedCaches) {
             VariableElement cacheVar = cache.getParameter().getVariableElement();
             if (boundVars.contains(cacheVar)) {
-                // TODO cycle detection needed here.
                 if (cache.getDefaultExpression() != null && !visitedExpressions.contains(cache.getDefaultExpression())) {
-                    foundCaches.addAll(getBoundCachesImpl(visitedExpressions, cache.getDefaultExpression()));
+                    if (transitiveCached || cache.isAlwaysInitialized()) {
+                        foundCaches.addAll(getBoundCachesImpl(visitedExpressions, cache.getDefaultExpression(), transitiveCached));
+                    }
                 }
                 foundCaches.add(cache);
             }
@@ -255,6 +287,7 @@ public final class SpecializationData extends TemplateMethod {
         final String[] resultValues = new String[]{
                         "get", ((TypeElement) ProcessorContext.getInstance().getTypes().TruffleLanguage_ContextReference.asElement()).getQualifiedName().toString(),
                         "get", ((TypeElement) ProcessorContext.getInstance().getTypes().TruffleLanguage_LanguageReference.asElement()).getQualifiedName().toString(),
+                        "get", ProcessorContext.getInstance().getTypeElement(Reference.class).getQualifiedName().toString(),
         };
 
         @Override
@@ -271,9 +304,22 @@ public final class SpecializationData extends TemplateMethod {
                 String searchClass = resultValues[i + 1];
                 if (searchMethod.equals(methodName) && className.equals(searchClass)) {
                     found = true;
+                    break;
                 }
             }
         }
+    }
+
+    public boolean isOnlyLanguageReferencesBound(DSLExpression expression) {
+        boolean onlyLanguageReferences = true;
+        Set<CacheExpression> boundCaches = getBoundCaches(expression, false);
+        for (CacheExpression bound : boundCaches) {
+            if (!bound.isCachedLanguage()) {
+                onlyLanguageReferences = false;
+                break;
+            }
+        }
+        return onlyLanguageReferences && expression.findBoundVariableElements().size() == boundCaches.size();
     }
 
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
@@ -290,7 +336,17 @@ public final class SpecializationData extends TemplateMethod {
         }
 
         if (transitive) {
-            for (CacheExpression cache : getBoundCaches(expression)) {
+            for (CacheExpression cache : getBoundCaches(expression, false)) {
+                if (cache.isAlwaysInitialized()) {
+                    if (cache.isWeakReferenceGet()) {
+                        // only cached values come from weak reference gets although
+                        // they are initialized every time
+                        continue;
+                    }
+                    if (isDynamicParameterBound(cache.getDefaultExpression(), true)) {
+                        return true;
+                    }
+                }
                 if ((cache.isCachedContext() || cache.isCachedLanguage()) && !cache.isReference()) {
                     return true;
                 }
@@ -338,7 +394,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
-        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true);
+        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true, false);
     }
 
     public Set<SpecializationData> getReplaces() {
@@ -353,8 +409,16 @@ public final class SpecializationData extends TemplateMethod {
         this.reachable = reachable;
     }
 
+    public void setReplaced(boolean replaced) {
+        this.replaced = replaced;
+    }
+
     public boolean isReachable() {
         return reachable;
+    }
+
+    public boolean isReplaced() {
+        return replaced;
     }
 
     public boolean isPolymorphic() {
@@ -466,6 +530,13 @@ public final class SpecializationData extends TemplateMethod {
         return index;
     }
 
+    public int getIntrospectionIndex() {
+        if (getMethod() == null) {
+            return -1;
+        }
+        return index - 1;
+    }
+
     public NodeData getNode() {
         return node;
     }
@@ -546,27 +617,41 @@ public final class SpecializationData extends TemplateMethod {
         return getMaximumNumberOfInstances() > 1;
     }
 
+    public boolean isExpressionBindsCache(DSLExpression expression, CacheExpression cache) {
+        for (CacheExpression otherCache : getBoundCaches(expression, true)) {
+            if (otherCache == cache) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isGuardBindsCache() {
         if (!getCaches().isEmpty() && !getGuards().isEmpty()) {
             for (GuardExpression guard : getGuards()) {
                 if (guard.hasErrors()) {
                     continue;
                 }
-                DSLExpression guardExpression = guard.getExpression();
-                Set<VariableElement> boundVariables = guardExpression.findBoundVariableElements();
-                if (isDynamicParameterBound(guardExpression, true)) {
-                    for (CacheExpression cache : getCaches()) {
-                        if (cache.isAlwaysInitialized()) {
-                            continue;
-                        } else if (!guard.isLibraryAcceptsGuard() && cache.isCachedLibrary()) {
-                            continue;
-                        }
-                        if (boundVariables.contains(cache.getParameter().getVariableElement())) {
-                            return true;
-                        }
+                if (isDynamicParameterBound(guard.getExpression(), true)) {
+                    if (isCacheParameterBound(guard)) {
+                        return true;
                     }
                 }
             }
+        }
+        return false;
+    }
+
+    private boolean isCacheParameterBound(GuardExpression guard) {
+        for (CacheExpression cache : getBoundCaches(guard.getExpression(), false)) {
+            if (cache.isAlwaysInitialized()) {
+                continue;
+            } else if (!guard.isLibraryAcceptsGuard() && cache.isCachedLibrary()) {
+                continue;
+            } else if (guard.isWeakReferenceGuard() && cache.isWeakReference()) {
+                continue;
+            }
+            return true;
         }
         return false;
     }
@@ -619,6 +704,23 @@ public final class SpecializationData extends TemplateMethod {
         if (prev.isGuardBindsCache()) {
             // may fallthrough due to limit
             return true;
+        }
+
+        if (node.isGenerateUncached() && !isReplaced() && prev.isReplaced()) {
+            // becomes reachable in the uncached node
+            return true;
+        }
+
+        /*
+         * Cached libraries have an implicit accepts guard and generate an uncached specialization
+         * which avoids any fallthrough except if there is a specialization that replaces it.
+         */
+        for (CacheExpression cache : prev.getCaches()) {
+            if (cache.isCachedLibrary()) {
+                if (getReplaces().contains(prev)) {
+                    return true;
+                }
+            }
         }
 
         Iterator<Parameter> currentSignature = getSignatureParameters().iterator();

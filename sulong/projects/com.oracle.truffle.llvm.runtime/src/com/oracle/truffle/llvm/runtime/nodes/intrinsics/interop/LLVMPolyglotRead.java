@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,15 +72,19 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
                 return toLLVM.executeWithTarget(rawValue);
             } catch (UnsupportedMessageException e) {
                 exception.enter();
-                throw new LLVMPolyglotException(foreignRead, "Can not read member '%s' of polyglot value.", name);
+                throw new LLVMPolyglotException(foreignRead, "Cannot read member '%s' of polyglot value.", name);
             } catch (UnknownIdentifierException e) {
                 exception.enter();
                 throw new LLVMPolyglotException(foreignRead, "Member '%s' does not exist.", e.getUnknownIdentifier());
             }
         }
 
+        /**
+         * @param value @NodeChild
+         * @param id @NodeChild
+         * @see LLVMPolyglotGetMember
+         */
         @Fallback
-        @SuppressWarnings("unused")
         public Object fallback(Object value, Object id) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
@@ -107,16 +111,20 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
                 return toLLVM.executeWithTarget(rawValue);
             } catch (UnsupportedMessageException e) {
                 exception.enter();
-                throw new LLVMPolyglotException(foreignRead, "Can not read from index %d of polyglot value.", id);
+                throw new LLVMPolyglotException(foreignRead, "Cannot read from index %d of polyglot value.", id);
             } catch (InvalidArrayIndexException e) {
                 exception.enter();
                 throw new LLVMPolyglotException(foreignRead, "Index %d does not exist.", id);
             }
         }
 
+        /**
+         * @param value @NodeChild
+         * @param id @NodeChild
+         * @see LLVMPolyglotGetArrayElement
+         */
         @Fallback
         @TruffleBoundary
-        @SuppressWarnings("unused")
         public Object fallback(Object value, Object id) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }

@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import org.graalvm.collections.EconomicMap;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.ConstantFieldInfo;
@@ -37,12 +38,12 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class TruffleConstantFieldProvider implements ConstantFieldProvider {
     private final ConstantFieldProvider graalConstantFieldProvider;
     private final MetaAccessProvider metaAccess;
-    private final EconomicMap<ResolvedJavaField, ConstantFieldInfo> cachedConstantFieldInfo;
+    private final ConcurrentHashMap<ResolvedJavaField, ConstantFieldInfo> cachedConstantFieldInfo;
 
     public TruffleConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess) {
         this.graalConstantFieldProvider = graalConstantFieldProvider;
         this.metaAccess = metaAccess;
-        this.cachedConstantFieldInfo = EconomicMap.create();
+        this.cachedConstantFieldInfo = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -91,12 +92,7 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
     }
 
     private ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        ConstantFieldInfo info = cachedConstantFieldInfo.get(field);
-        if (info == null) {
-            info = TruffleCompilerRuntime.getRuntime().getConstantFieldInfo(field);
-            cachedConstantFieldInfo.put(field, info);
-        }
-        return info;
+        return cachedConstantFieldInfo.computeIfAbsent(field, f -> TruffleCompilerRuntime.getRuntime().getConstantFieldInfo(f));
     }
 
     private <T> T readConstantFieldFast(ResolvedJavaField field, ConstantFieldTool<T> tool) {

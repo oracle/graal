@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,6 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.word.LocationIdentity;
@@ -80,7 +79,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @OptionalInput(State) FrameState stateDuring;
     protected int bci;
     protected boolean polymorphic;
-    protected boolean useForInlining;
+    protected InlineControl inlineControl;
     protected final LocationIdentity identity;
 
     public InvokeNode(CallTargetNode callTarget, int bci) {
@@ -100,7 +99,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.callTarget = callTarget;
         this.bci = bci;
         this.polymorphic = false;
-        this.useForInlining = true;
+        this.inlineControl = InlineControl.Normal;
         this.identity = identity;
     }
 
@@ -109,7 +108,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.callTarget = invoke.callTarget;
         this.bci = invoke.bci;
         this.polymorphic = invoke.polymorphic;
-        this.useForInlining = invoke.useForInlining;
+        this.inlineControl = invoke.inlineControl;
         this.identity = invoke.getKilledLocationIdentity();
     }
 
@@ -144,13 +143,13 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public boolean useForInlining() {
-        return useForInlining;
+    public void setInlineControl(InlineControl control) {
+        this.inlineControl = control;
     }
 
     @Override
-    public void setUseForInlining(boolean value) {
-        this.useForInlining = value;
+    public InlineControl getInlineControl() {
+        return inlineControl;
     }
 
     @Override
@@ -180,11 +179,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return identity;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

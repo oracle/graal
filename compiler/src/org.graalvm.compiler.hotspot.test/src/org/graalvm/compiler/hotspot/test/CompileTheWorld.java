@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,26 +60,29 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.compiler.bytecode.Bytecodes;
-import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.ReflectionOptionDescriptors;
 import org.graalvm.compiler.debug.GlobalMetrics;
@@ -92,6 +95,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.test.CompileTheWorld.LibGraalParams.OptionsBuffer;
 import org.graalvm.compiler.hotspot.test.CompileTheWorld.LibGraalParams.StackTraceBuffer;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
@@ -99,8 +103,8 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.LibGraalIsolate;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.util.OptionsEncoder;
 
@@ -112,6 +116,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import sun.misc.Unsafe;
@@ -202,16 +207,18 @@ public final class CompileTheWorld {
 
     // Counters
     private int classFileCounter = 0;
-    private AtomicLong compiledMethodsCounter = new AtomicLong();
     private AtomicLong compileTime = new AtomicLong();
     private AtomicLong memoryUsed = new AtomicLong();
-
-    private boolean verbose;
+    private Map<ResolvedJavaMethod, Long> compileTimes = new ConcurrentHashMap<>();
+    private Map<ResolvedJavaMethod, Integer> hugeMethods = new HashMap<>();
 
     /**
-     * Signal that the threads should start compiling in multithreaded mode.
+     * Per-isolate values used to control if metrics should be printed and reset as part of the next
+     * CTW compilation in the isolate.
      */
-    private boolean running;
+    final Map<Long, AtomicBoolean> printMetrics = new HashMap<>();
+
+    private boolean verbose;
 
     private ThreadPoolExecutor threadPool;
 
@@ -232,15 +239,15 @@ public final class CompileTheWorld {
     static class LibGraalParams implements AutoCloseable {
 
         static {
-            LibGraal.registerNativeMethods(HotSpotJVMCIRuntime.runtime(), CompileTheWorld.class);
+            LibGraal.registerNativeMethods(CompileTheWorld.class);
         }
 
         /**
          * Native memory containing {@linkplain OptionsEncoder encoded} {@link OptionValues}.
          */
         static class OptionsBuffer {
-            private long address;
-            final int size;
+            private Long address;
+            final byte[] encoded;
             final int hash;
 
             OptionsBuffer(OptionValues options) {
@@ -251,25 +258,22 @@ public final class CompileTheWorld {
                     Object value = cursor.getValue();
                     map.put(key.getName(), value);
                 }
-
-                byte[] encoded = OptionsEncoder.encode(map);
-                size = encoded.length;
+                encoded = OptionsEncoder.encode(map);
                 hash = Arrays.hashCode(encoded);
-                address = UNSAFE.allocateMemory(encoded.length);
-                UNSAFE.copyMemory(encoded, ARRAY_BYTE_BASE_OFFSET, null, address, size);
             }
 
             long getAddress() {
-                if (address == 0) {
-                    throw new IllegalStateException();
+                if (address == null) {
+                    address = UNSAFE.allocateMemory(encoded.length);
+                    UNSAFE.copyMemory(encoded, ARRAY_BYTE_BASE_OFFSET, null, address, encoded.length);
                 }
                 return address;
             }
 
             void free() {
-                if (address != 0) {
+                if (address != null) {
                     UNSAFE.freeMemory(address);
-                    address = 0;
+                    address = null;
                 }
             }
         }
@@ -280,29 +284,43 @@ public final class CompileTheWorld {
          */
         static class StackTraceBuffer {
             final int size;
-            private long address;
+            private Long address;
 
             StackTraceBuffer(int size) {
                 this.size = size;
-                address = UNSAFE.allocateMemory(size);
             }
 
             void free() {
-                if (address != 0L) {
+                if (address != null) {
                     UNSAFE.freeMemory(address);
-                    address = 0L;
+                    address = null;
                 }
             }
 
             long getAddress() {
-                if (address == 0) {
-                    throw new IllegalStateException();
+                if (address == null) {
+                    address = UNSAFE.allocateMemory(size);
                 }
                 return address;
             }
         }
 
-        final OptionsBuffer options;
+        private final OptionValues inputOptions;
+        private final List<OptionsBuffer> optionsBuffers = new ArrayList<>();
+
+        /**
+         * Gets the isolate-specific buffer used to pass options to an isolate.
+         */
+        OptionsBuffer getOptions() {
+            return LibGraalScope.current().getIsolate().getSingleton(OptionsBuffer.class, () -> {
+                OptionsBuffer optionsBuffer = new OptionsBuffer(inputOptions);
+                synchronized (optionsBuffers) {
+                    optionsBuffers.add(optionsBuffer);
+                }
+                return optionsBuffer;
+            });
+
+        }
 
         private final List<StackTraceBuffer> stackTraceBuffers = new ArrayList<>();
 
@@ -324,13 +342,15 @@ public final class CompileTheWorld {
             }
         };
 
-        LibGraalParams(OptionValues options) {
-            this.options = new OptionsBuffer(options);
+        LibGraalParams(OptionValues inputOptions) {
+            this.inputOptions = inputOptions;
         }
 
         @Override
         public void close() {
-            options.free();
+            for (OptionsBuffer options : optionsBuffers) {
+                options.free();
+            }
             synchronized (stackTraceBuffers) {
                 for (StackTraceBuffer buffer : stackTraceBuffers) {
                     buffer.free();
@@ -667,6 +687,40 @@ public final class CompileTheWorld {
         }
     }
 
+    static final class CTWThread extends Thread {
+        private final LibGraalParams libgraal;
+
+        CTWThread(Runnable r, LibGraalParams libgraal) {
+            super(r);
+            this.libgraal = libgraal;
+            setName("CTWThread-" + getId());
+            setPriority(Thread.MAX_PRIORITY);
+            setDaemon(true);
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public void run() {
+            setContextClassLoader(getClass().getClassLoader());
+            try (LibGraalScope scope = libgraal == null ? null : new LibGraalScope()) {
+                super.run();
+            }
+        }
+    }
+
+    static final class CTWThreadFactory implements ThreadFactory {
+        private final LibGraalParams libgraal;
+
+        CTWThreadFactory(LibGraalParams libgraal) {
+            this.libgraal = libgraal;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            return new CTWThread(r, libgraal);
+        }
+    }
+
     /**
      * Compiles all methods in all classes in a given class path.
      *
@@ -676,7 +730,6 @@ public final class CompileTheWorld {
     @SuppressWarnings("try")
     private void compile(String classPath, LibGraalParams libgraal) throws IOException {
         final String[] entries = classPath.split(File.pathSeparator);
-        long start = System.nanoTime();
         Map<Thread, StackTraceElement[]> initialThreads = Thread.getAllStackTraces();
 
         if (libgraal == null) {
@@ -695,25 +748,19 @@ public final class CompileTheWorld {
             }
         }
 
-        /*
-         * Always use a thread pool, even for single threaded mode since it simplifies the use of
-         * DebugValueThreadFilter to filter on the thread names.
-         */
-        int threadCount = 1;
-        if (Options.MultiThreaded.getValue(harnessOptions)) {
-            threadCount = Options.Threads.getValue(harnessOptions);
-            if (threadCount == 0) {
-                threadCount = Runtime.getRuntime().availableProcessors();
-            }
-        } else {
-            running = true;
+        int startAtClass = startAt;
+        int stopAtClass = stopAt;
+        if (startAtClass >= stopAtClass) {
+            throw new IllegalArgumentException(String.format("StartAt (%d) must be less than StopAt (%d)", startAtClass, stopAtClass));
         }
 
-        threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new CompilerThreadFactory("CompileTheWorld"));
+        int startAtCompile = Options.StartAtCompile.getValue(harnessOptions);
+        int stopAtCompile = Options.StopAtCompile.getValue(harnessOptions);
+        if (startAtCompile >= stopAtCompile) {
+            throw new IllegalArgumentException(String.format("StartAtCompile (%d) must be less than StopAtCompile (%d)", startAtCompile, stopAtCompile));
+        }
 
-        int compileStartAt = startAt;
-        int compileStopAt = stopAt;
-        int compileStep = 1;
+        int classStep = 1;
         if (maxClasses != Integer.MAX_VALUE) {
             int totalClassFileCount = 0;
             for (String entry : entries) {
@@ -725,13 +772,166 @@ public final class CompileTheWorld {
             }
 
             int lastClassFile = totalClassFileCount - 1;
-            compileStartAt = Math.min(startAt, lastClassFile);
-            compileStopAt = Math.min(stopAt, lastClassFile);
-            int range = compileStopAt - compileStartAt + 1;
+            startAtClass = Math.min(startAt, lastClassFile);
+            stopAtClass = Math.min(stopAt, lastClassFile);
+            int range = stopAtClass - startAtClass + 1;
             if (maxClasses < range) {
-                compileStep = range / maxClasses;
+                classStep = range / maxClasses;
             }
         }
+
+        TTY.println("CompileTheWorld : Gathering compilations ...");
+        Map<HotSpotResolvedJavaMethod, Integer> toBeCompiled = gatherCompilations(entries, startAtClass, stopAtClass, classStep);
+
+        /*
+         * Always use a thread pool, even for single threaded mode since it simplifies the use of
+         * DebugValueThreadFilter to filter on the thread names.
+         */
+        int threadCount = 1;
+        if (Options.MultiThreaded.getValue(harnessOptions)) {
+            threadCount = Options.Threads.getValue(harnessOptions);
+            if (threadCount == 0) {
+                threadCount = Runtime.getRuntime().availableProcessors();
+            }
+            TTY.println("CompileTheWorld : Using %d threads", threadCount);
+        }
+
+        threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new CTWThreadFactory(libgraal));
+        TTY.println("CompileTheWorld : Starting compilations ...");
+        long start = System.nanoTime();
+        int compilationNum = 0;
+        int allCompiles = Math.min(toBeCompiled.size(), stopAtCompile) - Math.max(0, startAtCompile);
+        int maxCompiles = Options.MaxCompiles.getValue(harnessOptions);
+        float selector = Math.max(0, startAtCompile);
+        float selectorStep = maxCompiles < allCompiles ? (float) allCompiles / maxCompiles : 1.0f;
+        int repeat = Options.Repeat.getValue(harnessOptions);
+        long taskCount = 0;
+        for (Map.Entry<HotSpotResolvedJavaMethod, Integer> e : toBeCompiled.entrySet()) {
+            if (compilationNum >= startAtCompile && compilationNum < stopAtCompile) {
+                if (Math.round(selector) == compilationNum) {
+                    for (int i = 0; i < repeat; i++) {
+                        taskCount++;
+                        threadPool.submit(new Runnable() {
+                            @Override
+                            public void run() {
+                                compileMethod(e.getKey(), e.getValue(), libgraal);
+                            }
+                        });
+                    }
+                    selector += selectorStep;
+                }
+            }
+            compilationNum++;
+        }
+
+        int wakeups = 0;
+        long lastCompletedTaskCount = 0;
+        int statsInterval = Options.StatsInterval.getValue(harnessOptions);
+        long completedTaskCount;
+        do {
+            completedTaskCount = threadPool.getCompletedTaskCount();
+            if (completedTaskCount != 0 && (wakeups % statsInterval == 0 || completedTaskCount == taskCount)) {
+                long compilationsInInterval = completedTaskCount - lastCompletedTaskCount;
+                double rate = (double) compilationsInInterval / statsInterval;
+                long percent = completedTaskCount * 100 / taskCount;
+                TTY.println("CompileTheWorld : [%2d%%, %.1f compiles/s] %d of %d compilations completed, %d in last interval",
+                                percent, rate,
+                                completedTaskCount, taskCount,
+                                compilationsInInterval);
+                if (libgraal != null) {
+                    armPrintMetrics();
+                }
+                lastCompletedTaskCount = completedTaskCount;
+            }
+            try {
+                threadPool.awaitTermination(1, TimeUnit.SECONDS);
+                wakeups++;
+            } catch (InterruptedException e) {
+
+            }
+        } while (completedTaskCount != taskCount);
+        threadPool.shutdown();
+        threadPool = null;
+
+        long elapsedTime = System.nanoTime() - start;
+
+        println();
+        int compiledClasses = classFileCounter > startAtClass ? classFileCounter - startAtClass : 0;
+        int compiledBytecodes = compileTimes.keySet().stream().collect(Collectors.summingInt(ResolvedJavaMethod::getCodeSize));
+        int compiledMethods = compileTimes.size();
+        long elapsedTimeSeconds = nanoToMillis(compileTime.get()) / 1_000;
+        double rateInMethods = (double) compiledMethods / elapsedTimeSeconds;
+        double rateInBytecodes = (double) compiledBytecodes / elapsedTimeSeconds;
+        TTY.println("CompileTheWorld : ======================== Done ======================");
+        TTY.println("CompileTheWorld :         Compiled classes: %,d", compiledClasses);
+        TTY.println("CompileTheWorld :         Compiled methods: %,d [%,d bytecodes]", compiledMethods, compiledBytecodes);
+        TTY.println("CompileTheWorld :             Elapsed time: %,d ms", nanoToMillis(elapsedTime));
+        TTY.println("CompileTheWorld :             Compile time: %,d ms", nanoToMillis(compileTime.get()));
+        TTY.println("CompileTheWorld :  Compilation rate/thread: %,.1f methods/sec, %,.0f bytecodes/sec", rateInMethods, rateInBytecodes);
+        TTY.println("CompileTheWorld : HotSpot heap memory used: %,.3f MB", (double) memoryUsed.get() / 1_000_000);
+        TTY.println("CompileTheWorld :     Huge methods skipped: %,d", hugeMethods.size());
+        int limit = Options.MetricsReportLimit.getValue(harnessOptions);
+        if (limit > 0) {
+            TTY.println("Longest compile times:");
+            compileTimes.entrySet().stream().sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue())).limit(limit).forEach(e -> {
+                long time = nanoToMillis(e.getValue());
+                ResolvedJavaMethod method = e.getKey();
+                TTY.println("  %,10d ms   %s [bytecodes: %d]", time, method.format("%H.%n(%p)"), method.getCodeSize());
+            });
+            TTY.println("Largest methods skipped due to bytecode size exceeding HugeMethodLimit (%d):", getHugeMethodLimit(compiler.getGraalRuntime().getVMConfig()));
+            hugeMethods.entrySet().stream().sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue())).limit(limit).forEach(e -> {
+                ResolvedJavaMethod method = e.getKey();
+                TTY.println("  %,10d      %s", e.getValue(), method.format("%H.%n(%p)"), method.getCodeSize());
+            });
+        }
+
+        GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
+        EconomicMap<MetricKey, Long> map = metricValues.asKeyValueMap();
+        Long compiledAndInstalledBytecodes = map.get(CompiledAndInstalledBytecodes);
+        Long compilationTime = map.get(CompilationTime);
+        if (compiledAndInstalledBytecodes != null && compilationTime != null) {
+            TTY.println("CompileTheWorld : Aggregate compile speed %d bytecodes per second (%d / %d)", (int) (compiledAndInstalledBytecodes / (compilationTime / 1000000000.0)),
+                            compiledAndInstalledBytecodes, compilationTime);
+        }
+
+        metricValues.print(compilerOptions);
+        metricValues.clear();
+
+        // Apart from the main thread, there should be only be daemon threads
+        // alive now. If not, then a class initializer has probably started
+        // a thread that could cause a deadlock while trying to exit the VM.
+        // One known example of this is sun.tools.jconsole.OutputViewer which
+        // spawns threads to redirect sysout and syserr. To help debug such
+        // scenarios, the stacks of potentially problematic threads are dumped.
+        Map<Thread, StackTraceElement[]> suspiciousThreads = new HashMap<>();
+        for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
+            Thread thread = e.getKey();
+            if (thread != Thread.currentThread() && !initialThreads.containsKey(thread) && !thread.isDaemon() && thread.isAlive()) {
+                suspiciousThreads.put(thread, e.getValue());
+            }
+        }
+        if (!suspiciousThreads.isEmpty()) {
+            TTY.println("--- Non-daemon threads started during CTW ---");
+            for (Map.Entry<Thread, StackTraceElement[]> e : suspiciousThreads.entrySet()) {
+                Thread thread = e.getKey();
+                if (thread.isAlive()) {
+                    TTY.println(thread.toString() + " " + thread.getState());
+                    for (StackTraceElement ste : e.getValue()) {
+                        TTY.println("\tat " + ste);
+                    }
+                }
+            }
+            TTY.println("---------------------------------------------");
+        }
+    }
+
+    /**
+     * Gets the methods to be compiled.
+     *
+     * @return a linked map from methods to the class id declaring the method
+     */
+    private LinkedHashMap<HotSpotResolvedJavaMethod, Integer> gatherCompilations(final String[] entries, int compileStartAt, int compileStopAt, int compileStep) throws IOException {
+        LinkedHashMap<HotSpotResolvedJavaMethod, Integer> toBeCompiled = new LinkedHashMap<>();
 
         for (int i = 0; i < entries.length; i++) {
             final String entry = entries[i];
@@ -811,20 +1011,20 @@ public final class CompileTheWorld {
                             for (Constructor<?> constructor : javaClass.getDeclaredConstructors()) {
                                 HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(constructor);
                                 if (canBeCompiled(javaMethod, constructor.getModifiers())) {
-                                    compileMethod(javaMethod, libgraal);
+                                    addCompilation(javaMethod, toBeCompiled);
                                 }
                             }
                             for (Method method : javaClass.getDeclaredMethods()) {
                                 HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
                                 if (canBeCompiled(javaMethod, method.getModifiers())) {
-                                    compileMethod(javaMethod, libgraal);
+                                    addCompilation(javaMethod, toBeCompiled);
                                 }
                             }
 
                             // Also compile the class initializer if it exists
                             HotSpotResolvedJavaMethod clinit = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaType(javaClass).getClassInitializer();
                             if (clinit != null && canBeCompiled(clinit, clinit.getModifiers())) {
-                                compileMethod(clinit, libgraal);
+                                addCompilation(clinit, toBeCompiled);
                             }
                             println("CompileTheWorld (%d) : %s (%d us)", classFileCounter, className, (System.nanoTime() - start0) / 1000);
                         }
@@ -837,110 +1037,42 @@ public final class CompileTheWorld {
                 }
             }
         }
+        return toBeCompiled;
+    }
 
-        if (!running) {
-            startThreads();
-        }
-        int wakeups = 0;
-        long lastCompletedTaskCount = 0;
-        for (long completedTaskCount = threadPool.getCompletedTaskCount(); completedTaskCount != threadPool.getTaskCount(); completedTaskCount = threadPool.getCompletedTaskCount()) {
-            if (wakeups % 15 == 0) {
-                TTY.printf("CompileTheWorld : Waiting for %d compiles, just completed %d compiles%n", threadPool.getTaskCount() - completedTaskCount, completedTaskCount - lastCompletedTaskCount);
-                lastCompletedTaskCount = completedTaskCount;
+    static long nanoToMillis(long ns) {
+        return ns / 1_000_000;
+    }
+
+    /**
+     * Requests that the next compilation in each libgraal isolate prints and resets global metrics.
+     */
+    private void armPrintMetrics() {
+        synchronized (printMetrics) {
+            for (AtomicBoolean value : printMetrics.values()) {
+                value.set(true);
             }
-            try {
-                threadPool.awaitTermination(1, TimeUnit.SECONDS);
-                wakeups++;
-            } catch (InterruptedException e) {
-            }
-        }
-        threadPool.shutdown();
-        threadPool = null;
-
-        long elapsedTime = System.nanoTime() - start;
-
-        println();
-        int compiledClasses = classFileCounter > compileStartAt ? classFileCounter - compileStartAt : 0;
-        if (Options.MultiThreaded.getValue(harnessOptions)) {
-            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", compiledClasses, compiledMethodsCounter.get(), elapsedTime,
-                            compileTime.get() / 1000000, memoryUsed.get());
-        } else {
-            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", compiledClasses, compiledMethodsCounter.get(), compileTime.get(), memoryUsed.get());
-        }
-
-        GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
-        EconomicMap<MetricKey, Long> map = metricValues.asKeyValueMap();
-        Long compiledAndInstalledBytecodes = map.get(CompiledAndInstalledBytecodes);
-        Long compilationTime = map.get(CompilationTime);
-        if (compiledAndInstalledBytecodes != null && compilationTime != null) {
-            TTY.println("CompileTheWorld : Aggregate compile speed %d bytecodes per second (%d / %d)", (int) (compiledAndInstalledBytecodes / (compilationTime / 1000000000.0)),
-                            compiledAndInstalledBytecodes, compilationTime);
-        }
-
-        metricValues.print(compilerOptions);
-        metricValues.clear();
-
-        // Apart from the main thread, there should be only be daemon threads
-        // alive now. If not, then a class initializer has probably started
-        // a thread that could cause a deadlock while trying to exit the VM.
-        // One known example of this is sun.tools.jconsole.OutputViewer which
-        // spawns threads to redirect sysout and syserr. To help debug such
-        // scenarios, the stacks of potentially problematic threads are dumped.
-        Map<Thread, StackTraceElement[]> suspiciousThreads = new HashMap<>();
-        for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
-            Thread thread = e.getKey();
-            if (thread != Thread.currentThread() && !initialThreads.containsKey(thread) && !thread.isDaemon() && thread.isAlive()) {
-                suspiciousThreads.put(thread, e.getValue());
-            }
-        }
-        if (!suspiciousThreads.isEmpty()) {
-            TTY.println("--- Non-daemon threads started during CTW ---");
-            for (Map.Entry<Thread, StackTraceElement[]> e : suspiciousThreads.entrySet()) {
-                Thread thread = e.getKey();
-                if (thread.isAlive()) {
-                    TTY.println(thread.toString() + " " + thread.getState());
-                    for (StackTraceElement ste : e.getValue()) {
-                        TTY.println("\tat " + ste);
-                    }
-                }
-            }
-            TTY.println("---------------------------------------------");
         }
     }
 
-    private synchronized void startThreads() {
-        running = true;
-        // Wake up any waiting threads
-        notifyAll();
-    }
-
-    private synchronized void waitToRun() {
-        while (!running) {
-            try {
-                wait();
-            } catch (InterruptedException e) {
-            }
+    /**
+     * Determines if the next compilation in {@code isolate} should print and reset global metrics.
+     */
+    private boolean shouldPrintMetrics(LibGraalIsolate isolate) {
+        synchronized (printMetrics) {
+            return printMetrics.computeIfAbsent(isolate.getId(), id -> new AtomicBoolean()).getAndSet(false);
         }
     }
 
     @SuppressWarnings("try")
-    private void compileMethod(HotSpotResolvedJavaMethod method, LibGraalParams libgraal) throws InterruptedException, ExecutionException {
+    private void addCompilation(HotSpotResolvedJavaMethod method, Map<HotSpotResolvedJavaMethod, Integer> toBeCompiled) {
         if (methodFilter != null && !methodFilter.matches(method)) {
             return;
         }
         if (excludeMethodFilter != null && excludeMethodFilter.matches(method)) {
             return;
         }
-        Future<?> task = threadPool.submit(new Runnable() {
-            @Override
-            public void run() {
-                waitToRun();
-                compileMethod(method, classFileCounter, libgraal);
-            }
-        });
-        if (threadPool.getCorePoolSize() == 1) {
-            task.get();
-        }
+        toBeCompiled.put(method, classFileCounter);
     }
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
@@ -953,6 +1085,7 @@ public final class CompileTheWorld {
                     long methodHandle,
                     boolean useProfilingInfo,
                     boolean installAsDefault,
+                    boolean printMetrics,
                     long optionsAddress,
                     int optionsSize,
                     int optionsHash,
@@ -972,33 +1105,32 @@ public final class CompileTheWorld {
             boolean installAsDefault = false;
             HotSpotInstalledCode installedCode;
             if (libgraal != null) {
-                HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-                try (LibGraalScope scope = new LibGraalScope(runtime)) {
-                    long methodHandle = LibGraal.translate(runtime, method);
-                    long isolateThread = LibGraalScope.getIsolateThread();
+                long methodHandle = LibGraal.translate(method);
+                long isolateThread = LibGraalScope.getIsolateThread();
 
-                    StackTraceBuffer stackTraceBuffer = libgraal.getStackTraceBuffer();
+                StackTraceBuffer stackTraceBuffer = libgraal.getStackTraceBuffer();
 
-                    long stackTraceBufferAddress = stackTraceBuffer.getAddress();
-                    long installedCodeHandle = compileMethodInLibgraal(isolateThread,
-                                    methodHandle,
-                                    useProfilingInfo,
-                                    installAsDefault,
-                                    libgraal.options.getAddress(),
-                                    libgraal.options.size,
-                                    libgraal.options.hash,
-                                    stackTraceBufferAddress,
-                                    stackTraceBuffer.size);
+                long stackTraceBufferAddress = stackTraceBuffer.getAddress();
+                OptionsBuffer options = libgraal.getOptions();
+                long installedCodeHandle = compileMethodInLibgraal(isolateThread,
+                                methodHandle,
+                                useProfilingInfo,
+                                installAsDefault,
+                                shouldPrintMetrics(LibGraalScope.current().getIsolate()),
+                                options.getAddress(),
+                                options.encoded.length,
+                                options.hash,
+                                stackTraceBufferAddress,
+                                stackTraceBuffer.size);
 
-                    installedCode = LibGraal.unhand(runtime, HotSpotInstalledCode.class, installedCodeHandle);
-                    if (installedCode == null) {
-                        int length = UNSAFE.getInt(stackTraceBufferAddress);
-                        byte[] data = new byte[length];
-                        UNSAFE.copyMemory(null, stackTraceBufferAddress + Integer.BYTES, data, ARRAY_BYTE_BASE_OFFSET, length);
-                        String stackTrace = new String(data).trim();
-                        println(true, String.format("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r")));
-                        println(true, stackTrace);
-                    }
+                installedCode = LibGraal.unhand(HotSpotInstalledCode.class, installedCodeHandle);
+                if (installedCode == null) {
+                    int length = UNSAFE.getInt(stackTraceBufferAddress);
+                    byte[] data = new byte[length];
+                    UNSAFE.copyMemory(null, stackTraceBufferAddress + Integer.BYTES, data, ARRAY_BYTE_BASE_OFFSET, length);
+                    String stackTrace = new String(data).trim();
+                    println(true, String.format("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r")));
+                    println(true, stackTrace);
                 }
             } else {
                 int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
@@ -1014,8 +1146,9 @@ public final class CompileTheWorld {
             }
 
             memoryUsed.getAndAdd(getCurrentThreadAllocatedBytes() - allocatedAtStart);
-            compileTime.getAndAdd(System.nanoTime() - start);
-            compiledMethodsCounter.incrementAndGet();
+            long duration = System.nanoTime() - start;
+            compileTime.getAndAdd(duration);
+            compileTimes.put(method, duration);
         } catch (Throwable t) {
             // Catch everything and print a message
             println("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r"));
@@ -1033,11 +1166,13 @@ public final class CompileTheWorld {
             return false;
         }
         GraalHotSpotVMConfig c = compiler.getGraalRuntime().getVMConfig();
-        if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > c.hugeMethodLimit) {
+        int hugeMethodLimit = getHugeMethodLimit(c);
+        if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > hugeMethodLimit) {
             println(verbose || methodFilter != null,
-                            String.format("CompileTheWorld (%d) : Skipping huge method %s (use -XX:-DontCompileHugeMethods or -XX:HugeMethodLimit=%d to include it)", classFileCounter,
+                            String.format("CompileTheWorld (%d) : Skipping huge method %s (use -XX:-DontCompileHugeMethods or -DCompileTheWorld.HugeMethodLimit=%d to include it)", classFileCounter,
                                             javaMethod.format("%H.%n(%p):%r"),
                                             javaMethod.getCodeSize()));
+            hugeMethods.put(javaMethod, javaMethod.getCodeSize());
             return false;
         }
         // Allow use of -XX:CompileCommand=dontinline to exclude problematic methods
@@ -1053,6 +1188,14 @@ public final class CompileTheWorld {
         return true;
     }
 
+    private int getHugeMethodLimit(GraalHotSpotVMConfig c) {
+        if (Options.HugeMethodLimit.hasBeenSet(harnessOptions)) {
+            return Options.HugeMethodLimit.getValue(harnessOptions);
+        } else {
+            return c.hugeMethodLimit;
+        }
+    }
+
     static class Options {
         public static final OptionKey<Boolean> Help = new OptionKey<>(false);
         public static final OptionKey<String> Classpath = new OptionKey<>(CompileTheWorld.SUN_BOOT_CLASS_PATH);
@@ -1063,15 +1206,22 @@ public final class CompileTheWorld {
          */
         public static final OptionKey<String> LimitModules = new OptionKey<>("~jdk.internal.vm.compiler");
         public static final OptionKey<Integer> Iterations = new OptionKey<>(1);
+        public static final OptionKey<Integer> Repeat = new OptionKey<>(1);
         public static final OptionKey<String> MethodFilter = new OptionKey<>(null);
+        public static final OptionKey<Integer> HugeMethodLimit = new OptionKey<>(8000);
         public static final OptionKey<String> ExcludeMethodFilter = new OptionKey<>(null);
         public static final OptionKey<Integer> StartAt = new OptionKey<>(1);
         public static final OptionKey<Integer> StopAt = new OptionKey<>(Integer.MAX_VALUE);
         public static final OptionKey<Integer> MaxClasses = new OptionKey<>(Integer.MAX_VALUE);
+        public static final OptionKey<Integer> MaxCompiles = new OptionKey<>(Integer.MAX_VALUE);
+        public static final OptionKey<Integer> StartAtCompile = new OptionKey<>(0);
+        public static final OptionKey<Integer> StopAtCompile = new OptionKey<>(Integer.MAX_VALUE);
         public static final OptionKey<String> Config = new OptionKey<>(null);
         public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(false);
+        public static final OptionKey<Integer> StatsInterval = new OptionKey<>(15);
+        public static final OptionKey<Integer> MetricsReportLimit = new OptionKey<>(10);
         public static final OptionKey<Integer> Threads = new OptionKey<>(0);
-        public static final OptionKey<Boolean> InvalidateInstalledCode = new OptionKey<>(false);
+        public static final OptionKey<Boolean> InvalidateInstalledCode = new OptionKey<>(true);
 
         // @formatter:off
         static final ReflectionOptionDescriptors DESCRIPTORS = new ReflectionOptionDescriptors(Options.class,
@@ -1081,17 +1231,24 @@ public final class CompileTheWorld {
                    "LimitModules", "Comma separated list of module names to which compilation should be limited. " +
                                    "Module names can be prefixed with \"~\" to exclude the named module.",
                      "Iterations", "The number of iterations to perform.",
+                         "Repeat", "The number of times to compile each method.",
                    "MethodFilter", "Only compile methods matching this filter.",
+                "HugeMethodLimit", "Don't compile methods larger than this (default: value of -XX:HugeMethodLimit).",
             "ExcludeMethodFilter", "Exclude methods matching this filter from compilation.",
                         "StartAt", "First class to consider for compilation (default = 1).",
                          "StopAt", "Last class to consider for compilation (default = <number of classes>).",
                      "MaxClasses", "Maximum number of classes to process (default = <number of classes>). " +
                                    "Ignored if less than (StopAt - StartAt + 1).",
+                    "MaxCompiles", "Maximum number of compilations to perform.",
+                 "StartAtCompile", "Skip all compilations before this value.",
+                  "StopAtCompile", "Skip all compilations as of this value.",
                          "Config", "Option values to use during compile the world compilations. For example, " +
                                    "to disable partial escape analysis and print compilations specify " +
                                    "'PartialEscapeAnalysis=false PrintCompilation=true'. " +
                                    "Unless explicitly enabled with 'Inline=true' here, inlining is disabled.",
                   "MultiThreaded", "Run using multiple threads for compilation.",
+                  "StatsInterval", "Report progress stats every N seconds.",
+             "MetricsReportLimit", "Max number of entries to show in per-metric reports.",
                         "Threads", "Number of threads to use for multithreaded execution. Defaults to Runtime.getRuntime().availableProcessors().",
         "InvalidateInstalledCode", "Invalidate the generated code so the code cache doesn't fill up.");
         // @formatter:on

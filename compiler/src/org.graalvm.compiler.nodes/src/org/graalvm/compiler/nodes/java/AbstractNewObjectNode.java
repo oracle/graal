@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.code.MemoryBarriers;
 
@@ -45,7 +44,7 @@ import jdk.vm.ci.code.MemoryBarriers;
 public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNode implements Lowerable {
 
     public static final NodeClass<AbstractNewObjectNode> TYPE = NodeClass.create(AbstractNewObjectNode.class);
-    protected final boolean fillContents;
+    protected boolean fillContents;
 
     /**
      * Controls whether this allocation emits a {@link MembarNode} with
@@ -65,9 +64,8 @@ public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNod
         return fillContents;
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+    public void setFillContents(boolean fillContents) {
+        this.fillContents = fillContents;
     }
 
     @Override

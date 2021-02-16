@@ -80,8 +80,8 @@ final class ASTSuccessor implements JsonConvertible {
         return initialTransition;
     }
 
-    public CodePointSet getInitialTransitionCharSet() {
-        return initialTransition.getTarget() instanceof CharacterClass ? ((CharacterClass) initialTransition.getTarget()).getCharSet() : CodePointSet.getFull();
+    public CodePointSet getInitialTransitionCharSet(CompilationBuffer compilationBuffer) {
+        return initialTransition.getTarget() instanceof CharacterClass ? ((CharacterClass) initialTransition.getTarget()).getCharSet() : compilationBuffer.getEncoding().getFullSet();
     }
 
     public void setInitialTransition(ASTTransition initialTransition) {
@@ -117,13 +117,13 @@ final class ASTSuccessor implements JsonConvertible {
 
     private void mergeLookArounds(ASTTransitionCanonicalizer canonicalizer, CompilationBuffer compilationBuffer) {
         assert mergedStates.isEmpty();
-        canonicalizer.addArgument(initialTransition, getInitialTransitionCharSet());
+        canonicalizer.addArgument(initialTransition, getInitialTransitionCharSet(compilationBuffer));
         for (ASTStep lookBehind : lookBehinds) {
             ASTSuccessor lb = lookBehind.getSuccessors().get(0);
             if (lookBehind.getSuccessors().size() > 1 || lb.hasLookArounds()) {
                 throw new UnsupportedRegexException("nested look-behind assertions");
             }
-            CodePointSet intersection = getInitialTransitionCharSet().createIntersection(lb.getInitialTransitionCharSet(), compilationBuffer);
+            CodePointSet intersection = getInitialTransitionCharSet(compilationBuffer).createIntersection(lb.getInitialTransitionCharSet(compilationBuffer), compilationBuffer);
             if (intersection.matchesSomething()) {
                 canonicalizer.addArgument(lb.getInitialTransition(), intersection);
             }
@@ -146,7 +146,7 @@ final class ASTSuccessor implements JsonConvertible {
                     ArrayList<TransitionBuilder<RegexAST, Term, ASTTransition>> result, CompilationBuffer compilationBuffer) {
         for (ASTSuccessor successor : lookAround.getSuccessors()) {
             for (TransitionBuilder<RegexAST, Term, ASTTransition> lookAroundState : successor.getMergedStates(canonicalizer, compilationBuffer)) {
-                CodePointSet intersection = state.getMatcherBuilder().createIntersection(lookAroundState.getMatcherBuilder(), compilationBuffer);
+                CodePointSet intersection = state.getCodePointSet().createIntersection(lookAroundState.getCodePointSet(), compilationBuffer);
                 if (intersection.matchesSomething()) {
                     if (mergedTransitions == null) {
                         mergedTransitions = new ObjectArrayBuffer<>();

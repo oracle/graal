@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,10 @@
  */
 
 int add(int first, int second) {
-  first = first + 2;
-  return first + second;
+    first = first + 2;
+    return first + second;
 }
 
 int main() {
-  return add(1, add(3, add(4, 5)));
+    return add(1, add(3, add(4, 5)));
 }

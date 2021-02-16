@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,13 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
-public class DocumentOnTypeFormattingParams {
-
-    final JSONObject jsonData;
+/**
+ * The parameters of a [DocumentOnTypeFormattingRequest](#DocumentOnTypeFormattingRequest).
+ */
+public class DocumentOnTypeFormattingParams extends JSONBase {
 
     DocumentOnTypeFormattingParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -112,11 +113,11 @@ public class DocumentOnTypeFormattingParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 17 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 17 * hash + Objects.hashCode(this.getPosition());
-        hash = 17 * hash + Objects.hashCode(this.getCh());
-        hash = 17 * hash + Objects.hashCode(this.getOptions());
+        int hash = 2;
+        hash = 79 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 79 * hash + Objects.hashCode(this.getPosition());
+        hash = 79 * hash + Objects.hashCode(this.getCh());
+        hash = 79 * hash + Objects.hashCode(this.getOptions());
         return hash;
     }
 

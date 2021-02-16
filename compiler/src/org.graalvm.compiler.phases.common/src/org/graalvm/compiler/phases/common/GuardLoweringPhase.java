@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -121,7 +121,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
     }
 
     private static boolean assertNoGuardsLeft(StructuredGraph graph) {
-        assert graph.getNodes().filter(GuardNode.class).isEmpty();
+        assert graph.getNodes(GuardNode.TYPE).isEmpty();
         return true;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,10 @@ import java.util.Objects;
  * Signature help represents the signature of something callable. There can be multiple signature
  * but only one active and only one active parameter.
  */
-public class SignatureHelp {
-
-    final JSONObject jsonData;
+public class SignatureHelp extends JSONBase {
 
     SignatureHelp(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -67,12 +65,13 @@ public class SignatureHelp {
     /**
      * The active signature. Set to `null` if no signatures exist.
      */
-    public int getActiveSignature() {
-        return jsonData.getInt("activeSignature");
+    public Integer getActiveSignature() {
+        Object obj = jsonData.get("activeSignature");
+        return JSONObject.NULL.equals(obj) ? null : (Integer) obj;
     }
 
-    public SignatureHelp setActiveSignature(int activeSignature) {
-        jsonData.put("activeSignature", activeSignature);
+    public SignatureHelp setActiveSignature(Integer activeSignature) {
+        jsonData.put("activeSignature", activeSignature == null ? JSONObject.NULL : activeSignature);
         return this;
     }
 
@@ -80,12 +79,13 @@ public class SignatureHelp {
      * The active parameter of the active signature. Set to `null` if the active signature has no
      * parameters.
      */
-    public int getActiveParameter() {
-        return jsonData.getInt("activeParameter");
+    public Integer getActiveParameter() {
+        Object obj = jsonData.get("activeParameter");
+        return JSONObject.NULL.equals(obj) ? null : (Integer) obj;
     }
 
-    public SignatureHelp setActiveParameter(int activeParameter) {
-        jsonData.put("activeParameter", activeParameter);
+    public SignatureHelp setActiveParameter(Integer activeParameter) {
+        jsonData.put("activeParameter", activeParameter == null ? JSONObject.NULL : activeParameter);
         return this;
     }
 
@@ -104,10 +104,10 @@ public class SignatureHelp {
         if (!Objects.equals(this.getSignatures(), other.getSignatures())) {
             return false;
         }
-        if (this.getActiveSignature() != other.getActiveSignature()) {
+        if (!Objects.equals(this.getActiveSignature(), other.getActiveSignature())) {
             return false;
         }
-        if (this.getActiveParameter() != other.getActiveParameter()) {
+        if (!Objects.equals(this.getActiveParameter(), other.getActiveParameter())) {
             return false;
         }
         return true;
@@ -116,9 +116,13 @@ public class SignatureHelp {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 41 * hash + Objects.hashCode(this.getSignatures());
-        hash = 41 * hash + Integer.hashCode(this.getActiveSignature());
-        hash = 41 * hash + Integer.hashCode(this.getActiveParameter());
+        hash = 73 * hash + Objects.hashCode(this.getSignatures());
+        if (this.getActiveSignature() != null) {
+            hash = 73 * hash + Integer.hashCode(this.getActiveSignature());
+        }
+        if (this.getActiveParameter() != null) {
+            hash = 73 * hash + Integer.hashCode(this.getActiveParameter());
+        }
         return hash;
     }
 
@@ -129,8 +133,8 @@ public class SignatureHelp {
             signaturesJsonArr.put(signatureInformation.jsonData);
         }
         json.put("signatures", signaturesJsonArr);
-        json.put("activeSignature", activeSignature);
-        json.put("activeParameter", activeParameter);
+        json.put("activeSignature", activeSignature == null ? JSONObject.NULL : activeSignature);
+        json.put("activeParameter", activeParameter == null ? JSONObject.NULL : activeParameter);
         return new SignatureHelp(json);
     }
 }

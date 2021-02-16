@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -170,7 +170,8 @@ public @interface CEntryPoint {
         /**
          * The annotated method returns the {@link IsolateThread} of the current thread in a
          * specified {@link Isolate}. It requires a parameter of type {@link Isolate} for the
-         * isolate in question, and a return type of {@link IsolateThread}. In case of an error,
+         * isolate in question, and a return type of {@link IsolateThread}. In case of an error or
+         * if the current thread is not attached to the specified isolate,
          * {@link WordFactory#nullPointer() NULL} is returned.
          *
          * @since 19.0

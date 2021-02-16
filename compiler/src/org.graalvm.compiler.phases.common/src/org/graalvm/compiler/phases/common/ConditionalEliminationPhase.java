@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.util.Deque;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
@@ -86,6 +87,7 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
@@ -93,6 +95,9 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.StampInverter;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationUtil.GuardFolding;
 import org.graalvm.compiler.phases.common.ConditionalEliminationUtil.GuardRewirer;
@@ -108,7 +113,54 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
 
+/**
+ * Performs conditional branch elimination on a {@link StructuredGraph}. This is done by optimizing
+ * {@link LogicNode}s to be conditionally (flow-sensitive) {@code true} or {@code false}. If such a
+ * condition is input to a control split node, i.e., an {@link IfNode} a subsequent application of
+ * the {@link CanonicalizerPhase} can remove the unconditional branch from the graph.
+ *
+ * In order to prove conditions this phase build the
+ * <a href="https://en.wikipedia.org/wiki/Dominator_(graph_theory)">Dominator Tree</a> of a method
+ * and traverses it depth first. Every time the traversal encounters a basic block whose predecessor
+ * has multiple successors (i.e., the predecessor block ends with a control flow split node) it
+ * inspects the control split's condition in detail: The condition leading to the current block
+ * carries value & type information for the operands of the condition.
+ *
+ * Consider the following example where a variable {@code a} is used in a condition 3 times.
+ * Traversing the dominator tree depth first and recording the value ranges for {@code a} after
+ * every condition effectively makes the last condition {@code a == 0} trivially true.
+ *
+ * <pre>
+ * if (a >= 0) {
+ *     // a in [0:Integer.MAX_VAL]
+ *     if (a < 1) {
+ *         // a in [Integer.MIN_VAL,0] && a in [0:Integer.MAX_VAL]
+ *         // --> a in [0]
+ *         if (a == 0) { // true
+ *         }
+ *     }
+ * }
+ * </pre>
+ *
+ * @implNote This phase considers the following nodes (all of which have a
+ *           {@link InputType#Condition} input edge):
+ *           <ul>
+ *           <li>{@link IfNode}
+ *           <li>{@link SwitchNode}
+ *           <li>{@link GuardNode}
+ *           <li>{@link FixedGuardNode}
+ *           <li>{@link ConditionAnchorNode}
+ *           </ul>
+ */
 public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Move guard nodes to earlier places in the dominator tree if "
+                     + "all successors of basic block share a common guard condition.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> MoveGuardsUpwards = new OptionKey<>(true);
+        // @formatter:on
+    }
 
     private static final CounterKey counterStampsRegistered = DebugContext.counter("StampsRegistered");
     private static final CounterKey counterIfsKilled = DebugContext.counter("CE_KilledIfs");
@@ -133,7 +185,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             NodeMap<Block> nodeToBlock = null;
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
             if (fullSchedule) {
-                if (moveGuards) {
+                if (moveGuards && Options.MoveGuardsUpwards.getValue(graph.getOptions())) {
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.hasValueProxies());
                 }
                 try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
@@ -178,8 +230,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             AbstractBeginNode beginNode = b.getBeginNode();
             if (beginNode instanceof AbstractMergeNode && anchorBlock != b) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
-                mergeNode.replaceAtUsages(InputType.Anchor, anchorBlock.getBeginNode());
-                mergeNode.replaceAtUsages(InputType.Guard, anchorBlock.getBeginNode());
+                mergeNode.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
+                mergeNode.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, mergeNode.graph(), "After moving guard and anchored usages from %s to %s", mergeNode, anchorBlock.getBeginNode());
                 assert mergeNode.anchored().isEmpty();
             }
 
@@ -198,33 +250,65 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                         trueGuards.put(condition, guard);
                     }
                 }
-
                 if (!trueGuards.isEmpty()) {
-                    for (GuardNode guard : falseSuccessor.guards().snapshot()) {
-                        GuardNode otherGuard = trueGuards.get(guard.getCondition());
-                        if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
-                            Speculation speculation = otherGuard.getSpeculation();
-                            if (speculation == null) {
-                                speculation = guard.getSpeculation();
-                            } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
-                                // Cannot optimize due to different speculations.
-                                continue;
-                            }
-                            try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
-                                GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation,
-                                                guard.getNoDeoptSuccessorPosition());
-                                GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
-                                if (otherGuard.isAlive()) {
-                                    if (trueSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
-                                        otherGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
-                                    } else {
-                                        otherGuard.replaceAndDelete(newGuard);
-                                    }
+                    /*
+                     * Special case loop exits: We must only ever move guards over loop exits if we
+                     * move them over all loop exits (i.e. if a successor is a loop exit it must be
+                     * the only loop exit or a loop has two exits and both are successors of the
+                     * current if). Else we would risk moving a guard from after a particular exit
+                     * into the loop (might be loop invariant) which can be too early resulting in
+                     * the generated code deopting without the need to.
+                     *
+                     * Note: The code below is written with the possibility in mind that both
+                     * successors are loop exits, even of potentially different loops. Thus, we need
+                     * to ensure we see all possible loop exits involved for all loops.
+                     */
+                    LoopExitNode trueSuccLex = trueSuccessor instanceof LoopExitNode ? (LoopExitNode) trueSuccessor : null;
+                    LoopExitNode falseSuccLex = falseSuccessor instanceof LoopExitNode ? (LoopExitNode) falseSuccessor : null;
+                    EconomicSet<LoopExitNode> allLoopsAllExits = null;
+                    if (trueSuccLex != null) {
+                        if (allLoopsAllExits == null) {
+                            allLoopsAllExits = EconomicSet.create();
+                        }
+                        allLoopsAllExits.addAll(trueSuccLex.loopBegin().loopExits());
+                        allLoopsAllExits.remove(trueSuccLex);
+                    }
+                    if (falseSuccLex != null) {
+                        if (allLoopsAllExits == null) {
+                            allLoopsAllExits = EconomicSet.create();
+                        }
+                        allLoopsAllExits.addAll(falseSuccLex.loopBegin().loopExits());
+                        allLoopsAllExits.remove(falseSuccLex);
+                    }
+                    if (allLoopsAllExits == null || allLoopsAllExits.isEmpty()) {
+                        for (GuardNode guard : falseSuccessor.guards().snapshot()) {
+                            GuardNode otherGuard = trueGuards.get(guard.getCondition());
+                            if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
+                                Speculation speculation = otherGuard.getSpeculation();
+                                if (speculation == null) {
+                                    speculation = guard.getSpeculation();
+                                } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
+                                    // Cannot optimize due to different speculations.
+                                    continue;
                                 }
-                                if (falseSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
-                                    guard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
-                                } else {
-                                    guard.replaceAndDelete(newGuard);
+                                try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
+                                    StructuredGraph graph = guard.graph();
+                                    GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation,
+                                                    guard.getNoDeoptSuccessorPosition());
+                                    GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
+                                    if (otherGuard.isAlive()) {
+                                        if (trueSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
+                                            otherGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
+                                        } else {
+                                            otherGuard.replaceAndDelete(newGuard);
+                                        }
+                                    }
+                                    if (falseSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
+                                        guard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
+                                    } else {
+                                        guard.replaceAndDelete(newGuard);
+                                    }
+                                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After combining %s and %s to new %s in the dominator", guard, otherGuard, newGuard);
                                 }
                             }
                         }
@@ -288,8 +372,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             this.map = graph.createNodeMap();
             this.pendingTests = new ArrayDeque<>();
             this.conditions = new ArrayDeque<>();
-            tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), graph.getOptions(),
-                            context.getLowerer());
+            tool = GraphUtil.getDefaultSimplifier(context, false, graph.getAssumptions(), graph.getOptions());
             mergeMaps = EconomicMap.create(Equivalence.IDENTITY);
             infoElementProvider = new InfoElementProvider() {
 
@@ -431,7 +514,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             tryProveGuardCondition(null, node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 node.setCondition(LogicConstantNode.forBoolean(result, node.graph()));
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
-                survivingSuccessor.replaceAtUsages(InputType.Guard, guard.asNode());
+                survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
                 // Don't kill the other branch immediately, see `processGuard`.
                 counterIfsKilled.increment(debug);
                 return true;

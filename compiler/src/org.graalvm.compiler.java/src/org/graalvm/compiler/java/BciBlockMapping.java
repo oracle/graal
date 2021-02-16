@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -348,6 +348,10 @@ public final class BciBlockMapping implements JavaMethodContext {
         BciBlock(int startBci) {
             this.startBci = startBci;
             this.successors = new ArrayList<>();
+        }
+
+        public boolean bciUnique() {
+            return jsrData == null && !duplicate;
         }
 
         public int getStartBci() {
@@ -709,6 +713,15 @@ public final class BciBlockMapping implements JavaMethodContext {
 
     public BciBlock[] getBlocks() {
         return this.blocks;
+    }
+
+    public boolean bciUnique() {
+        for (BciBlock block : this.blocks) {
+            if (!block.bciUnique()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

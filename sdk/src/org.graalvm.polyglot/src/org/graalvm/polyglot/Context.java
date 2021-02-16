@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,15 @@ package org.graalvm.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -324,11 +327,11 @@ public final class Context implements AutoCloseable {
      * <b>Basic Example:</b>
      *
      * <pre>
-     * Context context = Context.create();
-     * Source source = Source.newBuilder("js", "42").name("mysource.js").build();
-     * Value result = context.eval(source);
-     * assert result.asInt() == 42;
-     * context.close();
+     * try (Context context = Context.create()) {
+     *     Source source = Source.newBuilder("js", "42", "mysource.js").build();
+     *     Value result = context.eval(source);
+     *     assert result.asInt() == 42;
+     * }
      * </pre>
      *
      * @param source a source object to evaluate
@@ -353,10 +356,10 @@ public final class Context implements AutoCloseable {
      * <b>Basic Example:</b>
      *
      * <pre>
-     * Context context = Context.create();
-     * Value result = context.eval("js", "42");
-     * assert result.asInt() == 42;
-     * context.close();
+     * try (Context context = Context.create()) {
+     *     Value result = context.eval("js", "42");
+     *     assert result.asInt() == 42;
+     * }
      * </pre>
      *
      * @throws PolyglotException in case the guest language code parsing or evaluation failed.
@@ -369,6 +372,104 @@ public final class Context implements AutoCloseable {
      */
     public Value eval(String languageId, CharSequence source) {
         return eval(Source.create(languageId, source));
+    }
+
+    /**
+     * Parses but does not evaluate a given source by using the {@linkplain Source#getLanguage()
+     * language} specified in the source and returns a {@link Value value} that can be
+     * {@link Value#execute(Object...) executed}. If a parsing fails, e.g. due to a syntax error in
+     * the source, then a {@link PolyglotException} will be thrown. In case of a syntax error the
+     * {@link PolyglotException#isSyntaxError()} will return <code>true</code>. There is no
+     * guarantee that only syntax errors will be thrown by this method. Any other guest language
+     * exception might be thrown. If the validation succeeds then the method completes without
+     * throwing an exception.
+     * <p>
+     * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
+     * execute}. If executed repeatedly then the source is evaluated multiple times.
+     * {@link Source.Builder#interactive(boolean) Interactive} sources will print their result for
+     * each execution of the parsing result to the {@link Builder#out(OutputStream) output} stream.
+     * <p>
+     * If the parsing succeeds and the source is {@link Source.Builder#cached(boolean) cached} then
+     * the result will automatically be reused for consecutive calls to {@link #parse(Source)} or
+     * {@link #eval(Source)}. If the validation should be performed for each invocation or the
+     * result should not be remembered then {@link Source.Builder#cached(boolean) cached} can be set
+     * to <code>false</code>. By default sources are cached.
+     * <p>
+     * <b>Basic Example:</b>
+     *
+     * <pre>
+     * try (Context context = Context.create()) {
+     *     Source source = Source.create("js", "42");
+     *     Value value;
+     *     try {
+     *         value = context.parse(source);
+     *         // parsing succeeded
+     *     } catch (PolyglotException e) {
+     *         if (e.isSyntaxError()) {
+     *             SourceSection location = e.getSourceLocation();
+     *             // syntax error detected at location
+     *         } else {
+     *             // other guest error detected
+     *         }
+     *         throw e;
+     *     }
+     *     // evaluate the parsed script
+     *     value.execute();
+     * }
+     * </pre>
+     *
+     * @param source a source object to parse
+     * @throws PolyglotException in case the guest language code parsing or validation failed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalStateException if the context is already closed and the current thread is not
+     *             allowed to access it, or if the given language is not installed.
+     * @since 20.2
+     */
+    public Value parse(Source source) throws PolyglotException {
+        return impl.parse(source.getLanguage(), source.impl);
+    }
+
+    /**
+     * Parses but does not evaluate a guest language code literal using a provided
+     * {@link Language#getId() language id} and character sequence and returns a {@link Value value}
+     * that can be {@link Value#execute(Object...) executed}. The provided {@link CharSequence} must
+     * represent an immutable String. This method represents a short-hand for {@link #parse(Source)}
+     * .
+     * <p>
+     * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
+     * execute}. If executed repeatedly then the source is evaluated multiple times.
+     * {@link Source.Builder#interactive(boolean) Interactive} sources will print their result for
+     * each execution of the parsing result to the {@link Builder#out(OutputStream) output} stream.
+     * <p>
+     *
+     * <pre>
+     * try (Context context = Context.create()) {
+     *     Value value;
+     *     try {
+     *         value = context.parse("js", "42");
+     *         // parsing succeeded
+     *     } catch (PolyglotException e) {
+     *         if (e.isSyntaxError()) {
+     *             SourceSection location = e.getSourceLocation();
+     *             // syntax error detected at location
+     *         } else {
+     *             // other guest error detected
+     *         }
+     *         throw e;
+     *     }
+     *     // evaluate the parsed script
+     *     value.execute();
+     * }
+     * </pre>
+     *
+     * @throws PolyglotException in case the guest language code parsing or evaluation failed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalStateException if the context is already closed and the current thread is not
+     *             allowed to access it, or if the given language is not installed.
+     * @since 20.2
+     */
+    public Value parse(String languageId, CharSequence source) {
+        return parse(Source.create(languageId, source));
     }
 
     /**
@@ -469,10 +570,12 @@ public final class Context implements AutoCloseable {
      * object}. Host objects expose all their public java fields and methods as
      * {@link Value#getMember(String) members}. In addition, Java arrays and subtypes of
      * {@link List} will be interpreted as a value with {@link Value#hasArrayElements() array
-     * elements} and single method interfaces annotated with {@link FunctionalInterface} are
-     * {@link Value#execute(Object...) executable} directly. Java {@link Class} instances are
-     * interpreted as {@link Value#canInstantiate() instantiable}, but they do not expose Class
-     * methods as members.
+     * elements}. The subtypes of {@link Iterable} will be interpreted as a value with
+     * {@link Value#hasIterator()} iterator}. The subtypes of {@link Iterator} will be interpreted
+     * as an {@link Value#isIterator() iterator} value. And single method interfaces annotated with
+     * {@link FunctionalInterface} are {@link Value#execute(Object...) executable} directly. Java
+     * {@link Class} instances are interpreted as {@link Value#canInstantiate() instantiable}, but
+     * they do not expose Class methods as members.
      * </ol>
      * <p>
      * <b>Basic Examples:</b>
@@ -664,6 +767,30 @@ public final class Context implements AutoCloseable {
      */
     public void close() {
         close(false);
+    }
+
+    /**
+     * Use this method to interrupt this context. The interruption is non-destructive meaning the
+     * context is still usable after this method finishes. Please note that guest finally blocks are
+     * executed during interrupt. A context thread may not be interruptiple if it uses
+     * non-interruptible waiting or executes non-interruptible host code.
+     * 
+     * This method may be used as a "soft exit", meaning that it can be used before
+     * {@link #close(boolean) close(true)} is executed.
+     *
+     * @param timeout specifies the duration the interrupt method will wait for the active threads
+     *            of the context to be finished. Setting the duration to {@link Duration#ZERO 0}
+     *            means wait indefinitely.
+     * @throws IllegalStateException in case the context is entered in the current thread.
+     * @throws TimeoutException in case the interrupt was not successful, i.e., not all threads were
+     *             finished within the specified time limit.
+     *
+     * @since 20.3
+     */
+    public void interrupt(Duration timeout) throws TimeoutException {
+        if (!impl.interrupt(this, timeout)) {
+            throw new TimeoutException("Interrupt timed out.");
+        }
     }
 
     /**
@@ -1040,6 +1167,9 @@ public final class Context implements AutoCloseable {
          * options in production environments. If set to {@code false} (the default), then passing
          * an experimental option results in an {@link IllegalArgumentException} when the context is
          * built.
+         * <p>
+         * Alternatively {@link Engine.Builder#allowExperimentalOptions(boolean)} may be used when
+         * constructing the context using an {@link #engine(Engine) explicit engine}.
          *
          * @since 19.0
          */
@@ -1508,5 +1638,6 @@ public final class Context implements AutoCloseable {
         private boolean orAllAccess(Boolean optionalBoolean) {
             return optionalBoolean != null ? optionalBoolean : allowAllAccess;
         }
+
     }
 }

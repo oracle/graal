@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -70,11 +71,11 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
         return new WriteDescriptor(name, sourceSection);
     }
 
-    Object readMember(String member) throws UnknownIdentifierException {
+    Object readMember(String member, @Cached BranchProfile error) throws UnknownIdentifierException {
         if (isMemberReadable(member)) {
             return name;
         } else {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw UnknownIdentifierException.create(member);
         }
     }
@@ -110,9 +111,10 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
 
         @Override
         @ExportMessage
-        Object readMember(String member) throws UnknownIdentifierException {
-            return super.readMember(member);
+        Object readMember(String member, @Cached BranchProfile error) throws UnknownIdentifierException {
+            return super.readMember(member, error);
         }
+
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -147,8 +149,8 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
 
         @Override
         @ExportMessage
-        Object readMember(String member) throws UnknownIdentifierException {
-            super.readMember(member); // To verify readability
+        Object readMember(String member, @Cached BranchProfile error) throws UnknownIdentifierException {
+            super.readMember(member, error); // To verify readability
             return nameSymbol;
         }
     }
@@ -185,7 +187,6 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
             if (sourceSection != null) {
                 return sourceSection;
             } else {
-                CompilerDirectives.transferToInterpreter();
                 throw UnsupportedMessageException.create();
             }
         }

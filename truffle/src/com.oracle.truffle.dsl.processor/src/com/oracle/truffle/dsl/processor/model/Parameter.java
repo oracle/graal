@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,6 +82,15 @@ public final class Parameter {
         this.typeVarArgsIndex = parameter.typeVarArgsIndex;
         this.variableElement = parameter.variableElement;
         this.type = newType;
+    }
+
+    public Parameter(Parameter parameter, VariableElement newVariable) {
+        this.specification = parameter.specification;
+        this.specificationVarArgsIndex = parameter.specificationVarArgsIndex;
+        this.localName = newVariable.getSimpleName().toString();
+        this.typeVarArgsIndex = parameter.typeVarArgsIndex;
+        this.variableElement = newVariable;
+        this.type = newVariable.asType();
     }
 
     public void setLocalName(String localName) {

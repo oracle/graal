@@ -52,9 +52,9 @@ public class FileDownloaderTest extends NetworkTestBase {
         @Override
         public String l10n(String key, Object... params) {
             switch (key) {
-                case "MSG_DownloadProgress":
+                case "MSG_DownloadProgress@":
                     return "[                    ]";
-                case "MSG_DownloadProgressSignChar":
+                case "MSG_DownloadProgressSignChar@":
                     return "#";
             }
             return key;
@@ -367,6 +367,12 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.setDisplayProgress(true);
         synchronized (conn) {
             conn.nextChunk = 130 * 1024;
+
+            ProxyConnectionFactory pcf = new ProxyConnectionFactory(this, u);
+            dn.setConnectionFactory(pcf);
+
+            pcf.envHttpProxy = null;
+            pcf.envHttpsProxy = null;
         }
 
         AtomicReference<Throwable> exc = new AtomicReference<>();

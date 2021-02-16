@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import org.junit.runners.model.TestClass;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -74,7 +75,7 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
         return new TruffleTestInvoker<>(testTvmci);
     }
 
-    @TruffleLanguage.Registration(id = "truffletestinvoker", name = "truffletestinvoker", version = "")
+    @TruffleLanguage.Registration(id = "truffletestinvoker", name = "truffletestinvoker", version = "", contextPolicy = ContextPolicy.SHARED)
     public static class TruffleTestInvokerLanguage extends TruffleLanguage<Env> {
 
         @Override
@@ -84,6 +85,7 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
 
         @Override
         protected void initializeContext(Env context) throws Exception {
+            context.exportSymbol("language", context.asGuestValue(this));
             context.exportSymbol("env", context.asGuestValue(context));
         }
 
@@ -107,13 +109,16 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
 
                 context.initialize("truffletestinvoker");
                 context.enter();
+                TruffleLanguage<?> prevLang = rule.testLanguage;
                 Env prevEnv = rule.testEnv;
                 try {
+                    rule.testLanguage = context.getPolyglotBindings().getMember("language").asHostObject();
                     rule.testEnv = context.getPolyglotBindings().getMember("env").asHostObject();
                     stmt.evaluate();
                 } catch (Throwable t) {
                     throw t;
                 } finally {
+                    rule.testLanguage = prevLang;
                     rule.testEnv = prevEnv;
                     context.leave();
                 }
@@ -179,12 +184,11 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
             }
         }
 
-        RootNode[] createTestRootNodes(Object test) {
-            if (nodeConstructors == null) {
-                // non-truffle test
-                return null;
-            }
+        boolean hasNodeConstructors() {
+            return nodeConstructors != null;
+        }
 
+        RootNode[] createTestRootNodes(Object test) {
             RootNode[] ret = new RootNode[nodeConstructors.length];
             for (int i = 0; i < ret.length; i++) {
                 if (nodeConstructors[i] != null) {
@@ -197,8 +201,8 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
 
     Statement createStatement(String testName, FrameworkMethod method, Object test) {
         final TruffleFrameworkMethod truffleMethod = (TruffleFrameworkMethod) method;
-        final RootNode[] testNodes = truffleMethod.createTestRootNodes(test);
-        if (testNodes == null) {
+        if (!truffleMethod.hasNodeConstructors()) {
+            // non-truffle test
             return null;
         }
 
@@ -207,6 +211,7 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
             @Override
             public void evaluate() throws Throwable {
                 try (C testContext = createTestContext(testName)) {
+                    final RootNode[] testNodes = truffleMethod.createTestRootNodes(test);
                     ArrayList<T> callTargets = new ArrayList<>(testNodes.length);
                     for (RootNode testNode : testNodes) {
                         if (testNode != null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,9 +28,12 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 long function(char t1[4]) {
-  return t1 == "asdf";
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstring-compare"
+    return t1 == "asdf";
+#pragma clang diagnostic pop
 }
 
 int main() {
-  return function("asdf");
+    return function("asdf");
 }

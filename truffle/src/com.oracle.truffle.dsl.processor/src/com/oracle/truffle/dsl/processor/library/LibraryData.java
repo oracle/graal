@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,9 +67,18 @@ public final class LibraryData extends Template {
     private ExportsLibrary objectExports;
     private boolean defaultExportLookupEnabled;
     private boolean dynamicDispatchEnabled = true;
+    private boolean pushEncapsulatingNode = true;
 
     public LibraryData(TypeElement type, AnnotationMirror annotationMirror) {
         super(ProcessorContext.getInstance(), type, annotationMirror);
+    }
+
+    public void setPushEncapsulatingNode(boolean pushEncapsulatingNode) {
+        this.pushEncapsulatingNode = pushEncapsulatingNode;
+    }
+
+    public boolean isPushEncapsulatingNode() {
+        return pushEncapsulatingNode;
     }
 
     public void setDynamicDispatchEnabled(boolean dynamicDispatchEnabled) {

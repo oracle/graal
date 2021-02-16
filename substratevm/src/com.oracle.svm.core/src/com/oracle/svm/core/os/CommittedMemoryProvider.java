@@ -36,6 +36,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.heap.Heap;
 
 /**
  * A provider of ranges of committed memory, which is virtual memory that is backed by physical
@@ -52,6 +53,14 @@ public interface CommittedMemoryProvider {
     static CommittedMemoryProvider get() {
         return ImageSingletons.lookup(CommittedMemoryProvider.class);
     }
+
+    /**
+     * Returns whether this provider will always guarantee a heap address space alignment of
+     * {@link Heap#getPreferredAddressSpaceAlignment()} at image runtime, which may also depend on
+     * {@link ImageHeapProvider#guaranteesHeapPreferredAddressSpaceAlignment()}.
+     */
+    @Fold
+    boolean guaranteesHeapPreferredAddressSpaceAlignment();
 
     /**
      * Performs initializations <em>for the current isolate</em>, before any other methods of this
@@ -131,10 +140,12 @@ public interface CommittedMemoryProvider {
      * Change access permissions for a block of committed memory that was allocated with
      * {@link #allocate}.
      *
-     * @param start The start of the memory block
-     * @param nbytes Length of the memory block
-     * @param access protection setting
-     * @return true on success, false otherwise
+     * @param start The start of the address range to be protected, which must be a multiple of the
+     *            {@linkplain #getGranularity() granularity}.
+     * @param nbytes The size in bytes of the address range to be protected, which will be rounded
+     *            up to a multiple of the {@linkplain #getGranularity() granularity}.
+     * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
+     * @return true on success, or false otherwise.
      */
     boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
 }

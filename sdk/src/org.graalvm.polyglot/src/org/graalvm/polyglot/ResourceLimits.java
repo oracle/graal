@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package org.graalvm.polyglot;
 
-import java.lang.management.ThreadMXBean;
-import java.time.Duration;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -112,8 +110,6 @@ public final class ResourceLimits {
 
         long statementLimit;
         Predicate<Source> statementLimitSourceFilter;
-        Duration timeLimit;
-        Duration timeLimitAccuracy;
         Consumer<ResourceLimitEvent> onLimit;
 
         Builder() {
@@ -167,79 +163,6 @@ public final class ResourceLimits {
         }
 
         /**
-         * Specifies the maximum {@link ThreadMXBean#getThreadCpuTime(long) CPU time} a context may
-         * be active until the onLimit event is notified and the context will be
-         * {@link Context#close() closed}. The {@link Duration time limit} may be specified
-         * alongside an {@link Duration accuracy} with which the time limit is enforced. Both time
-         * limit and accuracy must be positive. Both parameters may be set to <code>null</code> to
-         * disable the time limit for a builder. By default no time limit is configured. Invoking
-         * this method multiple times overwrites previous time limit configurations. If the time
-         * limit is exceeded then the {@link #onLimit(Consumer) onLimit} listener is notified. The
-         * minimal accuracy is 10 milliseconds, values below that will be rounded up.
-         * <p>
-         * The used CPU time of a context typically does not include time spent waiting for
-         * synchronization or IO. The CPU time of all threads will be added and checked against the
-         * CPU time limit. This can mean that if two threads execute the same context then the time
-         * limit will be exceeded twice as fast.
-         * <p>
-         * The time limit is enforced by a separate high-priority thread that will be woken
-         * regularly. There is no guarantee that the context will be cancelled within the accuracy
-         * specified. The accuracy may be significantly missed, e.g. if the host VM causes a full
-         * garbage collection. If the time limit is never exceeded then the throughput of the guest
-         * context is not affected. If the time limit is exceeded for one context then it may slow
-         * down the throughput for other contexts of an engine temporarily.
-         * <p>
-         * The time limit is applied to the context and all inner contexts it spawns. Therefore, new
-         * inner contexts cannot be used to exceed the time limit.
-         *
-         * <p>
-         * <h3>Time Limit Example</h3>
-         *
-         * <code>
-         * <pre>
-         * ResourceLimits limits = ResourceLimits.newBuilder()
-         *                   .timeLimit(Duration.ofMillis(500),
-         *                              Duration.ofMillis(5))
-         *                   .build();
-         * try (Context context = Context.newBuilder("js")
-         *                            .resourceLimits(limits)
-         *                        .build();) {
-         *     try {
-         *         context.eval("js", "while(true);");
-         *         assert false;
-         *     } catch (PolyglotException e) {
-         *         // triggered after 500ms;
-         *         // context is closed and can no longer be used
-         *         assert e.isCancelled();
-         *     }
-         * }
-         * </pre>
-         * </code>
-         *
-         * @see ThreadMXBean#getThreadCpuTime(long)
-         * @see ResourceLimits Example Usage
-         * @since 19.3
-         */
-        @SuppressWarnings("hiding")
-        /*
-         * Not ready for prime time yet. We need to solve GR-18742.
-         */
-        Builder cpuTimeLimit(Duration timeLimit, Duration accuracy) {
-            if (timeLimit == null && accuracy == null) {
-                // fall through to allow reset
-            } else if (timeLimit == null || accuracy == null) {
-                throw new IllegalArgumentException("If a timeLimit is specified accuracy must be specified as well.");
-            } else if (timeLimit.isNegative() || timeLimit.isZero()) {
-                throw new IllegalArgumentException("Time limit must not be negative or zero.");
-            } else if (accuracy.isNegative() || accuracy.isZero()) {
-                throw new IllegalArgumentException("Accuracy must not be negative or zero.");
-            }
-            this.timeLimit = timeLimit;
-            this.timeLimitAccuracy = accuracy;
-            return this;
-        }
-
-        /**
          * Notified when a resource limit is reached. Default is <code>null</code>. May be set to
          * <code>null</code> to disable events.
          *
@@ -257,7 +180,7 @@ public final class ResourceLimits {
          * @since 19.3
          */
         public ResourceLimits build() {
-            return new ResourceLimits(Engine.getImpl().buildLimits(statementLimit, statementLimitSourceFilter, timeLimit, timeLimitAccuracy, onLimit));
+            return new ResourceLimits(Engine.getImpl().buildLimits(statementLimit, statementLimitSourceFilter, onLimit));
         }
     }
 }

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -73,6 +74,7 @@ public class MethodFlowsGraph {
      * We keep a bci->flow mapping for instanceof and invoke flows since they are queried by the
      * analysis results builder.
      */
+    private Set<Object> nonUniqueBcis;
     private Map<Object, InstanceOfTypeFlow> instanceOfFlows;
     private Map<Object, InvokeTypeFlow> invokeFlows;
 
@@ -139,6 +141,7 @@ public class MethodFlowsGraph {
 
         // invoke
         invokeFlows = new HashMap<>(4, 0.75f);
+        nonUniqueBcis = new HashSet<>();
     }
 
     public MethodFlowsGraph(AnalysisMethod method, AnalysisContext context) {
@@ -513,21 +516,30 @@ public class MethodFlowsGraph {
         doAddFlow(key, invokeTypeFlow, invokeFlows);
     }
 
-    private static <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
-        if (map.containsKey(key)) {
-            assert key instanceof Integer;
+    private <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
+        assert map == instanceOfFlows || map == invokeFlows : "Keys of these maps must not be overlapping";
+        Object uniqueKey = key;
+        if (nonUniqueBcis.contains(key) || removeNonUnique(key, instanceOfFlows) || removeNonUnique(key, invokeFlows)) {
+            uniqueKey = new Object();
+        }
+        map.put(uniqueKey, flow);
+    }
+
+    private <T extends TypeFlow<BytecodePosition>> boolean removeNonUnique(Object key, Map<Object, T> map) {
+        T oldFlow = map.remove(key);
+        if (oldFlow != null) {
             /*
              * This can happen when Graal inlines jsr/ret routines and the inlined nodes share the
-             * same bci. Remove the old bci->flow pairing and replace it with a uniqueKey->flow
-             * pairing.
+             * same bci. Or for some invokes where the bytecode parser needs to insert a type check
+             * before the invoke. Remove the old bci->flow pairing and replace it with a
+             * uniqueKey->flow pairing.
              */
-            T oldFlow = map.remove(key);
             map.put(new Object(), oldFlow);
-            map.put(new Object(), flow);
+            nonUniqueBcis.add(key);
+            return true;
         } else {
-            map.put(key, flow);
+            return false;
         }
-
     }
 
     public InvokeTypeFlow getInvoke(Object key) {

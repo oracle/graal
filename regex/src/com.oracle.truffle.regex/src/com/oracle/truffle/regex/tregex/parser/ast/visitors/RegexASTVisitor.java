@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -89,7 +90,7 @@ public abstract class RegexASTVisitor {
         } else if (cur instanceof BackReference) {
             visit((BackReference) cur);
         } else {
-            throw new IllegalStateException();
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -103,7 +104,7 @@ public abstract class RegexASTVisitor {
         } else if (cur instanceof LookAheadAssertion) {
             leave((LookAheadAssertion) cur);
         } else {
-            throw new IllegalStateException();
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 }

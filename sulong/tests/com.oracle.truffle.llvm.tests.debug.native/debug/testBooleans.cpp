@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,13 +48,12 @@ typedef struct {
     bool f;
     bool g;
     bool h;
-} __attribute__ ((packed)) PackedBoolStruct;
+} __attribute__((packed)) PackedBoolStruct;
 
-__attribute__((constructor)) int test()
-{
+__attribute__((constructor)) int test() {
     bool a = true;
     bool b = false;
-    
+
     BoolStruct bs;
     bs.a = true;
     bs.b = false;
@@ -74,6 +73,6 @@ __attribute__((constructor)) int test()
     pbs.f = false;
     pbs.g = true;
     pbs.h = false;
-    
+
     return 0;
 }

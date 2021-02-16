@@ -30,6 +30,7 @@ import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -49,11 +50,6 @@ public final class ModuleSupport {
     private ModuleSupport() {
     }
 
-    /**
-     * It is not possible to open up Module access for resource bundles using a mechanism like
-     * {@link #openModule}. We therefore need to find the correct module that the resource bundle is
-     * in and access the bundle via the module system. See the discussion in JDK-8231694.
-     */
     public static ResourceBundle getResourceBundle(String bundleName, Locale locale, ClassLoader loader) {
         Class<?> bundleClass;
         try {
@@ -61,6 +57,11 @@ public final class ModuleSupport {
         } catch (ClassNotFoundException ex) {
             return getResourceBundleFallback(bundleName, locale, loader);
         }
+        /*
+         * Open up module that contains the bundleClass so that ResourceBundle.getBundle can
+         * succeed.
+         */
+        ModuleSupport.openModule(bundleClass, ModuleSupport.class);
         return ResourceBundle.getBundle(bundleName, locale, bundleClass.getModule());
     }
 
@@ -81,11 +82,27 @@ public final class ModuleSupport {
         return ResourceBundle.getBundle(bundleName, locale, loader);
     }
 
-    public static List<String> getModuleResources(Collection<String> names) {
+    public static boolean hasSystemModule(String moduleName) {
+        return ModuleFinder.ofSystem().find(moduleName).isPresent();
+    }
+
+    public static List<String> getModuleResources(Collection<Path> modulePath) {
+        ArrayList<String> result = new ArrayList<>();
+        for (ModuleReference moduleReference : ModuleFinder.of(modulePath.toArray(Path[]::new)).findAll()) {
+            try (ModuleReader moduleReader = moduleReference.open()) {
+                result.addAll(moduleReader.list().collect(Collectors.toList()));
+            } catch (IOException e) {
+                throw new RuntimeException("Unable get list of resources in module" + moduleReference.descriptor().name(), e);
+            }
+        }
+        return result;
+    }
+
+    public static List<String> getSystemModuleResources(Collection<String> names) {
         List<String> result = new ArrayList<>();
         for (String name : names) {
             Optional<ModuleReference> moduleReference = ModuleFinder.ofSystem().find(name);
-            if (!moduleReference.isPresent()) {
+            if (moduleReference.isEmpty()) {
                 throw new RuntimeException("Unable find ModuleReference for module " + name);
             }
             try (ModuleReader moduleReader = moduleReference.get().open()) {
@@ -97,11 +114,11 @@ public final class ModuleSupport {
         return result;
     }
 
-    static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
+    public static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
         Module declaringModule = declaringClass.getModule();
         String packageName = declaringClass.getPackageName();
-        Module accessingModule = accessingClass.getModule();
-        if (accessingModule.isNamed()) {
+        Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
+        if (accessingModule != null && accessingModule.isNamed()) {
             if (!declaringModule.isOpen(packageName, accessingModule)) {
                 Modules.addOpens(declaringModule, packageName, accessingModule);
             }

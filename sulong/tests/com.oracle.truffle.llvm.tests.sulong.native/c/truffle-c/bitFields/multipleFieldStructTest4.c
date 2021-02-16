@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,14 +28,17 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct test {
-  unsigned int val1 : 3;
-  unsigned int val2 : 3;
+    unsigned int val1 : 3;
+    unsigned int val2 : 3;
 };
 
 int main() {
-  struct test t;
-  t.val2 = 8;
-  t.val1 = 0; // -1
-  int val = t.val1 + t.val2;
-  return val;
+    struct test t;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wbitfield-constant-conversion"
+    t.val2 = 8; // -1
+#pragma clang diagnostic pop
+    t.val1 = 0;
+    int val = t.val1 + t.val2;
+    return val;
 }

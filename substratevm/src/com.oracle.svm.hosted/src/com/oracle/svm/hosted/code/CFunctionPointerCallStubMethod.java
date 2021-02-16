@@ -138,10 +138,10 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
 
     @Override
     protected Signature adaptSignatureAndConvertArguments(HostedProviders providers, NativeLibraries nativeLibraries,
-                    HostedGraphKit kit, JavaType returnType, JavaType[] paramTypes, List<ValueNode> arguments) {
+                    HostedGraphKit kit, ResolvedJavaMethod method, JavaType returnType, JavaType[] paramTypes, List<ValueNode> arguments) {
         // First argument is the call target address, not an actual argument
         arguments.remove(0);
         JavaType[] paramTypesNoReceiver = Arrays.copyOfRange(paramTypes, 1, paramTypes.length);
-        return super.adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, returnType, paramTypesNoReceiver, arguments);
+        return super.adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method, returnType, paramTypesNoReceiver, arguments);
     }
 }

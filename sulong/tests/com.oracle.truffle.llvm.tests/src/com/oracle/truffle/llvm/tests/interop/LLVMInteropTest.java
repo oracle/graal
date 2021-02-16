@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -61,7 +63,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
@@ -811,7 +813,7 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test062() {
+    public void test062() { // truffle.h version of testCreateTwoHandles
         try (Runner runner = new Runner("interop062.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -820,7 +822,16 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test063() {
+    public void testCreateTwoHandles() {
+        try (Runner runner = new Runner("createTwoHandles.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void test063() { // truffle.h version of testCreateResolveHandle
         try (Runner runner = new Runner("interop063.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -829,7 +840,16 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test064() {
+    public void testCreateResolveHandle() {
+        try (Runner runner = new Runner("createResolveHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void test064() { // truffle.h version of testCreateReleaseHandle
         try (Runner runner = new Runner("interop064.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -837,8 +857,17 @@ public class LLVMInteropTest {
         }
     }
 
+    @Test
+    public void testCreateReleaseHandle() {
+        try (Runner runner = new Runner("createReleaseHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
     @Test(expected = PolyglotException.class)
-    public void test065() {
+    public void test065() { // truffle.h version of testDoubleReleaseHandle
         try (Runner runner = new Runner("interop065.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -847,7 +876,16 @@ public class LLVMInteropTest {
     }
 
     @Test(expected = PolyglotException.class)
-    public void test066() throws Throwable {
+    public void testDoubleReleaseHandle() {
+        try (Runner runner = new Runner("doubleReleaseHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test(expected = PolyglotException.class)
+    public void test066() throws Throwable { // truffle.h version of testAccessReleasedHandle
         try (Runner runner = new Runner("interop066.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -855,9 +893,27 @@ public class LLVMInteropTest {
         }
     }
 
+    @Test(expected = PolyglotException.class)
+    public void testAccessReleasedHandle() throws Throwable {
+        try (Runner runner = new Runner("accessReleasedHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
     @Test
-    public void test067() {
+    public void test067() { // truffle.h version of testResolveHandle
         try (Runner runner = new Runner("interop067.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void testResolveHandle() {
+        try (Runner runner = new Runner("resolveHandle.c")) {
             Object a = new Object();
             runner.export(a, "object");
             Assert.assertEquals(0, runner.run());
@@ -1061,8 +1117,26 @@ public class LLVMInteropTest {
     }
 
     @Test
+    public void testIsHandleOld() {
+        try (Runner runner = new Runner("isHandleOld.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
     public void testIsHandle() {
         try (Runner runner = new Runner("isHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void testReleaseHandleOld() {
+        try (Runner runner = new Runner("releaseHandleOld.c")) {
             Object a = new Object();
             runner.export(a, "object");
             Assert.assertEquals(0, runner.run());
@@ -1098,7 +1172,7 @@ public class LLVMInteropTest {
 
         @ExportMessage
         int readMember(String member) {
-            Assert.assertEquals("foo", member);
+            assertEquals("foo", member);
             return foo;
         }
 
@@ -1115,7 +1189,7 @@ public class LLVMInteropTest {
         @ExportMessage(limit = "3")
         void writeMember(String member, Object value,
                         @CachedLibrary("value") InteropLibrary numbers) throws UnsupportedTypeException {
-            Assert.assertEquals("foo", member);
+            assertEquals("foo", member);
             try {
                 foo = numbers.asInt(value) * 2;
             } catch (InteropException ex) {
@@ -1132,16 +1206,44 @@ public class LLVMInteropTest {
             return context.getEnv().importSymbol("test_to_native");
         }
 
-        @ExportMessage(limit = "3")
-        @SuppressWarnings("unused")
-        void toNative(@CachedContext(LLVMLanguage.class) LLVMContext context,
+        @ExportMessage
+        void toNative(@CachedContext(LLVMLanguage.class) @SuppressWarnings("unused") LLVMContext context,
                         @Cached(value = "getTestToNative(context)", allowUncached = true) Object testToNative,
                         @CachedLibrary("testToNative") InteropLibrary interop) {
             try {
                 interop.execute(testToNative, this);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                Assert.fail("TO_NATIVE should have created a handle");
+                CompilerDirectives.shouldNotReachHere("TO_NATIVE should have created a handle");
             }
+        }
+
+        @TruffleBoundary
+        void assertEquals(Object expected, Object value) {
+            Assert.assertEquals(expected, value);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class ExecutableForeignObject implements TruffleObject {
+        protected int foo;
+
+        ExecutableForeignObject(int i) {
+            this.foo = i;
+        }
+
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        Object execute(Object[] arguments,
+                        @CachedLibrary(limit = "3") InteropLibrary interop) throws UnsupportedMessageException {
+            int sum = foo;
+            for (Object arg : arguments) {
+                sum += interop.asInt(arg);
+            }
+            return sum;
         }
     }
 
@@ -1149,6 +1251,14 @@ public class LLVMInteropTest {
     public void testRegisterHandle() {
         try (Runner runner = new Runner("registerHandle.c")) {
             runner.export(new ForeignObject(1), "global_object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void testAssignManagedFunction() {
+        try (Runner runner = new Runner("assignManagedFunction.c")) {
+            runner.export(new ExecutableForeignObject(123), "global_object");
             Assert.assertEquals(0, runner.run());
         }
     }
@@ -1213,6 +1323,24 @@ public class LLVMInteropTest {
             Value testHandleFromNativeCallback = runner.findGlobalSymbol("testHandleFromNativeCallback");
             Value ret = testHandleFromNativeCallback.execute(ProxyObject.fromMap(makeObjectA()));
             Assert.assertEquals(42, ret.asInt());
+        }
+    }
+
+    @Test
+    public void testAutoDerefHandleOld() {
+        try (Runner runner = new Runner("autoDerefHandleOld.c")) {
+            runner.run();
+            Value testHandleFromNativeCallback = runner.findGlobalSymbol("testAutoDerefHandle");
+            ProxyExecutable proxyExecutable = new ProxyExecutable() {
+                @Override
+                public Object execute(Value... t) {
+                    return 13;
+                }
+            };
+
+            Object intArray = runner.context.asValue(new int[]{7});
+            Value ret = testHandleFromNativeCallback.execute(proxyExecutable, intArray);
+            Assert.assertEquals(33, ret.asInt());
         }
     }
 
@@ -1546,7 +1674,7 @@ public class LLVMInteropTest {
     }
 
     private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "interop").toPath();
-    public static final String FILENAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
+    public static final String FILENAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
         Map<String, String> map = new HashMap<>();

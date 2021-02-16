@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,9 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int arg1 = 68;
-  int arg2 = 0;
-  int mov = 0;
-  __asm__("movl %%ecx, %%eax;" : "=a"(mov) : "c"(arg1), "a"(arg2));
-  return mov;
+    int arg1 = 68;
+    int arg2 = 0;
+    int mov = 0;
+    __asm__("movl %%ecx, %%eax;" : "=a"(mov) : "c"(arg1), "a"(arg2));
+    return mov;
 }

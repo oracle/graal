@@ -30,11 +30,14 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -46,43 +49,46 @@ import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
  */
 // @formatter:off
-@NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}",
+@NodeInfo(nameTemplate = "ForeignCall#{p#descriptorName/s}",
           allowedUsageTypes = Memory,
           cycles = CYCLES_2,
           cyclesRationale = "Rough estimation of the call operation itself.",
           size = SIZE_2,
           sizeRationale = "Rough estimation of the call operation itself.")
 // @formatter:on
+@NodeIntrinsicFactory
 public class ForeignCallNode extends AbstractMemoryCheckpoint implements ForeignCall {
     public static final NodeClass<ForeignCallNode> TYPE = NodeClass.create(ForeignCallNode.class);
 
     @Input protected NodeInputList<ValueNode> arguments;
     @OptionalInput(State) protected FrameState stateDuring;
-    protected final ForeignCallsProvider foreignCalls;
 
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
-    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod targetMethod, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls,
-                    ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        if (!foreignCalls.isAvailable(descriptor)) {
-            // When using encoded snippets a graph main contain a reference to a foreign call that's
-            // not actually available in the current configuration. It's assumed that further
-            // simplification of the graph will eliminate this call completely.
-            return false;
+    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls,
+                    ForeignCallSignature signature, ValueNode... arguments) {
+        ForeignCallDescriptor descriptor = foreignCalls.getDescriptor(signature);
+        return doIntrinsify(b, returnStamp, descriptor, arguments, false);
+    }
+
+    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        return doIntrinsify(b, returnStamp, descriptor, arguments, false);
+    }
+
+    static boolean doIntrinsify(GraphBuilderContext b, Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode[] arguments, boolean withException) {
+        ForeignCall node;
+        if (withException) {
+            node = new ForeignCallWithExceptionNode(descriptor, arguments);
+        } else {
+            node = new ForeignCallNode(descriptor, arguments);
         }
-
-        ForeignCallNode node = new ForeignCallNode(foreignCalls, descriptor, arguments);
-        node.setStamp(returnStamp);
-
-        assert verifyDescriptor(b, targetMethod, descriptor);
+        node.asNode().setStamp(returnStamp);
 
         /*
          * Need to update the BCI of a ForeignCallNode so that it gets the stateDuring in the case
@@ -94,57 +100,47 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
             node.setBci(nonIntrinsicAncestor.bci());
         }
 
-        JavaKind returnKind = targetMethod.getSignature().getReturnKind();
+        JavaKind returnKind = returnStamp.getStackKind();
         if (returnKind == JavaKind.Void) {
-            b.add(node);
+            b.add(node.asNode());
         } else {
-            b.addPush(returnKind, node);
+            b.addPush(returnKind, node.asNode());
         }
 
         return true;
     }
 
-    static boolean verifyDescriptor(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor) {
-        int parameters = 1;
-        for (Class<?> arg : descriptor.getArgumentTypes()) {
-            ResolvedJavaType res = b.getMetaAccess().lookupJavaType(arg);
-            ResolvedJavaType parameterType = (ResolvedJavaType) targetMethod.getSignature().getParameterType(parameters, targetMethod.getDeclaringClass());
-            assert parameterType.equals(res) : descriptor + ": parameter " + parameters + " mismatch: " + res + " != " + parameterType;
-            parameters++;
-        }
-        return true;
+    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallSignature signature, ValueNode... arguments) {
+        this(TYPE, foreignCalls.getDescriptor(signature), arguments);
     }
 
-    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        this(TYPE, foreignCalls, descriptor, arguments);
+    public ForeignCallNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        this(TYPE, descriptor, arguments);
     }
 
-    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
+    public ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
         super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
-    public ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
+    public ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp) {
         super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
     }
 
-    protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(c, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
     @Override
     public boolean hasSideEffect() {
-        return !foreignCalls.isReexecutable(descriptor);
+        return !descriptor.isReexecutable();
     }
 
     @Override
@@ -186,15 +182,17 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
     }
 
     @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return foreignCalls;
+    public String toString(Verbosity verbosity) {
+        if (verbosity == Verbosity.Name) {
+            return super.toString(verbosity) + "#" + descriptor.getName();
+        }
+        return super.toString(verbosity);
     }
 
     @Override
-    public String toString(Verbosity verbosity) {
-        if (verbosity == Verbosity.Name) {
-            return super.toString(verbosity) + "#" + descriptor;
-        }
-        return super.toString(verbosity);
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
+        Map<Object, Object> debugProperties = super.getDebugProperties(map);
+        debugProperties.put("descriptorName", descriptor.getName());
+        return debugProperties;
     }
 }

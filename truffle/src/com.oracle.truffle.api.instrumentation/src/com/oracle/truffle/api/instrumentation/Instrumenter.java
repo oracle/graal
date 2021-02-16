@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -224,7 +225,7 @@ public abstract class Instrumenter {
      * executed.
      *
      * @param filter a filter on which source events are triggered.
-     * @param listener a listener that gets notified if a source was loaded
+     * @param listener a listener that gets notified if a source was executed
      * @param includeExecutedSources whether or not this listener should be notified for sources
      *            which were already executed at the time when this listener was attached.
      * @return a handle for stopping the notification stream
@@ -253,6 +254,79 @@ public abstract class Instrumenter {
      * @since 0.15
      */
     public abstract <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean includeExistingSourceSections);
+
+    /**
+     * Create a {@linkplain EventBinding binding} to get notifications for each newly loaded
+     * {@link Source}. The binding needs to be {@link EventBinding#attach() attached} to receive
+     * notifications. Only subsequent loads will be notified after {@link EventBinding#attach()
+     * attach}, unless {@code includeExistingSources} is true, in which case a notification for each
+     * previously loaded source will be delivered before attach method returns.
+     * <p>
+     * The difference from
+     * {@link #attachLoadSourceListener(SourceFilter, LoadSourceListener, boolean)} is in having the
+     * binding object before notifications are produced when existing sources are requested.
+     *
+     * @param filter a filter on which sources events are triggered.
+     * @param listener a listener that gets notified if a source was loaded
+     * @param includeExistingSources whether or not this listener should be notified for sources
+     *            which were already loaded at the time when this listener was attached.
+     * @return a binding handle to {@link EventBinding#attach() attach} and
+     *         {@link EventBinding#dispose() stop} the notification stream
+     *
+     * @see LoadSourceListener#onLoad(LoadSourceEvent)
+     * @since 21.1
+     */
+    public abstract <T extends LoadSourceListener> EventBinding<T> createLoadSourceBinding(SourceFilter filter, T listener, boolean includeExistingSources);
+
+    /**
+     * Create a {@linkplain EventBinding binding} to get notifications for each newly executed
+     * {@link Source}. The binding needs to be {@link EventBinding#attach() attached} to receive
+     * notifications. Only subsequent executions will be notified after {@link EventBinding#attach()
+     * attach}, unless {@code includeExecutedSources} is true, in which case a notification for each
+     * previously executed source will be delivered before attach method returns.
+     * <p>
+     * The difference from
+     * {@link #attachExecuteSourceListener(SourceFilter, ExecuteSourceListener, boolean)} is in
+     * having the binding object before notifications are produced when executed sources are
+     * requested.
+     *
+     * @param filter a filter on which sources events are triggered.
+     * @param listener a listener that gets notified if a source was executed
+     * @param includeExecutedSources whether or not this listener should be notified for sources
+     *            which were already executed at the time when this listener was attached.
+     * @return a binding handle to {@link EventBinding#attach() attach} and
+     *         {@link EventBinding#dispose() stop} the notification stream
+     *
+     * @see ExecuteSourceListener#onExecute(ExecuteSourceEvent)
+     * @since 21.1
+     */
+    public abstract <T extends ExecuteSourceListener> EventBinding<T> createExecuteSourceBinding(SourceFilter filter, T listener, boolean includeExecutedSources);
+
+    /**
+     * Create a {@linkplain EventBinding binding} to get notifications for each newly loaded
+     * {@link SourceSection} in every newly loaded {@link Source}. The binding needs to be
+     * {@link EventBinding#attach() attached} to receive notifications. Only subsequent loads will
+     * be notified after {@link EventBinding#attach() attach}, unless
+     * {@code includeExistingSourceSections} is true, in which case a notification for each
+     * previously loaded source section will be delivered before attach method returns.
+     * <p>
+     * The difference from
+     * {@link #attachLoadSourceSectionListener(SourceSectionFilter, LoadSourceSectionListener, boolean)}
+     * is in having the binding object before notifications are produced when existing source
+     * sections are requested.
+     *
+     * @param filter a filter on which sources events are triggered.
+     * @param listener a listener that gets notified if a source section was loaded
+     * @param includeExistingSourceSections whether or not this listener should be notified for
+     *            source sections which were already loaded at the time when this listener was
+     *            attached.
+     * @return a binding handle to {@link EventBinding#attach() attach} and
+     *         {@link EventBinding#dispose() stop} the notification stream
+     *
+     * @see LoadSourceSectionListener#onLoad(LoadSourceSectionEvent)
+     * @since 21.1
+     */
+    public abstract <T extends LoadSourceSectionListener> EventBinding<T> createLoadSourceSectionBinding(SourceSectionFilter filter, T listener, boolean includeExistingSourceSections);
 
     /**
      * Notifies the listener for each {@link SourceSection} in every loaded {@link Source} that
@@ -325,6 +399,20 @@ public abstract class Instrumenter {
      * @since 0.30
      */
     public abstract <T extends ThreadsListener> EventBinding<T> attachThreadsListener(T listener, boolean includeInitializedThreads);
+
+    /**
+     * Attach a {@link ThreadsActivationListener listener} to be notified about when a thread gets
+     * entered or left in guest language applications.
+     * <p>
+     * The event notification starts after the listener registration is completed. This means that
+     * currently activated threads won't get a notification. It is also possible that
+     * {@link ThreadsActivationListener#onLeaveThread(TruffleContext)} is called without ever
+     * invoking {@link ThreadsActivationListener#onEnterThread(TruffleContext)}.
+     *
+     * @return a handle for unregistering the listener.
+     * @since 20.3
+     */
+    public abstract EventBinding<? extends ThreadsActivationListener> attachThreadsActivationListener(ThreadsActivationListener listener);
 
     /**
      * Returns a filtered list of loaded {@link SourceSection} instances.

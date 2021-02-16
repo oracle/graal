@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@
 #include <errno.h>
 
 int main() {
-  if (remove("")) {
-    printf("%d\n", errno);
-  }
+    if (remove("")) {
+        printf("%d\n", errno);
+    }
 }

@@ -26,15 +26,14 @@ package org.graalvm.tools.lsp.server.request;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
+import org.graalvm.tools.lsp.server.types.Coverage;
 import org.graalvm.tools.lsp.server.types.Diagnostic;
 import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
 import org.graalvm.tools.lsp.server.types.Range;
@@ -46,7 +45,7 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -57,6 +56,8 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -119,21 +120,20 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
         } catch (DiagnosticsNotification e) {
             throw e;
         } catch (Exception e) {
-            if (e instanceof TruffleException) {
-                Node location = ((TruffleException) e).getLocation();
-                URI uriOfErronousSource = null;
-                if (location != null) {
-                    SourceSection sourceSection = location.getEncapsulatingSourceSection();
-                    if (sourceSection != null) {
-                        uriOfErronousSource = sourceSection.getSource().getURI();
-                    }
+            InteropLibrary interopLib = InteropLibrary.getUncached();
+            if (interopLib.isException(e)) {
+                SourceSection sourceSection;
+                try {
+                    sourceSection = interopLib.hasSourceLocation(e) ? interopLib.getSourceLocation(e) : null;
+                } catch (UnsupportedMessageException um) {
+                    throw CompilerDirectives.shouldNotReachHere(um);
                 }
-
+                URI uriOfErronousSource = sourceSection != null ? sourceSection.getSource().getURI() : null;
                 if (uriOfErronousSource == null) {
                     uriOfErronousSource = uri;
                 }
                 throw DiagnosticsNotification.create(uriOfErronousSource,
-                                Diagnostic.create(SourceUtils.getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, null, "Coverage analysis", null));
+                                Diagnostic.create(SourceUtils.getRangeFrom(e, interopLib), e.getMessage(), DiagnosticSeverity.Error, null, "Coverage analysis", null));
             }
 
             throw e;
@@ -155,38 +155,32 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
         surrogateMap.getSurrogates().stream().forEach(surrogate -> surrogate.clearCoverage(runScriptUri));
     }
 
-    public void showCoverageWithEnteredContext(URI uri) throws DiagnosticsNotification {
+    public Coverage getCoverageWithEnteredContext(URI uri) {
         final TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         if (surrogate != null && surrogate.getSourceWrapper() != null && surrogate.getSourceWrapper().isParsingSuccessful()) {
-            SourceSectionFilter filter = SourceSectionFilter.newBuilder() //
+            final SourceSectionFilter filter = SourceSectionFilter.newBuilder() //
                             .sourceIs(surrogate.getSourceWrapper().getSource()) //
                             .tagIs(StatementTag.class) //
                             .build();
-            Set<SourceSection> duplicateFilter = new HashSet<>();
-            Map<URI, List<Diagnostic>> mapDiagnostics = new HashMap<>();
+            final Set<SourceSection> duplicateFilter = new HashSet<>();
+            final List<Range> covered = new ArrayList<>();
+            final List<Range> uncovered = new ArrayList<>();
             env.getInstrumenter().attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
 
                 @Override
                 public void onLoad(LoadSourceSectionEvent event) {
                     SourceSection section = event.getSourceSection();
-                    if (!surrogate.isLocationCovered(SourceSectionReference.from(section)) && !duplicateFilter.contains(section)) {
-                        duplicateFilter.add(section);
-                        Diagnostic diag = Diagnostic.create(SourceUtils.sourceSectionToRange(section),
-                                        "Not covered",
-                                        DiagnosticSeverity.Warning,
-                                        null,
-                                        "Coverage Analysis",
-                                        null);
-                        List<Diagnostic> params = mapDiagnostics.computeIfAbsent(uri, _uri -> new ArrayList<>());
-                        params.add(diag);
+                    if (duplicateFilter.add(section)) {
+                        if (surrogate.isLocationCovered(SourceSectionReference.from(section))) {
+                            covered.add(SourceUtils.sourceSectionToRange(section));
+                        } else {
+                            uncovered.add(SourceUtils.sourceSectionToRange(section));
+                        }
                     }
                 }
             }, true).dispose();
-            throw new DiagnosticsNotification(mapDiagnostics);
-        } else {
-            throw DiagnosticsNotification.create(uri,
-                            Diagnostic.create(Range.create(0, 0, 0, 0),
-                                            "No coverage information available", DiagnosticSeverity.Error, null, "Coverage Analysis", null));
+            return Coverage.create(covered, uncovered);
         }
+        return null;
     }
 }

@@ -65,6 +65,23 @@ public final class JUnitFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitialization.initializeAtBuildTime(SVMJUnitRunner.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runner.Description.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.ParentRunner.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.Parameterized.class);
+        RuntimeClassInitialization.initializeAtBuildTime("jcp.xml.dsig.internal.dom.XMLDSigRI");
+        RuntimeClassInitialization.initializeAtBuildTime("org.junit.runners.ParentRunner$1");
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runner.Request.class);
+        RuntimeClassInitialization.initializeAtBuildTime("org.junit.runner.Request$1");
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runner.Runner.class);
+        RuntimeClassInitialization.initializeAtBuildTime("org.junit.runner.Runner$1");
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runner.JUnitCore.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.Suite.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.BlockJUnit4ClassRunner.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.model.FrameworkMethod.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.model.TestClass.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.model.FrameworkField.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.junit.Assert.class);
+        RuntimeClassInitialization.initializeAtBuildTime(com.oracle.mxtool.junit.MxJUnitRequest.class);
         SVMJUnitRunner svmRunner = new SVMJUnitRunner(access);
         ImageSingletons.add(SVMJUnitRunner.class, svmRunner);
     }

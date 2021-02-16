@@ -40,17 +40,18 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.util.Iterator;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -80,12 +81,70 @@ public final class DebugStackFrame {
 
     final SuspendedEvent event;
     private final FrameInstance currentFrame;
-    private final int depth;    // The frame depth on stack. 0 is the top frame
+    private final StackTraceElement hostTraceElement;
+    private final int depth;    // The frame depth on guest stack. 0 is the top frame
+    private final String name;
+    private final DebugException nameEx;
 
     DebugStackFrame(SuspendedEvent session, FrameInstance instance, int depth) {
         this.event = session;
         this.currentFrame = instance;
+        this.hostTraceElement = null;
         this.depth = depth;
+        String frameName = null;
+        DebugException frameNameEx = null;
+        try {
+            frameName = initName();
+        } catch (DebugException ex) {
+            frameNameEx = ex;
+        }
+        this.name = frameName;
+        this.nameEx = frameNameEx;
+    }
+
+    DebugStackFrame(SuspendedEvent session, StackTraceElement hostElement, int depth) {
+        this.event = session;
+        this.currentFrame = null;
+        this.hostTraceElement = hostElement;
+        this.depth = depth;
+        this.name = hostElement.getClassName() + '.' + hostElement.getMethodName();
+        this.nameEx = null;
+    }
+
+    // Initialize the stack frame name while we're on the execution thread
+    private String initName() throws DebugException {
+        verifyValidState(false);
+        Node node;
+        if (currentFrame == null) {
+            node = getContext().getInstrumentedNode();
+        } else {
+            node = currentFrame.getCallNode();
+            node = InstrumentableNode.findInstrumentableParent(node);
+        }
+        try {
+            if (node != null) {
+                Frame frame = findTruffleFrame(FrameAccess.READ_ONLY);
+                NodeLibrary nodeLibrary = NodeLibrary.getUncached();
+                if (nodeLibrary.hasRootInstance(node, frame)) {
+                    Object instance = nodeLibrary.getRootInstance(node, frame);
+                    InteropLibrary interop = InteropLibrary.getUncached();
+                    if (interop.hasExecutableName(instance)) {
+                        return interop.asString(interop.getExecutableName(instance));
+                    }
+                }
+            }
+            RootNode root = findCurrentRoot();
+            if (root == null) {
+                return null;
+            }
+            return root.getName();
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            RootNode root = findCurrentRoot();
+            LanguageInfo languageInfo = root != null ? root.getLanguageInfo() : null;
+            throw DebugException.create(event.getSession(), ex, languageInfo);
+        }
     }
 
     /**
@@ -113,11 +172,41 @@ public final class DebugStackFrame {
      */
     public boolean isInternal() {
         verifyValidState(true);
+        if (isHost()) {
+            return false;
+        }
         RootNode root = findCurrentRoot();
         if (root == null) {
             return true;
         }
         return root.isInternal();
+    }
+
+    /**
+     * Returns <code>true</code> if this frame is a host frame. Host frames provide
+     * {@link #getHostTraceElement() stack trace element}, have no {@link #getScope() scope}, no
+     * {@link #getSourceSection() source section} and can not {@link #eval(String) evaluate} code.
+     * <p>
+     * Host frames are provided only when {@link DebuggerSession#setShowHostStackFrames(boolean)
+     * host info} is set to <code>true</code>.
+     *
+     * @since 20.3
+     * @see DebuggerSession#setShowHostStackFrames(boolean)
+     */
+    public boolean isHost() {
+        return hostTraceElement != null;
+    }
+
+    /**
+     * Provides a host frame. Returns the host stack trace element if and only if this is
+     * {@link #isHost() host} frame.
+     *
+     * @return the host stack trace element, or <code>null</code> when not a host frame.
+     * @since 20.3
+     * @see #isHost()
+     */
+    public StackTraceElement getHostTraceElement() {
+        return hostTraceElement;
     }
 
     /**
@@ -134,17 +223,10 @@ public final class DebugStackFrame {
      */
     public String getName() throws DebugException {
         verifyValidState(true);
-        RootNode root = findCurrentRoot();
-        if (root == null) {
-            return null;
+        if (nameEx != null) {
+            throw nameEx;
         }
-        try {
-            return root.getName();
-        } catch (ThreadDeath td) {
-            throw td;
-        } catch (Throwable ex) {
-            throw new DebugException(event.getSession(), ex, root.getLanguageInfo(), null, true, null);
-        }
+        return name;
     }
 
     /**
@@ -158,6 +240,9 @@ public final class DebugStackFrame {
      */
     public SourceSection getSourceSection() {
         verifyValidState(true);
+        if (isHost()) {
+            return null;
+        }
         if (currentFrame == null) {
             SuspendedContext context = getContext();
             return event.getSession().resolveSection(context.getInstrumentedSourceSection());
@@ -179,6 +264,9 @@ public final class DebugStackFrame {
      */
     public LanguageInfo getLanguage() {
         verifyValidState(true);
+        if (isHost()) {
+            return null;
+        }
         RootNode root = findCurrentRoot();
         if (root == null) {
             return null;
@@ -202,6 +290,9 @@ public final class DebugStackFrame {
      */
     public DebugScope getScope() throws DebugException {
         verifyValidState(false);
+        if (isHost()) {
+            return null;
+        }
         SuspendedContext context = getContext();
         RootNode root = findCurrentRoot();
         if (root == null) {
@@ -212,26 +303,25 @@ public final class DebugStackFrame {
             node = context.getInstrumentedNode();
         } else {
             node = currentFrame.getCallNode();
-        }
-        LanguageInfo languageInfo = node.getRootNode().getLanguageInfo();
-        if (languageInfo == null) {
-            // no language, no scopes
-            return null;
+            node = InstrumentableNode.findInstrumentableParent(node);
         }
         DebuggerSession session = event.getSession();
         Frame frame = findTruffleFrame(FrameAccess.READ_WRITE);
         try {
-            Iterable<Scope> scopes = session.getDebugger().getEnv().findLocalScopes(node, frame);
-            Iterator<Scope> it = scopes.iterator();
-            if (!it.hasNext()) {
+            if (!NodeLibrary.getUncached().hasScope(node, frame)) {
                 return null;
             }
-            return new DebugScope(it.next(), it, session, event, frame, root);
+            Object scope = NodeLibrary.getUncached().getScope(node, frame, isEnter());
+            return new DebugScope(scope, session, event, node, frame, root);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, languageInfo, null, true, null);
+            throw DebugException.create(session, ex, root.getLanguageInfo());
         }
+    }
+
+    private boolean isEnter() {
+        return depth == 0 && SuspendAnchor.BEFORE.equals(event.getSuspendAnchor());
     }
 
     /**
@@ -284,6 +374,7 @@ public final class DebugStackFrame {
     }
 
     DebugValue wrapHeapValue(Object result) {
+        assert !isHost() : "Can not wrap values in host frames.";
         LanguageInfo language;
         RootNode root = findCurrentRoot();
         if (root != null) {
@@ -313,6 +404,9 @@ public final class DebugStackFrame {
      */
     public DebugValue eval(String code) throws DebugException {
         verifyValidState(false);
+        if (isHost()) {
+            throw new IllegalStateException("Can not evaluate code in host frames.");
+        }
         Object result = DebuggerSession.evalInContext(event, code, currentFrame);
         return wrapHeapValue(result);
     }
@@ -325,6 +419,7 @@ public final class DebugStackFrame {
         if (obj instanceof DebugStackFrame) {
             DebugStackFrame other = (DebugStackFrame) obj;
             return event == other.event &&
+                            hostTraceElement == other.hostTraceElement &&
                             (currentFrame == other.currentFrame ||
                                             currentFrame != null && other.currentFrame != null && currentFrame.getFrame(FrameAccess.READ_ONLY) == other.currentFrame.getFrame(FrameAccess.READ_ONLY));
         }
@@ -340,6 +435,7 @@ public final class DebugStackFrame {
     }
 
     Frame findTruffleFrame(FrameAccess access) {
+        assert !isHost() : "No Truffle frame in host stack frame";
         if (currentFrame == null) {
             // The top frame has already been materialized
             // so we can safely return that frame
@@ -367,6 +463,9 @@ public final class DebugStackFrame {
     }
 
     RootNode findCurrentRoot() {
+        if (isHost()) {
+            return null;
+        }
         SuspendedContext context = getContext();
         if (currentFrame == null) {
             return context.getInstrumentedNode().getRootNode();
@@ -376,6 +475,9 @@ public final class DebugStackFrame {
     }
 
     RootCallTarget getCallTarget() {
+        if (isHost()) {
+            return null;
+        }
         SuspendedContext context = getContext();
         if (currentFrame == null) {
             return context.getInstrumentedNode().getRootNode().getCallTarget();
@@ -385,6 +487,9 @@ public final class DebugStackFrame {
     }
 
     Node getCurrentNode() {
+        if (isHost()) {
+            return null;
+        }
         if (currentFrame == null) {
             return getContext().getInstrumentedNode();
         } else {

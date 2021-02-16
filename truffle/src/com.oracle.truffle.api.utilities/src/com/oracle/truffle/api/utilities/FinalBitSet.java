@@ -126,7 +126,7 @@ public final class FinalBitSet {
      */
     public boolean get(int bitIndex) {
         if (bitIndex < 0) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IndexOutOfBoundsException(String.format("bitIndex < 0: %s", bitIndex));
         }
         int wordIndex = wordIndex(bitIndex);
@@ -286,7 +286,7 @@ public final class FinalBitSet {
      */
     public int nextSetBit(int fromIndex) {
         if (fromIndex < 0) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IndexOutOfBoundsException("fromIndex < 0: " + fromIndex);
         }
 
@@ -318,7 +318,7 @@ public final class FinalBitSet {
      */
     public int nextClearBit(int fromIndex) {
         if (fromIndex < 0) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IndexOutOfBoundsException("fromIndex < 0: " + fromIndex);
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 #if defined(_WIN32)
-// Workaround for static linking. See comment in ffi.h, line 169.
+// Workaround for static linking. See comment in ffi.h, line 115.
 #define FFI_BUILDING
 #endif
 
@@ -71,7 +71,7 @@ static void initializeFlag(JNIEnv *env, jclass NFIContext, jobject context, cons
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNativeContext(JNIEnv *env, jobject context) {
     struct __TruffleContextInternal *ret = (struct __TruffleContextInternal *) malloc(sizeof(*ret));
 
-    jclass CallTarget, LibFFISignature, LibFFIType, NFIContext, LibFFIClosure_RetPatches, NativeSimpleType;
+    jclass CallTarget, LibFFISignature, LibFFIType, NFIContext, LibFFIClosure_RetPatches, NativeSimpleType, CachedSignatureInfo;
     jmethodID initializeSimpleType;
 
     (*env)->GetJavaVM(env, &ret->javaVM);
@@ -83,7 +83,10 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
 
     LibFFISignature = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFISignature");
     ret->LibFFISignature_cif = (*env)->GetFieldID(env, LibFFISignature, "cif", "J");
-    ret->LibFFISignature_argTypes = (*env)->GetFieldID(env, LibFFISignature, "argTypes", "[Lcom/oracle/truffle/nfi/impl/LibFFIType;");
+    ret->LibFFISignature_signatureInfo = (*env)->GetFieldID(env, LibFFISignature, "signatureInfo", "Lcom/oracle/truffle/nfi/impl/LibFFISignature$CachedSignatureInfo;");
+
+    CachedSignatureInfo = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFISignature$CachedSignatureInfo");
+    ret->CachedSignatureInfo_argTypes = (*env)->GetFieldID(env, CachedSignatureInfo, "argTypes", "[Lcom/oracle/truffle/nfi/impl/LibFFIType$CachedTypeInfo;");
 
     LibFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType");
     ret->LibFFIType_type = (*env)->GetFieldID(env, LibFFIType, "type", "J");
@@ -98,10 +101,10 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     NFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NFIContext");
     ret->NFIContext_getNativeEnv = (*env)->GetMethodID(env, NFIContext, "getNativeEnv", "()J");
     ret->NFIContext_createClosureNativePointer = (*env)->GetMethodID(env, NFIContext, "createClosureNativePointer",
-            "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/impl/LibFFISignature;)Lcom/oracle/truffle/nfi/impl/ClosureNativePointer;");
+            "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/impl/LibFFISignature;Ljava/lang/Object;)Lcom/oracle/truffle/nfi/impl/ClosureNativePointer;");
     ret->NFIContext_newClosureRef = (*env)->GetMethodID(env, NFIContext, "newClosureRef", "(J)V");
     ret->NFIContext_releaseClosureRef = (*env)->GetMethodID(env, NFIContext, "releaseClosureRef", "(J)V");
-    ret->NFIContext_getClosureObject = (*env)->GetMethodID(env, NFIContext, "getClosureObject", "(J)Lcom/oracle/truffle/api/interop/TruffleObject;");
+    ret->NFIContext_getClosureObject = (*env)->GetMethodID(env, NFIContext, "getClosureObject", "(J)Ljava/lang/Object;");
 
     ret->Object = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/Object"));
     ret->String = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/String"));

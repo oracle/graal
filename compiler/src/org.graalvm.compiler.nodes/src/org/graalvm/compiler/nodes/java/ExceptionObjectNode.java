@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,7 +98,7 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
             LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp(NodeView.DEFAULT)));
 
             loadException.setStateAfter(stateAfter());
-            replaceAtUsages(InputType.Value, loadException);
+            replaceAtUsages(loadException, InputType.Value);
             graph().replaceFixedWithFixed(this, entry);
             entry.graph().addAfterFixed(entry, loadException);
 

@@ -59,18 +59,22 @@ public class ReachabilityHandlerFeature implements Feature {
     }
 
     public void registerMethodOverrideReachabilityHandler(BeforeAnalysisAccessImpl a, BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
-        registerReachabilityHandler(a, callback, new Executable[]{baseMethod});
+        registerReachabilityHandler(a, callback, new Executable[]{baseMethod}, false);
     }
 
     public void registerSubtypeReachabilityHandler(BeforeAnalysisAccess a, BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
-        registerReachabilityHandler(a, callback, new Class<?>[]{baseClass});
+        registerReachabilityHandler(a, callback, new Class<?>[]{baseClass}, false);
+    }
+
+    public void registerClassInitializerReachabilityHandler(BeforeAnalysisAccess a, Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
+        registerReachabilityHandler(a, callback, new Class<?>[]{clazz}, true);
     }
 
     public void registerReachabilityHandler(BeforeAnalysisAccess a, Consumer<DuringAnalysisAccess> callback, Object[] triggers) {
-        registerReachabilityHandler(a, (Object) callback, triggers);
+        registerReachabilityHandler(a, callback, triggers, false);
     }
 
-    private void registerReachabilityHandler(BeforeAnalysisAccess a, Object callback, Object[] triggers) {
+    private void registerReachabilityHandler(BeforeAnalysisAccess a, Object callback, Object[] triggers, boolean triggerOnClassInitializer) {
         if (triggeredHandlers.containsKey(callback)) {
             /* Handler has already been triggered from another registration, so nothing to do. */
             return;
@@ -83,13 +87,14 @@ public class ReachabilityHandlerFeature implements Feature {
 
         for (Object trigger : triggers) {
             if (trigger instanceof Class) {
-                triggerSet.add(metaAccess.lookupJavaType((Class<?>) trigger));
+                AnalysisType aType = metaAccess.lookupJavaType((Class<?>) trigger);
+                triggerSet.add(triggerOnClassInitializer ? aType.getClassInitializer() : aType);
             } else if (trigger instanceof Field) {
                 triggerSet.add(metaAccess.lookupJavaField((Field) trigger));
             } else if (trigger instanceof Executable) {
                 triggerSet.add(metaAccess.lookupJavaMethod((Executable) trigger));
             } else {
-                throw UserError.abort("registerReachabilityHandler called with an element that is not a Class, Field, Method, or Constructor: " + trigger.getClass().getTypeName());
+                throw UserError.abort("registerReachabilityHandler called with an element that is not a Class, Field, Method, or Constructor: %s", trigger.getClass().getTypeName());
             }
         }
 
@@ -140,7 +145,11 @@ public class ReachabilityHandlerFeature implements Feature {
                     return true;
                 }
             } else if (trigger instanceof AnalysisMethod) {
-                if (access.isReachable((AnalysisMethod) trigger)) {
+                AnalysisMethod triggerMethod = (AnalysisMethod) trigger;
+                if (access.isReachable(triggerMethod)) {
+                    return true;
+                }
+                if (triggerMethod.isClassInitializer() && triggerMethod.getDeclaringClass().isInitialized()) {
                     return true;
                 }
             } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -198,7 +198,7 @@ public class MultiThreadedLanguageTest {
 
         assertMultiThreadedError(value, Value::execute);
         assertMultiThreadedError(value, Value::isBoolean);
-// assertMultiThreadedError(value, Value::isHostObject);
+        // assertMultiThreadedError(value, Value::isHostObject);
         assertMultiThreadedError(value, Value::isNativePointer);
         assertMultiThreadedError(value, Value::isNull);
         assertMultiThreadedError(value, Value::isNumber);
@@ -215,7 +215,7 @@ public class MultiThreadedLanguageTest {
         assertMultiThreadedError(value, Value::fitsInLong);
         assertMultiThreadedError(value, Value::fitsInFloat);
         assertMultiThreadedError(value, Value::fitsInDouble);
-// assertMultiThreadedError(value, Value::asHostObject);
+        // assertMultiThreadedError(value, Value::asHostObject);
         assertMultiThreadedError(value, Value::asBoolean);
         assertMultiThreadedError(value, Value::asByte);
         assertMultiThreadedError(value, Value::asShort);
@@ -395,11 +395,11 @@ public class MultiThreadedLanguageTest {
                 List<Future<LanguageContext>> innerContextFutures = new ArrayList<>();
                 for (int i = 0; i < 100; i++) {
                     innerContextFutures.add(service.submit(() -> {
-                        Object prev = innerContext.enter();
+                        Object prev = innerContext.enter(null);
                         try {
                             return MultiThreadedLanguage.getContext();
                         } finally {
-                            innerContext.leave(prev);
+                            innerContext.leave(null, prev);
                         }
                     }));
                 }
@@ -414,9 +414,9 @@ public class MultiThreadedLanguageTest {
                         assertSame(MultiThreadedLanguage.getContext(), future.get());
                     }
                     LanguageContext innerLanguageContext;
-                    Object prev = innerContext.enter();
+                    Object prev = innerContext.enter(null);
                     innerLanguageContext = MultiThreadedLanguage.getContext();
-                    innerContext.leave(prev);
+                    innerContext.leave(null, prev);
                     for (Future<LanguageContext> future : innerContextFutures) {
                         assertSame(innerLanguageContext, future.get());
                     }
@@ -655,6 +655,22 @@ public class MultiThreadedLanguageTest {
             throw seenError.get();
         }
         Assert.assertTrue(seenInterrupt.get());
+    }
+
+    @Test
+    public void testMultiThreadedAccessExceptionThrownToCreator() throws Throwable {
+        try (Context context = Context.newBuilder(MultiThreadedLanguage.ID).allowCreateThread(true).build()) {
+            MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+                return req.singleThreaded;
+            };
+            eval(context, (env) -> {
+                AbstractPolyglotTest.assertFails(() -> env.createThread(() -> {
+                }), IllegalStateException.class, (ise) -> {
+                    assertTrue(ise.getMessage().contains("Multi threaded access requested by thread"));
+                });
+                return null;
+            });
+        }
     }
 
     /*

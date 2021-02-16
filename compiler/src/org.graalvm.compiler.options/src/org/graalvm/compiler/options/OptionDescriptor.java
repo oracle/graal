@@ -42,27 +42,71 @@ public final class OptionDescriptor {
     private final OptionKey<?> optionKey;
     private final Class<?> declaringClass;
     private final String fieldName;
+    private final boolean deprecated;
 
     private static final String[] NO_EXTRA_HELP = {};
 
-    public static OptionDescriptor create(String name, OptionType optionType, Class<?> optionValueType, String help, Class<?> declaringClass, String fieldName, OptionKey<?> option) {
-        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option);
+    public static OptionDescriptor create(String name,
+                    OptionType optionType,
+                    Class<?> optionValueType,
+                    String help,
+                    Class<?> declaringClass,
+                    String fieldName,
+                    OptionKey<?> option) {
+        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option, false);
     }
 
-    public static OptionDescriptor create(String name, OptionType optionType, Class<?> optionValueType, String help, String[] extraHelp, Class<?> declaringClass, String fieldName,
+    public static OptionDescriptor create(String name,
+                    OptionType optionType,
+                    Class<?> optionValueType,
+                    String help,
+                    Class<?> declaringClass,
+                    String fieldName,
+                    OptionKey<?> option,
+                    boolean deprecated) {
+        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option, deprecated);
+    }
+
+    public static OptionDescriptor create(String name,
+                    OptionType optionType,
+                    Class<?> optionValueType,
+                    String help,
+                    String[] extraHelp,
+                    Class<?> declaringClass,
+                    String fieldName,
                     OptionKey<?> option) {
+        return create(name, optionType, optionValueType, help, extraHelp, declaringClass, fieldName, option, false);
+    }
+
+    public static OptionDescriptor create(String name,
+                    OptionType optionType,
+                    Class<?> optionValueType,
+                    String help,
+                    String[] extraHelp,
+                    Class<?> declaringClass,
+                    String fieldName,
+                    OptionKey<?> option,
+                    boolean deprecated) {
         assert option != null : declaringClass + "." + fieldName;
         OptionDescriptor result = option.getDescriptor();
         if (result == null) {
             List<String> extraHelpList = extraHelp == null || extraHelp.length == 0 ? Collections.emptyList() : Collections.unmodifiableList(Arrays.asList(extraHelp));
-            result = new OptionDescriptor(name, optionType, optionValueType, help, extraHelpList, declaringClass, fieldName, option);
+            result = new OptionDescriptor(name, optionType, optionValueType, help, extraHelpList, declaringClass, fieldName, option, deprecated);
             option.setDescriptor(result);
         }
         assert result.name.equals(name) && result.optionValueType == optionValueType && result.declaringClass == declaringClass && result.fieldName.equals(fieldName) && result.optionKey == option;
         return result;
     }
 
-    private OptionDescriptor(String name, OptionType optionType, Class<?> optionValueType, String help, List<String> extraHelp, Class<?> declaringClass, String fieldName, OptionKey<?> optionKey) {
+    private OptionDescriptor(String name,
+                    OptionType optionType,
+                    Class<?> optionValueType,
+                    String help,
+                    List<String> extraHelp,
+                    Class<?> declaringClass,
+                    String fieldName,
+                    OptionKey<?> optionKey,
+                    boolean deprecated) {
         this.name = name;
         this.optionType = optionType;
         this.optionValueType = optionValueType;
@@ -71,6 +115,7 @@ public final class OptionDescriptor {
         this.optionKey = optionKey;
         this.declaringClass = declaringClass;
         this.fieldName = fieldName;
+        this.deprecated = deprecated;
         assert !optionValueType.isPrimitive() : "must used boxed optionValueType instead of " + optionValueType;
     }
 
@@ -135,5 +180,12 @@ public final class OptionDescriptor {
      */
     public String getLocation() {
         return getDeclaringClass().getName() + "." + getFieldName();
+    }
+
+    /**
+     * Returns {@code true} if the option is deprecated.
+     */
+    public boolean isDeprecated() {
+        return deprecated;
     }
 }

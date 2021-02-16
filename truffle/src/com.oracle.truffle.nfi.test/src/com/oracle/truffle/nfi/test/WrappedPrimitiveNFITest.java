@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,8 +85,14 @@ public class WrappedPrimitiveNFITest extends NFITest {
     });
 
     private final TestCallback verifyObject = new TestCallback(2, (args) -> {
-        Assert.assertSame("arg 1", argument, args[0]);
-        Assert.assertSame("arg 2", argument, args[1]);
+        if (argument instanceof TruffleObject) {
+            Assert.assertSame("arg 1", argument, args[0]);
+            Assert.assertSame("arg 2", argument, args[1]);
+        } else {
+            // everything else is considered a value type by Truffle, so identity can be lost
+            Assert.assertEquals("arg 1", argument, args[0]);
+            Assert.assertEquals("arg 2", argument, args[1]);
+        }
         return argument;
     });
 

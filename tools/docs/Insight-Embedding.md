@@ -11,7 +11,7 @@ Read on to learn how to embed [Insight](Insight.md) into your own application.
 [Context](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) API.
 [Insight](Insight-Manual.md) isn't an exception and it can also be
 controlled via the same API as well. See
-[AgentScript class documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+[formal Insight documentation](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html)
 for more details:
 
 ```java
@@ -35,6 +35,41 @@ from [Insight](Insight-Manual.md) instrumentation capabilities.
 
 To hide priviledged scripts from [Insight](Insight.md) sight
 [mark such scripts as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-). By default [Insight](Insight.md) ignores and doesn't process *internal* scripts.
+
+### Extending Functionality of Insight Scripts
+
+When [embedding Insight](Insight-Embedding.md#Embedding_Insight_into_Java_Application) into
+Java application one can make additional objects available to the Insight
+scripts being evaluated:
+
+```java
+@TruffleInstrument.Registration(
+    id = "meaningOfWorld", name = "Meaning Of World", version = "demo",
+    services = { Insight.SymbolProvider.class }
+)
+public final class MeaningOfWorldInstrument extends TruffleInstrument {
+    @Override
+    protected void onCreate(Env env) {
+        Map<String, Integer> symbols = Collections.singletonMap("meaning", 42);
+        Insight.SymbolProvider provider = () -> symbols;
+        env.registerService(provider);
+    }
+}
+```
+
+The previous Java code creates an instrument which registers new symbol `meaning` 
+to every Insight script evaluated then. Each script can then reference it and use it for example
+for limiting number of method invocations:
+
+```js
+insight.on('enter', (ctx, frames) => { if (--meaning <= 0) throw 'Stop!' }, { roots : true });
+```
+
+It is possible to expose simple values, as well as complex objects. See the 
+[javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.SymbolProvider.html)
+for more detailed information - take care when writing your instruments - they
+can alter many aspects of program execution and aren't subject to any security
+sandbox.
 
 ### Embedding Insight into node.js Application
 
@@ -83,7 +118,7 @@ which opens an HTTP server at port `9999` and listens for incoming scripts to
 be applied any time later. Invoke your application as
 
 ```bash
-$ node --insight=adminserver.js --experimental-options yourapp.js
+$ node --insight=adminserver.js yourapp.js
 Admin ready at 9999
 ```
 
@@ -93,7 +128,7 @@ For example following script is going to observe who calls `process.exit`:
 ```bash
 $ curl --data \
   'insight.on("enter", (ctx, frame) => { console.log(new Error("call to exit").stack); }, \
-  { roots: true, rootNameFilter: n => n === "exit" });' \
+  { roots: true, rootNameFilter: "exit" });' \
   -X POST http://localhost:9999/
 ```
 

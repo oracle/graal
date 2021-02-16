@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,13 +31,13 @@
 #include <stdio.h>
 
 int main() {
-  char str[] = "Hello world - this is a string-hello!";
-  const char s[] = "";
-  char *token;
+    char str[] = "Hello world - this is a string-hello!";
+    const char s[] = "";
+    char *token;
 
-  token = strtok(str, s);
-  while (token != NULL) {
-    printf("%s\n", token);
-    token = strtok(NULL, s);
-  }
+    token = strtok(str, s);
+    while (token != NULL) {
+        printf("%s\n", token);
+        token = strtok(NULL, s);
+    }
 }

@@ -45,6 +45,8 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
@@ -63,7 +65,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Special AST visitor that will find all immediate successors of a given Term when the AST is seen
@@ -160,13 +163,13 @@ public abstract class NFATraversalRegexASTVisitor {
     private final int[] nodeVisitCount;
     private int deduplicatedTargets = 0;
 
-    private final CompilationFinalBitSet captureGroupUpdates;
-    private final CompilationFinalBitSet captureGroupClears;
+    private final TBitSet captureGroupUpdates;
+    private final TBitSet captureGroupClears;
 
     private final ObjectArrayBuffer<QuantifierGuard> quantifierGuards = new ObjectArrayBuffer<>();
     private QuantifierGuard[] quantifierGuardsResult = null;
-    private final CompilationFinalBitSet quantifierGuardsLoop;
-    private final CompilationFinalBitSet quantifierGuardsExited;
+    private final TBitSet quantifierGuardsLoop;
+    private final TBitSet quantifierGuardsExited;
 
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
@@ -176,10 +179,10 @@ public abstract class NFATraversalRegexASTVisitor {
         this.lookAroundsOnPath = StateSet.create(ast);
         this.dollarsOnPath = StateSet.create(ast);
         this.nodeVisitCount = new int[ast.getNumberOfStates()];
-        this.captureGroupUpdates = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
-        this.captureGroupClears = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
-        this.quantifierGuardsLoop = new CompilationFinalBitSet(ast.getQuantifierCount().getCount());
-        this.quantifierGuardsExited = new CompilationFinalBitSet(ast.getQuantifierCount().getCount());
+        this.captureGroupUpdates = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
+        this.captureGroupClears = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
+        this.quantifierGuardsLoop = new TBitSet(ast.getQuantifierCount().getCount());
+        this.quantifierGuardsExited = new TBitSet(ast.getQuantifierCount().getCount());
     }
 
     public Set<LookBehindAssertion> getTraversableLookBehindAssertions() {
@@ -337,6 +340,7 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
+    @TruffleBoundary
     protected PositionAssertion getLastDollarOnPath() {
         assert dollarsOnPath();
         for (int i = curPath.length() - 1; i >= 0; i--) {
@@ -345,7 +349,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 return (PositionAssertion) pathGetNode(element);
             }
         }
-        throw new IllegalStateException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     protected GroupBoundaries getGroupBoundaries() {
@@ -363,11 +367,13 @@ public abstract class NFATraversalRegexASTVisitor {
                     captureGroupUpdates.set(b);
                     captureGroupClears.clear(b);
                 }
-                if (pathIsGroupEnter(element) && group.hasQuantifier() && group.hasEnclosedCaptureGroups()) {
-                    int lo = Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow());
-                    int hi = Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1);
-                    captureGroupUpdates.clearRange(lo, hi);
-                    captureGroupClears.setRange(lo, hi);
+                if (ast.getOptions().getFlavor() != RubyFlavor.INSTANCE) {
+                    if (pathIsGroupEnter(element) && group.hasQuantifier() && group.hasEnclosedCaptureGroups()) {
+                        int lo = Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow());
+                        int hi = Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1);
+                        captureGroupUpdates.clearRange(lo, hi);
+                        captureGroupClears.setRange(lo, hi);
+                    }
                 }
             }
         }
@@ -435,7 +441,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         addToVisitedSet(dollarsOnPath);
                         return advanceTerm((Term) cur);
                     default:
-                        throw new IllegalStateException();
+                        throw CompilerDirectives.shouldNotReachHere();
                 }
             } else if (canTraverseLookArounds() && cur.isLookAheadAssertion()) {
                 enterLookAhead((LookAheadAssertion) cur);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,18 +34,18 @@
 int *a;
 
 int *func() {
-  static int initialized = 0;
-  if (!initialized) {
-    a = (int *)malloc(sizeof(int));
-    initialized = 1;
-    *a = 4;
-  }
-  return a;
+    static int initialized = 0;
+    if (!initialized) {
+        a = (int *) malloc(sizeof(int));
+        initialized = 1;
+        *a = 4;
+    }
+    return a;
 }
 
 int main() {
-  int *nr = func();
-  nr[0]++;
-  (*a)++;
-  return *func();
+    int *nr = func();
+    nr[0]++;
+    (*a)++;
+    return *func();
 }

@@ -80,7 +80,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
 
     @Override
     public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFACaptureGroupTransitionBuilder(getMatcherBuilder(), getTransitionSet(), dfaGen);
+        return new DFACaptureGroupTransitionBuilder(getCodePointSet(), getTransitionSet(), dfaGen);
     }
 
     public void setLazyTransition(DFACaptureGroupLazyTransition lazyTransition) {
@@ -117,7 +117,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     private DFACaptureGroupPartialTransition createPartialTransition(StateSet<NFA, NFAState> targetStates, int[] targetStatesIndexMap, CompilationBuffer compilationBuffer) {
         int numberOfNFAStates = Math.max(getRequiredStates().size(), targetStates.size());
         PartialTransitionDebugInfo partialTransitionDebugInfo = null;
-        if (dfaGen.getEngineOptions().isDumpAutomata()) {
+        if (dfaGen.getOptions().isDumpAutomata()) {
             partialTransitionDebugInfo = new PartialTransitionDebugInfo(numberOfNFAStates);
         }
         dfaGen.updateMaxNumberOfNFAStatesInOneTransition(numberOfNFAStates);
@@ -131,7 +131,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
             if (targetStates.contains(nfaTransition.getTarget())) {
                 int sourceIndex = getStateIndex(getRequiredStatesIndexMap(), nfaTransition.getSource());
                 int targetIndex = getStateIndex(targetStatesIndexMap, nfaTransition.getTarget());
-                if (dfaGen.getEngineOptions().isDumpAutomata()) {
+                if (dfaGen.getOptions().isDumpAutomata()) {
                     partialTransitionDebugInfo.mapResultToNFATransition(targetIndex, nfaTransition);
                 }
                 assert !(nfaTransition.getTarget().isFinalState()) || targetIndex == DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX;
@@ -171,7 +171,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
                         indexUpdates.toArray(DFACaptureGroupPartialTransition.EMPTY_INDEX_UPDATES),
                         indexClears.toArray(DFACaptureGroupPartialTransition.EMPTY_INDEX_CLEARS),
                         preReorderFinalStateResultIndex);
-        if (dfaGen.getEngineOptions().isDumpAutomata()) {
+        if (dfaGen.getOptions().isDumpAutomata()) {
             partialTransitionDebugInfo.node = dfaCaptureGroupPartialTransitionNode;
             dfaGen.registerCGPartialTransitionDebugInfo(partialTransitionDebugInfo);
         }

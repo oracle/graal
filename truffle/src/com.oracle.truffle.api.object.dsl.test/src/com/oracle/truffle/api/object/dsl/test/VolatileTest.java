@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,20 +43,18 @@ package com.oracle.truffle.api.object.dsl.test;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.dsl.Layout;
-import com.oracle.truffle.api.object.dsl.Nullable;
-import com.oracle.truffle.api.object.dsl.Volatile;
 
 import org.junit.Assert;
 
 public class VolatileTest {
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface VolatileTestLayout {
 
         DynamicObject createVolatileTest(
-                        @Volatile int volatileInt,
-                        @Nullable @Volatile Thread volatileThread);
+                        @com.oracle.truffle.api.object.dsl.Volatile int volatileInt,
+                        @com.oracle.truffle.api.object.dsl.Nullable @com.oracle.truffle.api.object.dsl.Volatile Thread volatileThread);
 
         int getVolatileInt(DynamicObject object);
 

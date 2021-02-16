@@ -29,7 +29,6 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -37,6 +36,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -50,7 +50,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -61,13 +61,11 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
 public final class ArraycopySnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(ArraycopySnippets.class, "doArraycopy", false, LocationIdentity.ANY_LOCATION);
+    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(ArraycopySnippets.class, "doArraycopy", false, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYCOPY};
 
-    public static void registerForeignCalls(Providers providers, Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls) {
-        for (SubstrateForeignCallDescriptor descriptor : FOREIGN_CALLS) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
-        }
+    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(providers, FOREIGN_CALLS);
     }
 
     protected ArraycopySnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
@@ -104,7 +102,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
                 objectCopyBackward(fromArray, fromIndex, fromArray, toIndex, length, fromHub.getLayoutEncoding());
                 return;
-            } else if (fromHub == toHub || toHub.isAssignableFromHub(fromHub)) {
+            } else if (fromHub == toHub || DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
                 objectCopyForward(fromArray, fromIndex, toArray, toIndex, length, fromHub.getLayoutEncoding());
                 return;
@@ -118,7 +116,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
     }
 
     private static void boundsCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
-        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > KnownIntrinsics.readArrayLength(fromArray) - length || toIndex > KnownIntrinsics.readArrayLength(toArray) - length) {
+        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > ArrayLengthNode.arrayLength(fromArray) - length || toIndex > ArrayLengthNode.arrayLength(toArray) - length) {
             throw new ArrayIndexOutOfBoundsException();
         }
     }
@@ -241,8 +239,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
         @Override
         public void lower(ArrayCopyWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
-            ForeignCallsProvider foreignCalls = tool.getProviders().getForeignCalls();
-            ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(foreignCalls, ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
+            ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
                             node.getDestinationPosition(), node.getLength()));
             call.setStateAfter(node.stateAfter());
             call.setBci(node.getBci());

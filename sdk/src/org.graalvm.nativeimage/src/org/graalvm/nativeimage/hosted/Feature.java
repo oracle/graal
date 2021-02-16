@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,6 +102,34 @@ public interface Feature {
          * @since 19.0
          */
         Class<?> findClassByName(String className);
+
+        /**
+         * Returns the class path of the native image that is currently built.
+         * 
+         * The returned list does not include the native image generator itself, and does not
+         * include the JDK.
+         * 
+         * @since 20.2
+         */
+        List<Path> getApplicationClassPath();
+
+        /**
+         * Returns the module path of the native image that is currently built.
+         *
+         * The returned list does not include the native image generator itself, and does not
+         * include the JDK.
+         *
+         * @since 20.2
+         */
+        List<Path> getApplicationModulePath();
+
+        /**
+         * Returns the {@link ClassLoader} that can find all classes of the class path and module
+         * path.
+         *
+         * @since 20.2
+         */
+        ClassLoader getApplicationClassLoader();
     }
 
     /**
@@ -224,6 +252,14 @@ public interface Feature {
          * @since 19.3
          */
         void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass);
+
+        /**
+         * Registers a callback that is invoked once {@link Feature#duringAnalysis during analysis}
+         * when the class initializer for the given type is determined to be reachable at run time.
+         *
+         * @since 21.0
+         */
+        void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz);
     }
 
     /**
@@ -309,6 +345,15 @@ public interface Feature {
     @Platforms(Platform.HOSTED_ONLY.class)
     interface OnAnalysisExitAccess extends FeatureAccess {
 
+    }
+
+    /**
+     * Access methods available for {@link Feature#beforeUniverseBuilding}.
+     * 
+     * @since 21.1
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface BeforeUniverseBuildingAccess extends FeatureAccess {
     }
 
     /**
@@ -485,6 +530,17 @@ public interface Feature {
      * @since 19.0
      */
     default void onAnalysisExit(OnAnalysisExitAccess access) {
+    }
+
+    /**
+     * Handler for code that needs to run before universe building, but after hosted meta-access has
+     * been created.
+     * 
+     * @param access The supported operations that the feature can perform at this time
+     * 
+     * @since 21.1
+     */
+    default void beforeUniverseBuilding(BeforeUniverseBuildingAccess access) {
     }
 
     /**

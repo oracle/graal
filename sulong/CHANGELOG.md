@@ -1,3 +1,76 @@
+# Version 21.0.0
+
+Fixes:
+
+* Improve AST sharing, and support auxiliary engine caching.
+  On top of the regular AST sharing that allows sharing code between multiple contexts in a
+  single engine, this allows persisting of the shared code, to share it across process boundaries.
+
+* Add support for MacOS Big Sur.
+
+Deprecations:
+
+* Add deprecation warning for the old header locations `polyglot.h` and `llvm/api/toolchain.h`.
+  This header files were deprecated already in 20.3.0, but without a warning.
+
+# Version 20.3.0
+
+New features:
+
+* Introduced [handles API](projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/handles.h)
+  for storing managed pointers in native memory.
+
+* Enabled AST sharing in the GraalVM LLVM runtime. This allows code of bitcode libraries
+  to be shared between multiple contexts within a single engine.
+
+Changes:
+
+* Updated LLVM toolchain to version 10.0.0.
+
+* Improved for `va_list` / varargs handling across language boundaries.
+  Using `va_start` in an LLVM function that was called from a foreign language no longer forces
+  all arguments into native memory. The resulting `va_list` object can be passed to code written
+  in other languages, and accessed there using standard interop APIs.
+
+* Moved `polyglot.h` to `graalvm/llvm/polyglot.h` and `llvm/api/toolchain.h` to `graalvm/llvm/toolchain-api.h`.
+  The old header locations are deprecated, and will be removed in a future release.
+
+* Renamed `libpolyglot-mock.so` to `libgraalvm-llvm.so`.
+  The old name is deprecated and will be removed in a future release.
+
+* Use the version of the LLVM toolchain as the LLVM language version (see `lli --version`).
+
+# Version 20.2.0
+
+New features:
+
+* Support reading multi-byte values from polyglot arrays explicitly typed as i8 arrays.
+
+* Fail when a function is called over interop with fewer arguments than it expects.
+
+* Support `InteropLibrary.isIdentical` and related messages.
+
+* Added the `--print-toolchain-api-identifier`,  `--print-toolchain-api-tool <tool-name>`
+  and `--print-toolchain-api-paths <path-name>` arguments to the `lli` launcher.
+  These can be used to query the [Toolchain API](docs/contributor/TOOLCHAIN.md)
+  from the command line.
+
+* The [Java API of the Toolchain](projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java)
+  now supports requesting locations via the `#getPaths()` method. For example
+  the location of the toolchain executables or libraries. See the JavaDoc for
+  more details.
+
+* Added `llvm/api/toolchain.h` header for accessing the [Toolchain](docs/contributor/TOOLCHAIN.md)
+  from C code.
+
+Removed:
+
+* Removed the `--llvm.sourcePath` option (deprecated since 19.0), use
+  `--inspect.SourcePath` instead.
+
+* Removed support for the application/x-llvm-ir-bitcode-base64 mime-type
+  (deprecated since 19.0).
+
 # Version 20.1.0
 
 Changes:
@@ -21,7 +94,7 @@ Changes:
   ELF/Mach-O file instead of looking at imported symbols. Consequently, the order
   plain bitcode files are initialized might change since they do not allow recording
   dependencies. If the initialization order is important, the suggested approach to
-  use ELF/Mach-O files. The [Toolchain](docs/TOOLCHAIN.md) can help creating those.
+  use ELF/Mach-O files. The [Toolchain](docs/contributor/TOOLCHAIN.md) can help creating those.
 
 * Cover more cases when calling functions that receive structs by value across interop
   boundaries.
@@ -33,19 +106,19 @@ Changes:
 
 Changes:
 
-* The [Toolchain](docs/TOOLCHAIN.md) is now based on LLVM 9.0.0.
+* The [Toolchain](docs/contributor/TOOLCHAIN.md) is now based on LLVM 9.0.0.
 
 New features:
 
 * Support accessing `llvm-ar`, `llvm-nm`, `llvm-objcopy`,
   `llvm-objdump`, `llvm-ranlib`, `llvm-readelf`, `llvm-readobj` and
-  `llvm-strip` via the [toolchain](docs/TOOLCHAIN.md).
+  `llvm-strip` via the [toolchain](docs/contributor/TOOLCHAIN.md).
 
 # Version 19.3.0
 
 Changes:
 
-* The [Toolchain](docs/TOOLCHAIN.md) is no longer experimental.
+* The [Toolchain](docs/contributor/TOOLCHAIN.md) is no longer experimental.
 
 New features:
 
@@ -73,7 +146,7 @@ Improvements:
 
 * Clang and other LLVM tools are no longer required to be installed for building
   the GraalVM LLVM runtime. Instead, the LLVM distribution bundled with the
-  [Toolchain](docs/TOOLCHAIN.md) is used.
+  [Toolchain](docs/contributor/TOOLCHAIN.md) is used.
 
 # Version 19.2.0
 
@@ -81,7 +154,7 @@ New features:
 
 * Support locating dynamic libraries relatively using (`rpath`).
 * Preliminary support for compiling to bitcode using the LLVM toolchain.
-  See [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) for more details.
+  See [docs/contributor/TOOLCHAIN.md](docs/contributor/TOOLCHAIN.md) for more details.
   *WARNING*: The toolchain is experimental. Functionality may be added,
   changed or removed without prior notice.
 * Support for simple pointer arithmetics with foreign objects.
@@ -207,7 +280,7 @@ Changes:
 * Removed support for implicit polyglot types for local variables
   as the availability of type information is not guaranteed.
   Explicit polyglot casts are now strictly required (`polyglot_as_typed`).
-  See [docs/INTEROP.md](docs/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
+  See [docs/contributor/INTEROP.md](docs/contributor/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/polyglot.h)
   for more details.
 * Support for IR-level tracing.
 * Preliminary support for LLVM 7.

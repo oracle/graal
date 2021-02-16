@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,8 +57,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final SourceSection sourceLocation;
     private final String rootName;
     private final boolean host;
-    private final PolyglotExceptionImpl source;
     private StackTraceElement stackTrace;
+    private final String formattedSource;
 
     private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
                     SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
@@ -68,7 +68,11 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         this.rootName = rootName;
         this.host = isHost;
         this.stackTrace = stackTrace;
-        this.source = source;
+        if (!isHostFrame()) {
+            this.formattedSource = formatSource(sourceLocation, source.getFileSystemContext(language));
+        } else {
+            this.formattedSource = null;
+        }
     }
 
     @Override
@@ -118,7 +122,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             b.append(rootName);
             b.append("(");
-            b.append(formatSource(sourceLocation, source.getFileSystemContext()));
+            assert formattedSource != null;
+            b.append(formattedSource);
             b.append(")");
         }
         return b.toString();
@@ -129,7 +134,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return null;
         }
         RootNode targetRoot = frame.getTarget().getRootNode();
-        if (targetRoot.isInternal()) {
+        if (targetRoot.isInternal() && !exception.showInternalStackFrames) {
             return null;
         }
 
@@ -149,7 +154,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             if (callNode != null) {
                 com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
                 if (section != null) {
-                    Source source = engine.getAPIAccess().newSource(language.getId(), section.getSource());
+                    Source source = engine.getAPIAccess().newSource(section.getSource());
                     location = engine.getAPIAccess().newSourceSection(source, section);
                 } else {
                     location = null;

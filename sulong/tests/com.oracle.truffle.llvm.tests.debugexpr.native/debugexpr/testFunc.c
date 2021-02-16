@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,43 +30,43 @@
 #include <stdio.h>
 
 int myMax(int a, int b, int c) {
-  if (a > b && a > c)
-    return a;
-  return b > c ? b : c;
+    if (a > b && a > c)
+        return a;
+    return b > c ? b : c;
 }
 
 int gcd(int a, int b) {
-  if (a < 0)
-    a = -a;
-  if (b < 0)
-    b = -b;
-  if (a == 0)
-    return b;
-  if (b == 0)
-    return a;
-  return gcd(b, a % b);
+    if (a < 0)
+        a = -a;
+    if (b < 0)
+        b = -b;
+    if (a == 0)
+        return b;
+    if (b == 0)
+        return a;
+    return gcd(b, a % b);
 }
 
 int fib(int n) {
-  if (n < 2)
-    return myMax(n, 0, -1);
-  return fib(n - 1) + fib(n - 2);
+    if (n < 2)
+        return myMax(n, 0, -1);
+    return fib(n - 1) + fib(n - 2);
 }
 
 char toUpper(char c) {
-  if (c >= 'a' && c <= 'z')
-    c = (char)(c - 'a' + 'A');
-  return c;
+    if (c >= 'a' && c <= 'z')
+        c = (char) (c - 'a' + 'A');
+    return c;
 }
 
 __attribute__((constructor)) int main() {
-  int a = 54;
-  int b = 2016;
-  int sum = a + b;
-  int prod = a * b;
-  int rem = a % b;
-  int g = gcd(a, b);
-  __builtin_debugtrap();
-  printf("%i\n", g);
-  return 0;
+    int a = 54;
+    int b = 2016;
+    int sum = a + b;
+    int prod = a * b;
+    int rem = a % b;
+    int g = gcd(a, b);
+    __builtin_debugtrap();
+    printf("%i\n", g);
+    return 0;
 }

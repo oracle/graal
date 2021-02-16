@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,24 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNode;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -249,6 +245,26 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMRound extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value) {
+            return Math.round(value);
+        }
+
+        @Specialization
+        protected double doIntrinsic(double value) {
+            return Math.round(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAbs extends LLVMIntrinsic {
 
         @Specialization
@@ -268,7 +284,7 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected LLVMManagedPointer doManaged(LLVMManagedPointer value,
-                        @Cached("createBinaryProfile()") ConditionProfile negated) {
+                        @Cached ConditionProfile negated) {
             if (negated.profile(value.getObject() instanceof LLVMNegatedForeignObject)) {
                 LLVMNegatedForeignObject obj = (LLVMNegatedForeignObject) value.getObject();
                 assert !(obj.getForeign() instanceof LLVMNegatedForeignObject);
@@ -468,7 +484,7 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected double doIntrinsic(double value, LLVMPointer integralAddr,
-                        @Cached("createDoubleStore()") LLVMDoubleStoreNode store) {
+                        @Cached LLVMDoubleStoreNode store) {
             double fractional = value % 1;
             double integral = value - fractional;
             store.executeWithTarget(integralAddr, integral);
@@ -477,7 +493,7 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected float doIntrinsic(float value, LLVMPointer integralAddr,
-                        @Cached("createFloatStore()") LLVMFloatStoreNode store) {
+                        @Cached LLVMFloatStoreNode store) {
             float fractional = value % 1;
             float integral = value - fractional;
             store.executeWithTarget(integralAddr, integral);
@@ -486,27 +502,12 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat longDoubleValue, LLVMPointer integralAddr,
-                        @Cached("create80BitFloatStore()") LLVM80BitFloatStoreNode store) {
+                        @Cached LLVM80BitFloatStoreNode store) {
             double value = longDoubleValue.getDoubleValue();
             double fractional = value % 1;
             double integral = value - fractional;
-            store.executeWithTarget(integralAddr, integral);
+            store.executeWithTarget(integralAddr, LLVM80BitFloat.fromDouble(integral));
             return LLVM80BitFloat.fromDouble(fractional);
-        }
-
-        @TruffleBoundary
-        protected static LLVMDoubleStoreNode createDoubleStore() {
-            return LLVMDoubleStoreNodeGen.create(null, null);
-        }
-
-        @TruffleBoundary
-        protected static LLVMFloatStoreNode createFloatStore() {
-            return LLVMFloatStoreNodeGen.create(null, null);
-        }
-
-        @TruffleBoundary
-        protected static LLVM80BitFloatStoreNode create80BitFloatStore() {
-            return LLVM80BitFloatStoreNodeGen.create(null, null);
         }
     }
 

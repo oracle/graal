@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -660,8 +660,8 @@ public class SourceAPITest {
     public void testNoContentSource() {
         com.oracle.truffle.api.source.Source truffleSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "x", "name").content(
                         com.oracle.truffle.api.source.Source.CONTENT_NONE).build();
-        Class<?>[] sourceConstructorTypes = new Class[]{String.class, Object.class};
-        Source source = ReflectionUtils.newInstance(Source.class, sourceConstructorTypes, ProxyLanguage.ID, truffleSource);
+        Class<?>[] sourceConstructorTypes = new Class[]{Object.class};
+        Source source = ReflectionUtils.newInstance(Source.class, sourceConstructorTypes, truffleSource);
         assertFalse(source.hasCharacters());
         assertFalse(source.hasBytes());
         try {

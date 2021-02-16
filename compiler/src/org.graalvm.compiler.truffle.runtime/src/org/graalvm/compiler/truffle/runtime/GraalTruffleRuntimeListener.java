@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,11 +73,29 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
+     * @deprecated Use {@link #onCompilationQueued(OptimizedCallTarget, int)}
+     */
+    @Deprecated
+    default void onCompilationQueued(OptimizedCallTarget target) {
+        onCompilationQueued(target, 0);
+    }
+
+    /**
      * Notifies this object after {@code target} is added to the compilation queue.
      *
      * @param target the call target that has just been enqueued for compilation
+     * @param tier Which compilation tier is in question.
      */
-    default void onCompilationQueued(OptimizedCallTarget target) {
+    default void onCompilationQueued(OptimizedCallTarget target, int tier) {
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link #onCompilationDequeued(OptimizedCallTarget, Object, CharSequence, int)}
+     */
+    @Deprecated
+    default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+        onCompilationDequeued(target, source, reason, 0);
     }
 
     /**
@@ -88,16 +106,26 @@ public interface GraalTruffleRuntimeListener {
      *            source {@link Node} object. May be {@code null}.
      * @param reason a textual description of the reason why the compilation was unqueued. May be
      *            {@code null}.
+     * @param tier Which compilation tier is in question.
      */
-    default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+    default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
+    }
+
+    /**
+     * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, int)}
+     */
+    @Deprecated
+    default void onCompilationStarted(OptimizedCallTarget target) {
+        onCompilationStarted(target, 0);
     }
 
     /**
      * Notifies this object when compilation of {@code target} is about to start.
      *
      * @param target the call target about to be compiled
+     * @param tier Which compilation tier is in question.
      */
-    default void onCompilationStarted(OptimizedCallTarget target) {
+    default void onCompilationStarted(OptimizedCallTarget target, int tier) {
     }
 
     /**
@@ -122,14 +150,33 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
+     * @deprecated Use
+     *             {@link #onCompilationSuccess(OptimizedCallTarget, TruffleInlining, GraphInfo, CompilationResultInfo)}
+     */
+    @Deprecated
+    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+        onCompilationSuccess(target, inliningDecision, graph, result, 0);
+    }
+
+    /**
      * Notifies this object when compilation of {@code target} succeeds.
      *
      * @param target the call target whose compilation succeeded
      * @param inliningDecision the inlining plan used during the compilation
      * @param graph access to compiler graph info
      * @param result access to compilation result info
+     * @param tier Which compilation tier is in question.
      */
-    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link #onCompilationFailed(OptimizedCallTarget, String, boolean, boolean, int)}
+     */
+    @Deprecated
+    default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+        onCompilationFailed(target, reason, bailout, permanentBailout, 0);
     }
 
     /**
@@ -144,8 +191,9 @@ public interface GraalTruffleRuntimeListener {
      * @param permanentBailout specifies if a bailout is due to a condition that probably won't
      *            change if the {@code target} is compiled again. This value is meaningless if
      *            {@code bailout == false}.
+     * @param tier Which compilation tier is in question.
      */
-    default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+    default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
     }
 
     /**
@@ -184,13 +232,9 @@ public interface GraalTruffleRuntimeListener {
     default void onEngineClosed(EngineData runtimeData) {
     }
 
-    static void addASTSizeProperty(OptimizedCallTarget target, TruffleInlining inliningDecision, Map<String, Object> properties) {
+    static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
         int nodeCount = target.getNonTrivialNodeCount();
-        int deepNodeCount = nodeCount;
-        if (inliningDecision != null) {
-            deepNodeCount += inliningDecision.getInlinedNodeCount();
-        }
-        properties.put("ASTSize", String.format("%5d/%5d", nodeCount, deepNodeCount));
+        properties.put("AST", String.format("%4d", nodeCount));
     }
 
     /**

@@ -26,16 +26,18 @@ package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
+import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -66,7 +68,6 @@ public class CSourceCodeWriter {
 
     private static final String INDENT4 = "    ";
     public static final String C_SOURCE_FILE_EXTENSION = ".c";
-    public static final String CXX_SOURCE_FILE_EXTENSION = ".cpp";
 
     private final List<String> lines;
     private final StringBuilder currentLine;
@@ -78,6 +79,21 @@ public class CSourceCodeWriter {
         this.tempDirectory = tempDirectory;
         this.lines = new ArrayList<>();
         this.currentLine = new StringBuilder(100);
+    }
+
+    public void writeCStandardHeaders() {
+        if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
+            if (!Platform.includedIn(Platform.WINDOWS.class)) {
+                /*
+                 * CStandard says we are C99 compatible yet we cannot include stdbool.h because old
+                 * Windows native compilers do not support it. This should be fixed.
+                 */
+                includeFiles(Collections.singletonList("<stdbool.h>"));
+            }
+        }
+        if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
+            includeFiles(Collections.singletonList("<stdint.h>"));
+        }
     }
 
     public int currentLineNumber() {
@@ -94,7 +110,7 @@ public class CSourceCodeWriter {
 
     public void includeFiles(List<String> headerFiles) {
         for (String headerFile : headerFiles) {
-            String headerFileName = null;
+            String headerFileName;
             if (headerFile.startsWith("<") && headerFile.endsWith(">")) {
                 headerFileName = headerFile.substring(1, headerFile.length() - 1);
                 Path headerFilePath = Paths.get(headerFileName);
@@ -104,7 +120,7 @@ public class CSourceCodeWriter {
                 Path headerFilePath = Paths.get(headerFileName);
                 appendln("#include " + "\"" + headerFilePath.toString() + "\"");
             } else {
-                throw UserError.abort("header file name must be surrounded by <...> or \"...\": " + headerFile);
+                throw UserError.abort("Header file name must be surrounded by <...> or \"...\": %s", headerFile);
             }
         }
     }
@@ -157,21 +173,10 @@ public class CSourceCodeWriter {
     }
 
     public Path writeFile(String fileName) {
-        return writeFile(fileName, true);
-    }
-
-    public Path writeFile(String fileName, boolean ensureCorrectExtension) {
         assert currentLine.length() == 0 : "last line not finished";
 
-        String fixedFileName = fileName;
-        String srcFileExtension = Platform.includedIn(Platform.WINDOWS.class) ? CXX_SOURCE_FILE_EXTENSION : C_SOURCE_FILE_EXTENSION;
-        if (!fileName.endsWith(srcFileExtension) && ensureCorrectExtension) {
-            fixedFileName = fileName.concat(srcFileExtension);
-        }
-
-        Path outputFile = tempDirectory.resolve(fixedFileName);
-
-        try (BufferedWriter writer = Files.newBufferedWriter(outputFile, Charset.forName("UTF-8"))) {
+        Path outputFile = tempDirectory.resolve(fileName);
+        try (BufferedWriter writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8)) {
             for (String line : lines) {
                 writer.write(line);
                 writer.write("\n");
@@ -254,7 +259,6 @@ public class CSourceCodeWriter {
             case Byte:
                 return prefix + (c11Compatible ? "int8_t" : "char");
             case Char:
-                return prefix + (c11Compatible ? "int16_t" : "short");
             case Short:
                 return prefix + (c11Compatible ? "int16_t" : "short");
             case Int:
@@ -275,6 +279,8 @@ public class CSourceCodeWriter {
      * Appends definition of "flags" like macro.
      */
     public void appendMacroDefinition(String preDefine) {
+        appendln("#ifndef " + preDefine);
         appendln("#define " + preDefine);
+        appendln("#endif");
     }
 }

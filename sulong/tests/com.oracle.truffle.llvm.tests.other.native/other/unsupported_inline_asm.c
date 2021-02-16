@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,16 +28,21 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <alloca.h>
+
 static void store_a(volatile int *p, int x) {
-  __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory" );
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wasm-operand-widths"
+    __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory");
+#pragma clang diagnostic pop
 }
 
 int run(int b) {
-  if (b > 1) {
-    int x = 0xA0000000;
-    volatile int *p = alloca(sizeof(int));
-    store_a(p, x);
-    return 1;
-  }
-  return 2;
+    if (b > 1) {
+        int x = 0xA0000000;
+        volatile int *p = alloca(sizeof(int));
+        store_a(p, x);
+        return 1;
+    }
+    return 2;
 }

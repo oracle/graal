@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
-import com.oracle.svm.core.c.libc.GLibc;
-import com.oracle.svm.core.c.libc.Libc;
+import com.oracle.svm.core.posix.linux.libc.GLibC;
+import com.oracle.svm.core.c.libc.LibC;
 
 // Checkstyle: stop
 
@@ -62,32 +62,32 @@ public class Locale {
     @CConstant
     public static native int LC_MESSAGES();
 
-    @Libc(value = GLibc.class)
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_PAPER();
 
-    @Libc(value = GLibc.class)
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_NAME();
 
-    @Libc(value = GLibc.class)
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_ADDRESS();
 
-    @Libc(value = GLibc.class)
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_TELEPHONE();
 
-    @Libc(value = GLibc.class)
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_MEASUREMENT();
 
-    @Libc(value = GLibc.class)
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_IDENTIFICATION();

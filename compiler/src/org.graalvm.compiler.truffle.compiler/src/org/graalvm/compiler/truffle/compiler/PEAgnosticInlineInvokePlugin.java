@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
-    private final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke;
+    private final EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = EconomicMap.create();
     private final List<Invoke> indirectInvokes = new ArrayList<>();
     private final TruffleMetaAccessProvider truffleMetaAccessProvider;
     private final PartialEvaluator partialEvaluator;
@@ -50,7 +50,6 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
     public PEAgnosticInlineInvokePlugin(TruffleMetaAccessProvider truffleMetaAccessProvider, PartialEvaluator partialEvaluator) {
         this.truffleMetaAccessProvider = truffleMetaAccessProvider;
         this.partialEvaluator = partialEvaluator;
-        this.truffleCallNodeToInvoke = EconomicMap.create();
     }
 
     @Override
@@ -62,6 +61,7 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
                 GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
             }
             lastDirectCallNode = (JavaConstant) arg0.asConstant();
+            return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         if (original.equals(partialEvaluator.callIndirectMethod)) {
             indirectCall = true;
@@ -71,7 +71,7 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
 
     @Override
     public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod original, Invoke invoke) {
-        if (original.equals(partialEvaluator.callBoundary)) {
+        if (original.equals(partialEvaluator.callDirectMethod)) {
             if (lastDirectCallNode == null) {
                 if (indirectCall) {
                     indirectCall = false;
@@ -80,13 +80,13 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
                 return;
             }
             TruffleCallNode truffleCallNode = truffleMetaAccessProvider.findCallNode(lastDirectCallNode);
-            truffleCallNodeToInvoke.put(truffleCallNode, invoke);
+            invokeToTruffleCallNode.put(invoke, truffleCallNode);
             lastDirectCallNode = null;
         }
     }
 
-    public EconomicMap<TruffleCallNode, Invoke> getTruffleCallNodeToInvoke() {
-        return truffleCallNodeToInvoke;
+    public EconomicMap<Invoke, TruffleCallNode> getInvokeToTruffleCallNode() {
+        return invokeToTruffleCallNode;
     }
 
     public List<Invoke> getIndirectInvokes() {

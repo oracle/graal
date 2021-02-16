@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.test.interop.NativeVector;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -176,18 +175,18 @@ public class PointerNFITest extends NFITest {
 
         @Child InteropLibrary interop = getInterop();
 
-        private final TruffleObject incrementByte = lookupAndBind("increment_SINT8", "(SINT8):SINT8");
-        private final TruffleObject incrementShort = lookupAndBind("increment_SINT16", "(SINT16):SINT16");
-        private final TruffleObject incrementInt = lookupAndBind("increment_SINT32", "(SINT32):SINT32");
-        private final TruffleObject incrementLong = lookupAndBind("increment_SINT64", "(SINT64):SINT64");
-        private final TruffleObject incrementFloat = lookupAndBind("increment_FLOAT", "(FLOAT):FLOAT");
-        private final TruffleObject incrementDouble = lookupAndBind("increment_DOUBLE", "(DOUBLE):DOUBLE");
+        private final Object incrementByte = lookupAndBind("increment_SINT8", "(SINT8):SINT8");
+        private final Object incrementShort = lookupAndBind("increment_SINT16", "(SINT16):SINT16");
+        private final Object incrementInt = lookupAndBind("increment_SINT32", "(SINT32):SINT32");
+        private final Object incrementLong = lookupAndBind("increment_SINT64", "(SINT64):SINT64");
+        private final Object incrementFloat = lookupAndBind("increment_FLOAT", "(FLOAT):FLOAT");
+        private final Object incrementDouble = lookupAndBind("increment_DOUBLE", "(DOUBLE):DOUBLE");
 
-        private final TruffleObject getFirstElement = lookupAndBind("getFirstElement", "(POINTER):DOUBLE");
+        private final Object getFirstElement = lookupAndBind("getFirstElement", "(POINTER):DOUBLE");
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            TruffleObject vector = (TruffleObject) frame.getArguments()[0];
+            Object vector = frame.getArguments()[0];
             boolean startedAsNative = interop.isPointer(vector);
 
             // pollute profile with different argument types to ensure we hit the slow path

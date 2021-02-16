@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 53 CONTINUE "myMethod"
+BREAK 54 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -42,11 +42,12 @@ BREAK 53 CONTINUE "myMethod"
                     MEMBER int "short" "[2]" "32767"
                     MEMBER int "short" "[0]" "-32768"
                 END_MEMBERS
+                MEMBER any "MyClass*" "myMethod"
             END_MEMBERS
         END_MEMBERS
 
 
-BREAK 57 CONTINUE "myStaticMethod"
+BREAK 58 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -59,10 +60,11 @@ BREAK 57 CONTINUE "myStaticMethod"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 
-BREAK 53 CONTINUE "myMethod"
+BREAK 54 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -76,11 +78,12 @@ BREAK 53 CONTINUE "myMethod"
                     MEMBER int "short" "[2]" "32767"
                     MEMBER int "short" "[0]" "-32768"
                 END_MEMBERS
+                MEMBER any "MyClass*" "myMethod"
             END_MEMBERS
         END_MEMBERS
 
 
-BREAK 57 CONTINUE "myStaticMethod"
+BREAK 58 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -93,10 +96,11 @@ BREAK 57 CONTINUE "myStaticMethod"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 
-BREAK 53 CONTINUE "myMethod"
+BREAK 54 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -110,11 +114,12 @@ BREAK 53 CONTINUE "myMethod"
                     MEMBER int "short" "[2]" "32767"
                     MEMBER int "short" "[0]" "-32768"
                 END_MEMBERS
+                MEMBER any "MyClass*" "myMethod"
             END_MEMBERS
         END_MEMBERS
 
 
-BREAK 57 CONTINUE "myStaticMethod"
+BREAK 58 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -127,10 +132,11 @@ BREAK 57 CONTINUE "myStaticMethod"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 
-BREAK 53 CONTINUE "myMethod"
+BREAK 54 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -144,11 +150,12 @@ BREAK 53 CONTINUE "myMethod"
                     MEMBER int "short" "[2]" "32767"
                     MEMBER int "short" "[0]" "-32768"
                 END_MEMBERS
+                MEMBER any "MyClass*" "myMethod"
             END_MEMBERS
         END_MEMBERS
 
 
-BREAK 57 CONTINUE "myStaticMethod"
+BREAK 58 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -161,10 +168,11 @@ BREAK 57 CONTINUE "myStaticMethod"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 
-BREAK 79 CONTINUE "start"
+BREAK 80 CONTINUE "start"
     OPEN_SCOPE
         MEMBER structured "MyClass" "localObj"
             MEMBER int "int" "a" "16"
@@ -177,6 +185,7 @@ BREAK 79 CONTINUE "start"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
         MEMBER any "MyClass*" "localPtr"
     OPEN_SCOPE
@@ -192,6 +201,7 @@ BREAK 79 CONTINUE "start"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 

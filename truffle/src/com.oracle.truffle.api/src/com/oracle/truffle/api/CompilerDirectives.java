@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -342,4 +342,138 @@ public final class CompilerDirectives {
             throw new ClassCastException();
         }
     }
+
+    /**
+     * Checks the given object to the exact class represented by {@code clazz}. The method returns
+     * <code>true</code> only if {@code object != null && object.getClass() == clazz} and thus fails
+     * for any subclass.
+     *
+     * @param object the object to be cast
+     * @param clazz the class to check against, must not be null
+     * @throws NullPointerException if the class argument is null
+     *
+     * @since 21.1
+     */
+    public static boolean isExact(Object object, Class<?> clazz) {
+        Objects.requireNonNull(clazz);
+        if (object == null) {
+            return false;
+        }
+        return object.getClass() == clazz;
+    }
+
+    /**
+     * Indicates a code path that is not supposed to be reached during compilation or
+     * interpretation. Reaching this method is considered a fatal internal error and execution
+     * should not continue. Transfers to interpreter and
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
+     * and always throws an {@link AssertionError} when invoked.
+     * <p>
+     * This method returns a runtime exception to be conveniently used in combination with Java
+     * throw statements, for example:
+     *
+     * <pre>
+     * if (expectedCondition) {
+     *     return 42;
+     * } else {
+     *     throw shouldNotReachHere();
+     * }
+     * </pre>
+     *
+     * @since 20.2
+     */
+    public static RuntimeException shouldNotReachHere() {
+        transferToInterpreterAndInvalidate();
+        throw shouldNotReachHere(null, null);
+    }
+
+    /**
+     * Indicates a code path that is not supposed to be reached during compilation or
+     * interpretation. Reaching this method is considered a fatal internal error and execution
+     * should not continue. Transfers to interpreter and
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
+     * and always throws an {@link AssertionError} when invoked.
+     * <p>
+     * This method returns a runtime exception to be conveniently used in combination with Java
+     * throw statements, for example:
+     *
+     * <pre>
+     * if (expectedCondition) {
+     *     return 42;
+     * } else {
+     *     throw shouldNotReachHere("Additional message");
+     * }
+     * </pre>
+     *
+     * @param message an additional message for the exception thrown.
+     * @since 20.2
+     */
+    public static RuntimeException shouldNotReachHere(String message) {
+        transferToInterpreterAndInvalidate();
+        throw shouldNotReachHere(message, null);
+    }
+
+    /**
+     * Indicates a code path that is not supposed to be reached during compilation or
+     * interpretation. Reaching this method is considered a fatal internal error and execution
+     * should not continue. Transfers to interpreter and
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
+     * and always throws an {@link AssertionError} when invoked.
+     * <p>
+     * This method returns a runtime exception to be conveniently used in combination with Java
+     * throw statements, for example:
+     *
+     * <pre>
+     * if (expectedCondition) {
+     *     return 42;
+     * } else {
+     *     throw shouldNotReachHere("Additional message");
+     * }
+     * </pre>
+     *
+     * @param cause the cause if an exception was responsible for the unexpected case.
+     * @since 20.2
+     */
+    public static RuntimeException shouldNotReachHere(Throwable cause) {
+        transferToInterpreterAndInvalidate();
+        throw shouldNotReachHere(null, cause);
+    }
+
+    /**
+     * Indicates a code path that is not supposed to be reached during compilation or
+     * interpretation. Reaching this method is considered a fatal internal error and execution
+     * should not continue. Transfers to interpreter and
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
+     * and always throws an {@link AssertionError} when invoked.
+     * <p>
+     * This method returns a runtime exception to be conveniently used in combination with Java
+     * throw statements, for example:
+     *
+     * <pre>
+     * if (expectedCondition) {
+     *     return 42;
+     * } else {
+     *     throw shouldNotReachHere("Additional message");
+     * }
+     * </pre>
+     *
+     * @param message an additional message for the exception thrown.
+     * @param cause the cause if an exception was responsible for the unexpected case.
+     *
+     * @since 20.2
+     */
+    public static RuntimeException shouldNotReachHere(String message, Throwable cause) {
+        transferToInterpreterAndInvalidate();
+        throw new ShouldNotReachHere(message, cause);
+    }
+
+    @SuppressWarnings("serial")
+    static final class ShouldNotReachHere extends AssertionError {
+
+        ShouldNotReachHere(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+    }
+
 }

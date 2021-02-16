@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,60 +40,99 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.impl.LibFFIType.CachedTypeInfo;
 import java.nio.ByteBuffer;
 
 abstract class ClosureArgumentNode extends Node {
 
-    public abstract Object execute(Object arg);
+    public abstract Object execute(VirtualFrame frame);
 
-    static class BufferClosureArgumentNode extends ClosureArgumentNode {
+    static final class ConstArgumentNode extends ClosureArgumentNode {
 
-        private final LibFFIType type;
-        @Child NativeArgumentLibrary nativeArguments;
+        private final Object value;
 
-        BufferClosureArgumentNode(LibFFIType type) {
-            this.type = type;
-            this.nativeArguments = NativeArgumentLibrary.getFactory().create(type);
+        ConstArgumentNode(Object value) {
+            this.value = value;
         }
 
         @Override
-        public Object execute(Object arg) {
-            NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct((ByteBuffer) arg, 0);
+        public Object execute(VirtualFrame frame) {
+            return value;
+        }
+    }
+
+    static final class GetArgumentNode extends ClosureArgumentNode {
+
+        private final int index;
+
+        GetArgumentNode(int index) {
+            this.index = index;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return frame.getArguments()[index];
+        }
+    }
+
+    @NodeChild(value = "argument", type = ClosureArgumentNode.class)
+    abstract static class BufferClosureArgumentNode extends ClosureArgumentNode {
+
+        final CachedTypeInfo type;
+
+        BufferClosureArgumentNode(CachedTypeInfo type) {
+            this.type = type;
+        }
+
+        @Specialization
+        Object doBuffer(ByteBuffer arg,
+                        @CachedLibrary("type") NativeArgumentLibrary nativeArguments) {
+            NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct(arg, 0);
             return nativeArguments.deserialize(type, buffer);
         }
     }
 
-    static class ObjectClosureArgumentNode extends ClosureArgumentNode {
+    @NodeChild(value = "argument", type = ClosureArgumentNode.class)
+    abstract static class ObjectClosureArgumentNode extends ClosureArgumentNode {
 
-        @CompilationFinal LanguageReference<NFILanguageImpl> langRef;
+        @Specialization(guards = "arg == null")
+        Object doNull(@SuppressWarnings("unused") Object arg,
+                        @CachedLanguage NFILanguageImpl language) {
+            return NativePointer.create(language, 0);
+        }
 
-        @Override
-        public Object execute(Object arg) {
-            if (arg == null) {
-                if (langRef == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    langRef = lookupLanguageReference(NFILanguageImpl.class);
-                }
-                return NativePointer.create(langRef.get(), 0);
-            } else {
-                return arg;
-            }
+        @Fallback
+        Object doObject(Object arg) {
+            return arg;
         }
     }
 
-    static class StringClosureArgumentNode extends ClosureArgumentNode {
+    @NodeChild(value = "argument", type = ClosureArgumentNode.class)
+    abstract static class StringClosureArgumentNode extends ClosureArgumentNode {
+
+        @Specialization(guards = "arg == null")
+        Object doNull(@SuppressWarnings("unused") Object arg) {
+            return new NativeString(0);
+        }
+
+        @Fallback
+        Object doString(Object arg) {
+            return arg;
+        }
+    }
+
+    static class InjectedClosureArgumentNode extends ClosureArgumentNode {
 
         @Override
-        public Object execute(Object arg) {
-            if (arg == null) {
-                return new NativeString(0);
-            } else {
-                return arg;
-            }
+        public Object execute(VirtualFrame frame) {
+            return new NativePointer(0);
         }
     }
 }

@@ -39,7 +39,7 @@ public abstract class WriteBarrierSnippets {
     protected static void verifyNotArray(Object object) {
         if (object != null) {
             // Manually build the null check and cast because we're in snippet that's lowered late.
-            AssertionNode.assertion(false, !PiNode.piCastNonNull(object, SnippetAnchorNode.anchor()).getClass().isArray(), "imprecise card mark used with array");
+            AssertionNode.dynamicAssert(!PiNode.piCastNonNull(object, SnippetAnchorNode.anchor()).getClass().isArray(), "imprecise card mark used with array");
         }
     }
 

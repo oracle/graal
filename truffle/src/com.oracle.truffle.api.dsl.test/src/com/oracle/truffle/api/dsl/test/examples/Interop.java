@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,31 +71,31 @@ public class Interop {
         assertEquals(42, target.call(o1, 42));
         assertEquals(43, target.call(o2, 43));
         assertEquals(44, target.call(o3, 44));
-        assertEquals(3, node.cached);
-        assertEquals(0, node.generic);
+        assertEquals(3, node.cachedCount);
+        assertEquals(0, node.genericCount);
         assertEquals(45, target.call(o4, 45)); // operation gets generic
         assertEquals(42, target.call(o1, 42));
         assertEquals(43, target.call(o2, 43));
         assertEquals(44, target.call(o3, 44));
-        assertEquals(3, node.cached);
-        assertEquals(4, node.generic);
+        assertEquals(3, node.cachedCount);
+        assertEquals(4, node.genericCount);
     }
 
     public static class UseInterop extends ExampleNode {
 
-        int cached = 0;
-        int generic = 0;
+        int cachedCount = 0;
+        int genericCount = 0;
 
         @Specialization(guards = "operation.accept(target)")
         protected Object interopCached(VirtualFrame frame, TruffleObject target, Object value, //
                         @Cached("target.createOperation()") TruffleObjectOperation operation) {
-            cached++;
+            cachedCount++;
             return operation.execute(frame, target, value);
         }
 
         @Specialization(replaces = "interopCached")
         protected Object interopGeneric(VirtualFrame frame, TruffleObject target, Object value) {
-            generic++;
+            genericCount++;
             return target.createOperation().execute(frame, target, value);
         }
     }

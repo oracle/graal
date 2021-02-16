@@ -52,7 +52,12 @@ meth public static boolean inCompiledCode()
 meth public static boolean inInterpreter()
 meth public static boolean injectBranchProbability(double,boolean)
 meth public static boolean isCompilationConstant(java.lang.Object)
+meth public static boolean isExact(java.lang.Object,java.lang.Class<?>)
 meth public static boolean isPartialEvaluationConstant(java.lang.Object)
+meth public static java.lang.RuntimeException shouldNotReachHere()
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String)
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String,java.lang.Throwable)
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.Throwable)
 meth public static void bailout(java.lang.String)
 meth public static void ensureVirtualized(java.lang.Object)
 meth public static void ensureVirtualizedHere(java.lang.Object)
@@ -61,6 +66,7 @@ meth public static void materialize(java.lang.Object)
 meth public static void transferToInterpreter()
 meth public static void transferToInterpreterAndInvalidate()
 supr java.lang.Object
+hcls ShouldNotReachHere
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.CompilerDirectives$CompilationFinal
  outer com.oracle.truffle.api.CompilerDirectives
@@ -87,12 +93,43 @@ CLSS public abstract interface com.oracle.truffle.api.CompilerOptions
 meth public abstract boolean supportsOption(java.lang.String)
 meth public abstract void setOption(java.lang.String,java.lang.Object)
 
+CLSS public abstract com.oracle.truffle.api.ContextLocal<%0 extends java.lang.Object>
+cons protected init(java.lang.Object)
+meth public abstract {com.oracle.truffle.api.ContextLocal%0} get()
+meth public abstract {com.oracle.truffle.api.ContextLocal%0} get(com.oracle.truffle.api.TruffleContext)
+supr java.lang.Object
+
+CLSS public abstract com.oracle.truffle.api.ContextThreadLocal<%0 extends java.lang.Object>
+cons protected init(java.lang.Object)
+meth public abstract {com.oracle.truffle.api.ContextThreadLocal%0} get()
+meth public abstract {com.oracle.truffle.api.ContextThreadLocal%0} get(com.oracle.truffle.api.TruffleContext)
+meth public abstract {com.oracle.truffle.api.ContextThreadLocal%0} get(com.oracle.truffle.api.TruffleContext,java.lang.Thread)
+meth public abstract {com.oracle.truffle.api.ContextThreadLocal%0} get(java.lang.Thread)
+supr java.lang.Object
+
 CLSS public final com.oracle.truffle.api.ExactMath
 meth public static int multiplyHigh(int,int)
 meth public static int multiplyHighUnsigned(int,int)
 meth public static long multiplyHigh(long,long)
 meth public static long multiplyHighUnsigned(long,long)
 supr java.lang.Object
+
+CLSS public final com.oracle.truffle.api.HostCompilerDirectives
+innr public abstract interface static !annotation BytecodeInterpreterSwitch
+innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
+supr java.lang.Object
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
 
 CLSS public final com.oracle.truffle.api.InstrumentInfo
 meth public java.lang.String getId()
@@ -135,6 +172,7 @@ intf com.oracle.truffle.api.CallTarget
 meth public abstract com.oracle.truffle.api.nodes.RootNode getRootNode()
 
 CLSS public final com.oracle.truffle.api.Scope
+ anno 0 java.lang.Deprecated()
 innr public final Builder
 meth public com.oracle.truffle.api.nodes.Node getNode()
 meth public java.lang.Object getArguments()
@@ -149,6 +187,7 @@ hfds EMPTY,arguments,name,node,receiver,receiverName,rootInstance,variables
 
 CLSS public final com.oracle.truffle.api.Scope$Builder
  outer com.oracle.truffle.api.Scope
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.Scope build()
 meth public com.oracle.truffle.api.Scope$Builder arguments(java.lang.Object)
 meth public com.oracle.truffle.api.Scope$Builder node(com.oracle.truffle.api.nodes.Node)
@@ -165,11 +204,22 @@ hfds RUNTIME
 CLSS public final com.oracle.truffle.api.TruffleContext
 innr public final Builder
 intf java.lang.AutoCloseable
+meth public boolean equals(java.lang.Object)
+meth public boolean isActive()
+meth public boolean isCancelling()
+meth public boolean isClosed()
 meth public boolean isEntered()
 meth public com.oracle.truffle.api.TruffleContext getParent()
+meth public int hashCode()
 meth public java.lang.Object enter()
+ anno 0 java.lang.Deprecated()
+meth public java.lang.Object enter(com.oracle.truffle.api.nodes.Node)
 meth public void close()
+meth public void closeCancelled(com.oracle.truffle.api.nodes.Node,java.lang.String)
+meth public void closeResourceExhausted(com.oracle.truffle.api.nodes.Node,java.lang.String)
+meth public void leave(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public void leave(java.lang.Object)
+ anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds CONTEXT_ASSERT_STACK,EMPTY,closeable,polyglotContext
 
@@ -181,16 +231,27 @@ supr java.lang.Object
 hfds config,sourceEnvironment
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleException
+ anno 0 java.lang.Deprecated()
 meth public abstract com.oracle.truffle.api.nodes.Node getLocation()
+ anno 0 java.lang.Deprecated()
 meth public boolean isCancelled()
+ anno 0 java.lang.Deprecated()
 meth public boolean isExit()
+ anno 0 java.lang.Deprecated()
 meth public boolean isIncompleteSource()
+ anno 0 java.lang.Deprecated()
 meth public boolean isInternalError()
+ anno 0 java.lang.Deprecated()
 meth public boolean isSyntaxError()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.source.SourceSection getSourceLocation()
+ anno 0 java.lang.Deprecated()
 meth public int getExitStatus()
+ anno 0 java.lang.Deprecated()
 meth public int getStackTraceElementLimit()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.Object getExceptionObject()
+ anno 0 java.lang.Deprecated()
 
 CLSS public final com.oracle.truffle.api.TruffleFile
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_DIRECTORY
@@ -220,6 +281,7 @@ meth public !varargs <%0 extends java.lang.Object> {%%0} getAttribute(com.oracle
 meth public !varargs boolean exists(java.nio.file.LinkOption[])
 meth public !varargs boolean isDirectory(java.nio.file.LinkOption[])
 meth public !varargs boolean isRegularFile(java.nio.file.LinkOption[])
+meth public !varargs boolean isSameFile(com.oracle.truffle.api.TruffleFile,java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs com.oracle.truffle.api.TruffleFile getCanonicalFile(java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs com.oracle.truffle.api.TruffleFile$Attributes getAttributes(java.util.Collection<? extends com.oracle.truffle.api.TruffleFile$AttributeDescriptor<?>>,java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs java.io.BufferedWriter newBufferedWriter(java.nio.charset.Charset,java.nio.file.OpenOption[]) throws java.io.IOException
@@ -259,13 +321,16 @@ meth public byte[] readAllBytes() throws java.io.IOException
 meth public com.oracle.truffle.api.TruffleFile getAbsoluteFile()
 meth public com.oracle.truffle.api.TruffleFile getParent()
 meth public com.oracle.truffle.api.TruffleFile normalize()
+meth public com.oracle.truffle.api.TruffleFile readSymbolicLink() throws java.io.IOException
 meth public com.oracle.truffle.api.TruffleFile relativize(com.oracle.truffle.api.TruffleFile)
 meth public com.oracle.truffle.api.TruffleFile resolve(java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile resolveSibling(java.lang.String)
 meth public int hashCode()
 meth public java.io.BufferedReader newBufferedReader() throws java.io.IOException
 meth public java.io.BufferedReader newBufferedReader(java.nio.charset.Charset) throws java.io.IOException
+meth public java.lang.String detectMimeType()
 meth public java.lang.String getMimeType() throws java.io.IOException
+ anno 0 java.lang.Deprecated()
 meth public java.lang.String getName()
 meth public java.lang.String getPath()
 meth public java.lang.String toString()
@@ -276,7 +341,7 @@ meth public java.util.Collection<com.oracle.truffle.api.TruffleFile> list() thro
 meth public void createLink(com.oracle.truffle.api.TruffleFile) throws java.io.IOException
 meth public void delete() throws java.io.IOException
 supr java.lang.Object
-hfds BUFFER_SIZE,MAX_BUFFER_SIZE,fileSystemContext,normalizedPath,path
+hfds BUFFER_SIZE,MAX_BUFFER_SIZE,fileSystemContext,isEmptyPath,normalizedPath,path
 hcls AllFiles,AttributeGroup,ByteChannelDecorator,FileSystemContext,TempFileRandomHolder,TruffleFileDirectoryStream,Walker
 
 CLSS public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<%0 extends java.lang.Object>
@@ -298,6 +363,8 @@ meth public abstract java.nio.charset.Charset findEncoding(com.oracle.truffle.ap
 
 CLSS public abstract com.oracle.truffle.api.TruffleLanguage<%0 extends java.lang.Object>
 cons protected init()
+innr protected abstract interface static ContextLocalFactory
+innr protected abstract interface static ContextThreadLocalFactory
 innr public abstract interface static !annotation Registration
 innr public abstract interface static Provider
 innr public abstract static ContextReference
@@ -308,7 +375,6 @@ innr public final static InlineParsingRequest
 innr public final static ParsingRequest
 meth protected abstract {com.oracle.truffle.api.TruffleLanguage%0} createContext(com.oracle.truffle.api.TruffleLanguage$Env)
 meth protected boolean areOptionsCompatible(org.graalvm.options.OptionValues,org.graalvm.options.OptionValues)
-meth protected final int getAsynchronousStackDepth()
 meth protected boolean initializeMultiContext()
  anno 0 java.lang.Deprecated()
 meth protected boolean isObjectOfLanguage(java.lang.Object)
@@ -320,9 +386,14 @@ meth protected com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.Tr
 meth protected com.oracle.truffle.api.nodes.ExecutableNode parse(com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest) throws java.lang.Exception
 meth protected com.oracle.truffle.api.source.SourceSection findSourceLocation({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
  anno 0 java.lang.Deprecated()
+meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.TruffleLanguage$ContextLocalFactory<{com.oracle.truffle.api.TruffleLanguage%0},{%%0}>)
+meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.TruffleLanguage$ContextThreadLocalFactory<{com.oracle.truffle.api.TruffleLanguage%0},{%%0}>)
+meth protected final int getAsynchronousStackDepth()
 meth protected final java.lang.String getLanguageHome()
 meth protected java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes({com.oracle.truffle.api.TruffleLanguage%0},com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame)
+ anno 0 java.lang.Deprecated()
 meth protected java.lang.Iterable<com.oracle.truffle.api.Scope> findTopScopes({com.oracle.truffle.api.TruffleLanguage%0})
+ anno 0 java.lang.Deprecated()
 meth protected java.lang.Object findExportedSymbol({com.oracle.truffle.api.TruffleLanguage%0},java.lang.String,boolean)
  anno 0 java.lang.Deprecated()
 meth protected java.lang.Object findMetaObject({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
@@ -330,7 +401,9 @@ meth protected java.lang.Object findMetaObject({com.oracle.truffle.api.TruffleLa
 meth protected java.lang.Object getLanguageGlobal({com.oracle.truffle.api.TruffleLanguage%0})
  anno 0 java.lang.Deprecated()
 meth protected java.lang.Object getLanguageView({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+meth protected java.lang.Object getScope({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected java.lang.Object getScopedView({com.oracle.truffle.api.TruffleLanguage%0},com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame,java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
  anno 0 java.lang.Deprecated()
 meth protected org.graalvm.options.OptionDescriptors getOptionDescriptors()
@@ -346,7 +419,12 @@ meth protected void initializeThread({com.oracle.truffle.api.TruffleLanguage%0},
 meth public final com.oracle.truffle.api.TruffleLanguage$ContextReference<{com.oracle.truffle.api.TruffleLanguage%0}> getContextReference()
  anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds languageInfo,polyglotLanguageInstance,reference
+hfds contextLocals,contextThreadLocals,languageInfo,polyglotLanguageInstance,reference
+
+CLSS protected abstract interface static com.oracle.truffle.api.TruffleLanguage$ContextLocalFactory<%0 extends java.lang.Object, %1 extends java.lang.Object>
+ outer com.oracle.truffle.api.TruffleLanguage
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract {com.oracle.truffle.api.TruffleLanguage$ContextLocalFactory%1} create({com.oracle.truffle.api.TruffleLanguage$ContextLocalFactory%0})
 
 CLSS public final static !enum com.oracle.truffle.api.TruffleLanguage$ContextPolicy
  outer com.oracle.truffle.api.TruffleLanguage
@@ -362,6 +440,11 @@ CLSS public abstract static com.oracle.truffle.api.TruffleLanguage$ContextRefere
 cons protected init()
 meth public abstract {com.oracle.truffle.api.TruffleLanguage$ContextReference%0} get()
 supr java.lang.Object
+
+CLSS protected abstract interface static com.oracle.truffle.api.TruffleLanguage$ContextThreadLocalFactory<%0 extends java.lang.Object, %1 extends java.lang.Object>
+ outer com.oracle.truffle.api.TruffleLanguage
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract {com.oracle.truffle.api.TruffleLanguage$ContextThreadLocalFactory%1} create({com.oracle.truffle.api.TruffleLanguage$ContextThreadLocalFactory%0},java.lang.Thread)
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$Env
  outer com.oracle.truffle.api.TruffleLanguage
@@ -408,6 +491,8 @@ meth public java.lang.Object asBoxedGuestValue(java.lang.Object)
 meth public java.lang.Object asGuestValue(java.lang.Object)
 meth public java.lang.Object asHostObject(java.lang.Object)
 meth public java.lang.Object asHostSymbol(java.lang.Class<?>)
+meth public java.lang.Object createHostAdapterClass(java.lang.Class<?>[])
+meth public java.lang.Object createHostAdapterClassWithStaticOverrides(java.lang.Class<?>[],java.lang.Object)
 meth public java.lang.Object findMetaObject(java.lang.Object)
 meth public java.lang.Object getPolyglotBindings()
 meth public java.lang.Object importSymbol(java.lang.String)
@@ -434,7 +519,7 @@ meth public void exportSymbol(java.lang.String,java.lang.Object)
 meth public void registerService(java.lang.Object)
 meth public void setCurrentWorkingDirectory(com.oracle.truffle.api.TruffleFile)
 supr java.lang.Object
-hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,fileSystemContext,in,initialized,initializedUnchangedAssumption,internalFileSystemContext,languageServicesCollector,options,out,polyglotLanguageContext,services,spi,valid
+hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,in,initialized,initializedUnchangedAssumption,languageServicesCollector,options,out,polyglotLanguageContext,services,spi,valid
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest
  outer com.oracle.truffle.api.TruffleLanguage
@@ -525,8 +610,8 @@ meth public void severe(java.util.function.Supplier<java.lang.String>)
 meth public void warning(java.lang.String)
 meth public void warning(java.util.function.Supplier<java.lang.String>)
 supr java.lang.Object
-hfds DEFAULT_VALUE,MAX_CLEANED_REFS,OFF_VALUE,ROOT_NAME,children,childrenLock,handlerProvider,levelNum,levelNumStable,levelObj,loggerCache,loggersRefQueue,name,parent
-hcls AbstractLoggerRef,ChildLoggerRef,LoggerCache,PolyglotLogHandlerProvider
+hfds DEFAULT_VALUE,MAX_CLEANED_REFS,OFF_VALUE,ROOT_NAME,children,childrenLock,levelNum,levelNumStable,levelObj,loggerCache,loggersRefQueue,name,parent
+hcls AbstractLoggerRef,ChildLoggerRef,LoggerCache
 
 CLSS public final com.oracle.truffle.api.TruffleOptions
 fld public final static boolean AOT
@@ -574,6 +659,7 @@ CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
 meth public com.oracle.truffle.api.RootCallTarget getTarget()
 meth public com.oracle.truffle.api.frame.Frame getFrame()
 meth public com.oracle.truffle.api.nodes.Node getLocation()
+meth public java.lang.Object getGuestObject()
 meth public static com.oracle.truffle.api.TruffleStackTraceElement create(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.RootCallTarget,com.oracle.truffle.api.frame.Frame)
 supr java.lang.Object
 hfds frame,location,target
@@ -604,6 +690,7 @@ meth public abstract void setFloat(com.oracle.truffle.api.frame.FrameSlot,float)
 meth public abstract void setInt(com.oracle.truffle.api.frame.FrameSlot,int)
 meth public abstract void setLong(com.oracle.truffle.api.frame.FrameSlot,long)
 meth public abstract void setObject(com.oracle.truffle.api.frame.FrameSlot,java.lang.Object)
+meth public void clear(com.oracle.truffle.api.frame.FrameSlot)
 
 CLSS public final com.oracle.truffle.api.frame.FrameDescriptor
 cons public init()
@@ -715,6 +802,24 @@ meth public org.graalvm.polyglot.io.ProcessHandler$Redirect createRedirectToStre
 supr java.lang.Object
 hfds clearEnvironment,cmd,cwd,env,errorRedirect,fileSystem,inheritIO,inputRedirect,outputRedirect,polyglotLanguageContext,redirectErrorStream
 
+CLSS public abstract com.oracle.truffle.api.memory.ByteArraySupport
+meth public abstract byte getByte(byte[],int)
+meth public abstract double getDouble(byte[],int)
+meth public abstract float getFloat(byte[],int)
+meth public abstract int getInt(byte[],int)
+meth public abstract long getLong(byte[],int)
+meth public abstract short getShort(byte[],int)
+meth public abstract void putByte(byte[],int,byte)
+meth public abstract void putDouble(byte[],int,double)
+meth public abstract void putFloat(byte[],int,float)
+meth public abstract void putInt(byte[],int,int)
+meth public abstract void putLong(byte[],int,long)
+meth public abstract void putShort(byte[],int,short)
+meth public final boolean inBounds(byte[],int,int)
+meth public static com.oracle.truffle.api.memory.ByteArraySupport bigEndian()
+meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
+supr java.lang.Object
+
 CLSS public abstract com.oracle.truffle.api.nodes.BlockNode<%0 extends com.oracle.truffle.api.nodes.Node>
 cons protected init({com.oracle.truffle.api.nodes.BlockNode%0}[])
 fld public final static int NO_ARGUMENT = 0
@@ -772,15 +877,29 @@ meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.nodes.DirectCallNode create(com.oracle.truffle.api.CallTarget)
 supr com.oracle.truffle.api.nodes.Node
 
+CLSS public final com.oracle.truffle.api.nodes.EncapsulatingNodeReference
+meth public com.oracle.truffle.api.nodes.Node get()
+meth public com.oracle.truffle.api.nodes.Node set(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.nodes.EncapsulatingNodeReference getCurrent()
+supr java.lang.Object
+hfds CURRENT,reference,thread
+
 CLSS public abstract com.oracle.truffle.api.nodes.ExecutableNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
 meth public final <%0 extends com.oracle.truffle.api.TruffleLanguage> {%%0} getLanguage(java.lang.Class<{%%0}>)
- anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo()
 supr com.oracle.truffle.api.nodes.Node
-hfds GENERIC,language,polyglotEngine,referenceCache
+hfds GENERIC,engineRef,referenceCache
 hcls ReferenceCache
+
+CLSS public final com.oracle.truffle.api.nodes.ExecutionSignature
+fld public final static com.oracle.truffle.api.nodes.ExecutionSignature GENERIC
+meth public java.lang.Class<?> getReturnType()
+meth public java.lang.Class<?>[] getArgumentTypes()
+meth public static com.oracle.truffle.api.nodes.ExecutionSignature create(java.lang.Class<?>,java.lang.Class<?>[])
+supr java.lang.Object
+hfds argumentTypes,returnType
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.ExplodeLoop
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -861,7 +980,7 @@ meth public abstract !varargs java.lang.Object call(com.oracle.truffle.api.CallT
 meth public static com.oracle.truffle.api.nodes.IndirectCallNode create()
 meth public static com.oracle.truffle.api.nodes.IndirectCallNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
-hfds CURRENT_CALL_NODE,UNCACHED
+hfds UNCACHED
 
 CLSS public final com.oracle.truffle.api.nodes.InvalidAssumptionException
 cons public init()
@@ -943,8 +1062,10 @@ meth protected abstract boolean isChildrenField(java.lang.Object)
 meth protected abstract boolean isCloneableField(java.lang.Object)
 meth protected abstract java.lang.Class<?> getFieldType(java.lang.Object)
 meth protected abstract java.lang.Iterable<?> getNodeFields()
+ anno 0 java.lang.Deprecated()
 meth protected abstract java.lang.Object getFieldObject(java.lang.Object,com.oracle.truffle.api.nodes.Node)
 meth protected abstract java.lang.Object getFieldValue(java.lang.Object,com.oracle.truffle.api.nodes.Node)
+meth protected abstract java.lang.Object[] getNodeFieldArray()
 meth protected abstract java.lang.String getFieldName(java.lang.Object)
 meth protected abstract void putFieldObject(java.lang.Object,com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.nodes.Node> getType()
@@ -1059,8 +1180,10 @@ meth public static boolean isReplacementSafe(com.oracle.truffle.api.nodes.Node,c
 meth public static boolean replaceChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static boolean verify(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.nodes.Node getCurrentEncapsulatingNode()
+ anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.nodes.Node getNthParent(com.oracle.truffle.api.nodes.Node,int)
 meth public static com.oracle.truffle.api.nodes.Node pushEncapsulatingNode(com.oracle.truffle.api.nodes.Node)
+ anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.nodes.NodeFieldAccessor findChildField(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
  anno 0 java.lang.Deprecated()
 meth public static int countNodes(com.oracle.truffle.api.nodes.Node)
@@ -1069,18 +1192,17 @@ meth public static java.lang.String printCompactTreeToString(com.oracle.truffle.
 meth public static java.lang.String printSourceAttributionTree(com.oracle.truffle.api.nodes.Node)
 meth public static java.lang.String printSyntaxTags(java.lang.Object)
 meth public static java.lang.String printTreeToString(com.oracle.truffle.api.nodes.Node)
-meth public static java.util.Iterator<com.oracle.truffle.api.nodes.Node> makeRecursiveIterator(com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> collectNodes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> findNodeChildren(com.oracle.truffle.api.nodes.Node)
 meth public static void popEncapsulatingNode(com.oracle.truffle.api.nodes.Node)
+ anno 0 java.lang.Deprecated()
 meth public static void printCompactTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printSourceAttributionTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printSourceAttributionTree(java.io.PrintWriter,com.oracle.truffle.api.nodes.Node)
 meth public static void printTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printTree(java.io.PrintWriter,com.oracle.truffle.api.nodes.Node)
 supr java.lang.Object
-hfds CURRENT_ENCAPSULATING_NODE
-hcls NodeCounter,RecursiveNodeIterator
+hcls NodeCounter
 
 CLSS public abstract interface static com.oracle.truffle.api.nodes.NodeUtil$NodeCountFilter
  outer com.oracle.truffle.api.nodes.NodeUtil
@@ -1095,15 +1217,20 @@ fld public final static java.lang.Object BREAK_LOOP_STATUS
 fld public final static java.lang.Object CONTINUE_LOOP_STATUS
 intf com.oracle.truffle.api.nodes.NodeInterface
 meth public abstract boolean executeRepeating(com.oracle.truffle.api.frame.VirtualFrame)
+meth public boolean shouldContinue(java.lang.Object)
 meth public java.lang.Object executeRepeatingWithValue(com.oracle.truffle.api.frame.VirtualFrame)
+meth public java.lang.Object initialLoopStatus()
 
 CLSS public abstract com.oracle.truffle.api.nodes.RootNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.frame.FrameDescriptor)
 meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
+meth protected boolean isTrivial()
+meth protected com.oracle.truffle.api.nodes.ExecutionSignature prepareForAOT()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
 meth protected final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
+meth protected java.lang.Object translateStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> findAsynchronousFrames(com.oracle.truffle.api.frame.Frame)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
 meth public boolean isCaptureFramesForTrace()
@@ -1119,7 +1246,7 @@ meth public java.lang.String getName()
 meth public java.lang.String getQualifiedName()
 meth public static com.oracle.truffle.api.nodes.RootNode createConstantNode(java.lang.Object)
 supr com.oracle.truffle.api.nodes.ExecutableNode
-hfds callTarget,frameDescriptor,instrumentationBits,lock
+hfds LOCK_UPDATER,callTarget,frameDescriptor,instrumentationBits,lock
 hcls Constant
 
 CLSS public com.oracle.truffle.api.nodes.SlowPathException
@@ -1138,19 +1265,8 @@ meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
 
-CLSS public final com.oracle.truffle.api.source.MissingMIMETypeException
- anno 0 java.lang.Deprecated()
-supr java.lang.Exception
-hfds serialVersionUID
-
-CLSS public final com.oracle.truffle.api.source.MissingNameException
- anno 0 java.lang.Deprecated()
-supr java.lang.Exception
-hfds serialVersionUID
-
 CLSS public abstract com.oracle.truffle.api.source.Source
 fld public final static java.lang.CharSequence CONTENT_NONE
-innr public Builder
 innr public SourceBuilder
 innr public final LiteralBuilder
 meth public abstract boolean hasBytes()
@@ -1179,22 +1295,10 @@ meth public final int getLineLength(int)
 meth public final int getLineNumber(int)
 meth public final int getLineStartOffset(int)
 meth public final int hashCode()
-meth public final java.io.InputStream getInputStream()
- anno 0 java.lang.Deprecated()
 meth public final java.io.Reader getReader()
 meth public final java.lang.CharSequence getCharacters(int)
 meth public final java.net.URI getURI()
 meth public java.lang.String toString()
-meth public static com.oracle.truffle.api.source.Source$Builder<java.io.IOException,com.oracle.truffle.api.source.MissingMIMETypeException,com.oracle.truffle.api.source.MissingNameException> newBuilder(java.io.Reader)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source$Builder<java.io.IOException,java.lang.RuntimeException,java.lang.RuntimeException> newBuilder(java.io.File)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source$Builder<java.io.IOException,java.lang.RuntimeException,java.lang.RuntimeException> newBuilder(java.net.URL)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source$Builder<java.lang.RuntimeException,com.oracle.truffle.api.source.MissingMIMETypeException,com.oracle.truffle.api.source.MissingNameException> newBuilder(java.lang.CharSequence)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source$Builder<java.lang.RuntimeException,com.oracle.truffle.api.source.MissingMIMETypeException,com.oracle.truffle.api.source.MissingNameException> newBuilder(java.lang.String)
- anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.source.Source$LiteralBuilder newBuilder(com.oracle.truffle.api.source.Source)
 meth public static com.oracle.truffle.api.source.Source$LiteralBuilder newBuilder(java.lang.String,java.lang.CharSequence,java.lang.String)
 meth public static com.oracle.truffle.api.source.Source$LiteralBuilder newBuilder(java.lang.String,org.graalvm.polyglot.io.ByteSequence,java.lang.String)
@@ -1207,39 +1311,13 @@ meth public static java.lang.String findLanguage(java.net.URL) throws java.io.IO
 meth public static java.lang.String findMimeType(com.oracle.truffle.api.TruffleFile) throws java.io.IOException
 meth public static java.lang.String findMimeType(java.net.URL) throws java.io.IOException
 supr java.lang.Object
-hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,UNKNOWN_MIME_TYPE,URI_SCHEME,computedURI,polyglotSource,textMap
-hcls FileSystemContextSupplier
-
-CLSS public com.oracle.truffle.api.source.Source$Builder<%0 extends java.lang.Exception, %1 extends java.lang.Exception, %2 extends java.lang.Exception>
- outer com.oracle.truffle.api.source.Source
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source build() throws {com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<java.lang.RuntimeException,{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> content(java.lang.CharSequence)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<java.lang.RuntimeException,{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> content(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},java.lang.RuntimeException,{com.oracle.truffle.api.source.Source$Builder%2}> language(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},java.lang.RuntimeException,{com.oracle.truffle.api.source.Source$Builder%2}> mimeType(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},java.lang.RuntimeException> name(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> cached(boolean)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> interactive()
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> internal()
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> uri(java.net.URI)
- anno 0 java.lang.Deprecated()
-supr java.lang.Object
-hfds cached,characters,interactive,internal,language,mime,name,origin,uri
+hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,URI_SCHEME,cachedPolyglotSource,computedURI,textMap
 
 CLSS public final com.oracle.truffle.api.source.Source$LiteralBuilder
  outer com.oracle.truffle.api.source.Source
 meth public com.oracle.truffle.api.source.Source build()
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder cached(boolean)
+meth public com.oracle.truffle.api.source.Source$LiteralBuilder canonicalizePath(boolean)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(java.lang.CharSequence)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(org.graalvm.polyglot.io.ByteSequence)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder encoding(java.nio.charset.Charset)
@@ -1257,6 +1335,7 @@ meth public com.oracle.truffle.api.source.Source build() throws java.io.IOExcept
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(java.lang.CharSequence)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(org.graalvm.polyglot.io.ByteSequence)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder cached(boolean)
+meth public com.oracle.truffle.api.source.Source$SourceBuilder canonicalizePath(boolean)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder encoding(java.nio.charset.Charset)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder interactive(boolean)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder internal(boolean)
@@ -1264,7 +1343,7 @@ meth public com.oracle.truffle.api.source.Source$SourceBuilder mimeType(java.lan
 meth public com.oracle.truffle.api.source.Source$SourceBuilder name(java.lang.String)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder uri(java.net.URI)
 supr java.lang.Object
-hfds cached,content,embedderFileSystemContext,fileEncoding,interactive,internal,language,mimeType,name,origin,path,uri,url
+hfds cached,canonicalizePath,content,fileEncoding,fileSystemContext,interactive,internal,language,mimeType,name,origin,path,uri,url
 
 CLSS public abstract com.oracle.truffle.api.source.SourceSection
 meth public abstract boolean equals(java.lang.Object)
@@ -1331,6 +1410,12 @@ cons public init(java.lang.String,java.lang.Throwable)
 cons public init(java.lang.Throwable)
 supr java.lang.Throwable
 hfds serialVersionUID
+
+CLSS public abstract interface !annotation java.lang.FunctionalInterface
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public java.lang.Object
 cons public init()

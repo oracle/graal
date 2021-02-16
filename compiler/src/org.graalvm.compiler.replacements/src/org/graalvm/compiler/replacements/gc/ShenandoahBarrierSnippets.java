@@ -47,6 +47,9 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
     public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GShenandoah-C-Queue-Buffer");
     public static final LocationIdentity GC_STATE_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-State");
 
+    protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, GC_LOG_LOCATION,
+            GC_INDEX_LOCATION};
+
     public static class Counters {
         Counters(SnippetCounter.Group.Factory factory) {
             SnippetCounter.Group countersBarriers = factory.createSnippetCounterGroup("Shenandoah Barriers");
@@ -232,7 +235,7 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
             Word parentWord = Word.objectToTrackedPointer(parent);
             Word childWord = Word.objectToTrackedPointer(child);
             boolean success = validateOop(validateObjectCallDescriptor(), parentWord, childWord);
-            AssertionNode.assertion(false, success, "Verification ERROR, Parent: %p Child: %p\n", parentWord.rawValue(), childWord.rawValue());
+            AssertionNode.dynamicAssert(success, "Verification ERROR, Parent: %p Child: %p\n", parentWord.rawValue(), childWord.rawValue());
         }
     }
 
@@ -293,7 +296,7 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, ShenandoahReferentFieldReadBarrier barrier, LoweringTool tool) {
@@ -314,7 +317,7 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, ShenandoahArrayRangePreWriteBarrier barrier, LoweringTool tool) {
@@ -323,13 +326,13 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
             args.add("length", barrier.getLength());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, ShenandoahLoadReferenceBarrier barrier, LoweringTool tool) {
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("value", barrier.getValue());
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
 

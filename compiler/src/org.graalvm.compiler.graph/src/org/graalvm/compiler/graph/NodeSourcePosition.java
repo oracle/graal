@@ -226,7 +226,7 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
             assert !isSubstitution || marker == None;
             return new NodeSourcePosition(newSourceLanguagePosition, link, getMethod(), getBCI(), isSubstitution ? Substitution : None);
         } else {
-            return new NodeSourcePosition(getCaller().addCaller(newSourceLanguagePosition, link, isSubstitution), getMethod(), getBCI(), marker);
+            return new NodeSourcePosition(newSourceLanguagePosition, getCaller().addCaller(getSourceLanguage(), link, isSubstitution), getMethod(), getBCI(), marker);
         }
     }
 

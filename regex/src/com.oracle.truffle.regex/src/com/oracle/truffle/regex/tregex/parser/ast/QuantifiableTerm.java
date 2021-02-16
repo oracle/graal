@@ -65,7 +65,7 @@ public abstract class QuantifiableTerm extends Term {
     }
 
     @Override
-    public abstract QuantifiableTerm copy(RegexAST ast, boolean recursive);
+    public abstract QuantifiableTerm copy(RegexAST ast);
 
     public boolean hasQuantifier() {
         return quantifier != null;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,20 +26,24 @@ package com.oracle.svm.hosted.code.amd64;
 
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.asm.Assembler.CodeAnnotation;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 
@@ -54,12 +58,16 @@ class AMD64HostedPatcherFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(PatchConsumerFactory.HostedPatchConsumerFactory.class, new PatchConsumerFactory.HostedPatchConsumerFactory() {
             @Override
-            public Consumer<CodeAnnotation> newConsumer(CompilationResult compilationResult) {
-                return new Consumer<CodeAnnotation>() {
+            public Consumer<Assembler.CodeAnnotation> newConsumer(CompilationResult compilationResult) {
+                return new Consumer<Assembler.CodeAnnotation>() {
                     @Override
-                    public void accept(CodeAnnotation annotation) {
+                    public void accept(Assembler.CodeAnnotation annotation) {
                         if (annotation instanceof OperandDataAnnotation) {
-                            compilationResult.addAnnotation(new AMD64HostedPatcher(annotation.instructionPosition, (OperandDataAnnotation) annotation));
+                            compilationResult.addAnnotation(new AMD64HostedPatcher((OperandDataAnnotation) annotation));
+
+                        } else if (annotation instanceof AddressDisplacementAnnotation) {
+                            AddressDisplacementAnnotation dispAnnotation = (AddressDisplacementAnnotation) annotation;
+                            compilationResult.addAnnotation(new HostedImageHeapConstantPatch(dispAnnotation.operandPosition, (SubstrateObjectConstant) dispAnnotation.annotation));
                         }
                     }
                 };
@@ -71,8 +79,8 @@ class AMD64HostedPatcherFeature implements Feature {
 public class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
     private final OperandDataAnnotation annotation;
 
-    public AMD64HostedPatcher(int instructionStartPosition, OperandDataAnnotation annotation) {
-        super(instructionStartPosition);
+    public AMD64HostedPatcher(OperandDataAnnotation annotation) {
+        super(annotation.instructionPosition);
         this.annotation = annotation;
     }
 
@@ -110,10 +118,10 @@ public class AMD64HostedPatcher extends CompilationResult.CodeAnnotation impleme
              * the relocation site, we want to subtract n bytes from our addend.
              */
             long addend = (annotation.nextInstructionPosition - annotation.operandPosition);
-            relocs.addPCRelativeRelocationWithAddend((int) siteOffset, annotation.operandSize, addend, ref);
+            relocs.addRelocationWithAddend((int) siteOffset, ObjectFile.RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
         } else if (ref instanceof ConstantReference) {
             assert SubstrateOptions.SpawnIsolates.getValue() : "Inlined object references must be base-relative";
-            relocs.addDirectRelocationWithoutAddend((int) siteOffset, annotation.operandSize, ref);
+            relocs.addRelocationWithoutAddend((int) siteOffset, ObjectFile.RelocationKind.getDirect(annotation.operandSize), ref);
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }

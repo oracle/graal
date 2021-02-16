@@ -58,6 +58,7 @@ public class DumpPathTest extends GraalCompilerTest {
             overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.File);
             overrides.put(DebugOptions.PrintCanonicalGraphStrings, true);
             overrides.put(DebugOptions.Dump, "*");
+            overrides.put(DebugOptions.MethodFilter, null);
 
             // Generate dump files.
             test(new OptionValues(getInitialOptions(), overrides), "snippet");

@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -88,11 +89,13 @@ public class LayoutEncoding {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void guaranteeEncoding(ResolvedJavaType type, boolean condition, String description) {
-        VMError.guarantee(condition, description + ". This error is caused by an incorrect compact encoding of a type " +
-                        "(a class, array or a primitive). The error occurred with the following type, but also could be caused " +
-                        "by characteristics of the overall type hierarchy: " + type + ". Please report this problem and the " +
-                        "conditions in which it occurs and include any noteworthy characteristics of the type hierarchy and " +
-                        "architecture of the application and the libraries and frameworks it uses.");
+        if (!condition) {
+            VMError.shouldNotReachHere(description + ". This error is caused by an incorrect compact encoding of a type " +
+                            "(a class, array or a primitive). The error occurred with the following type, but also could be caused " +
+                            "by characteristics of the overall type hierarchy: " + type + ". Please report this problem and the " +
+                            "conditions in which it occurs and include any noteworthy characteristics of the type hierarchy and " +
+                            "architecture of the application and the libraries and frameworks it uses.");
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -139,6 +142,7 @@ public class LayoutEncoding {
         return encoding > LAST_SPECIAL_VALUE;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getInstanceSize(int encoding) {
         return WordFactory.unsigned(encoding);
     }
@@ -154,6 +158,7 @@ public class LayoutEncoding {
         return UnsignedMath.aboveOrEqual(encoding, ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isObjectArray(int encoding) {
         return encoding < (ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
@@ -187,7 +192,7 @@ public class LayoutEncoding {
     public static UnsignedWord getSizeFromObject(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
-            return getArraySize(encoding, KnownIntrinsics.readArrayLength(obj));
+            return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
         } else {
             return getInstanceSize(encoding);
         }

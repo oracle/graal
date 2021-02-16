@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -363,6 +363,26 @@ public interface InstrumentableNode extends NodeInterface {
     }
 
     /**
+     * Find the first {@link #isInstrumentable() instrumentable} node on it's parent chain. If the
+     * provided node is instrumentable itself, it is returned. If not, the first parent node that is
+     * instrumentable is returned, if any.
+     *
+     * @param node a Node
+     * @return the first instrumentable node, or <code>null</code> when no instrumentable parent
+     *         exists.
+     * @since 20.3
+     */
+    static Node findInstrumentableParent(Node node) {
+        Node inode = node;
+        while (inode != null && (inode instanceof WrapperNode || !(inode instanceof InstrumentableNode && ((InstrumentableNode) inode).isInstrumentable()))) {
+            inode = inode.getParent();
+        }
+        assert inode == null || inode instanceof InstrumentableNode && ((InstrumentableNode) inode).isInstrumentable() : inode;
+        assert !(inode instanceof WrapperNode) : inode;
+        return inode;
+    }
+
+    /**
      * Nodes that the instrumentation framework inserts into guest language ASTs (between
      * {@link InstrumentableNode instrumentable} guest language nodes and their parents) for the
      * purpose of interposing on execution events and reporting them via the instrumentation
@@ -538,6 +558,20 @@ class InstrumentableNodeSnippets {
     }
 
     @SuppressWarnings("unused")
+    static class HaltNodeWrapper implements WrapperNode {
+        HaltNodeWrapper(Node node, ProbeNode probe) {
+        }
+
+        public Node getDelegateNode() {
+            return null;
+        }
+
+        public ProbeNode getProbeNode() {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unused")
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
     @GenerateWrapper
     static class HaltNode extends Node implements InstrumentableNode {
@@ -568,7 +602,21 @@ class InstrumentableNodeSnippets {
         }
 
     }
+
     // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
+    @SuppressWarnings("unused")
+    static class ExpressionNodeWrapper implements WrapperNode {
+        ExpressionNodeWrapper(Node node, ProbeNode probe) {
+        }
+
+        public Node getDelegateNode() {
+            return null;
+        }
+
+        public ProbeNode getProbeNode() {
+            return null;
+        }
+    }
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode
     @GenerateWrapper

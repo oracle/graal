@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,27 +40,13 @@
  */
 package com.oracle.truffle.object.basic;
 
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.LayoutFactory;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.object.BasicLayout;
-import com.oracle.truffle.object.PropertyImpl;
+import com.oracle.truffle.object.CoreLayoutFactory;
 
-public class DefaultLayoutFactory implements LayoutFactory {
-    public Layout createLayout(Layout.Builder layoutBuilder) {
+@SuppressWarnings("deprecation")
+public class DefaultLayoutFactory extends CoreLayoutFactory {
+    @Override
+    public com.oracle.truffle.api.object.Layout createLayout(com.oracle.truffle.api.object.Layout.Builder layoutBuilder) {
         return BasicLayout.createLayoutImpl(layoutBuilder);
-    }
-
-    public Property createProperty(Object id, Location location) {
-        return createProperty(id, location, 0);
-    }
-
-    public Property createProperty(Object id, Location location, int flags) {
-        return new PropertyImpl(id, location, flags);
-    }
-
-    public int getPriority() {
-        return 10;
     }
 }

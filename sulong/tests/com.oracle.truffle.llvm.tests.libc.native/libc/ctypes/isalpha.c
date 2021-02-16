@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,31 +32,31 @@
 #include <ctype.h>
 
 int main() {
-  if (!isalpha('a')) {
-    abort();
-  }
-  if (!isalpha('z')) {
-    abort();
-  }
-  if (!isalpha('A')) {
-    abort();
-  }
-  if (!isalpha('Z')) {
-    abort();
-  }
-  if (isalpha(' ')) {
-    abort();
-  }
-  if (isalpha('5')) {
-    abort();
-  }
-  if (isalpha('!')) {
-    abort();
-  }
-  if (isalpha('@')) {
-    abort();
-  }
-  if (isalpha('[')) {
-    abort();
-  }
+    if (!isalpha('a')) {
+        abort();
+    }
+    if (!isalpha('z')) {
+        abort();
+    }
+    if (!isalpha('A')) {
+        abort();
+    }
+    if (!isalpha('Z')) {
+        abort();
+    }
+    if (isalpha(' ')) {
+        abort();
+    }
+    if (isalpha('5')) {
+        abort();
+    }
+    if (isalpha('!')) {
+        abort();
+    }
+    if (isalpha('@')) {
+        abort();
+    }
+    if (isalpha('[')) {
+        abort();
+    }
 }

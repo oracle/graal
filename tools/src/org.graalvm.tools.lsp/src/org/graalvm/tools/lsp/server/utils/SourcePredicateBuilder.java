@@ -51,7 +51,7 @@ public final class SourcePredicateBuilder {
      * @param uri
      */
     public SourcePredicateBuilder uriOrTruffleName(URI uri) {
-        SourcePredicate predicate = src -> src.getURI().equals(uri) || (src.getURI().getScheme().equals("truffle") && src.getName().equals(uri.getPath()));
+        SourcePredicate predicate = src -> src.getURI().equals(uri) || ("truffle".equals(src.getURI().getScheme()) && src.getName() != null && src.getName().equals(uri.getPath()));
         this.predicates.add(predicate);
         return this;
     }

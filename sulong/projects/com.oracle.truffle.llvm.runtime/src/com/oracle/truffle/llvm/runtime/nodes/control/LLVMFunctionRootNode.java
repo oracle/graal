@@ -38,6 +38,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -52,9 +53,12 @@ public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode rootBody;
 
     @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlotsToInitialize;
+    private final LLVMStackAccess stackAccess;
 
-    public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMStatementNode[] copyArgumentsToFrame, LLVMDispatchBasicBlockNode rootBody, FrameDescriptor frameDescriptor) {
+    public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMStackAccess stackAccess, LLVMStatementNode[] copyArgumentsToFrame, LLVMDispatchBasicBlockNode rootBody,
+                    FrameDescriptor frameDescriptor) {
         this.uniquesRegionAllocNode = uniquesRegionAllocNode;
+        this.stackAccess = stackAccess;
         this.copyArgumentsToFrame = copyArgumentsToFrame;
         this.rootBody = rootBody;
         this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(NO_SLOTS);
@@ -70,10 +74,18 @@ public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
     @Specialization
     public Object doRun(VirtualFrame frame) {
         nullStack(frame);
-        copyArgumentsToFrame(frame);
-        uniquesRegionAllocNode.execute(frame);
 
-        return rootBody.executeGeneric(frame);
+        stackAccess.executeEnter(frame);
+        try {
+            copyArgumentsToFrame(frame);
+            if (uniquesRegionAllocNode != null) {
+                uniquesRegionAllocNode.execute(frame);
+            }
+
+            return rootBody.executeGeneric(frame);
+        } finally {
+            stackAccess.executeExit(frame);
+        }
     }
 
     @ExplodeLoop

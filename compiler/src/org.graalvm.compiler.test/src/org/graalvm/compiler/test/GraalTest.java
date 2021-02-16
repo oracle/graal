@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -467,7 +467,15 @@ public class GraalTest {
         Runtime.getRuntime().addShutdownHook(new Thread("GlobalMetricsPrinter") {
             @Override
             public void run() {
-                // globalMetrics.print(new OptionValues(OptionValues.newOptionMap()));
+                try {
+                    Path path = globalMetrics.print(new OptionValues(OptionValues.newOptionMap()), GraalTest.class.getSimpleName() + "Metrics.log");
+                    if (path != null) {
+                        System.out.println("Printed global metrics to " + path.toAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error printing global metrics:");
+                    e.printStackTrace(System.err);
+                }
             }
         });
     }

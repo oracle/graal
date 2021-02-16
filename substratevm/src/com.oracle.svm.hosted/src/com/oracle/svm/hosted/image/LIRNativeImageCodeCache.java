@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,17 +39,23 @@ import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
+import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
@@ -60,8 +67,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     private int codeCacheSize;
 
+    private final TargetDescription target;
+
     public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
         super(compilations, imageHeap);
+        target = ConfigurationValues.getTarget();
     }
 
     @Override
@@ -142,9 +152,24 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
             // Build an index of PatchingAnnoations
             Map<Integer, HostedPatcher> patches = new HashMap<>();
+            ByteBuffer targetCode = null;
             for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
                 if (codeAnnotation instanceof HostedPatcher) {
                     patches.put(codeAnnotation.getPosition(), (HostedPatcher) codeAnnotation);
+
+                } else if (codeAnnotation instanceof HostedImageHeapConstantPatch) {
+                    HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
+
+                    ObjectInfo objectInfo = imageHeap.getObjectInfo(SubstrateObjectConstant.asObject(patch.constant));
+                    long objectAddress = objectInfo.getAddress();
+
+                    if (targetCode == null) {
+                        targetCode = ByteBuffer.wrap(compilation.getTargetCode()).order(target.arch.getByteOrder());
+                    }
+                    int originalValue = targetCode.getInt(patch.getPosition());
+                    long newValue = originalValue + objectAddress;
+                    VMError.guarantee(NumUtil.isInt(newValue), "Image heap size is limited to 2 GByte");
+                    targetCode.putInt(patch.getPosition(), (int) newValue);
                 }
             }
             // ... patch direct call sites.
@@ -182,7 +207,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @Override
     public void writeCode(RelocatableBuffer buffer) {
-        int startPos = buffer.getPosition();
+        ByteBuffer bufferBytes = buffer.getByteBuffer();
+        int startPos = bufferBytes.position();
         /*
          * Compilation start offsets are relative to the beginning of the code cache (since the heap
          * size is not fixed at the time they are computed). This is just startPos, i.e. we start
@@ -192,15 +218,15 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             HostedMethod method = entry.getKey();
             CompilationResult compilation = entry.getValue();
 
-            buffer.setPosition(startPos + method.getCodeAddressOffset());
+            BufferUtil.asBaseBuffer(bufferBytes).position(startPos + method.getCodeAddressOffset());
             int codeSize = compilation.getTargetCodeSize();
-            buffer.putBytes(compilation.getTargetCode(), 0, codeSize);
+            bufferBytes.put(compilation.getTargetCode(), 0, codeSize);
 
             for (int i = codeSize; i < NumUtil.roundUp(codeSize, SubstrateOptions.codeAlignment()); i++) {
-                buffer.putByte(CODE_FILLER_BYTE);
+                bufferBytes.put(CODE_FILLER_BYTE);
             }
         }
-        buffer.setPosition(startPos);
+        BufferUtil.asBaseBuffer(bufferBytes).position(startPos);
     }
 
     @Override

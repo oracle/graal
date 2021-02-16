@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -76,11 +76,17 @@ public abstract class LLVMStart extends LLVMIntrinsic {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLangStart extends LLVMStart {
 
+        /**
+         * @param stack @NodeChild
+         * @param main @NodeChild
+         * @param argc @NodeChild
+         * @param argv @NodeChild
+         * @see LLVMLangStart
+         */
         @Specialization
-        @SuppressWarnings("unused")
-        protected long doOp(StackPointer stackPointer, LLVMPointer main, long argc, LLVMPointer argv,
+        protected long doOp(LLVMStack stack, LLVMPointer main, long argc, LLVMPointer argv,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dispatchNode) {
-            dispatchNode.executeDispatch(main, new Object[]{stackPointer});
+            dispatchNode.executeDispatch(main, new Object[]{stack});
             return 0;
         }
     }
@@ -93,30 +99,38 @@ public abstract class LLVMStart extends LLVMIntrinsic {
     public abstract static class LLVMLangStartInternal extends LLVMStart {
 
         @TruffleBoundary
-        protected LangStartVtableType createLangStartVtable(Type vtableType) throws TypeOverflowException {
+        protected LangStartVtableType createLangStartVtable(LLVMGlobal vtableGlobal) throws TypeOverflowException {
+            Type vtableType = vtableGlobal.getPointeeType();
             LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
             DataLayout dataSpecConverter = startNode.getDatalayout();
             return LangStartVtableType.create(dataSpecConverter, vtableType);
         }
 
+        /**
+         * @param stack @NodeChild
+         * @param mainPointer @NodeChild
+         * @param vtable @NodeChild
+         * @param argc @NodeChild
+         * @param argv @NodeChild
+         * @see LLVMLangStartInternal
+         */
         @Specialization
-        @SuppressWarnings("unused")
-        protected long doOp(StackPointer stackPointer, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
+        protected long doOp(LLVMStack stack, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
                         @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                         @CachedLanguage LLVMLanguage language,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
+                        @Cached("createToNativeWithTarget()") @SuppressWarnings("unused") LLVMToNativeNode toNative,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode fnDispatchNode,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
             LLVMMemory memory = language.getLLVMMemory();
             LLVMGlobal vtableGlobal = ctx.findGlobal(vtable);
             assert vtableGlobal != null;
             try {
-                LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal.getPointeeType());
+                LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal);
                 LLVMNativePointer fn = readFn(memory, vtable, langStartVtable);
                 LLVMNativePointer dropInPlace = readDropInPlace(memory, vtable, langStartVtable);
                 LLVMNativePointer main = coerceMainForFn(memory, langStartVtable, mainPointer);
-                Integer exitCode = (Integer) fnDispatchNode.executeDispatch(fn, new Object[]{stackPointer, main});
-                dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stackPointer, mainPointer});
+                Integer exitCode = (Integer) fnDispatchNode.executeDispatch(fn, new Object[]{stack, main});
+                dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stack, mainPointer});
                 return exitCode.longValue();
             } catch (TypeOverflowException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -142,27 +156,27 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
             private LangStartVtableType(DataLayout datalayout, StructureType type, FunctionType fnType) throws TypeOverflowException {
                 this.offsetFn = type.getOffsetOf(5, datalayout);
-                this.fnExpectsCoercedMain = !(((PointerType) fnType.getArgumentTypes()[0]).getPointeeType() instanceof PointerType);
+                this.fnExpectsCoercedMain = !(((PointerType) fnType.getArgumentType(0)).getPointeeType() instanceof PointerType);
             }
 
             long readFn(LLVMMemory memory, long address) {
-                return memory.getPointer(address + offsetFn).asNative();
+                return memory.getPointer(null, address + offsetFn).asNative();
             }
 
             long coerceMainForFn(LLVMMemory memory, long mainAddress) {
                 if (fnExpectsCoercedMain) {
-                    return memory.getPointer(mainAddress).asNative();
+                    return memory.getPointer(null, mainAddress).asNative();
                 }
                 return mainAddress;
             }
 
             @SuppressWarnings("static-method")
             long readDropInPlace(LLVMMemory memory, long address) {
-                return memory.getPointer(address).asNative();
+                return memory.getPointer(null, address).asNative();
             }
 
             static LangStartVtableType create(DataLayout datalayout, Type vtableType) throws TypeOverflowException {
-                FunctionType fnType = (FunctionType) ((PointerType) ((StructureType) vtableType).getElementTypes()[5]).getPointeeType();
+                FunctionType fnType = (FunctionType) ((PointerType) ((StructureType) vtableType).getElementType(5)).getPointeeType();
                 return new LangStartVtableType(datalayout, (StructureType) vtableType, fnType);
             }
 

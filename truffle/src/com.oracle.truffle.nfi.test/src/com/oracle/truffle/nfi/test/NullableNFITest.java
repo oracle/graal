@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,11 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.test.interop.NullObject;
@@ -91,7 +87,7 @@ public class NullableNFITest extends NFITest {
         }
     }
 
-    private static final TruffleObject NULL_RET_CALLBACK = new TestCallback(0, (args) -> {
+    private static final Object NULL_RET_CALLBACK = new TestCallback(0, (args) -> {
         return new NullObject();
     });
 
@@ -101,7 +97,7 @@ public class NullableNFITest extends NFITest {
         checkResult(ret, "null");
     }
 
-    private static final TruffleObject STRING_RET_CALLBACK = new TestCallback(0, (args) -> {
+    private static final Object STRING_RET_CALLBACK = new TestCallback(0, (args) -> {
         return "a string";
     });
 
@@ -111,7 +107,7 @@ public class NullableNFITest extends NFITest {
         checkResult(ret, "non-null");
     }
 
-    private static final TruffleObject CLOSURE_RET_CALLBACK = new TestCallback(0, (args) -> {
+    private static final Object CLOSURE_RET_CALLBACK = new TestCallback(0, (args) -> {
         return new TestCallback(0, (ignored) -> 0);
     });
 
@@ -121,9 +117,7 @@ public class NullableNFITest extends NFITest {
         checkResult(ret, "non-null");
     }
 
-    private static void checkResult(Object ret, String expected) throws UnsupportedMessageException {
-        Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
-        TruffleObject obj = (TruffleObject) ret;
+    private static void checkResult(Object obj, String expected) throws UnsupportedMessageException {
         Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
         Assert.assertEquals("return value", expected, UNCACHED_INTEROP.asString(obj));
     }

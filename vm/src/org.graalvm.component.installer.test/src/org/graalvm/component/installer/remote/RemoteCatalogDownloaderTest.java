@@ -288,4 +288,34 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         assertEquals("First part", sources.get(0).getLabel());
         assertEquals("a", sources.get(1).getParameter("linux"));
     }
+
+    /**
+     * Checks that catalog entries in environment win over release file ones.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testEnvironmentMultiCatalogWins() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.1.0");
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "1_url", "test://graalv.org/test/catalog.properties");
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "1_label", "First part");
+
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "3_url", "test://graalv.org/test/catalog.2.properties");
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "3_label", "Second part");
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "3_linux", "a");
+
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, (String) null);
+
+        // override with env variables catalog entries:
+        envParameters.put("GRAALVM_COMPONENT_CATALOG_1_URL", "test://graalv.org/test/envcatalog.properties");
+        envParameters.put("GRAALVM_COMPONENT_CATALOG_1_LABEL", "First env");
+
+        List<SoftwareChannelSource> sources = d.readChannelSources();
+        assertEquals(1, sources.size());
+        assertTrue(sources.get(0).getLocationURL().endsWith("envcatalog.properties"));
+    }
+
+    public static List<SoftwareChannelSource> callReadChannelSources(RemoteCatalogDownloader d) {
+        return d.readChannelSources();
+    }
 }

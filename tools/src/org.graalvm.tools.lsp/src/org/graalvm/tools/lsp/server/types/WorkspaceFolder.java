@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,10 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
-public class WorkspaceFolder {
-
-    final JSONObject jsonData;
+public class WorkspaceFolder extends JSONBase {
 
     WorkspaceFolder(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -48,7 +46,8 @@ public class WorkspaceFolder {
     }
 
     /**
-     * The name of the workspace folder. Defaults to the uri's basename.
+     * The name of the workspace folder. Used to refer to this workspace folder in the user
+     * interface.
      */
     public String getName() {
         return jsonData.getString("name");
@@ -83,8 +82,8 @@ public class WorkspaceFolder {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 83 * hash + Objects.hashCode(this.getUri());
-        hash = 83 * hash + Objects.hashCode(this.getName());
+        hash = 19 * hash + Objects.hashCode(this.getUri());
+        hash = 19 * hash + Objects.hashCode(this.getName());
         return hash;
     }
 

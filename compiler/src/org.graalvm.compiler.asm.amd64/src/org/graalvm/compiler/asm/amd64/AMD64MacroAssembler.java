@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 
@@ -65,6 +64,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public AMD64MacroAssembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
         super(target, optionValues, hasIntelJccErratum);
+    }
+
+    public final void decrementq(Register reg) {
+        decrementq(reg, 1);
     }
 
     public final void decrementq(Register reg, int value) {
@@ -103,6 +106,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         } else {
             subq(dst, value);
         }
+    }
+
+    public final void incrementq(Register reg) {
+        incrementq(reg, 1);
     }
 
     public void incrementq(Register reg, int value) {
@@ -326,7 +333,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (NumUtil.isInt(src)) {
             AMD64MIOp.MOV.emit(this, OperandSize.QWORD, dst, (int) src);
         } else {
-            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
+            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4, dst.getDisplacementAnnotation(), dst.instructionStartPosition);
             movl(dst, (int) (src & 0xFFFFFFFF));
             movl(high, (int) (src >> 32));
         }
@@ -342,31 +349,31 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         movzbq(dst, dst);
     }
 
-    public final void flog(Register dest, Register value, boolean base10) {
+    public final void flog(Register dest, Register value, boolean base10, AMD64Address tmp) {
         if (base10) {
             fldlg2();
         } else {
             fldln2();
         }
-        AMD64Address tmp = trigPrologue(value);
+        trigPrologue(value, tmp);
         fyl2x();
         trigEpilogue(dest, tmp);
     }
 
-    public final void fsin(Register dest, Register value) {
-        AMD64Address tmp = trigPrologue(value);
+    public final void fsin(Register dest, Register value, AMD64Address tmp) {
+        trigPrologue(value, tmp);
         fsin();
         trigEpilogue(dest, tmp);
     }
 
-    public final void fcos(Register dest, Register value) {
-        AMD64Address tmp = trigPrologue(value);
+    public final void fcos(Register dest, Register value, AMD64Address tmp) {
+        trigPrologue(value, tmp);
         fcos();
         trigEpilogue(dest, tmp);
     }
 
-    public final void ftan(Register dest, Register value) {
-        AMD64Address tmp = trigPrologue(value);
+    public final void ftan(Register dest, Register value, AMD64Address tmp) {
+        trigPrologue(value, tmp);
         fptan();
         fstp(0); // ftan pushes 1.0 in addition to the actual result, pop
         trigEpilogue(dest, tmp);
@@ -377,20 +384,16 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         fincstp();
     }
 
-    private AMD64Address trigPrologue(Register value) {
+    private void trigPrologue(Register value, AMD64Address tmp) {
         assert value.getRegisterCategory().equals(AMD64.XMM);
-        AMD64Address tmp = new AMD64Address(AMD64.rsp);
-        subq(AMD64.rsp, AMD64Kind.DOUBLE.getSizeInBytes());
         movdbl(tmp, value);
         fldd(tmp);
-        return tmp;
     }
 
     private void trigEpilogue(Register dest, AMD64Address tmp) {
         assert dest.getRegisterCategory().equals(AMD64.XMM);
         fstpd(tmp);
         movdbl(dest, tmp);
-        addq(AMD64.rsp, AMD64Kind.DOUBLE.getSizeInBytes());
     }
 
     /**

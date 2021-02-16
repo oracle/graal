@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,10 +46,10 @@ import org.graalvm.polyglot.io.MessageTransport;
 /**
  * Tests the use of {@link MessageTransport} with the Inspector.
  */
-public class InspectorMessageTransportTest {
+public class InspectorMessageTransportTest extends EnginesGCedTest {
 
     private static final String PORT = "54367";
-    private static final Pattern URI_PATTERN = Pattern.compile("ws://.*:" + PORT + "/[\\dA-Fa-f\\-]+");
+    private static final Pattern URI_PATTERN = Pattern.compile("ws://.*:" + PORT + "/[\\dA-Za-z_\\-]+");
     private static final String[] INITIAL_MESSAGES = {
                     "{\"id\":5,\"method\":\"Runtime.enable\"}",
                     "{\"id\":6,\"method\":\"Debugger.enable\"}",
@@ -68,12 +68,16 @@ public class InspectorMessageTransportTest {
                     "{\"result\":{},\"id\":28}",
                     "{\"method\":\"Runtime.executionContextCreated\"",
                     "{\"method\":\"Debugger.paused\",",
+                    "{\"result\":{},\"id\":50}",
+                    "{\"method\":\"Debugger.resumed\"}",
+                    "{\"method\":\"Debugger.paused\",",
                     "{\"result\":{},\"id\":100}",
                     "{\"method\":\"Debugger.resumed\"}"
     };
     static {
-        MESSAGES_TO_BACKEND = Arrays.copyOf(INITIAL_MESSAGES, INITIAL_MESSAGES.length + 1);
-        MESSAGES_TO_BACKEND[INITIAL_MESSAGES.length] = "{\"id\":100,\"method\":\"Debugger.resume\"}";
+        MESSAGES_TO_BACKEND = Arrays.copyOf(INITIAL_MESSAGES, INITIAL_MESSAGES.length + 2);
+        MESSAGES_TO_BACKEND[INITIAL_MESSAGES.length] = "{\"id\":50,\"method\":\"Debugger.stepOver\"}";
+        MESSAGES_TO_BACKEND[INITIAL_MESSAGES.length + 1] = "{\"id\":100,\"method\":\"Debugger.resume\"}";
     }
 
     @Test
@@ -83,8 +87,8 @@ public class InspectorMessageTransportTest {
 
     @Test
     public void inspectorEndpointExplicitPathTest() {
-        inspectorEndpointTest("simplePath");
-        inspectorEndpointTest("/some/complex/path");
+        inspectorEndpointTest("simplePath" + SecureInspectorPathGenerator.getToken());
+        inspectorEndpointTest("/some/complex/path" + SecureInspectorPathGenerator.getToken());
     }
 
     @Test
@@ -93,20 +97,20 @@ public class InspectorMessageTransportTest {
         inspectorEndpointTest(null, rc);
     }
 
-    private static void inspectorEndpointTest(String path) {
+    private void inspectorEndpointTest(String path) {
         inspectorEndpointTest(path, null);
     }
 
-    private static void inspectorEndpointTest(String path, RaceControl rc) {
+    private void inspectorEndpointTest(String path, RaceControl rc) {
         Session session = new Session(rc);
         DebuggerEndpoint endpoint = new DebuggerEndpoint(path, rc);
-        Engine engine = endpoint.onOpen(session);
+        try (Engine engine = endpoint.onOpen(session)) {
+            Context context = Context.newBuilder().engine(engine).build();
+            Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+            Assert.assertEquals("Result", "1", result.toString());
 
-        Context context = Context.newBuilder().engine(engine).build();
-        Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
-        Assert.assertEquals("Result", "1", result.toString());
-
-        endpoint.onClose(session);
+            endpoint.onClose(session);
+        }
         int numMessages = MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length;
         Assert.assertEquals(session.messages.toString(), numMessages, session.messages.size());
         assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
@@ -133,34 +137,140 @@ public class InspectorMessageTransportTest {
     @Test
     public void inspectorReconnectTest() throws IOException, InterruptedException {
         Session session = new Session(null);
-        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath", null);
-        Engine engine = endpoint.onOpen(session);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
+        try (Engine engine = endpoint.onOpen(session)) {
 
-        try (Context context = Context.newBuilder().engine(engine).build()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+                Assert.assertEquals("Result", "1", result.toString());
+
+                MessageEndpoint peerEndpoint = endpoint.peer;
+                peerEndpoint.sendClose();
+                Assert.assertNotSame(peerEndpoint, endpoint.peer);
+                result = context.eval("sl", "function main() {\n  x = 2;\n  return x;\n}");
+                Assert.assertEquals("Result", "2", result.toString());
+            }
+            // We will not get the last 6 messages to client and 2 to backend
+            // as we do not do initial suspension on re-connect
+            int expectedNumMessages = 2 * (MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length) - 8;
+            synchronized (session.messages) {
+                while (session.messages.size() < expectedNumMessages) {
+                    // The reply messages are sent asynchronously. We need to wait for them.
+                    session.messages.wait();
+                }
+            }
+
+            Assert.assertEquals(session.messages.toString(), expectedNumMessages, session.messages.size());
+            assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
+            // Messages after reconnect
+            List<String> messagesAfterReconnect = session.messages.subList(MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length, expectedNumMessages);
+            assertMessages(messagesAfterReconnect, MESSAGES_TO_BACKEND.length - 2, MESSAGES_TO_CLIENT.length - 6);
+        }
+    }
+
+    @Test
+    public void inspectorClosedTest() throws IOException, InterruptedException {
+        Session session = new Session(null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
+        endpoint.setOpenCountLimit(1);
+        try (Engine engine = endpoint.onOpen(session)) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+                Assert.assertEquals("Result", "1", result.toString());
+
+                MessageEndpoint peerEndpoint = endpoint.peer;
+                peerEndpoint.sendClose();
+                // Execution goes on after close:
+                result = context.eval("sl", "function main() {\n  x = 2;\n  debugger;\n  return x;\n}");
+                Assert.assertEquals("Result", "2", result.toString());
+            }
+            try (Engine engine2 = endpoint.onOpen(session)) {
+                try (Context context = Context.newBuilder().engine(engine2).build()) {
+                    Value result = context.eval("sl", "function main() {\n  x = 3;\n  debugger;  return x;\n}");
+                    Assert.assertEquals("Result", "3", result.toString());
+                }
+                int expectedNumMessages = MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length;
+                synchronized (session.messages) {
+                    while (session.messages.size() < expectedNumMessages) {
+                        // The reply messages are sent asynchronously. We need to wait for them.
+                        session.messages.wait();
+                    }
+                }
+
+                Assert.assertEquals(session.messages.toString(), expectedNumMessages, session.messages.size());
+                assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
+            }
+        }
+    }
+
+    @Test
+    public void inspectorCloseAfterDisposeTest() {
+        Session session = new Session(null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
+        MessageEndpoint peerEndpoint;
+        try (Engine engine = endpoint.onOpen(session)) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+                peerEndpoint = endpoint.peer;
+            }
+        }
+        try {
+            peerEndpoint.sendClose();
+            Assert.fail("Endpoint should be closed already.");
+        } catch (IOException e) {
+            // O.K.
+        }
+        try {
+            peerEndpoint.sendText("Something");
+            Assert.fail("Endpoint should be closed already.");
+        } catch (IOException e) {
+            // O.K.
+        }
+        try {
+            peerEndpoint.sendPing(ByteBuffer.allocate(1));
+            Assert.fail("Endpoint should be closed already.");
+        } catch (IOException e) {
+            // O.K.
+        }
+        try {
+            peerEndpoint.sendPong(ByteBuffer.allocate(1));
+            Assert.fail("Endpoint should be closed already.");
+        } catch (IOException e) {
+            // O.K.
+        }
+    }
+
+    @Test
+    public void inspectorContextClosedTest() throws IOException, InterruptedException {
+        Session session = new Session(null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
+        endpoint.setOpenCountLimit(1);
+        try (Context context = endpoint.onOpenContext(session)) {
+            addContextReference(context);
             Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
             Assert.assertEquals("Result", "1", result.toString());
 
             MessageEndpoint peerEndpoint = endpoint.peer;
             peerEndpoint.sendClose();
-            Assert.assertNotSame(peerEndpoint, endpoint.peer);
-            result = context.eval("sl", "function main() {\n  x = 2;\n  return x;\n}");
+            // Execution goes on after close:
+            result = context.eval("sl", "function main() {\n  x = 2;\n  debugger;\n  return x;\n}");
             Assert.assertEquals("Result", "2", result.toString());
-        }
-        // We will not get the last 3 messages to client and 1 to backend
-        // as we do not do initial suspension on re-connect
-        int expectedNumMessages = 2 * (MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length) - 4;
-        synchronized (session.messages) {
-            while (session.messages.size() < expectedNumMessages) {
-                // The reply messages are sent asynchronously. We need to wait for them.
-                session.messages.wait();
+            try (Context context2 = endpoint.onOpenContext(session)) {
+                addContextReference(context2);
+                result = context2.eval("sl", "function main() {\n  x = 3;\n  debugger;  return x;\n}");
+                Assert.assertEquals("Result", "3", result.toString());
+                int expectedNumMessages = MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length;
+                synchronized (session.messages) {
+                    while (session.messages.size() < expectedNumMessages) {
+                        // The reply messages are sent asynchronously. We need to wait for them.
+                        session.messages.wait();
+                    }
+                }
+
+                Assert.assertEquals(session.messages.toString(), expectedNumMessages, session.messages.size());
+                assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
             }
         }
-
-        Assert.assertEquals(session.messages.toString(), expectedNumMessages, session.messages.size());
-        assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
-        // Messages after reconnect
-        List<String> messagesAfterReconnect = session.messages.subList(MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length, expectedNumMessages);
-        assertMessages(messagesAfterReconnect, MESSAGES_TO_BACKEND.length - 1, MESSAGES_TO_CLIENT.length - 3);
     }
 
     @Test
@@ -209,9 +319,11 @@ public class InspectorMessageTransportTest {
             }
         }
 
-        private static void sendInitialMessages(final MsgHandler handler) throws IOException {
-            for (String message : INITIAL_MESSAGES) {
-                handler.onMessage(message);
+        private void sendInitialMessages(final MsgHandler handler) throws IOException {
+            if (opened) {
+                for (String message : INITIAL_MESSAGES) {
+                    handler.onMessage(message);
+                }
             }
         }
 
@@ -228,6 +340,7 @@ public class InspectorMessageTransportTest {
 
         Session.MsgHandler handler;
         private final List<String> messages;
+        private boolean didStep = false;
 
         BasicRemote(List<String> messages) {
             this.messages = messages;
@@ -241,16 +354,23 @@ public class InspectorMessageTransportTest {
                 }
             }
             if (text.startsWith("{\"method\":\"Debugger.paused\"")) {
-                handler.onMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
+                if (!didStep) {
+                    handler.onMessage("{\"id\":50,\"method\":\"Debugger.stepOver\"}");
+                    didStep = true;
+                } else {
+                    handler.onMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
+                    didStep = false;
+                }
             }
         }
 
     }
 
-    private static final class DebuggerEndpoint {
+    private final class DebuggerEndpoint {
 
         private final String path;
         private final RaceControl rc;
+        private int openCountLimit = -1;
         MessageEndpoint peer;
 
         DebuggerEndpoint(String path, RaceControl rc) {
@@ -258,33 +378,30 @@ public class InspectorMessageTransportTest {
             this.rc = rc;
         }
 
+        void setOpenCountLimit(int openCountLimit) {
+            this.openCountLimit = openCountLimit;
+        }
+
         public Engine onOpen(final Session session) {
             assert this != null;
-            Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new MessageTransport() {
-                @Override
-                public MessageEndpoint open(URI requestURI, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
-                    Assert.assertEquals("Invalid protocol", "ws", requestURI.getScheme());
-                    DebuggerEndpoint.this.peer = peerEndpoint;
-                    String uriStr = requestURI.toString();
-                    if (path == null) {
-                        Assert.assertTrue(uriStr, URI_PATTERN.matcher(uriStr).matches());
-                    } else {
-                        Assert.assertTrue(uriStr, uriStr.startsWith("ws://"));
-                        String absolutePath = path.startsWith("/") ? path : "/" + path;
-                        Assert.assertTrue(uriStr, uriStr.endsWith(":" + PORT + absolutePath));
-                    }
-                    MessageEndpoint ourEndpoint = new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint);
-                    if (rc != null) {
-                        rc.waitTillClientDataAreSent();
-                    }
-                    return ourEndpoint;
-                }
-            }).option("inspect", PORT);
+            Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new EndpointMessageTransport(session)).option("inspect", PORT);
             if (path != null) {
                 engineBuilder.option("inspect.Path", path);
             }
             Engine engine = engineBuilder.build();
+            addEngineReference(engine);
             return engine;
+        }
+
+        public Context onOpenContext(final Session session) {
+            assert this != null;
+            Context.Builder contextBuilder = Context.newBuilder().serverTransport(new EndpointMessageTransport(session)).option("inspect", PORT);
+            if (path != null) {
+                contextBuilder.option("inspect.Path", path);
+            }
+            Context context = contextBuilder.build();
+            addEngineReference(context.getEngine());
+            return context;
         }
 
         public void onClose(Session session) {
@@ -292,14 +409,51 @@ public class InspectorMessageTransportTest {
             assert this != null;
         }
 
+        private final class EndpointMessageTransport implements MessageTransport {
+
+            private final Session session;
+
+            EndpointMessageTransport(Session session) {
+                this.session = session;
+            }
+
+            @Override
+            public MessageEndpoint open(URI requestURI, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
+                Assert.assertEquals("Invalid protocol", "ws", requestURI.getScheme());
+                DebuggerEndpoint.this.peer = peerEndpoint;
+                String uriStr = requestURI.toString();
+                if (path == null) {
+                    Assert.assertTrue(uriStr, URI_PATTERN.matcher(uriStr).matches());
+                } else {
+                    Assert.assertTrue(uriStr, uriStr.startsWith("ws://"));
+                    String absolutePath = path.startsWith("/") ? path : "/" + path;
+                    Assert.assertTrue(uriStr, uriStr.endsWith(":" + PORT + absolutePath));
+                }
+                boolean closed = false;
+                if (openCountLimit == 0) {
+                    closed = true;
+                    peerEndpoint.sendClose();
+                } else if (openCountLimit > 0) {
+                    openCountLimit--;
+                }
+                MessageEndpoint ourEndpoint = new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint, closed);
+                if (rc != null) {
+                    rc.waitTillClientDataAreSent();
+                }
+                return ourEndpoint;
+            }
+        }
     }
 
     private static final class ChromeDebuggingProtocolMessageHandler implements MessageEndpoint {
 
         private final Session session;
 
-        ChromeDebuggingProtocolMessageHandler(Session session, URI uri, MessageEndpoint peerEndpoint) throws IOException {
+        ChromeDebuggingProtocolMessageHandler(Session session, URI uri, MessageEndpoint peerEndpoint, boolean closed) throws IOException {
             this.session = session;
+            if (closed) {
+                session.close();
+            }
             Assert.assertEquals("ws", uri.getScheme());
 
             /* Forward a JSON message from the client to the backend. */

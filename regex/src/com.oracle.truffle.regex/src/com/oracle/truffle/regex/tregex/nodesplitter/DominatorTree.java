@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.nodesplitter;
 
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Dominance algorithm as described in "A Simple, Fast Dominance Algorithm" by Keith D. Cooper,
@@ -55,11 +56,11 @@ final class DominatorTree {
     private int nextPostOrderIndex;
     private final ArrayList<GraphNode> postOrder;
     private int[] doms;
-    private final CompilationFinalBitSet flagTraversed;
+    private final TBitSet flagTraversed;
 
     DominatorTree(Graph graph) {
         this.graph = graph;
-        flagTraversed = new CompilationFinalBitSet(graph.size() + DFANodeSplit.EXTRA_INITIAL_CAPACITY);
+        flagTraversed = new TBitSet(graph.size() + DFANodeSplit.EXTRA_INITIAL_CAPACITY);
         postOrder = new ArrayList<>(graph.size() + DFANodeSplit.EXTRA_INITIAL_CAPACITY);
         doms = new int[graph.size() + DFANodeSplit.EXTRA_INITIAL_CAPACITY];
     }
@@ -163,7 +164,7 @@ final class DominatorTree {
                     }
                 }
                 if (selectedPredecessor == null) {
-                    throw new IllegalStateException();
+                    throw CompilerDirectives.shouldNotReachHere();
                 }
                 int newIDom = selectedPredecessor.getPostOrderIndex();
                 for (GraphNode p : b.getPredecessors()) {

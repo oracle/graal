@@ -85,12 +85,13 @@ public enum AArch64ArithmeticOp {
     FSUB,
     FMUL,
     FDIV,
-    FREM,
     FNEG,
     FABS,
     FRINTM,
     FRINTN,
     FRINTP,
+    FMAX,
+    FMIN,
     SQRT;
 
     /**
@@ -350,6 +351,12 @@ public enum AArch64ArithmeticOp {
                 case FDIV:
                     masm.fdiv(size, dst, src1, src2);
                     break;
+                case FMAX:
+                    masm.fmax(size, dst, src1, src2);
+                    break;
+                case FMIN:
+                    masm.fmin(size, dst, src1, src2);
+                    break;
                 case MULVS:
                     masm.mulvs(size, dst, src1, src2);
                     break;
@@ -393,9 +400,6 @@ public enum AArch64ArithmeticOp {
                     break;
                 case UREM:
                     masm.urem(size, dst, src1, src2);
-                    break;
-                case FREM:
-                    masm.frem(size, dst, src1, src2);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();

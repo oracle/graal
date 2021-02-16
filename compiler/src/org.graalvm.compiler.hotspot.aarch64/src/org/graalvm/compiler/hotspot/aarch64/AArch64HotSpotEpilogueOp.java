@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,7 +76,7 @@ abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
             Label noReserved = new Label();
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
-                masm.ldr(64, scratch, masm.makeAddress(thread, config.javaThreadReservedStackActivationOffset, 8));
+                masm.ldr(64, scratch, masm.makeAddress(64, thread, config.javaThreadReservedStackActivationOffset));
                 masm.subs(64, zr, sp, scratch);
             }
             masm.branchConditionally(AArch64Assembler.ConditionFlag.LO, noReserved);
@@ -86,9 +86,9 @@ abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
             Register arg0 = ((RegisterValue) cc.getArgument(0)).getRegister();
             masm.mov(64, arg0, thread);
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                masm.stp(64, fp, lr, AArch64Address.createPreIndexedImmediateAddress(sp, -2));
+                masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * 8));
                 AArch64Call.directCall(crb, masm, enableStackReservedZone, sc.getRegister(), null);
-                masm.ldp(64, fp, lr, AArch64Address.createPostIndexedImmediateAddress(sp, 2));
+                masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * 8));
             }
             AArch64Call.directJmp(crb, masm, foreignCalls.lookupForeignCall(THROW_DELAYED_STACKOVERFLOW_ERROR));
             masm.bind(noReserved);

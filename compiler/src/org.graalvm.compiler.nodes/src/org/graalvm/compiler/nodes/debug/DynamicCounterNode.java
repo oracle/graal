@@ -120,6 +120,11 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
         graph.addBeforeFixed(position, position.graph().add(new DynamicCounterNode(group, name, ConstantNode.forLong(increment, position.graph()), withContext)));
     }
 
+    public static void addCounterBefore(String group, String name, ValueNode increment, boolean withContext, FixedNode position) {
+        StructuredGraph graph = position.graph();
+        graph.addBeforeFixed(position, position.graph().add(new DynamicCounterNode(group, name, increment, withContext)));
+    }
+
     @NodeIntrinsic
     public static native void counter(@ConstantNodeParameter String group, @ConstantNodeParameter String name, long increment, @ConstantNodeParameter boolean addContext);
 

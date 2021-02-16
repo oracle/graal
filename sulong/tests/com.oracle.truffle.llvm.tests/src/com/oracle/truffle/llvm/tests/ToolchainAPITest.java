@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,9 @@ package com.oracle.truffle.llvm.tests;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
@@ -60,7 +63,7 @@ public class ToolchainAPITest {
         return Context.newBuilder().allowAllAccess(true);
     }
 
-    private Value load(File file) {
+    protected Value load(File file) {
         try {
             Source source = Source.newBuilder(LLVMLanguage.ID, file).build();
             return runWithPolyglot.getPolyglotContext().eval(source);
@@ -77,7 +80,7 @@ public class ToolchainAPITest {
         return env.lookup(llvmInfo, Toolchain.class);
     }
 
-    private int compile(String tool, File src, File dst) throws IOException, InterruptedException {
+    protected int compile(String tool, File src, File dst, String... args) throws IOException, InterruptedException {
         Toolchain toolchain = getToolchain();
         TruffleFile clang = toolchain.getToolPath(tool);
         Assume.assumeTrue("Tool '" + tool + "' is not supported by " + toolchain, clang != null);
@@ -85,19 +88,20 @@ public class ToolchainAPITest {
             Assert.assertTrue(String.format("Toolchain path ('%s') does not contain '%s'='%s'", clang, TOOLCHAIN_PATH_PATTERN_NAME, TOOLCHAIN_PATH_PATTERN),
                             clang.toString().contains(TOOLCHAIN_PATH_PATTERN));
         }
-        String[] args = {clang.toString(), src.getAbsolutePath(), "-o", dst.getAbsolutePath()};
-        Process p = runWithPolyglot.getTruffleTestEnv().newProcessBuilder(args).inheritIO(true).start();
+        List<String> allArgs = new ArrayList<>(Arrays.asList(clang.toString(), src.getAbsolutePath(), "-o", dst.getAbsolutePath()));
+        allArgs.addAll(Arrays.asList(args));
+        Process p = runWithPolyglot.getTruffleTestEnv().newProcessBuilder(allArgs.toArray(new String[0])).inheritIO(true).start();
         p.waitFor();
         return p.exitValue();
     }
 
-    private static void write(File src, String text) throws IOException {
+    protected static void write(File src, String text) throws IOException {
         FileWriter fw = new FileWriter(src);
         fw.write(text);
         fw.close();
     }
 
-    private static final String HELLO_WORLD_C = "#include <stdio.h>\nint main() {\n  printf(\"Hello World!\");\n  return 0;\n}";
+    protected static final String HELLO_WORLD_C = "#include <stdio.h>\nint main() {\n  printf(\"Hello World!\");\n  return 0;\n}";
 
     @Test
     public void testCC() throws IOException, InterruptedException {
@@ -115,7 +119,7 @@ public class ToolchainAPITest {
         }
     }
 
-    private static final String HELLO_WORLD_CXX = "#include <iostream>\nint main() {\n  std::cout << \"Hello World!\";\n  return 0;\n}";
+    protected static final String HELLO_WORLD_CXX = "#include <iostream>\nint main() {\n  std::cout << \"Hello World!\";\n  return 0;\n}";
 
     @Test
     public void testCXX() throws IOException, InterruptedException {

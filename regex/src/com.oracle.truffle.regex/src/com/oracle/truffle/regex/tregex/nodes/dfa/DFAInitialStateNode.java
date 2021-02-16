@@ -90,24 +90,6 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
         return new DFAInitialStateNode(this);
     }
 
-    @Override
-    public void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        if (searching) {
-            locals.setSuccessorIndex(executor.rewindUpTo(locals, getPrefixLength()));
-        } else {
-            locals.setSuccessorIndex(Math.max(0, Math.min(getPrefixLength(), locals.getFromIndex() - locals.getIndex())));
-        }
-        if (!executor.atBegin(locals)) {
-            locals.setSuccessorIndex(locals.getSuccessorIndex() + (successors.length / 2));
-        }
-        if (genericCG) {
-            locals.setLastTransition((short) 0);
-        }
-        if (executor.recordExecution()) {
-            executor.getDebugRecorder().setInitialIndex(locals.getIndex());
-        }
-    }
-
     @TruffleBoundary
     @Override
     public JsonValue toJson() {

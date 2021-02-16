@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -139,7 +139,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
      */
     public static LoopConditionProfile createCountingProfile() {
         if (Profile.isProfilingEnabled()) {
-            return Enabled.create();
+            return Enabled.createLazyLoadClass();
         } else {
             return Disabled.INSTANCE;
         }
@@ -204,6 +204,22 @@ public abstract class LoopConditionProfile extends ConditionProfile {
         }
 
         @Override
+        public void disable() {
+            if (this.trueCount == 0) {
+                this.trueCount = 1;
+            }
+            if (this.falseCount == 0) {
+                this.falseCount = 1;
+            }
+        }
+
+        @Override
+        public void reset() {
+            this.trueCount = 0L;
+            this.falseCount = 0;
+        }
+
+        @Override
         public boolean inject(boolean condition) {
             if (CompilerDirectives.inCompiledCode()) {
                 return CompilerDirectives.injectBranchProbability(calculateProbability(trueCount, falseCount), condition);
@@ -238,7 +254,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
         }
 
         /* Needed for lazy class loading. */
-        static LoopConditionProfile create() {
+        static LoopConditionProfile createLazyLoadClass() {
             return new Enabled();
         }
 

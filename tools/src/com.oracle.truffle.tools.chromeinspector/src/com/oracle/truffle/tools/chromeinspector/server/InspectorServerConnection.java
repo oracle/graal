@@ -33,8 +33,6 @@ import java.io.IOException;
  */
 public interface InspectorServerConnection {
 
-    String getWSPath();
-
     void close() throws IOException;
 
     String getURL();

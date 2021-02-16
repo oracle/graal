@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -43,14 +44,28 @@ public class StackTraceUtils {
     private static final Class<?>[] NO_CLASSES = new Class<?>[0];
     private static final StackTraceElement[] NO_ELEMENTS = new StackTraceElement[0];
 
+    /**
+     * Captures the stack trace of the current thread. Used by {@link Throwable#fillInStackTrace()},
+     * {@link Thread#getStackTrace()}, and {@link Thread#getAllStackTraces()}.
+     *
+     * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if max
+     * depth > 0, or all if max depth <= 0.
+     */
     public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP) {
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions);
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
+    /**
+     * Captures the stack trace of another thread. Used by {@link Thread#getStackTrace()} and
+     * {@link Thread#getAllStackTraces()}.
+     *
+     * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if max
+     * depth > 0, or all if max depth <= 0.
+     */
     public static StackTraceElement[] getStackTrace(boolean filterExceptions, IsolateThread thread) {
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions);
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         JavaStackWalker.walkThread(thread, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
@@ -64,12 +79,12 @@ public class StackTraceUtils {
     /**
      * Implements the shared semantic of Reflection.getCallerClass and StackWalker.getCallerClass.
      */
-    public static Class<?> getCallerClass(Pointer startSP) {
-        return getCallerClass(startSP, 0);
+    public static Class<?> getCallerClass(Pointer startSP, boolean showLambdaFrames) {
+        return getCallerClass(startSP, showLambdaFrames, 0, true);
     }
 
-    public static Class<?> getCallerClass(Pointer startSP, int depth) {
-        GetCallerClassVisitor visitor = new GetCallerClassVisitor(depth);
+    public static Class<?> getCallerClass(Pointer startSP, boolean showLambdaFrames, int depth, boolean ignoreFirst) {
+        GetCallerClassVisitor visitor = new GetCallerClassVisitor(showLambdaFrames, depth, ignoreFirst);
         JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.result;
     }
@@ -79,7 +94,7 @@ public class StackTraceUtils {
      * keep both versions in sync, otherwise intrinsifications by the compiler will return different
      * results than stack walking at run time.
      */
-    public static boolean shouldShowFrame(FrameInfoQueryResult frameInfo, boolean showReflectFrames, boolean showHiddenFrames) {
+    public static boolean shouldShowFrame(FrameInfoQueryResult frameInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
         if (showHiddenFrames) {
             /* No filtering, all frames including internal frames are shown. */
             return true;
@@ -96,6 +111,10 @@ public class StackTraceUtils {
         }
 
         if (DirectAnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
+            return false;
+        }
+
+        if (!showLambdaFrames && DirectAnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
             return false;
         }
 
@@ -117,13 +136,17 @@ public class StackTraceUtils {
      * Note that this method is duplicated (and commented) above for stack walking at run time. Make
      * sure to always keep both versions in sync.
      */
-    public static boolean shouldShowFrame(MetaAccessProvider metaAccess, ResolvedJavaMethod method, boolean showReflectFrames, boolean showHiddenFrames) {
+    public static boolean shouldShowFrame(MetaAccessProvider metaAccess, ResolvedJavaMethod method, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
         if (showHiddenFrames) {
             return true;
         }
 
         ResolvedJavaType clazz = method.getDeclaringClass();
         if (DirectAnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
+            return false;
+        }
+
+        if (!showLambdaFrames && DirectAnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
             return false;
         }
 
@@ -140,15 +163,17 @@ public class StackTraceUtils {
 class BuildStackTraceVisitor extends JavaStackFrameVisitor {
     private final boolean filterExceptions;
     final ArrayList<StackTraceElement> trace;
+    final int limit;
 
-    BuildStackTraceVisitor(boolean filterExceptions) {
+    BuildStackTraceVisitor(boolean filterExceptions, int limit) {
         this.filterExceptions = filterExceptions;
         this.trace = new ArrayList<>();
+        this.limit = limit;
     }
 
     @Override
     public boolean visitFrame(FrameInfoQueryResult frameInfo) {
-        if (!StackTraceUtils.shouldShowFrame(frameInfo, true, false)) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {
             /* Always ignore the frame. It is an internal frame of the VM. */
             return true;
 
@@ -162,22 +187,31 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 
         StackTraceElement sourceReference = frameInfo.getSourceReference();
         trace.add(sourceReference);
+        if (trace.size() == limit) {
+            return false;
+        }
         return true;
     }
 }
 
 class GetCallerClassVisitor extends JavaStackFrameVisitor {
+    private final boolean showLambdaFrames;
     private int depth;
-    private boolean foundCallee;
+    private boolean ignoreFirst;
     Class<?> result;
 
-    GetCallerClassVisitor(final int depth) {
+    GetCallerClassVisitor(boolean showLambdaFrames, int depth, boolean ignoreFirst) {
+        this.showLambdaFrames = showLambdaFrames;
+        this.ignoreFirst = ignoreFirst;
         this.depth = depth;
+        assert depth >= 0;
     }
 
     @Override
     public boolean visitFrame(FrameInfoQueryResult frameInfo) {
-        if (!foundCallee) {
+        assert depth >= 0;
+
+        if (ignoreFirst) {
             /*
              * Skip the frame that contained the invocation of getCallerFrame() and continue the
              * stack walk. Note that this could be a frame related to reflection, but we still must
@@ -187,10 +221,10 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
              * does not count as as frame (handled by the shouldShowFrame check below because this
              * path was already taken for the constructor frame).
              */
-            foundCallee = true;
+            ignoreFirst = false;
             return true;
 
-        } else if (!StackTraceUtils.shouldShowFrame(frameInfo, false, false)) {
+        } else if (!StackTraceUtils.shouldShowFrame(frameInfo, showLambdaFrames, false, false)) {
             /*
              * Always ignore the frame. It is an internal frame of the VM or a frame related to
              * reflection.
@@ -223,7 +257,7 @@ class GetClassContextVisitor extends JavaStackFrameVisitor {
     public boolean visitFrame(final FrameInfoQueryResult frameInfo) {
         if (skip > 0) {
             skip--;
-        } else if (StackTraceUtils.shouldShowFrame(frameInfo, false, false)) {
+        } else if (StackTraceUtils.shouldShowFrame(frameInfo, true, false, false)) {
             trace.add(frameInfo.getSourceClass());
         }
         return true;

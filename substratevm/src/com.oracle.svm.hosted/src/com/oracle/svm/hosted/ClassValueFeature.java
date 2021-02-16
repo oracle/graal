@@ -63,7 +63,7 @@ public final class ClassValueFeature implements Feature {
         FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
         List<AnalysisType> types = impl.getUniverse().getTypes();
         for (AnalysisType t : types) {
-            if (!t.isInstantiated() && !t.isInTypeCheck()) {
+            if (!t.isReachable()) {
                 continue;
             }
             Class<?> clazz = t.getJavaClass();
@@ -71,7 +71,11 @@ public final class ClassValueFeature implements Feature {
                 ClassValue<?> v = e.getKey();
                 Map<Class<?>, Object> m = e.getValue();
                 if (!m.containsKey(clazz) && hasValue(v, clazz)) {
-                    m.put(clazz, v.get(clazz));
+                    Object value = v.get(clazz);
+                    if (value == null) {
+                        value = ClassValueSupport.NULL_MARKER;
+                    }
+                    m.put(clazz, value);
                     access.requireAnalysisIteration();
                 }
             }

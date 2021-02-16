@@ -1,7 +1,7 @@
 # agent-script.R
 cat("R: Initializing GraalVM Insight script\n", file=stderr())
 
-agent@on('source', function(env) {
+insight@on('source', function(env) {
     cat("R: observed loading of ", env$name, "\n", file=stderr())
 })
 

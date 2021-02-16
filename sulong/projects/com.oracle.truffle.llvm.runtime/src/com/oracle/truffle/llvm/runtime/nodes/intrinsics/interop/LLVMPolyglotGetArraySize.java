@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,8 +60,11 @@ public abstract class LLVMPolyglotGetArraySize extends LLVMIntrinsic {
         }
     }
 
+    /**
+     * @param value @NodeChild
+     * @see LLVMPolyglotGetArraySize
+     */
     @Fallback
-    @SuppressWarnings("unused")
     public long fallback(Object value) {
         throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
     }

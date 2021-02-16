@@ -29,9 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
 /**
  * Exception accessing symbols with invalid index.
  */
+@ExportLibrary(InteropLibrary.class)
 public final class LLVMIllegalSymbolIndexException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
@@ -40,8 +46,9 @@ public final class LLVMIllegalSymbolIndexException extends LLVMException {
         super(null, message);
     }
 
-    @Override
-    public boolean isSyntaxError() {
-        return true;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
     }
 }

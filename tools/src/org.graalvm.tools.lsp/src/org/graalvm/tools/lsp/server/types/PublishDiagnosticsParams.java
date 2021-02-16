@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,10 @@ import java.util.Objects;
 /**
  * The publish diagnostic notification's parameters.
  */
-public class PublishDiagnosticsParams {
-
-    final JSONObject jsonData;
+public class PublishDiagnosticsParams extends JSONBase {
 
     PublishDiagnosticsParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -51,6 +49,20 @@ public class PublishDiagnosticsParams {
 
     public PublishDiagnosticsParams setUri(String uri) {
         jsonData.put("uri", uri);
+        return this;
+    }
+
+    /**
+     * Optional the version number of the document the diagnostics are published for.
+     *
+     * @since 3.15.0
+     */
+    public Integer getVersion() {
+        return jsonData.has("version") ? jsonData.getInt("version") : null;
+    }
+
+    public PublishDiagnosticsParams setVersion(Integer version) {
+        jsonData.putOpt("version", version);
         return this;
     }
 
@@ -90,6 +102,9 @@ public class PublishDiagnosticsParams {
         if (!Objects.equals(this.getUri(), other.getUri())) {
             return false;
         }
+        if (!Objects.equals(this.getVersion(), other.getVersion())) {
+            return false;
+        }
         if (!Objects.equals(this.getDiagnostics(), other.getDiagnostics())) {
             return false;
         }
@@ -98,9 +113,12 @@ public class PublishDiagnosticsParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 29 * hash + Objects.hashCode(this.getUri());
-        hash = 29 * hash + Objects.hashCode(this.getDiagnostics());
+        int hash = 2;
+        hash = 53 * hash + Objects.hashCode(this.getUri());
+        if (this.getVersion() != null) {
+            hash = 53 * hash + Integer.hashCode(this.getVersion());
+        }
+        hash = 53 * hash + Objects.hashCode(this.getDiagnostics());
         return hash;
     }
 

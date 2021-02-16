@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,10 @@ package org.graalvm.wasm.test.suites.linker;
 
 import java.io.IOException;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Test;
 
-public class LinkerSuite extends WasmSuiteBase {
+public class LinkerSuite extends WasmFileSuite {
     @Override
     protected String testResource() {
         return "linker";
@@ -53,7 +53,7 @@ public class LinkerSuite extends WasmSuiteBase {
 
     @Override
     protected String includedExternalModules() {
-        return super.includedExternalModules() + ",memory";
+        return super.includedExternalModules();
     }
 
     @Override

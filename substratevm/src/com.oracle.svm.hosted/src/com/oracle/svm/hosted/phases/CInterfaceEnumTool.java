@@ -90,9 +90,8 @@ public class CInterfaceEnumTool {
     public ValueNode createEnumValueInvoke(HostedGraphKit kit, EnumInfo enumInfo, JavaKind resultKind, ValueNode arg) {
         ResolvedJavaMethod valueMethod = getValueMethodForKind(resultKind);
         int invokeBci = kit.bci();
-        int exceptionEdgeBci = kit.bci();
         MethodCallTargetNode callTarget = invokeEnumValue(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, valueMethod, arg);
-        return kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci, exceptionEdgeBci);
+        return kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci);
     }
 
     private MethodCallTargetNode invokeEnumValue(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, ResolvedJavaMethod valueMethod, ValueNode arg) {
@@ -108,9 +107,8 @@ public class CInterfaceEnumTool {
     public ValueNode createEnumLookupInvoke(HostedGraphKit kit, ResolvedJavaType enumType, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
         // Create the invoke to the actual target method: EnumRuntimeData.convertCToJava
         int invokeBci = kit.bci();
-        int exceptionEdgeBci = kit.bci();
         MethodCallTargetNode callTarget = invokeEnumLookup(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, parameterKind, arg);
-        InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci, exceptionEdgeBci);
+        InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci);
 
         // Create the instanceof guard to narrow the return type for the analysis
         LogicNode instanceOfNode = kit.append(InstanceOfNode.createAllowNull(TypeReference.createExactTrusted(enumType), invoke, null, null));

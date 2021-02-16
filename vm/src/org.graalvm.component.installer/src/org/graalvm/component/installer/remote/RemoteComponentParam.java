@@ -36,6 +36,7 @@ import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerStopException;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -107,8 +108,11 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         if (fileLoader != null) {
             return fileLoader;
         }
-        return fileLoader = new DelegateMetaLoader(
-                        metadataFromLocal(downloadLocalFile()));
+        return fileLoader = doCreateFileLoader(metadataFromLocal(downloadLocalFile()));
+    }
+
+    protected MetadataLoader doCreateFileLoader(MetadataLoader delegate) {
+        return new DelegateMetaLoader(delegate);
     }
 
     /**
@@ -127,14 +131,22 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
             delegate.close();
         }
 
+        protected final ComponentInfo catalogInfo() {
+            return catalogInfo;
+        }
+
         @Override
         public ComponentInfo getComponentInfo() {
-            fileInfo = delegate.getComponentInfo();
-            if (remoteURL != null) {
-                fileInfo.setRemoteURL(remoteURL);
-            }
+            fileInfo = configureComponentInfo(delegate.getComponentInfo());
             complete = true;
             return fileInfo;
+        }
+
+        protected ComponentInfo configureComponentInfo(ComponentInfo info) {
+            if (remoteURL != null) {
+                info.setRemoteURL(remoteURL);
+            }
+            return info;
         }
 
         @Override
@@ -154,6 +166,12 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
 
         @Override
         public String getLicenseID() {
+            if (catalogInfo != null) {
+                String catalogLicense = catalogInfo.getLicensePath();
+                if (catalogLicense != null && catalogLicense.contains("://")) {
+                    return catalogLicense;
+                }
+            }
             return delegate.getLicenseID();
         }
 
@@ -284,8 +302,46 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         }
     }
 
+    protected FileDownloader createFileDownloader(URL remote, String desc, boolean mainFile) {
+        FileDownloader dn = new FileDownloader(desc, remote, feedback);
+        if (mainFile) {
+            configureRelatedDownloader(dn);
+        }
+        return dn;
+    }
+
+    public String downloadAndHashLicense(String remote) {
+        String desc = getLicenseType();
+        if (desc == null) {
+            desc = remote;
+        }
+        try {
+            URL u = new URL(remote);
+            FileDownloader dn = createFileDownloader(u, feedback.l10n("LICENSE_RemoteLicenseDescription", desc), false);
+            dn.download();
+            String s = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath()));
+            return SystemUtils.digestString(s, false) /* + "_" + remote */;
+        } catch (IOException ex) {
+            throw feedback.failure("ERROR_DownloadLicense", ex, desc, ex.getLocalizedMessage());
+        }
+    }
+
+    /**
+     * License digest or URL.
+     */
+    private String cachedLicenseID;
+
     @Override
     public String getLicenseID() {
+        if (cachedLicenseID != null) {
+            return cachedLicenseID;
+        }
+        String s = getLicensePath();
+        if (s != null && SystemUtils.isRemotePath(s)) {
+            // special case, so that the package will not be downloaded, if the
+            // catalog specifies HTTP remote path.
+            return cachedLicenseID = downloadAndHashLicense(s);
+        }
         try {
             return createFileLoader().getLicenseID();
         } catch (IOException ex) {

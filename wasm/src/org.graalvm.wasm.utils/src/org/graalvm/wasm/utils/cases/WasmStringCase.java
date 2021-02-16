@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,13 +46,12 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.graalvm.wasm.utils.WasmBinaryTools;
-import org.graalvm.wasm.utils.WasmInitialization;
 
 public class WasmStringCase extends WasmCase {
     private final String program;
 
-    public WasmStringCase(String name, WasmCaseData data, String program, WasmInitialization initialization, Properties options) {
-        super(name, data, initialization, options);
+    public WasmStringCase(String name, WasmCaseData data, String program, Properties options) {
+        super(name, data, options);
         this.program = program;
     }
 

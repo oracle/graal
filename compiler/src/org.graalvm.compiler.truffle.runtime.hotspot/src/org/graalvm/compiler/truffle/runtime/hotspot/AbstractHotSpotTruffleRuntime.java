@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import java.lang.ref.WeakReference;
+import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,20 +34,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
-import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
-import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
+import org.graalvm.compiler.truffle.runtime.CompilationTask;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 
 import com.oracle.truffle.api.CallTarget;
@@ -61,19 +61,23 @@ import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotMetaAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
-import org.graalvm.compiler.truffle.runtime.EngineData;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import sun.misc.Unsafe;
 
 /**
@@ -84,11 +88,9 @@ import sun.misc.Unsafe;
  * native-image shared library).
  */
 public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
-    private static final sun.misc.Unsafe UNSAFE;
 
-    static {
-        UNSAFE = getUnsafe();
-    }
+    private static final sun.misc.Unsafe UNSAFE = getUnsafe();
+    private static volatile HotSpotVMConfigAccess vmConfigAccess;
 
     private static Unsafe getUnsafe() {
         try {
@@ -108,11 +110,22 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * Contains lazily computed data such as the compilation queue and helper for stack
      * introspection.
      */
-    static class Lazy extends BackgroundCompileQueue {
+    static final class Lazy extends BackgroundCompileQueue {
         StackIntrospection stackIntrospection;
 
         Lazy(AbstractHotSpotTruffleRuntime runtime) {
+            super(runtime);
             runtime.installDefaultListeners();
+        }
+
+        @Override
+        protected void compilerThreadIdled() {
+            TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
+            // truffleCompiler should never be null outside unit-tests, this check avoids transient
+            // failures.
+            if (compiler != null) {
+                ((HotSpotTruffleCompiler) compiler).purgeCaches();
+            }
         }
     }
 
@@ -134,12 +147,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     private final List<ResolvedJavaMethod> truffleCallBoundaryMethods;
-    private volatile CancellableCompileTask initializationTask;
+    private volatile CompilationTask initializationTask;
     private volatile boolean truffleCompilerInitialized;
     private volatile Throwable truffleCompilerInitializationException;
 
     public AbstractHotSpotTruffleRuntime() {
-        super(Arrays.asList(HotSpotOptimizedCallTarget.class));
+        super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class));
 
         List<ResolvedJavaMethod> boundaryMethods = new ArrayList<>();
         MetaAccessProvider metaAccess = getMetaAccess();
@@ -193,16 +206,16 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         if (truffleCompilerInitialized) {
             return;
         }
-        CancellableCompileTask localTask = initializationTask;
+        CompilationTask localTask = initializationTask;
         if (localTask == null) {
             final Object lock = this;
             synchronized (lock) {
                 localTask = initializationTask;
                 if (localTask == null && !truffleCompilerInitialized) {
                     rethrowTruffleCompilerInitializationException();
-                    initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
+                    initializationTask = localTask = getCompileQueue().submitInitialization(firstCallTarget, new Consumer<CompilationTask>() {
                         @Override
-                        protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+                        public void accept(CompilationTask task) {
                             synchronized (lock) {
                                 initializeTruffleCompiler(firstCallTarget);
                                 assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
@@ -239,7 +252,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                 EngineData engineData = callTarget.engine;
                 profilingEnabled = engineData.profilingEnabled;
                 TruffleCompiler compiler = newTruffleCompiler();
-                compiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+                compiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
                 truffleCompiler = compiler;
                 traceTransferToInterpreter = engineData.traceTransferToInterpreter;
                 truffleCompilerInitialized = true;
@@ -304,8 +317,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * C1/C2-compiled caller jump to Graal-compiled {@code callBoundary()}, instead of having to go
      * back to the HotSpot interpreter for every execution of {@code callBoundary()}.
      *
-     * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods() which compiles callBoundary()
-     *      with Graal
+     * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods(CompilableTruffleAST) which
+     *      compiles callBoundary() with Graal
      */
     public static void setDontInlineCallBoundaryMethod(List<ResolvedJavaMethod> callBoundaryMethods) {
         for (ResolvedJavaMethod method : callBoundaryMethods) {
@@ -339,7 +352,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    protected BackgroundCompileQueue getCompileQueue() {
+    public BackgroundCompileQueue getCompileQueue() {
         return lazy();
     }
 
@@ -385,16 +398,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      */
     protected abstract String initLazyCompilerConfigurationName();
 
-    @Override
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        if (lazy == null) {
-            // if Truffle wasn't initialized yet, this is a noop
-            return false;
-        }
-
-        return super.cancelInstalledTask(optimizedCallTarget, source, reason);
-    }
-
     @SuppressWarnings("try")
     @Override
     public void bypassedInstalledCode(OptimizedCallTarget target) {
@@ -402,7 +405,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             // do not wait for initialization
             return;
         }
-        getTruffleCompiler(target).installTruffleCallBoundaryMethods();
+        getTruffleCompiler(target).installTruffleCallBoundaryMethods(target);
     }
 
     @Override
@@ -426,7 +429,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public final boolean isProfilingEnabled() {
         if (profilingEnabled == null) {
-            profilingEnabled = getEngineData(null).profilingEnabled;
+            return true;
         }
         return profilingEnabled;
     }
@@ -435,6 +438,104 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     protected JavaConstant forObject(final Object object) {
         final HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getConstantReflection();
         return constantReflection.forObject(object);
+    }
+
+    @Override
+    protected int getBaseInstanceSize(Class<?> type) {
+        if (type.isArray() || type.isPrimitive()) {
+            throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
+        }
+
+        HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
+        HotSpotResolvedObjectType resolvedType = (HotSpotResolvedObjectType) meta.lookupJavaType(type);
+        return resolvedType.instanceSize();
+    }
+
+    private static boolean fieldIsNotEligible(Class<?> clazz, ResolvedJavaField f) {
+        /*
+         * "discovered" field of Reference class may reference unrelated objects that should not be
+         * included. The condition is structured with the intention to minimize performance impact.
+         * In any case, we have to check that the field is declared in the Reference class, because
+         * the "discovered" field is private and so subclasses can have field of the same name.
+         */
+        return (Reference.class.isAssignableFrom(clazz) &&
+                        f.getName().equals("discovered") && f.getDeclaringClass().isAssignableFrom(getMetaAccess().lookupJavaType(Reference.class)));
+    }
+
+    @Override
+    protected Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        if (type.isArray() || type.isPrimitive()) {
+            throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
+        }
+        HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
+        ResolvedJavaType javaType = meta.lookupJavaType(type);
+        ResolvedJavaField[] fields = javaType.getInstanceFields(true);
+        ResolvedJavaField[] fieldsToReturn = new ResolvedJavaField[fields.length];
+        int fieldsCount = 0;
+        for (int i = 0; i < fields.length; i++) {
+            final ResolvedJavaField f = fields[i];
+            if (!f.getJavaKind().isPrimitive() && !fieldIsNotEligible(type, f)) {
+                fieldsToReturn[fieldsCount++] = f;
+            }
+        }
+        return Arrays.copyOf(fieldsToReturn, fieldsCount);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected Object getFieldValue(ResolvedJavaField resolvedJavaField, Object obj) {
+        assert obj != null;
+        assert !resolvedJavaField.isStatic();
+        assert resolvedJavaField.getJavaKind() == JavaKind.Object;
+        assert resolvedJavaField.getDeclaringClass().isAssignableFrom(getMetaAccess().lookupJavaType(obj.getClass()));
+
+        /*
+         * The following code is extracted from
+         * jdk.vm.ci.hotspot.HotSpotJDKReflection#readFieldValue(HotSpotResolvedJavaField, Object,
+         * boolean) for this special case.
+         */
+        Object value;
+        if (resolvedJavaField.isVolatile()) {
+            value = UNSAFE.getObjectVolatile(obj, resolvedJavaField.getOffset());
+        } else {
+            value = UNSAFE.getObject(obj, resolvedJavaField.getOffset());
+        }
+        return value;
+    }
+
+    private static <T> T getVMOptionValue(String name, Class<T> type) {
+        HotSpotVMConfigAccess vmConfig = vmConfigAccess;
+        if (vmConfig == null) {
+            vmConfig = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
+            vmConfigAccess = vmConfig;
+        }
+        try {
+            return vmConfig.getFlag(name, type);
+        } catch (JVMCIError jvmciError) {
+            // The option was not found. Throw rather IllegalArgumentException than JVMCIError
+            throw new IllegalArgumentException(jvmciError);
+        }
+    }
+
+    @Override
+    protected int getObjectAlignment() {
+        return getVMOptionValue("ObjectAlignmentInBytes", Integer.class);
+    }
+
+    @Override
+    protected int getArrayIndexScale(Class<?> componentType) {
+        MetaAccessProvider meta = getMetaAccess();
+        ResolvedJavaType resolvedType = meta.lookupJavaType(componentType);
+
+        return ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getArrayIndexScale(resolvedType.getJavaKind());
+    }
+
+    @Override
+    protected int getArrayBaseOffset(Class<?> componentType) {
+        MetaAccessProvider meta = getMetaAccess();
+        ResolvedJavaType resolvedType = meta.lookupJavaType(componentType);
+
+        return ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getArrayBaseOffset(resolvedType.getJavaKind());
     }
 
     @Override
@@ -458,11 +559,16 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
+            FrameInstance currentFrame = runtime.getCurrentFrame();
+            if (currentFrame == null) {
+                return;
+            }
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) currentFrame.getCallTarget();
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset();
+            long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
             if (deoptimized) {
-                logTransferToInterpreter(runtime);
+                logTransferToInterpreter(runtime, callTarget);
                 UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
             }
         }
@@ -494,9 +600,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
                 if (target instanceof OptimizedCallTarget) {
                     OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
-                    if (callTarget.isValid()) {
-                        builder.append(" <opt>");
-                    }
                     if (callTarget.getSourceCallTarget() != null) {
                         builder.append(" <split-" + Integer.toHexString(callTarget.hashCode()) + ">");
                     }
@@ -522,10 +625,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             return sourceSection.getSource().getName();
         }
 
-        private static void logTransferToInterpreter(final AbstractHotSpotTruffleRuntime runtime) {
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.getCurrentFrame().getCallTarget();
+        private static void logTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, OptimizedCallTarget callTarget) {
             final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
-
             StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append("transferToInterpreter at\n");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {

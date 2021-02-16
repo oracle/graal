@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,20 +50,25 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
 
     public static final NodeClass<AMD64ArrayIndexOfNode> TYPE = NodeClass.create(AMD64ArrayIndexOfNode.class);
 
-    private final JavaKind arrayKind;
-    private final JavaKind valueKind;
-    private final boolean findTwoConsecutive;
+    protected final JavaKind arrayKind;
+    protected final JavaKind valueKind;
+    protected final boolean findTwoConsecutive;
 
-    @Input private ValueNode arrayPointer;
-    @Input private ValueNode arrayLength;
-    @Input private ValueNode fromIndex;
-    @Input private NodeInputList<ValueNode> searchValues;
+    @Input protected ValueNode arrayPointer;
+    @Input protected ValueNode arrayLength;
+    @Input protected ValueNode fromIndex;
+    @Input protected NodeInputList<ValueNode> searchValues;
 
     @OptionalInput(InputType.Memory) private MemoryKill lastLocationAccess;
 
     public AMD64ArrayIndexOfNode(@ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind, @ConstantNodeParameter boolean findTwoConsecutive,
                     ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        super(TYPE, StampFactory.forKind(JavaKind.Int));
+        this(TYPE, arrayKind, valueKind, findTwoConsecutive, arrayPointer, arrayLength, fromIndex, searchValues);
+    }
+
+    protected AMD64ArrayIndexOfNode(NodeClass<? extends AMD64ArrayIndexOfNode> c, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive, ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
+        super(c, StampFactory.forKind(JavaKind.Int));
         this.arrayKind = arrayKind;
         this.valueKind = valueKind;
         this.findTwoConsecutive = findTwoConsecutive;
@@ -71,11 +76,6 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         this.arrayLength = arrayLength;
         this.fromIndex = fromIndex;
         this.searchValues = new NodeInputList<>(this, searchValues);
-    }
-
-    public AMD64ArrayIndexOfNode(@ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
-                    ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(arrayKind, valueKind, false, arrayPointer, arrayLength, fromIndex, searchValues);
     }
 
     @Override
@@ -89,7 +89,8 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         for (int i = 0; i < searchValues.size(); i++) {
             searchValueOperands[i] = gen.operand(searchValues.get(i));
         }
-        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayKind, valueKind, findTwoConsecutive,
+        int arrayBaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(arrayKind);
+        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayBaseOffset, valueKind, findTwoConsecutive,
                         gen.operand(arrayPointer), gen.operand(arrayLength), gen.operand(fromIndex), searchValueOperands);
         gen.setResult(this, result);
     }
@@ -106,125 +107,65 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
     }
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, byte v1);
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, byte v1, byte v2);
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3);
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4);
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, char v1);
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, char v1, char v2);
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, char v1, char v2, char v3);
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4);
 
     @NodeIntrinsic
-    private static native int optimizedArrayIndexOf(
+    public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, int searchValue);
-
-    public static int indexOf(byte[] array, int arrayLength, int fromIndex, byte v1) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1);
-    }
-
-    public static int indexOf(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2);
-    }
-
-    public static int indexOf(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2, v3);
-    }
-
-    public static int indexOf(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
-    }
-
-    public static int indexOf(byte[] array, int arrayLength, int fromIndex, char v1) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1);
-    }
-
-    public static int indexOf(byte[] array, int arrayLength, int fromIndex, char v1, char v2) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2);
-    }
-
-    public static int indexOf(byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3);
-    }
-
-    public static int indexOf(byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
-    }
-
-    public static int indexOf(char[] array, int arrayLength, int fromIndex, char v1) {
-        return optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1);
-    }
-
-    public static int indexOf(char[] array, int arrayLength, int fromIndex, char v1, char v2) {
-        return optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2);
-    }
-
-    public static int indexOf(char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
-        return optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3);
-    }
-
-    public static int indexOf(char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
-        return optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
-    }
-
-    public static int indexOf2ConsecutiveBytes(byte[] array, int arrayLength, int fromIndex, int values) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, true, array, arrayLength, fromIndex, values);
-    }
-
-    public static int indexOf2ConsecutiveChars(byte[] array, int arrayLength, int fromIndex, int values) {
-        return optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, true, array, arrayLength, fromIndex, values);
-    }
-
-    public static int indexOf2ConsecutiveChars(char[] array, int arrayLength, int fromIndex, int values) {
-        return optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, true, array, arrayLength, fromIndex, values);
-    }
 }

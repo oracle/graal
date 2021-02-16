@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,11 +34,11 @@
 char *str = "Hello world!\n";
 
 int main(void) {
-  int length = strlen(str) + 1;
-  char *test = malloc(length * sizeof(char));
-  memcpy(test, str, length);
-  test[1] = 'a';
-  memcpy(&(test[6]), "Welt!", strlen("Welt!"));
-  fputs(test, stdout);
-  return 0;
+    int length = strlen(str) + 1;
+    char *test = malloc(length * sizeof(char));
+    memcpy(test, str, length);
+    test[1] = 'a';
+    memcpy(&(test[6]), "Welt!", strlen("Welt!"));
+    fputs(test, stdout);
+    return 0;
 }

@@ -27,8 +27,8 @@ package org.graalvm.compiler.hotspot.jdk9.test;
 import static org.junit.Assume.assumeFalse;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.hotspot.replacements.StringUTF16Substitutions;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Test substitutions for (innate) methods StringUTF16.toBytes and StringUTF16.getChars provided by
- * {@link StringUTF16Substitutions}.
+ * {@link org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins#registerStringPlugins}.
  */
 @AddExports({"java.base/java.lang"})
 public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest {
@@ -58,7 +58,7 @@ public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "toBytes", char[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
         assertInGraph(graph, NewArrayNode.class);
         assertInGraph(graph, ArrayCopyCallNode.class);
 
@@ -89,7 +89,7 @@ public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "getChars", byte[].class, int.class, int.class, char[].class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
         assertInGraph(graph, ArrayCopyCallNode.class);
 
         InstalledCode code = getCode(caller, graph);

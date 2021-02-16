@@ -44,6 +44,8 @@ package com.oracle.truffle.regex.tregex.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public class LaTexExport {
 
     private static final Pattern specialChars = Pattern.compile("[&%$#_{}~^\\\\]");
@@ -85,7 +87,7 @@ public class LaTexExport {
                     replacement = "\\\\textbackslash ";
                     break;
                 default:
-                    throw new IllegalStateException();
+                    throw CompilerDirectives.shouldNotReachHere();
             }
             m.appendReplacement(escapedString, replacement);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,23 +29,23 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallArchPrctlNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallBrkNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallClockGetTimeNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallFutexNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetPpidNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetcwdNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetpidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGettidNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigactionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigprocmaskNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallSetTidAddressNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallUnameNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.amd64.LinuxAMD64Syscall;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.X86_64VAListPointerWrapperFactoryNodeGen;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAMD64Syscall> {
 
@@ -64,29 +64,35 @@ final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAM
                 return LLVMAMD64SyscallRtSigactionNodeGen.create();
             case SYS_rt_sigprocmask:
                 return LLVMAMD64SyscallRtSigprocmaskNodeGen.create();
-            case SYS_getpid:
-                return new LLVMAMD64SyscallGetpidNode();
             case SYS_exit:
             case SYS_exit_group: // TODO: implement difference to SYS_exit
                 return new LLVMSyscallExitNode();
-            case SYS_uname:
-                return LLVMAMD64SyscallUnameNodeGen.create();
             case SYS_getcwd:
                 return LLVMAMD64SyscallGetcwdNodeGen.create();
-            case SYS_getppid:
-                return new LLVMAMD64SyscallGetPpidNode();
             case SYS_arch_prctl:
                 return LLVMAMD64SyscallArchPrctlNodeGen.create();
-            case SYS_gettid:
-                return new LLVMAMD64SyscallGettidNode();
             case SYS_futex:
                 return LLVMAMD64SyscallFutexNodeGen.create();
             case SYS_set_tid_address:
                 return LLVMAMD64SyscallSetTidAddressNodeGen.create();
-            case SYS_clock_gettime:
-                return LLVMAMD64SyscallClockGetTimeNodeGen.create();
             default:
-                return new LLVMUnknownSyscallNode(syscall);
+                return new LLVMNativeSyscallNode(syscall);
         }
     }
+
+    @Override
+    public Object createVAListStorage(RootNode rootNode) {
+        return new LLVMX86_64VaListStorage(rootNode);
+    }
+
+    @Override
+    public Type getVAListType() {
+        return LLVMX86_64VaListStorage.VA_LIST_TYPE;
+    }
+
+    @Override
+    public VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
+        return cached ? X86_64VAListPointerWrapperFactoryNodeGen.create() : X86_64VAListPointerWrapperFactoryNodeGen.getUncached();
+    }
+
 }

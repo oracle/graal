@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -371,6 +372,7 @@ public interface FileSystem {
      * @since 19.0
      */
     default String getMimeType(Path path) {
+        Objects.requireNonNull(path);
         return null;
     }
 
@@ -384,6 +386,7 @@ public interface FileSystem {
      * @since 19.0
      */
     default Charset getEncoding(Path path) {
+        Objects.requireNonNull(path);
         return null;
     }
 
@@ -394,5 +397,92 @@ public interface FileSystem {
      */
     default Path getTempDirectory() {
         throw new UnsupportedOperationException("Temporary directories not supported");
+    }
+
+    /**
+     * Tests if the given paths refer to the same physical file.
+     *
+     * The default implementation firstly converts the paths into absolute paths. If the absolute
+     * paths are equal it returns {@code true} without checking if the file exists. Otherwise, this
+     * method converts the paths into canonical representations and tests the canonical paths for
+     * equality. The {@link FileSystem} may re-implement the method with a more efficient test. When
+     * re-implemented the method must have the same security privileges as the
+     * {@link #toAbsolutePath(Path) toAbsolutePath} and {@link #toRealPath(Path, LinkOption...)
+     * toRealPath}.
+     *
+     * @param path1 the path to the file
+     * @param path2 the other path
+     * @param options the options determining how the symbolic links should be handled
+     * @return {@code true} if the given paths refer to the same physical file
+     * @throws IOException in case of IO error
+     * @throws SecurityException if this {@link FileSystem} denied the operation
+     * @since 20.2.0
+     */
+    default boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+        if (toAbsolutePath(path1).equals(toAbsolutePath(path2))) {
+            return true;
+        }
+        return toRealPath(path1, options).equals(toRealPath(path2, options));
+    }
+
+    /**
+     * Creates a {@link FileSystem} implementation based on the host Java NIO. The returned instance
+     * can be used as a delegate by a decorating {@link FileSystem}.
+     * <p>
+     * The following example shows a {@link FileSystem} restricting an IO access only to a given
+     * folder.
+     *
+     * <pre>
+     * class RestrictedFileSystem implements FileSystem {
+     *
+     *     private final FileSystem delegate;
+     *     private final Path allowedFolder;
+     *
+     *     RestrictedFileSystem(String allowedFolder) throws IOException {
+     *         this.delegate = FileSystem.newDefaultFileSystem();
+     *         this.allowedFolder = delegate.toRealPath(
+     *                         delegate.parsePath(allowedFolder));
+     *     }
+     *
+     *     &#64;Override
+     *     public Path parsePath(String path) {
+     *         return delegate.parsePath(path);
+     *     }
+     *
+     *     &#64;Override
+     *     public Path parsePath(URI uri) {
+     *         return delegate.parsePath(uri);
+     *     }
+     *
+     *     &#64;Override
+     *     public SeekableByteChannel newByteChannel(Path path,
+     *                     Set&lt;? extends OpenOption&gt; options,
+     *                     FileAttribute&lt;?&gt;... attrs) throws IOException {
+     *         verifyAccess(path);
+     *         return delegate.newByteChannel(path, options, attrs);
+     *     }
+     *
+     *     private void verifyAccess(Path path) {
+     *         Path realPath = null;
+     *         for (Path c = path; c != null; c = c.getParent()) {
+     *             try {
+     *                 realPath = delegate.toRealPath(c);
+     *                 break;
+     *             } catch (IOException ioe) {
+     *             }
+     *         }
+     *         if (realPath == null || !realPath.startsWith(allowedFolder)) {
+     *             throw new SecurityException("Access to " + path + " is denied.");
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * @see org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)
+     *
+     * @since 20.2.0
+     */
+    static FileSystem newDefaultFileSystem() {
+        return IOHelper.IMPL.newDefaultFileSystem();
     }
 }

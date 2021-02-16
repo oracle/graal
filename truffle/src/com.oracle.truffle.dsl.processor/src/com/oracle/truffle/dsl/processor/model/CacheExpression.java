@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.library.LibraryData;
 
 public final class CacheExpression extends MessageContainer {
 
@@ -64,15 +65,19 @@ public final class CacheExpression extends MessageContainer {
     private int dimensions = -1;
     private DSLExpression defaultExpression;
     private DSLExpression uncachedExpression;
-    private boolean alwaysInitialized = false;
-    private boolean eagerInitialize = false;
+    private boolean alwaysInitialized;
+    private boolean eagerInitialize;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
-    private String sharedGroup;
     private boolean mergedLibrary;
+    private boolean isWeakReferenceGet;
+    private boolean isWeakReference;
+    private boolean adopt = true;
 
     private TypeMirror languageType;
     private TypeMirror referenceType;
+
+    private LibraryData cachedlibrary;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
@@ -85,7 +90,6 @@ public final class CacheExpression extends MessageContainer {
         copy.defaultExpression = this.defaultExpression;
         copy.uncachedExpression = this.uncachedExpression;
         copy.alwaysInitialized = this.alwaysInitialized;
-        copy.sharedGroup = this.sharedGroup;
         return copy;
     }
 
@@ -119,10 +123,6 @@ public final class CacheExpression extends MessageContainer {
 
     public TypeMirror getLanguageType() {
         return languageType;
-    }
-
-    public void setSharedGroup(String sharedGroup) {
-        this.sharedGroup = sharedGroup;
     }
 
     public AnnotationMirror getSharedGroupMirror() {
@@ -189,8 +189,30 @@ public final class CacheExpression extends MessageContainer {
         return isType(types.Cached);
     }
 
+    public boolean isBind() {
+        return isType(types.Bind);
+    }
+
     public boolean isCachedLibrary() {
         return isType(types.CachedLibrary);
+    }
+
+    public boolean isCachedLibraryManuallyDispatched() {
+        return isType(types.CachedLibrary);
+    }
+
+    public String getCachedLibraryExpression() {
+        if (!isCachedLibrary()) {
+            return null;
+        }
+        return ElementUtils.getAnnotationValue(String.class, getMessageAnnotation(), "value", false);
+    }
+
+    public String getCachedLibraryLimit() {
+        if (!isCachedLibrary()) {
+            return null;
+        }
+        return ElementUtils.getAnnotationValue(String.class, getMessageAnnotation(), "limit", false);
     }
 
     public boolean isCachedContext() {
@@ -283,6 +305,38 @@ public final class CacheExpression extends MessageContainer {
         String libraryName = ElementUtils.getSimpleName(getParameter().getType());
 
         return b.toString() + libraryName + "_";
+    }
+
+    public void setWeakReferenceGet(boolean b) {
+        this.isWeakReferenceGet = b;
+    }
+
+    public boolean isWeakReferenceGet() {
+        return isWeakReferenceGet;
+    }
+
+    public void setWeakReference(boolean ignoreInUncached) {
+        this.isWeakReference = ignoreInUncached;
+    }
+
+    public boolean isWeakReference() {
+        return isWeakReference;
+    }
+
+    public boolean isAdopt() {
+        return adopt;
+    }
+
+    public void setAdopt(boolean adopt) {
+        this.adopt = adopt;
+    }
+
+    public LibraryData getCachedLibrary() {
+        return cachedlibrary;
+    }
+
+    public void setCachedLibrary(LibraryData cachedlibrary) {
+        this.cachedlibrary = cachedlibrary;
     }
 
 }

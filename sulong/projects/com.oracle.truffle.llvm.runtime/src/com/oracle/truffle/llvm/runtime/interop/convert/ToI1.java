@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
 public abstract class ToI1 extends ForeignToLLVM {
 
@@ -86,12 +87,13 @@ public abstract class ToI1 extends ForeignToLLVM {
         return getSingleStringCharacter(value) != 0;
     }
 
-    @Specialization(limit = "5", guards = {"notLLVM(obj)", "interop.isBoolean(obj)"})
+    @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isBoolean(foreigns.asForeign(obj))"})
     protected boolean fromForeign(Object obj,
-                    @CachedLibrary("obj") InteropLibrary interop,
+                    @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached BranchProfile exception) {
         try {
-            return interop.asBoolean(obj);
+            return interop.asBoolean(foreigns.asForeign(obj));
         } catch (UnsupportedMessageException ex) {
             exception.enter();
             throw new LLVMPolyglotException(this, "Foreign object can't be converted to boolean.");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,12 +28,12 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int func() {
-  static int i = 0;
-  return i++;
+    static int i = 0;
+    return i++;
 }
 
 int main() {
-  int *arr;
-  arr = (int[]){ 1, func(), func() };
-  return arr[0] + arr[1] + arr[2] + func();
+    int *arr;
+    arr = (int[]){ 1, func(), func() };
+    return arr[0] + arr[1] + arr[2] + func();
 }

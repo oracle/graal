@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,19 +31,19 @@ int a = 99;
 int *pa = &a;
 
 void bar(int **aa) {
-  *aa = *aa + 1;
-  *aa -= 1;
-  **aa = 49;
+    *aa = *aa + 1;
+    *aa -= 1;
+    **aa = 49;
 }
 
 void foo() {
-  int *aa;
-  aa = pa;
-  pa = aa;
-  bar(&aa);
+    int *aa;
+    aa = pa;
+    pa = aa;
+    bar(&aa);
 }
 
 int main() {
-  foo();
-  return a;
+    foo();
+    return a;
 }

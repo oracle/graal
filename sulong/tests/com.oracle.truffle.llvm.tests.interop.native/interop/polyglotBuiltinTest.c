@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 void *test_new(void *constructor) {
     return polyglot_new_instance(constructor, 42);
@@ -49,10 +49,10 @@ void *test_host_interop() {
     return polyglot_java_type("java.math.BigInteger");
 }
 
-void test_eval_no_lang(){
-	polyglot_eval("not_impl_lang", "dont_care()");
+void test_eval_no_lang() {
+    polyglot_eval("not_impl_lang", "dont_care()");
 }
 
-void test_eval_internal_lang(){
-	polyglot_eval("nfi", "dont_care()");
+void test_eval_internal_lang() {
+    polyglot_eval("nfi", "dont_care()");
 }

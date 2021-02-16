@@ -129,7 +129,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
             int idx = indexValue.isConstant() ? indexValue.asJavaConstant().asInt() : -1;
             if (idx >= 0 && idx < virtual.entryCount()) {
                 ValueNode entry = tool.getEntry(virtual, idx);
-                if (virtual.isVirtualByteArrayAccess(elementKind())) {
+                if (virtual.isVirtualByteArrayAccess(tool.getMetaAccessExtensionProvider(), elementKind())) {
                     if (virtual.canVirtualizeLargeByteArrayUnsafeRead(entry, idx, elementKind(), tool)) {
                         tool.replaceWith(VirtualArrayNode.virtualizeByteArrayRead(entry, elementKind(), stamp));
                     }
@@ -179,7 +179,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         }
     }
 
-    private static ValueNode tryConstantFold(ValueNode array, ValueNode index, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    public static ValueNode tryConstantFold(ValueNode array, ValueNode index, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         if (array.isConstant() && !array.isNullConstant() && index.isConstant()) {
             JavaConstant arrayConstant = array.asJavaConstant();
             if (arrayConstant != null) {

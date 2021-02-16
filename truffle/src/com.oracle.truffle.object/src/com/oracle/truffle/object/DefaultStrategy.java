@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,5 +86,15 @@ final class DefaultStrategy extends LayoutStrategy {
     @Override
     public BaseAllocator createAllocator(LayoutImpl layout) {
         return new CoreAllocator(layout);
+    }
+
+    @Override
+    protected Location createLocationForValue(ShapeImpl shape, Object value, long putFlags) {
+        return ((CoreAllocator) shape.allocator()).locationForValue(value, true, value != null, putFlags);
+    }
+
+    @Override
+    protected int getLocationOrdinal(Location location) {
+        return CoreLocations.getLocationOrdinal(((CoreLocation) location));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,11 +34,11 @@ int globalC = 9;
 int globalG = 10;
 
 int methodC(int a, int b) {
-  printf("NonFileLocalC used by G\n");
-  return a - b;
+    printf("NonFileLocalC used by G\n");
+    return a - b;
 }
 
 int methodG(int a, int b) {
-  printf("G\n");
-  return methodC(a, b) + (a << b) + globalC + globalG;
+    printf("G\n");
+    return methodC(a, b) + (a << b) + globalC + globalG;
 }

@@ -70,6 +70,55 @@ import jdk.vm.ci.meta.Signature;
 /**
  * Generated method for operations on an array with a primitive element type via JNI. An accessor is
  * specific to the {@link JavaKind element kind} of the array, and to an {@link Operation}.
+ * 
+ * The generated method implements one of the following JNI Functions:
+ *
+ * <ul>
+ * <li>{@code NewBooleanArray}</li>
+ * <li>{@code NewByteArray}</li>
+ * <li>{@code NewCharArray}</li>
+ * <li>{@code NewShortArray}</li>
+ * <li>{@code NewIntArray}</li>
+ * <li>{@code NewLongArray}</li>
+ * <li>{@code NewFloatArray}</li>
+ * <li>{@code NewDoubleArray}</li>
+ * <li>{@code GetBooleanArrayElements}</li>
+ * <li>{@code GetByteArrayElements}</li>
+ * <li>{@code GetCharArrayElements}</li>
+ * <li>{@code GetShortArrayElements}</li>
+ * <li>{@code GetIntArrayElements}</li>
+ * <li>{@code GetLongArrayElements}</li>
+ * <li>{@code GetFloatArrayElements}</li>
+ * <li>{@code GetDoubleArrayElements}</li>
+ * <li>{@code ReleaseBooleanArrayElements}</li>
+ * <li>{@code ReleaseByteArrayElements}</li>
+ * <li>{@code ReleaseCharArrayElements}</li>
+ * <li>{@code ReleaseShortArrayElements}</li>
+ * <li>{@code ReleaseIntArrayElements}</li>
+ * <li>{@code ReleaseLongArrayElements}</li>
+ * <li>{@code ReleaseFloatArrayElements}</li>
+ * <li>{@code ReleaseDoubleArrayElements}</li>
+ * <li>{@code GetBooleanArrayRegion}</li>
+ * <li>{@code GetByteArrayRegion}</li>
+ * <li>{@code GetCharArrayRegion}</li>
+ * <li>{@code GetShortArrayRegion}</li>
+ * <li>{@code GetIntArrayRegion}</li>
+ * <li>{@code GetLongArrayRegion}</li>
+ * <li>{@code GetFloatArrayRegion}</li>
+ * <li>{@code GetDoubleArrayRegion}</li>
+ * <li>{@code SetBooleanArrayRegion}</li>
+ * <li>{@code SetByteArrayRegion}</li>
+ * <li>{@code SetCharArrayRegion}</li>
+ * <li>{@code SetShortArrayRegion}</li>
+ * <li>{@code SetIntArrayRegion}</li>
+ * <li>{@code SetLongArrayRegion}</li>
+ * <li>{@code SetFloatArrayRegion}</li>
+ * <li>{@code SetDoubleArrayRegion}</li>
+ * </ul>
+ * 
+ * @see <a href=
+ *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
+ *      Functions</a>
  */
 public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
 

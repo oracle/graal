@@ -21,7 +21,9 @@ private boolean inTruffleButNotInTest() {
             pkg.contains(".test.") ||
             pkg.equals("com.oracle.truffle.tck") ||
             pkg.startsWith("com.oracle.truffle.tools.") ||
-            pkg.startsWith("com.oracle.truffle.sl.")
+            pkg.startsWith("com.oracle.truffle.sl.") ||
+            pkg.startsWith("com.oracle.truffle.api.dsl") || 
+            pkg.startsWith("com.oracle.truffle.api.dsl.")
         ) && pkg.startsWith("com.oracle.truffle.");
 }
 ?>

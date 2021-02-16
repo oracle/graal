@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,37 +30,48 @@ import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.ArithmeticOperation;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.AnchoringNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -73,14 +84,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
-import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.nodes.java.FinalFieldBarrierNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.util.Providers;
@@ -103,15 +115,16 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -123,7 +136,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * not possible in the Substrate VM, for the same reasons that we cannot support arbitrary
  * reflection.
  * <p>
- * Design decisions for this phase: So support static analysis, the method handle invocation needs
+ * Design decisions for this phase: To support static analysis, the method handle invocation needs
  * to be replaced with a regular invocation before static analysis runs. This requires inlining of
  * all method that are involved in the method handle dispatch. We introduce the restriction that one
  * method handle invocation can be reduced by exactly one regular invocation, so that we can inherit
@@ -150,11 +163,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
-    static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
+    public static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
+        public static AutoCloseable startThreadLocalnRegistry() {
+            return ImageSingletons.lookup(IntrinsificationRegistry.class).startThreadLocalIntrinsificationRegistry();
+        }
     }
 
     private final boolean analysis;
-    private final Providers originalProviders;
+    private final Providers parsingProviders;
     private final Providers universeProviders;
     private final AnalysisUniverse aUniverse;
     private final HostedUniverse hUniverse;
@@ -178,7 +194,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
         this.universeProviders = providers;
-        this.originalProviders = GraalAccess.getOriginalProviders();
+
+        Providers originalProviders = GraalAccess.getOriginalProviders();
+        this.parsingProviders = new Providers(originalProviders).copyWith(new MethodHandlesMetaAccessExtensionProvider());
 
         this.classInitializationPlugin = new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM());
 
@@ -190,7 +208,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
 
         methodHandleType = universeProviders.getMetaAccess().lookupJavaType(java.lang.invoke.MethodHandle.class);
-        methodHandleInvokeMethodNames = new HashSet<>(Arrays.asList("invokeExact", "invoke", "invokeBasic", "linkToVirtual", "linkToStatic", "linkToSpecial", "linkToInterface"));
+        methodHandleInvokeMethodNames = new HashSet<>();
+        if (!NativeImageOptions.areMethodHandlesSupported()) {
+            methodHandleInvokeMethodNames.addAll(Arrays.asList("invokeExact", "invoke", "invokeBasic", "linkToVirtual", "linkToStatic", "linkToSpecial", "linkToInterface"));
+        }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             try {
@@ -211,14 +232,41 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     @Override
-    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] originalArgs) {
+        ValueNode receiverForNullCheck = null;
+        ValueNode[] args = originalArgs;
+        if ((!method.isStatic() || isVarHandleGuards(method)) && args.length > 0 && args[0] instanceof PhiNode) {
+            PhiNode phi = (PhiNode) args[0];
+            /*
+             * For loop phis, not all inputs are available yet since we have not parsed the loop
+             * body yet.
+             */
+            if (!phi.isLoopPhi()) {
+                ValueNode filteredReceiver = filterNullPhiInputs(phi);
+                if (filteredReceiver != phi && filteredReceiver.isJavaConstant()) {
+                    receiverForNullCheck = phi;
+                    args = Arrays.copyOf(args, args.length);
+                    args[0] = filteredReceiver;
+                }
+            }
+        }
+
         /*
          * We want to process invokes that have a constant MethodHandle parameter. And we need a
          * direct call, otherwise we do not have a single target method.
          */
-        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method, args))) {
-            processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
-            return true;
+        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(b, method, args)) && !ignoreMethod(method)) {
+            if (b.bciCanBeDuplicated()) {
+                /*
+                 * If we capture duplication of the bci, we don't process invoke.
+                 */
+                return reportUnsupportedFeature(b, method);
+            } else {
+                if (receiverForNullCheck != null) {
+                    b.nullCheckedValue(receiverForNullCheck);
+                }
+                return processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
+            }
 
         } else if (methodHandleType.equals(method.getDeclaringClass()) && methodHandleInvokeMethodNames.contains(method.getName())) {
             /*
@@ -228,11 +276,27 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * signature polymorphic, i.e., they exist in every possible signature. Therefore, we
              * must only look at the declaring class and the method name here.
              */
-            reportUnsupportedFeature(b, method);
-            return true;
-        }
+            return reportUnsupportedFeature(b, method);
 
-        return false;
+        } else {
+            return false;
+        }
+    }
+
+    private static ValueNode filterNullPhiInputs(PhiNode phi) {
+        ValueNode notAlwaysNullPhiInput = null;
+        for (ValueNode phiInput : phi.values()) {
+            if (StampTool.isPointerAlwaysNull(phiInput)) {
+                /* Ignore always null phi inputs. */
+            } else if (notAlwaysNullPhiInput != null) {
+                /* More than one not-always-null phi inputs. Nothing more to optimize. */
+                return phi;
+            } else {
+                /* First not-always-null phi input. */
+                notAlwaysNullPhiInput = phiInput;
+            }
+        }
+        return notAlwaysNullPhiInput;
     }
 
     private static boolean hasMethodHandleArgument(ValueNode[] args) {
@@ -252,7 +316,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
      * See the documentation in {@link VarHandleFeature} for more information on the overall
      * VarHandle support.
      */
-    private boolean isVarHandleMethod(ResolvedJavaMethod method, ValueNode[] args) {
+    private boolean isVarHandleMethod(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         /*
          * We do the check by class name because then we 1) do not need an explicit Java version
          * check (VarHandle was introduced with JDK 9), 2) VarHandleGuards is a non-public class
@@ -260,9 +324,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * vs. hosted types. If the VarHandle implementation changes, we need to update our whole
          * handling anyway.
          */
-        if (method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards")) {
-            if (args.length < 1 || !args[0].isJavaConstant() || !varHandleType.isAssignableFrom(universeProviders.getMetaAccess().lookupJavaType(args[0].asJavaConstant()))) {
-                throw new UnsupportedFeatureException("VarHandle object must be a compile time constant");
+        if (isVarHandleGuards(method)) {
+            if (args.length < 1 || !args[0].isJavaConstant() || !isVarHandle(args[0])) {
+                return reportUnsupportedFeature(b, method);
             }
 
             try {
@@ -285,6 +349,29 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
+    private static boolean isVarHandleGuards(ResolvedJavaMethod method) {
+        return method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards");
+    }
+
+    private boolean isVarHandle(ValueNode arg) {
+        return varHandleType.isAssignableFrom(universeProviders.getMetaAccess().lookupJavaType(arg.asJavaConstant()));
+    }
+
+    private static final List<Pair<String, List<String>>> IGNORE_FILTER = Arrays.asList(
+                    Pair.create("java.lang.invoke.MethodHandles", Arrays.asList("dropArguments", "filterReturnValue", "foldArguments", "insertArguments")),
+                    Pair.create("java.lang.invoke.Invokers", Collections.singletonList("spreadInvoker")));
+
+    private static boolean ignoreMethod(ResolvedJavaMethod method) {
+        String className = method.getDeclaringClass().toJavaName(true);
+        String methodName = method.getName();
+        for (Pair<String, List<String>> ignored : IGNORE_FILTER) {
+            if (ignored.getLeft().equals(className) && ignored.getRight().contains(methodName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     class MethodHandlesParameterPlugin implements ParameterPlugin {
         private final ValueNode[] methodHandleArguments;
 
@@ -296,7 +383,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         public FloatingNode interceptParameter(GraphBuilderTool b, int index, StampPair stamp) {
             if (methodHandleArguments[index].isConstant()) {
                 /* Convert the constant from our world to the HotSpot world. */
-                return ConstantNode.forConstant(toOriginal(methodHandleArguments[index].asJavaConstant()), originalProviders.getMetaAccess());
+                return ConstantNode.forConstant(toOriginal(methodHandleArguments[index].asJavaConstant()), parsingProviders.getMetaAccess());
             } else {
                 /*
                  * Propagate the parameter type from our world to the HotSpot world. We have more
@@ -325,15 +412,16 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             }
 
             String className = method.getDeclaringClass().toJavaName(true);
-            if (className.startsWith("java.lang.invoke.VarHandle")) {
+            if (className.startsWith("java.lang.invoke.VarHandle") && !className.equals("java.lang.invoke.VarHandle")) {
                 /*
                  * Do not inline implementation methods of various VarHandle implementation classes.
                  * They are too complex and cannot be reduced to a single invoke or field access.
                  * There is also no need to inline them, because they are not related to any
-                 * MethodHandle mechanism.
+                 * MethodHandle mechanism. Methods defined in VarHandle itself are fine and not
+                 * covered by this rule.
                  */
                 return null;
-            } else if (className.startsWith("java.lang.invoke")) {
+            } else if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
                 /*
                  * Inline all helper methods used by method handles. We do not know exactly which
                  * ones they are, but they are all be from the same package.
@@ -341,6 +429,32 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 return createStandardInlineInfo(method);
             }
             return null;
+        }
+    }
+
+    class MethodHandlesMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
+        @Override
+        public JavaKind getStorageKind(JavaType type) {
+            throw VMError.shouldNotReachHere("storage kind information is only needed for optimization phases not used by the method handle intrinsification");
+        }
+
+        @Override
+        public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
+            if (hUniverse == null) {
+                /*
+                 * During static analysis, every type can be constant folded and the static analysis
+                 * will see the real allocation.
+                 */
+                return true;
+            } else {
+                ResolvedJavaType convertedType = optionalLookup(type);
+                return convertedType != null && ((HostedType) convertedType).isInstantiated();
+            }
+        }
+
+        @Override
+        public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
+            throw VMError.shouldNotReachHere();
         }
     }
 
@@ -387,19 +501,27 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     @SuppressWarnings("try")
-    private void processInvokeWithMethodHandle(GraphBuilderContext b, Replacements replacements, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
-        Plugins graphBuilderPlugins = new Plugins(originalProviders.getReplacements().getGraphBuilderPlugins());
+    private boolean processInvokeWithMethodHandle(GraphBuilderContext b, Replacements replacements, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
+        /*
+         * When parsing for compilation, we must not intrinsify method handles that were not
+         * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
+         * static analysis would be compiled.
+         */
+        if (!analysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
+            return reportUnsupportedFeature(b, methodHandleMethod);
+        }
+        Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
 
         registerInvocationPlugins(graphBuilderPlugins.getInvocationPlugins(), replacements);
 
         graphBuilderPlugins.prependParameterPlugin(new MethodHandlesParameterPlugin(methodHandleArguments));
         graphBuilderPlugins.clearInlineInvokePlugins();
         graphBuilderPlugins.prependInlineInvokePlugin(new MethodHandlesInlineInvokePlugin());
-        graphBuilderPlugins.prependNodePlugin(new MethodHandlePlugin(originalProviders.getConstantReflection().getMethodHandleAccess(), false));
+        graphBuilderPlugins.prependNodePlugin(new MethodHandlePlugin(parsingProviders.getConstantReflection().getMethodHandleAccess(), false));
 
         /* We do all the word type rewriting because parameters to the lambda can be word types. */
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, new SubstrateWordTypes(originalProviders.getMetaAccess(), FrameAccess.getWordKind()));
+        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()));
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
@@ -407,185 +529,317 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getSnippetDefault(graphBuilderPlugins);
-        GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(originalProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
+        GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
         StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(NativeImageUtil.toOriginal(methodHandleMethod)).build();
         try (DebugContext.Scope s = debug.scope("IntrinsifyMethodHandles", graph)) {
             graphBuilder.apply(graph);
-
-            /*
-             * We do not care about the improved type information from Pi nodes, so we just delete
-             * them to simplify our graph.
-             */
-            for (PiNode pi : graph.getNodes().filter(PiNode.class)) {
-                pi.replaceAndDelete(pi.object());
-            }
-
-            /*
-             * Support for MethodHandle that adapt the input type to a more generic type, i.e., a
-             * MethodHandle that does a dynamic type check on a parameter.
-             */
-            for (UnaryOpLogicNode node : graph.getNodes().filter(UnaryOpLogicNode.class).filter(v -> v instanceof IsNullNode || v instanceof InstanceOfNode)) {
-                ValueNode value = node.getValue();
-                if (value instanceof ParameterNode) {
-                    /*
-                     * We just assume that the InstanceOfNode or IsNullNode are used in an If and
-                     * the true-successor is actually the branch we want. If that assumption is
-                     * wrong, nothing bad happens - we will just continue to report the invocation
-                     * as unsupported because the updated stamp for the parameter will not simplify
-                     * the graph.
-                     */
-                    if (node instanceof InstanceOfNode) {
-                        InstanceOfNode inst = (InstanceOfNode) node;
-                        TypeReference typeRef = inst.type();
-                        value.setStamp(new ObjectStamp(typeRef.getType(), typeRef.isExact(), !inst.allowsNull(), false));
-                    } else {
-                        assert node instanceof IsNullNode;
-                        ResolvedJavaType type = value.stamp(NodeView.DEFAULT).javaType(originalProviders.getMetaAccess());
-                        value.setStamp(new ObjectStamp(type, false, /* non-null */ true, false));
-                    }
-                }
-            }
-
             /*
              * The canonicalizer converts unsafe field accesses for get/set method handles back to
              * high-level field load and store nodes.
              */
-            CanonicalizerPhase.create().apply(graph, originalProviders);
+            CanonicalizerPhase.create().apply(graph, parsingProviders);
 
-            ObjectStamp classCastStamp = null;
-            for (FixedGuardNode guard : graph.getNodes(FixedGuardNode.TYPE)) {
-                if (guard.next() instanceof AccessFieldNode && guard.condition() instanceof IsNullNode && guard.isNegated() &&
-                                ((IsNullNode) guard.condition()).getValue() == ((AccessFieldNode) guard.next()).object()) {
+            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Intrinisfication graph before transplant");
+
+            NodeMap<Node> transplanted = new NodeMap<>(graph);
+            for (ParameterNode oParam : graph.getNodes(ParameterNode.TYPE)) {
+                transplanted.put(oParam, methodHandleArguments[oParam.index()]);
+            }
+
+            Transplanter transplanter = new Transplanter(b, methodHandleMethod, transplanted);
+            try {
+                transplanter.graph(graph);
+
+                if (analysis) {
                     /*
-                     * Method handles to load and stores fields have null checks. Remove them, since
-                     * the null check is implicitly done by the field access.
+                     * Successfully intrinsified during analysis, remember that we can intrinsify
+                     * when parsing for compilation.
                      */
-                    GraphUtil.removeFixedWithUnusedInputs(guard);
-
-                } else if (guard.condition() instanceof InstanceOfNode && guard.getReason() == DeoptimizationReason.ClassCastException && classCastStamp == null) {
-                    InstanceOfNode condition = (InstanceOfNode) guard.condition();
-                    if (condition.getValue() instanceof Invoke || condition.getValue() instanceof LoadFieldNode) {
-                        /*
-                         * The method handle chain can contain a cast of the returned value. We
-                         * remove the cast here to simplify the graph, remember the type that needs
-                         * to be checked, and then re-add the check in the target method.
-                         */
-                        classCastStamp = lookup(condition.getCheckedStamp());
-                        GraphUtil.removeFixedWithUnusedInputs(guard);
-                    }
+                    intrinsificationRegistry.add(b.getCallingContext(), Boolean.TRUE);
                 }
-            }
-
-            debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Final intrinisfication graph");
-
-            /*
-             * After parsing (and recursive inlining during parsing), the graph must contain only
-             * one invocation (and therefore only one MethodCallTargetNode), plus the parameters,
-             * constants, start, and return nodes.
-             */
-            Node singleFunctionality = null;
-            ReturnNode singleReturn = null;
-            for (Node node : graph.getNodes()) {
-                if (node == graph.start() || node instanceof ParameterNode || node instanceof ConstantNode || node instanceof FrameState) {
-                    /* Ignore the allowed framework around the nodes we care about. */
-                } else if (node instanceof MethodCallTargetNode) {
-                    /* We check the Invoke, so we can ignore the call target. */
-                } else if ((node instanceof Invoke || node instanceof LoadFieldNode || node instanceof StoreFieldNode) && singleFunctionality == null) {
-                    singleFunctionality = node;
-                } else if (node instanceof ReturnNode && singleReturn == null) {
-                    singleReturn = (ReturnNode) node;
-                } else {
-                    reportUnsupportedFeature(b, methodHandleMethod);
-                    return;
-                }
-            }
-
-            /*
-             * When parsing for compilation, we must not intrinsify method handles that were not
-             * intrinsified during analysis. Otherwise new code that was no seen as reachable by the
-             * static analysis would be compiled.
-             */
-            if (analysis) {
-                intrinsificationRegistry.add(b.getMethod(), b.bci(), Boolean.TRUE);
-            } else if (intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
-                reportUnsupportedFeature(b, methodHandleMethod);
-                return;
-            }
-
-            JavaKind returnResultKind = b.getInvokeReturnType().getJavaKind().getStackKind();
-            ValueNode transplantedSingleFunctionality = null;
-            if (singleFunctionality instanceof Invoke) {
-                Invoke singleInvoke = (Invoke) singleFunctionality;
-                MethodCallTargetNode singleCallTarget = (MethodCallTargetNode) singleInvoke.callTarget();
-                ResolvedJavaMethod resolvedTarget = lookup(singleCallTarget.targetMethod());
-
-                maybeEmitClassInitialization(b, singleCallTarget.invokeKind() == InvokeKind.Static, resolvedTarget.getDeclaringClass());
-
+                return true;
+            } catch (AbortTransplantException ex) {
                 /*
-                 * Replace the originalTarget with the replacementTarget. Note that the
-                 * replacementTarget node belongs to a different graph than originalTarget, so we
-                 * need to match parameter back to the original graph and allocate a new
-                 * MethodCallTargetNode for the original graph.
+                 * The method handle cannot be intrinsified. If non-constant method handles are not
+                 * supported, the code that throws an error at runtime was already appended, so
+                 * nothing more to do. If non-constant method handles are supported, we return false
+                 * so that the bytecode parser emit a regular invoke bytecode, i.e., the constant
+                 * method handle is treated as if it were non-constant.
                  */
-                ValueNode[] replacedArguments = new ValueNode[singleCallTarget.arguments().size()];
-                for (int i = 0; i < replacedArguments.length; i++) {
-                    replacedArguments[i] = lookup(b, methodHandleArguments, singleCallTarget.arguments().get(i));
-                }
-                b.handleReplacedInvoke(singleCallTarget.invokeKind(), resolvedTarget, replacedArguments, false);
-
-                JavaKind invokeResultKind = singleInvoke.asNode().getStackKind();
-                if (invokeResultKind != JavaKind.Void) {
-                    /*
-                     * The invoke was pushed by handleReplacedInvoke, pop it so that we can (maybe)
-                     * apply a cast. It will be pushed again as part of the return node handling.
-                     */
-                    transplantedSingleFunctionality = maybeEmitClassCast(b, classCastStamp, b.pop(invokeResultKind));
-                }
-
-            } else if (singleFunctionality instanceof LoadFieldNode) {
-                LoadFieldNode fieldLoad = (LoadFieldNode) singleFunctionality;
-                ResolvedJavaField resolvedTarget = lookup(fieldLoad.field());
-
-                maybeEmitClassInitialization(b, resolvedTarget.isStatic(), resolvedTarget.getDeclaringClass());
-                ValueNode receiver = fieldLoad.object() == null ? null : lookup(b, methodHandleArguments, fieldLoad.object());
-                ValueNode transplantedFieldLoad = b.add(LoadFieldNode.create(null, receiver, resolvedTarget));
-                transplantedSingleFunctionality = maybeEmitClassCast(b, classCastStamp, transplantedFieldLoad);
-
-            } else if (singleFunctionality instanceof StoreFieldNode) {
-                StoreFieldNode fieldStore = (StoreFieldNode) singleFunctionality;
-                ResolvedJavaField resolvedTarget = lookup(fieldStore.field());
-
-                maybeEmitClassInitialization(b, resolvedTarget.isStatic(), resolvedTarget.getDeclaringClass());
-                b.add(new StoreFieldNode(lookup(b, methodHandleArguments, fieldStore.object()), resolvedTarget, lookup(b, methodHandleArguments, fieldStore.value())));
-
-            } else if (singleFunctionality != null) {
-                throw VMError.shouldNotReachHere("Unexpected singleFunctionality: " + singleFunctionality);
+                return ex.handled;
             }
-
-            if (returnResultKind != JavaKind.Void) {
-                if (singleReturn.result() == singleFunctionality) {
-                    b.push(returnResultKind, transplantedSingleFunctionality);
-                } else if (singleReturn.result().isJavaConstant()) {
-                    JavaConstant constantResult = singleReturn.result().asJavaConstant();
-                    b.addPush(returnResultKind, ConstantNode.forConstant(lookup(constantResult), universeProviders.getMetaAccess()));
-                } else {
-                    throw VMError.shouldNotReachHere("Unexpected return value: " + singleReturn.result());
-                }
-            }
-
         } catch (Throwable ex) {
             throw debug.handle(ex);
         }
     }
 
-    private static void reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
+    /**
+     * Transplants the graph parsed in the HotSpot universe into the currently parsed method. This
+     * requires conversion of all types, methods, fields, and constants.
+     *
+     * Currently, only linear control flow in the original graph is supported. Nodes in the original
+     * graph that have implicit exception edges ({@link InvokeNode}, {@link FixedGuardNode} are
+     * converted to nodes with explicit exception edges. So the transplanted graph has a limited
+     * amount of control flow for exception handling, but still no control flow merges.
+     *
+     * All necessary frame states use the same bci from the caller, i.e., all transplanted method
+     * calls, field stores, exceptions, ... look as if they are coming from the original invocation
+     * site of the method handle. This means the static analysis is not storing any analysis results
+     * for these calls, because lookup of analysis results requires a unique bci.
+     */
+    class Transplanter {
+        private final BytecodeParser b;
+        private final ResolvedJavaMethod methodHandleMethod;
+        private final NodeMap<Node> transplanted;
+
+        Transplanter(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod, NodeMap<Node> transplanted) {
+            this.b = (BytecodeParser) b;
+            this.methodHandleMethod = methodHandleMethod;
+            this.transplanted = transplanted;
+        }
+
+        void graph(StructuredGraph graph) throws AbortTransplantException {
+            JavaKind returnResultKind = b.getInvokeReturnType().getJavaKind().getStackKind();
+            FixedNode oNode = graph.start().next();
+            while (true) {
+                if (fixedWithNextNode(oNode)) {
+                    oNode = ((FixedWithNextNode) oNode).next();
+
+                } else if (oNode instanceof ReturnNode) {
+                    ReturnNode oReturn = (ReturnNode) oNode;
+                    if (returnResultKind != JavaKind.Void) {
+                        b.push(returnResultKind, node(oReturn.result()));
+                    }
+                    /* We are done. */
+                    return;
+
+                } else {
+                    throw bailout();
+                }
+            }
+        }
+
+        private boolean fixedWithNextNode(FixedNode oNode) throws AbortTransplantException {
+            if (oNode.getClass() == InvokeNode.class) {
+                InvokeNode oInvoke = (InvokeNode) oNode;
+                MethodCallTargetNode oCallTarget = (MethodCallTargetNode) oInvoke.callTarget();
+                transplantInvoke(oInvoke, lookup(oCallTarget.targetMethod()), oCallTarget.invokeKind(), nodes(oCallTarget.arguments()), oCallTarget.returnKind());
+                return true;
+
+            } else if (oNode.getClass() == FixedGuardNode.class) {
+                FixedGuardNode oGuard = (FixedGuardNode) oNode;
+
+                BytecodeExceptionKind tExceptionKind;
+                ValueNode[] tExceptionArguments;
+                if (oGuard.getReason() == DeoptimizationReason.NullCheckException) {
+                    tExceptionKind = BytecodeExceptionKind.NULL_POINTER;
+                    tExceptionArguments = new ValueNode[0];
+                } else if (oGuard.getReason() == DeoptimizationReason.ClassCastException && oGuard.condition().getClass() == InstanceOfNode.class) {
+                    /*
+                     * Throwing the ClassCastException requires the checked object and the expected
+                     * type as arguments, which we can get for the InstanceOfNode.
+                     */
+                    InstanceOfNode oCondition = (InstanceOfNode) oGuard.condition();
+                    tExceptionKind = BytecodeExceptionKind.CLASS_CAST;
+                    tExceptionArguments = new ValueNode[]{
+                                    node(oCondition.getValue()),
+                                    ConstantNode.forConstant(b.getConstantReflection().asJavaClass(lookup(oCondition.type().getType())), b.getMetaAccess(), b.getGraph())};
+                } else {
+                    /*
+                     * Several other deoptimization reasons could be supported easily, but for now
+                     * there is no need for them.
+                     */
+                    return false;
+                }
+
+                AbstractBeginNode tPassingSuccessor = b.emitBytecodeExceptionCheck((LogicNode) node(oGuard.condition()), !oGuard.isNegated(), tExceptionKind, tExceptionArguments);
+                /*
+                 * Anchor-usages of the guard are redirected to the BeginNode after the explicit
+                 * exception check. If the check was eliminated, we add a new temporary BeginNode.
+                 */
+                transplanted.put(oGuard, tPassingSuccessor != null ? tPassingSuccessor : b.add(new BeginNode()));
+                return true;
+
+            } else if (oNode.getClass() == LoadFieldNode.class) {
+                LoadFieldNode oLoad = (LoadFieldNode) oNode;
+                ResolvedJavaField tTarget = lookup(oLoad.field());
+                maybeEmitClassInitialization(b, tTarget.isStatic(), tTarget.getDeclaringClass());
+                ValueNode tLoad = b.add(LoadFieldNode.create(null, node(oLoad.object()), tTarget));
+                transplanted.put(oLoad, tLoad);
+                return true;
+
+            } else if (oNode.getClass() == StoreFieldNode.class) {
+                StoreFieldNode oStore = (StoreFieldNode) oNode;
+                ResolvedJavaField tTarget = lookup(oStore.field());
+                maybeEmitClassInitialization(b, tTarget.isStatic(), tTarget.getDeclaringClass());
+                b.add(new StoreFieldNode(node(oStore.object()), tTarget, node(oStore.value())));
+                return true;
+
+            } else if (oNode.getClass() == NewInstanceNode.class) {
+                NewInstanceNode oNew = (NewInstanceNode) oNode;
+                ResolvedJavaType tInstanceClass = lookup(oNew.instanceClass());
+                maybeEmitClassInitialization(b, true, tInstanceClass);
+                NewInstanceNode tNew = b.add(new NewInstanceNode(tInstanceClass, oNew.fillContents()));
+                transplanted.put(oNew, tNew);
+                return true;
+
+            } else if (oNode.getClass() == NewArrayNode.class) {
+                NewArrayNode oNew = (NewArrayNode) oNode;
+                NewArrayNode tNew = b.add(new NewArrayNode(lookup(oNew.elementType()), node(oNew.length()), oNew.fillContents()));
+                transplanted.put(oNew, tNew);
+                return true;
+
+            } else if (oNode.getClass() == FinalFieldBarrierNode.class) {
+                FinalFieldBarrierNode oNew = (FinalFieldBarrierNode) oNode;
+                FinalFieldBarrierNode tNew = b.add(new FinalFieldBarrierNode(node(oNew.getValue())));
+                transplanted.put(oNew, tNew);
+                return true;
+
+            } else {
+                return false;
+            }
+        }
+
+        private ValueNode[] nodes(List<ValueNode> oNodes) throws AbortTransplantException {
+            ValueNode[] tNodes = new ValueNode[oNodes.size()];
+            for (int i = 0; i < tNodes.length; i++) {
+                tNodes[i] = node(oNodes.get(i));
+            }
+            return tNodes;
+        }
+
+        private ValueNode node(ValueNode oNode) throws AbortTransplantException {
+            if (oNode == null) {
+                return null;
+            }
+            Node tNode = transplanted.get(oNode);
+            if (tNode != null) {
+                return (ValueNode) tNode;
+            }
+
+            if (oNode.getClass() == ConstantNode.class) {
+                ConstantNode oConstant = (ConstantNode) oNode;
+                tNode = ConstantNode.forConstant(constant(oConstant.getValue()), universeProviders.getMetaAccess());
+
+            } else if (oNode.getClass() == PiNode.class) {
+                PiNode oPi = (PiNode) oNode;
+                tNode = new PiNode(node(oPi.object()), stamp(oPi.piStamp()), node(oPi.getGuard().asNode()));
+
+            } else if (oNode.getClass() == InstanceOfNode.class) {
+                InstanceOfNode oInstanceOf = (InstanceOfNode) oNode;
+                tNode = InstanceOfNode.createHelper(stamp(oInstanceOf.getCheckedStamp()),
+                                node(oInstanceOf.getValue()),
+                                oInstanceOf.profile(),
+                                (AnchoringNode) node((ValueNode) oInstanceOf.getAnchor()));
+
+            } else if (oNode.getClass() == IsNullNode.class) {
+                IsNullNode oIsNull = (IsNullNode) oNode;
+                tNode = IsNullNode.create(node(oIsNull.getValue()));
+
+            } else if (oNode instanceof ArithmeticOperation) {
+                /*
+                 * We consider all arithmetic operations as safe for transplant, since they do not
+                 * have side effects and also do not reference any types or other elements that we
+                 * would need to modify.
+                 */
+                List<Node> oNodes = Collections.singletonList(oNode);
+                UnmodifiableEconomicMap<Node, Node> tNodes = b.getGraph().addDuplicates(oNodes, oNode.graph(), 1, transplanted);
+                assert tNodes.size() == 1;
+                tNode = tNodes.get(oNode);
+
+            } else {
+                throw bailout();
+            }
+
+            tNode = b.add((ValueNode) tNode);
+            transplanted.put(oNode, tNode);
+            return (ValueNode) tNode;
+        }
+
+        private void transplantInvoke(FixedWithNextNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
+            maybeEmitClassInitialization(b, invokeKind == InvokeKind.Static, tTargetMethod.getDeclaringClass());
+            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false);
+
+            if (invokeResultKind != JavaKind.Void) {
+                /*
+                 * The invoke was pushed by handleReplacedInvoke, pop it again. Note that the popped
+                 * value is not necessarily an Invoke, because inlining during parsing and
+                 * intrinsification can happen.
+                 */
+                transplanted.put(oNode, b.pop(invokeResultKind));
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        private <T extends Stamp> T stamp(T oStamp) throws AbortTransplantException {
+            Stamp result;
+            if (((Stamp) oStamp).getClass() == ObjectStamp.class) {
+                ObjectStamp oObjectStamp = (ObjectStamp) oStamp;
+                result = new ObjectStamp(lookup(oObjectStamp.type()), oObjectStamp.isExactType(), oObjectStamp.nonNull(), oObjectStamp.alwaysNull(), oObjectStamp.isAlwaysArray());
+            } else if (oStamp instanceof PrimitiveStamp) {
+                result = oStamp;
+            } else {
+                throw bailout();
+            }
+            assert oStamp.getClass() == result.getClass();
+            return (T) result;
+        }
+
+        private JavaConstant constant(Constant oConstant) throws AbortTransplantException {
+            JavaConstant tConstant;
+            if (oConstant == JavaConstant.NULL_POINTER) {
+                return JavaConstant.NULL_POINTER;
+            } else if (oConstant instanceof JavaConstant) {
+                tConstant = lookup((JavaConstant) oConstant);
+            } else {
+                throw bailout();
+            }
+
+            if (tConstant.getJavaKind() == JavaKind.Object) {
+                /*
+                 * The object replacer are not invoked when parsing in the HotSpot universe, so we
+                 * also need to do call the replacer here.
+                 */
+                Object oldObject = aUniverse.getSnippetReflection().asObject(Object.class, tConstant);
+                Object newObject = aUniverse.replaceObject(oldObject);
+                if (newObject != oldObject) {
+                    return aUniverse.getSnippetReflection().forObject(newObject);
+                }
+            }
+            return tConstant;
+        }
+
+        private RuntimeException bailout() throws AbortTransplantException {
+            boolean handled = reportUnsupportedFeature(b, methodHandleMethod);
+            /*
+             * We need to get out of recursive transplant methods. Easier to use an exception than
+             * to explicitly check every method invocation for a possible abort.
+             */
+            throw new AbortTransplantException(handled);
+        }
+    }
+
+    @SuppressWarnings("serial")
+    static class AbortTransplantException extends Exception {
+        private final boolean handled;
+
+        AbortTransplantException(boolean handled) {
+            this.handled = handled;
+        }
+    }
+
+    private static boolean reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
         String message = "Invoke with MethodHandle argument could not be reduced to at most a single call or single field access. " +
                         "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
                         "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
 
-        if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+        if (NativeImageOptions.areMethodHandlesSupported()) {
+            /* Do nothing, the method will be compiled elsewhere */
+            return false;
+
+        } else if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             /*
              * Ensure that we have space on the expression stack for the (unused) return value of
              * the invoke.
@@ -595,35 +849,13 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                             new ValueNode[]{ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph())}, false);
             /* The invoked method throws an exception and therefore never returns. */
             b.append(new DeadEndNode());
-            return;
+            return true;
 
         } else {
-            throw new UnsupportedFeatureException(message + System.lineSeparator() + "To diagnose the issue, you can add the option " +
+            throw new UnsupportedFeatureException(message + System.lineSeparator() +
+                            "To enable method handles that do not require LambdaForm interpretation (e.g. because of a call to MethodHandle.bindTo()) or to diagnose the issue, you can add the option " +
                             SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") +
-                            ". The error is then reported at run time when the invoke is executed.");
-        }
-    }
-
-    @SuppressWarnings("try")
-    private static ValueNode maybeEmitClassCast(GraphBuilderContext b, ObjectStamp classCastStamp, ValueNode object) {
-        if (classCastStamp == null) {
-            /* No check necessary. */
-            return object;
-        }
-
-        /*
-         * We need a unique bci for the instanceof check that is distinct from the bci of the
-         * invoke, otherwise the static analysis cannot distinguish them. We use a synthetic bci
-         * that is "in the middle" of the invoke by adding 1. This works because an invoke bytecode
-         * always requires more than one byte.
-         */
-        NodeSourcePosition invokePosition = b.getGraph().currentNodeSourcePosition();
-        NodeSourcePosition instanceOfPosition = invokePosition == null ? null : new NodeSourcePosition(invokePosition.getCaller(), invokePosition.getMethod(), invokePosition.getBCI() + 1);
-        try (DebugCloseable closeable = b.getGraph().withNodeSourcePosition(instanceOfPosition)) {
-
-            LogicNode condition = b.add(InstanceOfNode.createHelper(classCastStamp, object, null, null));
-            FixedGuardNode guard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateRecompile));
-            return b.add(new PiNode(object, classCastStamp, guard));
+                            ". The error is then reported at run time when the invoke is executed and the method handle has to be interpreted.");
         }
     }
 
@@ -638,14 +870,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
-    private ValueNode lookup(GraphBuilderContext b, ValueNode[] methodHandleArguments, ValueNode node) {
-        if (node.isConstant()) {
-            return ConstantNode.forConstant(lookup(node.asJavaConstant()), universeProviders.getMetaAccess(), b.getGraph());
-        } else {
-            return methodHandleArguments[((ParameterNode) node).index()];
-        }
-    }
-
     private ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         ResolvedJavaMethod result = aUniverse.lookup(method);
         if (hUniverse != null) {
@@ -655,6 +879,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     private ResolvedJavaField lookup(ResolvedJavaField field) {
+        aUniverse.lookup(field.getDeclaringClass()).registerAsReachable();
         ResolvedJavaField result = aUniverse.lookup(field);
         if (hUniverse != null) {
             result = hUniverse.lookup(result);
@@ -670,8 +895,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         return result;
     }
 
-    private ObjectStamp lookup(ObjectStamp stamp) {
-        return new ObjectStamp(lookup(stamp.type()), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull());
+    private ResolvedJavaType optionalLookup(ResolvedJavaType type) {
+        ResolvedJavaType result = aUniverse.optionalLookup(type);
+        if (result != null && hUniverse != null) {
+            result = hUniverse.optionalLookup(result);
+        }
+        return result;
     }
 
     private JavaConstant lookup(JavaConstant constant) {

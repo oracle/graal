@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -341,7 +342,8 @@ public class SystemUtils {
     }
 
     public static Path getGraalVMJDKRoot(ComponentRegistry reg) {
-        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_NAME))) {
+        if (CommonConstants.OS_TOKEN_MACOS.equals(
+                        reg.getGraalCapabilities().get(CommonConstants.CAP_OS_NAME))) {
             return Paths.get("Contents", "Home");
         } else {
             return Paths.get("");
@@ -624,6 +626,34 @@ public class SystemUtils {
         }
     }
 
+    public static String patternOsName(String os) {
+        if (os == null) {
+            return null;
+        }
+        String lc = os.toLowerCase(Locale.ENGLISH);
+        switch (lc) {
+            case CommonConstants.OS_MACOS_DARWIN:
+            case CommonConstants.OS_TOKEN_MACOS:
+                return "(:?" + CommonConstants.OS_MACOS_DARWIN + "|" + CommonConstants.OS_TOKEN_MACOS + ")";
+            default:
+                return lc;
+        }
+    }
+
+    public static String patternOsArch(String arch) {
+        if (arch == null) {
+            return null;
+        }
+        String lc = arch.toLowerCase(Locale.ENGLISH);
+        switch (lc) {
+            case CommonConstants.ARCH_AMD64:
+            case CommonConstants.ARCH_X8664:
+                return "(:?" + CommonConstants.ARCH_AMD64 + "|" + CommonConstants.ARCH_X8664 + ")";
+            default:
+                return lc;
+        }
+    }
+
     /**
      * Normalizes architecture string.
      * 
@@ -639,7 +669,7 @@ public class SystemUtils {
             case CommonConstants.ARCH_X8664:
                 return CommonConstants.ARCH_AMD64;
             default:
-                return arch;
+                return arch.toLowerCase(Locale.ENGLISH);
         }
     }
 
@@ -658,7 +688,7 @@ public class SystemUtils {
             case CommonConstants.OS_MACOS_DARWIN:
                 return CommonConstants.OS_TOKEN_MACOS;
             default:
-                return os;
+                return os.toLowerCase(Locale.ENGLISH);
         }
     }
 
@@ -692,5 +722,31 @@ public class SystemUtils {
         } catch (NoSuchAlgorithmException ex) {
             throw new IOException(ex);
         }
+    }
+
+    /**
+     * Determines if the path is a remote URL. If the passed string is not an absolute URL, attempts
+     * to interpret as relative path, which checks 'bad characters' and avoids paths that traverse
+     * above the root. Disallows absolute file:// URLs, URLs from file-based catalogs must be given
+     * as relative.
+     * 
+     * @param pathOrURL path or URL to check.
+     * @return true, if the path is actually an URL.
+     */
+    public static boolean isRemotePath(String pathOrURL) {
+        try {
+            URL u = new URL(pathOrURL);
+            String proto = u.getProtocol();
+            if ("file".equals(proto)) { // NOI18N
+                throw new IllegalArgumentException("Absolute file:// URLs are not permitted.");
+            } else {
+                return true;
+            }
+        } catch (MalformedURLException ex) {
+            // expected
+        }
+        // will fail with an exception if the relative path contains bad chars or traverses up
+        fromCommonRelative(pathOrURL);
+        return false;
     }
 }

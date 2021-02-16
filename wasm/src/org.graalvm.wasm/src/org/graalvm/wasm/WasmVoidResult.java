@@ -40,8 +40,14 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"static-method", "unused"})
 public final class WasmVoidResult implements TruffleObject {
     private static WasmVoidResult instance;
 
@@ -55,4 +61,30 @@ public final class WasmVoidResult implements TruffleObject {
     public static WasmVoidResult getInstance() {
         return instance;
     }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return WasmLanguage.class;
+    }
+
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        return WasmType.VOID;
+    }
+
+    @ExportMessage(name = "toDisplayString")
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "wasm-void-result";
+    }
+
 }

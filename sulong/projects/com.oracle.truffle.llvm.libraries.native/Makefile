@@ -35,7 +35,7 @@ default: bin/${LIBSULONG}
 CLANG?=clang
 
 ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 LDFLAGS=-dynamiclib -g
 bin/${LIBSULONG}: LDFLAGS+=-install_name ${LIBSULONG}
 else

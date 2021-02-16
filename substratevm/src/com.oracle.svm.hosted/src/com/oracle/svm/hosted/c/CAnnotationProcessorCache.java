@@ -39,6 +39,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateUtil;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.options.Option;
 
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -46,6 +48,10 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.query.QueryResultParser;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 /**
  * Cache of pre-computed information for the {@link CAnnotationProcessor}. The cache is helpful to
@@ -66,7 +72,30 @@ public final class CAnnotationProcessorCache {
 
     public static class Options {
         @Option(help = "Indicate the C Annotation Processor to use previously cached native information when generating C Type information.")//
-        public static final HostedOptionKey<Boolean> UseCAPCache = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> UseCAPCache = new HostedOptionKey<Boolean>(false) {
+            @Override
+            public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+                if (!values.containsKey(this)) {
+                    // If user hasn't specified this option, we should determine optimal default
+                    // value.
+                    if (!ExitAfterQueryCodeGeneration.getValue() && !ImageSingletons.lookup(Platform.class).getArchitecture().equals(SubstrateUtil.getArchitectureName())) {
+                        // If query code generation isn't explicitly requested, and we are running
+                        // cross-arch build, CAP cache should be required (since we cannot run query
+                        // code).
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+                return (Boolean) values.get(this);
+            }
+
+            @Override
+            public Boolean getValue(OptionValues values) {
+                assert checkDescriptorExists();
+                return getValueOrDefault(values.getMap());
+            }
+        };
 
         @Option(help = "Create a C Annotation Processor Cache. Will erase any previous cache at that same location.")//
         public static final HostedOptionKey<Boolean> NewCAPCache = new HostedOptionKey<>(false);
@@ -76,17 +105,24 @@ public final class CAnnotationProcessorCache {
 
         @Option(help = "Exit image generation after C Annotation Processor Cache creation.")//
         public static final HostedOptionKey<Boolean> ExitAfterCAPCache = new HostedOptionKey<>(false);
+
+        @Option(help = "Output query code for target platform without executing it")//
+        public static final HostedOptionKey<Boolean> ExitAfterQueryCodeGeneration = new HostedOptionKey<>(false);
+
+        @Option(help = "Directory where query code for target platform should be output")//
+        public static final HostedOptionKey<String> QueryCodeDir = new HostedOptionKey<>("");
     }
 
     private File cache;
+    private File query;
 
     public CAnnotationProcessorCache() {
         if ((Options.UseCAPCache.getValue() || Options.NewCAPCache.getValue())) {
-            if (Options.CAPCacheDir.getValue() == null || Options.CAPCacheDir.getValue().isEmpty()) {
-                throw UserError.abort("Path to C Annotation Processor Cache must be specified using " +
-                                SubstrateOptionsParser.commandArgument(Options.CAPCacheDir, "") + " when the option " +
-                                SubstrateOptionsParser.commandArgument(Options.UseCAPCache, "+") + " or " +
-                                SubstrateOptionsParser.commandArgument(Options.NewCAPCache, "+") + " is used.");
+            if (!Options.ExitAfterQueryCodeGeneration.getValue() &&
+                            (Options.CAPCacheDir.getValue() == null || Options.CAPCacheDir.getValue().isEmpty())) {
+                throw UserError.abort("Path to C Annotation Processor Cache must be specified using %s when the option %s or %s is used.",
+                                SubstrateOptionsParser.commandArgument(Options.CAPCacheDir, ""), SubstrateOptionsParser.commandArgument(Options.UseCAPCache, "+"),
+                                SubstrateOptionsParser.commandArgument(Options.NewCAPCache, "+"));
             }
             Path cachePath = FileSystems.getDefault().getPath(Options.CAPCacheDir.getValue()).toAbsolutePath();
             cache = cachePath.toFile();
@@ -94,13 +130,29 @@ public final class CAnnotationProcessorCache {
                 try {
                     cache = Files.createDirectories(cachePath).toFile();
                 } catch (IOException e) {
-                    throw UserError.abort("Could not create C Annotation Processor Cache directory: " + e.getMessage());
+                    throw UserError.abort("Could not create C Annotation Processor Cache directory: %s", e.getMessage());
                 }
             } else if (!cache.isDirectory()) {
                 throw UserError.abort("Path to C Annotation Processor Cache is not a directory");
             } else if (Options.NewCAPCache.getValue()) {
                 clearCache();
             }
+        }
+
+        if (Options.QueryCodeDir.hasBeenSet()) {
+            Path queryPath = FileSystems.getDefault().getPath(Options.QueryCodeDir.getValue()).toAbsolutePath();
+            query = queryPath.toFile();
+            if (!query.exists()) {
+                try {
+                    query = Files.createDirectories(queryPath).toFile();
+                } catch (IOException e) {
+                    throw UserError.abort("Could not create query code directory: %s", e.getMessage());
+                }
+            } else if (!query.isDirectory()) {
+                throw UserError.abort("Path to query code directory is not a directory");
+            }
+        } else if (Options.ExitAfterQueryCodeGeneration.hasBeenSet()) {
+            throw UserError.abort("Query code directory wasn't specified, use %s option.", SubstrateOptionsParser.commandArgument(Options.QueryCodeDir, "PATH"));
         }
     }
 
@@ -113,9 +165,8 @@ public final class CAnnotationProcessorCache {
         try (FileInputStream fis = new FileInputStream(file)) {
             QueryResultParser.parse(nativeLibs, nativeCodeInfo, fis);
         } catch (IOException e) {
-            throw UserError.abort("Could not load CAPCache file. " +
-                            "Ensure that options " + Options.UseCAPCache.getName() + " and " + Options.NewCAPCache + " are used on the same version of your application. " +
-                            "Raw error: " + e.getMessage());
+            throw UserError.abort("Could not load CAPCache file. Ensure that options %s and %s are used on the same version of your application. Raw error: %s",
+                            Options.UseCAPCache.getName(), Options.NewCAPCache, e.getMessage());
         }
     }
 

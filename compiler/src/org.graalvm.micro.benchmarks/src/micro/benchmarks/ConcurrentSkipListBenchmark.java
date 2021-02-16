@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.Warmup;
 
 /**
  * Benchmarks cost of ArrayList.
@@ -44,7 +43,6 @@ public class ConcurrentSkipListBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 20)
     public void addBoxed(ThreadState state) {
         for (int i = 0; i < N; ++i) {
             state.list.put(i, i);

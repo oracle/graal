@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,13 +32,12 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -55,9 +54,10 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         assert SubstrateOptions.MultiThreaded.getValue();
-        SubstrateRegisterConfig threadRegister = (SubstrateRegisterConfig) crb.codeCache.getRegisterConfig();
-        AArch64Address safepointAddress = AArch64Address.createUnscaledImmediateAddress(threadRegister.getThreadRegister(), Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset()));
-        int safepointSize = AArch64Kind.QWORD.getSizeInBytes() * 8;
+        int safepointSize = 32; // safepoint is an integer
+        AArch64Address safepointAddress = AArch64Address.createImmediateAddress(safepointSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED,
+                        ReservedRegisters.singleton().getThreadRegister(),
+                        Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset()));
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register scratch = scratchRegister.getRegister();
             masm.ldr(safepointSize, scratch, safepointAddress);

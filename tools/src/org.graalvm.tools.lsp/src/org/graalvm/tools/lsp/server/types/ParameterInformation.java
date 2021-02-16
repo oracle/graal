@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,20 +30,22 @@ import java.util.Objects;
 /**
  * Represents a parameter of a callable-signature. A parameter can have a label and a doc-comment.
  */
-public class ParameterInformation {
-
-    final JSONObject jsonData;
+public class ParameterInformation extends JSONBase {
 
     ParameterInformation(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
      * The label of this parameter information.
      *
-     * Either a string or inclusive start and exclusive end offsets within its containing [signature
-     * label](#SignatureInformation.label). *Note*: A label of type string must be a substring of
-     * its containing signature information's [label](#SignatureInformation.label).
+     * Either a string or an inclusive start and exclusive end offsets within its containing
+     * signature label. (see SignatureInformation.label). The offsets are based on a UTF-16 string
+     * representation as `Position` and `Range` does.
+     *
+     * *Note*: a label of type string should be a substring of its containing signature label. Its
+     * intended use case is to highlight the parameter label part in the
+     * `SignatureInformation.label`.
      */
     public Object getLabel() {
         return jsonData.get("label");
@@ -69,7 +71,7 @@ public class ParameterInformation {
         if (documentation instanceof MarkupContent) {
             jsonData.put("documentation", ((MarkupContent) documentation).jsonData);
         } else {
-            jsonData.putOpt("documentation", documentation);
+            jsonData.put("documentation", documentation);
         }
         return this;
     }
@@ -97,10 +99,10 @@ public class ParameterInformation {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 11 * hash + Objects.hashCode(this.getLabel());
+        int hash = 5;
+        hash = 83 * hash + Objects.hashCode(this.getLabel());
         if (this.getDocumentation() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getDocumentation());
+            hash = 83 * hash + Objects.hashCode(this.getDocumentation());
         }
         return hash;
     }

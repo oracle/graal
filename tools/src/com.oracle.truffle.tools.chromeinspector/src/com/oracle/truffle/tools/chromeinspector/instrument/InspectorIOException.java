@@ -24,30 +24,31 @@
  */
 package com.oracle.truffle.tools.chromeinspector.instrument;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import java.io.IOException;
 
-class InspectorIOException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+final class InspectorIOException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1205823327748715981L;
 
     InspectorIOException(String hostAndPort, IOException e) {
-        super(String.format("Starting inspector on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e);
+        super(String.format("Starting inspector on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
     }
 
-    @Override
-    public Node getLocation() {
-        return null;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.EXIT;
     }
 
-    @Override
-    public boolean isExit() {
-        return true;
-    }
-
-    @Override
-    public int getExitStatus() {
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    int getExceptionExitStatus() {
         // See https://nodejs.org/api/process.html#process_exit_codes
         return 12;
     }

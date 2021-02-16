@@ -74,10 +74,7 @@ if [[ "${#to_build[@]}" == "0" ]]; then
 fi
 
 function common() {
-    cmd_line+=(
-        "${graalvm_home}/bin/native-image"
-        ${custom_args[@]}
-    )
+    cmd_line+=("${graalvm_home}/bin/native-image")
 
     if $(${graalvm_home}/bin/native-image --help-extra | grep -q "\-\-no\-server"); then
         cmd_line+=("--no-server")
@@ -136,6 +133,7 @@ for binary in "${to_build[@]}"; do
             exit 1
             ;;
     esac
+    cmd_line+=(${custom_args[@]})
     echo "Building ${binary}..."
     if [[ ! -z "${VERBOSE}" ]]; then
         echo "${cmd_line[@]}"

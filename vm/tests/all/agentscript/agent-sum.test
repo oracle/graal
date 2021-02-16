@@ -1,0 +1,27 @@
+> js agent-sum.js
+21
+> js --insight=agent-summul.js agent-sum.js 
+720
+> js --insight=agent-summul2.js agent-sum.js
+720
+> js --insight=agent-sumneg.js  agent-sum.js
+-21
+> js --insight=agent-summul2.js agent-fib.js
+Three is the result 80
+> js --insight=agent-summul3.js agent-sum.js
+enter of plus with 1 * 1 * 2 = 2
+enter of plus with 2 * 1 * 2 = 4
+enter of plus with 3 * 1 * 2 = 6
+enter of plus with 1 * 2 * 3 = 6
+enter of plus with 2 * 2 * 3 = 12
+enter of plus with 3 * 2 * 3 = 18
+enter of plus with 1 * 6 * 4 = 24
+enter of plus with 2 * 6 * 4 = 48
+enter of plus with 3 * 6 * 4 = 72
+enter of plus with 1 * 24 * 5 = 120
+enter of plus with 2 * 24 * 5 = 240
+enter of plus with 3 * 24 * 5 = 360
+enter of plus with 1 * 120 * 6 = 720
+enter of plus with 2 * 120 * 6 = 1440
+enter of plus with 3 * 120 * 6 = 2160
+720

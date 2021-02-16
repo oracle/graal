@@ -43,6 +43,11 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
     InitKind specifiedInitKindFor(Class<?> clazz);
 
     /**
+     * Return true if the class is allowed to be proven safe.
+     */
+    boolean canBeProvenSafe(Class<?> clazz);
+
+    /**
      * Returns all classes of a single {@link InitKind}.
      */
     Set<Class<?>> classesWithKind(InitKind kind);

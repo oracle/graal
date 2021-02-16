@@ -48,4 +48,9 @@ public class HighTierContext extends CoreProvidersDelegate {
     public OptimisticOptimizations getOptimisticOptimizations() {
         return optimisticOpts;
     }
+
+    @Override
+    public Providers getProviders() {
+        return (Providers) super.getProviders();
+    }
 }

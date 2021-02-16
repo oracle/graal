@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -160,7 +160,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, int length, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public RelocationRecord markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
         MachORelocationElement el = getOrCreateRelocationElement(useImplicitAddend);
         AssemblyBuffer sbb = new AssemblyBuffer(bb);
         sbb.setByteOrder(getOwner().getByteOrder());
@@ -170,6 +170,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
          * during dynamic linking. So if the caller supplies an explicit addend, we turn it into an
          * implicit one by updating our content.
          */
+        int length = ObjectFile.RelocationKind.getRelocationSize(k);
         long currentInlineAddendValue = sbb.readTruncatedLong(length);
         long desiredInlineAddendValue;
         if (explicitAddend != null) {
@@ -193,7 +194,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
          * amount we add is always the length in bytes of the relocation site (since on x86-64 the
          * reference is always the last field in a PC-relative instruction).
          */
-        if (k == RelocationKind.PC_RELATIVE) {
+        if (RelocationKind.isPCRelative(k)) {
             desiredInlineAddendValue += length;
         }
 
@@ -202,6 +203,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
         sbb.writeTruncatedLong(desiredInlineAddendValue, length);
 
         // set section flag to note that we have relocations
+        assert symbolName != null;
         Symbol sym = getOwner().getSymbolTable().getSymbol(symbolName);
         boolean symbolIsDefinedLocally = (sym != null && sym.isDefined());
         // see note in MachOObjectFile's createDefinedSymbol

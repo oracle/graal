@@ -442,6 +442,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);
             FixedNode next = cur.next();
+            assert next != null : cur;
             if (next instanceof AbstractBeginNode) {
                 block.endNode = cur;
                 return;

@@ -7,7 +7,6 @@ svm-common-gate: {
 
 svm-common-linux-gate: ${svm-common-linux-amd64} ${svm-common-gate}
 svm-common-darwin-gate: ${svm-common-darwin} ${svm-common-gate}
-svm-common-windows-gate: ${svm-common-windows} ${svm-common-gate}
 
 svm-cmd-gate: ["mx", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--tags"]
 
@@ -28,15 +27,25 @@ builds += [
   }
   ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
     name: "gate-svm-build-ee-11"
+    downloads: {
+      "MUSL_LIBS": {
+        "name": "musl-libs",
+        "version": "1.0",
+        "platformspecific": true
+      }
+    }
     environment : {
       MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
+      PATH : "$MUSL_LIBS/bin:$PATH"
     }
     run: [
-      ${svm-cmd-gate} ["build,helloworld,test,relocations,maven,nativeimagehelp"]
+      ["$MUSL_LIBS/fix_paths.sh"]
+      ${svm-cmd-gate} ["build,helloworld,test,maven,nativeimagehelp,muslcbuild"]
     ]
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
     name: "gate-svm-style-fullbuild"
+    timelimit: "45:00"
     environment : {
       MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
     }
@@ -44,14 +53,14 @@ builds += [
       ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit,maven"]
     ]
   }
-  ${oraclejdk8} ${svm-common-windows-gate} {
+  ${oraclejdk8} ${svm-common-gate} ${svm-common-windows-oraclejdk8} {
     name: "gate-svm-windows-basics"
     environment: {
       PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
       MAVEN_REPO_LOCAL : "$BUILD_DIR\.m2"
     }
     run: [
-      ${svm-cmd-gate} ["build,helloworld,svmjunit,maven"]
+      ${svm-cmd-gate} ["build,helloworld,test,svmjunit,maven"]
     ]
   }
 ]

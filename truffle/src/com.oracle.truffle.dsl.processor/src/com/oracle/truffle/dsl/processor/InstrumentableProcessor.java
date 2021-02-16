@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,6 +118,15 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 if (!element.getKind().isClass() && !element.getKind().isInterface()) {
                     continue;
                 }
+                String packageName = ElementUtils.getPackageName(element);
+                if (packageName != null && packageName.equals(ElementUtils.getPackageName(types.GenerateWrapper))) {
+                    /*
+                     * Do not generate wrappers in the instrumentation package itself. For example
+                     * for snippet code the annotation processor should not generate code.
+                     */
+                    continue;
+                }
+
                 try {
                     if (element.getKind() != ElementKind.CLASS) {
                         emitError(element, String.format("Only classes can be annotated with %s.", types.GenerateWrapper.asElement().getSimpleName()));

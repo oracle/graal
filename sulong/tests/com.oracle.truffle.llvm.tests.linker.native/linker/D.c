@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,6 @@ extern int globalE;
 int globalD = 4;
 
 int methodD(int a, int b) {
-  printf("D\n");
-  return methodB(a, b) + methodC(a, b) + methodE(a, 2) + globalD + globalB + globalC + globalE;
+    printf("D\n");
+    return methodB(a, b) + methodC(a, b) + methodE(a, 2) + globalD + globalB + globalC + globalE;
 }

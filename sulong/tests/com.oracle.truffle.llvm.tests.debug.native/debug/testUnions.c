@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,7 +54,7 @@ union doubleUnion {
 union pointerUnion {
     short a;
     int b;
-    int* c;
+    int *c;
 };
 
 union simpleUnion myGlobalSimpleUnion;
@@ -62,8 +62,7 @@ union floatUnion myGlobalFloatUnion;
 union doubleUnion myGlobalDoubleUnion;
 union pointerUnion myGlobalPointerUnion;
 
-int start() __attribute__((constructor))
-{
+__attribute__((constructor)) int start() {
     myGlobalSimpleUnion.a = 1 << 4;
     myGlobalSimpleUnion.b = 1 << 5;
     myGlobalSimpleUnion.c = 1 << 9;
@@ -80,7 +79,7 @@ int start() __attribute__((constructor))
 
     myGlobalPointerUnion.a = 14;
     myGlobalPointerUnion.b = 23;
-    myGlobalPointerUnion.c = 0xabcdef;
+    myGlobalPointerUnion.c = (int *) 0xabcdef;
 
     union simpleUnion mySimpleUnion;
     mySimpleUnion.a = 1 << 3;
@@ -102,7 +101,7 @@ int start() __attribute__((constructor))
     union pointerUnion myPointerUnion;
     myPointerUnion.a = 213;
     myPointerUnion.b = 0x0f0f0f0f;
-    myPointerUnion.c = 0xffffffff000000ff;
+    myPointerUnion.c = (int *) 0xffffffff000000ff;
 
     return 0;
 }

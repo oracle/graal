@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,14 +44,14 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.dsl.Layout;
 
 public class DispatchTest {
 
     public static class Type {
     }
 
-    @Layout(dispatch = Type.class)
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout(dispatch = Type.class)
     public interface DispatchTestLayout {
 
         DynamicObject createDispatchTest();
@@ -63,7 +63,8 @@ public class DispatchTest {
         Assert.assertEquals(Type.class, DispatchTestLayoutImpl.DISPATCH_TEST_TYPE.dispatch());
     }
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface DispatchUnusedTestLayout {
 
         DynamicObject createDispatchUnusedTest();

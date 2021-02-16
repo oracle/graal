@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 
 /**
  * Libraries are specified with <code>public</code> and <code>abstract</code> Java classes that
@@ -282,5 +284,18 @@ public @interface GenerateLibrary {
      * @since 20.1
      */
     boolean dynamicDispatchEnabled() default true;
+
+    /**
+     * Enables push and pop of the encapsulating node when a library transitions from cached to
+     * uncached. The current encapsulating node is needed for correct stack trace location when
+     * library exports perform guest language calls. If a library is known to never need correct
+     * stack trace information, e.g. if all exports are known to not perform guest language calls,
+     * then pushing and popping of encapsulating nodes can be disabled. By default pushing and
+     * popping of encapsulating nodes is enabled.
+     *
+     * @see EncapsulatingNodeReference
+     * @since 20.3
+     */
+    boolean pushEncapsulatingNode() default true;
 
 }

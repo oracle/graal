@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,14 @@
  */
 package org.graalvm.tools.lsp.server.types;
 
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Predefined error codes.
+ */
 public enum ErrorCodes {
 
-    // Defined by JSON RPC
     ParseError(-32700),
     InvalidRequest(-32600),
     MethodNotFound(-32601),
@@ -36,9 +41,10 @@ public enum ErrorCodes {
     serverErrorEnd(-32000),
     ServerNotInitialized(-32002),
     UnknownErrorCode(-32001),
-    // Defined by the protocol.
     RequestCancelled(-32800),
-    ContentModified(-32801);
+    ContentModified(-32801),
+    MessageWriteError(1),
+    MessageReadError(2);
 
     private final int intValue;
 
@@ -48,5 +54,17 @@ public enum ErrorCodes {
 
     public int getIntValue() {
         return intValue;
+    }
+
+    private static final Map<Integer, ErrorCodes> lookup = new HashMap<>();
+
+    static {
+        for (ErrorCodes value : ErrorCodes.values()) {
+            lookup.put(value.getIntValue(), value);
+        }
+    }
+
+    public static ErrorCodes get(Integer intValue) {
+        return lookup.get(intValue);
     }
 }

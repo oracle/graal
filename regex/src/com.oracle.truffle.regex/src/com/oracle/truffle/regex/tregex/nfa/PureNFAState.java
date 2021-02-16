@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
@@ -269,7 +270,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
                 return KIND_EMPTY_MATCH;
             }
         }
-        throw new IllegalArgumentException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     public boolean canMatchZeroWidth() {
@@ -306,7 +307,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
             case KIND_EMPTY_MATCH:
                 return "EMPTY";
             default:
-                throw new IllegalStateException();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 

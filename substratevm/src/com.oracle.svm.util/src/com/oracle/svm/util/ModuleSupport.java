@@ -26,6 +26,7 @@ package com.oracle.svm.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -46,10 +47,27 @@ public final class ModuleSupport {
     }
 
     /**
+     * Checks if the Java run-time image contains a module with the given name.
+     */
+    @SuppressWarnings("unused")
+    public static boolean hasSystemModule(String moduleName) {
+        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        return false;
+    }
+
+    /**
      * Gets all resources in the modules named by {@code modules} from the Java runtime image.
      */
     @SuppressWarnings("unused")
-    public static List<String> getModuleResources(Collection<String> names) {
+    public static List<String> getModuleResources(Collection<Path> modulePath) {
+        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        return Collections.emptyList();
+    }
+
+    @SuppressWarnings("unused")
+    public static List<String> getSystemModuleResources(Collection<String> names) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
         return Collections.emptyList();
@@ -59,7 +77,7 @@ public final class ModuleSupport {
      * Add the proper module opening to allow accesses from accessingClass to declaringClass.
      */
     @SuppressWarnings("unused")
-    static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
+    public static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
     }

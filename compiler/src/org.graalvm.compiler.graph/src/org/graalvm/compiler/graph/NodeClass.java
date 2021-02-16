@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import static org.graalvm.compiler.graph.Edges.translateInto;
 import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
 import static org.graalvm.compiler.graph.Node.WithAllEdges;
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -53,7 +52,6 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Edges.Type;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -70,6 +68,7 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import sun.misc.Unsafe;
 
@@ -83,7 +82,7 @@ import sun.misc.Unsafe;
  */
 public final class NodeClass<T> extends FieldIntrospection<T> {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     // Timers for creation of a NodeClass instance
     private static final TimerKey Init_FieldScanning = DebugContext.timer("NodeClass.Init.FieldScanning");
     private static final TimerKey Init_FieldScanningInner = DebugContext.timer("NodeClass.Init.FieldScanning.Inner");
@@ -131,41 +130,19 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public static <T> NodeClass<T> get(Class<T> clazz) {
-        int numTries = 0;
-        while (true) {
-            boolean shouldBeInitializedBefore = UNSAFE.shouldBeInitialized(clazz);
-
-            NodeClass<T> result = getUnchecked(clazz);
-            if (result != null || clazz == NODE_CLASS) {
-                return result;
-            }
-
-            /*
-             * GR-9537: We observed a transient problem with TYPE fields being null. Retry a couple
-             * of times and print something to the log so that we can gather more diagnostic
-             * information without failing gates.
-             */
-            numTries++;
-            boolean shouldBeInitializedAfter = UNSAFE.shouldBeInitialized(clazz);
-            String msg = "GR-9537 Reflective field access of TYPE field returned null. This is probably a bug in HotSpot class initialization. " +
-                            " clazz: " + clazz.getTypeName() + ", numTries: " + numTries +
-                            ", shouldBeInitializedBefore: " + shouldBeInitializedBefore + ", shouldBeInitializedAfter: " + shouldBeInitializedAfter;
-            if (numTries <= 100) {
-                TTY.println(msg);
-                UNSAFE.ensureClassInitialized(clazz);
-            } else {
-                throw GraalError.shouldNotReachHere(msg);
-            }
-            return result;
+        NodeClass<T> result = getUnchecked(clazz);
+        if (result == null && clazz != NODE_CLASS) {
+            throw GraalError.shouldNotReachHere("TYPE field not initialized for class " + clazz.getTypeName());
         }
+        return result;
     }
 
     private static final Class<?> NODE_CLASS = Node.class;
     private static final Class<?> INPUT_LIST_CLASS = NodeInputList.class;
     private static final Class<?> SUCCESSOR_LIST_CLASS = NodeSuccessorList.class;
 
-    private static AtomicInteger nextIterableId = new AtomicInteger();
-    private static AtomicInteger nextLeafId = new AtomicInteger();
+    private static final AtomicInteger nextIterableId = new AtomicInteger();
+    private static final AtomicInteger nextLeafId = new AtomicInteger();
 
     private final InputEdges inputs;
     private final SuccessorEdges successors;
@@ -890,6 +867,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             // Use sparse map
             newNodes = EconomicMap.create(Equivalence.IDENTITY);
         }
+        graph.beforeNodeDuplication(oldGraph);
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 
         InplaceUpdateClosure replacementClosure = new InplaceUpdateClosure() {
@@ -1411,7 +1389,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             if ((myMask & LIST_MASK) == 0) {
                 Node curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input not alive " + curNode;
+                    assert curNode.isAlive() : "Input " + curNode + " of node " + node + " is not alive";
                     curNode.addUsage(node);
                 }
             } else {
@@ -1427,7 +1405,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             for (int i = 0; i < list.size(); ++i) {
                 Node curNode = list.get(i);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input not alive";
+                    assert curNode.isAlive() : "Input not alive " + curNode;
                     curNode.addUsage(node);
                 }
             }

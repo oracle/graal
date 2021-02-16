@@ -29,7 +29,6 @@ import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -38,10 +37,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -51,6 +50,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -59,7 +59,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
@@ -91,6 +90,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     private Object entryPointData;
     private boolean isInvoked;
     private boolean isImplementationInvoked;
+
+    private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
+    private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
+    private static final Object GRAPH_CACHE_CLEARED = "cleared";
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
@@ -141,22 +144,6 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
         typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
 
-        if (getName().startsWith("$SWITCH_TABLE$")) {
-            /*
-             * The Eclipse Java compiler generates methods that lazily initializes tables for Enum
-             * switches. The first invocation fills the table, subsequent invocations reuse the
-             * table. We call the method here, so that the table gets built. This ensures that Enum
-             * switches are allocation-free at run time.
-             */
-            assert Modifier.isStatic(getModifiers());
-            assert getSignature().getParameterCount(false) == 0;
-            try {
-                Method switchTableMethod = ReflectionUtil.lookupMethod(getDeclaringClass().getJavaClass(), getName());
-                switchTableMethod.invoke(null);
-            } catch (ReflectiveOperationException ex) {
-                throw GraalError.shouldNotReachHere(ex);
-            }
-        }
         this.qualifiedName = format("%H.%n(%P)");
     }
 
@@ -172,7 +159,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         ResolvedJavaType resolvedCatchType;
         try {
             resolvedCatchType = catchType.resolve(wrapped.getDeclaringClass());
-        } catch (NoClassDefFoundError e) {
+        } catch (LinkageError e) {
             /*
              * Type resolution fails if the catch type is missing. Just return the unresolved type.
              * The analysis doesn't model unresolved types, but we can reuse the JVMCI type; the
@@ -243,7 +230,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
          * The class constant of the declaring class is used for exception metadata, so marking a
          * method as invoked also makes the declaring class reachable.
          */
-        getDeclaringClass().registerAsInTypeCheck();
+        getDeclaringClass().registerAsReachable();
     }
 
     /** Get the set of all callers for this method, as inferred by the static analysis. */
@@ -283,7 +270,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
          * The class constant of the declaring class is used for exception metadata, so marking a
          * method as invoked also makes the declaring class reachable.
          */
-        getDeclaringClass().registerAsInTypeCheck();
+        getDeclaringClass().registerAsReachable();
     }
 
     public boolean isRootMethod() {
@@ -545,9 +532,9 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
      */
     private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
 
-    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(BigBang bb) {
+    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(BigBang bb, BytecodePosition originalLocation) {
         if (contextInsensitiveInvoke.get() == null) {
-            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this);
+            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this, originalLocation);
             boolean set = contextInsensitiveInvoke.compareAndSet(null, invoke);
             if (set) {
                 /*
@@ -566,4 +553,95 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         return invoke;
     }
 
+    /**
+     * Ensures that the method has been parsed, i.e., that the {@link StructuredGraph Graal IR} for
+     * the method is available.
+     * 
+     * @param clearCache if true, the cached graph is cleared, and no more calls to this method are
+     *            allowed. This reduces the memory footprint, since Graal IR graphs are typically
+     *            large.
+     * @return The successfully parsed graph, or null if clearCache was true in a previous call.
+     */
+    public AnalysisParsedGraph ensureGraphParsed(BigBang bb, boolean clearCache) {
+        while (true) {
+            Object curState = parsedGraphCacheState.get();
+
+            /*-
+             * This implements a state machine that ensures parsing is atomic. States: 
+             * 1) unparsed: represented by the String "unparsed".
+             * 2) parsing: represented by a locked ReentrantLock object that other threads can wait on.
+             * 3) parsed: represented by the ParsedGraph with the parsing result
+             * 4) cleared: represented by the String "cleared".
+             * 5) parsing error: represented by a Throwable
+             */
+
+            if (curState == GRAPH_CACHE_UNPARSED) {
+                ReentrantLock lock = new ReentrantLock();
+                lock.lock();
+                try {
+                    /*
+                     * Atomically try to claim the parsing. Note that the lock must be locked
+                     * already, and remain locked until the parsing is done. Other threads will wait
+                     * on this lock.
+                     */
+                    if (!parsedGraphCacheState.compareAndSet(GRAPH_CACHE_UNPARSED, lock)) {
+                        /* We lost the race, another thread is doing the parsing. */
+                        continue;
+                    }
+
+                    AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
+
+                    /*
+                     * Must be called before any other thread can access the graph, i.e., before the
+                     * graph is published and the lock is released.
+                     */
+                    bb.getHostVM().methodAfterParsingHook(bb, this, graph.getGraph());
+
+                    /*
+                     * Since we still hold the parsing lock, the transition form "parsing" to
+                     * "parsed" cannot fail.
+                     */
+                    boolean result = parsedGraphCacheState.compareAndSet(lock, clearCache ? GRAPH_CACHE_CLEARED : graph);
+                    AnalysisError.guarantee(result, "State transition failed");
+
+                    return graph;
+
+                } catch (Throwable ex) {
+                    parsedGraphCacheState.set(ex);
+                    throw ex;
+
+                } finally {
+                    lock.unlock();
+                }
+
+            } else if (curState instanceof ReentrantLock) {
+                ReentrantLock lock = (ReentrantLock) curState;
+                AnalysisError.guarantee(!lock.isHeldByCurrentThread(), "Recursive parsing request, would lead to endless waiting loop");
+
+                lock.lock();
+                /*
+                 * When we can acquire the lock, parsing has finished. The next loop iteration will
+                 * return the result.
+                 */
+                AnalysisError.guarantee(parsedGraphCacheState.get() != lock, "Parsing must have finished in the thread that installed the lock");
+                lock.unlock();
+
+            } else if (curState instanceof AnalysisParsedGraph) {
+                AnalysisParsedGraph result = (AnalysisParsedGraph) curState;
+                if (clearCache) {
+                    parsedGraphCacheState.set(GRAPH_CACHE_CLEARED);
+                }
+                return result;
+
+            } else if (curState == GRAPH_CACHE_CLEARED) {
+                return null;
+
+            } else if (curState instanceof Throwable) {
+                throw AnalysisError.shouldNotReachHere("parsing had failed in another thread", (Throwable) curState);
+
+            } else {
+                throw AnalysisError.shouldNotReachHere("Unknown state: " + curState);
+            }
+        }
+    }
 }

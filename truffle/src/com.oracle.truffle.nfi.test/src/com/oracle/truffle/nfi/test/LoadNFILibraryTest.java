@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,69 +44,77 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 public class LoadNFILibraryTest extends NFITest {
 
     private final String nativeTestLib = System.getProperty("native.test.lib");
 
-    private static TruffleObject eval(String format, Object... args) {
+    private static Object eval(String format, Object... args) {
         Source source = Source.newBuilder("nfi", String.format(format, args), "LoadLibraryTest").internal(true).build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
-        return (TruffleObject) target.call();
+        return target.call();
     }
 
     @Test
     public void loadDefault() {
-        TruffleObject library = eval("default");
+        Object library = eval("default");
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadTestLib() {
-        TruffleObject library = eval("load '%s'", nativeTestLib);
+        Object library = eval("load '%s'", nativeTestLib);
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadLazy() {
-        TruffleObject library = eval("load(RTLD_LAZY) '%s'", nativeTestLib);
+        Object library = eval("load(RTLD_LAZY) '%s'", nativeTestLib);
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadNow() {
-        TruffleObject library = eval("load(RTLD_NOW) '%s'", nativeTestLib);
+        Object library = eval("load(RTLD_NOW) '%s'", nativeTestLib);
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadLocal() {
-        TruffleObject library = eval("load(RTLD_LOCAL) '%s'", nativeTestLib);
+        Object library = eval("load(RTLD_LOCAL) '%s'", nativeTestLib);
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadGlobal() {
-        TruffleObject library = eval("load(RTLD_GLOBAL) '%s'", nativeTestLib);
+        Object library = eval("load(RTLD_GLOBAL) '%s'", nativeTestLib);
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadGlobalLazy() {
-        TruffleObject library = eval("load(RTLD_GLOBAL|RTLD_LAZY) '%s'", nativeTestLib);
+        Object library = eval("load(RTLD_GLOBAL|RTLD_LAZY) '%s'", nativeTestLib);
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadUnknownFlag() {
-        TruffleObject library = eval("load(_UNKNOWN_FLAG) '%s'", nativeTestLib);
+        Object library = eval("load(_UNKNOWN_FLAG) '%s'", nativeTestLib);
         Assert.assertNotNull(library);
     }
 
-    @Test(expected = UnsatisfiedLinkError.class)
+    @Test
     public void fileNotFound() {
-        eval("load /this/file/does/not/exist.so");
+        AbstractPolyglotTest.assertFails(() -> eval("load /this/file/does/not/exist.so"), loadNFIUnsatisfiedLinkError());
+    }
+
+    static Class<?> loadNFIUnsatisfiedLinkError() {
+        try {
+            return Class.forName("com.oracle.truffle.nfi.impl.NFIUnsatisfiedLinkError");
+        } catch (ClassNotFoundException cnf) {
+            throw new AssertionError("Cannot load NFIUnsatisfiedLinkError", cnf);
+        }
     }
 }

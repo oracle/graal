@@ -43,13 +43,14 @@ package org.graalvm.wasm.predefined.emscripten;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 public class AbortNode extends WasmBuiltinRootNode {
-    public AbortNode(WasmLanguage language, WasmModule module) {
+    public AbortNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
@@ -65,7 +66,7 @@ public class AbortNode extends WasmBuiltinRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private WasmTrap fail(int code) {
-        throw new WasmTrap(this, "Program aborted: " + code);
+    private WasmException fail(int code) {
+        throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Program aborted: %d", code);
     }
 }

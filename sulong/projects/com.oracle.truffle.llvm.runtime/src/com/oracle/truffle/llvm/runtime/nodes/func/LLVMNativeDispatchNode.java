@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,19 +37,16 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
+import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -57,50 +54,35 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     private final FunctionType type;
+    private final Source signatureSource;
 
-    @CompilationFinal private Object identity;
-    @Child InteropLibrary identityExecute;
+    @CompilationFinal private ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
 
-    protected LLVMNativeDispatchNode(FunctionType type) {
+    protected LLVMNativeDispatchNode(FunctionType type, Source signatureSource) {
         this.type = type;
+        this.signatureSource = signatureSource;
     }
 
     public abstract Object executeDispatch(Object function, Object[] arguments);
 
-    @TruffleBoundary
-    protected TruffleObject identityFunction() {
-        LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-        NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtension(NFIContextExtension.class);
-        String signature;
-        try {
-            signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
-        } catch (UnsupportedNativeTypeException e) {
-            throw new IllegalStateException(e);
+    NativeContextExtension getNativeCtxExt(ContextReference<LLVMContext> ctxRef) {
+        if (nativeCtxExtKey == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            nativeCtxExtKey = ctxRef.get().getLanguage().lookupContextExtension(NativeContextExtension.class);
         }
-        return nfiContextExtension.getNativeFunction(context, "identity", String.format("(POINTER):%s", signature));
+        return nativeCtxExtKey.get(ctxRef.get());
     }
 
-    protected Object dispatchIdentity(long pointer) {
-        try {
-            if (identity == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (identity == null) {
-                    identity = identityFunction();
-                    identityExecute = insert(InteropLibrary.getFactory().create(identity));
-                }
-            }
-            return identityExecute.execute(identity, pointer);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+    @TruffleBoundary
+    protected Object bindSignature(NativeContextExtension ctxExt, long pointer) {
+        return ctxExt.bindSignature(pointer, signatureSource);
     }
 
     @ExplodeLoop
     protected LLVMNativeConvertNode[] createToNativeNodes() {
-        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
-        for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < type.getArgumentTypes().length; i++) {
-            ret[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
+        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getNumberOfArguments() - LLVMCallNode.USER_ARGUMENT_OFFSET];
+        for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < type.getNumberOfArguments(); i++) {
+            ret[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = LLVMNativeConvertNode.createToNative(type.getArgumentType(i));
         }
         return ret;
     }
@@ -119,25 +101,26 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         return nativeArgs;
     }
 
-    @Specialization(guards = "function.asNative() == cachedFunction.asNative()")
-    @SuppressWarnings("unused")
+    /**
+     * @param function
+     * @see #executeDispatch(Object, Object[])
+     */
+    @Specialization(guards = {"function.asNative() == cachedFunction.asNative()", "!cachedFunction.isNull()"}, assumptions = "singleContextAssumption()")
     protected Object doCached(LLVMNativePointer function, Object[] arguments,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
-                    @Cached("function") LLVMNativePointer cachedFunction,
-                    @Cached("dispatchIdentity(cachedFunction.asNative())") Object nativeFunctionHandle,
+                    @Cached("function") @SuppressWarnings("unused") LLVMNativePointer cachedFunction,
+                    @Cached("bindSignature(getNativeCtxExt(context), cachedFunction.asNative())") Object nativeFunctionHandle,
                     @CachedLibrary("nativeFunctionHandle") InteropLibrary nativeCall,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
-        try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, nativeFunctionHandle, nativeArgs, null);
-        }
+        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, nativeFunctionHandle, nativeArgs, null);
         return fromNative.executeConvert(returnValue);
     }
 
-    @Specialization
+    @Specialization(replaces = "doCached", guards = "!function.isNull()")
     protected Object doGeneric(LLVMNativePointer function, Object[] arguments,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
@@ -146,9 +129,13 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
-        try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, dispatchIdentity(function.asNative()), nativeArgs, null);
-        }
+        Object bound = bindSignature(getNativeCtxExt(context), function.asNative());
+        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, bound, nativeArgs, null);
         return fromNative.executeConvert(returnValue);
+    }
+
+    @Specialization(guards = "function.isNull()")
+    protected Object doNull(@SuppressWarnings("unused") LLVMNativePointer function, @SuppressWarnings("unused") Object[] arguments) {
+        throw new LLVMNativePointerException(this, "Invalid native function pointer", null);
     }
 }

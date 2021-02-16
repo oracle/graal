@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.tests.interop;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -46,7 +47,7 @@ import org.junit.runner.RunWith;
 @RunWith(TruffleRunner.class)
 public class PointerArithmeticDerefTest extends InteropTestBase {
 
-    static TruffleObject testLibrary;
+    static Object testLibrary;
 
     @BeforeClass
     public static void loadLibrary() {
@@ -118,7 +119,7 @@ public class PointerArithmeticDerefTest extends InteropTestBase {
 
         @ExportMessage
         void toNative() {
-            Assert.fail("unexpected toNative");
+            throw CompilerDirectives.shouldNotReachHere("unexpected toNative");
         }
 
         void verify(int expectedOffset) {

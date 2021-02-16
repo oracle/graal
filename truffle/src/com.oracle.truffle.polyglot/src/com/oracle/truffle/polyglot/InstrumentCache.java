@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.polyglot;
+
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -379,7 +381,7 @@ final class InstrumentCache {
                     loadInstrumentImpl((TruffleInstrument.Provider) loader.loadClass(DEBUGGER_PROVIDER).getConstructor().newInstance(), list,
                                     classNamesUsed);
                 } catch (Exception e) {
-                    throw new AssertionError("Failed to discover debugger instrument.", e);
+                    throw shouldNotReachHere("Failed to discover debugger instrument.", e);
                 }
             }
         }

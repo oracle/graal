@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,8 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     }
 
     private void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
-        Context ctx = setupContext(compilationThresholdOption == null ? new String[0] : new String[]{"engine.CompilationThreshold", compilationThresholdOption});
+        Context ctx = setupContext(compilationThresholdOption == null ? new String[]{"engine.MultiTier", "false"}
+                        : new String[]{"engine.CompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
         ctx.eval("sl", "function test() {}");
         SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
 

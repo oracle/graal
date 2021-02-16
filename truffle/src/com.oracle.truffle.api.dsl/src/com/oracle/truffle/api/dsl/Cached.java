@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInterface;
 
 // Workaround for Eclipse formatter behaving different when running on JDK 9.
 // @formatter:off
@@ -299,6 +300,59 @@ public @interface Cached {
      * @since 19.0
      */
     String[] parameters() default {};
+
+    /**
+     * If set to <code>true</code> then weak references will be used to refer to this cached value
+     * in the generated node. The default value is <code>false</code>. The weak cached parameter is
+     * guaranteed to not become <code>null</code> in guards or specialization method invocations. If
+     * a weak cached parameter gets collected by the GC, then any compiled code remain unaffected
+     * and the specialization instance will not be removed. Specializations with collected cached
+     * references continue to count to the specialization limit. This is necessary to provide an
+     * upper bound for the number of invalidations that may happen for this specialization.
+     * <p>
+     * A weak cached parameter implicitly adds a <code>weakRef.get() != null</code> guard that is
+     * invoked before the cached value is referenced for the first time. This means that
+     * specializations which previously did not result in fall-through behavior may now
+     * fall-through. This is important if used in combination with {@link Fallback}. Weak cached
+     * parameters that are used as part of {@link GenerateUncached uncached} nodes, execute the
+     * cached initializer for each execution and therefore implicitly do not use a weak reference.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * &#64;GenerateUncached
+     * abstract class WeakInlineCacheNode extends Node {
+     *
+     *     abstract Object execute(Object arg0);
+     *
+     *     &#64;Specialization(guards = "cachedArg.equals(arg)", limit = "3")
+     *     Object s0(String arg,
+     *                     &#64;Cached(value = "arg", weak = true) String cachedArg) {
+     *         assertNotNull(cachedStorage);
+     *         return arg;
+     *     }
+     * }
+     * </pre>
+     *
+     * @see com.oracle.truffle.api.utilities.TruffleWeakReference
+     * @since 20.2
+     */
+    boolean weak() default false;
+
+    /**
+     * Specifies whether the cached parameter values of type {@link NodeInterface} should be adopted
+     * as its child by the current node. The default value is <code>true</code>, therefore all
+     * cached values of type {@link NodeInterface} and arrays of the same type are adopted. If the
+     * value is set to <code>false</code>, then no adoption is performed. It is useful to set adopt
+     * to <code>false</code> when nodes need to be referenced more than once in the AST.
+     * <p>
+     * If the type of the field is an {@link NodeInterface} array and adopt is set to
+     * <code>false</code>, then the compilation final {@link Cached#dimensions() dimensions}
+     * attribute needs to be specified explicitly.
+     *
+     * @since 20.2
+     */
+    boolean adopt() default true;
 
     /**
      * Allows sharing between multiple Cached parameters between multiple specializations or

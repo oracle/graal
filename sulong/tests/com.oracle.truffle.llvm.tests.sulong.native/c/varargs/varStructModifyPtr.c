@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,33 +30,33 @@
 #include <stdarg.h>
 
 struct _bar {
-  char c;
+    char c;
 };
 
 struct _point {
-  long x;
-  struct _bar *b;
+    long x;
+    struct _bar *b;
 };
 
 int foo(int x, ...) {
-  va_list argp;
+    va_list argp;
 
-  va_start(argp, x);
+    va_start(argp, x);
 
-  struct _point res1 = va_arg(argp, struct _point);
+    struct _point res1 = va_arg(argp, struct _point);
 
-  int result = res1.x + res1.b->c;
+    int result = res1.x + res1.b->c;
 
-  res1.x = 0;
-  res1.b->c = 0;
+    res1.x = 0;
+    res1.b->c = 0;
 
-  va_end(argp);
+    va_end(argp);
 
-  return result;
+    return result;
 }
 
 int main() {
-  struct _point p = { 19L, &(struct _bar){ 3 } };
+    struct _point p = { 19L, &(struct _bar){ 3 } };
 
-  return foo(2, p) + foo(2, p);
+    return foo(2, p) + foo(2, p);
 }

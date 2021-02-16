@@ -29,11 +29,11 @@ public interface ImageHeapObject {
 
     Object getObject();
 
-    void setHeapPartition(ImageHeapPartition partition);
+    void setHeapPartition(ImageHeapPartition value);
+
+    void setOffsetInPartition(long value);
+
+    long getOffset();
 
     ImageHeapPartition getPartition();
-
-    void setOffsetInPartition(long offset);
-
-    long getOffsetInPartition();
 }

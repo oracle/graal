@@ -44,6 +44,21 @@
 #define OS_OK 0
 #define OS_ERR -1
 
+/* Set by native-image during image build time. Indicates whether the built image is a static binary. */
+extern int __svm_vm_is_static_binary;
+/*
+    The way JDK checks IPv6 support on Linux involves checking if inet_pton exists using JVM_FindLibraryEntry. That
+    function in turn calls dlsym, which is a bad idea in a static binary.
+    This header provides that symbol, allowing us to return its address through JVM_FindLibraryEntry.
+*/
+#include <arpa/inet.h>
+
+#ifdef JNI_VERSION_9
+    #define JVM_INTERFACE_VERSION 6
+#else
+    #define JVM_INTERFACE_VERSION 4
+#endif
+
 /* macros for restartable system calls */
 
 #define RESTARTABLE(_cmd, _result) do { \
@@ -59,6 +74,10 @@
 JNIEXPORT void JNICALL initialize() {
 }
 
+JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
+    return JVM_INTERFACE_VERSION;
+}
+
 JNIEXPORT int JNICALL JVM_ActiveProcessorCount() {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
@@ -68,7 +87,24 @@ JNIEXPORT int JNICALL JVM_Connect(int fd, struct sockaddr* him, socklen_t len) {
 }
 
 JNIEXPORT void* JNICALL JVM_FindLibraryEntry(void* handle, const char* name) {
-    return dlsym(handle, name);
+    /*
+        Calls to this function from a static binary are inherently unsafe. On some libc implementations, it may result
+        in a segfault, while on others, the symbol could be wrongly not found. As of JDK11, this function is invoked in
+        only one place: IPv6 support checking.
+        As a safeguard, we restrict access to only known used symbols from the JDK code. If a future version introduces
+        a dependency on another symbol, it could result in hard-to-find bugs. Therefore, calling this function from a
+        static binary with an unknown symbol terminates the program.
+    */
+    if (__svm_vm_is_static_binary) {
+        if (strcmp(name, "inet_pton") == 0) {
+            return inet_pton;
+        }
+        fprintf(stderr, "Internal error: JVM_FindLibraryEntry called from a static native image with symbol: %s. Results may be unpredictable. Please report this issue to the SubstrateVM team.", name);
+        fflush(stderr);
+        exit(1);
+    } else {
+        return dlsym(handle, name);
+    }
 }
 
 JNIEXPORT int JNICALL JVM_GetHostName(char* name, int namelen) {

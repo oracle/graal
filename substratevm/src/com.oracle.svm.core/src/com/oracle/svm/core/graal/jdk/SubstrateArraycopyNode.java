@@ -27,15 +27,19 @@ package com.oracle.svm.core.graal.jdk;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
-final class SubstrateArraycopyNode extends BasicArrayCopyNode {
+public final class SubstrateArraycopyNode extends BasicArrayCopyNode {
     public static final NodeClass<SubstrateArraycopyNode> TYPE = NodeClass.create(SubstrateArraycopyNode.class);
 
     protected SubstrateArraycopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind, int bci) {
         super(TYPE, src, srcPos, dest, destPos, length, elementKind, bci);
+        if (this.elementKind == null) {
+            this.elementKind = ArrayCopy.selectComponentKind(this);
+        }
     }
 }

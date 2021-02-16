@@ -1,11 +1,10 @@
 # TRegex
 
-TRegex is an implementation of a subset of ECMAScript regular expressions that uses the GraalVM compiler and Truffle API to execute regular expressions in an efficient way.
+TRegex is a generic regular expression engine that uses the GraalVM compiler and Truffle API to execute regular expressions in an efficient way.
 Its role is to provide support for Truffle languages that need to expose regular expression functionality.
-In its current iteration, TRegex provides an implementation of ECMAScript regular expressions (ECMAScript regular expressions are based on the widely popular Perl 5 regular expressions).
+In its current iteration, TRegex provides an implementation of ECMAScript regular expressions (ECMAScript regular expressions are based on the widely popular Perl 5 regular expressions) and a subset of Python regular expressions.
 A distinguishing feature of TRegex is that it compiles regular expressions into finite-state automata.
 This means that the performance of searching for a match is predictable (linear to the size of the input).
-On the other hand, some features of ECMAScript regular expressions (notably backreferences and complex lookbehind assertions) are not supported and users of TRegex must supply a fallback implementation of regular expressions to handle such cases.
 
 
 ## Overview
@@ -22,8 +21,9 @@ This can lead to up to exponential execution times in specific adversarial cases
 Since TRegex adopts the automaton-based approach, the runtime of the matching procedure is consistent and predictable.
 However, the downside of the automaton-based approach is that it cannot cover some of the features which are now commonly supported by regular expression engines (e.g., backreferences, such as in `/([a-z]+)=\1/`, or lookbehind, such as in `/(?<=a.+)b/`).
 For this reason, TRegex only handles a subset of ECMAScript regular expressions and the rest must be handled by a fallback (backtracking) engine.
+TRegex provides a backtracking fallback engine for ECMAScript, other languages may have to supply another custom fallback engine for features not covered by ECMAScript.
 
-TRegex originated as part of the Graal JavaScript implementation, but is now standalone so implementers of other languages can use it to have a fast implementation of ECMAScript-like regular expressions.
+TRegex originated as part of the Graal JavaScript implementation, but is now standalone so implementers of other languages can use it.
 
 
 ## Using TRegex
@@ -38,25 +38,17 @@ The [TRegexUtil](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com
 
 ## Feature Support
 
-TRegex supports ECMAScript regular expressions as described in the ECMAScript 2018 specification, with the exception of some omissions, which are listed in the table below:
+TRegex supports ECMAScript regular expressions as described in the ECMAScript 2020 specification and can transpile Python regular expressions to ECMAScript.
 
-Feature                                                                                  | TRegex
----------------------------------------------------------------------------------------- | ------
-Backreferences                                                                           | ❌
-Negative lookaround<sup>[1](#fn1)</sup>                                                  | ❌
-[Full lookbehind](https://github.com/tc39/proposal-regexp-lookbehind)<sup>[2](#f2)</sup> | ❌
-
-<sub>
-<a name="fn1">1</a>: Positive lookaround is supported in TRegex.
-<br/>
-<a name="fn2">2</a>: TRegex only supports lookbehind assertions that consist of literal characters or character classes.
-</sub>
+Some features are not implemented in the DFA-based engine and will always cause a regular expression to run in the slower backtracking engine:
+* Backreferences
+* Negative lookaround assertions
+* Non-literal lookbehind assertions, i.e. lookbehind assertions that consist of more than just literal characters or character classes
 
 <br/>
-<br/>
 
-We are currently working on implementing negative lookahead and more support for lookbehind in TRegex.
-On the other hand, full support of backreferences is out of scope for a finite-state automaton engine like TRegex.
+We are currently working on implementing negative lookahead and more support for lookbehind in the DFA-based engine.
+On the other hand, full support of backreferences is out of scope for a finite-state automaton engine.
 
 
 ## License

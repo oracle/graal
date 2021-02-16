@@ -26,16 +26,20 @@
 
 package com.oracle.objectfile.debugentry;
 
+import java.nio.file.Path;
+
 /**
  * Tracks debug info associated with a Java source file.
  */
 public class FileEntry {
     private String fileName;
     private DirEntry dirEntry;
+    private Path cachePath;
 
-    public FileEntry(String fileName, DirEntry dirEntry) {
+    public FileEntry(String fileName, DirEntry dirEntry, Path cachePath) {
         this.fileName = fileName;
         this.dirEntry = dirEntry;
+        this.cachePath = cachePath;
     }
 
     /**
@@ -46,11 +50,21 @@ public class FileEntry {
     }
 
     public String getPathName() {
-        return getDirEntry().getPathString();
+        @SuppressWarnings("hiding")
+        DirEntry dirEntry = getDirEntry();
+        if (dirEntry == null) {
+            return "";
+        } else {
+            return dirEntry.getPathString();
+        }
     }
 
     public String getFullName() {
-        return getDirEntry().getPath().resolve(getFileName()).toString();
+        if (dirEntry == null) {
+            return fileName;
+        } else {
+            return dirEntry.getPath().resolve(getFileName()).toString();
+        }
     }
 
     /**
@@ -58,5 +72,22 @@ public class FileEntry {
      */
     public DirEntry getDirEntry() {
         return dirEntry;
+    }
+
+    /**
+     * The compilation directory in which to look for source files as a {@link String}.
+     */
+    public Path getCachePath() {
+        return cachePath;
+    }
+
+    @Override
+    public String toString() {
+        if (getDirEntry() == null) {
+            return getFileName() == null ? "-" : getFileName();
+        } else if (getFileName() == null) {
+            return "--";
+        }
+        return String.format("FileEntry(%s)", getFullName());
     }
 }

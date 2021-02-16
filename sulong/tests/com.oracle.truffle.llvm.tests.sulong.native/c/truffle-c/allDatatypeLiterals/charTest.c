@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  char c = 'c';
-  char d = 'd';
-  return d - c;
+    char c = 'c';
+    char d = 'd';
+    return d - c;
 }

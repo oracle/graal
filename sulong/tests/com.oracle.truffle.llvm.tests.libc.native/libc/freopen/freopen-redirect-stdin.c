@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,14 +33,24 @@
 #define BUFFER_SIZE 200
 
 int main() {
-  int oldStdin = dup(0);
-  freopen(__FILE__, "r", stdin);
-  char buf[BUFFER_SIZE];
-  while (fgets(buf, BUFFER_SIZE, stdin) == buf) {
-    printf("%s\n", buf);
-  }
-  fclose(stdin);
-  dup2(oldStdin, 0);
-  close(oldStdin);
-  stdin = fdopen(0, "r");
+#ifdef __GLIBC__
+    // assigning stdin is nonportable but is known to work on glibc [GR-11416]
+    int oldStdin = dup(0);
+    freopen(__FILE__, "r", stdin);
+    char buf[BUFFER_SIZE];
+    while (fgets(buf, BUFFER_SIZE, stdin) == buf) {
+        printf("%s\n", buf);
+    }
+    fclose(stdin);
+    dup2(oldStdin, 0);
+    close(oldStdin);
+    stdin = fdopen(0, "r");
+#else
+    FILE *fp = fopen(__FILE__, "r");
+    char buf[BUFFER_SIZE];
+    while (fgets(buf, BUFFER_SIZE, fp) == buf) {
+        printf("%s\n", buf);
+    }
+    fclose(fp);
+#endif
 }

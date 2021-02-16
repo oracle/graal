@@ -40,13 +40,15 @@ simpleToolMavenProjectGate:  {
       maven : "==3.3.9"
     }
     run : [
+        [set-export, ROOT_DIR, [pwd]]
         ${simpleToolMavenProjectGate.mx_cmd} ["build"],
-        ${simpleToolMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--suppress-javadoc", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ["mkdir", "tmp_mvn_repo"]
+        ["mx", "maven-install", "--repo", "tmp_mvn_repo", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos/"],
         ["python", "populate.py"],
         ["cd", "simpletool"],
-        ["mvn", "package"],
+        ["mvn", "-Dmaven.repo.local=$ROOT_DIR/tmp_mvn_repo", "package"],
         ["./simpletool", "js", "example.js"],
     ],
     targets : [gate],
@@ -63,13 +65,18 @@ simpleLanguageMavenProjectGate:  {
         valgrind: ">=3.9.0"
     }
     run : [
+        [set-export, ROOT_DIR, [pwd]]
         ${simpleLanguageMavenProjectGate.mx_cmd} ["build"],
-        ${simpleLanguageMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--suppress-javadoc", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ["mkdir", "tmp_mvn_repo"]
+        ["mx", "maven-install", "--all-suites", "--repo", "tmp_mvn_repo", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos"],
         ["python", "populate.py"],
         ["cd", "simplelanguage"],
-        ["mvn", "package"],
+        ["mvn", "-Dmaven.repo.local=$ROOT_DIR/tmp_mvn_repo", "package"],
+        ["./sl", "language/tests/Add.sl"],
+        ["./sl", "-dump", "language/tests/Add.sl"],
+        ["./sl", "-disassemble", "language/tests/Add.sl"],
         ["./sl", "language/tests/Add.sl"],
         ["./native/slnative", "language/tests/Add.sl"],
         ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],
@@ -100,25 +107,30 @@ builds += [
     targets : [gate],
     name: "gate-truffle-javadoc"
   },
-  ${solaris-sparcv9} ${oraclejdk8Only} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-solaris-lite-8"
-  },
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
+    run : [
+        ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
+        # only those tests excercise meaningfully implemented nodes
+        # e.g. com.oracle.truffle.api.dsl.test uses nodes that intentionally produce
+        # different results from fast/slow path specializations to test their activation
+        ["mx", "unittest", "com.oracle.truffle.api.test.polyglot", "com.oracle.truffle.nfi.test"],
+    ],
+    targets : [gate],
+    name: "gate-truffle-slow-path-unittests"
+  }
   ${darwin-amd64} ${oraclejdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-8"
   },
   ${darwin-amd64} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-oraclejdk-11"
   },
-  ${windows-amd64} ${oraclejdk8} ${truffleCommon} {
+  ${windows-amd64} ${oraclejdk8} ${truffleCommon} ${devkits.windows-oraclejdk8} {
     # TODO make that a full gate run
     # currently, some truffle unittests fail on windows
     run : [
       ["mx", "build" ],
       ["mx", "unittest", "--verbose" ]
     ]
-    packages : {
-      msvc : "==10.0"
-    }
     targets : [gate],
     name: "gate-truffle-nfi-windows-8",
   },
@@ -136,4 +148,8 @@ builds += [
     targets: [gate],
     name: "gate-truffle-test-benchmarks-8"
   }
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [
+        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacocout", "html"],
+        [mx, coverage-upload]
+    ], targets : [weekly], name: "weekly-truffle-coverage-8-linux-amd64"},
 ]

@@ -25,6 +25,7 @@
 package org.graalvm.compiler.graph;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodeinfo.Verbosity;
 
 /**
  * This error is the graph/node aware extension of {@link GraalError}.
@@ -71,11 +72,11 @@ public class GraalGraphError extends GraalError {
     }
 
     /**
-     * Adds a graph to the context of this VerificationError. The first graph added via this method
-     * will be returned by {@link #graph()}.
+     * Adds a graph to the context of this {@code GraalGraphError}. The first graph added via this
+     * method will be returned by {@link #graph()}.
      *
-     * @param newGraph the graph which is in a incorrect state, if the verification error was not
-     *            caused by a specific node
+     * @param newGraph the graph which is in a incorrect state, if the error was not caused by a
+     *            specific node
      */
     GraalGraphError addContext(Graph newGraph) {
         if (newGraph != this.graph) {
@@ -88,15 +89,22 @@ public class GraalGraphError extends GraalError {
     }
 
     /**
-     * Adds a node to the context of this VerificationError. The first node added via this method
-     * will be returned by {@link #node()}.
+     * Adds a node to the context of this {@code GraalGraphError}. The first node added via this
+     * method will be returned by {@link #node()}.
      *
      * @param newNode the node which is in a incorrect state, if the verification error was caused
      *            by a node
      */
     public GraalGraphError addContext(Node newNode) {
         if (newNode != this.node) {
-            addContext("node", newNode);
+            String nodeMessage;
+            try {
+                // Provide more detail about the node.
+                nodeMessage = newNode.toString(Verbosity.Debugger);
+            } catch (Throwable t) {
+                nodeMessage = newNode.toString();
+            }
+            addContext("node", nodeMessage);
             if (this.node == null) {
                 this.node = newNode;
             }

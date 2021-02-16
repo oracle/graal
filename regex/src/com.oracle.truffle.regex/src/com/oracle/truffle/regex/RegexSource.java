@@ -42,6 +42,7 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -51,17 +52,16 @@ public final class RegexSource implements JsonConvertible {
 
     private final String pattern;
     private final String flags;
-    private Source source;
+    private final RegexOptions options;
+    private final Source source;
     private boolean hashComputed = false;
     private int cachedHash;
 
-    public RegexSource(String pattern, String flags) {
+    public RegexSource(String pattern, String flags, RegexOptions options, Source source) {
         this.pattern = pattern;
         this.flags = flags;
-    }
-
-    public RegexSource(String pattern) {
-        this(pattern, "");
+        this.options = options;
+        this.source = source;
     }
 
     public String getPattern() {
@@ -72,11 +72,15 @@ public final class RegexSource implements JsonConvertible {
         return flags;
     }
 
+    public RegexOptions getOptions() {
+        return options;
+    }
+
+    public Encoding getEncoding() {
+        return options.getEncoding();
+    }
+
     public Source getSource() {
-        if (source == null) {
-            String text = toString();
-            source = Source.newBuilder(RegexLanguage.ID, text, text).internal(true).name(text).mimeType(RegexLanguage.MIME_TYPE).build();
-        }
         return source;
     }
 
@@ -84,9 +88,11 @@ public final class RegexSource implements JsonConvertible {
     public int hashCode() {
         if (!hashComputed) {
             final int prime = 31;
-            cachedHash = 1;
-            cachedHash = prime * cachedHash + pattern.hashCode();
-            cachedHash = prime * cachedHash + flags.hashCode();
+            int hash = 1;
+            hash = prime * hash + pattern.hashCode();
+            hash = prime * hash + flags.hashCode();
+            hash = prime * hash + options.hashCode();
+            cachedHash = hash;
             hashComputed = true;
         }
         return cachedHash;
@@ -96,14 +102,40 @@ public final class RegexSource implements JsonConvertible {
     public boolean equals(Object obj) {
         return this == obj || obj instanceof RegexSource &&
                         pattern.equals(((RegexSource) obj).pattern) &&
-                        flags.equals(((RegexSource) obj).flags);
+                        flags.equals(((RegexSource) obj).flags) &&
+                        options.equals(((RegexSource) obj).options);
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         return "/" + pattern + "/" + flags;
     }
 
+    @TruffleBoundary
+    public String toStringEscaped() {
+        StringBuilder sb = new StringBuilder(pattern.length() + 2);
+        sb.append('/');
+        int i = 0;
+        while (i < pattern.length()) {
+            int c = pattern.codePointAt(i);
+            if (0x20 <= c && c <= 0x7e) {
+                sb.appendCodePoint(c);
+            } else {
+                sb.append("\\u");
+                if (c > 0xffff) {
+                    i++;
+                    sb.append(String.format("{%06x}", c));
+                } else {
+                    sb.append(String.format("%04x", c));
+                }
+            }
+            i++;
+        }
+        return sb.append('/').append(flags).toString();
+    }
+
+    @TruffleBoundary
     public String toFileName() {
         StringBuilder sb = new StringBuilder(20);
         int i = 0;

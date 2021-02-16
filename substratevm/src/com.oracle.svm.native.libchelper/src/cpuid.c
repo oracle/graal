@@ -92,6 +92,7 @@ int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned
 #define bit_AVX512ER_compat      0x08000000
 #define bit_AVX512CD_compat      0x10000000
 #define bit_AVX512BW_compat      0x40000000
+#define bit_AVX512VL_compat      0x80000000
 #define bit_RTM_compat           0x00000800
 #define bit_ADX_compat           0x00080000
 #define bit_SSE4a_compat         0x00000040
@@ -106,6 +107,8 @@ int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned
 #define bit_SSSE3_compat         0x00000200
 #define bit_POPCNT_compat        0x00800000
 #define bit_AVX_compat           0x10000000
+#define bit_SHA_compat           0x20000000
+#define bit_FMA_compat           0x00001000
 
 /*
  * Extracts the CPU features by using cpuid.h.
@@ -142,6 +145,7 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fAVX    = !!(ecx & bit_AVX_compat);
   features->fAES    = !!(ecx & bit_AES_compat);
   features->fCLMUL  = !!(ecx & bit_PCLMUL_compat);
+  features->fFMA    = !!(ecx & bit_FMA_compat);
 
   if (max_level >= 7) {
     get_cpuid_count (7, 0, &eax, &ebx, &ecx, &edx);
@@ -158,6 +162,8 @@ void determineCPUFeatures(CPUFeatures* features) {
     features->fAVX512ER = !!(ebx & bit_AVX512ER_compat);
     features->fAVX512CD = !!(ebx & bit_AVX512CD_compat);
     features->fAVX512BW = !!(ebx & bit_AVX512BW_compat);
+    features->fAVX512VL = !!(ebx & bit_AVX512VL_compat);
+    features->fSHA      = !!(ebx & bit_SHA_compat);
   }
 
   // figuring out extended features
@@ -214,9 +220,6 @@ void determineCPUFeatures(CPUFeatures* features) {
 #ifndef HWCAP_A53MAC
 #define HWCAP_A53MAC        (1L << 30)
 #endif
-#ifndef HWCAP_DMB_ATOMICS
-#define HWCAP_DMB_ATOMICS   (1L << 31)
-#endif
 
 #define CPU_ARM 'A'
 #define CPU_CAVIUM 'C'
@@ -239,7 +242,7 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fLSE = !!(auxv & HWCAP_LSE);
   features->fSTXRPREFETCH = !!(auxv & HWCAP_STXR_PREFETCH);
   features->fA53MAC = !!(auxv & HWCAP_A53MAC);
-  features->fDMBATOMICS = !!(auxv & HWCAP_DMB_ATOMICS);
+  features->fDMBATOMICS = 0;
 
   //checking for features signaled in another way
 

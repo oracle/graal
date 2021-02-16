@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * Represents a location inside a resource, such as a line inside a text file.
  */
-public class Location {
-
-    final JSONObject jsonData;
+public class Location extends JSONBase {
 
     Location(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     public String getUri() {
@@ -79,9 +77,9 @@ public class Location {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 97 * hash + Objects.hashCode(this.getUri());
-        hash = 97 * hash + Objects.hashCode(this.getRange());
+        int hash = 2;
+        hash = 43 * hash + Objects.hashCode(this.getUri());
+        hash = 43 * hash + Objects.hashCode(this.getRange());
         return hash;
     }
 

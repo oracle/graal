@@ -41,6 +41,7 @@ import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -98,6 +99,16 @@ public class UnschedulableGraphTest extends GraalCompilerTest {
         return getDebugContext(options, null, method);
     }
 
+    @Override
+    protected OptimisticOptimizations getOptimisticOptimizations() {
+        /*
+         * Disable optimistic optimizations to make the test more resilient towards wrong/strange
+         * profiling information and the removal of never executed code as this can cause the
+         * assertions in this test to fail since the control flow graph is in an uncommon shape.
+         */
+        return OptimisticOptimizations.NONE;
+    }
+
     @Test
     @SuppressWarnings("try")
     public void test01() {
@@ -105,7 +116,7 @@ public class UnschedulableGraphTest extends GraalCompilerTest {
         try (AutoCloseable c = new TTY.Filter();
                         DebugContext debug = getDebugContext(method);
                         DebugCloseable s = debug.disableIntercept()) {
-            test("snippet01", 0, 1, 2);
+            test(debug.getOptions(), "snippet01", 0, 1, 2);
             Assert.fail("Compilation should not reach this point, must throw an exception before");
         } catch (Throwable t) {
             if (t.getMessage().contains("liveIn set of first block must be empty")) {

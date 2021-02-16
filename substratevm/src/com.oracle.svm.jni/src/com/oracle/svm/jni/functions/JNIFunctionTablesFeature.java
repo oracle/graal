@@ -30,8 +30,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -42,6 +41,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -56,7 +57,6 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MethodPointer;
-import com.oracle.svm.jni.JNIThreadLocalEnvironmentFeature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument;
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
@@ -83,15 +83,29 @@ public class JNIFunctionTablesFeature implements Feature {
     private final EnumSet<JavaKind> jniKinds = EnumSet.of(JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Char,
                     JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Void);
 
+    /**
+     * Metadata about the table pointed to by the {@code JNIEnv*} C pointer.
+     * 
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#interface_function_table">Documentation
+     *      for the Interface Function Table</a>
+     */
     private StructInfo functionTableMetadata;
 
+    /**
+     * Metadata about the table pointed to by the {@code JavaVM*} C pointer.
+     * 
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html#invocation_api_functions">Documentation
+     *      for the Invocation API Function Table</a>
+     */
     private StructInfo invokeInterfaceMetadata;
 
     private ResolvedJavaMethod[] generatedMethods;
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(JNIAccessFeature.class, JNIThreadLocalEnvironmentFeature.class);
+        return Arrays.asList(JNIAccessFeature.class);
     }
 
     @Override
@@ -111,7 +125,7 @@ public class JNIFunctionTablesFeature implements Feature {
         AnalysisType invokes = metaAccess.lookupJavaType(JNIInvocationInterface.class);
         AnalysisType exports = metaAccess.lookupJavaType(JNIInvocationInterface.Exports.class);
         AnalysisType functions = metaAccess.lookupJavaType(JNIFunctions.class);
-        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).flatMap(t -> Stream.of(t.getDeclaredMethods()));
+        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).flatMap(type -> Stream.of(type.getDeclaredMethods()));
         Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
                         (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
@@ -137,7 +151,8 @@ public class JNIFunctionTablesFeature implements Feature {
             boolean[] trueFalse = {true, false};
             for (boolean isSetter : trueFalse) {
                 for (boolean isStatic : trueFalse) {
-                    JNIFieldAccessorMethod method = new JNIFieldAccessorMethod(kind, isSetter, isStatic, generatedMethodClass, constantPool, wrappedMetaAccess);
+                    JNIFieldAccessorMethod method = ImageSingletons.lookup(JNIFieldAccessorMethod.Factory.class).create(kind, isSetter, isStatic, generatedMethodClass, constantPool,
+                                    wrappedMetaAccess);
                     AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
                     access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
                     generated.add(method);
@@ -206,8 +221,7 @@ public class JNIFunctionTablesFeature implements Feature {
     private void fillJNIFunctionsTable(CompilationAccessImpl access, CFunctionPointer[] table, CFunctionPointer defaultValue) {
         initializeFunctionPointerTable(access, table, defaultValue);
 
-        Class<JNIFunctions> clazz = JNIFunctions.class;
-        HostedType functions = access.getMetaAccess().lookupJavaType(clazz);
+        HostedType functions = access.getMetaAccess().lookupJavaType(JNIFunctions.class);
         HostedMethod[] methods = functions.getDeclaredMethods();
         for (HostedMethod method : methods) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());
@@ -245,6 +259,14 @@ public class JNIFunctionTablesFeature implements Feature {
         }
     }
 
+    /**
+     * Finds the field holding a pointer to a given method in a functions table.
+     * 
+     * @param info the functions table to search in
+     * @param name name of the method to search for
+     * @return information about the field holding a pointer to the method named {@code name} in
+     *         {@code info}
+     */
     private static StructFieldInfo findFieldFor(StructInfo info, String name) {
         for (ElementInfo element : info.getChildren()) {
             if (element instanceof StructFieldInfo) {

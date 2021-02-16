@@ -52,4 +52,9 @@ public class SerialWriteBarrier extends ObjectWriteBarrier {
     public boolean getVerifyOnly() {
         return verifyOnly;
     }
+
+    @Override
+    public Kind getKind() {
+        return Kind.POST_BARRIER;
+    }
 }

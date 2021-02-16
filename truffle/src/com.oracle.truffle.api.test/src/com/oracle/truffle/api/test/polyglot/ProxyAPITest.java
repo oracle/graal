@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -453,7 +452,10 @@ public class ProxyAPITest {
             return new Object[]{42};
         };
 
-        assertNull(value.getMemberKeys().iterator().next());
+        assertFails(() -> value.getMemberKeys(), PolyglotException.class, (e) -> {
+            assertTrue(e.isHostException());
+            assertTrue(e.asHostException() instanceof IllegalStateException);
+        });
         assertEquals(6, proxy.getMemberKeysCounter);
 
         proxy.getMemberKeys = () -> {

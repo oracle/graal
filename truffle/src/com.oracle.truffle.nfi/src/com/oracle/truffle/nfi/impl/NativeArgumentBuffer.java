@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,15 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.lang.reflect.Field;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.memory.ByteArraySupport;
+
+import sun.misc.Unsafe;
 
 abstract class NativeArgumentBuffer {
 
@@ -55,7 +61,7 @@ abstract class NativeArgumentBuffer {
         // keep this in sync with the code in com.oracle.truffle.nfi.native/src/internal.h
         OBJECT,
         STRING,
-        CLOSURE,
+        KEEPALIVE,
         ENV,
 
         BOOLEAN_ARRAY,
@@ -85,38 +91,256 @@ abstract class NativeArgumentBuffer {
     }
 
     static final class Array extends NativeArgumentBuffer {
+        private static final ByteArraySupport byteArraySupport;
 
-        private static final Class<? extends ByteBuffer> heapByteBuffer = ByteBuffer.wrap(new byte[0]).getClass();
+        static {
+            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                byteArraySupport = ByteArraySupport.bigEndian();
+            } else {
+                byteArraySupport = ByteArraySupport.littleEndian();
+            }
+        }
 
         final byte[] prim;
-        private final ByteBuffer primBuffer;
+        private int position;
 
         Array(int primSize, int objCount) {
             super(objCount);
             this.prim = new byte[primSize];
-            this.primBuffer = ByteBuffer.wrap(prim).order(ByteOrder.nativeOrder());
+            this.position = 0;
         }
 
         @Override
-        protected ByteBuffer getPrimBuffer() {
-            return CompilerDirectives.castExact(primBuffer, heapByteBuffer);
+        public int position() {
+            return position;
+        }
+
+        @Override
+        public void position(int newPosition) {
+            position = newPosition;
+        }
+
+        @Override
+        public byte getInt8() {
+            byte v = byteArraySupport.getByte(prim, position);
+            position += Byte.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putInt8(byte b) {
+            byteArraySupport.putByte(prim, position, b);
+            position += Byte.BYTES;
+        }
+
+        @Override
+        public short getInt16() {
+            short v = byteArraySupport.getShort(prim, position);
+            position += Short.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putInt16(short s) {
+            byteArraySupport.putShort(prim, position, s);
+            position += Short.BYTES;
+        }
+
+        @Override
+        public int getInt32() {
+            int v = byteArraySupport.getInt(prim, position);
+            position += Integer.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putInt32(int i) {
+            byteArraySupport.putInt(prim, position, i);
+            position += Integer.BYTES;
+        }
+
+        @Override
+        public long getInt64() {
+            long v = byteArraySupport.getLong(prim, position);
+            position += Long.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putInt64(long l) {
+            byteArraySupport.putLong(prim, position, l);
+            position += Long.BYTES;
+        }
+
+        @Override
+        public float getFloat() {
+            float v = byteArraySupport.getFloat(prim, position);
+            position += Float.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putFloat(float f) {
+            byteArraySupport.putFloat(prim, position, f);
+            position += Float.BYTES;
+        }
+
+        @Override
+        public double getDouble() {
+            double v = byteArraySupport.getDouble(prim, position);
+            position += Double.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putDouble(double d) {
+            byteArraySupport.putDouble(prim, position, d);
+            position += Double.BYTES;
         }
     }
 
     static final class Direct extends NativeArgumentBuffer {
+        private static final Unsafe UNSAFE;
+        private static final long BUFFER_ADDR_FIELD_OFFSET;
 
-        private static final Class<? extends ByteBuffer> directByteBuffer = ByteBuffer.allocateDirect(0).getClass();
+        static {
+            Field unsafeField;
+            try {
+                unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+                unsafeField.setAccessible(true);
+            } catch (NoSuchFieldException e) {
+                throw new RuntimeException(e);
+            }
 
-        private final ByteBuffer primBuffer;
+            try {
+                UNSAFE = (Unsafe) unsafeField.get(null);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+
+            try {
+                Field bufferAddrField = Buffer.class.getDeclaredField("address");
+                BUFFER_ADDR_FIELD_OFFSET = UNSAFE.objectFieldOffset(bufferAddrField);
+            } catch (NoSuchFieldException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private long buffer;
+        private int position;
+        private int size;
 
         Direct(ByteBuffer primBuffer, int objCount) {
             super(objCount);
-            this.primBuffer = CompilerDirectives.castExact(primBuffer, directByteBuffer).slice().order(ByteOrder.nativeOrder());
+            this.buffer = UNSAFE.getLong(primBuffer, BUFFER_ADDR_FIELD_OFFSET);
+            this.position = primBuffer.position();
+            this.size = primBuffer.limit();
         }
 
         @Override
-        protected ByteBuffer getPrimBuffer() {
-            return CompilerDirectives.castExact(primBuffer, directByteBuffer);
+        public int position() {
+            return position;
+        }
+
+        @Override
+        public void position(int newPosition) {
+            position = newPosition;
+        }
+
+        private void checkBounds(int startIndex, int length) {
+            if (!(length >= 1 && startIndex >= 0 && startIndex <= size - length)) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public byte getInt8() {
+            checkBounds(position, Byte.BYTES);
+            byte v = UNSAFE.getByte(buffer + position);
+            position += Byte.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putInt8(byte b) {
+            checkBounds(position, Byte.BYTES);
+            UNSAFE.putByte(buffer + position, b);
+            position += Byte.BYTES;
+        }
+
+        @Override
+        public short getInt16() {
+            checkBounds(position, Short.BYTES);
+            short v = UNSAFE.getShort(buffer + position);
+            position += Short.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putInt16(short s) {
+            checkBounds(position, Short.BYTES);
+            UNSAFE.putShort(buffer + position, s);
+            position += Short.BYTES;
+        }
+
+        @Override
+        public int getInt32() {
+            checkBounds(position, Integer.BYTES);
+            int v = UNSAFE.getInt(buffer + position);
+            position += Integer.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putInt32(int i) {
+            checkBounds(position, Integer.BYTES);
+            UNSAFE.putInt(buffer + position, i);
+            position += Integer.BYTES;
+        }
+
+        @Override
+        public long getInt64() {
+            checkBounds(position, Long.BYTES);
+            long v = UNSAFE.getLong(buffer + position);
+            position += Long.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putInt64(long l) {
+            checkBounds(position, Long.BYTES);
+            UNSAFE.putLong(buffer + position, l);
+            position += Long.BYTES;
+        }
+
+        @Override
+        public float getFloat() {
+            checkBounds(position, Float.BYTES);
+            float v = UNSAFE.getFloat(buffer + position);
+            position += Float.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putFloat(float f) {
+            checkBounds(position, Float.BYTES);
+            UNSAFE.putFloat(buffer + position, f);
+            position += Float.BYTES;
+        }
+
+        @Override
+        public double getDouble() {
+            checkBounds(position, Double.BYTES);
+            double v = UNSAFE.getDouble(buffer + position);
+            position += Double.BYTES;
+            return v;
+        }
+
+        @Override
+        public void putDouble(double d) {
+            checkBounds(position, Double.BYTES);
+            UNSAFE.putDouble(buffer + position, d);
+            position += Double.BYTES;
         }
     }
 
@@ -137,62 +361,40 @@ abstract class NativeArgumentBuffer {
 
     public void align(int alignment) {
         assert alignment >= 1;
-        int pos = getPrimBuffer().position();
+        int pos = position();
         if (pos % alignment != 0) {
             pos += alignment - (pos % alignment);
-            getPrimBuffer().position(pos);
+            position(pos);
         }
     }
 
-    protected abstract ByteBuffer getPrimBuffer();
+    public abstract int position();
 
-    public byte getInt8() {
-        return getPrimBuffer().get();
-    }
+    public abstract void position(int newPosition);
 
-    public void putInt8(byte b) {
-        getPrimBuffer().put(b);
-    }
+    public abstract byte getInt8();
 
-    public short getInt16() {
-        return getPrimBuffer().getShort();
-    }
+    public abstract void putInt8(byte b);
 
-    public void putInt16(short s) {
-        getPrimBuffer().putShort(s);
-    }
+    public abstract short getInt16();
 
-    public int getInt32() {
-        return getPrimBuffer().getInt();
-    }
+    public abstract void putInt16(short s);
 
-    public void putInt32(int i) {
-        getPrimBuffer().putInt(i);
-    }
+    public abstract int getInt32();
 
-    public long getInt64() {
-        return getPrimBuffer().getLong();
-    }
+    public abstract void putInt32(int i);
 
-    public void putInt64(long l) {
-        getPrimBuffer().putLong(l);
-    }
+    public abstract long getInt64();
 
-    public float getFloat() {
-        return getPrimBuffer().getFloat();
-    }
+    public abstract void putInt64(long l);
 
-    public void putFloat(float f) {
-        getPrimBuffer().putFloat(f);
-    }
+    public abstract float getFloat();
 
-    public double getDouble() {
-        return getPrimBuffer().getDouble();
-    }
+    public abstract void putFloat(float f);
 
-    public void putDouble(double d) {
-        getPrimBuffer().putDouble(d);
-    }
+    public abstract double getDouble();
+
+    public abstract void putDouble(double d);
 
     public long getPointer(int size) {
         switch (size) {
@@ -221,19 +423,23 @@ abstract class NativeArgumentBuffer {
     }
 
     public Object getObject(int size) {
-        int pos = getPrimBuffer().position();
-        getPrimBuffer().position(pos + size);
-        CompilerDirectives.transferToInterpreter();
-        throw new AssertionError("passing TruffleObject from native back to Truffle not yet supported");
+        int pos = position();
+        position(pos + size);
+        throw CompilerDirectives.shouldNotReachHere("passing TruffleObject from native back to Truffle not yet supported");
     }
 
     public void putObject(TypeTag tag, Object o, int size) {
-        int pos = getPrimBuffer().position();
+        int pos = position();
         int idx = objIdx++;
 
         patches[idx] = tag.encode(pos);
         objects[idx] = o;
 
-        getPrimBuffer().position(pos + size);
+        position(pos + size);
+    }
+
+    public void putPointerKeepalive(Object o, long ptr, int size) {
+        putObject(TypeTag.KEEPALIVE, o, 0);
+        putPointer(ptr, size);
     }
 }

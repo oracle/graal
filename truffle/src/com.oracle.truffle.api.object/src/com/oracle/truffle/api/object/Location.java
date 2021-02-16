@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
 /**
  * Property location.
  *
+ * Planned to be deprecated.
+ *
  * @see Shape
  * @see Property
  * @see DynamicObject
@@ -64,13 +66,13 @@ public abstract class Location {
     /** @since 0.8 or earlier */
     protected static IncompatibleLocationException incompatibleLocation() throws IncompatibleLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new IncompatibleLocationException();
+        throw IncompatibleLocationException.instance();
     }
 
     /** @since 0.8 or earlier */
     protected static FinalLocationException finalLocation() throws FinalLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new FinalLocationException();
+        throw FinalLocationException.instance();
     }
 
     /**
@@ -124,7 +126,8 @@ public abstract class Location {
      * @throws IncompatibleLocationException if value is of non-assignable type
      * @since 0.8 or earlier
      */
-    public final void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
+    @SuppressWarnings("deprecation")
+    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         if (canStore(value)) {
             store.setShapeAndGrow(oldShape, newShape);
             try {

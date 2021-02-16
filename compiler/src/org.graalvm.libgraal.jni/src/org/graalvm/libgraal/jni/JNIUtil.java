@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,16 @@
  */
 package org.graalvm.libgraal.jni;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
+import java.util.EnumSet;
+import java.util.Set;
+import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.libgraal.jni.JNI.JArray;
 import org.graalvm.libgraal.jni.JNI.JByteArray;
 import org.graalvm.libgraal.jni.JNI.JClass;
@@ -36,18 +45,40 @@ import org.graalvm.libgraal.jni.JNI.JObjectArray;
 import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNI.JThrowable;
 import org.graalvm.libgraal.jni.JNI.JValue;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.WordFactory;
+import static org.graalvm.word.WordFactory.nullPointer;
 
 /**
  * Helpers for calling JNI functions.
  */
 
 public final class JNIUtil {
+
+    private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";
+
+    private static final String[] METHOD_GET_JVMCI_CLASS_LOADER = {
+                    "getJVMCIClassLoader",
+                    "()Ljava/lang/ClassLoader;"
+    };
+    private static final String[] METHOD_GET_PLATFORM_CLASS_LOADER = {
+                    "getPlatformClassLoader",
+                    "()Ljava/lang/ClassLoader;"
+    };
+    private static final String[] METHOD_LOAD_CLASS = {
+                    "loadClass",
+                    "(Ljava/lang/String;)Ljava/lang/Class;"
+    };
 
     // Checkstyle: stop
     public static boolean IsSameObject(JNIEnv env, JObject ref1, JObject ref2) {
@@ -92,6 +123,11 @@ public final class JNIUtil {
     public static JMethodID GetMethodID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
         traceJNI("GetMethodID");
         return env.getFunctions().getGetMethodID().call(env, clazz, name, sig);
+    }
+
+    public static JNI.JFieldID GetStaticFieldID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
+        traceJNI("GetStaticFieldID");
+        return env.getFunctions().getGetStaticFieldID().call(env, clazz, name, sig);
     }
 
     public static JObjectArray NewObjectArray(JNIEnv env, int len, JClass componentClass, JObject initialElement) {
@@ -203,7 +239,7 @@ public final class JNIUtil {
     // Checkstyle: resume
 
     private static void traceJNI(String function) {
-        trace(2, "SVM->JNI: %s", function);
+        trace(2, "LIBGRAAL->JNI: %s", function);
     }
 
     private JNIUtil() {
@@ -264,23 +300,131 @@ public final class JNIUtil {
         return fqn.replace('.', '/');
     }
 
+    /**
+     * Returns a {@link JClass} for given binary name.
+     */
+    public static JClass findClass(JNIEnv env, String binaryName) {
+        try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(binaryName)) {
+            return JNIUtil.FindClass(env, name.get());
+        }
+    }
+
+    /**
+     * Finds a class in HotSpot heap using a given {@code ClassLoader}.
+     *
+     * @param env the {@code JNIEnv}
+     * @param binaryName the class binary name
+     */
+    public static JNI.JClass findClass(JNI.JNIEnv env, JNI.JObject classLoader, String binaryName) {
+        if (classLoader.isNull()) {
+            throw new IllegalArgumentException("ClassLoader must be non null.");
+        }
+        trace(1, "LIBGRAAL->HS: findClass");
+        JNI.JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS[0], METHOD_LOAD_CLASS[1]);
+        JNI.JValue params = StackValue.get(1, JNI.JValue.class);
+        params.addressOf(0).setJObject(JNIUtil.createHSString(env, binaryName.replace('/', '.')));
+        return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
+    }
+
+    /**
+     * Finds a class in HotSpot heap using JNI.
+     *
+     * @param env the {@code JNIEnv}
+     * @param classLoader the class loader to find class in or {@link WordFactory#nullPointer() NULL
+     *            pointer}.
+     * @param binaryName the class binary name
+     * @param required if {@code true} the {@link JNIExceptionWrapper} is thrown when the class is
+     *            not found. If {@code false} the {@code NULL pointer} is returned when the class is
+     *            not found.
+     */
+    public static JNI.JClass findClass(JNI.JNIEnv env, JNI.JObject classLoader, String binaryName, boolean required) {
+        Class<? extends Throwable> allowedException = null;
+        try {
+            if (classLoader.isNonNull()) {
+                allowedException = required ? null : ClassNotFoundException.class;
+                return findClass(env, classLoader, binaryName);
+            } else {
+                allowedException = required ? null : NoClassDefFoundError.class;
+                return findClass(env, binaryName);
+            }
+        } finally {
+            if (allowedException != null) {
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, allowedException);
+            } else {
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+            }
+        }
+    }
+
+    /**
+     * Returns a ClassLoader used to load the compiler classes.
+     */
+    public static JNI.JObject getJVMCIClassLoader(JNI.JNIEnv env) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            JNI.JClass clazz;
+            try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(CLASS_SERVICES)) {
+                clazz = JNIUtil.FindClass(env, className.get());
+            }
+            if (clazz.isNull()) {
+                throw new InternalError("No such class " + CLASS_SERVICES);
+            }
+            JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_JVMCI_CLASS_LOADER[0], METHOD_GET_JVMCI_CLASS_LOADER[1]);
+            if (getClassLoaderId.isNull()) {
+                throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_JVMCI_CLASS_LOADER[0], CLASS_SERVICES));
+            }
+            return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
+        } else {
+            JNI.JClass clazz;
+            try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(JNIUtil.getBinaryName(ClassLoader.class.getName()))) {
+                clazz = JNIUtil.FindClass(env, className.get());
+            }
+            if (clazz.isNull()) {
+                throw new InternalError("No such class " + ClassLoader.class.getName());
+            }
+            JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER[0], METHOD_GET_PLATFORM_CLASS_LOADER[1]);
+            if (getClassLoaderId.isNull()) {
+                throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_PLATFORM_CLASS_LOADER[0], ClassLoader.class.getName()));
+            }
+            return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
+        }
+    }
+
+    public static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, String methodName, String methodSignature) {
+        return findMethod(env, clazz, staticMethod, false, methodName, methodSignature);
+    }
+
+    private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, boolean optional,
+                    String methodName, String methodSignature) {
+        JNI.JMethodID result;
+        try (CTypeConversion.CCharPointerHolder name = toCString(methodName); CTypeConversion.CCharPointerHolder sig = toCString(methodSignature)) {
+            result = staticMethod ? GetStaticMethodID(env, clazz, name.get(), sig.get()) : GetMethodID(env, clazz, name.get(), sig.get());
+            if (optional) {
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, NoSuchMethodError.class);
+            } else {
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+            }
+            return result;
+        }
+    }
+
     /*----------------- TRACING ------------------*/
 
     private static Integer traceLevel;
+    private static final ThreadLocal<Boolean> inTrace = ThreadLocal.withInitial(() -> false);
 
-    private static final String JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
+    private static final String JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
 
     /**
      * Checks if JNI calls are verbose.
      */
     private static int traceLevel() {
         if (traceLevel == null) {
-            String var = System.getenv(JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME);
+            String var = Services.getSavedProperties().get(JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME);
             if (var != null) {
                 try {
                     traceLevel = Integer.parseInt(var);
                 } catch (NumberFormatException e) {
-                    TTY.printf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME, e);
+                    TTY.printf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME, e);
                     traceLevel = 0;
                 }
             } else {
@@ -300,9 +444,112 @@ public final class JNIUtil {
      */
     public static void trace(int level, String format, Object... args) {
         if (traceLevel() >= level) {
-            HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
-            String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
-            TTY.printf(indent + format + "%n", args);
+            // Prevents nested tracing of JNI calls originated from this method.
+            // The TruffleCompilerImpl redirects the TTY using a TTY.Filter to the
+            // TruffleCompilerRuntime#log(). In libgraal the HSTruffleCompilerRuntime#log() uses a
+            // FromLibGraalCalls#callVoid() to do the JNI call to the GraalTruffleRuntime#log(). The
+            // FromLibGraalCalls#callVoid() also traces the JNI call by calling trace(). The nested
+            // trace call should be ignored.
+            if (!inTrace.get()) {
+                inTrace.set(true);
+                try {
+                    JNILibGraalScope<?> scope = JNILibGraalScope.scopeOrNull();
+                    String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
+                    String prefix = "[" + IsolateUtil.getIsolateID() + ":" + Thread.currentThread().getName() + "]";
+                    TTY.printf(prefix + indent + format + "%n", args);
+                } finally {
+                    inTrace.remove();
+                }
+            }
         }
+    }
+
+    /*----------------- CHECKING ------------------*/
+
+    /**
+     * Checks that all {@code ToLibGraal}s are implemented and their HotSpot/libgraal ends points
+     * match.
+     */
+    @Platforms(HOSTED_ONLY.class)
+    public static void checkToLibGraalCalls(Class<?> toLibGraalEntryPointsClass, Class<?> toLibGraalCallsClass, Class<? extends Annotation> annotationClass) throws InternalError {
+        try {
+            Method valueMethod = annotationClass.getDeclaredMethod("value");
+            Type t = valueMethod.getGenericReturnType();
+            check(t instanceof Class<?> && ((Class<?>) t).isEnum(), "Annotation value must be enum.");
+            @SuppressWarnings("unchecked")
+            Set<? extends Enum<?>> unimplemented = EnumSet.allOf(((Class<?>) t).asSubclass(Enum.class));
+            for (Method libGraalMethod : toLibGraalEntryPointsClass.getDeclaredMethods()) {
+                Annotation call = libGraalMethod.getAnnotation(annotationClass);
+                if (call != null) {
+                    check(Modifier.isStatic(libGraalMethod.getModifiers()), "Method annotated by %s must be static: %s", annotationClass, libGraalMethod);
+                    CEntryPoint ep = libGraalMethod.getAnnotation(CEntryPoint.class);
+                    check(ep != null, "Method annotated by %s must also be annotated by %s: %s", annotationClass, CEntryPoint.class, libGraalMethod);
+                    String name = ep.name();
+                    String prefix = "Java_" + toLibGraalCallsClass.getName().replace('.', '_') + '_';
+                    check(name.startsWith(prefix), "Method must be a JNI entry point for a method in %s: %s", toLibGraalCallsClass, libGraalMethod);
+                    name = name.substring(prefix.length());
+                    Method hsMethod = findHSMethod(toLibGraalCallsClass, name, annotationClass);
+                    Class<?>[] libGraalParameters = libGraalMethod.getParameterTypes();
+                    Class<?>[] hsParameters = hsMethod.getParameterTypes();
+                    check(hsParameters.length + 2 == libGraalParameters.length, "%s should have 2 more parameters than %s", libGraalMethod, hsMethod);
+                    check(libGraalParameters.length >= 3, "Expect at least 3 parameters: %s", libGraalMethod);
+                    check(libGraalParameters[0] == JNIEnv.class, "Parameter 0 must be of type %s: %s", JNIEnv.class, libGraalMethod);
+                    check(libGraalParameters[1] == JClass.class, "Parameter 1 must be of type %s: %s", JClass.class, libGraalMethod);
+                    check(libGraalParameters[2] == long.class, "Parameter 2 must be of type long: %s", libGraalMethod);
+
+                    check(hsParameters[0] == long.class, "Parameter 0 must be of type long: %s", hsMethod);
+
+                    for (int i = 3, j = 1; i < libGraalParameters.length; i++, j++) {
+                        Class<?> libgraal = libGraalParameters[i];
+                        Class<?> hs = hsParameters[j];
+                        Class<?> hsExpect;
+                        if (hs.isPrimitive()) {
+                            hsExpect = libgraal;
+                        } else {
+                            if (libgraal == JString.class) {
+                                hsExpect = String.class;
+                            } else if (libgraal == JByteArray.class) {
+                                hsExpect = byte[].class;
+                            } else if (libgraal == JLongArray.class) {
+                                hsExpect = long[].class;
+                            } else if (libgraal == JObjectArray.class) {
+                                hsExpect = Object[].class;
+                            } else {
+                                check(libgraal == JObject.class, "must be");
+                                hsExpect = Object.class;
+                            }
+                        }
+                        check(hsExpect.isAssignableFrom(hs), "HotSpot parameter %d (%s) incompatible with libgraal parameter %d (%s): %s", j, hs.getName(), i, libgraal.getName(), hsMethod);
+                    }
+                    unimplemented.remove(valueMethod.invoke(call));
+                }
+            }
+            check(unimplemented.isEmpty(), "Unimplemented libgraal calls: %s", unimplemented);
+        } catch (ReflectiveOperationException e) {
+            throw new InternalError(e);
+        }
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    private static void check(boolean condition, String format, Object... args) {
+        if (!condition) {
+            throw new InternalError(String.format(format, args));
+        }
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    private static Method findHSMethod(Class<?> hsClass, String name, Class<? extends Annotation> annotationClass) {
+        Method res = null;
+        for (Method m : hsClass.getDeclaredMethods()) {
+            if (m.getName().equals(name)) {
+                check(res == null, "More than one method named \"%s\" in %s", name, hsClass);
+                Annotation call = m.getAnnotation(annotationClass);
+                check(call != null, "Method must be annotated by %s: %s", annotationClass, m);
+                check(Modifier.isStatic(m.getModifiers()) && Modifier.isNative(m.getModifiers()), "Method must be static and native: %s", m);
+                res = m;
+            }
+        }
+        check(res != null, "Could not find method named \"%s\" in %s", name, hsClass);
+        return res;
     }
 }

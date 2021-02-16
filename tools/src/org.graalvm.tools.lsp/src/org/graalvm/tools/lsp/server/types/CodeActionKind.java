@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,10 @@ import java.util.Map;
  */
 public enum CodeActionKind {
 
+    /**
+     * Empty kind.
+     */
+    Empty(""),
     /**
      * Base kind for quickfix actions: 'quickfix'.
      */
@@ -74,7 +78,17 @@ public enum CodeActionKind {
     /**
      * Base kind for an organize imports source action: `source.organizeImports`.
      */
-    SourceOrganizeImports("source.organizeImports");
+    SourceOrganizeImports("source.organizeImports"),
+    /**
+     * Base kind for auto-fix source actions: `source.fixAll`.
+     *
+     * Fix all actions automatically fix errors that have a clear fix that do not require user
+     * input. They should not suppress errors or perform unsafe fixes such as generating new types
+     * or classes.
+     *
+     * @since 3.15.0
+     */
+    SourceFixAll("source.fixAll");
 
     private final String stringValue;
 

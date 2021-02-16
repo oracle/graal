@@ -40,16 +40,17 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo(cycles = CYCLES_IGNORED, cyclesRationale = "profiling should be ignored", size = SIZE_IGNORED, sizeRationale = "profiling should be ignored")
-public abstract class ProfileNode extends DeoptimizingFixedWithNextNode implements Simplifiable, Lowerable {
+public abstract class ProfileNode extends DeoptimizingFixedWithNextNode implements SingleMemoryKill, Simplifiable, Lowerable {
     public static class Options {
         @Option(help = "Control probabilistic profiling on AMD64", type = OptionType.Expert)//
         public static final OptionKey<Boolean> ProbabilisticProfiling = new OptionKey<>(true);
@@ -82,11 +83,6 @@ public abstract class ProfileNode extends DeoptimizingFixedWithNextNode implemen
     @Override
     public boolean canDeoptimize() {
         return true;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     public ResolvedJavaMethod getProfiledMethod() {
@@ -144,5 +140,10 @@ public abstract class ProfileNode extends DeoptimizingFixedWithNextNode implemen
                 }
             }
         }
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 }

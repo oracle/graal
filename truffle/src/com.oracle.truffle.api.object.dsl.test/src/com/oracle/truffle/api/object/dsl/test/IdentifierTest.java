@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,15 @@ package com.oracle.truffle.api.object.dsl.test;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.dsl.Layout;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
 import org.junit.Assert;
 
 public class IdentifierTest {
+    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface IdentifierTestLayout {
 
         String A_IDENTIFIER = "a_identifier";
@@ -64,8 +66,8 @@ public class IdentifierTest {
     @Test
     public void testContainsKey() {
         final DynamicObject object = LAYOUT.createIdentifierTest(1, 2);
-        Assert.assertTrue(object.containsKey(IdentifierTestLayout.A_IDENTIFIER));
-        Assert.assertTrue(object.containsKey(IdentifierTestLayout.B_IDENTIFIER));
+        Assert.assertTrue(LIBRARY.containsKey(object, IdentifierTestLayout.A_IDENTIFIER));
+        Assert.assertTrue(LIBRARY.containsKey(object, IdentifierTestLayout.B_IDENTIFIER));
     }
 
     @Test
@@ -78,16 +80,16 @@ public class IdentifierTest {
     @Test
     public void testGet() {
         final DynamicObject object = LAYOUT.createIdentifierTest(1, 2);
-        Assert.assertEquals(1, object.get(IdentifierTestLayout.A_IDENTIFIER));
-        Assert.assertEquals(2, object.get(IdentifierTestLayout.B_IDENTIFIER));
+        Assert.assertEquals(1, LIBRARY.getOrDefault(object, IdentifierTestLayout.A_IDENTIFIER, null));
+        Assert.assertEquals(2, LIBRARY.getOrDefault(object, IdentifierTestLayout.B_IDENTIFIER, null));
     }
 
     @Test
     public void testSet() {
         final DynamicObject object = LAYOUT.createIdentifierTest(1, 2);
-        Assert.assertEquals(1, object.get(IdentifierTestLayout.A_IDENTIFIER));
-        object.set(IdentifierTestLayout.A_IDENTIFIER, 11);
-        Assert.assertEquals(11, object.get(IdentifierTestLayout.A_IDENTIFIER));
+        Assert.assertEquals(1, LIBRARY.getOrDefault(object, IdentifierTestLayout.A_IDENTIFIER, null));
+        LIBRARY.putIfPresent(object, IdentifierTestLayout.A_IDENTIFIER, 11);
+        Assert.assertEquals(11, LIBRARY.getOrDefault(object, IdentifierTestLayout.A_IDENTIFIER, null));
     }
 
 }

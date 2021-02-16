@@ -28,34 +28,40 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "Reflection")
 public final class Target_jdk_internal_reflect_Reflection {
 
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
-    public static Class<?> getCallerClass() {
-        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer());
+    private static Class<?> getCallerClass() {
+        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class) //
     @NeverInline("Starting a stack walk in the caller frame")
-    public static Class<?> getCallerClass(int depth) {
-        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), depth);
+    private static Class<?> getCallerClass(int depth) {
+        if (depth == -1) { // means: behave same as getCallerClass()
+            StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true);
+        } else if (depth < 0) {
+            return null;
+        } else if (depth == 0) {
+            return Target_jdk_internal_reflect_Reflection.class;
+        }
+        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true, depth - 1, false);
     }
 
     @Substitute
-    public static int getClassAccessFlags(Class<?> cls) {
+    private static int getClassAccessFlags(Class<?> cls) {
         return cls.getModifiers();
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
-    public static /* native */ boolean areNestMates(Class<?> currentClass, Class<?> memberClass) {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_jdk_internal_reflect_Reflection.areNestMates");
+    private static boolean areNestMates(Class<?> currentClass, Class<?> memberClass) {
+        return DynamicHub.fromClass(currentClass).isNestmateOf(memberClass);
     }
 }

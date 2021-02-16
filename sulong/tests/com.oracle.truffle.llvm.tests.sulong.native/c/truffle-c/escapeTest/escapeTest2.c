@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,25 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-int bar(int *a) {
-  *(a + 0) = 9;
-  *(a + 1) = 8;
-  *(a + 2) = 7;
+void bar(int *a) {
+    *(a + 0) = 9;
+    *(a + 1) = 8;
+    *(a + 2) = 7;
 }
 
 int foo() {
-  int a[3];
-  int b;
+    int a[3];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+    int b;
+#pragma clang diagnostic pop
 
-  a[0] = 1;
-  a[1] = 2;
-  a[2] = 3;
+    a[0] = 1;
+    a[1] = 2;
+    a[2] = 3;
 
-  bar(a);
+    bar(a);
 
-  return a[0] + a[1] + a[2];
+    return a[0] + a[1] + a[2];
 }
 
 int main() {
-  return foo();
+    return foo();
 }

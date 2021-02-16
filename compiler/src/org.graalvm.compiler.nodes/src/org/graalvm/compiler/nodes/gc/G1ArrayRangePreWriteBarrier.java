@@ -41,4 +41,8 @@ public final class G1ArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
         super(TYPE, address, length, elementStride);
     }
 
+    @Override
+    public Kind getKind() {
+        return Kind.PRE_BARRIER;
+    }
 }

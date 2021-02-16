@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64ArrayEqualsOp> TYPE = LIRInstructionClass.create(AArch64ArrayEqualsOp.class);
 
     private final JavaKind kind;
-    private final int arrayBaseOffset;
+    private final int array1BaseOffset;
+    private final int array2BaseOffset;
     private final int arrayIndexScale;
 
     @Def({REG}) protected Value resultValue;
@@ -64,13 +65,19 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     @Temp({REG}) protected Value temp3;
     @Temp({REG}) protected Value temp4;
 
-    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, Value result, Value array1, Value array2, Value length, boolean directPointers) {
+    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2, Value length, boolean directPointers) {
         super(TYPE);
 
         assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
         this.kind = kind;
 
-        this.arrayBaseOffset = directPointers ? 0 : tool.getProviders().getMetaAccess().getArrayBaseOffset(kind);
+        /*
+         * The arrays are expected to have the same kind and thus the same index scale. For
+         * primitive arrays, this will mean the same array base offset as well; but if we compare a
+         * regular array with a hybrid object, they may have two different offsets.
+         */
+        this.array1BaseOffset = directPointers ? 0 : array1BaseOffset;
+        this.array2BaseOffset = directPointers ? 0 : array2BaseOffset;
         this.arrayIndexScale = tool.getProviders().getMetaAccess().getArrayIndexScale(kind);
 
         this.resultValue = result;
@@ -97,8 +104,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         try (ScratchRegister sc1 = masm.getScratchRegister()) {
             Register rscratch1 = sc1.getRegister();
             // Load array base addresses.
-            masm.lea(array1, AArch64Address.createUnscaledImmediateAddress(asRegister(array1Value), arrayBaseOffset));
-            masm.lea(array2, AArch64Address.createUnscaledImmediateAddress(asRegister(array2Value), arrayBaseOffset));
+            masm.loadAddress(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array1Value), array1BaseOffset));
+            masm.loadAddress(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array2Value), array2BaseOffset));
 
             // Get array length in bytes.
             masm.mov(rscratch1, arrayIndexScale);
@@ -135,8 +142,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.ands(64, length, length, ~(VECTOR_SIZE - 1));  // vector count (in bytes)
         masm.branchConditionally(ConditionFlag.EQ, compareTail);
 
-        masm.lea(array1, AArch64Address.createRegisterOffsetAddress(array1, length, false));
-        masm.lea(array2, AArch64Address.createRegisterOffsetAddress(array2, length, false));
+        masm.loadAddress(array1, AArch64Address.createRegisterOffsetAddress(array1, length, false));
+        masm.loadAddress(array2, AArch64Address.createRegisterOffsetAddress(array2, length, false));
         masm.sub(64, length, zr, length);
 
         // Align the main loop
@@ -155,8 +162,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
          * Compare the remaining bytes with an unaligned memory load aligned to the end of the
          * array.
          */
-        masm.lea(array1, AArch64Address.createUnscaledImmediateAddress(array1, -VECTOR_SIZE));
-        masm.lea(array2, AArch64Address.createUnscaledImmediateAddress(array2, -VECTOR_SIZE));
+        masm.loadAddress(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, array1, -VECTOR_SIZE));
+        masm.loadAddress(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, array2, -VECTOR_SIZE));
         masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, result, false));
         masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(array2, result, false));
         masm.eor(64, rscratch1, temp, rscratch1);
@@ -180,8 +187,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             // Compare trailing 4 bytes, if any.
             masm.ands(32, zr, result, 4);
             masm.branchConditionally(ConditionFlag.EQ, compare2Bytes);
-            masm.ldr(32, temp, AArch64Address.createPostIndexedImmediateAddress(array1, 4));
-            masm.ldr(32, rscratch1, AArch64Address.createPostIndexedImmediateAddress(array2, 4));
+            masm.ldr(32, temp, AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array1, 4));
+            masm.ldr(32, rscratch1, AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array2, 4));
             masm.eor(32, rscratch1, temp, rscratch1);
             masm.cbnz(32, rscratch1, breakLabel);
 
@@ -190,8 +197,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
                 masm.bind(compare2Bytes);
                 masm.ands(32, zr, result, 2);
                 masm.branchConditionally(ConditionFlag.EQ, compare1Byte);
-                masm.ldr(16, temp, AArch64Address.createPostIndexedImmediateAddress(array1, 2));
-                masm.ldr(16, rscratch1, AArch64Address.createPostIndexedImmediateAddress(array2, 2));
+                masm.ldr(16, temp, AArch64Address.createImmediateAddress(16, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array1, 2));
+                masm.ldr(16, rscratch1, AArch64Address.createImmediateAddress(16, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array2, 2));
                 masm.eor(32, rscratch1, temp, rscratch1);
                 masm.cbnz(32, rscratch1, breakLabel);
 

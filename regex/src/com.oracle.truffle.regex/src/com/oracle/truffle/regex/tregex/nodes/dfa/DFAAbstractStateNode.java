@@ -74,16 +74,4 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
     public final short[] getSuccessors() {
         return successors;
     }
-
-    /**
-     * Calculates this state's successor and returns its ID ({@link DFAStateNode#getId()}) via
-     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}. This return value is called
-     * "successor index" and may either be an index of the successors array (between 0 and
-     * {@link #getSuccessors()}{@code .length}) or {@link #FS_RESULT_NO_SUCCESSOR}.
-     *
-     * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @param compactString
-     */
-    public abstract void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString);
 }

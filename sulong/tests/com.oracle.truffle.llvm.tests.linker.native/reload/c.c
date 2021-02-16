@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,5 +31,5 @@
 #include <stdio.h>
 
 __attribute__((constructor)) static void beginC(void) {
-  printf("ctor c\n");
+    printf("ctor c\n");
 }

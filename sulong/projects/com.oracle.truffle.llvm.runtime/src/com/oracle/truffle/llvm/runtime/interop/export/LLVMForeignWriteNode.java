@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.export;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -39,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.ValueKind;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
@@ -49,24 +48,24 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     public abstract void execute(LLVMPointer ptr, LLVMInteropType type, Object value) throws UnsupportedMessageException;
 
-    @Specialization(guards = "type.getKind() == cachedKind", limit = "VALUE_KIND_COUNT")
+    @Specialization(guards = "type.kind == cachedKind", limit = "VALUE_KIND_COUNT")
     static void doValue(LLVMPointer ptr, LLVMInteropType.Value type, Object value,
-                    @Cached(value = "type.getKind()", allowUncached = true) @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
-                    @Cached(parameters = "cachedKind") LLVMStoreNode store,
+                    @Cached(value = "type.kind", allowUncached = true) @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
+                    @Cached(parameters = "cachedKind") LLVMOffsetStoreNode store,
                     @Cached("createForeignToLLVM(type)") ForeignToLLVM toLLVM) {
-        Object llvmValue = toLLVM.executeWithForeignToLLVMType(value, type.getBaseType(), cachedKind.foreignToLLVMType);
-        store.executeWithTarget(ptr, llvmValue);
+        Object llvmValue = toLLVM.executeWithForeignToLLVMType(value, type.baseType, cachedKind.foreignToLLVMType);
+        store.executeWithTargetGeneric(ptr, 0, llvmValue);
     }
 
+    /**
+     * @param ptr
+     * @param type
+     * @param value
+     * @see #execute(LLVMPointer, LLVMInteropType, Object)
+     */
     @Specialization
-    @SuppressWarnings("unused")
     static void doStructured(LLVMPointer ptr, LLVMInteropType.Structured type, Object value) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
-    }
-
-    LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
-        CompilerAsserts.neverPartOfCompilation();
-        return CommonNodeFactory.createStoreNode(kind);
     }
 
     protected ForeignToLLVM createForeignToLLVM(LLVMInteropType.Value type) {

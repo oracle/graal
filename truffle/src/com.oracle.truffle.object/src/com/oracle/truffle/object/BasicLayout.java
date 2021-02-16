@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,36 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 
+@SuppressWarnings("deprecation")
 public class BasicLayout extends DefaultLayout {
-    BasicLayout(EnumSet<ImplicitCast> allowedImplicitCasts, Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy) {
-        super(allowedImplicitCasts, dynamicObjectClass, strategy);
+    BasicLayout(LayoutStrategy strategy, int allowedImplicitCasts) {
+        super(DynamicObjectBasic.class, strategy, allowedImplicitCasts, DynamicObjectBasic.OBJECT_FIELD_LOCATIONS, DynamicObjectBasic.PRIMITIVE_FIELD_LOCATIONS);
     }
 
-    public static LayoutImpl createLayoutImpl(Layout.Builder builder) {
-        return new BasicLayout(getAllowedImplicitCasts(builder), DynamicObjectBasic.class, DefaultStrategy.SINGLETON);
+    public static LayoutImpl createLayoutImpl(com.oracle.truffle.api.object.Layout.Builder builder) {
+        Class<? extends DynamicObject> dynamicObjectClass = getType(builder);
+        if (dynamicObjectClass != null) {
+            return DefaultLayout.createCoreLayout(builder);
+        }
+        return new BasicLayout(DefaultStrategy.SINGLETON, implicitCastFlags(getAllowedImplicitCasts(builder)));
     }
 
     @Override
     public DynamicObject newInstance(Shape shape) {
         return new DynamicObjectBasic(shape);
+    }
+
+    @Override
+    protected DynamicObject construct(Shape shape) {
+        return new DynamicObjectBasic(shape);
+    }
+
+    @Override
+    protected boolean isLegacyLayout() {
+        return true;
     }
 
     @Override

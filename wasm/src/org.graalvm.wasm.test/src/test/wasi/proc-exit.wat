@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,9 @@
 (module
   (type (;0;) (func (param i32)))
   (type (;1;) (func (result i32)))
-  (import "wasi" "proc_exit" (func $__wasi_proc_exit (type 0)))
+  (import "wasi_snapshot_preview1" "proc_exit" (func $__wasi_proc_exit (type 0)))
+  (memory (;0;) 4)
+  (export "memory" (memory 0))
   (func (export "_main") (type 1)
     i32.const 11
     call $__wasi_proc_exit

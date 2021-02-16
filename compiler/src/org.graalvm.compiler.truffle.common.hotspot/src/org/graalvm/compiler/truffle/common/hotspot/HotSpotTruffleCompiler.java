@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.common.hotspot;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 
 public interface HotSpotTruffleCompiler extends TruffleCompiler {
@@ -34,7 +35,14 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
      * AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod() for disabling compilation and
      * inlining for truffle call boundary methods.
      */
-    void installTruffleCallBoundaryMethods();
+    void installTruffleCallBoundaryMethods(CompilableTruffleAST compilable);
 
-    int pendingTransferToInterpreterOffset();
+    int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable);
+
+    /**
+     * Releases caches used for PE/compilation.
+     */
+    default void purgeCaches() {
+        // nop
+    }
 }

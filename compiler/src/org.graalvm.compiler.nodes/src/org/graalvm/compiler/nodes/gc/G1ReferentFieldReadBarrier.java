@@ -56,4 +56,9 @@ public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
     public boolean isDynamicCheck() {
         return dynamicCheck;
     }
+
+    @Override
+    public Kind getKind() {
+        return Kind.PRE_BARRIER;
+    }
 }

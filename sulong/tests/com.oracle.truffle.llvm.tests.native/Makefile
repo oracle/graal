@@ -45,7 +45,7 @@ OBJECTS=${SOURCES:src/%.c=bin/%.o}
 default: bin/$(LIBSULONGTEST)
 ifeq ($(OS), darwin)
 bin/${LIBSULONGTEST}: LDFLAGS+=-install_name ${LIBSULONGTEST}
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 else
 CLANG_PREFIX=
 endif

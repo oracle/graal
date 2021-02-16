@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.java;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -36,6 +37,8 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.Value;
+
 /**
  * A special purpose store node that differs from {@link LogicCompareAndSwapNode} in that it returns
  * either the expected value or the compared against value instead of a boolean.
@@ -44,12 +47,8 @@ import org.graalvm.word.LocationIdentity;
 public final class ValueCompareAndSwapNode extends AbstractCompareAndSwapNode {
     public static final NodeClass<ValueCompareAndSwapNode> TYPE = NodeClass.create(ValueCompareAndSwapNode.class);
 
-    public ValueCompareAndSwapNode(ValueNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location) {
-        this((AddressNode) address, expectedValue, newValue, location, BarrierType.NONE);
-    }
-
-    public ValueCompareAndSwapNode(AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location, BarrierType barrierType) {
-        super(TYPE, address, location, expectedValue, newValue, barrierType, expectedValue.stamp(NodeView.DEFAULT).meet(newValue.stamp(NodeView.DEFAULT)).unrestricted());
+    public ValueCompareAndSwapNode(AddressNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder) {
+        super(TYPE, address, location, expectedValue, newValue, barrierType, expectedValue.stamp(NodeView.DEFAULT).meet(newValue.stamp(NodeView.DEFAULT)).unrestricted(), memoryOrder);
     }
 
     @Override
@@ -57,6 +56,8 @@ public final class ValueCompareAndSwapNode extends AbstractCompareAndSwapNode {
         assert getNewValue().stamp(NodeView.DEFAULT).isCompatible(getExpectedValue().stamp(NodeView.DEFAULT));
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         assert !this.canDeoptimize();
-        gen.setResult(this, tool.emitValueCompareAndSwap(tool.getLIRKind(getAccessStamp(NodeView.DEFAULT)), gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue())));
+        Value result = tool.emitValueCompareAndSwap(tool.getLIRKind(getAccessStamp(NodeView.DEFAULT)),
+                        gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()), memoryOrder);
+        gen.setResult(this, result);
     }
 }

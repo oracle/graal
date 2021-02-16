@@ -28,13 +28,16 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -57,6 +60,7 @@ public class CAnnotationProcessor {
     private final NativeLibraries nativeLibs;
     private CCompilerInvoker compilerInvoker;
     private Path tempDirectory;
+    private Path queryCodeDirectory;
 
     private NativeCodeInfo codeInfo;
     private QueryCodeWriter writer;
@@ -64,12 +68,19 @@ public class CAnnotationProcessor {
     public CAnnotationProcessor(NativeLibraries nativeLibs, NativeCodeContext codeCtx) {
         this.nativeLibs = nativeLibs;
         this.codeCtx = codeCtx;
-        if (!ImageSingletons.contains(CCompilerInvoker.class)) {
+
+        if (ImageSingletons.contains(CCompilerInvoker.class)) {
+            this.compilerInvoker = ImageSingletons.lookup(CCompilerInvoker.class);
+            this.queryCodeDirectory = compilerInvoker.tempDirectory;
+            this.tempDirectory = compilerInvoker.tempDirectory;
+        } else {
             assert CAnnotationProcessorCache.Options.UseCAPCache.getValue();
-            return;
         }
-        this.compilerInvoker = ImageSingletons.lookup(CCompilerInvoker.class);
-        this.tempDirectory = compilerInvoker.tempDirectory;
+
+        if (CAnnotationProcessorCache.Options.QueryCodeDir.hasBeenSet()) {
+            String queryCodeDir = CAnnotationProcessorCache.Options.QueryCodeDir.getValue();
+            this.queryCodeDirectory = FileSystems.getDefault().getPath(queryCodeDir).toAbsolutePath();
+        }
     }
 
     public NativeCodeInfo process(CAnnotationProcessorCache cache) {
@@ -86,12 +97,17 @@ public class CAnnotationProcessor {
              * Generate C source file (the "Query") that will produce the information needed (e.g.,
              * size of struct/union and offsets to their fields, value of enum/macros etc.).
              */
-            writer = new QueryCodeWriter(tempDirectory);
+            writer = new QueryCodeWriter(queryCodeDirectory);
             Path queryFile = writer.write(codeInfo);
             if (nativeLibs.getErrors().size() > 0) {
                 return codeInfo;
             }
             assert Files.exists(queryFile);
+
+            if (CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration.getValue()) {
+                // Only output query code and exit
+                return codeInfo;
+            }
 
             Path binary = compileQueryCode(queryFile);
             if (nativeLibs.getErrors().size() > 0) {
@@ -139,18 +155,20 @@ public class CAnnotationProcessor {
             throw VMError.shouldNotReachHere(queryFile + " invalid queryFile");
         }
         String fileName = fileNamePath.toString();
-        Path binary = queryFile.resolveSibling(compilerInvoker.asExecutableName(fileName.substring(0, fileName.lastIndexOf("."))));
+        Path binary = tempDirectory.resolve(compilerInvoker.asExecutableName(fileName.substring(0, fileName.lastIndexOf("."))));
         ArrayList<String> options = new ArrayList<>();
         options.addAll(codeCtx.getDirectives().getOptions());
-        options.addAll(LibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
-        compilerInvoker.compileAndParseError(options, queryFile, binary, this::reportCompilerError, nativeLibs.debug);
+        if (Platform.includedIn(Platform.LINUX.class)) {
+            options.addAll(LibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
+        }
+        compilerInvoker.compileAndParseError(SubstrateOptions.StrictQueryCodeCompilation.getValue(), options, queryFile, binary, this::reportCompilerError);
         return binary;
     }
 
     protected void reportCompilerError(ProcessBuilder current, Path queryFile, String line) {
         for (String header : codeCtx.getDirectives().getHeaderFiles()) {
             if (line.contains(header.substring(1, header.length() - 1) + ": No such file or directory")) {
-                UserError.abort("Basic header file missing (" + header + "). Make sure headers are available on your system.");
+                UserError.abort("Basic header file missing (%s). Make sure headers are available on your system.", header);
             }
         }
         List<Object> elements = new ArrayList<>();

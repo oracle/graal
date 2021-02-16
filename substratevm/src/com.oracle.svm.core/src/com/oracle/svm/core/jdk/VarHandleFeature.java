@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 //Checkstyle: allow reflection
 
 import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -202,17 +203,7 @@ public class VarHandleFeature implements Feature {
             VMError.guarantee(markAsUnsafeAccessed != null, "New VarHandle found after static analysis");
 
             Field field = findVarHandleField(obj);
-            if (info.isStatic) {
-                /*
-                 * GR-10238 implements Unsafe access for static fields, then this branch can be
-                 * removed and static fields can be properly marked for Unsafe access too.
-                 */
-                // Checkstyle: stop
-                System.out.println("WARNING GR-10238: VarHandle for static field is currently not fully supported. Static field " + field + " is not properly marked for Unsafe access!");
-                // Checkstyle: resume
-            } else {
-                markAsUnsafeAccessed.accept(field);
-            }
+            markAsUnsafeAccessed.accept(field);
         }
         return obj;
     }
@@ -245,11 +236,21 @@ class VarHandleFieldStaticBasePrimitiveAccessor {
     static Object get(@SuppressWarnings("unused") Object varHandle) {
         return StaticFieldsSupport.getStaticPrimitiveFields();
     }
+
+    @SuppressWarnings("unused")
+    static void set(Object varHandle, Object value) {
+        throw unimplemented("Setting fields through VarHandles not supported");
+    }
 }
 
 class VarHandleFieldStaticBaseObjectAccessor {
     static Object get(@SuppressWarnings("unused") Object varHandle) {
         return StaticFieldsSupport.getStaticObjectFields();
+    }
+
+    @SuppressWarnings("unused")
+    static void set(Object varHandle, Object value) {
+        throw unimplemented("Setting fields through VarHandles not supported");
     }
 }
 

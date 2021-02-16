@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.Instrumentation;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
@@ -51,6 +52,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.Services;
 
 /**
@@ -96,6 +98,8 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     public abstract CompilerConfiguration createCompilerConfiguration();
 
+    public abstract Instrumentation createInstrumentation(OptionValues options);
+
     /**
      * Collect the set of available {@linkplain HotSpotBackendFactory backends} for this compiler
      * configuration.
@@ -126,8 +130,10 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 for (HotSpotBackendFactory backend : GraalServices.load(HotSpotBackendFactory.class)) {
                     if (backend.getName().equals(backendName)) {
                         Class<? extends Architecture> arch = backend.getArchitecture();
-                        HotSpotBackendFactory oldEntry = backends.put(arch, backend);
-                        assert oldEntry == null || oldEntry == backend : "duplicate Graal backend";
+                        if (arch != null) {
+                            HotSpotBackendFactory oldEntry = backends.put(arch, backend);
+                            assert oldEntry == null || oldEntry == backend : "duplicate Graal backend";
+                        }
                     }
                 }
             }
@@ -191,7 +197,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * @param name the name of the compiler configuration to select (optional)
      */
     @SuppressWarnings("try")
-    public static CompilerConfigurationFactory selectFactory(String name, OptionValues options) {
+    public static CompilerConfigurationFactory selectFactory(String name, OptionValues options, HotSpotJVMCIRuntime runtime) {
         CompilerConfigurationFactory factory = null;
         try (InitTimer t = timer("CompilerConfigurationFactory.selectFactory")) {
             String value = name == null ? Options.CompilerConfiguration.getValue(options) : name;
@@ -200,7 +206,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {
                     System.out.println("    " + candidate.name);
                 }
-                HotSpotGraalServices.exit(0);
+                HotSpotGraalServices.exit(0, runtime);
             } else if (value != null) {
                 for (CompilerConfigurationFactory candidate : GraalServices.load(CompilerConfigurationFactory.class)) {
                     if (candidate.name.equals(value)) {

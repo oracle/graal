@@ -31,21 +31,21 @@
 SUSPEND
 
 
-STOP 44 STEP_INTO "start"
+STOP 42 STEP_INTO "start"
 
 
-STOP 38 STEP_OVER "foo"
+STOP 37 STEP_OVER "foo"
 
 
-STOP 39 STEP_OUT "foo"
+STOP 38 STEP_OUT "foo"
 
 
-STOP 44 CONTINUE "start"
+STOP 42 CONTINUE "start"
 
 
-STOP 48 CONTINUE "start"
+STOP 46 CONTINUE "start"
 
 
-BREAK 51 CONTINUE "start"
+BREAK 49 CONTINUE "start"
 
 

@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 107 CONTINUE "start"
+BREAK 106 CONTINUE "start"
     OPEN_SCOPE
         MEMBER structured "union pointerUnion" "myPointerUnion"
             MEMBER int "short" "a" "255"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,10 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include <cstdio>
 
-#include "cxa_exception.hpp"
+#include "cxa_exception.h"
 #include "private_typeinfo.h"
 
 namespace __cxxabiv1 {
@@ -41,24 +40,20 @@ namespace ___sulong_import_base64 {
 // we use base64 encoded library names
 // libname base64(libc++abi)
 namespace bGliYysrYWJp {
-static
-__cxa_exception*
-cxa_exception_from_exception_unwind_exception(_Unwind_Exception* unwind_exception);
+static __cxa_exception *cxa_exception_from_exception_unwind_exception(_Unwind_Exception *unwind_exception);
 
-static
-void*
-thrown_object_from_cxa_exception(__cxa_exception* exception_header);
+static void *thrown_object_from_cxa_exception(__cxa_exception *exception_header);
 
-} // end libc++
-} // end ___sulong_import_base64
+} // namespace bGliYysrYWJp
+} // namespace ___sulong_import_base64
 
 extern "C" {
 
 unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
     __cxa_exception *ex = ___sulong_import_base64::bGliYysrYWJp::cxa_exception_from_exception_unwind_exception(unwindHeader);
     void *p = ___sulong_import_base64::bGliYysrYWJp::thrown_object_from_cxa_exception(ex);
-    __shim_type_info *et = dynamic_cast<__shim_type_info*>(ex->exceptionType);
-    __shim_type_info *ct = dynamic_cast<__shim_type_info*>(catchType);
+    __shim_type_info *et = dynamic_cast<__shim_type_info *>(ex->exceptionType);
+    __shim_type_info *ct = dynamic_cast<__shim_type_info *>(catchType);
     if (et == NULL || ct == NULL) {
         fprintf(stderr, "libsulong: Type error in sulong_eh_canCatch(...).\n");
         abort();
@@ -71,6 +66,6 @@ unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info 
     }
 }
 
-}  // extern "C"
+} // extern "C"
 
-}  // abi
+} // namespace __cxxabiv1

@@ -27,222 +27,250 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+
+#include <stdlib.h>
+#include <graalvm/llvm/polyglot.h>
 
 struct Point {
-  int x;
-  int y;
-  double (*length)();
-  struct Point *(*add)(struct Point *p);
+    int x;
+    int y;
+    double (*length)();
+    struct Point *(*add)(struct Point *p);
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(Point)
+#pragma clang diagnostic pop
 
 extern "C" int distSquared(void *a, void *b) {
-  int distX = polyglot_as_Point(b)->x - polyglot_as_Point(a)->x;
-  int distY = polyglot_as_Point(b)->y - polyglot_as_Point(a)->y;
-  return distX * distX + distY * distY;
+    int distX = polyglot_as_Point(b)->x - polyglot_as_Point(a)->x;
+    int distY = polyglot_as_Point(b)->y - polyglot_as_Point(a)->y;
+    return distX * distX + distY * distY;
 }
 
 struct DoublePoint {
-  double x;
-  double y;
+    double x;
+    double y;
 };
 
 extern "C" int distSquaredDesugared(struct DoublePoint a, struct DoublePoint b) {
-  int distX = b.x - a.x;
-  int distY = b.y - a.y;
-  return distX * distX + distY * distY;
+    int distX = b.x - a.x;
+    int distY = b.y - a.y;
+    return distX * distX + distY * distY;
 }
 
 struct ByValPoint {
-  int x;
-  long a;
-  long b;
-  int y;
+    int x;
+    long a;
+    long b;
+    int y;
 };
 
 extern "C" int distSquaredByVal(struct ByValPoint a, struct ByValPoint b) {
-  int distX = b.x - a.x;
-  int distY = b.y - a.y;
-  return distX * distX + distY * distY;
+    int distX = b.x - a.x;
+    int distY = b.y - a.y;
+    return distX * distX + distY * distY;
 }
 
 extern "C" long byValGet(struct ByValPoint a) {
-  return a.a + a.b;
+    return a.a + a.b;
 }
 
 struct NestedPoint {
-  int x;
-  struct {
-    long a;
-    long b;
-  } nested;
-  int y;
+    int x;
+    struct {
+        long a;
+        long b;
+    } nested;
+    int y;
 };
 
 extern "C" int distSquaredNestedByVal(struct NestedPoint a, struct NestedPoint b) {
-  int distX = b.x - a.x;
-  int distY = b.y - a.y;
-  return distX * distX + distY * distY;
+    int distX = b.x - a.x;
+    int distY = b.y - a.y;
+    return distX * distX + distY * distY;
 }
 
 extern "C" long nestedByValGetNested(struct NestedPoint a) {
-  return a.nested.a + a.nested.b;
+    return a.nested.a + a.nested.b;
 }
 
 struct SmallNested {
-  int x;
-  struct {
-    int y;
-  } nested;
+    int x;
+    struct {
+        int y;
+    } nested;
 };
 
 extern "C" long nestedByValGetSmallNested(struct SmallNested a) {
-  return a.x + a.nested.y;
+    return a.x + a.nested.y;
 }
 
 struct ArrStruct {
-  int a;
-  int b;
-  int x[2];
+    int a;
+    int b;
+    int x[2];
 };
 
 extern "C" int arrStructSum(struct ArrStruct s) {
-  return s.a + s.b + s.x[0] + s.x[1];
+    return s.a + s.b + s.x[0] + s.x[1];
 }
 
 struct BigArrStruct {
-  int a;
-  int b;
-  int x[5];
+    int a;
+    int b;
+    int x[5];
 };
 
 extern "C" int bigArrStructSum(struct BigArrStruct s) {
-  int sum = 0;
+    int sum = 0;
 
-  for (int i = 0; i < 5; i++) {
-    sum += s.x[i];
-  }
+    for (int i = 0; i < 5; i++) {
+        sum += s.x[i];
+    }
 
-  return sum;
+    return sum;
 }
 
 extern "C" void flipPoint(void *value) {
-  struct Point *point = polyglot_as_Point(value);
-  int tmp = point->x;
-  point->x = point->y;
-  point->y = tmp;
+    struct Point *point = polyglot_as_Point(value);
+    int tmp = point->x;
+    point->x = point->y;
+    point->y = tmp;
+}
+
+extern "C" polyglot_typeid getPointType() {
+    return polyglot_Point_typeid();
+}
+
+extern "C" void flipPointDynamic(void *value, polyglot_typeid typeId) {
+    struct Point *point = (struct Point *) polyglot_as_typed(value, typeId);
+    int tmp = point->x;
+    point->x = point->y;
+    point->y = tmp;
 }
 
 extern "C" int sumPoints(void *pointArray) {
-  int sum;
+    int sum = 0;
 
-  struct Point *arr = polyglot_as_Point_array(pointArray);
-  int len = polyglot_get_array_size(pointArray);
-  for (int i = 0; i < len; i++) {
-    sum += arr[i].x + arr[i].y;
-  }
+    struct Point *arr = polyglot_as_Point_array(pointArray);
+    int len = polyglot_get_array_size(pointArray);
+    for (int i = 0; i < len; i++) {
+        sum += arr[i].x + arr[i].y;
+    }
 
-  return sum;
+    return sum;
 }
 
 extern "C" void fillPoints(void *pointArray, int x, int y) {
-  struct Point *arr = polyglot_as_Point_array(pointArray);
-  int len = polyglot_get_array_size(pointArray);
+    struct Point *arr = polyglot_as_Point_array(pointArray);
+    int len = polyglot_get_array_size(pointArray);
 
-  for (int i = 0; i < len; i++) {
-    arr[i].x = x;
-    arr[i].y = y;
-  }
+    for (int i = 0; i < len; i++) {
+        arr[i].x = x;
+        arr[i].y = y;
+    }
 }
 
 extern "C" double modifyAndCall(void *value) {
-  struct Point *point = polyglot_as_Point(value);
-  point->x *= 2;
-  point->y *= 2;
-  return point->length();
+    struct Point *point = polyglot_as_Point(value);
+    point->x *= 2;
+    point->y *= 2;
+    return point->length();
 }
 
 extern "C" struct Point *addAndSwapPoint(struct Point *point, int ix, int iy) {
-  struct Point incr = {ix, iy};
-  struct Point *ret = point->add(&incr);
-  int tmp = ret->x;
-  ret->x = ret->y;
-  ret->y = tmp;
-  return ret;
+    struct Point incr = { ix, iy, NULL, NULL };
+    struct Point *ret = point->add(&incr);
+    int tmp = ret->x;
+    ret->x = ret->y;
+    ret->y = tmp;
+    return ret;
 }
 
 struct Nested {
-  struct Point arr[5];
-  struct Point direct;
-  struct Nested *next;
+    struct Point arr[5];
+    struct Point direct;
+    struct Nested *next;
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(Nested)
+#pragma clang diagnostic pop
 
 extern "C" void fillNested(void *arg) {
-  int value = 42;
+    int value = 42;
 
-  struct Nested *nested = polyglot_as_Nested(arg);
-  while (nested) {
-    for (int i = 0; i < 5; i++) {
-      nested->arr[i].x = value++;
-      nested->arr[i].y = value++;
+    struct Nested *nested = polyglot_as_Nested(arg);
+    while (nested) {
+        for (int i = 0; i < 5; i++) {
+            nested->arr[i].x = value++;
+            nested->arr[i].y = value++;
+        }
+        nested->direct.x = value++;
+        nested->direct.y = value++;
+
+        nested = nested->next;
     }
-    nested->direct.x = value++;
-    nested->direct.y = value++;
-
-    nested = nested->next;
-  }
 }
 
 struct BitFields {
-  int x : 4;
-  int y : 3;
-  int z;
+    int x : 4;
+    int y : 3;
+    int z;
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(BitFields)
+#pragma clang diagnostic pop
 
 extern "C" int accessBitFields(void *arg) {
-        struct BitFields *obj = polyglot_as_BitFields(arg);
-        return obj->x + obj->y + obj->z;
+    struct BitFields *obj = polyglot_as_BitFields(arg);
+    return obj->x + obj->y + obj->z;
 }
 
 struct FusedArray {
-  struct Point origin;
-  struct Point path[0];
+    struct Point origin;
+    struct Point path[0];
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(FusedArray)
+#pragma clang diagnostic pop
 
 extern "C" void fillFusedArray(void *arg) {
-  struct FusedArray *fused = polyglot_as_FusedArray(arg);
-  int i;
+    struct FusedArray *fused = polyglot_as_FusedArray(arg);
+    int i;
 
-  fused->origin.x = 3;
-  fused->origin.y = 7;
+    fused->origin.x = 3;
+    fused->origin.y = 7;
 
-  for (i = 0; i < 7; i++) {
-    fused->path[i].x = 2 * i;
-    fused->path[i].y = 5 * i;
-  }
+    for (i = 0; i < 7; i++) {
+        fused->path[i].x = 2 * i;
+        fused->path[i].y = 5 * i;
+    }
 }
 
 struct Complex {
-  double re;
-  double im;
+    double re;
+    double im;
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(Complex)
+#pragma clang diagnostic pop
 
 extern "C" long readTypeMismatch(struct Complex *c) {
-  long *ptr = (long*) c;
-  return *ptr;
+    long *ptr = (long *) c;
+    return *ptr;
 }
 
 extern "C" void writeTypeMismatch(struct Complex *c, long rawValue) {
-  long *ptr = (long*) c;
-  *ptr = rawValue;
+    long *ptr = (long *) c;
+    *ptr = rawValue;
 }

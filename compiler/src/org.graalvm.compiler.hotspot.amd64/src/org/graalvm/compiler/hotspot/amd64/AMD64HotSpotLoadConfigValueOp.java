@@ -24,28 +24,29 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 
 public final class AMD64HotSpotLoadConfigValueOp extends AMD64LIRInstruction {
 
     public static final LIRInstructionClass<AMD64HotSpotLoadConfigValueOp> TYPE = LIRInstructionClass.create(AMD64HotSpotLoadConfigValueOp.class);
 
     @Def({OperandFlag.REG}) protected AllocatableValue result;
-    private final int markId;
+    private final HotSpotMarkId markId;
 
-    public AMD64HotSpotLoadConfigValueOp(int markId, AllocatableValue result) {
+    public AMD64HotSpotLoadConfigValueOp(HotSpotMarkId markId, AllocatableValue result) {
         super(TYPE);
         this.result = result;
         this.markId = markId;

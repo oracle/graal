@@ -29,21 +29,27 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.KillingBeginNode;
+import org.graalvm.compiler.nodes.MultiKillingBeginNode;
+import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
@@ -60,32 +66,35 @@ import jdk.vm.ci.meta.JavaKind;
           size = SIZE_2,
           sizeRationale = "Rough estimation of the call operation itself.")
 // @formatter:on
-public class ForeignCallWithExceptionNode extends WithExceptionNode implements ForeignCall {
+@NodeIntrinsicFactory
+public class ForeignCallWithExceptionNode extends WithExceptionNode implements ForeignCall, Simplifiable {
     public static final NodeClass<ForeignCallWithExceptionNode> TYPE = NodeClass.create(ForeignCallWithExceptionNode.class);
 
     @Input protected NodeInputList<ValueNode> arguments;
     @OptionalInput(State) protected FrameState stateDuring;
     @OptionalInput(State) protected FrameState stateAfter;
-    protected final ForeignCallsProvider foreignCalls;
 
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
-    public ForeignCallWithExceptionNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        this(TYPE, foreignCalls, descriptor, arguments);
+    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        return ForeignCallNode.doIntrinsify(b, returnStamp, descriptor, arguments, true);
     }
 
-    protected ForeignCallWithExceptionNode(NodeClass<? extends ForeignCallWithExceptionNode> c, ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public ForeignCallWithExceptionNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        this(TYPE, descriptor, arguments);
+    }
+
+    protected ForeignCallWithExceptionNode(NodeClass<? extends ForeignCallWithExceptionNode> c, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(c, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.foreignCalls = foreignCalls;
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
     @Override
     public boolean hasSideEffect() {
-        return !foreignCalls.isReexecutable(descriptor);
+        return !descriptor.isReexecutable();
     }
 
     @Override
@@ -141,21 +150,26 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
     }
 
     @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return foreignCalls;
+    public void simplify(SimplifierTool tool) {
+        if (exceptionEdge instanceof UnreachableBeginNode) {
+            FixedNode replacement = replaceWithNonThrowing();
+            tool.addToWorkList(replacement);
+        }
     }
 
     @Override
     public FixedNode replaceWithNonThrowing() {
-        ForeignCallNode foreignCall = this.asNode().graph().add(new ForeignCallNode(foreignCalls, descriptor, stamp, arguments));
-        AbstractBeginNode oldException = this.exceptionEdge;
-        graph().replaceSplitWithFixed(this, foreignCall, this.next());
-        GraphUtil.killCFG(oldException);
-        return foreignCall;
-    }
+        ForeignCallNode foreignCall = this.asNode().graph().add(new ForeignCallNode(descriptor, stamp, arguments));
+        foreignCall.setStateAfter(stateAfter());
+        foreignCall.setStateDuring(stateDuring());
 
-    @Override
-    public AbstractBeginNode createNextBegin() {
-        return KillingBeginNode.create(LocationIdentity.any());
+        AbstractBeginNode nextBegin = this.next;
+        AbstractBeginNode oldException = this.exceptionEdge;
+        graph().replaceSplitWithFixed(this, foreignCall, nextBegin);
+        GraphUtil.killCFG(oldException);
+        if (nextBegin instanceof MultiKillingBeginNode && Arrays.equals(((MultiKillingBeginNode) nextBegin).getKilledLocationIdentities(), this.getKilledLocationIdentities())) {
+            foreignCall.graph().removeFixed(nextBegin);
+        }
+        return foreignCall;
     }
 }

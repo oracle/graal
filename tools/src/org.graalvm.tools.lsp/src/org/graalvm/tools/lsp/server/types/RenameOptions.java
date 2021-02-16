@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,18 +28,18 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Rename options.
+ * Provider options for a [RenameRequest](#RenameRequest).
  */
-public class RenameOptions {
-
-    final JSONObject jsonData;
+public class RenameOptions extends WorkDoneProgressOptions {
 
     RenameOptions(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
      * Renames should be checked and tested before being executed.
+     *
+     * @since version 3.12.0
      */
     @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getPrepareProvider() {
@@ -66,14 +66,20 @@ public class RenameOptions {
         if (!Objects.equals(this.getPrepareProvider(), other.getPrepareProvider())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneProgress(), other.getWorkDoneProgress())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 5;
         if (this.getPrepareProvider() != null) {
-            hash = 11 * hash + Boolean.hashCode(this.getPrepareProvider());
+            hash = 97 * hash + Boolean.hashCode(this.getPrepareProvider());
+        }
+        if (this.getWorkDoneProgress() != null) {
+            hash = 97 * hash + Boolean.hashCode(this.getWorkDoneProgress());
         }
         return hash;
     }

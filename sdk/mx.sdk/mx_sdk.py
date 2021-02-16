@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,10 @@ import mx
 import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import mx_sdk_benchmark # pylint: disable=unused-import
 import datetime
+from mx_bisect import define_bisect_default_build_steps
+from mx_bisect_strategy import BuildStepsGraalVMStrategy
 
 from mx_gate import Task
 from mx_unittest import unittest
@@ -54,11 +57,16 @@ from mx_unittest import unittest
 _suite = mx.suite('sdk')
 
 
+define_bisect_default_build_steps(BuildStepsGraalVMStrategy())
+
+
 def _sdk_gate_runner(args, tasks):
     with Task('SDK UnitTests', tasks, tags=['test']) as t:
         if t: unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Check Copyrights', tasks) as t:
-        if t: mx.checkcopyrights(['--primary'])
+        if t:
+            if mx.checkcopyrights(['--primary', '--', '--projects', 'src']) != 0:
+                t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
 
 
 mx_gate.add_gate_runner(_suite, _sdk_gate_runner)
@@ -70,8 +78,12 @@ def build_oracle_compliant_javadoc_args(suite, product_name, feature_name):
     :type feature_name: str
     """
     version = suite.release_version()
-    revision = suite.vc.parent(suite.vc_dir)
-    copyright_year = str(datetime.datetime.fromtimestamp(suite.vc.parent_info(suite.vc_dir)['committer-ts']).year)
+    if suite.vc:
+        revision = suite.vc.parent(suite.vc_dir)
+        copyright_year = str(datetime.datetime.fromtimestamp(suite.vc.parent_info(suite.vc_dir)['committer-ts']).year)
+    else:
+        revision = None
+        copyright_year = datetime.datetime.now().year
     return ['--arg', '@-header', '--arg', '<b>%s %s Java API Reference<br>%s</b><br>%s' % (product_name, feature_name, version, revision),
             '--arg', '@-bottom', '--arg', '<center>Copyright &copy; 2012, %s, Oracle and/or its affiliates. All rights reserved.</center>' % (copyright_year),
             '--arg', '@-windowtitle', '--arg', '%s %s Java API Reference' % (product_name, feature_name)]
@@ -134,7 +146,6 @@ GraalVmTruffleComponent = mx_sdk_vm.GraalVmTruffleComponent
 GraalVmLanguage = mx_sdk_vm.GraalVmLanguage
 GraalVmTool = mx_sdk_vm.GraalVmTool
 GraalVMSvmMacro = mx_sdk_vm.GraalVMSvmMacro
-GraalVMSvmStaticLib = mx_sdk_vm.GraalVMSvmStaticLib
 GraalVmJdkComponent = mx_sdk_vm.GraalVmJdkComponent
 GraalVmJreComponent = mx_sdk_vm.GraalVmJreComponent
 GraalVmJvmciComponent = mx_sdk_vm.GraalVmJvmciComponent

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,6 @@ public enum FrameSlotKind {
     /** @since 0.8 or earlier */
     Object,
     /** @since 0.8 or earlier */
-    Illegal,
-    /** @since 0.8 or earlier */
     Long,
     /** @since 0.8 or earlier */
     Int,
@@ -57,7 +55,9 @@ public enum FrameSlotKind {
     /** @since 0.8 or earlier */
     Boolean,
     /** @since 0.8 or earlier */
-    Byte;
+    Byte,
+    /** @since 0.8 or earlier */
+    Illegal;
 
     /** @since 0.8 or earlier */
     public final byte tag;
@@ -66,4 +66,5 @@ public enum FrameSlotKind {
     FrameSlotKind() {
         this.tag = (byte) ordinal();
     }
+
 }

@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
-import java.util.BitSet;
 
 import org.graalvm.word.WordBase;
 
@@ -64,25 +63,31 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
 
     protected HostedMethod[] vtable;
 
-    /**
-     * @see SharedType#getInstanceOfFromTypeID()
-     */
-    protected int instanceOfFromTypeID;
-
-    /**
-     * @see SharedType#getInstanceOfNumTypeIDs()
-     */
-    protected int instanceOfNumTypeIDs;
-
-    /**
-     * Bits for instanceof checks. See {@link DynamicHub}.instanceOfBits.
-     */
-    protected BitSet instanceOfBits;
-
     protected int typeID;
-    protected int[] assignableFromMatches;
     protected HostedType uniqueConcreteImplementation;
     protected HostedMethod[] allDeclaredMethods;
+
+    /**
+     * Start of type check range check. See {@link DynamicHub}.typeCheckStart
+     */
+    protected short typeCheckStart;
+
+    /**
+     *
+     * Number of values within type check range check. See {@link DynamicHub}.typeCheckRange
+     */
+    protected short typeCheckRange;
+
+    /**
+     * Type check array slot to read for type check range check. See
+     * {@link DynamicHub}.typeCheckSlot
+     */
+    protected short typeCheckSlot;
+
+    /**
+     * Array used within type checks. See {@link DynamicHub}.typeCheckSlots
+     */
+    protected short[] typeCheckSlots;
 
     /**
      * A more precise subtype that can replace this type as the declared type of values. Null if
@@ -109,11 +114,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
         return strengthenStampType;
     }
 
-    public void setInstanceOfRange(int instanceOfFromTypeID, int instanceOfNumTypeIDs) {
-        this.instanceOfFromTypeID = instanceOfFromTypeID;
-        this.instanceOfNumTypeIDs = instanceOfNumTypeIDs;
-    }
-
     public HostedType[] getSubTypes() {
         assert subTypes != null;
         return subTypes;
@@ -129,9 +129,34 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
         return typeID;
     }
 
-    public int[] getAssignableFromMatches() {
-        assert assignableFromMatches != null;
-        return assignableFromMatches;
+    public void setTypeCheckRange(short typeCheckStart, short typeCheckRange) {
+        this.typeCheckStart = typeCheckStart;
+        this.typeCheckRange = typeCheckRange;
+    }
+
+    public void setTypeCheckSlot(short typeCheckSlot) {
+        this.typeCheckSlot = typeCheckSlot;
+    }
+
+    public void setTypeCheckSlots(short[] typeCheckSlots) {
+        this.typeCheckSlots = typeCheckSlots;
+    }
+
+    public short getTypeCheckStart() {
+        return typeCheckStart;
+    }
+
+    public short getTypeCheckRange() {
+        return typeCheckRange;
+    }
+
+    public short getTypeCheckSlot() {
+        return typeCheckSlot;
+    }
+
+    public short[] getTypeCheckSlots() {
+        assert typeCheckSlots != null;
+        return typeCheckSlots;
     }
 
     /**
@@ -159,16 +184,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     @Override
     public DynamicHub getHub() {
         return universe.hostVM().dynamicHub(wrapped);
-    }
-
-    @Override
-    public int getInstanceOfFromTypeID() {
-        return instanceOfFromTypeID;
-    }
-
-    @Override
-    public int getInstanceOfNumTypeIDs() {
-        return instanceOfNumTypeIDs;
     }
 
     @Override
@@ -286,9 +301,7 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
 
     @Override
     public final boolean isAssignableFrom(ResolvedJavaType other) {
-        boolean result = getHub().isAssignableFromHub(((HostedType) other).getHub());
-        assert result == wrapped.isAssignableFrom(((HostedType) other).wrapped);
-        return result;
+        return wrapped.isAssignableFrom(((HostedType) other).wrapped);
     }
 
     @Override
@@ -420,6 +433,21 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
          * will not be linked.
          */
         return wrapped.isLinked();
+    }
+
+    @Override
+    public void link() {
+        wrapped.link();
+    }
+
+    @Override
+    public boolean hasDefaultMethods() {
+        return wrapped.hasDefaultMethods();
+    }
+
+    @Override
+    public boolean declaresDefaultMethods() {
+        return wrapped.declaresDefaultMethods();
     }
 
     @Override

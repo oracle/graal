@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -334,7 +334,7 @@ public final class ProbeNode extends Node {
     WrapperNode findWrapper() throws AssertionError {
         Node parent = getParent();
         if (!(parent instanceof WrapperNode)) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (parent == null) {
                 throw new AssertionError("Probe node disconnected from AST.");
             } else {
@@ -371,22 +371,28 @@ public final class ProbeNode extends Node {
             if (localVersion != null && localVersion.isValid()) {
                 return this.chain;
             }
-            nextChain = handler.createBindings(frame, ProbeNode.this);
-            if (nextChain == null) {
-                // chain is null -> remove wrapper;
-                // Note: never set child nodes to null, can cause races
-                if (retiredNodeReference == null) {
-                    InstrumentationHandler.removeWrapper(ProbeNode.this);
-                    return null;
+            EventBinding.Source<?>[] executionBindingsSnapshot;
+            do {
+                executionBindingsSnapshot = handler.getExecutionBindingsSnapshot();
+                nextChain = handler.createBindings(frame, ProbeNode.this, executionBindingsSnapshot);
+                if (nextChain == null) {
+                    // chain is null -> remove wrapper;
+                    // Note: never set child nodes to null, can cause races
+                    if (retiredNodeReference == null) {
+                        InstrumentationHandler.removeWrapper(ProbeNode.this);
+                        return null;
+                    } else {
+                        oldChain = this.chain;
+                        this.chain = null;
+                    }
                 } else {
                     oldChain = this.chain;
-                    this.chain = null;
+                    this.chain = insert(nextChain);
                 }
-            } else {
-                oldChain = this.chain;
-                this.chain = insert(nextChain);
-            }
-            this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
+                this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
+            } while (executionBindingsSnapshot != handler.getExecutionBindingsSnapshot());
+
+            assert context.validEventContextOnLazyUpdate();
         } finally {
             lock.unlock();
         }
@@ -622,7 +628,7 @@ public final class ProbeNode extends Node {
             }
         } catch (Throwable t) {
             if (t instanceof InstrumentException) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException(
                                 String.format("Error propagation is not supported in %s.create(%s). "//
                                                 + "Errors propagated in this method may result in an AST that never stabilizes. "//
@@ -679,7 +685,7 @@ public final class ProbeNode extends Node {
                             clazz == Character.class ||
                             clazz == Boolean.class ||
                             clazz == String.class)) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 ClassCastException ccex = new ClassCastException(clazz.getName() + " isn't allowed Truffle interop type!");
                 if (binding.isLanguageBinding()) {
                     throw ccex;

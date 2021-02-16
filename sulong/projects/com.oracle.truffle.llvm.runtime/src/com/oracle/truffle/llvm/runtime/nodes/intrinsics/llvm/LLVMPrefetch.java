@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,13 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPrefetch extends LLVMBuiltin {
 
-    @SuppressWarnings("unused")
+    /**
+     * @param address @NodeChild
+     * @param rw @NodeChild
+     * @param locality @NodeChild
+     * @param cacheType @NodeChild
+     * @see LLVMPrefetch
+     */
     @Specialization
     protected Object doVoid(Object address, int rw, int locality, int cacheType) {
         return null;

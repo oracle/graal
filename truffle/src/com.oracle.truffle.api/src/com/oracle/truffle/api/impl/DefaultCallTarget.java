@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,10 @@ package com.oracle.truffle.api.impl;
 
 import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.impl.Accessor.CallInlined;
-import com.oracle.truffle.api.impl.Accessor.CallProfiled;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime.DefaultFrameInstance;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -56,14 +55,14 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class DefaultCallTarget implements RootCallTarget {
 
-    public static final String CALL_BOUNDARY_METHOD_PREFIX = "call";
+    public static final String CALL_BOUNDARY_METHOD = "callDirectOrIndirect";
     private final RootNode rootNode;
     private volatile boolean initialized;
 
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
-        getRuntime().getTvmci().setCallTarget(function, this);
+        DefaultRuntimeAccessor.NODES.setCallTarget(function, this);
     }
 
     @Override
@@ -79,55 +78,36 @@ public final class DefaultCallTarget implements RootCallTarget {
         if (!this.initialized) {
             initialize();
         }
-        final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        getRuntime().pushFrame(frame, this, callNode);
+        final DefaultVirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), args);
+        DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, callNode);
         try {
-            return getRootNode().execute(frame);
+            return rootNode.execute(frame);
         } catch (Throwable t) {
-            getRuntime().getTvmci().onThrowable(callNode, this, t, frame);
+            DefaultRuntimeAccessor.LANGUAGE.onThrowable(callNode, this, t, frame);
             throw t;
         } finally {
-            getRuntime().popFrame();
+            getRuntime().popFrame(callerFrame);
         }
     }
 
     @Override
     public Object call(Object... args) {
-        if (!this.initialized) {
-            initialize();
-        }
-        final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        getRuntime().pushFrame(frame, this, null);
+        // Use the encapsulating node as call site and clear it inside as we cross the call boundary
+        EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+        Node parent = encapsulating.set(null);
         try {
-            return getRootNode().execute(frame);
-        } catch (Throwable t) {
-            getRuntime().getTvmci().onThrowable(null, this, t, frame);
-            throw t;
+            return callDirectOrIndirect(parent, args);
         } finally {
-            getRuntime().popFrame();
+            encapsulating.set(parent);
         }
     }
 
     private void initialize() {
         synchronized (this) {
             if (!this.initialized) {
-                getRuntime().getTvmci().onFirstExecution(this);
+                DefaultRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), true);
                 this.initialized = true;
             }
         }
     }
-
-    static final CallInlined CALL_INLINED = new CallInlined() {
-        @Override
-        public Object call(Node callNode, CallTarget target, Object... arguments) {
-            return ((DefaultCallTarget) target).callDirectOrIndirect(callNode, arguments);
-        }
-    };
-
-    static final CallProfiled CALL_PROFILED = new CallProfiled() {
-        @Override
-        public Object call(CallTarget target, Object... arguments) {
-            return ((DefaultCallTarget) target).call(arguments);
-        }
-    };
 }

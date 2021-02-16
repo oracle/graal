@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,19 +29,25 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
  */
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "unwindHeader")
 public final class LLVMUserException extends LLVMException {
 
     public static final String FRAME_SLOT_ID = "<function exception value>";
 
     private static final long serialVersionUID = 1L;
 
-    private final LLVMPointer unwindHeader;
+    final LLVMPointer unwindHeader;
 
     public LLVMUserException(Node location, LLVMPointer unwindHeader) {
         super(location);
@@ -53,12 +59,36 @@ public final class LLVMUserException extends LLVMException {
     }
 
     @Override
-    public LLVMPointer getExceptionObject() {
-        return unwindHeader;
-    }
-
-    @Override
     public String getMessage() {
         return "LLVMException:" + unwindHeader.toString();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isException() {
+        return true;
+    }
+
+    @ExportMessage
+    RuntimeException throwException() {
+        throw this;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.RUNTIME_ERROR;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasExceptionMessage() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    String getExceptionMessage() {
+        return getMessage();
     }
 }

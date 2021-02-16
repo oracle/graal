@@ -52,7 +52,7 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
@@ -101,8 +101,8 @@ import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
-import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
@@ -114,6 +114,7 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
+import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -141,11 +142,11 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
@@ -377,6 +378,7 @@ public class CompileQueue {
 
     private void createSuites() {
         regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        modifyRegularSuites(regularSuites);
         deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
         removeDeoptTargetOptimizations(deoptTargetSuites);
         regularLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
@@ -384,8 +386,12 @@ public class CompileQueue {
         removeDeoptTargetOptimizations(deoptTargetLIRSuites);
     }
 
-    public static PhaseSuite<HighTierContext> afterParseCanonicalization() {
+    protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
+    }
+
+    protected PhaseSuite<HighTierContext> afterParseCanonicalization() {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
+        phaseSuite.appendPhase(new ImplicitAssertionsPhase());
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
@@ -488,8 +494,8 @@ public class CompileQueue {
                         .forEach(method -> ensureParsed(method, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        foreignCallsProvider.getForeignCalls().keySet().stream()
-                        .map(descriptor -> (HostedMethod) descriptor.findMethod(runtimeConfig.getProviders().getMetaAccess()))
+        foreignCallsProvider.getForeignCalls().values().stream()
+                        .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
                         .filter(method -> method.wrapped.isRootMethod())
                         .forEach(method -> ensureParsed(method, new EntryPointReason()));
     }
@@ -577,7 +583,7 @@ public class CompileQueue {
                                             invoke.callTarget().targetMethod().format("%H.%n(%p)") + " in " + (graph.method() == null ? graph.toString() : graph.method().format("%H.%n(%p)")));
                         }
 
-                        if (invoke.useForInlining()) {
+                        if (invoke.getInlineControl() == Invoke.InlineControl.Normal) {
                             inlined |= tryInlineTrivial(graph, invoke, !inlined);
                         }
                     }
@@ -632,6 +638,10 @@ public class CompileQueue {
         if (callee.compilationInfo.isTrivialMethod()) {
             return true;
         }
+        AlwaysInlineSelectCallees selectCallees = getCallerAnnotation(invoke, AlwaysInlineSelectCallees.class);
+        if (selectCallees != null && Arrays.stream(selectCallees.callees()).anyMatch(c -> c.equals(callee.getQualifiedName()))) {
+            return true;
+        }
         return false;
     }
 
@@ -653,12 +663,18 @@ public class CompileQueue {
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
+        return getCallerAnnotation(invoke, annotationClass) != null;
+    }
+
+    private static <T extends Annotation> T getCallerAnnotation(Invoke invoke, Class<T> annotationClass) {
         for (FrameState state = invoke.stateAfter(); state != null; state = state.outerFrameState()) {
-            if (state.getMethod().getAnnotation(annotationClass) != null) {
-                return true;
+            assert state.getMethod() != null : state;
+            T annotation = state.getMethod().getAnnotation(annotationClass);
+            if (annotation != null) {
+                return annotation;
             }
         }
-        return false;
+        return null;
     }
 
     protected void compileAll() throws InterruptedException {
@@ -694,7 +710,9 @@ public class CompileQueue {
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
         if ((!NativeImageOptions.AllowFoldMethods.getValue() && method.getAnnotation(Fold.class) != null) || method.getAnnotation(NodeIntrinsic.class) != null) {
-            throw VMError.shouldNotReachHere("Parsing method annotated with @Fold or @NodeIntrinsic: " + method.format("%H.%n(%p)"));
+            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + " or " + NodeIntrinsic.class.getSimpleName() + ": " +
+                            method.format("%H.%n(%p)") +
+                            ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
@@ -913,9 +931,6 @@ public class CompileQueue {
             // Do the specialization: replace the argument locals with the constant arguments.
             StructuredGraph graph = method.compilationInfo.graph;
 
-            /* Check that graph is in good shape before compilation. */
-            assert GraphOrder.assertSchedulableGraph(graph);
-
             int idx = 0;
             for (ConstantNode argument : method.compilationInfo.specializedArguments) {
                 ParameterNode local = graph.getParameter(idx++);
@@ -930,9 +945,9 @@ public class CompileQueue {
 
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
         @Override
-        public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
+        public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
                         FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, Register uncompressedNullRegister) {
-            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister,
+            return new CompilationResultBuilder(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister,
                             EconomicMap.wrapMap(dataCache));
         }
     }
@@ -1022,7 +1037,7 @@ public class CompileQueue {
 
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         VMError.guarantee(highTier.removePhase(PartialEscapePhase.class));
-        VMError.guarantee(highTier.removePhase(EarlyReadEliminationPhase.class));
+        VMError.guarantee(highTier.removePhase(ReadEliminationPhase.class));
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         VMError.guarantee(midTier.removePhase(FloatingReadPhase.class));
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();

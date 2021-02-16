@@ -25,20 +25,17 @@
 package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
-import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 import static com.oracle.svm.hosted.c.query.QueryResultFormat.DELIMINATOR;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.c.CContext;
 
-import com.oracle.svm.core.c.NativeImageHeaderPreamble;
-import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.c.DirectivesExtension;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
@@ -55,26 +52,45 @@ import com.oracle.svm.hosted.c.query.QueryResultFormat;
 
 public class QueryCodeWriter extends InfoTreeVisitor {
 
-    private static final String FORMATOR_SIGNED_LONG = "%ld";
-    private static final String FORMATOR_UNSIGNED_LONG = "%lu";
-    private static final String FORMATOR_LONG_HEX = "%lX";
-    private static final String FORMATOR_FLOAT = "%.15e";
-    private static final String FORMATOR_STRING = QueryResultFormat.STRING_MARKER + "%s" + QueryResultFormat.STRING_MARKER;
+    private static final String formatFloat = "%.15e";
+    private static final String formatString = QueryResultFormat.STRING_MARKER + "%s" + QueryResultFormat.STRING_MARKER;
 
     private final CSourceCodeWriter writer;
 
     private final List<Object> elementForLineNumber;
+    private final boolean isWindows;
+
+    private final String formatSInt64;
+    private final String formatUInt64;
+    private final String formatUInt64Hex;
+
+    private final String uInt64;
+    private final String sInt64;
 
     public QueryCodeWriter(Path tempDirectory) {
         writer = new CSourceCodeWriter(tempDirectory);
         elementForLineNumber = new ArrayList<>();
+        isWindows = Platform.includedIn(Platform.WINDOWS.class);
+
+        String formatL64 = "%" + (isWindows ? "ll" : "l");
+        formatSInt64 = formatL64 + "d";
+        formatUInt64 = formatL64 + "u";
+        formatUInt64Hex = formatL64 + "X";
+
+        uInt64 = int64(isWindows, true);
+        sInt64 = int64(isWindows, false);
+    }
+
+    private static String int64(boolean isWindows, boolean unsigned) {
+        /* Linux uses LP64, Windows uses LLP64 */
+        return (unsigned ? "unsigned " : "") + (isWindows ? "long long" : "long");
     }
 
     public Path write(NativeCodeInfo nativeCodeInfo) {
         nativeCodeInfo.accept(this);
 
-        String srcFileExtension = Platform.includedIn(Platform.WINDOWS.class) ? CSourceCodeWriter.CXX_SOURCE_FILE_EXTENSION : CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
-        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_").concat(srcFileExtension);
+        String srcFileExtension = CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
+        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_") + srcFileExtension;
         return writer.writeFile(sourceFileName);
     }
 
@@ -92,59 +108,62 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitNativeCodeInfo(NativeCodeInfo nativeCodeInfo) {
-        NativeImageHeaderPreamble.read(getClass().getClassLoader(), "graal_isolate.preamble")
-                        .forEach(writer::appendln);
-
-        for (String preDefine : nativeCodeInfo.getDirectives().getMacroDefinitions()) {
-            writer.appendMacroDefinition(preDefine);
-        }
-
-        if (!nativeCodeInfo.isBuiltin()) {
-            writer.includeFiles(nativeCodeInfo.getDirectives().getHeaderFiles());
-        }
-
-        writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>", "<memory.h>"));
-
-        writeCStandardHeaders(writer);
+        CContext.Directives directives = nativeCodeInfo.getDirectives();
 
         /* Write general macro definitions. */
+        List<String> macroDefinitions = directives.getMacroDefinitions();
+        if (!macroDefinitions.isEmpty()) {
+            macroDefinitions.forEach(writer::appendMacroDefinition);
+            writer.appendln();
+        }
+
+        /* Standard header file inclusions. */
+        writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>", "<memory.h>"));
+        writer.writeCStandardHeaders();
         writer.appendln();
 
-        /*
-         * On Posix systems we use the GNU C extension, typeof() to prevent the type promotion (to
-         * signed int) caused by the inversion operation. On Windows we generate c++ files so we can
-         * use decltype.
-         */
-        writer.appendln("#ifndef _WIN64");
-        writer.appendln("#define ISUNSIGNED(a) ((a) >= 0L && (typeof(a)) ~(a) >= 0L)");
-        writer.appendln("#else");
-        writer.appendln("#define ISUNSIGNED(a) ((a) >= 0L && (decltype(a)) ~(a) >= 0L)");
-        writer.appendln("#endif");
-        writer.appendln("#define IS_CONST_UNSIGNED(a) (a>=0 ? 1 : 0)");
+        /* Workaround missing bool type in old cl.exe. */
+        if (isWindows) {
+            writer.appendln("#ifndef bool");
+            writer.appendln("#define bool char");
+            writer.appendln("#define false ((bool)0)");
+            writer.appendln("#define true  ((bool)1)");
+            writer.appendln("#endif");
+            writer.appendln("");
+        }
 
-        /* Write the main function with all the outputs for the children. */
-        writer.appendln();
-        writer.appendln("int main(void) {");
+        /* Inject CContext specific C header file snippet. */
+        if (directives instanceof DirectivesExtension) {
+            List<String> headerSnippet = ((DirectivesExtension) directives).getHeaderSnippet();
+            if (!headerSnippet.isEmpty()) {
+                headerSnippet.forEach(writer::appendln);
+                writer.appendln();
+            }
+        }
+
+        /* CContext specific header file inclusions. */
+        List<String> headerFiles = directives.getHeaderFiles();
+        if (!headerFiles.isEmpty()) {
+            writer.includeFiles(headerFiles);
+            writer.appendln();
+        }
+
+        /* Write query code for nativeCodeInfo. */
+        String functionName = nativeCodeInfo.getName().replaceAll("\\W", "_");
+        writer.appendln("int " + functionName + "() {");
         writer.indent();
         processChildren(nativeCodeInfo);
         writer.indents().appendln("return 0;");
         writer.outdent();
         writer.appendln("}");
-    }
 
-    public static void writeCStandardHeaders(CSourceCodeWriter writer) {
-        if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
-            if (!Platform.includedIn(Platform.WINDOWS.class)) {
-                /*
-                 * No stdbool.h in Windows SDK 7.1. If we add native-compiler version detection this
-                 * should only be omitted if cl.exe version is < 19.*.
-                 */
-                writer.includeFiles(Collections.singletonList("<stdbool.h>"));
-            }
-        }
-        if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
-            writer.includeFiles(Collections.singletonList("<stdint.h>"));
-        }
+        /* Write main function. */
+        writer.appendln();
+        writer.appendln("int main(void) {");
+        writer.indent();
+        writer.indents().appendln("return " + functionName + "();");
+        writer.outdent();
+        writer.appendln("}");
     }
 
     @Override
@@ -191,12 +210,16 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         printUnsignedLong(fieldInfo.getOffsetInfo(), offsetOfField(fieldInfo));
 
         if (fieldInfo.getKind() == ElementKind.INTEGER) {
-            String tempVar = getUniqueTempVarName(fieldInfo.getParent());
             registerElementForCurrentLine(fieldInfo.getParent().getAnnotatedElement());
             writer.indents().appendln("{");
             writer.indent();
-            writer.indents().appendln(fieldInfo.getParent().getName() + " " + tempVar + ";");
-            printIsUnsigned(fieldInfo.getSignednessInfo(), isUnsigned(tempVar + "." + fieldInfo.getName()));
+            writer.indents().appendln("int is_unsigned;");
+            writer.indents().appendln(uInt64 + " all_bits_set = -1;");
+            writer.indents().appendln(fieldInfo.getParent().getName() + " fieldHolder;");
+            writer.indents().appendln("memset(&fieldHolder, 0x0, sizeof(fieldHolder));");
+            writer.indents().appendln("fieldHolder." + fieldInfo.getName() + " = all_bits_set;");
+            writer.indents().appendln("is_unsigned = fieldHolder." + fieldInfo.getName() + " > 0;");
+            printIsUnsigned(fieldInfo.getSignednessInfo(), "is_unsigned");
             writer.outdent();
             writer.indents().appendln("}");
         }
@@ -214,20 +237,21 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("struct _w {");
         registerElementForCurrentLine(bitfieldInfo.getParent().getAnnotatedElement());
         writer.indents().appendln("  " + structName + " s;");
-        writer.indents().appendln("  long long int pad;");
+        writer.indents().appendln("  " + sInt64 + " pad;");
         writer.indents().appendln("} w;");
         writer.indents().appendln("int is_unsigned;");
         writer.indents().appendln("char *p;");
         writer.indents().appendln("unsigned int byte_offset;");
         writer.indents().appendln("int start_bit, end_bit;");
-        writer.indents().appendln("unsigned long long int v;");
+        writer.indents().appendln(uInt64 + " v;");
+        writer.indents().appendln(uInt64 + " all_bits_set = -1;");
         /* Set the structure to 0 bits (including the padding space). */
         writer.indents().appendln("memset(&w, 0x0, sizeof(w));");
         /* Fill the actual bitfield with 1 bits. Maximum size is 64 bits. */
         registerElementForCurrentLine(bitfieldInfo.getAnnotatedElement());
-        writer.indents().appendln("w.s." + bitfieldName + " = 0xffffffffffffffff;");
+        writer.indents().appendln("w.s." + bitfieldName + " = all_bits_set;");
         /* All bits are set, so signed bitfields are < 0; */
-        writer.indents().appendln("is_unsigned =  (w.s." + bitfieldName + " >= 0);");
+        writer.indents().appendln("is_unsigned = w.s." + bitfieldName + " > 0;");
         /* Find the first byte that is used by the bitfield, i.e., the first byte with a bit set. */
         writer.indents().appendln("p = (char*)&w.s;");
         writer.indents().appendln("byte_offset = 0;");
@@ -240,7 +264,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("  start_bit = end_bit = -1;");
         writer.indents().appendln("} else {");
         /* Read the 64 bits starting at the byte offset we found. */
-        writer.indents().appendln("  v = *((unsigned long long int*) (p + byte_offset));");
+        writer.indents().appendln("  v = *((" + uInt64 + "*) (p + byte_offset));");
         /* Find the first bit that is set. */
         writer.indents().appendln("  while ((v & 0x1) == 0) {");
         writer.indents().appendln("    start_bit++;");
@@ -264,15 +288,24 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitPointerToInfo(PointerToInfo pointerToInfo) {
-        printUnsignedLong(pointerToInfo.getSizeInfo(), sizeOf(pointerToInfo));
+        String sizeOfExpr = sizeOf(pointerToInfo);
+        if (pointerToInfo.getKind() == ElementKind.POINTER && pointerToInfo.getName().startsWith("struct ")) {
+            /* Eliminate need for struct forward declarations */
+            sizeOfExpr = "sizeof(void *)";
+        } else {
+            sizeOfExpr = sizeOf(pointerToInfo);
+        }
+        printUnsignedLong(pointerToInfo.getSizeInfo(), sizeOfExpr);
 
         if (pointerToInfo.getKind() == ElementKind.INTEGER) {
-            String tempVar = getUniqueTempVarName(pointerToInfo);
             registerElementForCurrentLine(pointerToInfo.getAnnotatedElement());
             writer.indents().appendln("{");
             writer.indent();
-            writer.indents().appendln(pointerToInfo.getName() + " " + tempVar + ";");
-            printIsUnsigned(pointerToInfo.getSignednessInfo(), isUnsigned(tempVar));
+            writer.indents().appendln("int is_unsigned;");
+            writer.indents().appendln(uInt64 + " all_bits_set = -1;");
+            writer.indents().appendln(pointerToInfo.getName() + " fieldHolder = all_bits_set;");
+            writer.indents().appendln("is_unsigned = fieldHolder > 0;");
+            printIsUnsigned(pointerToInfo.getSignednessInfo(), "is_unsigned");
             writer.outdent();
             writer.indents().appendln("}");
         }
@@ -288,39 +321,36 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     private void printString(ElementInfo info, String arg) {
         registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_STRING, arg).semicolon();
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + formatString, arg).semicolon();
     }
 
-    private void printLongHex(ElementInfo info, String arg) {
-        registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_LONG_HEX, arg).semicolon();
+    private static String cast(String targetType, String value) {
+        return "((" + targetType + ")" + value + ")";
     }
 
     private void printSignedLong(ElementInfo info, String arg) {
         registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_SIGNED_LONG, arg).semicolon();
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + formatSInt64, cast(sInt64, arg)).semicolon();
     }
 
     private void printUnsignedLong(ElementInfo info, String arg) {
         registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_UNSIGNED_LONG, arg).semicolon();
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + formatUInt64, cast(uInt64, arg)).semicolon();
+    }
+
+    private void printLongHex(ElementInfo info, String arg) {
+        registerElementForCurrentLine(info.getAnnotatedElement());
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + formatUInt64Hex, cast(uInt64, arg)).semicolon();
     }
 
     private void printFloat(ElementInfo info, String arg) {
         registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_FLOAT, arg).semicolon();
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + formatFloat, arg).semicolon();
     }
 
     private void printIsUnsigned(ElementInfo info, String arg) {
         printString(info, "(" + arg + ") ? \"" + SignednessValue.UNSIGNED.name() + "\" : \"" + SignednessValue.SIGNED.name() + "\"");
 
-    }
-
-    private int tempVarCounter;
-
-    private String getUniqueTempVarName(ElementInfo info) {
-        tempVarCounter++;
-        return "tmp_" + info.getName().replaceAll("\\W", "_") + "_" + tempVarCounter;
     }
 
     private static String sizeOf(ElementInfo element) {
@@ -337,12 +367,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         return "offsetof(" + field.getParent().getName() + ", " + field.getName() + ")";
     }
 
-    private static String isUnsigned(String symbolName) {
-        return "ISUNSIGNED(" + symbolName + ")";
-    }
-
     private static String isConstUnsigned(String symbolName) {
-        return "IS_CONST_UNSIGNED(" + symbolName + ")";
+        return "(" + symbolName + ">=0 ? 1 : 0)";
     }
 
     private void registerElementForCurrentLine(Object element) {

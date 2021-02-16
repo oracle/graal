@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.regex.util;
 
+import java.util.function.Supplier;
+
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-
-import java.util.function.Supplier;
 
 /**
  * Trying to parse and compile a regular expression can produce one of three results. This class

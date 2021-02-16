@@ -41,82 +41,120 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.wasm.exception.BinaryParserException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public class Assert {
 
-    public static void assertByteEqual(byte b1, byte b2, String message) throws BinaryParserException {
+    public static void assertByteEqual(byte b1, byte b2, Failure failure) throws WasmException {
         if (b1 != b2) {
-            fail(format("%s: 0x%02X should = 0x%02X.", message, b1, b2));
+            fail(failure, format("%s: 0x%02X should = 0x%02X", failure.name, b1, b2));
         }
     }
 
-    public static void assertIntEqual(int n1, int n2, String message) throws BinaryParserException {
-        if (n1 != n2) {
-            fail(format("%s: %d should = %d.", message, n1, n2));
+    public static void assertByteEqual(byte b1, byte b2, String message, Failure failure) throws WasmException {
+        if (b1 != b2) {
+            fail(failure, format("%s: 0x%02X should = 0x%02X", message, b1, b2));
         }
     }
 
-    public static void assertLongEqual(long n1, long n2, String message) throws BinaryParserException {
-        if (n1 != n2) {
-            fail(format("%s: %d should = %d.", message, n1, n2));
+    public static void assertIntEqual(int actual, int expected, Failure failure) throws WasmException {
+        assertIntEqual(actual, expected, failure.name, failure);
+    }
+
+    public static void assertIntEqual(int actual, int expected, String message, Failure failure) throws WasmException {
+        if (actual != expected) {
+            fail(failure, format("%s: %d should = %d", message, actual, expected));
         }
     }
 
-    public static void assertIntIn(int value, int start, int end, String message) {
-        if (value < start || value > end) {
-            fail(format("%s: value %d should be in range [%d, %d].", message, value, start, end));
+    public static void assertIntGreaterOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        if (n1 < n2) {
+            fail(failure, format("%s: %d should be > %d", failure.name, n1, n2));
         }
     }
 
-    public static void assertLongIn(long value, long start, long end, String message) {
-        if (value < start || value > end) {
-            fail(format("%s: value %d should be in range [%d, %d].", message, value, start, end));
-        }
-    }
-
-    public static void assertIntGreater(int n1, int n2, String message) throws BinaryParserException {
+    public static void assertIntGreater(int n1, int n2, String message, Failure failure) throws WasmException {
         if (n1 <= n2) {
-            fail(format("%s: %d should be > %d.", message, n1, n2));
+            fail(failure, format("%s: %d should be > %d", message, n1, n2));
         }
     }
 
-    public static void assertLongGreater(long n1, long n2, String message) throws BinaryParserException {
-        if (n1 <= n2) {
-            fail(format("%s: %d should be > %d.", message, n1, n2));
+    public static void assertIntLessOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        assertIntLessOrEqual(n1, n2, failure.name, failure);
+    }
+
+    public static void assertIntLess(int n1, int n2, Failure failure) throws WasmException {
+        if (n1 >= n2) {
+            fail(failure, format("%s: %d should be <= %d", failure.name, n1, n2));
         }
     }
 
-    public static void assertIntLessOrEqual(int n1, int n2, String message) throws BinaryParserException {
+    public static void assertUnsignedIntLess(int n1, int n2, Failure failure) throws WasmException {
+        assertUnsignedIntLess(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedIntLess(int n1, int n2, Failure failure, String message) throws WasmException {
+        if (Integer.compareUnsigned(n1, n2) >= 0) {
+            fail(failure, format("%s: %s should be < %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+        }
+    }
+
+    public static void assertIntLessOrEqual(int n1, int n2, String message, Failure failure) throws WasmException {
         if (n1 > n2) {
-            fail(format("%s: %d should be <= %d.", message, n1, n2));
+            fail(failure, format("%s: %d should be <= %d", message, n1, n2));
         }
     }
 
-    public static void assertLongLessOrEqual(long n1, long n2, String message) throws BinaryParserException {
+    public static void assertUnsignedIntLessOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        assertUnsignedIntLessOrEqual(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedIntLessOrEqual(int n1, int n2, Failure failure, String message) throws WasmException {
+        if (Integer.compareUnsigned(n1, n2) > 0) {
+            fail(failure, format("%s: %s should be <= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+        }
+    }
+
+    public static void assertUnsignedIntGreaterOrEqual(int n1, int n2, Failure failure) throws WasmException {
+        assertUnsignedIntGreaterOrEqual(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedIntGreaterOrEqual(int n1, int n2, Failure failure, String message) throws WasmException {
+        if (Integer.compareUnsigned(n1, n2) < 0) {
+            fail(failure, format("%s: %s should be >= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+        }
+    }
+
+    public static void assertLongLessOrEqual(long n1, long n2, Failure failure) throws WasmException {
         if (n1 > n2) {
-            fail(format("%s: %d should be <= %d.", message, n1, n2));
+            fail(failure, format("%s: %d should be <= %d", failure.name, n1, n2));
         }
     }
 
-    public static void assertNotNull(Object object, String message) throws BinaryParserException {
+    public static void assertNotNull(Object object, String message, Failure failure) throws WasmException {
         if (object == null) {
-            fail(format("%s: expected a non-null value.", message));
+            fail(failure, format("%s: expected a non-null value", message));
         }
     }
 
-    public static void assertTrue(boolean condition, String message) throws BinaryParserException {
+    public static void assertTrue(boolean condition, Failure failure) throws WasmException {
+        assertTrue(condition, failure.name, failure);
+    }
+
+    public static void assertTrue(boolean condition, String message, Failure failure) throws WasmException {
         if (!condition) {
-            fail(format("%s: condition is supposed to be true.", message));
+            fail(failure, message);
         }
-    }
-
-    public static RuntimeException fail(String message) throws BinaryParserException {
-        throw new BinaryParserException(message);
     }
 
     @TruffleBoundary
-    public static String format(String format, Object... args) {
+    public static RuntimeException fail(Failure failure, String message, Object... args) throws WasmException {
+        throw WasmException.format(failure, message, args);
+    }
+
+    @TruffleBoundary
+    private static String format(String format, Object... args) {
         return String.format(format, args);
     }
 

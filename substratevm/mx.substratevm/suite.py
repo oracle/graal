@@ -1,7 +1,7 @@
 suite = {
-    "mxversion": "5.259.0",
+    "mxversion": "5.270.0",
     "name": "substratevm",
-    "version" : "20.2.0",
+    "version" : "21.1.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -37,22 +37,29 @@ suite = {
     },
 
     "libraries" : {
-        "RENAISSANCE_HARNESS_11" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
+        "RENAISSANCE_HARNESS_v0.9" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.9.0.tar.gz"],
             "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
             "packedResource": True,
         },
-
+        "RENAISSANCE_HARNESS_v0.10" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.10.0.tar.gz"],
+            "sha1" : "842e60f56d9871a1fa5700dcc446acbd041e875b",
+            "packedResource": True,
+        },
+        "RENAISSANCE_HARNESS_v0.11" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.11.0.tar.gz"],
+            "sha1" : "8d402c1e7c972badfcffdd6c64ed4e791b0dea02",
+            "packedResource": True,
+        },
         "DACAPO_SVM" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
             "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
         },
-
-        "JDK11_LIBMUSL_STATIC_LIBS" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/labsjdk-ce-11.0.6-jvmci-20.0-b02-musl-static-libs.tar.gz"],
-            "sha1" : "59082db9e4c5a3e1fff58c9c4d7870ace5410bdb",
+        "SPARK_BREEZE_PATCHED" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/breeze_2.11-0.11.2-patched.jar"],
+            "sha1" : "e3327f5d890b5af0f7363a8b3cd95b6ce24bc1ea",
         },
-
         "XERCES_IMPL" : {
             "sha1" : "006898f2bdfeca5ac996cfff1b76ef98af5aa6f2",
             "maven" : {
@@ -61,7 +68,6 @@ suite = {
                 "version" : "2.6.2-jaxb-1.0.6",
            },
         },
-
         "LLVM_WRAPPER_SHADOWED": {
             "sha1" : "f2d365a8d432d6b2127acda19c5d3418126db9b0",
             "sourceSha1" : "0801daf22b189bbd9d515614a2b79c92af225d56",
@@ -162,6 +168,16 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.core.containers": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "overlayTarget": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "workingSets": "SVM",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.core.jdk8": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -221,6 +237,8 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
+                    "jdk.internal.misc",
+                    "sun.invoke.util",
                 ],
             },
             "javaCompliance": "15+",
@@ -340,7 +358,6 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core",
                 "com.oracle.graal.pointsto",
-                "mx:ASM_7.1",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
@@ -408,36 +425,8 @@ suite = {
                     },
                 },
                 "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
                     "<others>": {
                         "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
-                    },
-                },
-            },
-        },
-
-        "com.oracle.svm.native.strictmath": {
-            "subDir": "src",
-            "native": "static_lib",
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
-                "windows": {
-                    "<others>": {
-                        "cflags": ["-O1", "-D_LITTLE_ENDIAN"],
-                    },
-                },
-                "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
-                    "<others>": {
-                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
             },
@@ -472,9 +461,6 @@ suite = {
                     },
                 },
                 "linux": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
                     "<others>" : {
                         "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
@@ -485,6 +471,9 @@ suite = {
                     },
                 },
             },
+            "dependencies": [
+                "svm-jvmfuncs-fallback-builder",
+            ],
         },
 
         "com.oracle.svm.native.jvm.windows": {
@@ -504,6 +493,13 @@ suite = {
                     },
                 },
             },
+            "dependencies": [
+                "svm-jvmfuncs-fallback-builder",
+            ],
+        },
+
+        "svm-jvmfuncs-fallback-builder": {
+            "class" : "SubstrateJvmFuncsFallbacksBuilder",
         },
 
         "com.oracle.svm.jni": {
@@ -538,6 +534,13 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
+        },
+
+        "svm-compiler-flags-builder": {
+            "class" : "SubstrateCompilerFlagsBuilder",
+            "dependencies" : [
+                "SVM",
+            ],
         },
 
         "com.oracle.svm.junit": {
@@ -589,11 +592,44 @@ suite = {
             "testProject": True,
         },
 
+        "com.oracle.svm.configure.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "com.oracle.svm.configure",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+            "testProject": True,
+        },
+
         "com.oracle.svm.reflect": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
+        "com.oracle.svm.methodhandles": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.reflect",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
@@ -644,7 +680,42 @@ suite = {
             ],
         },
 
+        "com.oracle.svm.graal.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "com.oracle.svm.graal",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
+            },
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+            "testProject": True,
+        },
+
         "com.oracle.svm.thirdparty": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "checkstyle": "com.oracle.svm.truffle",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.bench": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -841,6 +912,24 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.diagnosticsagent": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "JVMTI_AGENT_BASE",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.truffle.tck" : {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -878,6 +967,7 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
                 "com.oracle.svm.reflect",
+                "com.oracle.svm.methodhandles"
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
@@ -1002,7 +1092,6 @@ suite = {
             "layout": {
                 "<os>-<arch>/": [
                     "dependency:com.oracle.svm.native.libchelper/*",
-                    "dependency:com.oracle.svm.native.strictmath/*",
                     "dependency:com.oracle.svm.native.darwin/*",
                     "dependency:com.oracle.svm.native.jvm.posix/*",
                     "dependency:com.oracle.svm.native.jvm.windows/*",
@@ -1026,6 +1115,7 @@ suite = {
             "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
+                "svm-compiler-flags-builder",
             ],
             "distDependencies": [
                 "LIBRARY_SUPPORT",
@@ -1048,6 +1138,18 @@ suite = {
                 "SVM_CONFIGURE",
             ],
             # vm: included as binary, tool descriptor intentionally not copied
+        },
+
+        "SVM_DIAGNOSTICS_AGENT": {
+            "subDir": "src",
+            "description" : "Native-image diagnostics agent",
+            "dependencies": [
+                "com.oracle.svm.diagnosticsagent",
+            ],
+            "distDependencies": [
+                "JVMTI_AGENT_BASE",
+                "LIBRARY_SUPPORT",
+            ],
         },
 
         "SVM_CONFIGURE": {
@@ -1083,10 +1185,13 @@ suite = {
           "dependencies" : [
             "com.oracle.svm.test",
             "com.oracle.svm.test.jdk11",
+            "com.oracle.svm.configure.test",
+            "com.oracle.svm.graal.test",
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",
             "sdk:GRAAL_SDK",
+            "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
         },
@@ -1160,30 +1265,6 @@ suite = {
             "description" : "Native-image based junit testing support",
             "layout" : {
                 "native-image.properties" : "file:mx.substratevm/macro-junit.properties",
-            },
-        },
-
-        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "Static JDK11 libraries required for building images with musl",
-            "javaCompliance" : "11",
-            "os_arch" : {
-                "linux" : {
-                    "amd64" : {
-                        "layout" : {
-                            "musl/" : ["extracted-dependency:substratevm:JDK11_LIBMUSL_STATIC_LIBS"],
-                        },
-                    },
-                    "<others>" : {
-                        "ignore" : "only linux-amd64 is supported",
-                    },
-                },
-                "<others>" : {
-                    "<others>" : {
-                        "ignore" : "only linux-amd64 is supported",
-                    },
-                },
             },
         },
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,7 +94,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!isAnyLocationForced() && getLocationIdentity().isAny()) {
+        if (!isAnyLocationForced()) {
             if (offset().isConstant()) {
                 long constantOffset = offset().asJavaConstant().asLong();
 
@@ -109,18 +109,25 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     // No need for checking that the receiver is non-null. The field access
                     // includes the null check and if a field is found, the offset is so small that
                     // this is never a valid access of an arbitrary address.
-                    if (field != null && field.getJavaKind() == this.accessKind()) {
+                    if ((field != null && field.getJavaKind() == this.accessKind() &&
+                                    !field.isInternal() /* Ensure this is a true java field. */)) {
                         assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
                         return cloneAsFieldAccess(graph().getAssumptions(), field, isVolatile());
                     }
                 }
             }
-            ResolvedJavaType receiverType = StampTool.typeOrNull(object());
-            // Try to build a better location identity.
-            if (receiverType != null && receiverType.isArray()) {
-                LocationIdentity identity = NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getJavaKind());
-                assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
-                return cloneAsArrayAccess(offset(), identity, isVolatile());
+            if (getLocationIdentity().isAny()) {
+                // If we have a vague one, try to build a better location identity.
+                ResolvedJavaType receiverType = StampTool.typeOrNull(object());
+                if (receiverType != null && receiverType.isArray()) {
+                    /*
+                     * This code might assign a wrong location identity in case the offset is
+                     * outside of the body of the array. This seems to be benign.
+                     */
+                    LocationIdentity identity = NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getJavaKind());
+                    assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
+                    return cloneAsArrayAccess(offset(), identity, isVolatile());
+                }
             }
         }
 

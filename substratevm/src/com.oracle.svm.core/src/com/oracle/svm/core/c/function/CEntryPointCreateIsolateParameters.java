@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.core.c.function;
 
+import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
@@ -62,4 +64,30 @@ public interface CEntryPointCreateIsolateParameters extends PointerBase {
 
     @CField("auxiliary_image_reserved_space_size")
     void setAuxiliaryImageReservedSpaceSize(UnsignedWord auxImageReservedSize);
+
+    /* fields below: version 3 */
+
+    @CField("pkey")
+    void setProtectionKey(int pkey);
+
+    @CField("pkey")
+    int protectionKey();
+
+    /**
+     * C arguments passed from the C main function into the isolate creation. These fields are not
+     * public API, therefore they are named "reserved" in the C header files, and they are not
+     * listed in the {@link CreateIsolateParameters} Java API to create isolates.
+     */
+
+    @CField("_reserved_1")
+    int getArgc();
+
+    @CField("_reserved_1")
+    void setArgc(int value);
+
+    @CField("_reserved_2")
+    CCharPointerPointer getArgv();
+
+    @CField("_reserved_2")
+    void setArgv(CCharPointerPointer value);
 }

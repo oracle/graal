@@ -93,6 +93,10 @@ public final class ObjectArrayBuffer<T> extends AbstractArrayBuffer implements I
         return (T) buf[i];
     }
 
+    public void set(int i, T obj) {
+        buf[i] = obj;
+    }
+
     public void add(T o) {
         if (length == buf.length) {
             grow(length * 2);
@@ -124,6 +128,13 @@ public final class ObjectArrayBuffer<T> extends AbstractArrayBuffer implements I
 
     public Object peek() {
         return buf[length - 1];
+    }
+
+    public ObjectArrayBuffer<T> asFixedSizeArray(int size) {
+        ensureCapacity(size);
+        Arrays.fill(buf, null);
+        length = size;
+        return this;
     }
 
     @SuppressWarnings("unchecked")

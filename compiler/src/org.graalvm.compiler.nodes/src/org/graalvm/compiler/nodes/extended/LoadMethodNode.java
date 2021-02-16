@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -75,16 +74,10 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
         this.callerType = callerType;
         this.hub = hub;
         this.method = method;
-        assert method.isConcrete() : "Cannot load abstract method from a hub";
         assert method.hasReceiver() : "Cannot load a static method from a hub";
         if (!method.isInVirtualMethodTable(receiverType)) {
             throw new GraalError("%s does not have a vtable entry in type %s", method, receiverType);
         }
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

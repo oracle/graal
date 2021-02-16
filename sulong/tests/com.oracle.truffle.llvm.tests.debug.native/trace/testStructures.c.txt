@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 105 CONTINUE "testCombinedStructArg"
+BREAK 99 CONTINUE "testCombinedStructArg"
     OPEN_SCOPE
         MEMBER structured "struct combinableStruct" "str"
             MEMBER int "int" "a" "128"
@@ -41,7 +41,7 @@ BREAK 105 CONTINUE "testCombinedStructArg"
         END_MEMBERS
 
 
-BREAK 112 CONTINUE "testSplittedStructArg"
+BREAK 105 CONTINUE "testSplittedStructArg"
     OPEN_SCOPE
         MEMBER structured "struct splittableStruct" "str"
             MEMBER int "long int" "a" "128"
@@ -54,7 +54,7 @@ BREAK 112 CONTINUE "testSplittedStructArg"
         END_MEMBERS
 
 
-BREAK 178 CONTINUE "start"
+BREAK 170 CONTINUE "start"
     OPEN_SCOPE
         MEMBER structured "struct splittableStruct" "mySplittableStruct"
             MEMBER int "long int" "a" "128"

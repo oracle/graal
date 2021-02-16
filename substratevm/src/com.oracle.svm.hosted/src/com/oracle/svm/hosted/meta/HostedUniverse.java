@@ -76,11 +76,6 @@ public class HostedUniverse implements Universe {
     protected List<HostedMethod> orderedMethods;
     protected List<HostedField> orderedFields;
 
-    /**
-     * Number of allocated bits for instanceof checks.
-     */
-    protected int numInterfaceBits;
-
     public HostedUniverse(Inflation bb) {
         this.bb = bb;
     }

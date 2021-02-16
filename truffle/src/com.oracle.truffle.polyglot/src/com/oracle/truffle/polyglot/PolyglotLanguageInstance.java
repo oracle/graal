@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,15 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
+import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
@@ -52,6 +57,9 @@ import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
+import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotValue.InteropCodeCache;
 
 final class PolyglotLanguageInstance implements VMObject {
@@ -64,7 +72,7 @@ final class PolyglotLanguageInstance implements VMObject {
     final Map<Object, Object> hostInteropCodeCache;
 
     private volatile OptionValuesImpl firstOptionValues;
-    private volatile boolean needsInitializeMultiContext;
+    private volatile boolean multiContextInitialized;
     private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per language instance.");
 
     /**
@@ -77,6 +85,13 @@ final class PolyglotLanguageInstance implements VMObject {
      */
     private final ContextReference<Object> directContextSupplier;
 
+    // effectively final
+    List<LanguageContextLocal<?>> contextLocals;
+    List<LanguageContextThreadLocal<?>> contextThreadLocals;
+    LocalLocation[] contextLocalLocations;
+    LocalLocation[] contextThreadLocalLocations;
+    int claimedCount;
+
     @SuppressWarnings("unchecked")
     PolyglotLanguageInstance(PolyglotLanguage language) {
         this.language = language;
@@ -86,16 +101,13 @@ final class PolyglotLanguageInstance implements VMObject {
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
             LANGUAGE.initializeLanguage(spi, language.info, language, this);
-            if (!language.engine.singleContext.isValid()) {
-                initializeMultiContext();
-            } else {
-                this.needsInitializeMultiContext = !language.engine.boundEngine && language.cache.getPolicy() != ContextPolicy.EXCLUSIVE;
-            }
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
+
         boolean mayBeUsedInInnerContext = language.cache.getPolicy() != ContextPolicy.EXCLUSIVE;
         boolean currentExclusive = language.getEffectiveContextPolicy(language) == ContextPolicy.EXCLUSIVE;
+
         Assumption useDirectSingleContext = currentExclusive ? null : singleContext;
         Assumption useInnerContext = mayBeUsedInInnerContext ? language.engine.noInnerContexts : null;
 
@@ -129,10 +141,11 @@ final class PolyglotLanguageInstance implements VMObject {
     }
 
     void claim(OptionValuesImpl optionValues) {
-        assert Thread.holdsLock(language.engine);
+        assert Thread.holdsLock(language.engine.lock);
         if (this.firstOptionValues == null) {
             this.firstOptionValues = optionValues;
         }
+        claimedCount++;
     }
 
     void patchFirstOptions(OptionValuesImpl optionValues) {
@@ -140,19 +153,14 @@ final class PolyglotLanguageInstance implements VMObject {
     }
 
     void ensureMultiContextInitialized() {
-        assert Thread.holdsLock(language.engine);
-        if (needsInitializeMultiContext) {
-            needsInitializeMultiContext = false;
-            language.engine.initializeMultiContext(null);
-            initializeMultiContext();
-        }
-    }
-
-    void initializeMultiContext() {
-        assert !language.engine.singleContext.isValid();
-        if (language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
-            this.singleContext.invalidate();
-            LANGUAGE.initializeMultiContext(spi);
+        assert Thread.holdsLock(language.engine.lock);
+        if (!language.engine.singleContext.isValid() && language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
+            if (!multiContextInitialized) {
+                multiContextInitialized = true;
+                language.engine.initializeMultiContext(null);
+                this.singleContext.invalidate();
+                LANGUAGE.initializeMultiContext(spi);
+            }
         }
     }
 
@@ -183,7 +191,7 @@ final class PolyglotLanguageInstance implements VMObject {
                 ref = this.language.getContextReference();
                 break;
             default:
-                throw new AssertionError();
+                throw shouldNotReachHere();
         }
         return ref;
     }
@@ -207,8 +215,12 @@ final class PolyglotLanguageInstance implements VMObject {
             case SHARED:
                 return this.language.getLanguageReference();
             default:
-                throw new AssertionError();
+                throw shouldNotReachHere();
         }
+    }
+
+    void listCachedSources(Collection<Source> sources) {
+        sourceCache.listCachedSources(this, sources);
     }
 
 }

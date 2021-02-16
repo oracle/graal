@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,11 +64,14 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
         if (CompilerDirectives.inInterpreter()) {
             target = onInterpreterCall(target);
         }
+        if (GraalCompilerDirectives.inFirstTier()) {
+            incrementCallCount();
+        }
         try {
-            return target.callDirectOrInlined(this, arguments);
+            return target.callDirect(this, arguments);
         } catch (Throwable t) {
             Throwable profiledT = profileExceptionType(t);
-            OptimizedCallTarget.runtime().getTvmci().onThrowable(this, null, profiledT, null);
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(this, null, profiledT, null);
             throw OptimizedCallTarget.rethrow(profiledT);
         }
     }
@@ -152,7 +155,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
      *         made during this interpreter call, the argument target otherwise.
      */
     private OptimizedCallTarget onInterpreterCall(OptimizedCallTarget target) {
-        callCount++;
+        incrementCallCount();
         if (target.isNeedsSplit() && !splitDecided) {
             // We intentionally avoid locking here because worst case is a double decision printed
             // and preventing that is not worth the performance impact of locking
@@ -161,6 +164,11 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
             return getCurrentCallTarget();
         }
         return target;
+    }
+
+    private void incrementCallCount() {
+        int calls = this.callCount;
+        this.callCount = calls == Integer.MAX_VALUE ? calls : ++calls;
     }
 
     /** Used by the splitting strategy to install new targets. */

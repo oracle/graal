@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 typedef struct object {
     int field1;
@@ -46,12 +46,12 @@ void *get_object2_typeid(void) {
     return polyglot_object2_typeid();
 }
 
-void *test_dynamic_cast(MyObject *object, void* out_array) {
+void *test_dynamic_cast(MyObject *object, void *out_array) {
     int i = 0;
 
     polyglot_set_array_element(out_array, i++, object->field1);
     polyglot_set_array_element(out_array, i++, object->field2);
-    polyglot_set_array_element(out_array, i++, ((MyObject2*)object)->field3);
+    polyglot_set_array_element(out_array, i++, ((MyObject2 *) object)->field3);
 
     return out_array;
 }

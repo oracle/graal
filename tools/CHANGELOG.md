@@ -2,8 +2,25 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 21.0.0
+
+* `--insight` option is no longer considered experimental
+* Use `ctx.iterateFrames` to [access whole stack and its variables](docs/Insight-Manual.md#Accessing-whole-Stack)
+* Embedders can [inject additional objects](docs/Insight-Embedding.md#Extending-Functionality-of-Insight-Scripts) into Insight scripts
+
+## Version 20.3.0
+
+* [GraalVM Insight](docs/Insight.md) Maven artifact is now `org.graalvm.tools:insight:20.3.0`
+* [GraalVM Insight](docs/Insight-Manual.md#intercepting--altering-execution) can intercept execution and modify return values
+
+## Version 20.2.0
+
+* [GraalVM Insight](docs/Insight-Manual.md#modifying-local-variables) can modify values of local variables
+* Write [GraalVM Insight](docs/Insight-Manual.md#python) scripts in Python
+
 ## Version 20.1.0
 
+* [GraalVM Insight](docs/Insight-Manual.md#hack-into-the-c-code) can access local variables in C, C++ and other LLVM languages
 * [GraalVM Insight](docs/Insight.md) is the new name for the former *T*-*Trace* technology
 
 ## Version 20.0.0

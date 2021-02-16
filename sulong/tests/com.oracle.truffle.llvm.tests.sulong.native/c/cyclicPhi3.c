@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,11 +37,11 @@ volatile int b = 66;
 
 int main() {
 
-  for (int i = start; i < end; i++) {
-    printf("%d %d\n", a, b);
-    int tmp = a;
-    a = b;
-    b = tmp;
-  }
-  return 0;
+    for (int i = start; i < end; i++) {
+        printf("%d %d\n", a, b);
+        int tmp = a;
+        a = b;
+        b = tmp;
+    }
+    return 0;
 }

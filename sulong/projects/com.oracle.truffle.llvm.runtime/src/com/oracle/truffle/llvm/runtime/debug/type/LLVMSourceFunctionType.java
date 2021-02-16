@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.type;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-public final class LLVMSourceFunctionType extends LLVMSourceType {
+public class LLVMSourceFunctionType extends LLVMSourceType {
 
     private final List<LLVMSourceType> types;
 
@@ -80,6 +80,11 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
         } else {
             return LLVMSourceType.VOID;
         }
+    }
+
+    @TruffleBoundary
+    public int getNumberOfParameters() {
+        return Math.max(0, types.size() - 1);
     }
 
     @TruffleBoundary

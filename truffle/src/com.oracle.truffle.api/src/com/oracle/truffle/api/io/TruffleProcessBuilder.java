@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.io.ProcessHandler.Redirect;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 
@@ -337,14 +336,8 @@ public final class TruffleProcessBuilder {
                             inputRedirect,
                             outputRedirect,
                             errorRedirect);
-        } catch (IOException ioe) {
+        } catch (IOException | SecurityException ioe) {
             throw ioe;
-        } catch (SecurityException se) {
-            if (se instanceof TruffleException) {
-                throw se;
-            } else {
-                throw IOAccessor.languageAccess().throwSecurityException(se.getMessage());
-            }
         } catch (Throwable t) {
             throw wrapHostException(t);
         }

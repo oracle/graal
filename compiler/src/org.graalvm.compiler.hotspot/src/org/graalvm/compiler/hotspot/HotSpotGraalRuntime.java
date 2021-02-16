@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
+import org.graalvm.compiler.core.Instrumentation;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationListenerProfiler;
 import org.graalvm.compiler.core.common.CompilerProfiler;
@@ -103,8 +104,10 @@ import jdk.vm.ci.services.Services;
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private static final boolean IS_AOT = Boolean.parseBoolean(Services.getSavedProperties().get("com.oracle.graalvm.isaot"));
+
     /**
-     * A factory for {@link HotSpotGraalManagementRegistration} injected by {@code LibGraalFeature}.
+     * A factory for a {@link HotSpotGraalManagementRegistration} injected by
+     * {@code Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime}.
      */
     private static final Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT = null;
 
@@ -136,6 +139,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final GraalHotSpotVMConfig config;
 
+    private final Instrumentation instrumentation;
+
     /**
      * The options can be {@linkplain #setOptionValues(String[], String[]) updated} by external
      * interfaces such as JMX. This comes with the risk that inconsistencies can arise as an
@@ -152,7 +157,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     /**
      * @param nameQualifier a qualifier to be added to this runtime's {@linkplain #getName() name}
      * @param compilerConfigurationFactory factory for the compiler configuration
-     *            {@link CompilerConfigurationFactory#selectFactory(String, OptionValues)}
+     *            {@link CompilerConfigurationFactory#selectFactory}
      */
     @SuppressWarnings("try")
     HotSpotGraalRuntime(String nameQualifier, HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory, OptionValues initialOptions) {
@@ -176,6 +181,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
         compilerConfigurationName = compilerConfigurationFactory.getName();
 
+        this.instrumentation = compilerConfigurationFactory.createInstrumentation(options);
+
         if (IS_AOT) {
             management = AOT_INJECTED_MANAGEMENT == null ? null : AOT_INJECTED_MANAGEMENT.get();
         } else {
@@ -184,11 +191,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         if (management != null) {
             try {
                 management.initialize(this, config);
-            } catch (ThreadDeath td) {
-                throw td;
             } catch (Throwable error) {
-                TTY.println("Cannot install GraalVM MBean due to " + error.getMessage());
-                management = null;
+                handleManagementInitializationFailure(error);
             }
         }
 
@@ -242,38 +246,58 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     }
 
     /**
-     * Constants denoting the GC algorithms available in HotSpot.
+     * Constants denoting the GC algorithms available in HotSpot. The names of the constants match
+     * the constants in the {@code CollectedHeap::Name} C++ enum.
      */
     public enum HotSpotGC {
         // Supported GCs
-        Serial(true, "UseSerialGC", true),
-        Parallel(true, "UseParallelGC", true, "UseParallelOldGC", JDK < 15, "UseParNewGC", JDK < 10),
-        CMS(true, "UseConcMarkSweepGC", JDK < 14),
-        G1(true, "UseG1GC", true),
-        Shenandoah(true, "UseShenandoahGC", true),
+        Serial(true, JDK >= 11, "UseSerialGC", true),
+        Parallel(true, JDK >= 11, "UseParallelGC", true, "UseParallelOldGC", JDK < 15, "UseParNewGC", JDK < 10),
+        CMS(true, JDK >= 11 && JDK <= 14, "UseConcMarkSweepGC", JDK < 14),
+        G1(true, JDK >= 11, "UseG1GC", true),
+        Shenandoah(true, JDK >= 11, "UseShenandoahGC", true),
 
         // Unsupported GCs
-        Epsilon(false, "UseEpsilonGC", JDK >= 11),
-        Z(false, "UseZGC", JDK >= 11);
+        Epsilon(false, JDK >= 11, "UseEpsilonGC", JDK >= 11),
+        Z(false, JDK >= 11, "UseZGC", JDK >= 11);
 
-        HotSpotGC(boolean supported,
+        HotSpotGC(boolean supported, boolean expectNamePresent,
                         String flag1, boolean expectFlagPresent1,
                         String flag2, boolean expectFlagPresent2,
                         String flag3, boolean expectFlagPresent3) {
             this.supported = supported;
+            this.expectNamePresent = expectNamePresent;
             this.expectFlagsPresent = new boolean[]{expectFlagPresent1, expectFlagPresent2, expectFlagPresent3};
             this.flags = new String[]{flag1, flag2, flag3};
         }
 
-        HotSpotGC(boolean supported, String flag, boolean expectFlagPresent) {
+        HotSpotGC(boolean supported, boolean expectNamePresent, String flag, boolean expectFlagPresent) {
             this.supported = supported;
+            this.expectNamePresent = expectNamePresent;
             this.expectFlagsPresent = new boolean[]{expectFlagPresent};
             this.flags = new String[]{flag};
         }
 
+        /**
+         * Specifies if this GC supported by Graal.
+         */
         final boolean supported;
-        final boolean[] expectFlagsPresent;
+
+        /**
+         * Specifies if {@link #name()} is expected to be present in the {@code CollectedHeap::Name}
+         * C++ enum.
+         */
+        final boolean expectNamePresent;
+
+        /**
+         * The VM flags that will select this GC.
+         */
         private final String[] flags;
+
+        /**
+         * Specifies which {@link #flags} are expected to be present in the VM.
+         */
+        final boolean[] expectFlagsPresent;
 
         public boolean isSelected(GraalHotSpotVMConfig config) {
             boolean selected = false;
@@ -288,6 +312,20 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 }
             }
             return selected;
+        }
+
+        /**
+         * Gets the GC matching {@code name}.
+         *
+         * @param name the ordinal of a {@code CollectedHeap::Name} value
+         */
+        static HotSpotGC forName(int name, GraalHotSpotVMConfig config) {
+            for (HotSpotGC gc : HotSpotGC.values()) {
+                if (config.getConstant("CollectedHeap::" + gc.name(), Integer.class, -1, gc.expectNamePresent) == name) {
+                    return gc;
+                }
+            }
+            return null;
         }
     }
 
@@ -426,12 +464,22 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return compilerConfigurationName;
     }
 
+    @Override
+    public Instrumentation getInstrumentation() {
+        return instrumentation;
+    }
+
     private long runtimeStartTime;
 
     /**
      * Called from compiler threads to check whether to bail out of a compilation.
      */
     private volatile boolean shutdown;
+
+    /**
+     * Shutdown hooks that should be run on the same thread doing the shutdown.
+     */
+    private List<Runnable> shutdownHooks = new ArrayList<>();
 
     /**
      * Take action related to entering a new execution phase.
@@ -444,8 +492,29 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         }
     }
 
-    void shutdown() {
+    /**
+     * Adds a {@link Runnable} that will be run when this runtime is {@link #shutdown()}. The
+     * runnable will be run on the same thread doing the shutdown. All the advice for regular
+     * {@linkplain Runtime#addShutdownHook(Thread) shutdown hooks} also applies here but even more
+     * so since the hook runs on the shutdown thread.
+     */
+    public synchronized void addShutdownHook(Runnable hook) {
+        if (!shutdown) {
+            shutdownHooks.add(hook);
+        }
+    }
+
+    synchronized void shutdown() {
         shutdown = true;
+
+        for (Runnable r : shutdownHooks) {
+            try {
+                r.run();
+            } catch (Throwable e) {
+                e.printStackTrace(TTY.out);
+            }
+        }
+
         metricValues.print(optionsRef.get());
 
         phaseTransition("final");
@@ -459,15 +528,17 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         outputDirectory.close();
 
-        shutdownLibGraal();
+        shutdownLibGraal(this);
     }
 
     /**
      * Substituted by
      * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime}
-     * to call {@code org.graalvm.nativeimage.VMRuntime.shutdown()}.
+     * to notify {@code org.graalvm.libgraal.LibGraalIsolate} and call
+     * {@code org.graalvm.nativeimage.VMRuntime.shutdown()}.
      */
-    private static void shutdownLibGraal() {
+    @SuppressWarnings("unused")
+    private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
     }
 
     void clearMetrics() {
@@ -510,6 +581,14 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
      */
     public HotSpotGraalManagementRegistration getManagement() {
         return management;
+    }
+
+    public void handleManagementInitializationFailure(Throwable cause) {
+        if (cause instanceof ThreadDeath) {
+            throw (ThreadDeath) cause;
+        }
+        TTY.println("Cannot install GraalVM MBean due to " + cause.getMessage());
+        management = null;
     }
 
     /**

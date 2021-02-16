@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
 import org.graalvm.compiler.phases.util.Providers;
@@ -46,6 +47,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 /**
  * Represents an inlining opportunity for which profiling information suggests a monomorphic
@@ -57,12 +59,14 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
     private final ResolvedJavaMethod concrete;
     private final ResolvedJavaType type;
     private Inlineable inlineableElement;
+    private final Speculation speculation;
 
-    public TypeGuardInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, ResolvedJavaType type) {
+    public TypeGuardInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, ResolvedJavaType type, Speculation speculation) {
         super(invoke);
         this.concrete = concrete;
         this.type = type;
         assert type.isArray() || type.isConcrete() : type;
+        this.speculation = speculation;
     }
 
     @Override
@@ -101,7 +105,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public EconomicSet<Node> inline(Providers providers, String reason) {
+    public EconomicSet<Node> inline(CoreProviders providers, String reason) {
         createGuard(graph(), providers);
         return inline(invoke, concrete, inlineableElement, false, reason);
     }
@@ -113,14 +117,14 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @SuppressWarnings("try")
-    private void createGuard(StructuredGraph graph, Providers providers) {
+    private void createGuard(StructuredGraph graph, CoreProviders providers) {
         try (DebugCloseable context = invoke.asNode().withNodeSourcePosition()) {
             ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
             LoadHubNode receiverHub = graph.unique(new LoadHubNode(providers.getStampProvider(), nonNullReceiver));
             ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(NodeView.DEFAULT), providers.getConstantReflection().asObjectHub(type), providers.getMetaAccess(), graph);
 
             LogicNode typeCheck = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, receiverHub, typeHub, providers.getConstantReflection(), NodeView.DEFAULT);
-            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
             assert invoke.predecessor() != null;
 
             ValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, guard, type, nonNullReceiver, true);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,18 +33,18 @@ int arr[] = { 1, 2, 42, 3 };
 
 int foo(int a) {
 
-  if (a == 0) {
-    throw &(arr[0]);
-  }
-  return a;
+    if (a == 0) {
+        throw &(arr[0]);
+    }
+    return a;
 }
 
 int main() {
-  try {
-    foo(0);
-    return 0;
-  } catch (int *a) {
-    printf("%i\n", a[2]);
-    return a[2];
-  }
+    try {
+        foo(0);
+        return 0;
+    } catch (int *a) {
+        printf("%i\n", a[2]);
+        return a[2];
+    }
 }

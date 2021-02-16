@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,30 +29,18 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
 
@@ -82,16 +70,6 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
             return super.disableLoopSafepoint() || method.getAnnotation(Uninterruptible.class) != null;
         }
 
-        @Override
-        protected NewInstanceNode createNewInstance(ResolvedJavaType type, boolean fillContents) {
-            return new SubstrateNewInstanceNode(type, fillContents, null);
-        }
-
-        @Override
-        protected NewArrayNode createNewArray(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-            return new SubstrateNewArrayNode(elementType, length, fillContents, null);
-        }
-
         /**
          * {@link Fold} and {@link NodeIntrinsic} can be deferred during parsing/decoding. Only by
          * the end of {@linkplain SnippetTemplate#instantiate Snippet instantiation} do they need to
@@ -105,14 +83,6 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
         @Override
         public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
             return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
-        }
-
-        public InvokeWithExceptionNode handleInvokeWithException(CallTargetNode callTarget, JavaKind resultType) {
-            InvokeWithExceptionNode invoke = createInvokeWithException(bci(), callTarget, resultType, ExceptionEdgeAction.INCLUDE_AND_HANDLE);
-            AbstractBeginNode beginNode = graph.add(KillingBeginNode.create(LocationIdentity.any()));
-            invoke.setNext(beginNode);
-            lastInstr = beginNode;
-            return invoke;
         }
 
     }

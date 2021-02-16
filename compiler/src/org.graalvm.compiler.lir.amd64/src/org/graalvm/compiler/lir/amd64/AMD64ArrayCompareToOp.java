@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,8 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
 
     @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
 
-    public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, JavaKind kind1, JavaKind kind2, Value result, Value array1, Value array2, Value length1, Value length2) {
+    public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2,
+                    Value length1, Value length2) {
         super(TYPE);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
@@ -90,8 +91,8 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
         this.kind2 = kind2;
 
         // Both offsets should be the same but better be safe than sorry.
-        this.array1BaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(kind1);
-        this.array2BaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(kind2);
+        this.array1BaseOffset = array1BaseOffset;
+        this.array2BaseOffset = array2BaseOffset;
 
         this.resultValue = result;
         this.array1Value = array1;

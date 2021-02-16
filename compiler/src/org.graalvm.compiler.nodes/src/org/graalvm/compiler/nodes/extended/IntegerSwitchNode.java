@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
@@ -40,12 +44,18 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
@@ -69,12 +79,19 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     public static final NodeClass<IntegerSwitchNode> TYPE = NodeClass.create(IntegerSwitchNode.class);
 
     protected final int[] keys;
+    /**
+     * True if keys are contiguous ([n, n+1, n+2, n+3, ..., n+k]).
+     *
+     * When this is the case, we can lookup successor index in O(1).
+     */
+    protected final boolean areKeysContiguous;
 
     public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(TYPE, value, successors, keySuccessors, keyProbabilities);
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
+        areKeysContiguous = keys.length < 2 || keys[keys.length - 1] - keys[0] + 1 == keys.length;
         assert value.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger();
         assert assertSorted();
         assert assertNoUntargettedSuccessor();
@@ -151,10 +168,12 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     public int successorIndexAtKey(int key) {
-        for (int i = 0; i < keyCount(); i++) {
-            if (keys[i] == key) {
-                return keySuccessorIndex(i);
-            }
+        if (areKeysContiguous && keys[0] <= key && key <= keys[keys.length - 1]) {
+            return keySuccessorIndex(key - keys[0]);
+        }
+        int index = Arrays.binarySearch(keys, key);
+        if (index >= 0) {
+            return keySuccessorIndex(index);
         }
         return keySuccessorIndex(keyCount());
     }
@@ -172,6 +191,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         } else if (tryRemoveUnreachableKeys(tool, value().stamp(view))) {
             return;
         } else if (switchTransformationOptimization(tool)) {
+            return;
+        } else if (tryMergeCommonSuccessors()) {
             return;
         }
     }
@@ -225,6 +246,228 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                 }
             }
         }
+        return true;
+    }
+
+    private static final class MergeCoalesceBuilder {
+
+        private final List<KeyData> newKeyData = new ArrayList<>();
+        private final ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>();
+        private final EconomicMap<AbstractMergeNode, MergeMarker> mergeKeys = EconomicMap.create();
+        private final IntegerSwitchNode switchNode;
+
+        private int newDefaultSuccessor = -1;
+        private double newDefaultProbability;
+
+        private boolean canRewire;
+
+        MergeCoalesceBuilder(IntegerSwitchNode switchNode) {
+            this.switchNode = switchNode;
+        }
+
+        private static final class MergeMarker implements Iterable<Integer> {
+            private final ArrayList<Integer> indexes = new ArrayList<>();
+            private final EconomicSet<EndNode> ends = EconomicSet.create();
+            private boolean hasDefault = false;
+
+            private static final int DEFAULT_KEY = -1;
+
+            void update(int index, EndNode end) {
+                if (index == DEFAULT_KEY) {
+                    hasDefault = true;
+                }
+                indexes.add(index);
+                ends.add(end);
+            }
+
+            int visitedEnds() {
+                return ends.size();
+            }
+
+            boolean hasDefault() {
+                return hasDefault;
+            }
+
+            Iterable<EndNode> ends() {
+                return ends;
+            }
+
+            @Override
+            public Iterator<Integer> iterator() {
+                return indexes.iterator();
+            }
+        }
+
+        boolean canRewire() {
+            return canRewire;
+        }
+
+        void tryMergeBranch(AbstractBeginNode begin, int i) {
+            tryMergeCommon(begin, false, i);
+        }
+
+        void tryMergeDefault(AbstractBeginNode begin) {
+            tryMergeCommon(begin, true, MergeMarker.DEFAULT_KEY);
+        }
+
+        private void tryMergeCommon(AbstractBeginNode begin, boolean isDefault, int i) {
+            if (begin instanceof BeginNode && begin.hasNoUsages()) {
+                FixedNode next = begin.next();
+                if (next instanceof EndNode) {
+                    EndNode endNode = (EndNode) next;
+                    AbstractMergeNode merge = endNode.merge();
+                    if ((merge instanceof MergeNode) &&
+                                    merge.phis().isEmpty()) {
+                        // Multiple keys wire to the same trivial merge.
+                        if (mergeKeys.containsKey(merge)) {
+                            mergeKeys.get(merge).update(i, endNode);
+                            canRewire = true;
+                        } else {
+                            MergeMarker indexes = new MergeMarker();
+                            indexes.update(i, endNode);
+                            mergeKeys.put(merge, indexes);
+                        }
+                        return;
+                    }
+                }
+            }
+            if (!isDefault) {
+                assert i >= 0 && i < switchNode.keyCount();
+                addKeyData(addNewSuccessor(begin, newSuccessors), i);
+            }
+        }
+
+        void prepareMerge() {
+            canRewire = false;
+
+            MapCursor<AbstractMergeNode, MergeMarker> cursor = mergeKeys.getEntries();
+            newDefaultProbability = switchNode.defaultProbability();
+
+            while (cursor.advance()) {
+                AbstractMergeNode merge = cursor.getKey();
+                MergeMarker marker = cursor.getValue();
+                if (marker.visitedEnds() > 1) {
+                    /* Ensure that we coalesce more than a single branch. */
+                    canRewire = true;
+                    boolean partialCoalesce = merge.forwardEndCount() != marker.visitedEnds();
+
+                    /* Rewire anchoring links, etc... to the new node */
+                    AbstractBeginNode begin;
+                    if (partialCoalesce) {
+                        /*
+                         * If one or more branches are not from the switch, or one of them can not
+                         * be coalesced (/ex: begin used as a guard), we can still save a few
+                         * begin/ends.
+                         */
+                        for (EndNode end : marker.ends()) {
+                            /* Detach visited ends from the merge */
+                            merge.removeEnd(end);
+                        }
+                        /* Attach a new end that will serve as the new target branch */
+                        EndNode newEnd = switchNode.graph().add(new EndNode());
+                        merge.addForwardEnd(newEnd);
+                        begin = BeginNode.begin(newEnd);
+                    } else {
+                        FixedNode next = merge.next();
+                        merge.setNext(null);
+                        begin = BeginNode.begin(next);
+                        merge.replaceAtUsages(begin, InputType.Anchor);
+                        merge.replaceAtUsages(begin, InputType.Guard);
+                        assert merge.hasNoUsages();
+                    }
+
+                    int successorIndex = addNewSuccessor(begin, newSuccessors);
+                    if (marker.hasDefault()) {
+                        assert newDefaultSuccessor == -1 : "Multiple default keys ?";
+                        /*
+                         * Rewire all keys pointing to same target as default to the default
+                         * successor, and delete said kys from the switch.
+                         */
+                        newDefaultSuccessor = successorIndex;
+                        for (int index : marker) {
+                            if (index != MergeMarker.DEFAULT_KEY) {
+                                newDefaultProbability += switchNode.keyProbability(index);
+                            }
+                        }
+                    } else {
+                        for (int index : marker) {
+                            /* Rewire to the same successor */
+                            AbstractBeginNode successorBegin = switchNode.keySuccessor(index);
+                            assert successorBegin.next() instanceof EndNode;
+                            addKeyData(successorIndex, index);
+                        }
+                    }
+                } else {
+                    /*
+                     * Merge has an end that is not part of the switch, or it could not merge one of
+                     * its branches.
+                     */
+                    for (int i : marker) {
+                        if (i != MergeMarker.DEFAULT_KEY) {
+                            addKeyData(addNewSuccessor(switchNode.keySuccessor(i), newSuccessors), i);
+                        }
+                    }
+                }
+            }
+            if (newDefaultSuccessor == -1) {
+                newDefaultSuccessor = addNewSuccessor(switchNode.defaultSuccessor(), newSuccessors);
+            }
+        }
+
+        private boolean addKeyData(int successorIndex, int index) {
+            return newKeyData.add(new KeyData(switchNode.intKeyAt(index), switchNode.keyProbability(index), successorIndex));
+        }
+
+        public void commit() {
+            switchNode.doReplace(switchNode.value(), newKeyData, newSuccessors, newDefaultSuccessor, newDefaultProbability);
+        }
+
+    }
+
+    /**
+     * Coalesces branches of the switch that trivially merges together.
+     */
+    public boolean tryMergeCommonSuccessors() {
+        /*-
+         *              |  SWITCH  |
+         *              |__________|
+         *               /    |    \
+         *              /     |     \
+         *           | B |  | B |  | B |
+         *             \      |      /
+         *              \     |     /
+         *              |   MERGE   |
+         *                    |
+         *                  | F |
+         *
+         *
+         *                    |
+         *                    v
+         *
+         *              |  SWITCH  |
+         *              |__________|
+         *                    |
+         *                    |
+         *                  | F |
+         *
+         */
+
+        MergeCoalesceBuilder builder = new MergeCoalesceBuilder(this);
+        for (int i = 0; i < keyCount(); i++) {
+            builder.tryMergeBranch(keySuccessor(i), i);
+        }
+        // Try to coalesce also the default branch.
+        builder.tryMergeDefault(defaultSuccessor());
+        if (!builder.canRewire()) {
+            // Nothing to do
+            return false;
+        }
+        builder.prepareMerge();
+        if (!builder.canRewire()) {
+            // Detected merges could not be coalesced.
+            return false;
+        }
+        builder.commit();
         return true;
     }
 

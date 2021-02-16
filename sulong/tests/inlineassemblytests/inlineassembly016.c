@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,12 @@
 #include <stdlib.h>
 
 int main() {
-  int arg1 = 33;
-  int sal = 0;
-  __asm__("sall $4, %%eax;" : "=a"(sal) : "a"(arg1));
+    int arg1 = 33;
+    int sal = 0;
+    __asm__("sall $4, %%eax;" : "=a"(sal) : "a"(arg1));
 
-  if (sal != 528) {
-    abort();
-  }
-  return 0;
+    if (sal != 528) {
+        abort();
+    }
+    return 0;
 }

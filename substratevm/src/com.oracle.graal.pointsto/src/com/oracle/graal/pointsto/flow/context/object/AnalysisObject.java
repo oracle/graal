@@ -193,7 +193,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed();
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
-        return fieldTypeStore.filterFlow(bb);
+        return fieldTypeStore.writeFlow().filterFlow(bb);
     }
 
     public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {

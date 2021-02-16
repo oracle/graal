@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,27 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.library.ExportLibrary;
 
 /**
  * Exception wrapper for an error occurred in the host language.
  */
 @SuppressWarnings("serial")
-final class HostException extends RuntimeException implements TruffleException {
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+final class HostException extends AbstractTruffleException {
 
     private final Throwable original;
+    final HostObject delegate;
 
     HostException(Throwable original) {
+        this(original, PolyglotContextImpl.currentNotEntered());
+    }
+
+    HostException(Throwable original, PolyglotContextImpl context) {
         this.original = original;
+        this.delegate = HostObject.forException(original, context != null ? context.getHostContext() : null, this);
     }
 
     Throwable getOriginal() {
@@ -62,26 +70,5 @@ final class HostException extends RuntimeException implements TruffleException {
     @Override
     public String getMessage() {
         return getOriginal().getMessage();
-    }
-
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
-    }
-
-    @Override
-    public boolean isCancelled() {
-        return getOriginal() instanceof InterruptedException;
-    }
-
-    @Override
-    public Object getExceptionObject() {
-        Throwable exception = getOriginal();
-        return HostObject.forException(exception, PolyglotContextImpl.requireContext().getHostContext(), this);
-    }
-
-    public Node getLocation() {
-        return null;
     }
 }

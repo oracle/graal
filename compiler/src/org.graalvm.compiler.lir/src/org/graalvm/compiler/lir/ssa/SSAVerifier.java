@@ -26,8 +26,10 @@
 package org.graalvm.compiler.lir.ssa;
 
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRValueUtil.isCast;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.stripCast;
 
 import java.util.BitSet;
 import java.util.EnumSet;
@@ -116,7 +118,8 @@ final class SSAVerifier {
      * @param mode
      * @param flags
      */
-    private void useConsumer(LIRInstruction inst, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private void useConsumer(LIRInstruction inst, Value val, OperandMode mode, EnumSet<OperandFlag> flags) {
+        Value value = stripCast(val);
         if (shouldProcess(value)) {
             assert defined.containsKey(value) || flags.contains(OperandFlag.UNINITIALIZED) : String.format("Value %s used at instruction %s in block %s but never defined", value, inst,
                             currentBlock);
@@ -129,6 +132,7 @@ final class SSAVerifier {
      * @param flags
      */
     private void defConsumer(LIRInstruction inst, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+        assert !isCast(value);
         if (shouldProcess(value)) {
             assert !defined.containsKey(value) : String.format("Value %s redefined at %s but never defined (previous definition %s in block %s)", value, inst, defined.get(value).inst,
                             defined.get(value).block);

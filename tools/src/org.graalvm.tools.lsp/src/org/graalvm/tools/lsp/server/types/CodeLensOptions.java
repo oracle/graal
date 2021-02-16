@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,14 +28,12 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Code Lens options.
+ * Code Lens provider options of a [CodeLensRequest](#CodeLensRequest).
  */
-public class CodeLensOptions {
-
-    final JSONObject jsonData;
+public class CodeLensOptions extends WorkDoneProgressOptions {
 
     CodeLensOptions(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -66,14 +64,20 @@ public class CodeLensOptions {
         if (!Objects.equals(this.getResolveProvider(), other.getResolveProvider())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneProgress(), other.getWorkDoneProgress())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 2;
+        int hash = 5;
         if (this.getResolveProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getResolveProvider());
+            hash = 59 * hash + Boolean.hashCode(this.getResolveProvider());
+        }
+        if (this.getWorkDoneProgress() != null) {
+            hash = 59 * hash + Boolean.hashCode(this.getWorkDoneProgress());
         }
         return hash;
     }

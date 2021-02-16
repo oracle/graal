@@ -26,11 +26,14 @@ package org.graalvm.component.installer.persist;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.InstallerStopException;
+import org.graalvm.component.installer.SuppressFBWarnings;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.remote.FileDownloader;
 
 /**
  * Abstraction that loads metadata for a given component.
@@ -87,4 +90,32 @@ public interface MetadataLoader extends Closeable {
      * @return ComponentInfo with completed metadata
      */
     ComponentInfo completeMetadata() throws IOException;
+
+    default FileDownloader configureRelatedDownloader(FileDownloader dn) {
+        return dn;
+    }
+
+    @SuppressWarnings("unused")
+    default Date isLicenseAccepted(ComponentInfo info, String licenseID) {
+        return null;
+    }
+
+    /**
+     * A provider-dependent way of accepting a license. If the Loader returns {@code true}, it has
+     * to record the accepted license on its own. Returning {@code false} will suppress the default
+     * recording. {@code null} means the default recording should be used.
+     * <p/>
+     * The default implementation returns {@code null}.
+     * 
+     * @param info Component for which the license is being accepted.
+     * @param licenseID ID of the license.
+     * @param licenseText The text of the license.
+     * @param d date accepted
+     * @return recording decision.
+     * @throws IOException
+     */
+    @SuppressFBWarnings(value = "NP_BOOLEAN_RETURN_NULL", justification = "The return value is a tri-state, indicates a success, denial, or default.")
+    default Boolean recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText, Date d) throws IOException {
+        return null;
+    }
 }

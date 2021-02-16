@@ -30,7 +30,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Inject accessors methods for the field denoted using a {@link Alias} annotation. All loads and
+ * Inject accessor methods for the field denoted using an {@link Alias} annotation. All loads and
  * stores to the original field are redirected to accessor methods located in the class provided in
  * the {@link #value} property. The class must implement the marker interface
  * {@link InjectAccessors}. The accessor methods are static methods in that class, named either
@@ -39,8 +39,8 @@ import java.lang.annotation.Target;
  * have 0, 1, or 2 parameters.
  *
  * If the field is non-static, the first method parameter is the accessed object. The type of the
- * parameter must be the class that declared the field. No null check is performed on the object
- * before the accessor is called, i.e., the object parameter can be {@code null}.
+ * parameter must be the class that declared the field. The null check on the object is performed
+ * before the accessor is called, in the same way as the null check for a regular field access.
  *
  * For get-accessors, the return type of the method must be the type of the field. For
  * set-accessors, the last method parameter must be the type of the field and denotes the value

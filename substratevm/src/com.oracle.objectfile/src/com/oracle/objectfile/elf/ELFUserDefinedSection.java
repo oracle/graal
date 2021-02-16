@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -148,24 +148,15 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, int length, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public RelocationRecord markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
         if (useImplicitAddend != (explicitAddend == null)) {
             throw new IllegalArgumentException("must have either an explicit or implicit addend");
         }
         ELFSymtab syms = (ELFSymtab) getOwner().elementForName(".symtab");
         ELFRelocationSection rs = (ELFRelocationSection) getOrCreateRelocationElement(useImplicitAddend);
-        ELFSymtab.Entry ent;
-        if (symbolName != null) {
-            ent = syms.getSymbol(symbolName);
-            assert ent != null;
-        } else {
-            // else we're a reloc type that doesn't need a symbol
-            // assert this about the reloc type
-            assert !k.usesSymbolValue();
-            // use the null symtab entry
-            ent = syms.getNullEntry();
-            assert ent.isNull();
-        }
-        return rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k, length), ent, explicitAddend);
+        assert symbolName != null;
+        ELFSymtab.Entry ent = syms.getSymbol(symbolName);
+        assert ent != null;
+        return rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k), ent, explicitAddend);
     }
 }

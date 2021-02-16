@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,9 +52,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.test.UncachedEncapsulatedNodeTestFactory.DisabledTestNodeGen;
 import com.oracle.truffle.api.library.test.UncachedEncapsulatedNodeTestFactory.Test1NodeGen;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 @SuppressWarnings("static-method")
@@ -77,18 +78,9 @@ public class UncachedEncapsulatedNodeTest extends AbstractLibraryTest {
 
         @ExportMessage
         Object m0() {
-            return NodeUtil.getCurrentEncapsulatingNode();
+            return EncapsulatingNodeReference.getCurrent().get();
         }
 
-    }
-
-    @Test
-    public void testDSLNode() {
-        Test1Node node = adoptNode(Test1NodeGen.create()).get();
-        assertNull(node.execute(new TestObject()));
-        assertNull(node.execute(new TestObject()));
-        assertSame(node, node.execute(new TestObject()));
-        assertSame(node, node.execute(new TestObject()));
     }
 
     @Test
@@ -113,10 +105,66 @@ public class UncachedEncapsulatedNodeTest extends AbstractLibraryTest {
 
     }
 
-    abstract static class Test2Node extends Node {
+    @Test
+    public void testDSLNode() {
+        Test1Node node = adoptNode(Test1NodeGen.create()).get();
+        assertNull(node.execute(new TestObject()));
+        assertNull(node.execute(new TestObject()));
+        assertSame(node, node.execute(new TestObject()));
+        assertSame(node, node.execute(new TestObject()));
+    }
 
-        abstract Object execute();
+    @GenerateLibrary(pushEncapsulatingNode = false)
+    public abstract static class DisabledEncapsulatedNodeLibrary extends Library {
 
+        public abstract Object m0(Object receiver);
+
+    }
+
+    @ExportLibrary(DisabledEncapsulatedNodeLibrary.class)
+    static final class DisabledTestObject {
+
+        @ExportMessage
+        boolean accepts(@Cached("this") DisabledTestObject cached) {
+            return this == cached;
+        }
+
+        @ExportMessage
+        Object m0() {
+            return EncapsulatingNodeReference.getCurrent().get();
+        }
+
+    }
+
+    @Test
+    public void testDisabledCachedDispatch() {
+        DisabledEncapsulatedNodeLibrary lib = createCachedDispatch(DisabledEncapsulatedNodeLibrary.class, 2);
+
+        assertNull(lib.m0(new DisabledTestObject()));
+        assertNull(lib.m0(new DisabledTestObject()));
+        assertNull(lib.m0(new DisabledTestObject()));
+        assertNull(lib.m0(new DisabledTestObject()));
+    }
+
+    abstract static class DisabledTestNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(limit = "2")
+        Object doLibrary(Object arg,
+                        @CachedLibrary("arg") DisabledEncapsulatedNodeLibrary library) {
+            return library.m0(arg);
+        }
+
+    }
+
+    @Test
+    public void testDisabledDSLNode() {
+        DisabledTestNode node = adoptNode(DisabledTestNodeGen.create()).get();
+        assertNull(node.execute(new DisabledTestObject()));
+        assertNull(node.execute(new DisabledTestObject()));
+        assertNull(node.execute(new DisabledTestObject()));
+        assertNull(node.execute(new DisabledTestObject()));
     }
 
 }

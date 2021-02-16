@@ -41,7 +41,7 @@ public abstract class LLVMX86_ComparisonNode {
     @NodeChild(value = "xmm2", type = LLVMExpressionNode.class)
     @NodeChild(value = "imm", type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_Cmpss extends LLVMBuiltin {
-        private static float TRUEMASK = Float.intBitsToFloat(-1);
+        private static final float TRUEMASK = Float.intBitsToFloat(-1);
 
         @Specialization
         protected LLVMFloatVector doIntrinsic(LLVMFloatVector xmm1, LLVMFloatVector xmm2, byte imm) {

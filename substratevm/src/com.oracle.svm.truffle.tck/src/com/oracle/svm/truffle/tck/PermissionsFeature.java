@@ -58,9 +58,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -70,6 +70,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -99,7 +100,8 @@ public class PermissionsFeature implements Feature {
         @Option(help = "Path to file where to store report of Truffle language privilege access.") public static final HostedOptionKey<String> TruffleTCKPermissionsReportFile = new HostedOptionKey<>(
                         null);
 
-        @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<String[]> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(null);
+        @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(
+                        new LocatableMultiOptionValue.Strings());
 
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(
                         -1);
@@ -157,7 +159,7 @@ public class PermissionsFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
-            UserError.abort(getClass().getSimpleName() + " requires -H:-FoldSecurityManagerGetter option.");
+            UserError.abort("%s requires -H:-FoldSecurityManagerGetter option.", getClass().getSimpleName());
         }
         String reportFile = Options.TruffleTCKPermissionsReportFile.getValue();
         if (reportFile == null) {
@@ -177,7 +179,7 @@ public class PermissionsFeature implements Feature {
                 Files.newOutputStream(reportFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             }
         } catch (IOException ioe) {
-            throw UserError.abort("Cannot delete existing report file " + reportFilePath + ".");
+            throw UserError.abort("Cannot delete existing report file %s.", reportFilePath);
         }
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         DebugContext debugContext = accessImpl.getDebugContext();
@@ -195,20 +197,25 @@ public class PermissionsFeature implements Feature {
                 UserError.abort("Cannot load ReflectionProxy type");
             }
             whiteList = parser.getLoadedWhiteList();
-            Set<AnalysisMethod> importantMethods = new HashSet<>();
-            importantMethods.addAll(findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check")));
-            importantMethods.addAll(findMethods(bigbang, sun.misc.Unsafe.class, (m) -> m.isPublic()));
-            if (!importantMethods.isEmpty()) {
-                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bigbang, importantMethods, debugContext);
+            Set<AnalysisMethod> deniedMethods = new HashSet<>();
+            deniedMethods.addAll(findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check")));
+            deniedMethods.addAll(findMethods(bigbang, sun.misc.Unsafe.class, (m) -> m.isPublic()));
+            // The type of the host Java NIO FileSystem.
+            // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
+            // package but
+            // can be directly used by a language. We need to include it into deniedMethods.
+            deniedMethods.addAll(findMethods(bigbang, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
+            if (!deniedMethods.isEmpty()) {
+                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bigbang, deniedMethods, debugContext);
                 List<List<AnalysisMethod>> report = new ArrayList<>();
                 Set<CallGraphFilter> contextFilters = new HashSet<>();
                 Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang),
                                 new SafeServiceLoaderRecognizer(bigbang, accessImpl.getImageClassLoader()));
                 int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
                 maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
-                for (AnalysisMethod importantMethod : importantMethods) {
-                    if (cg.containsKey(importantMethod)) {
-                        collectViolations(report, importantMethod,
+                for (AnalysisMethod deniedMethod : deniedMethods) {
+                    if (cg.containsKey(deniedMethod)) {
+                        collectViolations(report, deniedMethod,
                                         maxStackDepth,
                                         Options.TruffleTCKPermissionsMaxErrors.getValue(),
                                         cg, contextFilters,
@@ -379,11 +386,15 @@ public class PermissionsFeature implements Feature {
         if (useNoReports >= maxReports) {
             return useNoReports;
         }
-        if (isCompilerClass(m)) {
-            return useNoReports;
-        }
-        if (isExcludedClass(m)) {
-            return useNoReports;
+        if (depth > 1) {
+            // The denied method can be a compiler method
+            if (isCompilerClass(m)) {
+                return useNoReports;
+            }
+            // The denied method cannot be excluded by a white list
+            if (isExcludedClass(m)) {
+                return useNoReports;
+            }
         }
         if (!visited.contains(m)) {
             visited.add(m);
@@ -483,13 +494,14 @@ public class PermissionsFeature implements Feature {
      * @param owner the class which methods should be listed
      * @param filter the predicate filtering methods declared in {@code owner}
      * @return the methods accepted by {@code filter}
+     * @throws IllegalStateException if owner cannot be resolved
      */
     private static Set<AnalysisMethod> findMethods(BigBang bigBang, Class<?> owner, Predicate<ResolvedJavaMethod> filter) {
         AnalysisType clazz = bigBang.forClass(owner);
-        if (clazz != null) {
-            return findMethods(bigBang, clazz, filter);
+        if (clazz == null) {
+            throw new IllegalStateException("Cannot resolve " + owner.getName() + ".");
         }
-        return Collections.emptySet();
+        return findMethods(bigBang, clazz, filter);
     }
 
     /**
@@ -725,15 +737,10 @@ public class PermissionsFeature implements Feature {
     /**
      * Options facade for a resource containing the JRE white list.
      */
-    private static final class ResourceAsOptionDecorator extends HostedOptionKey<String[]> {
+    private static final class ResourceAsOptionDecorator extends HostedOptionKey<LocatableMultiOptionValue.Strings> {
 
         ResourceAsOptionDecorator(String defaultValue) {
-            super(new String[]{defaultValue});
-        }
-
-        @Override
-        public String[] getValue(OptionValues values) {
-            return getDefaultValue();
+            super(new LocatableMultiOptionValue.Strings(Collections.singletonList(defaultValue)));
         }
     }
 }

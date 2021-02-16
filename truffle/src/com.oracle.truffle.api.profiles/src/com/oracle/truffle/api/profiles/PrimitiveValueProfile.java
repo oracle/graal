@@ -308,6 +308,16 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
             return value;
         }
 
+        @Override
+        public void disable() {
+            this.cachedValue = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            this.cachedValue = UNINITIALIZED;
+        }
+
         private void slowPath(Object value) {
             if (cachedValue == UNINITIALIZED) {
                 cachedValue = value;

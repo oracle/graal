@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 /**
@@ -53,10 +54,11 @@ public abstract class ObjectHeader {
      */
     public abstract int getReservedBitsMask();
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public abstract long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress);
+    public abstract long encodeAsImageHeapObjectHeader(ImageHeapObject obj, long hubOffsetFromHeapBase);
 
     public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
+
+    public abstract Word encodeAsUnmanagedObjectHeader(DynamicHub hub);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract DynamicHub dynamicHubFromObjectHeader(UnsignedWord header);
@@ -69,10 +71,5 @@ public abstract class ObjectHeader {
     public abstract DynamicHub readDynamicHubFromPointer(Pointer ptr);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind);
-
-    public enum HeapKind {
-        Unmanaged,
-        ImageHeap,
-    }
+    public abstract void initializeHeaderOfNewObject(Pointer objectPointer, Word objectHeader);
 }

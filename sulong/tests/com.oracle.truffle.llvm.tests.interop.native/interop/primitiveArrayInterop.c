@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,31 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #include <stdlib.h>
 
 void free_seq(void *seq) {
-  free(seq);
+    free(seq);
 }
 
-#define DEF_TEST(type, name)                                      \
-  void *alloc_seq_##name(type start, type step, int len) {        \
-    type *array = calloc(sizeof(type), len);                      \
-    for (int i = 0; i < len; i++) {                               \
-      array[i] = start + i * step;                                \
-    }                                                             \
-    return polyglot_from_##name##_array(array, len);              \
-  }                                                               \
-                                                                  \
-  type sum_##name(void *arg) {                                    \
-    int len = polyglot_get_array_size(arg);                       \
-    type *array = polyglot_as_##name##_array(arg);                \
-    type sum = 0;                                                 \
-    for (int i = 0; i < len; i++) {                               \
-      sum += array[i];                                            \
-    }                                                             \
-    return sum;                                                   \
-  }
+#define DEF_TEST(type, name)                                                                                                                         \
+    void *alloc_seq_##name(type start, type step, int len) {                                                                                         \
+        type *array = calloc(sizeof(type), len);                                                                                                     \
+        for (int i = 0; i < len; i++) {                                                                                                              \
+            array[i] = start + i * step;                                                                                                             \
+        }                                                                                                                                            \
+        return polyglot_from_##name##_array(array, len);                                                                                             \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    type sum_##name(void *arg) {                                                                                                                     \
+        int len = polyglot_get_array_size(arg);                                                                                                      \
+        type *array = polyglot_as_##name##_array(arg);                                                                                               \
+        type sum = 0;                                                                                                                                \
+        for (int i = 0; i < len; i++) {                                                                                                              \
+            sum += array[i];                                                                                                                         \
+        }                                                                                                                                            \
+        return sum;                                                                                                                                  \
+    }
 
 DEF_TEST(int8_t, i8)
 DEF_TEST(int16_t, i16)

@@ -28,16 +28,12 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Measurement;
-import org.openjdk.jmh.annotations.Warmup;
 
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
 import org.graalvm.compiler.microbenchmarks.graal.util.ScheduleState;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 
-@Warmup(iterations = 20)
-@Measurement(iterations = 10)
 public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @MethodSpec(declaringClass = String.class, name = "equals")

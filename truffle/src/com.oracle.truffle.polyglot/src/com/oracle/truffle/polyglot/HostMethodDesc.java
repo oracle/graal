@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,7 @@ abstract class HostMethodDesc {
 
     abstract String getName();
 
-    abstract HostMethodDesc[] getOverloads();
+    abstract SingleMethod[] getOverloads();
 
     boolean isInternal() {
         return false;
@@ -111,13 +111,13 @@ abstract class HostMethodDesc {
         }
 
         @Override
-        public HostMethodDesc[] getOverloads() {
-            return new HostMethodDesc[]{this};
+        public SingleMethod[] getOverloads() {
+            return new SingleMethod[]{this};
         }
 
         public abstract Object invoke(Object receiver, Object[] arguments) throws Throwable;
 
-        public abstract Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotLanguageContext context, Node node);
+        public abstract Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotEngineImpl engine, PolyglotLanguageContext context, Node node);
 
         @Override
         public boolean isMethod() {
@@ -170,29 +170,24 @@ abstract class HostMethodDesc {
 
         abstract static class ReflectBase extends SingleMethod {
 
+            @CompilationFinal private CallTarget doInvokeTarget;
+
             ReflectBase(Executable executable) {
                 super(executable);
             }
 
             @Override
-            public Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotLanguageContext context, Node node) {
-                return GuestToHostRootNode.guestToHostCall(node, INVOKE, context, receiver, this, arguments);
+            public Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Node node) {
+                CallTarget target = this.doInvokeTarget;
+                if (target == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    doInvokeTarget = target = languageContext.context.engine.getHostToGuestCodeCache().reflectionHostInvoke;
+                }
+                assert target == languageContext.context.engine.getHostToGuestCodeCache().reflectionHostInvoke;
+
+                return GuestToHostRootNode.guestToHostCall(node, target, languageContext, receiver, this, arguments);
             }
 
-            private static final CallTarget INVOKE = GuestToHostRootNode.createGuestToHost(new GuestToHostRootNode(HostObject.class, "doInvoke") {
-                @Override
-                protected Object executeImpl(Object obj, Object[] callArguments) {
-                    SingleMethod.ReflectBase method = (SingleMethod.ReflectBase) callArguments[ARGUMENT_OFFSET];
-                    Object[] arguments = (Object[]) callArguments[ARGUMENT_OFFSET + 1];
-                    Object ret;
-                    try {
-                        ret = method.invoke(obj, arguments);
-                    } catch (Throwable e) {
-                        throw HostInteropReflect.rethrow(e);
-                    }
-                    return ret;
-                }
-            });
         }
 
         private static final class MethodReflectImpl extends ReflectBase {
@@ -312,30 +307,18 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotLanguageContext context, Node node) {
+            public Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Node node) {
                 MethodHandle handle = methodHandle;
                 if (handle == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     handle = makeMethodHandle();
                     methodHandle = handle;
                 }
-                return GuestToHostRootNode.guestToHostCall(node, INVOKE, context, receiver, handle, arguments);
+                CallTarget target = engine.getHostToGuestCodeCache().methodHandleHostInvoke;
+                CompilerAsserts.partialEvaluationConstant(target);
+                return GuestToHostRootNode.guestToHostCall(node, target, languageContext, receiver, handle, arguments);
             }
 
-            private static final CallTarget INVOKE = GuestToHostRootNode.createGuestToHost(new GuestToHostRootNode(HostObject.class, "doInvoke") {
-                @Override
-                protected Object executeImpl(Object receiver, Object[] callArguments) {
-                    MethodHandle methodHandle = (MethodHandle) callArguments[ARGUMENT_OFFSET];
-                    Object[] arguments = (Object[]) callArguments[ARGUMENT_OFFSET + 1];
-                    Object ret;
-                    try {
-                        ret = invokeHandle(methodHandle, receiver, arguments);
-                    } catch (Throwable e) {
-                        throw HostInteropReflect.rethrow(e);
-                    }
-                    return ret;
-                }
-            });
         }
 
         private static final class MethodMHImpl extends MHBase {

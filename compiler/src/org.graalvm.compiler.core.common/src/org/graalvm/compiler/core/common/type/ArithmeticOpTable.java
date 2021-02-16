@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,8 @@ import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Add;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Div;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Max;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Min;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Mul;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.MulHigh;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
@@ -87,6 +89,9 @@ public final class ArithmeticOpTable {
     private final IntegerConvertOp<SignExtend> signExtend;
     private final IntegerConvertOp<Narrow> narrow;
 
+    private final BinaryOp<Max> max;
+    private final BinaryOp<Min> min;
+
     private final FloatConvertOp[] floatConvert;
     private final int hash;
 
@@ -99,7 +104,7 @@ public final class ArithmeticOpTable {
     }
 
     public BinaryOp<?>[] getBinaryOps() {
-        return new BinaryOp<?>[]{add, sub, mul, mulHigh, umulHigh, div, rem, and, or, xor};
+        return new BinaryOp<?>[]{add, sub, mul, mulHigh, umulHigh, div, rem, and, or, xor, max, min};
     }
 
     public UnaryOp<?>[] getUnaryOps() {
@@ -114,7 +119,8 @@ public final class ArithmeticOpTable {
         return new IntegerConvertOp<?>[]{zeroExtend, signExtend, narrow};
     }
 
-    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                    null);
 
     public interface ArithmeticOpWrapper {
 
@@ -164,13 +170,17 @@ public final class ArithmeticOpTable {
         IntegerConvertOp<SignExtend> signExtend = wrapIfNonNull(wrapper::wrapIntegerConvertOp, inner.getSignExtend());
         IntegerConvertOp<Narrow> narrow = wrapIfNonNull(wrapper::wrapIntegerConvertOp, inner.getNarrow());
 
+        BinaryOp<Max> max = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getMax());
+        BinaryOp<Min> min = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getMin());
+
         FloatConvertOp[] floatConvert = CollectionsUtil.filterAndMapToArray(inner.floatConvert, Objects::nonNull, wrapper::wrapFloatConvertOp, FloatConvertOp[]::new);
-        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, floatConvert);
+        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, floatConvert);
     }
 
     protected ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<MulHigh> mulHigh, BinaryOp<UMulHigh> umulHigh, BinaryOp<Div> div, BinaryOp<Rem> rem,
                     UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or, BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt,
-                    IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, FloatConvertOp... floatConvert) {
+                    IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min,
+                    FloatConvertOp... floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -191,12 +201,14 @@ public final class ArithmeticOpTable {
         this.zeroExtend = zeroExtend;
         this.signExtend = signExtend;
         this.narrow = narrow;
+        this.max = max;
+        this.min = min;
         this.floatConvert = new FloatConvertOp[FloatConvert.values().length];
         for (FloatConvertOp op : floatConvert) {
             this.floatConvert[op.getFloatConvert().ordinal()] = op;
         }
 
-        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow);
+        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min);
     }
 
     @Override
@@ -345,6 +357,20 @@ public final class ArithmeticOpTable {
     }
 
     /**
+     * Describes the Math.max operation.
+     */
+    public BinaryOp<Max> getMax() {
+        return max;
+    }
+
+    /**
+     * Describes the Math.min operation.
+     */
+    public BinaryOp<Min> getMin() {
+        return min;
+    }
+
+    /**
      * Describes integer/float/double conversions.
      */
     public FloatConvertOp getFloatConvert(FloatConvert op) {
@@ -376,7 +402,9 @@ public final class ArithmeticOpTable {
                Objects.equals(sqrt, that.sqrt) &&
                Objects.equals(zeroExtend, that.zeroExtend) &&
                Objects.equals(signExtend, that.signExtend) &&
-               Objects.equals(narrow, that.narrow);
+               Objects.equals(narrow, that.narrow) &&
+               Objects.equals(max, that.max) &&
+               Objects.equals(min, that.min);
         // @formatter:on
     }
 
@@ -402,7 +430,7 @@ public final class ArithmeticOpTable {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow) +
+        return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min) +
                         ",floatConvert[" + toString(floatConvert) + "]]";
     }
 
@@ -567,6 +595,20 @@ public final class ArithmeticOpTable {
 
             protected Xor(boolean associative, boolean commutative) {
                 super("^", associative, commutative);
+            }
+        }
+
+        public abstract static class Max extends BinaryOp<Max> {
+
+            protected Max(boolean associative, boolean commutative) {
+                super("MAX", associative, commutative);
+            }
+        }
+
+        public abstract static class Min extends BinaryOp<Min> {
+
+            protected Min(boolean associative, boolean commutative) {
+                super("MIN", associative, commutative);
             }
         }
 

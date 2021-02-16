@@ -25,7 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCopy;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;

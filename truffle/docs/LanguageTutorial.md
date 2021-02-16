@@ -1,7 +1,7 @@
-# Truffle Tutorial: Implementing a New Language with Truffle
+# Implementing a New Language with Truffle
 
-For an excellent, in-depth presentation on how to implement your language with Truffle,
-please have a look at a [three hour walkthrough](https://youtu.be/FJY96_6Y3a4) presented at a recent
+For an in-depth presentation on how to implement your language with Truffle,
+watch this [three-hour walkthrough](https://youtu.be/FJY96_6Y3a4) presented at the
 Conference on Programming Language Design and Implementation [PLDI 2016](http://conf.researchr.org/home/pldi-2016).
 
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=FJY96_6Y3a4" target="_blank">
@@ -13,5 +13,5 @@ Conference on Programming Language Design and Implementation [PLDI 2016](http://
 Next Steps:
 * Start to subclass [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) for your own language implementation.
 * Fork [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language that demonstrates how to use many Truffle features.
-* Embed Truffle languages in Java host applications using the [Polyglot API](http://www.graalvm.org/docs/graalvm-as-a-platform/embed/).
-* Read The Graal/Truffle [publications](../../docs/Publications.md)
+* Embed Truffle languages in Java host applications using the [Polyglot API](http://www.graalvm.org/docs/reference-manual/embed-languages/).
+* Read [GraalVM/Truffle publications](https://github.com/oracle/graal/blob/master/docs/Publications.md).

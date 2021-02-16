@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -537,16 +537,24 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
     }
 
     public abstract static class LLVMTrueCmpNode extends LLVMCompareNode {
+        /**
+         * @param val1
+         * @param val2
+         * @see #executeWithTarget(Object, Object)
+         */
         @Specialization
-        @SuppressWarnings("unused")
         protected boolean op(Object val1, Object val2) {
             return true;
         }
     }
 
     public abstract static class LLVMFalseCmpNode extends LLVMCompareNode {
+        /**
+         * @param val1
+         * @param val2
+         * @see #executeWithTarget(Object, Object)
+         */
         @Specialization
-        @SuppressWarnings("unused")
         protected boolean op(Object val1, Object val2) {
             return false;
         }

@@ -28,13 +28,18 @@ builds += [
     targets : [gate],
     name: "gate-tools-javadoc"
   },
-  ${solaris-sparcv9} ${oraclejdk8Only} ${toolsGateLite} ${toolsWeekly} {
-    name: "gate-tools-solaris-lite-8"
-  }
+  ${windows-amd64} ${oraclejdk8}  ${toolsGateLite} ${devkits.windows-oraclejdk8} {
+    targets : [gate],
+    name: "gate-tools-windows-8"
+  },
+
   ${darwin-amd64} ${oraclejdk8} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-8"
   }
   ${darwin-amd64} ${oraclejdk11} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-oraclejdk-11"
+  }
+  ${linux-aarch64} ${labsjdk11} ${toolsGateLite} ${toolsWeekly} {
+    name: "gate-tools-linux-aarch64-lite-labsjdk-11"
   }
 ]

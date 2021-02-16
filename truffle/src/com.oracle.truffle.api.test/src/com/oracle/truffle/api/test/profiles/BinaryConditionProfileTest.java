@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,7 @@ public class BinaryConditionProfileTest {
 
     @Before
     public void create() {
-        profile = (ConditionProfile) invokeStatic(loadRelative(BinaryConditionProfileTest.class, "ConditionProfile$Binary"), "create");
+        profile = (ConditionProfile) invokeStatic(loadRelative(BinaryConditionProfileTest.class, "ConditionProfile$Binary"), "createLazyLoadClass");
     }
 
     private static boolean wasTrue(ConditionProfile profile) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,16 +31,26 @@
 #include <stdio.h>
 
 int main() {
+    char str1[] = "aaXaa";
+    char str2[] = "aaYaa";
 
-  char str1[] = "aaXaa";
-  char str2[] = "aaYaa";
+    if (strncmp(str1, str2, 6) >= 0) {
+        return 1;
+    }
 
-  printf("%d\n", strncmp(str1, str2, 6));
+    if (strncmp(str2, str1, 6) <= 0) {
+        return 2;
+    }
 
-  printf("%d\n", strncmp(str2, str1, 6));
+    strcpy(str2, str1);
 
-  strcpy(str2, str1);
+    if (strncmp(str2, str1, 6) != 0) {
+        return 3;
+    }
 
-  printf("%d\n", strncmp(str2, str1, 6));
-  printf("%d\n", strncmp(str1, str2, 6));
+    if (strncmp(str1, str2, 6) != 0) {
+        return 4;
+    }
+
+    return 0;
 }

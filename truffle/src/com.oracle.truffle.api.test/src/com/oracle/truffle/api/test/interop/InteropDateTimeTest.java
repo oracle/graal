@@ -62,7 +62,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 public final class InteropDateTimeTest extends InteropLibraryBaseTest {
 
-    @ExportLibrary(InteropLibrary.class)
     static class Defaults implements TruffleObject {
 
     }

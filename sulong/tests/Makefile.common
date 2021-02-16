@@ -48,6 +48,11 @@ ifdef CLANG_LLVM_AS
 else
   LLVM_AS?=llvm-as
 endif
+ifdef CLANG_LLVM_LINK
+  LLVM_LINK=$(CLANG_LLVM_LINK)
+else
+  LLVM_LINK?=llvm-as
+endif
 ifdef CLANG_LLVM_DIS
   LLVM_DIS=$(CLANG_LLVM_DIS)
 else
@@ -96,7 +101,7 @@ SULONG_MAKE_CLANG_IMPLICIT_ARGS=-Xclang -disable-O0-optnone
 endif
 
 ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 CLANG:=$(CLANG_PREFIX) $(CLANG)
 CLANGXX:=$(CLANG_PREFIX) $(CLANGXX)
 else
@@ -108,6 +113,7 @@ tool-info.txt:
 	@echo "  CLANG: $(CLANG)" >> $@
 	@echo "  CLANGXX: $(CLANGXX)" >> $@
 	@echo "  LLVM_AS: $(LLVM_AS)" >> $@
+	@echo "  LLVM_LINK: $(LLVM_LINK)" >> $@
 	@echo "  LLVM_DIS: $(LLVM_DIS)" >> $@
 	@echo "  LLVM_OPT: $(LLVM_OPT)" >> $@
 	@echo "  LLVM_OBJCOPY: $(LLVM_OBJCOPY)" >> $@
@@ -117,36 +123,36 @@ tool-info.txt:
 	@cat $@
 
 ifdef GRAALVM_LLVM_HOME
-%/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+%/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib -Wno-override-module
 endif
 
 %.c.dir/ref.out: %.c
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -g -o $@ $^
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.cpp.dir/ref.out: %.cpp
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.cc.dir/ref.out: %.cc
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.C.dir/ref.out: %.C
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.cint.dir/ref.out: %.cint
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 %.gcc.dir/ref.out: %.gcc
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 %.gpp.dir/ref.out: %.gpp
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
 %.f.dir/ref.out: %.f
 	@mkdir -p $(shell dirname $@)
@@ -172,38 +178,43 @@ endif
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
 
-%.ll.dir/ref.out: %.ll
+# link .ll files first so that clang gets a single file and -fembed-bitcode can work
+%.ll.linked-ref-out.ll: %.ll
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(LLVM_LINK) -S -o $@ $^
+
+%.ll.dir/ref.out: %.ll.linked-ref-out.ll
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
 
 define OPT_RULES
 %.c.dir/$(1).bc: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
 
 %.cpp.dir/$(1).bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
 %.cc.dir/$(1).bc: %.cc
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
 %.C.dir/$(1).bc: %.C
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
 %.gcc.dir/$(1).bc: %.gcc
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
 
 %.cint.dir/$(1).bc: %.cint
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
 
 %.gpp.dir/$(1).bc: %.gpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
 %.f.dir/$(1).dragonegg.ll: %.f
 	@mkdir -p $$(shell dirname $$@)
@@ -223,7 +234,7 @@ define OPT_RULES
 
 %.ll.dir/$(1).bc: %.ll
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(LLVM_AS) -o $$@ $$<
+	$(QUIETLY) $(LLVM_LINK) -o $$@ $$^
 
 %.c.dir/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
@@ -232,31 +243,31 @@ define OPT_RULES
 
 %.c.dir/$(1)_OUT.bc: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 %.cpp.dir/$(1)_OUT.bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 %.cc.dir/$(1)_OUT.bc: %.cc
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 %.C.dir/$(1)_OUT.bc: %.C
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 %.gcc.dir/$(1)_OUT.bc: %.gcc
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 %.cint.dir/$(1)_OUT.bc: %.cint
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 %.gpp.dir/$(1)_OUT.bc: %.gpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 endef
 
@@ -269,38 +280,71 @@ $(eval $(call OPT_RULES,O3,-O3))
 define TOOLCHAIN_OPT_RULES
 %.c.dir/$(1)_toolchain.bc: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
 
 %.gcc.dir/$(1)_toolchain.bc: %.gcc
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
 
 %.cint.dir/$(1)_toolchain.bc: %.cint
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
 
 %.cpp.dir/$(1)_toolchain.bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
 
 %.cc.dir/$(1)_toolchain.bc: %.cc
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
 
 %.C.dir/$(1)_toolchain.bc: %.C
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
 
 %.gpp.dir/$(1)_toolchain.bc: %.gpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
 
 endef
 
 $(eval $(call TOOLCHAIN_OPT_RULES,plain,))
+$(eval $(call TOOLCHAIN_OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
 $(eval $(call TOOLCHAIN_OPT_RULES,O1,-O1))
 $(eval $(call TOOLCHAIN_OPT_RULES,O2,-O2))
 $(eval $(call TOOLCHAIN_OPT_RULES,O3,-O3))
+
+# allow linking ll tests with C sources
+
+%.c.ll: %.c
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) -S -emit-llvm -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
+
+define _ADD_DEP_OPT
+$(2).dir/$(1).bc:  $$(addsuffix .ll,$(3))
+endef
+
+# Add extra dependencies to a test file
+#
+# SYNOPSIS:
+#    ADD_DEPENDENCY <test file> <list of extra dependencies>
+#
+# EXAMPLE:
+#    $(eval $(call ADD_DEPENDENCY,path/to/test.ll,path/to/test-main.c path/to/test-utility.c))
+#
+# LIMITATION:
+#    Currently, only bitcode tests (.ll) and C dependencies (.c) are supported.
+#
+define ADD_DEPENDENCY
+# add dependency to ref.out
+$(1).linked-ref-out.ll: $$(addsuffix .ll,$(2))
+
+# add dependencies to Ox.bc
+$$(eval $$(call _ADD_DEP_OPT,O0,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O1,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O2,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O3,$(1),$(2)))
+endef
 
 # disable implicit rules
 .SUFFIXES:

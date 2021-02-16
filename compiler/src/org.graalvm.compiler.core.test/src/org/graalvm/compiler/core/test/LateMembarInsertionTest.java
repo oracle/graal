@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,6 +26,7 @@
 
 package org.graalvm.compiler.core.test;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -178,7 +179,11 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
 
     @Test
     public void test07() {
-        verifyMembars("volatileFieldLoad", true);
+        verifyMembars("volatileFieldLoad", membarsExpected());
+    }
+
+    private boolean membarsExpected() {
+        return !(getTarget().arch instanceof AArch64);
     }
 
     public static void volatileFieldStore(int v) {
@@ -187,46 +192,7 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
 
     @Test
     public void test08() {
-        verifyMembars("volatileFieldStore", true);
-    }
-
-    // Unused field load should be optimized out and leave no barrier behind
-    @SuppressWarnings("unused")
-    public static void volatileFieldStoreUnusedVolatileFieldLoadVolatileFieldStore(int v2) {
-        VolatileAccess2.field = v2;
-        int v1 = VolatileAccess.field;
-        VolatileAccess2.field = v2;
-    }
-
-    @Test
-    public void test09() {
-        StructuredGraph graph = getFinalGraph(getResolvedJavaMethod("volatileFieldStoreUnusedVolatileFieldLoadVolatileFieldStore"));
-        List<TypePair> accesses = getAccesses(graph);
-
-        Assert.assertEquals(accesses.size(), 2);
-        Assert.assertEquals(accesses.get(0).getType(), volatileAccess2Type);
-        Assert.assertEquals(accesses.get(1).getType(), volatileAccess2Type);
-        Assert.assertTrue(accesses.get(0).isWrite());
-        Assert.assertTrue(accesses.get(1).isWrite());
-        Assert.assertEquals(4, getMembars(graph).size());
-    }
-
-    // Unused field load should be optimized out and leave no barrier behind
-    @SuppressWarnings("unused")
-    public static void unusedVolatileFieldLoadVolatileFieldStore(int v2) {
-        int v1 = VolatileAccess.field;
-        VolatileAccess2.field = v2;
-    }
-
-    @Test
-    public void test10() {
-        StructuredGraph graph = getFinalGraph(getResolvedJavaMethod("unusedVolatileFieldLoadVolatileFieldStore"));
-        List<TypePair> accesses = getAccesses(graph);
-
-        Assert.assertEquals(accesses.size(), 1);
-        Assert.assertEquals(accesses.get(0).getType(), volatileAccess2Type);
-        Assert.assertTrue(accesses.get(0).isWrite());
-        Assert.assertEquals(2, getMembars(graph).size());
+        verifyMembars("volatileFieldStore", membarsExpected());
     }
 
     public static int unsafeVolatileFieldLoad(Object o, long offset) {
@@ -235,7 +201,7 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
 
     @Test
     public void test11() {
-        verifyMembars("unsafeVolatileFieldLoad", true);
+        verifyMembars("unsafeVolatileFieldLoad", membarsExpected());
     }
 
     public static void unsafeVolatileFieldStore(Object o, long offset, int v) {
@@ -244,7 +210,7 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
 
     @Test
     public void test12() {
-        verifyMembars("unsafeVolatileFieldStore", true);
+        verifyMembars("unsafeVolatileFieldStore", membarsExpected());
     }
 
     private void verifyMembars(String method, boolean expectsMembar) {
@@ -341,11 +307,4 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         return javaType;
     }
 
-    private static List<Node> getMembars(StructuredGraph graph) {
-        StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        ControlFlowGraph cfg = schedule.getCFG();
-        Block[] blocks = cfg.getBlocks();
-
-        return Arrays.stream(blocks).flatMap(b -> schedule.nodesFor(b).stream()).filter(n -> n instanceof MembarNode).collect(Collectors.toList());
-    }
 }

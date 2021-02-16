@@ -456,7 +456,7 @@ public class DebugExpressionParser extends Parser {
 	}
 
 	public static class ActParsContext extends ParserRuleContext {
-		public List l;
+		public List<DebugExpressionPair> l;
 		public ExprContext expr;
 		public TerminalNode LAPR() { return getToken(DebugExpressionParser.LAPR, 0); }
 		public TerminalNode RAPR() { return getToken(DebugExpressionParser.RAPR, 0); }

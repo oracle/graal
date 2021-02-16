@@ -37,6 +37,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
@@ -53,14 +54,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Exercise
- * {@link org.graalvm.compiler.nodes.spi.Replacements#getIntrinsicGraph(ResolvedJavaMethod, CompilationIdentifier, DebugContext, Cancellable)}
+ * {@link org.graalvm.compiler.nodes.spi.Replacements#getIntrinsicGraph(ResolvedJavaMethod, CompilationIdentifier, DebugContext, AllowAssumptions, Cancellable)}
  * with regular method substitutions and encoded graphs.
  */
 @RunWith(Parameterized.class)
 public class RootMethodSubstitutionTest extends GraalCompilerTest {
 
-    public RootMethodSubstitutionTest(ResolvedJavaMethod method) {
+    private final ResolvedJavaMethod method;
+    private final InvocationPlugin plugin;
+
+    public RootMethodSubstitutionTest(ResolvedJavaMethod method, InvocationPlugin plugin) {
         this.method = method;
+        this.plugin = plugin;
     }
 
     @Parameterized.Parameters(name = "{0}")
@@ -85,23 +90,20 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
             }
 
             for (InvocationPlugins.Binding binding : cursor.getValue()) {
-                if (binding.plugin instanceof MethodSubstitutionPlugin) {
+                if (!binding.plugin.inlineOnly()) {
                     ResolvedJavaMethod original = null;
-                    for (ResolvedJavaMethod declared : type.getDeclaredMethods()) {
-                        if (declared.getName().equals(binding.name)) {
-                            if (declared.isStatic() == binding.isStatic) {
-                                if (declared.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
-                                    original = declared;
-                                    break;
-                                }
-                            }
-                        }
+                    original = findMethod(binding, type.getDeclaredMethods());
+                    if (original == null) {
+                        original = findMethod(binding, type.getDeclaredConstructors());
+                    }
+                    if (original == null) {
+                        continue;
                     }
                     if (!original.isNative()) {
                         // Make sure the plugin we found hasn't been overridden.
                         InvocationPlugin plugin = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(original);
-                        if (plugin instanceof MethodSubstitutionPlugin) {
-                            ret.add(new Object[]{original});
+                        if (plugin == binding.plugin) {
+                            ret.add(new Object[]{original, plugin});
                         }
                     }
                 }
@@ -110,12 +112,25 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
         return ret;
     }
 
-    private final ResolvedJavaMethod method;
+    private static ResolvedJavaMethod findMethod(InvocationPlugins.Binding binding, ResolvedJavaMethod[] methods) {
+        ResolvedJavaMethod original = null;
+        for (ResolvedJavaMethod declared : methods) {
+            if (declared.getName().equals(binding.name)) {
+                if (declared.isStatic() == binding.isStatic) {
+                    if (declared.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
+                        original = declared;
+                        break;
+                    }
+                }
+            }
+        }
+        return original;
+    }
 
     private StructuredGraph getIntrinsicGraph(boolean useEncodedGraphs) {
         OptionValues options = new OptionValues(getDebugContext().getOptions(), GraalOptions.UseEncodedGraphs, useEncodedGraphs);
         DebugContext debugContext = new Builder(options, getDebugHandlersFactories()).description(getDebugContext().getDescription()).build();
-        return getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, debugContext, null);
+        return getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, debugContext, AllowAssumptions.YES, null);
     }
 
     StructuredGraph expectedGraph;
@@ -136,16 +151,20 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
     @Test
     public void test() {
         StructuredGraph regularGraph = getIntrinsicGraph(false);
-        assertTrue(regularGraph != null, "must produce a graph");
-        getCode(method, regularGraph);
+        if (regularGraph != null) {
+            getCode(method, regularGraph);
+        }
 
-        StructuredGraph encodedGraph = getIntrinsicGraph(true);
-        assertTrue(encodedGraph != null, "must produce a graph");
-        getCode(method, encodedGraph);
+        if (plugin instanceof MethodSubstitutionPlugin) {
+            assertTrue(regularGraph != null, "MethodSubstitutionPlugin must produce a graph");
+            StructuredGraph encodedGraph = getIntrinsicGraph(true);
+            assertTrue(encodedGraph != null, "must produce a graph");
+            getCode(method, encodedGraph);
 
-        // Compare the high tier graphs since the final graph might have scheduler
-        // differences because of different usage ordering.
-        assertEquals(expectedGraph, actualGraph, true, false);
+            // Compare the high tier graphs since the final graph might have scheduler
+            // differences because of different usage ordering.
+            assertEquals(expectedGraph, actualGraph, true, false);
+        }
     }
 
 }

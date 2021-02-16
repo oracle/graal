@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <stdio.h>
+#include <stdlib.h>
 
-void printArray(int **a);
+void printArray(int *a);
 
-int main(int argc, char **argv) {
-  int *a = malloc(sizeof(int) * 3);
-  a[0] = 42;
-  a[1] = 43;
-  a[2] = 44;
+int main() {
+    int *a = malloc(sizeof(int) * 3);
+    a[0] = 42;
+    a[1] = 43;
+    a[2] = 44;
 
-  fprintf(stderr, "Sulong: a[0] = %i\n", a[0]);
-  fprintf(stderr, "Sulong: a[1] = %i\n", a[1]);
-  fprintf(stderr, "Sulong: a[2] = %i\n", a[2]);
-  fprintf(stderr, "Sulong: a = %p\n", a);
+    fprintf(stderr, "Sulong: a[0] = %i\n", a[0]);
+    fprintf(stderr, "Sulong: a[1] = %i\n", a[1]);
+    fprintf(stderr, "Sulong: a[2] = %i\n", a[2]);
+    fprintf(stderr, "Sulong: a = %p\n", a);
 
-  printArray(a);
+    printArray(a);
 
-  return 0;
+    return 0;
 }

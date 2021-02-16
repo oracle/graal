@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
 class X86_64BitVarArgs {
 
-    // see http://www.x86-64.org/documentation/abi.pdf
+    // see https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
 
     public static final int GP_OFFSET = 0;
     public static final int FP_OFFSET = 4;
@@ -43,5 +43,7 @@ class X86_64BitVarArgs {
     public static final int FP_LIMIT = 176;
     public static final int FP_STEP = 16;
     public static final int STACK_STEP = 8;
+
+    public static final int GP_REG_COUNT = GP_LIMIT / GP_STEP;
 
 }

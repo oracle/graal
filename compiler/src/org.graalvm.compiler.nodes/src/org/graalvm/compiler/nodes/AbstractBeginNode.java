@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
 
     public static final NodeClass<AbstractBeginNode> TYPE = NodeClass.create(AbstractBeginNode.class);
 
-    private boolean withSpeculationFence;
+    private boolean hasSpeculationFence;
 
     protected AbstractBeginNode(NodeClass<? extends AbstractBeginNode> c) {
         this(c, StampFactory.forVoid());
@@ -71,8 +71,8 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
         if (!hasNoUsages()) {
             AbstractBeginNode prevBegin = prevBegin(evacuateFrom);
             assert prevBegin != null;
-            replaceAtUsages(InputType.Anchor, prevBegin);
-            replaceAtUsages(InputType.Guard, prevBegin);
+            replaceAtUsages(prevBegin, InputType.Anchor);
+            replaceAtUsages(prevBegin, InputType.Guard);
             assert anchored().isEmpty() : anchored().snapshot();
         }
     }
@@ -93,7 +93,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        if (withSpeculationFence) {
+        if (hasSpeculationFence) {
             gen.getLIRGeneratorTool().emitSpeculationFence();
         }
     }
@@ -137,8 +137,12 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
      * Set this begin node to be a speculation fence. This will prevent speculative execution of
      * this block.
      */
-    public void setWithSpeculationFence() {
-        this.withSpeculationFence = true;
+    public void setHasSpeculationFence() {
+        this.hasSpeculationFence = true;
+    }
+
+    public boolean hasSpeculationFence() {
+        return hasSpeculationFence;
     }
 
     private static class BlockNodeIterator implements Iterator<FixedNode> {

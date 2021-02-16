@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.api.test.ModuleSupport;
@@ -927,7 +926,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals("Exception class", expect.exception.getClass(), actual.exception.getClass());
             // C2 can optimize out the stack trace and message in some cases
-            if (expect.exception.getMessage() != null || !C2_OMIT_STACK_TRACE_IN_FAST_THROW_EXCEPTIONS.contains(expect.exception.getClass())) {
+            if (!C2_OMIT_STACK_TRACE_IN_FAST_THROW_EXCEPTIONS.contains(expect.exception.getClass())) {
                 Assert.assertEquals("Exception message", expect.exception.getMessage(), actual.exception.getMessage());
             }
         } else {
@@ -1492,29 +1491,6 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Replacements getReplacements() {
         return getProviders().getReplacements();
-    }
-
-    /**
-     * Inject a probability for a branch condition into the profiling information of this test case.
-     *
-     * @param p the probability that cond is true
-     * @param cond the condition of the branch
-     * @return cond
-     */
-    protected static boolean branchProbability(double p, boolean cond) {
-        return GraalDirectives.injectBranchProbability(p, cond);
-    }
-
-    /**
-     * Inject an iteration count for a loop condition into the profiling information of this test
-     * case.
-     *
-     * @param i the iteration count of the loop
-     * @param cond the condition of the loop
-     * @return cond
-     */
-    protected static boolean iterationCount(double i, boolean cond) {
-        return GraalDirectives.injectIterationCount(i, cond);
     }
 
     /**

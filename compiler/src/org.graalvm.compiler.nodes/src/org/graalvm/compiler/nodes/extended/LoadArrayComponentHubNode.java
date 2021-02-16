@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -73,11 +72,6 @@ public final class LoadArrayComponentHubNode extends FixedWithNextNode implement
     @Override
     public ValueNode getValue() {
         return value;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

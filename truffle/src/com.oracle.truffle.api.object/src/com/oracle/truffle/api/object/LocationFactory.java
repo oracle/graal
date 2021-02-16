@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,10 @@ package com.oracle.truffle.api.object;
 /**
  * This interface allows to provide a custom location for a given shape and value.
  *
- * @see DynamicObject#define(Object, Object, int, LocationFactory)
+ * Planned to be deprecated.
+ *
+ * @see DynamicObjectLibrary#put
+ * @see DynamicObjectLibrary#putConstant
  * @since 0.8 or earlier
  */
 public interface LocationFactory {

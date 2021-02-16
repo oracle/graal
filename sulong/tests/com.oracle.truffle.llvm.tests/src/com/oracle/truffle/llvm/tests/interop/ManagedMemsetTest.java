@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,15 +34,16 @@ import com.oracle.truffle.llvm.tests.interop.values.DoubleArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.LongArrayObject;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -71,8 +72,8 @@ public final class ManagedMemsetTest extends ManagedMemAccessTestBase {
     }
 
     @Test
-    public void memmove(@Inject(DoMemsetNode.class) CallTarget doMemmove) {
-        Object dstType = types[dstTestType.ordinal()];
+    public void memset(@Inject(DoMemsetNode.class) CallTarget doMemset) {
+        Object dstType = getTypeID(dstTestType);
 
         final int arrayLength = 8;
         int size = arrayLength * dstTestType.elementSize;
@@ -83,15 +84,15 @@ public final class ManagedMemsetTest extends ManagedMemAccessTestBase {
             // float or double
             double[] dst = new double[arrayLength];
             dstArray = dst;
-            dstObject = new DoubleArrayObject(dst, dstType);
+            dstObject = new DoubleArrayObject(dstType, dst);
         } else {
             // integer
             long[] dst = new long[arrayLength];
             dstArray = dst;
-            dstObject = new LongArrayObject(dst, dstType);
+            dstObject = new LongArrayObject(dstType, dst);
         }
 
-        doMemmove.call(dstObject, value, size);
+        doMemset.call(dstObject, value, size);
 
         byte[] dstBytes = serialize(dstTestType, dstArray);
 

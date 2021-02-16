@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * The parameters passed via a apply workspace edit request.
  */
-public class ApplyWorkspaceEditParams {
-
-    final JSONObject jsonData;
+public class ApplyWorkspaceEditParams extends JSONBase {
 
     ApplyWorkspaceEditParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -88,9 +86,9 @@ public class ApplyWorkspaceEditParams {
     public int hashCode() {
         int hash = 7;
         if (this.getLabel() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getLabel());
+            hash = 19 * hash + Objects.hashCode(this.getLabel());
         }
-        hash = 17 * hash + Objects.hashCode(this.getEdit());
+        hash = 19 * hash + Objects.hashCode(this.getEdit());
         return hash;
     }
 

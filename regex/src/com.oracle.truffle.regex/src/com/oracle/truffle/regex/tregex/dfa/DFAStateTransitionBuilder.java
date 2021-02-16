@@ -71,7 +71,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, 
     }
 
     public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFAStateTransitionBuilder(getTransitionSet(), getMatcherBuilder());
+        return new DFAStateTransitionBuilder(getTransitionSet(), getCodePointSet());
     }
 
     @Override
@@ -104,7 +104,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, 
     @TruffleBoundary
     @Override
     public String toString() {
-        return source + " -" + getMatcherBuilder() + "-> " + target;
+        return source + " -" + getCodePointSet() + "-> " + target;
     }
 
     @TruffleBoundary
@@ -120,7 +120,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, 
         return Json.obj(Json.prop("id", id),
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
-                        Json.prop("matcherBuilder", getMatcherBuilder().toString()),
+                        Json.prop("matcherBuilder", getCodePointSet().toString()),
                         Json.prop("nfaTransitions", nfaTransitions));
     }
 }

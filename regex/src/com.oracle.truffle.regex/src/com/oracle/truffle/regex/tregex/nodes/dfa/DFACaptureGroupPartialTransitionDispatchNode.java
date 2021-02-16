@@ -42,10 +42,10 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-
-import static com.oracle.truffle.api.CompilerDirectives.*;
 
 public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
 
@@ -87,10 +87,10 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
                         return;
                     }
                 }
-                throw shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
             }
         }
-        throw shouldNotReachHere();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     public void applyPreAnchoredFinalTransition(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
@@ -104,18 +104,18 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
 
     @TruffleBoundary
     private static void applyPreAnchoredFinalTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int currentIndex) {
-        executor.getCGTransitions()[transitionIndex].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(executor, d, executor.isSearching(), currentIndex);
+        executor.getCGTransitions()[transitionIndex].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(executor, d, currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private void applyPreAnchoredFinalTransitionExploded(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (transitionIndex == possibleTransition) {
-                executor.getCGTransitions()[possibleTransition].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(executor, locals.getCGData(), executor.isSearching(), currentIndex);
+                executor.getCGTransitions()[possibleTransition].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(executor, locals.getCGData(), currentIndex);
                 return;
             }
         }
-        throw shouldNotReachHere();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     public void applyPreFinalTransition(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
@@ -129,22 +129,17 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
 
     @TruffleBoundary
     private static void applyPreFinalTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int currentIndex) {
-        executor.getCGTransitions()[transitionIndex].getTransitionToFinalState().applyPreFinalStateTransition(executor, d, executor.isSearching(), currentIndex);
+        executor.getCGTransitions()[transitionIndex].getTransitionToFinalState().applyPreFinalStateTransition(executor, d, currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private void applyPreFinalTransitionExploded(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, TRegexDFAExecutorNode executorNode, short transitionIndex, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (transitionIndex == possibleTransition) {
-                executorNode.getCGTransitions()[possibleTransition].getTransitionToFinalState().applyPreFinalStateTransition(executor, locals.getCGData(), executorNode.isSearching(), currentIndex);
+                executorNode.getCGTransitions()[possibleTransition].getTransitionToFinalState().applyPreFinalStateTransition(executor, locals.getCGData(), currentIndex);
                 return;
             }
         }
-        throw shouldNotReachHere();
-    }
-
-    private static RuntimeException shouldNotReachHere() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new IllegalStateException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 }

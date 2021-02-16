@@ -550,7 +550,7 @@ public abstract class TypeState {
              * Speculate that s2 has a single object and s1 already contains that object. This
              * happens often during object scanning where we repeatedly add the scanned constants to
              * field or array elements flows. The binary search executed by containsObject should be
-             * faster than the linear search bellow.
+             * faster than the linear search below.
              */
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
@@ -884,7 +884,7 @@ public abstract class TypeState {
      * Implementation of intersection.
      *
      * The implementation of intersection is specific to our current use case, i.e., it is not a
-     * general set intersection implementation. The limitation, checked by the assertions bellow,
+     * general set intersection implementation. The limitation, checked by the assertions below,
      * refers to the fact that when we use intersection we only care about selecting all the objects
      * of a certain type or types, e.g., for filtering. We don't currently have a situation where we
      * only want to select a subset of objects of a type. In our use the types whose objects need to
@@ -1195,7 +1195,7 @@ public abstract class TypeState {
      * Implementation of subtraction.
      *
      * The implementation of subtraction is specific to our current use case, i.e., it is not a
-     * general set subtraction implementation. The limitation, checked by the assertions bellow,
+     * general set subtraction implementation. The limitation, checked by the assertions below,
      * refers to the fact that when we use subtraction we only care about eliminating all the
      * objects of a certain type or types, e.g., for filtering. We don't currently have a situation
      * where we only want to remove a subset of objects of a type. In our use the types whose

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,7 @@ public final class GCUtils {
             collectibleObjects.add(new WeakReference<>(objectFactory.apply(i), queue));
             System.gc();
         }
-        gc(IsFreed.anyOf(collectibleObjects));
+        gc(IsFreed.anyOf(collectibleObjects), true);
         int refsCleared = 0;
         while (queue.poll() != null) {
             refsCleared++;
@@ -95,12 +95,24 @@ public final class GCUtils {
      * @param ref the reference
      */
     public static void assertGc(final String message, final Reference<?> ref) {
-        if (!gc(IsFreed.allOf(Collections.singleton(ref)))) {
+        if (!gc(IsFreed.allOf(Collections.singleton(ref)), true)) {
             Assert.fail(message);
         }
     }
 
-    private static boolean gc(BooleanSupplier isFreed) {
+    /**
+     * Asserts that given reference is not cleaned, the referent is freed by garbage collector.
+     *
+     * @param message the message for an {@link AssertionError} when referent is not freed by GC
+     * @param ref the reference
+     */
+    public static void assertNotGc(final String message, final Reference<?> ref) {
+        if (gc(IsFreed.allOf(Collections.singleton(ref)), false)) {
+            Assert.fail(message);
+        }
+    }
+
+    private static boolean gc(BooleanSupplier isFreed, boolean performAllocations) {
         int blockSize = 100_000;
         final List<byte[]> blocks = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
@@ -115,11 +127,13 @@ public final class GCUtils {
                 System.runFinalization();
             } catch (OutOfMemoryError oom) {
             }
-            try {
-                blocks.add(new byte[blockSize]);
-                blockSize = (int) (blockSize * 1.3);
-            } catch (OutOfMemoryError oom) {
-                blockSize >>>= 1;
+            if (performAllocations) {
+                try {
+                    blocks.add(new byte[blockSize]);
+                    blockSize = (int) (blockSize * 1.3);
+                } catch (OutOfMemoryError oom) {
+                    blockSize >>>= 1;
+                }
             }
             if (i % 10 == 0) {
                 try {

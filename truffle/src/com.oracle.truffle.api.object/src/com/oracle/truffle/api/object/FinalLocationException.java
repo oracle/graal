@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,16 +45,24 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 /**
  * This exception is thrown on an attempt to assign a value to a final location.
  *
+ * Planned to be deprecated.
+ *
  * @since 0.8 or earlier
  */
 public final class FinalLocationException extends SlowPathException {
     private static final long serialVersionUID = -30188494510914293L;
+    private static final FinalLocationException INSTANCE = new FinalLocationException();
 
     /**
      * Default constructor.
      *
      * @since 0.8 or earlier
      */
+    @Deprecated
     public FinalLocationException() {
+    }
+
+    static FinalLocationException instance() {
+        return INSTANCE;
     }
 }

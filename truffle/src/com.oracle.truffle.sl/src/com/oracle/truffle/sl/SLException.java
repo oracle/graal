@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.sl;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLLanguageView;
 
 /**
@@ -56,27 +56,14 @@ import com.oracle.truffle.sl.runtime.SLLanguageView;
  * conditions just abort execution. This exception class is used when we abort from within the SL
  * implementation.
  */
-public class SLException extends RuntimeException implements TruffleException {
+public class SLException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -6799734410727348507L;
     private static final InteropLibrary UNCACHED_LIB = InteropLibrary.getFactory().getUncached();
 
-    private final Node location;
-
     @TruffleBoundary
     public SLException(String message, Node location) {
-        super(message);
-        this.location = location;
-    }
-
-    @SuppressWarnings("sync-override")
-    @Override
-    public final Throwable fillInStackTrace() {
-        return this;
-    }
-
-    public Node getLocation() {
-        return location;
+        super(message, location);
     }
 
     /**
@@ -97,7 +84,7 @@ public class SLException extends RuntimeException implements TruffleException {
 
         result.append(": operation");
         if (operation != null) {
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(operation.getClass());
+            NodeInfo nodeInfo = SLLanguage.lookupNodeInfo(operation.getClass());
             if (nodeInfo != null) {
                 result.append(" \"").append(nodeInfo.shortName()).append("\"");
             }
@@ -127,8 +114,7 @@ public class SLException extends RuntimeException implements TruffleException {
                     try {
                         qualifiedName = UNCACHED_LIB.asString(UNCACHED_LIB.getMetaQualifiedName(valueLib.getMetaObject(value)));
                     } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new AssertionError(e);
+                        throw shouldNotReachHere(e);
                     }
                     result.append(qualifiedName);
                     result.append(" ");

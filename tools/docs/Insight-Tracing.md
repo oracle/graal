@@ -36,7 +36,7 @@ let initialize = function(tracer) {
         console.log(`agent: handling #${res.id} request for ${req.url}`);
     }, {
         roots: true,
-        rootNameFilter: name => name === 'emit',
+        rootNameFilter: 'emit',
         sourceFilter: src => src.name === 'events.js'
     });
 
@@ -50,7 +50,7 @@ let initialize = function(tracer) {
         }
     }, {
         roots: true,
-        rootNameFilter: name => name === 'end',
+        rootNameFilter: 'end',
         sourceFilter: src => src.name === '_http_outgoing.js'
     });
     console.log('agent: ready');
@@ -118,7 +118,7 @@ let initializeJaeger = function (ctx, frame) {
 
 insight.on('return', initializeJaeger, {
   roots: true,
-  rootNameFilter: name => name === 'jaegerAvailable'
+  rootNameFilter: 'jaegerAvailable'
 });
 ```
 
@@ -154,7 +154,7 @@ $ docker run -d --name jaeger \
   -p 5778:5778   -p 16686:16686   -p 14268:14268   -p 9411:9411 \
   jaegertracing/all-in-one:latest
 
-$ graalvm/bin/node --insight=agent.js --experimental-options server.js
+$ graalvm/bin/node --insight=agent.js server.js
 Providing Jaeger object to the agent
 agent: Jaeger tracer obtained
 Initializing Jaeger Tracer with RemoteReporter and ConstSampler(always)

@@ -41,6 +41,10 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType classArrayUtils = lookupType("com.oracle.truffle.api.ArrayUtils");
     public final ResolvedJavaType classMethodHandle = lookupType(MethodHandle.class);
 
+    public final ResolvedJavaField fieldTags = findField(classFrameClass, "tags");
+    public final ResolvedJavaField fieldLocals = findField(classFrameClass, "locals");
+    public final ResolvedJavaField fieldPrimitiveLocals = findField(classFrameClass, "primitiveLocals");
+
     public final ResolvedJavaField fieldFrameDescriptorDefaultValue = findField(classFrameDescriptor, "defaultValue");
     public final ResolvedJavaField fieldFrameDescriptorVersion = findField(classFrameDescriptor, "version");
     public final ResolvedJavaField fieldFrameDescriptorMaterializeCalled = findField(classFrameDescriptor, "materializeCalled");

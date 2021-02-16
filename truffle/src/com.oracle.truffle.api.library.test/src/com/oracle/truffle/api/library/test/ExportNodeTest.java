@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,14 @@
 package com.oracle.truffle.api.library.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -395,11 +397,39 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
     }
 
+    @Test
+    public void testWeakReference() {
+        WeakReferenceNodeTest weak = new WeakReferenceNodeTest();
+        MultiNodeExportLibrary cachedLib = createCached(MultiNodeExportLibrary.class, weak);
+        assertEquals("s0", cachedLib.m0(weak, "arg"));
+    }
+
+    @ExportLibrary(MultiNodeExportLibrary.class)
+    public static final class WeakReferenceNodeTest {
+
+        @ExportMessage
+        static class M0 {
+
+            @Specialization(guards = "object == cachedObject", limit = "1")
+            @TruffleBoundary
+            static String s0(@SuppressWarnings("unused") WeakReferenceNodeTest object,
+                            String arg,
+                            @Cached(value = "object", weak = true) WeakReferenceNodeTest cachedObject) {
+                assertNotNull(cachedObject);
+                return "s0";
+            }
+
+        }
+
+    }
+
     // forgot ExportMessage
     @ExportLibrary(ExportNodeLibrary1.class)
-    @ExpectError("The method has the same name 'Foo' as a message in the exported library ExportNodeLibrary1. " +
+    @ExpectError({"The method has the same name 'Foo' as a message in the exported library ExportNodeLibrary1. " +
                     "Did you forget to export it? " +
-                    "Use @ExportMessage to export the message, @Ignore to ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning.")
+                    "Use @ExportMessage to export the message, @Ignore to ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning.",
+                    "Exported library ExportNodeLibrary1 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."
+    })
     static class TestObjectError1 {
 
         static class Foo {

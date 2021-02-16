@@ -67,6 +67,10 @@ public class CharArrayBuffer extends AbstractArrayBuffer {
     private static final char[] EMPTY = {};
     protected char[] buf;
 
+    public CharArrayBuffer() {
+        this(16);
+    }
+
     public CharArrayBuffer(int initialSize) {
         buf = new char[initialSize];
     }
@@ -83,6 +87,14 @@ public class CharArrayBuffer extends AbstractArrayBuffer {
 
     public char[] getBuffer() {
         return buf;
+    }
+
+    public char get(int i) {
+        return buf[i];
+    }
+
+    public void set(int i, char c) {
+        buf[i] = c;
     }
 
     public void add(char c) {

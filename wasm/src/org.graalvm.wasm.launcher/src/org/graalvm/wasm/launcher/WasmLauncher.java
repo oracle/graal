@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm.launcher;
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
@@ -55,8 +56,13 @@ import java.util.Map;
 import java.util.Set;
 
 public class WasmLauncher extends AbstractLanguageLauncher {
-    private File file;
+    private File file = null;
     private VersionAction versionAction = VersionAction.None;
+    private String customEntryPoint = null;
+    private String[] programArguments = null;
+    private ArrayList<String> argumentErrors = null;
+
+    private static final String USAGE = "Usage: wasm [OPTION...] [FILE] [ARG...]";
 
     public static void main(String[] args) {
         new WasmLauncher().launch(args);
@@ -66,37 +72,65 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
         final ListIterator<String> argIterator = arguments.listIterator();
         final ArrayList<String> unrecognizedArguments = new ArrayList<>();
+        final List<String> programArgumentsList = new ArrayList<>();
+        argumentErrors = new ArrayList<>();
+
+        // Add the default arguments.
+        polyglotOptions.put("wasm.Builtins", "wasi_snapshot_preview1");
+
         while (argIterator.hasNext()) {
             final String argument = argIterator.next();
-            if (argument.startsWith("-")) {
-                switch (argument) {
-                    case "--show-version":
-                        versionAction = VersionAction.PrintAndContinue;
-                        break;
-                    case "--version":
-                        versionAction = VersionAction.PrintAndExit;
-                        break;
-                    default:
-                        unrecognizedArguments.add(argument);
-                        break;
+            if (file == null) {
+                if (argument.startsWith("-")) {
+                    switch (argument) {
+                        case "--show-version":
+                            versionAction = VersionAction.PrintAndContinue;
+                            break;
+                        case "--version":
+                            versionAction = VersionAction.PrintAndExit;
+                            break;
+                        default:
+                            if (argument.startsWith("--entry-point=")) {
+                                String[] parts = argument.split("=", 2);
+                                if (parts[1].isEmpty()) {
+                                    argumentErrors.add("Must specify function name after --entry-point.");
+                                } else {
+                                    customEntryPoint = parts[1];
+                                }
+                            } else {
+                                unrecognizedArguments.add(argument);
+                            }
+                            break;
+                    }
+                } else {
+                    file = new File(argument);
+                    programArgumentsList.add(argument);
+                    break;
                 }
             } else {
-                file = new File(argument);
-                if (argIterator.hasNext()) {
-                    throw abort("No options are allowed after the binary name.");
-                }
+                programArgumentsList.add(argument);
+                break;
             }
         }
+
+        // Collect the program arguments.
+        while (argIterator.hasNext()) {
+            programArgumentsList.add(argIterator.next());
+        }
+        programArguments = programArgumentsList.toArray(new String[0]);
+
         return unrecognizedArguments;
     }
 
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
+        for (String error : argumentErrors) {
+            System.err.println(error);
+        }
         if (versionAction != VersionAction.PrintAndExit) {
             if (file == null) {
-                throw abort("Must specify the binary name.");
-            }
-            if (!file.exists()) {
+                throw abort("The binary path is missing.\n" + USAGE);
+            } else if (!file.exists()) {
                 throw abort(String.format("WebAssembly binary '%s' does not exist.", file));
             }
         }
@@ -108,27 +142,41 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     }
 
     private int execute(Context.Builder contextBuilder) {
+        contextBuilder.arguments(getLanguageId(), programArguments);
+
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
             context.eval(Source.newBuilder(getLanguageId(), file).build());
-            // Currently, the spec does not commit to a name for the entry points.
-            // We speculate on the possible exported name.
-            Value entryPoint = context.getBindings(getLanguageId()).getMember("main");
-            if (entryPoint == null) {
-                // Try the Emscripten naming convention.
-                entryPoint = context.getBindings(getLanguageId()).getMember("_main");
-            }
-            if (entryPoint == null) {
-                // Try the wasi-sdk naming convention.
-                entryPoint = context.getBindings(getLanguageId()).getMember("_start");
-            }
+
+            Value entryPoint = detectEntryPoint(context);
             if (entryPoint == null) {
                 throw abort("No entry-point function found, cannot start program.");
             }
-            return entryPoint.execute().asInt();
+
+            entryPoint.execute();
+            return 0;
+        } catch (PolyglotException e) {
+            if (e.isExit()) {
+                return e.getExitStatus();
+            }
+            throw e;
         } catch (IOException e) {
             throw abort(String.format("Error loading file '%s': %s", file, e.getMessage()));
+        } finally {
+            System.out.flush();
+            System.err.flush();
         }
+    }
+
+    private Value detectEntryPoint(Context context) {
+        if (customEntryPoint != null) {
+            return context.getBindings(getLanguageId()).getMember("main").getMember(customEntryPoint);
+        }
+        Value candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_start");
+        if (candidate == null) {
+            candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_main");
+        }
+        return candidate;
     }
 
     @Override
@@ -139,7 +187,7 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     @Override
     protected void printHelp(OptionCategory maxCategory) {
         System.out.println();
-        System.out.println("Usage: wasm [OPTION]... [FILE]");
+        System.out.println("Usage: wasm [OPTION...] [FILE] [ARG...]");
         System.out.println("Run WebAssembly binary files on GraalVM's wasm engine.");
     }
 

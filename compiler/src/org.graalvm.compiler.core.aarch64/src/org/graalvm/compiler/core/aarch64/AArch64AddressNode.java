@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,6 +72,8 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
+        assert verify();
+
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
 
         AllocatableValue baseValue = base == null ? Value.ILLEGAL : tool.asAllocatable(gen.operand(base));
@@ -79,20 +81,34 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
 
         AllocatableValue baseReference = LIRKind.derivedBaseFromValue(baseValue);
         AllocatableValue indexReference;
-        if (index == null) {
+        if (index == null || LIRKind.isValue(indexValue.getValueKind())) {
             indexReference = null;
-        } else if (addressingMode.equals(AddressingMode.IMMEDIATE_UNSCALED)) {
-            indexReference = LIRKind.derivedBaseFromValue(indexValue);
         } else {
-            if (LIRKind.isValue(indexValue.getValueKind())) {
-                indexReference = null;
-            } else {
-                indexReference = Value.ILLEGAL;
-            }
+            indexReference = Value.ILLEGAL;
         }
 
         LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp(NodeView.DEFAULT)), baseReference, indexReference);
         gen.setResult(this, new AArch64AddressValue(kind, baseValue, indexValue, (int) displacement, scaleFactor, addressingMode));
+    }
+
+    @Override
+    public boolean verify() {
+        switch (addressingMode) {
+            case IMMEDIATE_SIGNED_UNSCALED:
+            case IMMEDIATE_UNSIGNED_SCALED:
+                assertTrue(index == null, "Immediate address cannot use index register.");
+                break;
+            case BASE_REGISTER_ONLY:
+                assertTrue(displacement == 0 && index == null, "Base register only mode cannot have either a displacement or index register.");
+                break;
+            case REGISTER_OFFSET:
+            case EXTENDED_REGISTER_OFFSET:
+                assertTrue(displacement == 0 && index != null, "Register based mode cannot have a displacement.");
+                break;
+            default:
+                fail("Pairwise and post/pre index addressing modes should not be present.");
+        }
+        return super.verify();
     }
 
     @Override

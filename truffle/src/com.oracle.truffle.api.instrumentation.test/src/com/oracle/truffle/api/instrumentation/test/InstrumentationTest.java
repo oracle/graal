@@ -81,12 +81,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -117,9 +117,12 @@ import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
@@ -369,6 +372,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
                 }
 
+                @TruffleBoundary
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     // since we are a language instrumentation we can throw exceptions
                     // without getting wrapped into Instrumentation exception.
@@ -544,6 +548,78 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             Assert.fail("No exception was thrown.");
         } catch (PolyglotException ex) {
             Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
+        }
+    }
+
+    @Test
+    public void testAttached() {
+        checkAttached(instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> {
+        }, true));
+        checkAttached(instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> {
+        }, true));
+        checkAttached(instrumentEnv.getInstrumenter().attachAllocationListener(AllocationEventFilter.ANY, new AllocationListener() {
+            @Override
+            public void onEnter(AllocationEvent event) {
+            }
+
+            @Override
+            public void onReturnValue(AllocationEvent event) {
+            }
+        }));
+        checkAttached(instrumentEnv.getInstrumenter().attachErrConsumer(new PipedOutputStream()));
+        checkAttached(instrumentEnv.getInstrumenter().attachOutConsumer(new PipedOutputStream()));
+        checkAttached(instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, e -> null));
+        checkAttached(instrumentEnv.getInstrumenter().attachThreadsListener(new ThreadsListener() {
+            @Override
+            public void onThreadInitialized(TruffleContext c, Thread thread) {
+            }
+
+            @Override
+            public void onThreadDisposed(TruffleContext c, Thread thread) {
+            }
+        }, true));
+    }
+
+    private static void checkAttached(EventBinding<?> binding) {
+        assertTrue(binding.isAttached());
+        try {
+            binding.attach();
+            fail("Should not allow a second attach.");
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+    }
+
+    @Test
+    public void testTwoPhaseAttach() {
+        checkTwoPhaseAttach(instrumentEnv.getInstrumenter().createLoadSourceBinding(SourceFilter.ANY, s -> {
+        }, true));
+        checkTwoPhaseAttach(instrumentEnv.getInstrumenter().createExecuteSourceBinding(SourceFilter.ANY, s -> {
+        }, true));
+        checkTwoPhaseAttach(instrumentEnv.getInstrumenter().createLoadSourceSectionBinding(SourceSectionFilter.ANY, s -> {
+        }, true));
+    }
+
+    private static void checkTwoPhaseAttach(EventBinding<?> binding) {
+        assertFalse(binding.isAttached());
+        assertFalse(binding.isDisposed());
+        binding.attach();
+        try {
+            binding.attach();
+            fail("Should not allow a second attach.");
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+        assertTrue(binding.isAttached());
+        assertFalse(binding.isDisposed());
+        binding.dispose();
+        assertFalse(binding.isAttached());
+        assertTrue(binding.isDisposed());
+        try {
+            binding.attach();
+            fail("Should not allow attach after dispose.");
+        } catch (IllegalStateException ex) {
+            // O.K.
         }
     }
 
@@ -899,6 +975,69 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testLegacyReceiver() throws IOException {
+        ReceiverLegacyTester tester = new ReceiverLegacyTester(instrumentEnv);
+        Source source = Source.create(InstrumentationTestLanguage.ID,
+                        "ROOT(DEFINE(foo1, ROOT(STATEMENT))," +
+                                        "DEFINE(foo2, ROOT(CALL(foo1), STATEMENT))," +
+                                        "CALL(foo1)," +
+                                        "CALL_WITH(foo2, 42)," +
+                                        "CALL_WITH(foo1, 43))");
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), tester);
+        run(source);
+        tester.assertReceivers(null, null, "42", "43");
+    }
+
+    @SuppressWarnings("deprecation")
+    private static final class ReceiverLegacyTester implements ExecutionEventListener {
+
+        private TruffleInstrument.Env env;
+        private final List<String> receiverObjects = new ArrayList<>();
+
+        ReceiverLegacyTester(TruffleInstrument.Env env) {
+            this.env = env;
+        }
+
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
+            addReceiverObject(context, frame.materialize());
+        }
+
+        @TruffleBoundary
+        private void addReceiverObject(EventContext context, MaterializedFrame frame) {
+            RootNode rootNode = context.getInstrumentedNode().getRootNode();
+            com.oracle.truffle.api.Scope frameScope = env.findLocalScopes(context.getInstrumentedNode(), frame).iterator().next();
+            Object receiver = frameScope.getReceiver();
+            if (receiver != null) {
+                assertEquals("THIS", frameScope.getReceiverName());
+                try {
+                    receiverObjects.add(InteropLibrary.getUncached().asString(
+                                    InteropLibrary.getUncached().toDisplayString(env.getLanguageView(rootNode.getLanguageInfo(), receiver))));
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            } else {
+                receiverObjects.add(null);
+            }
+        }
+
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+        }
+
+        private void assertReceivers(String... objects) {
+            assertEquals(objects.length, receiverObjects.size());
+            for (int i = 0; i < objects.length; i++) {
+                assertEquals(objects[i], receiverObjects.get(i));
+            }
+        }
+    }
+
+    @Test
     public void testReceiver() throws IOException {
         ReceiverTester tester = new ReceiverTester(instrumentEnv);
         Source source = Source.create(InstrumentationTestLanguage.ID,
@@ -928,17 +1067,21 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @TruffleBoundary
         private void addReceiverObject(EventContext context, MaterializedFrame frame) {
-            RootNode rootNode = context.getInstrumentedNode().getRootNode();
-            Scope frameScope = env.findLocalScopes(rootNode, frame).iterator().next();
-            Object receiver = frameScope.getReceiver();
-            if (receiver != null) {
-                assertEquals("THIS", frameScope.getReceiverName());
+            Node node = context.getInstrumentedNode();
+            if (NodeLibrary.getUncached().hasReceiverMember(node, frame)) {
                 try {
-                    receiverObjects.add(InteropLibrary.getFactory().getUncached().asString(
-                                    InteropLibrary.getFactory().getUncached().toDisplayString(env.getLanguageView(rootNode.getLanguageInfo(), receiver))));
-                } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError(e);
+                    String receiverName = InteropLibrary.getUncached().asString(NodeLibrary.getUncached().getReceiverMember(node, frame));
+                    assertEquals("THIS", receiverName);
+                    Object scope = NodeLibrary.getUncached().getScope(node, frame, true);
+                    if (InteropLibrary.getUncached().isMemberReadable(scope, receiverName)) {
+                        Object receiver = InteropLibrary.getUncached().readMember(scope, receiverName);
+                        receiverObjects.add(InteropLibrary.getUncached().asString(
+                                        InteropLibrary.getUncached().toDisplayString(env.getLanguageView(node.getRootNode().getLanguageInfo(), receiver))));
+                    } else {
+                        receiverObjects.add(null);
+                    }
+                } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
                 }
             } else {
                 receiverObjects.add(null);
@@ -1094,67 +1237,76 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     @Test
     public void testOutputConsumer() throws IOException {
-        // print without instruments
-        String rout = run("PRINT(OUT, InitialToStdOut)");
-        Assert.assertEquals("InitialToStdOut", rout);
-        run("PRINT(ERR, InitialToStdErr)");
-        Assert.assertEquals("InitialToStdErr", err.toString());
-        err.reset();
+        try {
+            // print without instruments
+            String rout = run("PRINT(OUT, InitialToStdOut)");
+            Assert.assertEquals("InitialToStdOut", rout);
+            run("PRINT(ERR, InitialToStdErr)");
+            Assert.assertEquals("InitialToStdErr", err.toString());
+            err.reset();
 
-        // turn instruments on
-        assureEnabled(engine.getInstruments().get("testOutputConsumerArray"));
-        assureEnabled(engine.getInstruments().get("testOutputConsumerPiped"));
-        context.eval(lines("PRINT(OUT, OutputToStdOut)"));
-        context.eval(lines("PRINT(ERR, OutputToStdErr)"));
-        // test that the output goes eveywhere
-        Assert.assertEquals("OutputToStdOut", getOut());
-        Assert.assertEquals("OutputToStdOut", TestOutputConsumerArray.getOut());
-        Assert.assertEquals("OutputToStdErr", getErr());
-        Assert.assertEquals("OutputToStdErr", TestOutputConsumerArray.getErr());
-        CharBuffer buff = CharBuffer.allocate(100);
-        TestOutputConsumerPiped.fromOut.read(buff);
-        buff.flip();
-        Assert.assertEquals("OutputToStdOut", buff.toString());
-        buff.rewind();
-        TestOutputConsumerPiped.fromErr.read(buff);
-        buff.flip();
-        Assert.assertEquals("OutputToStdErr", buff.toString());
-        buff.rewind();
+            // turn instruments on
+            assureEnabled(engine.getInstruments().get("testOutputConsumerArray"));
+            assureEnabled(engine.getInstruments().get("testOutputConsumerPiped"));
+            context.eval(lines("PRINT(OUT, OutputToStdOut)"));
+            context.eval(lines("PRINT(ERR, OutputToStdErr)"));
+            // test that the output goes eveywhere
+            Assert.assertEquals("OutputToStdOut", getOut());
+            Assert.assertEquals("OutputToStdOut", TestOutputConsumerArray.getOut());
+            Assert.assertEquals("OutputToStdErr", getErr());
+            Assert.assertEquals("OutputToStdErr", TestOutputConsumerArray.getErr());
+            CharBuffer buff = CharBuffer.allocate(100);
+            TestOutputConsumerPiped.fromOut.read(buff);
+            buff.flip();
+            Assert.assertEquals("OutputToStdOut", buff.toString());
+            buff.rewind();
+            TestOutputConsumerPiped.fromErr.read(buff);
+            buff.flip();
+            Assert.assertEquals("OutputToStdErr", buff.toString());
+            buff.rewind();
 
-        // close piped err stream and test that print still works
-        TestOutputConsumerPiped.fromErr.close();
-        context.eval(lines("PRINT(OUT, MoreOutputToStdOut)"));
-        context.eval(lines("PRINT(ERR, MoreOutputToStdErr)"));
-        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", out.toString());
-        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
-        String errorMsg = "java.lang.Exception: Output operation write(B[II) failed for java.io.PipedOutputStream";
-        Assert.assertTrue(err.toString(), err.toString().startsWith("OutputToStdErr" + errorMsg));
-        Assert.assertTrue(err.toString(), err.toString().endsWith("MoreOutputToStdErr"));
-        Assert.assertEquals("OutputToStdErrMoreOutputToStdErr", TestOutputConsumerArray.getErr());
-        buff.limit(buff.capacity());
-        TestOutputConsumerPiped.fromOut.read(buff);
-        buff.flip();
-        Assert.assertEquals("MoreOutputToStdOut", buff.toString());
-        out.reset();
-        err.reset();
+            // close piped err stream and test that print still works
+            TestOutputConsumerPiped.fromErr.close();
+            context.eval(lines("PRINT(OUT, MoreOutputToStdOut)"));
+            context.eval(lines("PRINT(ERR, MoreOutputToStdErr)"));
+            Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", out.toString());
+            Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
+            String errorMsg = "java.lang.Exception: Output operation write(B[II) failed for java.io.PipedOutputStream";
+            Assert.assertTrue(err.toString(), err.toString().startsWith("OutputToStdErr" + errorMsg));
+            Assert.assertTrue(err.toString(), err.toString().endsWith("MoreOutputToStdErr"));
+            Assert.assertEquals("OutputToStdErrMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+            buff.limit(buff.capacity());
+            TestOutputConsumerPiped.fromOut.read(buff);
+            buff.flip();
+            Assert.assertEquals("MoreOutputToStdOut", buff.toString());
+            out.reset();
+            err.reset();
 
-        // the I/O error is not printed again
-        context.eval(lines("PRINT(ERR, EvenMoreOutputToStdErr)"));
-        Assert.assertEquals("EvenMoreOutputToStdErr", err.toString());
-        Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+            // the I/O error is not printed again
+            context.eval(lines("PRINT(ERR, EvenMoreOutputToStdErr)"));
+            Assert.assertEquals("EvenMoreOutputToStdErr", err.toString());
+            Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
 
-        // instruments disabled
-        teardown();
-        setup();
-        out.reset();
-        err.reset();
-        context.eval(lines("PRINT(OUT, FinalOutputToStdOut)"));
-        context.eval(lines("PRINT(ERR, FinalOutputToStdErr)"));
-        Assert.assertEquals("FinalOutputToStdOut", out.toString());
-        Assert.assertEquals("FinalOutputToStdErr", err.toString());
-        // nothing more printed to the disabled instrument
-        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
-        Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+            // instruments disabled
+            teardown();
+            setup();
+            out.reset();
+            err.reset();
+            context.eval(lines("PRINT(OUT, FinalOutputToStdOut)"));
+            context.eval(lines("PRINT(ERR, FinalOutputToStdErr)"));
+            Assert.assertEquals("FinalOutputToStdOut", out.toString());
+            Assert.assertEquals("FinalOutputToStdErr", err.toString());
+            // nothing more printed to the disabled instrument
+            Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
+            Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+        } finally {
+            TestOutputConsumerPiped.out = new PipedOutputStream();
+            TestOutputConsumerPiped.fromOut = null;
+            TestOutputConsumerPiped.err = new PipedOutputStream();
+            TestOutputConsumerPiped.fromErr = null;
+            TestOutputConsumerArray.out = new ByteArrayOutputStream();
+            TestOutputConsumerArray.err = new ByteArrayOutputStream();
+        }
     }
 
     @Registration(id = "testOutputConsumerArray", services = Object.class)
@@ -1843,17 +1995,10 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @SuppressWarnings("serial")
-    static class TestException extends RuntimeException implements TruffleException {
-
-        final Node location;
+    static class TestException extends AbstractTruffleException {
 
         TestException(Node location) {
-            super("test");
-            this.location = location;
-        }
-
-        public Node getLocation() {
-            return location;
+            super("test", location);
         }
     }
 
@@ -2080,7 +2225,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public void testPolyglotBindings() throws Exception {
         Instrument bindingsTestInstrument = context.getEngine().getInstruments().get(BindingsTestInstrument.ID);
         Object bindingsObject = bindingsTestInstrument.lookup(Supplier.class).get();
-        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+        InteropLibrary interop = InteropLibrary.getUncached();
 
         assertTrue(interop.hasMembers(bindingsObject));
         assertFalse(interop.isNull(bindingsObject));
@@ -2319,7 +2464,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public static class AsynchronousStacksInstrument extends ProxyInstrument {
 
         private final int testDepth = 2;
-        private final int prgDepth = 4;
+        private final int prgDepth = 5;
         CountDownLatch instrumentationFinished;
 
         @Override
@@ -2336,7 +2481,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
                         @Override
                         public Void visitFrame(FrameInstance frameInstance) {
-                            lastCallTarget[0] = frameInstance.getCallTarget();
+                            RootCallTarget rootCallTarget = (RootCallTarget) frameInstance.getCallTarget();
+                            RootNode rootNode = rootCallTarget.getRootNode();
+                            if (rootNode.isInternal()) {
+                                // skip internal root nodes
+                                return null;
+                            }
+                            lastCallTarget[0] = rootCallTarget;
                             lastFrame[0] = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
                             return null;
                         }
@@ -2344,27 +2495,42 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     List<TruffleStackTraceElement> asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastCallTarget[0], lastFrame[0]);
                     switch (count) {
                         case 0:
-                            assertNull(asyncStack);
+                            checkNull(asyncStack);
                             break;
                         case 1:
-                            assertEquals(testDepth, asyncStack.size());
+                            checkEquals(testDepth, asyncStack.size());
                             TruffleStackTraceElement lastElement = asyncStack.get(testDepth - 1);
-                            assertNull(lastElement.getFrame());
+                            checkNull(lastElement.getFrame());
                             env.setAsynchronousStackDepth(Integer.MAX_VALUE);
                             break;
                         case 2:
-                            assertEquals(prgDepth, asyncStack.size());
+                            checkEquals(prgDepth, asyncStack.size());
                             lastElement = asyncStack.get(prgDepth - 1);
                             asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastElement.getTarget(), lastElement.getFrame());
-                            assertEquals(testDepth, asyncStack.size());
+                            checkEquals(testDepth, asyncStack.size());
                             lastElement = asyncStack.get(testDepth - 1);
-                            assertNull(lastElement.getFrame());
+                            checkNull(lastElement.getFrame());
                             instrumentationFinished.countDown();
                             break;
                         default:
-                            throw new IllegalStateException(Integer.toString(count));
+                            illegalState();
                     }
                     count++;
+                }
+
+                @TruffleBoundary
+                private void illegalState() throws IllegalStateException {
+                    throw new IllegalStateException(Integer.toString(count));
+                }
+
+                @TruffleBoundary
+                private void checkEquals(int expected, int found) {
+                    assertEquals(expected, found);
+                }
+
+                @TruffleBoundary
+                private void checkNull(Object obj) {
+                    assertNull(obj);
                 }
 
                 @Override
@@ -2378,7 +2544,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
     }
 
+    @SuppressWarnings("serial")
     private static final class MyKillException extends ThreadDeath {
-        static final long serialVersionUID = 1;
     }
 }

@@ -45,11 +45,15 @@ import java.util.Set;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.type.TypeMirror;
 
 public final class GeneratedTypeElement extends CodeTypeElement {
 
-    public GeneratedTypeElement(Set<Modifier> modifiers, ElementKind kind, PackageElement packageElement, String simpleName) {
+    public GeneratedTypeElement(Set<Modifier> modifiers, ElementKind kind, PackageElement packageElement, String simpleName, TypeMirror superType) {
         super(modifiers, kind, packageElement, simpleName);
+        if (superType != null) {
+            setSuperClass(superType);
+        }
         setEnclosingElement(packageElement);
     }
 

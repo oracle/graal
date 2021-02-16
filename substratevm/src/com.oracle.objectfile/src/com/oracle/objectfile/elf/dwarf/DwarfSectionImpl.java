@@ -32,14 +32,16 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.StructureTypeEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Set;
-
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.TEXT_SECTION_NAME;
+import java.util.stream.Stream;
 
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
@@ -53,6 +55,10 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     public DwarfSectionImpl(DwarfDebugInfo dwarfSections) {
         this.dwarfSections = dwarfSections;
+    }
+
+    public boolean isAArch64() {
+        return dwarfSections.elfMachine == ELFMachine.AArch64;
     }
 
     /**
@@ -72,6 +78,16 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * actually writing data to the target byte[].
      */
     public abstract void writeContent(DebugContext debugContext);
+
+    /**
+     * Check whether the contents byte array has been sized and created. n.b. this does not imply
+     * that data has been written to the byte array.
+     * 
+     * @return true if the contents byte array has been sized and created otherwise false.
+     */
+    public boolean contentByteArrayCreated() {
+        return getContent() != null;
+    }
 
     @Override
     public boolean isLoadable() {
@@ -97,6 +113,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          * to enable it during the second pass where the buffer gets written, but only if the scope
          * is enabled.
          */
+        assert contentByteArrayCreated();
+
         if (context.areScopesEnabled()) {
             debug = true;
             debugBase = pos;
@@ -187,7 +205,17 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the text segment.
          */
-        markRelocationSite(pos, 8, ObjectFile.RelocationKind.DIRECT, TEXT_SECTION_NAME, false, Long.valueOf(l));
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.TEXT_SECTION_NAME, false, Long.valueOf(l));
+        pos = putLong(0, buffer, pos);
+        return pos;
+    }
+
+    protected int putRelocatableHeapOffset(long l, byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * Mark address so it is relocated relative to the start of the heap.
+         */
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.HEAP_BEGIN_NAME, false, Long.valueOf(l));
         pos = putLong(0, buffer, pos);
         return pos;
     }
@@ -306,11 +334,28 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
+    protected int writeAttrData2(short value, byte[] buffer, int pos) {
+        if (buffer == null) {
+            return pos + putShort(value, scratch, 0);
+        } else {
+            return putShort(value, buffer, pos);
+        }
+    }
+
     protected int writeAttrData1(byte value, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putByte(value, scratch, 0);
         } else {
             return putByte(value, buffer, pos);
+        }
+    }
+
+    public int writeAttrRefAddr(int value, byte[] buffer, int p) {
+        int pos = p;
+        if (buffer == null) {
+            return pos + putInt(0, scratch, 0);
+        } else {
+            return putInt(value, buffer, pos);
         }
     }
 
@@ -346,12 +391,21 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     public abstract String getSectionName();
 
     @Override
-    public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        /*
-         * Ensure content byte[] has been created before calling super method.
-         */
+    public int getOrDecideSize(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, int sizeHint) {
+
+        if (targetSectionName().startsWith(".debug")) {
+            ObjectFile.Element previousElement = this.getElement().getOwner().elementForName(targetSectionName());
+            DwarfSectionImpl previousSection = (DwarfSectionImpl) previousElement.getImpl();
+            assert previousSection.contentByteArrayCreated();
+        }
         createContent();
 
+        return getContent().length;
+    }
+
+    @Override
+    public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
+        assert contentByteArrayCreated();
         /*
          * Ensure content byte[] has been written before calling super method.
          *
@@ -371,18 +425,22 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
         LayoutDecision ourSize = decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
         LayoutDecision.Kind[] targetKinds = targetSectionKinds();
-        /*
-         * Make our content depend on the size and content of the target.
-         */
-        for (LayoutDecision.Kind targetKind : targetKinds) {
-            LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
-            deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
-        }
-        /*
-         * Make our size depend on our content.
-         */
-        deps.add(BuildDependency.createOrGet(ourSize, ourContent));
 
+        for (LayoutDecision.Kind targetKind : targetKinds) {
+            if (targetKind == LayoutDecision.Kind.SIZE) {
+                /* Make our size depend on the target size so we compute sizes in order. */
+                LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
+                deps.add(BuildDependency.createOrGet(ourSize, targetDecision));
+            } else if (targetKind == LayoutDecision.Kind.CONTENT) {
+                /* Make our content depend on the target content so we compute contents in order. */
+                LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
+                deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
+            } else {
+                /* Make our size depend on the relevant target's property. */
+                LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
+                deps.add(BuildDependency.createOrGet(ourSize, targetDecision));
+            }
+        }
         return deps;
     }
 
@@ -391,11 +449,147 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      */
     protected static final byte[] scratch = new byte[10];
 
+    protected Stream<? extends TypeEntry> getTypes() {
+        return dwarfSections.getTypes().stream();
+    }
+
     protected Iterable<? extends ClassEntry> getPrimaryClasses() {
         return dwarfSections.getPrimaryClasses();
     }
 
     protected int debugStringIndex(String str) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
         return dwarfSections.debugStringIndex(str);
+    }
+
+    protected String uniqueDebugString(String str) {
+        return dwarfSections.uniqueDebugString(str);
+    }
+
+    protected TypeEntry lookupType(String typeName) {
+        return dwarfSections.lookupTypeEntry(typeName);
+    }
+
+    protected int getTypeIndex(String typeName) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getTypeIndex(typeName);
+    }
+
+    protected void setTypeIndex(TypeEntry typeEntry, int pos) {
+        dwarfSections.setTypeIndex(typeEntry, pos);
+    }
+
+    protected int getIndirectTypeIndex(String typeName) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getIndirectTypeIndex(typeName);
+    }
+
+    protected void setIndirectTypeIndex(TypeEntry typeEntry, int pos) {
+        dwarfSections.setIndirectTypeIndex(typeEntry, pos);
+    }
+
+    protected int getCUIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getCUIndex(classEntry);
+    }
+
+    protected void setCUIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setCUIndex(classEntry, pos);
+    }
+
+    protected int getDeoptCUIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getDeoptCUIndex(classEntry);
+    }
+
+    protected void setDeoptCUIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setDeoptCUIndex(classEntry, pos);
+    }
+
+    protected int getLineIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getLineIndex(classEntry);
+    }
+
+    protected void setLineIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setLineIndex(classEntry, pos);
+    }
+
+    protected int getLineSectionSize(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getLineSectionSize(classEntry);
+    }
+
+    protected void setLineSectionSize(ClassEntry classEntry, int pos) {
+        dwarfSections.setLineSectionSize(classEntry, pos);
+    }
+
+    protected int getLinePrologueSize(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getLinePrologueSize(classEntry);
+    }
+
+    protected void setLinePrologueSize(ClassEntry classEntry, int pos) {
+        dwarfSections.setLinePrologueSize(classEntry, pos);
+    }
+
+    protected int getLayoutIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getLayoutIndex(classEntry);
+    }
+
+    protected void setIndirectLayoutIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setIndirectLayoutIndex(classEntry, pos);
+    }
+
+    protected int getIndirectLayoutIndex(ClassEntry classEntry) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getIndirectLayoutIndex(classEntry);
+    }
+
+    protected void setLayoutIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setLayoutIndex(classEntry, pos);
+    }
+
+    protected void setFieldDeclarationIndex(StructureTypeEntry entry, String fieldName, int pos) {
+        dwarfSections.setFieldDeclarationIndex(entry, fieldName, pos);
+    }
+
+    protected int getFieldDeclarationIndex(StructureTypeEntry entry, String fieldName) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getFieldDeclarationIndex(entry, fieldName);
+    }
+
+    protected void setMethodDeclarationIndex(ClassEntry classEntry, String methodName, int pos) {
+        dwarfSections.setMethodDeclarationIndex(classEntry, methodName, pos);
+    }
+
+    protected int getMethodDeclarationIndex(ClassEntry classEntry, String methodName) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getMethodDeclarationIndex(classEntry, methodName);
     }
 }

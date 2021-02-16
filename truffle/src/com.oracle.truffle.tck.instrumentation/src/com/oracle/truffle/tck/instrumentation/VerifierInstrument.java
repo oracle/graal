@@ -50,9 +50,6 @@ import org.junit.Assert;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -71,6 +68,8 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.common.inline.InlineVerifier;
@@ -97,9 +96,9 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
                         new NodePropertyChecker());
-        instrumentEnv.getInstrumenter().attachExecutionEventListener(
+        instrumentEnv.getInstrumenter().attachExecutionEventFactory(
                         SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
-                        new InteropStackChecker());
+                        new LibraryChecker());
         instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().build(),
                         new EmptyExecutionEventListener());
@@ -295,65 +294,78 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         }
     }
 
-    private static class InteropStackChecker implements ExecutionEventListener {
+    private static class LibraryChecker implements ExecutionEventNodeFactory {
 
         @Override
-        public void onEnter(EventContext context, VirtualFrame frame) {
-            checkInteropStack();
+        public ExecutionEventNode create(EventContext context) {
+            return new LibraryCheckerNode(context);
         }
 
-        @TruffleBoundary
-        private static void checkInteropStack() {
-            Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-                @Override
-                public FrameInstance visitFrame(FrameInstance frameInstance) {
-                    Node callNode = frameInstance.getCallNode();
-                    if (callNode != null) {
-                        checkInteropNodes(callNode);
-                        return frameInstance;
-                    } else {
-                        return null;
-                    }
-                }
-            });
-        }
+        private static final class LibraryCheckerNode extends ExecutionEventNode {
 
-        /**
-         * Check that there are no instrumentable nodes between the call node and interop library
-         * node.
-         */
-        private static void checkInteropNodes(Node node) {
-            Node libraryNode = null;
-            Node n = node;
-            while (n != null) {
-                if (n instanceof Library) {
-                    libraryNode = n;
-                    break;
-                }
-                n = n.getParent();
+            private final EventContext context;
+            @CompilationFinal private boolean checked;
+
+            LibraryCheckerNode(EventContext context) {
+                this.context = context;
             }
-            if (libraryNode != null) {
-                n = node;
-                while (n != null) {
-                    if (n instanceof InstrumentableNode && ((InstrumentableNode) n).isInstrumentable()) {
-                        Assert.assertFalse("Node \"" + n + "\" of class " + n.getClass() + " is instrumentable, but used in Library. " + n.getSourceSection() + "\n" +
+
+            @Override
+            protected void onReturnValue(VirtualFrame frame, Object result) {
+                if (!checked) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    checked = true;
+                    check();
+                }
+            }
+
+            @Override
+            protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+                if (!checked) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    checked = true;
+                    check();
+                }
+            }
+
+            private void check() {
+                Node rootNode = context.getInstrumentedNode();
+                new InstrumentableNodeInLibrary().visit(rootNode);
+            }
+
+            private static final class InstrumentableNodeInLibrary implements NodeVisitor {
+
+                private int inLibrary;
+
+                @Override
+                public boolean visit(Node node) {
+                    preEnter(node);
+                    checkInstrumentable(node);
+                    NodeUtil.forEachChild(node, this);
+                    postEnter(node);
+                    return true;
+                }
+
+                private void checkInstrumentable(Node node) {
+                    if (inLibrary > 0 && node instanceof InstrumentableNode && ((InstrumentableNode) node).isInstrumentable()) {
+                        Assert.assertFalse("Node \"" + node + "\" of class " + node.getClass() + " is instrumentable, but used in Library. " + node.getSourceSection() + "\n" +
                                         "Library implementation nodes ought not to be instrumentable, because library may be rewritten to uncached and therefore no longer be able to be instrumented.\n" +
                                         "InstrumentableNode.isInstrumentable() should return false in the context of a Library.", true);
                     }
-                    if (n == libraryNode) {
-                        break;
+                }
+
+                private void preEnter(Node node) {
+                    if (node instanceof Library) {
+                        inLibrary++;
                     }
-                    n = n.getParent();
+                }
+
+                private void postEnter(Node node) {
+                    if (node instanceof Library) {
+                        inLibrary--;
+                    }
                 }
             }
-        }
-
-        @Override
-        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-        }
-
-        @Override
-        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
         }
     }
 

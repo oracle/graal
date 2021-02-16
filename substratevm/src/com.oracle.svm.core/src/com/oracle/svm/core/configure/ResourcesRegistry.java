@@ -27,5 +27,7 @@ package com.oracle.svm.core.configure;
 public interface ResourcesRegistry {
     void addResources(String pattern);
 
+    void ignoreResources(String pattern);
+
     void addResourceBundles(String name);
 }

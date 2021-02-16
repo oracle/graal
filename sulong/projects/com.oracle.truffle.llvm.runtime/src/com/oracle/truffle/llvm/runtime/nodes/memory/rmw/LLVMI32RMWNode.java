@@ -34,10 +34,9 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -45,24 +44,20 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
-    protected static LLVMI32StoreNode createWrite() {
-        return LLVMI32StoreNodeGen.create(null, null);
-    }
-
     public abstract static class LLVMI32RMWXchgNode extends LLVMI32RMWNode {
 
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndSetI32(address, value);
+            return language.getLLVMMemory().getAndSetI32(this, address, value);
         }
 
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, value);
                 return result;
             }
@@ -74,15 +69,15 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndAddI32(address, value);
+            return language.getLLVMMemory().getAndAddI32(this, address, value);
         }
 
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result + value);
                 return result;
             }
@@ -94,15 +89,15 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndSubI32(address, value);
+            return language.getLLVMMemory().getAndSubI32(this, address, value);
         }
 
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result - value);
                 return result;
             }
@@ -114,15 +109,15 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI32(address, value, (a, b) -> a & b);
+            return language.getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a & b);
         }
 
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result & value);
                 return result;
             }
@@ -134,15 +129,15 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI32(address, value, (a, b) -> ~(a & b));
+            return language.getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ~(result & value));
                 return result;
             }
@@ -154,15 +149,15 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI32(address, value, (a, b) -> a | b);
+            return language.getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a | b);
         }
 
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result | value);
                 return result;
             }
@@ -174,15 +169,15 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI32(address, value, (a, b) -> a ^ b);
+            return language.getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a ^ b);
         }
 
         @Specialization
         protected int doOp(LLVMManagedPointer address, int value,
                         @Cached LLVMI32LoadNode read,
-                        @Cached("createWrite()") LLVMI32StoreNode write) {
+                        @Cached LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
-                int result = (int) read.executeWithTarget(address);
+                int result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result ^ value);
                 return result;
             }

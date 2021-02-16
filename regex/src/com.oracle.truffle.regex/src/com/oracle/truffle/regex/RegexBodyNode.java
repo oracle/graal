@@ -72,6 +72,10 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
         return source;
     }
 
+    public RegexLanguage getRegexLanguage() {
+        return language;
+    }
+
     @CompilerDirectives.TruffleBoundary
     @Override
     public SourceSection getSourceSection() {
@@ -101,7 +105,7 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     @Override
     @CompilerDirectives.TruffleBoundary
     public final String toString() {
-        return "regex " + getEngineLabel() + ": " + source;
+        return "regex " + getEngineLabel() + ": " + source.toStringEscaped();
     }
 
     protected String getEngineLabel() {

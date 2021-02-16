@@ -40,24 +40,16 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-@ExportLibrary(InteropLibrary.class)
-public class WasmFunction implements TruffleObject {
+public class WasmFunction {
     private final SymbolTable symbolTable;
     private final int index;
     private ImportDescriptor importDescriptor;
     private WasmCodeEntry codeEntry;
     private final int typeIndex;
     private int typeEquivalenceClass;
-    private CallTarget callTarget;
+    private String debugName;
 
     /**
      * Represents a WebAssembly function.
@@ -69,7 +61,6 @@ public class WasmFunction implements TruffleObject {
         this.codeEntry = null;
         this.typeIndex = typeIndex;
         this.typeEquivalenceClass = -1;
-        this.callTarget = null;
     }
 
     public String moduleName() {
@@ -92,18 +83,6 @@ public class WasmFunction implements TruffleObject {
         return symbolTable.functionTypeReturnTypeLength(typeIndex);
     }
 
-    public void setCallTarget(CallTarget callTarget) {
-        this.callTarget = callTarget;
-    }
-
-    public CallTarget resolveCallTarget() {
-        if (callTarget == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException("Call target was not resolved.");
-        }
-        return callTarget;
-    }
-
     void setTypeEquivalenceClass(int typeEquivalenceClass) {
         this.typeEquivalenceClass = typeEquivalenceClass;
     }
@@ -113,6 +92,7 @@ public class WasmFunction implements TruffleObject {
         return name();
     }
 
+    @TruffleBoundary
     public String name() {
         if (importDescriptor != null) {
             return importDescriptor.memberName;
@@ -121,17 +101,14 @@ public class WasmFunction implements TruffleObject {
         if (exportedName != null) {
             return exportedName;
         }
+        if (debugName != null) {
+            return debugName;
+        }
         return "wasm-function:" + index;
     }
 
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object[] arguments, @Cached WasmIndirectCallNode callNode) {
-        return callNode.execute(this, arguments);
+    public void setDebugName(String debugName) {
+        this.debugName = debugName;
     }
 
     public WasmCodeEntry codeEntry() {
@@ -163,6 +140,10 @@ public class WasmFunction implements TruffleObject {
 
     public int typeIndex() {
         return typeIndex;
+    }
+
+    public SymbolTable.FunctionType type() {
+        return symbolTable.typeAt(typeIndex());
     }
 
     public int typeEquivalenceClass() {

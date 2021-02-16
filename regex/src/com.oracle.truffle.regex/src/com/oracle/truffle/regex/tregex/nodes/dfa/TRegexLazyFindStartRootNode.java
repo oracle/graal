@@ -48,12 +48,10 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
 public class TRegexLazyFindStartRootNode extends RegexBodyNode {
 
-    private final int prefixLength;
     @Child private TRegexExecutorEntryNode entryNode;
 
-    public TRegexLazyFindStartRootNode(RegexLanguage language, RegexSource source, int prefixLength, TRegexExecutorEntryNode backwardNode) {
+    public TRegexLazyFindStartRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode backwardNode) {
         super(language, source);
-        this.prefixLength = prefixLength;
         this.entryNode = insert(backwardNode);
     }
 
@@ -64,7 +62,7 @@ public class TRegexLazyFindStartRootNode extends RegexBodyNode {
         final Object input = args[0];
         final int fromIndexArg = (int) args[1];
         final int max = (int) args[2];
-        return (int) entryNode.execute(input, max, fromIndexArg, TRegexDFAExecutorLocals.backwardMaxIndex(max, prefixLength));
+        return (int) entryNode.execute(input, fromIndexArg, max, max);
     }
 
     @Override

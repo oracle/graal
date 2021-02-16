@@ -38,14 +38,40 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.util.LLVMSameObjectNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
+
+    public static LLVMAddressEqualsNode create() {
+        return LLVMAddressEqualsNodeGen.create(null, null);
+    }
+
+    @GenerateUncached
+    public abstract static class Operation extends LLVMNode {
+
+        public abstract boolean executeWithTarget(Object a, Object b);
+
+        @Specialization
+        boolean doCompare(long a, long b) {
+            return a == b;
+        }
+
+        @Specialization
+        boolean doCompare(LLVMNativePointer a, LLVMNativePointer b) {
+            return a.asNative() == b.asNative();
+        }
+
+        @Specialization
+        boolean doCompare(Object a, Object b,
+                        @Cached LLVMPointerEqualsNode equals) {
+            return equals.execute(a, b);
+        }
+    }
 
     // the first two cases are redundant but much more efficient than the ones below
 
@@ -106,10 +132,10 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
     abstract static class LLVMManagedEqualsNode extends LLVMNode {
         abstract boolean execute(Object a, Object b);
 
-        @Specialization(limit = "3")
+        @Specialization
         protected boolean doForeign(LLVMManagedPointer a, LLVMManagedPointer b,
-                        @CachedLibrary("a.getObject()") ReferenceLibrary pointToSameObject) {
-            return pointToSameObject.isSame(a.getObject(), b.getObject()) && a.getOffset() == b.getOffset();
+                        @Cached LLVMSameObjectNode pointToSameObject) {
+            return pointToSameObject.execute(a.getObject(), b.getObject()) && a.getOffset() == b.getOffset();
         }
 
         @Specialization(guards = "isNative(p1) || isNative(p2)")
@@ -119,11 +145,15 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
             return false;
         }
 
+        /**
+         * @param a
+         * @param b
+         * @see #execute(Object, Object)
+         */
         @Specialization(guards = "a.getClass() != b.getClass()")
-        @SuppressWarnings("unused")
         protected boolean doDifferentType(Object a, Object b) {
             // different type, and at least one of them is managed, and not a pointer
-            // these objects can not have the same address
+            // these objects cannot have the same address
             return false;
         }
 

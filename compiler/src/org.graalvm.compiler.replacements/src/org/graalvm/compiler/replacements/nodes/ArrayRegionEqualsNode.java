@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
@@ -53,27 +54,32 @@ import jdk.vm.ci.meta.Value;
  * Compares two array regions with a given length.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
+public class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
 
     public static final NodeClass<ArrayRegionEqualsNode> TYPE = NodeClass.create(ArrayRegionEqualsNode.class);
 
     /** {@link JavaKind} of the arrays to compare. */
-    private final JavaKind kind1;
-    private final JavaKind kind2;
+    protected final JavaKind kind1;
+    protected final JavaKind kind2;
 
     /** Pointer to first array region to be tested for equality. */
-    @Input private ValueNode array1;
+    @Input protected ValueNode array1;
 
     /** Pointer to second array region to be tested for equality. */
-    @Input private ValueNode array2;
+    @Input protected ValueNode array2;
 
     /** Length of the array region. */
-    @Input private ValueNode length;
+    @Input protected ValueNode length;
 
-    @OptionalInput(Memory) private MemoryKill lastLocationAccess;
+    @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
     public ArrayRegionEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+        this(TYPE, array1, array2, length, kind1, kind2);
+    }
+
+    protected ArrayRegionEqualsNode(NodeClass<? extends ArrayRegionEqualsNode> c, ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind1,
+                    @ConstantNodeParameter JavaKind kind2) {
+        super(c, StampFactory.forKind(JavaKind.Boolean));
         this.kind1 = kind1;
         this.kind2 = kind2;
         this.array1 = array1;
@@ -87,6 +93,14 @@ public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LI
 
     @NodeIntrinsic
     public static native boolean regionEquals(Pointer array1, Pointer array2, int length, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2);
+
+    public ValueNode getArray1() {
+        return array1;
+    }
+
+    public ValueNode getArray2() {
+        return array2;
+    }
 
     public JavaKind getKind1() {
         return kind1;
@@ -110,11 +124,18 @@ public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LI
                 return;
             }
         }
+        generateArrayRegionEquals(gen);
+    }
+
+    protected void generateArrayRegionEquals(NodeLIRBuilderTool gen) {
         Value result;
+        MetaAccessProvider metaAccess = gen.getLIRGeneratorTool().getMetaAccess();
+        int array1BaseOffset = metaAccess.getArrayBaseOffset(kind1);
+        int array2BaseOffset = metaAccess.getArrayBaseOffset(kind2);
         if (kind1 == kind2) {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
+            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
         } else {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, kind2, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
+            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, kind2, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
         }
         gen.setResult(this, result);
     }

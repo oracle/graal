@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+
+import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -63,25 +65,35 @@ import jdk.vm.ci.meta.Value;
  * Compares two arrays with the same length.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128, allowedUsageTypes = {Memory})
-public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
+public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
-    /** {@link JavaKind} of the arrays to compare. */
+
+    /**
+     * {@link JavaKind} of the arrays to compare.
+     *
+     * The arrays are guaranteed to always have the same kind because the signature of
+     * {@link Arrays#equals} only allows arrays of the same kind.
+     */
     protected final JavaKind kind;
 
     /** One array to be tested for equality. */
-    @Input ValueNode array1;
+    @Input protected ValueNode array1;
 
     /** The other array to be tested for equality. */
-    @Input ValueNode array2;
+    @Input protected ValueNode array2;
 
     /** Length of both arrays. */
-    @Input ValueNode length;
+    @Input protected ValueNode length;
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
     public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+        this(TYPE, array1, array2, length, kind);
+    }
+
+    protected ArrayEqualsNode(NodeClass<? extends ArrayEqualsNode> c, ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind) {
+        super(c, StampFactory.forKind(JavaKind.Boolean));
         this.kind = kind;
         this.array1 = array1;
         this.array2 = array2;
@@ -118,8 +130,13 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
             ConstantNode c1 = (ConstantNode) a1;
             ConstantNode c2 = (ConstantNode) a2;
             if (c1.getStableDimension() >= 1 && c2.getStableDimension() >= 1) {
-                boolean ret = arrayEquals(tool.getConstantReflection(), c1.asJavaConstant(), c2.asJavaConstant(), length.asJavaConstant().asInt());
-                return ConstantNode.forBoolean(ret);
+                ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+                Integer c1Length = constantReflection.readArrayLength(c1.asJavaConstant());
+                Integer c2Length = constantReflection.readArrayLength(c2.asJavaConstant());
+                if (c1Length != null && c2Length != null && c1Length.equals(c2Length)) {
+                    boolean ret = arrayEquals(constantReflection, c1.asJavaConstant(), c2.asJavaConstant(), length.asJavaConstant().asInt());
+                    return ConstantNode.forBoolean(ret);
+                }
             }
         }
         return this;
@@ -214,6 +231,14 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
         return equals(array1, array2, length, JavaKind.Double);
     }
 
+    public ValueNode getArray1() {
+        return array1;
+    }
+
+    public ValueNode getArray2() {
+        return array2;
+    }
+
     public ValueNode getLength() {
         return length;
     }
@@ -232,7 +257,14 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
                 return;
             }
         }
-        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, gen.operand(array1), gen.operand(array2), gen.operand(length), false);
+        generateArrayEquals(gen);
+    }
+
+    protected void generateArrayEquals(NodeLIRBuilderTool gen) {
+        int array1BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
+        int array2BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
+        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2),
+                        gen.operand(length), false);
         gen.setResult(this, result);
     }
 

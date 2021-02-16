@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.snippets;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
@@ -51,7 +52,6 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -91,7 +91,6 @@ public abstract class ExceptionUnwind {
          * handler (see ExceptionStackFrameVisitor.visitFrame).
          */
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        ThreadingSupportImpl.pauseRecurringCallback("Arbitrary code must not be executed while unwinding.");
 
         unwindExceptionInterruptible(exception, callerSP, false);
     }
@@ -102,7 +101,6 @@ public abstract class ExceptionUnwind {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
     private static void unwindExceptionWithCalleeSavedRegisters(Throwable exception, Pointer callerSP) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        ThreadingSupportImpl.pauseRecurringCallback("Arbitrary code must not be executed while unwinding.");
 
         unwindExceptionInterruptible(exception, callerSP, true);
     }
@@ -170,6 +168,7 @@ public abstract class ExceptionUnwind {
      * using a normal Java catch-all exception handler.
      */
     private static void reportUnhandledException(Throwable exception) {
+        Log.log().string("Fatal error: unhandled exception in isolate ").hex(CurrentIsolate.getIsolate()).string(": ");
         Log.log().exception(exception);
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
@@ -199,7 +198,7 @@ public abstract class ExceptionUnwind {
             if (deoptFrame == null) {
                 UntetheredCodeInfo untetheredInfo = walk.getIPCodeInfo();
                 if (untetheredInfo.isNull()) {
-                    JavaStackWalker.reportUnknownFrameEncountered(walk, sp, deoptFrame);
+                    JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptFrame);
                     return; /* Unreachable code. */
                 }
 
@@ -241,12 +240,11 @@ public abstract class ExceptionUnwind {
         }
     }
 
-    @Uninterruptible(reason = "Prevent deotpimization while dispatching to exception handler")
+    @Uninterruptible(reason = "Prevent deoptimization while dispatching to exception handler")
     private static void jumpToHandler(Pointer sp, CodePointer handlerIP, boolean hasCalleeSavedRegisters) {
         Throwable exception = currentException.get();
         currentException.set(null);
 
-        ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
         StackOverflowCheck.singleton().protectYellowZone();
 
         if (hasCalleeSavedRegisters) {

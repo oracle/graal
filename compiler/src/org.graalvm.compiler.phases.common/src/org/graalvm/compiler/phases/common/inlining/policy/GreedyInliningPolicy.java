@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,6 +63,15 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
         return true;
     }
 
+    protected static boolean hasSubstitution(Replacements replacements, InlineInfo info) {
+        for (int i = 0; i < info.numberOfMethods(); i++) {
+            if (replacements.hasSubstitution(info.methodAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public Decision isWorthInlining(Replacements replacements, MethodInvocation invocation, InlineInfo calleeInfo, int inliningDepth, boolean fullyProcessed) {
         OptionValues options = calleeInfo.graph().getOptions();
@@ -90,7 +99,7 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
         int nodes = info.determineNodeCount();
         int lowLevelGraphSize = previousLowLevelGraphSize(info);
 
-        if (SmallCompiledLowLevelGraphSize.getValue(options) > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue(options) * inliningBonus) {
+        if (SmallCompiledLowLevelGraphSize.getValue(options) > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue(options) * inliningBonus && !hasSubstitution(replacements, info)) {
             InliningUtil.traceNotInlinedMethod(info, inliningDepth, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)", lowLevelGraphSize,
                             relevance, probability, inliningBonus, nodes);
             return InliningPolicy.Decision.NO.withReason(isTracing, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)", lowLevelGraphSize,

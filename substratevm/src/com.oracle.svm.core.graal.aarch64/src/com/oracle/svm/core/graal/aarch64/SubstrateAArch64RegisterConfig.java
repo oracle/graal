@@ -48,7 +48,6 @@ import static jdk.vm.ci.aarch64.AArch64.r6;
 import static jdk.vm.ci.aarch64.AArch64.r7;
 import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.aarch64.AArch64.r9;
-import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v1;
 import static jdk.vm.ci.aarch64.AArch64.v2;
@@ -61,7 +60,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -88,9 +87,6 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
-    public static final Register HEAP_BASE_REGISTER_CANDIDATE = r27;
-    public static final Register THREAD_REGISTER_CANDIDATE = r28;
-
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray generalParameterRegs;
@@ -99,8 +95,6 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final RegisterArray calleeSaveRegisters;
     private final RegisterAttributes[] attributesMap;
     private final MetaAccessProvider metaAccess;
-    private final Register threadRegister;
-    private final Register heapBaseRegister;
     private final RegisterArray javaGeneralParameterRegisters;
 
     public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target) {
@@ -115,18 +109,15 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
         nativeParamsStackOffset = 0;
 
-        heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? HEAP_BASE_REGISTER_CANDIDATE : null;
-        threadRegister = SubstrateOptions.MultiThreaded.getValue() ? THREAD_REGISTER_CANDIDATE : null;
-
         ArrayList<Register> regs = new ArrayList<>(allRegisters.asList());
-        regs.remove(sp);
+        regs.remove(ReservedRegisters.singleton().getFrameRegister());
         regs.remove(zr);
         regs.remove(r8);
         regs.remove(r9);
         regs.remove(r29);
         regs.remove(r31);
-        regs.remove(heapBaseRegister);
-        regs.remove(threadRegister);
+        regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
+        regs.remove(ReservedRegisters.singleton().getThreadRegister());
         allocatableRegs = new RegisterArray(regs);
 
         switch (config) {
@@ -164,21 +155,6 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
             default:
                 throw shouldNotReachHere();
         }
-    }
-
-    @Override
-    public Register getFrameRegister() {
-        return sp;
-    }
-
-    @Override
-    public Register getThreadRegister() {
-        return threadRegister;
-    }
-
-    @Override
-    public Register getHeapBaseRegister() {
-        return heapBaseRegister;
     }
 
     @Override

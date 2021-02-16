@@ -26,56 +26,31 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.ClasspathUtils;
-import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.core.ClassLoaderQuery;
+import com.oracle.svm.core.TypeResult;
 
 public final class ImageClassLoader {
-
-    private static final String CLASS_EXTENSION = ".class";
-    private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
 
     /*
      * This cannot be a HostedOption because the option parsing already relies on the list of loaded
@@ -92,145 +67,27 @@ public final class ImageClassLoader {
         Word.ensureInitialized();
     }
 
-    final Platform platform;
-    private final NativeImageClassLoader classLoader;
-    private final String[] classpath;
+    public final Platform platform;
+    final NativeImageClassLoaderSupport classLoaderSupport;
+
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, String[] classpath, NativeImageClassLoader classLoader) {
+    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
-        this.classpath = classpath;
-        this.classLoader = classLoader;
+        this.classLoaderSupport = classLoaderSupport;
     }
 
-    public static ImageClassLoader create(Platform platform, String[] classpathAll, NativeImageClassLoader classLoader) {
-        /*
-         * Iterating all classes can already trigger class initialization: We need annotation
-         * information, which triggers class initialization of annotation classes and enum classes
-         * referenced by annotations. Therefore, we need to have the system properties that indicate
-         * "during image build" set up already at this time.
-         */
-        NativeImageGenerator.setSystemPropertiesForImageEarly();
-
-        ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
-        classpathFiltered.addAll(Arrays.asList(classpathAll));
-
-        /* If the GraalVM SDK is on the boot class path, and it contains annotated types. */
-        final String sunBootClassPath = System.getProperty("sun.boot.class.path");
-        if (sunBootClassPath != null) {
-            for (String s : sunBootClassPath.split(File.pathSeparator)) {
-                if (s.contains("graal-sdk")) {
-                    classpathFiltered.add(s);
-                }
-            }
-        }
-
-        ImageClassLoader result = new ImageClassLoader(platform, classpathFiltered.toArray(new String[classpathFiltered.size()]), classLoader);
-        result.initAllClasses();
-        return result;
-    }
-
-    private static Path toRealPath(Path p) {
-        try {
-            return p.toRealPath();
-        } catch (IOException e) {
-            throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p, e);
-        }
-    }
-
-    private void initAllClasses() {
+    public void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
-
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            Set<String> modules = new HashSet<>();
-            modules.add("jdk.internal.vm.ci");
-            Path javaHome = Paths.get(System.getProperty("java.home"));
-            if (!Files.exists(javaHome)) {
-                throw new AssertionError("Java home is not reachable.");
-            }
-            Path list = javaHome.resolve(Paths.get("lib", "native-image-modules.list"));
-            if (Files.exists(list)) {
-                try {
-                    Files.readAllLines(list).stream().map(s -> s.trim()).filter(s -> !s.isEmpty() && !s.startsWith("#")).forEach(modules::add);
-                } catch (IOException e) {
-                    throw shouldNotReachHere(e);
-                }
-            }
-            for (String moduleResource : ModuleSupport.getModuleResources(modules)) {
-                if (moduleResource.endsWith(CLASS_EXTENSION)) {
-                    executor.execute(() -> handleClassFileName(moduleResource, '/'));
-                }
-            }
-        }
-
-        Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
-        uniquePaths.addAll(
-                        Arrays.stream(classpath)
-                                        .flatMap(ImageClassLoader::toClassPathEntries)
-                                        .collect(Collectors.toList()));
-        uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
-
+        classLoaderSupport.initAllClasses(executor, this);
         boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
         if (!completed) {
             throw shouldNotReachHere("timed out while initializing classes");
         }
         executor.shutdownNow();
-    }
-
-    static Stream<Path> toClassPathEntries(String classPathEntry) {
-        Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
-        if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
-            try {
-                return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
-            } catch (IOException e) {
-                return Stream.empty();
-            }
-        }
-        if (Files.isReadable(entry)) {
-            return Stream.of(entry);
-        }
-        return Stream.empty();
-    }
-
-    private static Set<Path> excludeDirectories = getExcludeDirectories();
-
-    private static Set<Path> getExcludeDirectories() {
-        Path root = Paths.get("/");
-        return Arrays.asList("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
-                        .stream().map(root::resolve).collect(Collectors.toSet());
-    }
-
-    private void loadClassesFromPath(ForkJoinPool executor, Path path) {
-        if (Files.exists(path)) {
-            if (Files.isRegularFile(path)) {
-                try {
-                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
-                    FileSystem probeJarFileSystem;
-                    try {
-                        probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
-                    } catch (UnsupportedOperationException e) {
-                        /* Silently ignore invalid jar-files on image-classpath */
-                        probeJarFileSystem = null;
-                    }
-                    if (probeJarFileSystem != null) {
-                        try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
-                        }
-                    }
-                } catch (ClosedByInterruptException ignored) {
-                    throw new InterruptImageBuilding();
-                } catch (IOException e) {
-                    throw shouldNotReachHere(e);
-                } catch (URISyntaxException e) {
-                    throw shouldNotReachHere(e);
-                }
-            } else {
-                initAllClasses(path, excludeDirectories, executor);
-            }
-        }
     }
 
     private void findSystemElements(Class<?> systemClass) {
@@ -283,7 +140,6 @@ public final class ImageClassLoader {
     }
 
     /**
-     *
      * @param element The element to check
      * @return Returns true if and only if the the {@code element} has any annotations present and
      *         the {@link AnnotatedElement#getAnnotations()} did not throw any error.
@@ -299,92 +155,11 @@ public final class ImageClassLoader {
     }
 
     @SuppressWarnings("unused")
-    private static void handleClassLoadingError(Throwable t) {
+    static void handleClassLoadingError(Throwable t) {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
-    private void handleClassFileName(String unversionedClassFileName, char fileSystemSeparatorChar) {
-        String unversionedClassFileNameWithoutSuffix = unversionedClassFileName.substring(0, unversionedClassFileName.length() - CLASS_EXTENSION_LENGTH);
-        if (unversionedClassFileNameWithoutSuffix.equals("module-info")) {
-            return;
-        }
-        String className = unversionedClassFileNameWithoutSuffix.replace(fileSystemSeparatorChar, '.');
-
-        Class<?> clazz = null;
-        try {
-            clazz = forName(className);
-        } catch (Throwable t) {
-            handleClassLoadingError(t);
-        }
-        if (clazz != null) {
-            handleClass(clazz);
-        }
-    }
-
-    private void initAllClasses(final Path root, Set<Path> excludes, ForkJoinPool executor) {
-        FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
-            private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
-
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                if (excludes.contains(dir)) {
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-                return super.preVisitDirectory(dir, attrs);
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (excludes.contains(file.getParent())) {
-                    return FileVisitResult.SKIP_SIBLINGS;
-                }
-                String fileName = root.relativize(file).toString();
-                if (fileName.endsWith(CLASS_EXTENSION)) {
-                    executor.execute(() -> handleClassFileName(unversionedFileName(fileName), fileSystemSeparatorChar));
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                /* Silently ignore inaccessible files or directories. */
-                return FileVisitResult.CONTINUE;
-            }
-
-            /**
-             * Take a file name from a possibly-multi-versioned jar file and remove the versioning
-             * information. See https://docs.oracle.com/javase/9/docs/api/java/util/jar/JarFile.html
-             * for the specification of the versioning strings.
-             *
-             * Then, depend on the JDK class loading mechanism to prefer the appropriately-versioned
-             * class when the class is loaded. The same class name be loaded multiple times, but
-             * each request will return the same appropriately-versioned class. If a
-             * higher-versioned class is not available in a lower-versioned JDK, a
-             * ClassNotFoundException will be thrown, which will be handled appropriately.
-             */
-            private String unversionedFileName(String fileName) {
-                final String versionedPrefix = "META-INF/versions/";
-                final String versionedSuffix = "/";
-                String result = fileName;
-                if (fileName.startsWith(versionedPrefix)) {
-                    final int versionedSuffixIndex = fileName.indexOf(versionedSuffix, versionedPrefix.length());
-                    if (versionedSuffixIndex >= 0) {
-                        result = fileName.substring(versionedSuffixIndex + versionedSuffix.length());
-                    }
-                }
-                return result;
-            }
-
-        };
-
-        try {
-            Files.walkFileTree(root, visitor);
-        } catch (IOException ex) {
-            throw shouldNotReachHere(ex);
-        }
-    }
-
-    private void handleClass(Class<?> clazz) {
+    void handleClass(Class<?> clazz) {
         boolean inPlatform = true;
         boolean isHostedOnly = false;
 
@@ -442,56 +217,98 @@ public final class ImageClassLoader {
     }
 
     public Enumeration<URL> findResourcesByName(String resource) throws IOException {
-        return classLoader.getResources(resource);
+        return classLoaderSupport.getClassLoader().getResources(resource);
     }
 
     public InputStream findResourceAsStreamByName(String resource) {
-        return classLoader.getResourceAsStream(resource);
+        return classLoaderSupport.getClassLoader().getResourceAsStream(resource);
     }
 
+    /**
+     * @deprecated use {@link #findClassOrFail(String)} instead.
+     */
+    @Deprecated
     public Class<?> findClassByName(String name) {
         return findClassByName(name, true);
     }
 
+    /**
+     * @deprecated use {@link #findClass(String)} or {@link #findClassOrFail(String)} instead.
+     */
+    @Deprecated
     public Class<?> findClassByName(String name, boolean failIfClassMissing) {
+        TypeResult<Class<?>> result = findClass(name);
+        if (failIfClassMissing) {
+            return result.getOrFail();
+        } else {
+            return result.get();
+        }
+    }
+
+    /** Find class or fail if exception occurs. */
+    public Class<?> findClassOrFail(String name) {
+        return findClass(name).getOrFail();
+    }
+
+    /** Find class, return result encoding class or failure reason. */
+    public TypeResult<Class<?>> findClass(String name) {
         try {
             if (name.indexOf('.') == -1) {
                 switch (name) {
                     case "boolean":
-                        return boolean.class;
+                        return TypeResult.forClass(boolean.class);
                     case "char":
-                        return char.class;
+                        return TypeResult.forClass(char.class);
                     case "float":
-                        return float.class;
+                        return TypeResult.forClass(float.class);
                     case "double":
-                        return double.class;
+                        return TypeResult.forClass(double.class);
                     case "byte":
-                        return byte.class;
+                        return TypeResult.forClass(byte.class);
                     case "short":
-                        return short.class;
+                        return TypeResult.forClass(short.class);
                     case "int":
-                        return int.class;
+                        return TypeResult.forClass(int.class);
                     case "long":
-                        return long.class;
+                        return TypeResult.forClass(long.class);
                     case "void":
-                        return void.class;
+                        return TypeResult.forClass(void.class);
                 }
             }
-            return forName(name);
-        } catch (ClassNotFoundException | NoClassDefFoundError ex) {
-            if (failIfClassMissing) {
-                throw shouldNotReachHere("class " + name + " not found");
-            }
-            return null;
+            return TypeResult.forClass(forName(name));
+        } catch (ClassNotFoundException | LinkageError ex) {
+            return TypeResult.forException(name, ex);
         }
     }
 
-    private Class<?> forName(String name) throws ClassNotFoundException {
-        return Class.forName(name, false, classLoader);
+    Class<?> forName(String name) throws ClassNotFoundException {
+        return Class.forName(name, false, classLoaderSupport.getClassLoader());
     }
 
+    /**
+     * Deprecated. Use {@link ImageClassLoader#classpath()} instead.
+     *
+     * @return image classpath as a list of strings.
+     */
+    @Deprecated
     public List<String> getClasspath() {
-        return Collections.unmodifiableList(Arrays.asList(classpath));
+        return classpath().stream().map(Path::toString).collect(Collectors.toList());
+    }
+
+    public List<Path> classpath() {
+        return classLoaderSupport.classpath();
+    }
+
+    public List<Path> modulepath() {
+        return classLoaderSupport.modulepath();
+    }
+
+    public List<Path> applicationClassPath() {
+        return classLoaderSupport.applicationClassPath();
+    }
+
+    public List<Path> applicationModulePath() {
+        return classLoaderSupport.applicationModulePath();
     }
 
     public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
@@ -592,7 +409,31 @@ public final class ImageClassLoader {
     }
 
     public ClassLoader getClassLoader() {
-        return classLoader;
+        return classLoaderSupport.getClassLoader();
     }
 
+    public Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
+        return classLoaderSupport.loadClassFromModule(module, className);
+    }
+}
+
+class ClassLoaderQueryImpl implements ClassLoaderQuery {
+
+    private final ClassLoader imageClassLoader;
+
+    ClassLoaderQueryImpl(ClassLoader imageClassLoader) {
+        this.imageClassLoader = imageClassLoader;
+    }
+
+    @Override
+    public boolean isNativeImageClassLoader(ClassLoader classLoader) {
+        ClassLoader loader = classLoader;
+        while (loader != null) {
+            if (loader == imageClassLoader || loader instanceof NativeImageSystemClassLoader) {
+                return true;
+            }
+            loader = loader.getParent();
+        }
+        return false;
+    }
 }

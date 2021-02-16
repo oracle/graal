@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,10 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
         if (installedCode == code) {
             return;
         }
-        invalidateCode();
+        if (installedCode.isAlive()) {
+            installedCode.invalidate();
+            onInvalidate(null, null, true);
+        }
         // A default nmethod can be called from entry points in the VM (e.g., Method::_code)
         // and so allowing it to be installed here would invalidate the truth of
         // `soleExecutionEntryPoint`
@@ -111,20 +114,18 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     }
 
     @Override
-    public void invalidateCode() {
-        if (installedCode.isValid()) {
-            installedCode.invalidate();
-        }
-    }
-
-    @Override
     public long getCodeAddress() {
         return installedCode.getAddress();
     }
 
     @Override
-    public void invalidate() {
-        invalidate(null, null);
+    public void onAssumptionInvalidated(Object source, CharSequence reason) {
+        boolean wasAlive = false;
+        if (installedCode.isAlive()) {
+            installedCode.invalidate();
+            wasAlive = true;
+        }
+        onInvalidate(source, reason, wasAlive);
     }
 
     @Override

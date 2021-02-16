@@ -78,6 +78,12 @@ public class DeadlockWatchdog implements Closeable {
                 System.err.println();
                 System.err.println("=== Image generator watchdog detected no activity. This can be a sign of a deadlock during image building. Dumping all stack traces. Current time: " + new Date());
                 threadDump();
+                Runtime runtime = Runtime.getRuntime();
+                final long heapSizeUnit = 1024 * 1024;
+                long usedHeapSize = runtime.totalMemory() / heapSizeUnit;
+                long freeHeapSize = runtime.freeMemory() / heapSizeUnit;
+                long maximumHeapSize = runtime.maxMemory() / heapSizeUnit;
+                System.err.printf("=== Memory statistics (in MB):%n=== Used heap size: %d%n=== Free heap size: %d%n=== Maximum heap size: %d%n", usedHeapSize, freeHeapSize, maximumHeapSize);
                 System.err.flush();
 
                 if (watchdogExitOnTimeout) {

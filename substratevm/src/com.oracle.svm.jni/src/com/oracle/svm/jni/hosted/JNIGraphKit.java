@@ -41,21 +41,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * {@link HostedGraphKit} implementation with extensions that are specific to generated JNI code.
  */
-class JNIGraphKit extends HostedGraphKit {
+public class JNIGraphKit extends HostedGraphKit {
 
     JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, providers, method);
     }
 
     private InvokeWithExceptionNode createStaticInvoke(String name, ValueNode... args) {
-        return createInvokeWithExceptionAndUnwind(findMethod(JNIGeneratedMethodSupport.class, name, true), InvokeKind.Static, getFrameState(), bci(), bci(), args);
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIGeneratedMethodSupport.class, name, true), InvokeKind.Static, getFrameState(), bci(), args);
     }
 
     private FixedWithNextNode createStaticInvokeRetainException(String name, ValueNode... args) {
         ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, name, true);
         int invokeBci = bci();
-        int exceptionEdgeBci = bci();
-        startInvokeWithException(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci, args);
+        startInvokeWithException(method, InvokeKind.Static, getFrameState(), invokeBci, args);
         exceptionPart();
         ExceptionObjectNode exception = exceptionObject();
         setPendingException(exception);
@@ -66,8 +65,7 @@ class JNIGraphKit extends HostedGraphKit {
     public InvokeWithExceptionNode nativeCallAddress(ValueNode linkage) {
         ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, "nativeCallAddress", true);
         int invokeBci = bci();
-        int exceptionEdgeBci = bci();
-        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci, linkage);
+        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci, linkage);
     }
 
     public InvokeWithExceptionNode nativeCallPrologue() {
@@ -113,8 +111,7 @@ class JNIGraphKit extends HostedGraphKit {
     public InvokeWithExceptionNode rethrowPendingException() {
         ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, "rethrowPendingException", true);
         int invokeBci = bci();
-        int exceptionEdgeBci = bci();
-        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci);
+        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci);
     }
 
     public InvokeWithExceptionNode pinArrayAndGetAddress(ValueNode array, ValueNode isCopy) {

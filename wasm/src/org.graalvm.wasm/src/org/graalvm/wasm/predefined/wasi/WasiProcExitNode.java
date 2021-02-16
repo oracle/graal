@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,16 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmExit;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+public final class WasiProcExitNode extends WasmBuiltinRootNode {
 
-public class WasiProcExitNode extends WasmBuiltinRootNode {
-    WasiProcExitNode(WasmLanguage language, WasmModule module) {
+    public WasiProcExitNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
@@ -63,4 +63,5 @@ public class WasiProcExitNode extends WasmBuiltinRootNode {
     public String builtinNodeName() {
         return "__wasi_proc_exit";
     }
+
 }

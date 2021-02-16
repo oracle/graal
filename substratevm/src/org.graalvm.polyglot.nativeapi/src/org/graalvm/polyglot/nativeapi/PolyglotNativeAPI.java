@@ -134,7 +134,10 @@ public final class PolyglotNativeAPI {
 
     private static class ErrorStateHolder {
         public PolyglotExtendedErrorInfo info = WordFactory.nullPointer();
-        public CCharPointerHolder messageHolder = CTypeConversion.toCString("");
+
+        // will be assigned to CTypeConversionSupportImpl::NULL_HOLDER by default
+        public CCharPointerHolder messageHolder = CTypeConversion.toCString(null);
+
         public PolyglotException polyglotException = null;
     }
 
@@ -464,7 +467,7 @@ public final class PolyglotNativeAPI {
                     " @param language_id the language identifier.",
                     " @param name_utf8 given to the evaluate source code.",
                     " @param source_utf8 the source code to be evaluated.",
-                    " @param result <code>poly_value</code> that is the result of the evaluation.",
+                    " @param result <code>poly_value</code> that is the result of the evaluation. You can pass <code>NULL</code> if you just want to evaluate the source and you can ignore the result.",
                     " @return poly_ok if all works, poly_generic_error if there is a failure.",
                     " @see org::graalvm::polyglot::Context::eval",
                     " @since 19.0",
@@ -478,7 +481,10 @@ public final class PolyglotNativeAPI {
             String jCode = CTypeConversion.toJavaString(source_utf8);
 
             Source sourceCode = Source.newBuilder(languageName, jCode, jName).build();
-            result.write(createHandle(c.eval(sourceCode)));
+            Value evalResult = c.eval(sourceCode);
+            if (result.isNonNull()) {
+                result.write(createHandle(evalResult));
+            }
         });
     }
 
@@ -567,6 +573,7 @@ public final class PolyglotNativeAPI {
                     " @param value to be executed.",
                     " @param args array of poly_value.",
                     " @param args_size length of the args array.",
+                    " @param result <code>poly_value</code> that is the result of the execution. You can pass <code>NULL</code> if you just want to execute the source and you can ignore the result.",
                     " @return poly_ok if all works, poly_generic_error if the underlying context was closed, if a wrong ",
                     "         number of arguments was provided or one of the arguments was not applicable, if this value cannot be executed,",
                     " and if a guest language error occurred during execution.",
@@ -584,7 +591,9 @@ public final class PolyglotNativeAPI {
             }
 
             Value resultValue = function.execute(jArgs);
-            result.write(createHandle(resultValue));
+            if (result.isNonNull()) {
+                result.write(createHandle(resultValue));
+            }
         });
     }
 
@@ -941,15 +950,14 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_remove_array_element", documentation = {
-                    "Sets the value at a given index.",
+                    "Removes an array element at a given index.",
                     "",
                     "Polyglot arrays start with index `0`, independent of the guest language. The given array index must ",
                     "be greater or equal 0.",
                     "",
                     " @param value value that we are checking.",
                     " @param index index of the element starting from 0.",
-                    " @param element to be written into the array.",
-                    " @return true if the value has array elements.",
+                    " @param result true if the underlying array element could be removed, otherwise false.",
                     " @return poly_ok if all works, poly_generic_failure if the array index does not exist, if index is not removable, if the ",
                     "         underlying context was closed, if guest language error occurred during execution, poly_array_expected if the ",
                     "         value has no array elements.",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,14 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct test {
-  int a;
+    int a;
 };
 
 int t() {
-  static struct test a = { 3 };
-  return a.a++;
+    static struct test a = { 3 };
+    return a.a++;
 }
 
 int main() {
-  return t() + t() + t();
+    return t() + t() + t();
 }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -222,14 +222,36 @@ def _truffle_gate_runner(args, tasks):
     if jdk.javaCompliance < '9':
         with Task('Truffle Javadoc', tasks) as t:
             if t: javadoc([])
-    with Task('Truffle UnitTests', tasks) as t:
-        if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
-    with Task('Truffle Signature Tests', tasks) as t:
-        if t: sigtest(['--check', 'binary'])
     with Task('File name length check', tasks) as t:
         if t: check_filename_length([])
-    with Task('Check Copyrights', tasks) as t:
-        if t: mx.checkcopyrights(['--primary'])
+    with Task('Truffle Signature Tests', tasks) as t:
+        if t: sigtest(['--check', 'binary'])
+    with Task('Truffle UnitTests', tasks) as t:
+        if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
+    with Task('Truffle DSL max state bit tests', tasks) as t:
+        if t:
+            _truffle_gate_state_bitwidth_tests()
+
+# The Truffle DSL specialization state bit width computation is complicated and
+# rarely used as the default maximum bit width of 32 is rarely exceeded. Therefore
+# we rebuild the truffle tests with a number of max state bit width values to
+# force using multiple state fields for the tests. This makes sure the tests
+# do not break for rarely used combination of features and bit widths.
+def _truffle_gate_state_bitwidth_tests():
+    runs = [1, 2, 4, 8, 16, 32, 64]
+    for run_bits in runs:
+        build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
+                      '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]
+
+        unittest_args = ['--suite', 'truffle', '--enable-timing', '--fail-fast', '-Dtruffle.dsl.StateBitWidth={0}'.format(run_bits),
+                         'com.oracle.truffle.api.dsl.test', 'com.oracle.truffle.api.library.test', 'com.oracle.truffle.sl.test']
+        try:
+            mx.build(build_args)
+            unittest(unittest_args)
+        finally:
+            mx.log('Completed Truffle DSL state bitwidth test. Reproduce with:')
+            mx.log('  mx build {0}'.format(" ".join(build_args)))
+            mx.log('  mx unittest {0}'.format(" ".join(unittest_args)))
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
@@ -425,10 +447,10 @@ def mx_post_parse_cmd_line(opts):
             if _uses_truffle_dsl_processor(d):
                 d.set_archiveparticipant(TruffleArchiveParticipant())
 
-_debuggertestHelpSuffix = """
+_tckHelpSuffix = """
     TCK options:
 
-      --tck-configuration                  configuration {default|debugger}
+      --tck-configuration                  configuration {compiler|debugger|default}
           compile                          executes TCK tests with immediate comilation
           debugger                         executes TCK tests with enabled debugalot instrument
           default                          executes TCK tests
@@ -484,7 +506,7 @@ def execute_tck(graalvm_home, mode='default', language_filter=None, values_filte
 def _tck(args):
     """runs TCK tests"""
 
-    parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_debuggertestHelpSuffix)
+    parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_tckHelpSuffix)
     parser.add_argument("--tck-configuration", help="TCK configuration", choices=["compile", "debugger", "default"], default="default")
     parsed_args, args = parser.parse_known_args(args)
     tckConfiguration = parsed_args.tck_configuration
@@ -515,11 +537,18 @@ def _tck(args):
     elif tckConfiguration == "compile":
         if not _is_graalvm(mx.get_jdk()):
             mx.abort("The 'compile' TCK configuration requires graalvm execution, run with --java-home=<path_to_graalvm>.")
-        unittest(unitTestOptions + ["--"] + jvmOptions + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleCompilationExceptionsAreThrown=true"] + tests)
+        compileOptions = [
+            "-Dpolyglot.engine.AllowExperimentalOptions=true",
+            "-Dpolyglot.engine.Mode=latency",
+            "-Dpolyglot.engine.CompilationFailureAction=Throw",
+            "-Dpolyglot.engine.CompileImmediately=true",
+            "-Dpolyglot.engine.BackgroundCompilation=false",
+        ]
+        unittest(unitTestOptions + ["--"] + jvmOptions + compileOptions + tests)
 
 
 mx.update_commands(_suite, {
-    'tck': [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
+    'tck': [_tck, "[--tck-configuration {compile|debugger|default}] [unittest options] [--] [VM options] [filters...]", _tckHelpSuffix]
 })
 
 
@@ -597,7 +626,7 @@ def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
     create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", COPYRIGHT_HEADER_UPL, args, out)
 
-def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None):
+def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None, postprocess=None):
     """create the DSL expression parser using antlr"""
     grammar_dir = os.path.join(mx.project(grammar_project).source_dirs()[0], *grammar_package.split(".")) + os.path.sep
     mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [grammar_dir + grammar_name + ".g4"], out=out)
@@ -613,6 +642,9 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         content = PTRN_TOKEN_CAST.sub('_errHandler.recoverInline(this)', content)
         # add copyright header
         content = copyright_template.format(content)
+        # user provided post-processing hook:
+        if postprocess is not None:
+            content = postprocess(content)
         with open(filename, 'w') as content_file:
             content_file.write(content)
 
@@ -635,10 +667,10 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           mx.join(self.out_dir, 'libffi-3.2.1'),
+                                                           mx.join(self.out_dir, 'libffi-3.3'),
                                                            'static_lib',
                                                            deliverable='ffi',
-                                                           cflags=['-MD', '-O2'])
+                                                           cflags=['-MD', '-O2', '-DFFI_BUILDING_DLL'])
             self.delegate._source = dict(tree=['include',
                                                'src',
                                                mx.join('src', 'x86')],
@@ -647,12 +679,11 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                        mx.join('src', 'fficonfig.h'),
                                                        mx.join('src', 'ffi_common.h')],
                                                 '.c': [mx.join('src', 'closures.c'),
-                                                       mx.join('src', 'java_raw_api.c'),
                                                        mx.join('src', 'prep_cif.c'),
                                                        mx.join('src', 'raw_api.c'),
                                                        mx.join('src', 'types.c'),
-                                                       mx.join('src', 'x86', 'ffi.c')],
-                                                '.S': [mx.join('src', 'x86', 'win64.S')]})
+                                                       mx.join('src', 'x86', 'ffiw64.c')],
+                                                '.S': [mx.join('src', 'x86', 'win64_intel.S')]})
         else:
             class LibtoolNativeProject(mx.NativeProject,  # pylint: disable=too-many-ancestors
                                        mx_native.NativeDependency):
@@ -672,7 +703,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
                                                  mx.join(self.out_dir, 'libffi-build'),
-                                                 mx.join(self.out_dir, 'libffi-3.2.1'))
+                                                 mx.join(self.out_dir, 'libffi-3.3'))
             self.delegate.buildEnv = dict(
                 SOURCES=mx.basename(self.delegate.dir),
                 OUTPUT=mx.basename(self.delegate.getOutput()),
@@ -683,6 +714,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                     'CFLAGS="{}"'.format(' '.join(
                         ['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else [])
                     )),
+                    'CPPFLAGS="-DNO_JAVA_RAW_API"',
                 ])
             )
 
@@ -807,3 +839,5 @@ mx.update_commands(_suite, {
     'create-dsl-parser' : [create_dsl_parser, "create the DSL expression parser using antlr"],
     'create-sl-parser' : [create_sl_parser, "create the SimpleLanguage parser using antlr"],
 })
+
+mx_gate.add_jacoco_includes(['org.graalvm.*', 'com.oracle.truffle.*'])

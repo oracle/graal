@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,22 +32,22 @@
 #pragma pack(1)
 
 struct test {
-  char a;
-  int b;
-  int c;
+    char a;
+    int b;
+    int c;
 };
 
 int main() {
-  struct test t;
-  t.a = 3;
-  t.b = 5;
-  t.c = 0;
-  long val = *((long *)&t.a);
-  if (t.a != 3 || t.b != 5 || t.c != 0) {
-    abort();
-  }
-  if (val != 1283L) {
-    abort();
-  }
-  return 0;
+    struct test t;
+    t.a = 3;
+    t.b = 5;
+    t.c = 0;
+    long val = *((long *) &t.a);
+    if (t.a != 3 || t.b != 5 || t.c != 0) {
+        abort();
+    }
+    if (val != 1283L) {
+        abort();
+    }
+    return 0;
 }

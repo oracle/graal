@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,10 @@
 #include <string.h>
 
 int main() {
-  char dest[20];
-  char *source = "asdfasdf";
-  memmove(dest, source, strlen(source) + 1);
-  puts(dest);
-  memmove(&dest[1], dest, 4);
-  puts(dest);
+    char dest[20];
+    char *source = "asdfasdf";
+    memmove(dest, source, strlen(source) + 1);
+    puts(dest);
+    memmove(&dest[1], dest, 4);
+    puts(dest);
 }

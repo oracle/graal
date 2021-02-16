@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,31 +29,30 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
+public abstract class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
 
-    @Child InteropLibrary interop;
-
-    private final TruffleObject protectReadonlyGlobalsBlock;
-
-    public ProtectReadOnlyGlobalsBlockNode(LLVMContext context) {
-        NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-        this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_protect_readonly_globals_block", "(POINTER):VOID");
-        this.interop = InteropLibrary.getFactory().create(protectReadonlyGlobalsBlock);
+    public ProtectReadOnlyGlobalsBlockNode() {
     }
 
-    @Override
-    public void execute(LLVMPointer ptr) {
+    @Specialization(limit = "1")
+    public void execute(LLVMPointer ptr,
+                    @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                    @Bind("ctx.getProtectReadOnlyGlobalsBlockFunction()") Object protextGlobalsBlock,
+                    @CachedLibrary("protextGlobalsBlock") InteropLibrary interop) {
         try {
-            interop.execute(protectReadonlyGlobalsBlock, ptr);
+            interop.execute(protextGlobalsBlock, ptr);
         } catch (InteropException ex) {
             assert false; // should never happen, but probably also safe to ignore
         }

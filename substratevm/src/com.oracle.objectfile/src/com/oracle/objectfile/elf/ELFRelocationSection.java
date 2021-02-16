@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
-import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.RelocationMethod;
 import com.oracle.objectfile.ObjectFile.RelocationRecord;
 import com.oracle.objectfile.ObjectFile.Symbol;
@@ -128,11 +127,6 @@ public class ELFRelocationSection extends ELFSection {
         }
 
         @Override
-        public RelocationKind getKind() {
-            return t.getKind();
-        }
-
-        @Override
         public long getOffset() {
             return offset;
         }
@@ -140,12 +134,6 @@ public class ELFRelocationSection extends ELFSection {
         @Override
         public Symbol getReferencedSymbol() {
             return sym;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            /* All ELF relocation kinds work on a fixed size of relocation site. */
-            return t.getRelocatedByteSize();
         }
 
         @Override

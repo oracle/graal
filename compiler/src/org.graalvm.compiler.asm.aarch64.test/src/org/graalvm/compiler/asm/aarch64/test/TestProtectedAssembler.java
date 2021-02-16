@@ -133,16 +133,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void ldar(int size, Register rt, Register rn) {
-        super.ldar(size, rt, rn);
-    }
-
-    @Override
-    protected void stlr(int size, Register rt, Register rn) {
-        super.stlr(size, rt, rn);
-    }
-
-    @Override
     public void ldaxr(int size, Register rt, Register rn) {
         super.ldaxr(size, rt, rn);
     }
@@ -218,7 +208,7 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void sbfm(int size, Register dst, Register src, int r, int s) {
+    public void sbfm(int size, Register dst, Register src, int r, int s) {
         super.sbfm(size, dst, src, r, s);
     }
 
@@ -536,7 +526,7 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    public AbstractAddress makeAddress(Register base, int displacement) {
+    public AbstractAddress makeAddress(int transferSize, Register base, int displacement) {
         throw new UnsupportedOperationException();
     }
 

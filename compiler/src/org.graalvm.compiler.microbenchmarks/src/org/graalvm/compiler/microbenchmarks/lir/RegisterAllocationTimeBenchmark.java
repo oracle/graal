@@ -27,12 +27,8 @@ package org.graalvm.compiler.microbenchmarks.lir;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Warmup;
 
-@Warmup(iterations = 10)
-@Measurement(iterations = 10)
 public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
 
     public static class State extends GraalCompilerState.AllocationStage {

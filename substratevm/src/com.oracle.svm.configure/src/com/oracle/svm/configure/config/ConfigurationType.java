@@ -51,6 +51,7 @@ public class ConfigurationType implements JsonPrintable {
 
     public ConfigurationType(String qualifiedJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
+        assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
         this.qualifiedJavaName = qualifiedJavaName;
     }
 
@@ -98,32 +99,6 @@ public class ConfigurationType implements JsonPrintable {
             methods.compute(method, (k, v) -> memberKind.intersect(v));
         }
         assert methods.containsKey(method);
-    }
-
-    public boolean hasIndividualMethod(String name, String internalSignature) {
-        if (methods != null && name != null && internalSignature != null) {
-            for (ConfigurationMethod method : methods.keySet()) {
-                if (method.matches(name, internalSignature)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public boolean hasIndividualField(String name) {
-        if (fields != null) {
-            return fields.containsKey(name);
-        }
-        return false;
-    }
-
-    public boolean hasIndividualUnsafeAccessField(String name) {
-        if (fields != null) {
-            FieldInfo fieldInfo = fields.get(name);
-            return fieldInfo != null && fieldInfo.isUnsafeAccessible();
-        }
-        return false;
     }
 
     public boolean haveAllDeclaredClasses() {

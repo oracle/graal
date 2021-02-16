@@ -30,6 +30,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.heap.ObjectVisitor;
 
 /** A walker over different kinds of allocated memory. */
 public abstract class MemoryWalker {
@@ -45,13 +46,13 @@ public abstract class MemoryWalker {
      */
     public abstract boolean visitMemory(Visitor visitor);
 
-    /** This is the interface that clients have to implement. */
-    public interface Visitor {
-
+    public interface ImageHeapRegionVisitor {
         /** Visit a region from the native image heap. */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")
-        <T> boolean visitNativeImageHeapRegion(T region, NativeImageHeapRegionAccess<T> access);
+        <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access);
+    }
 
+    public interface Visitor extends ImageHeapRegionVisitor {
         /**
          * Visit a heap chunk, using the provided access methods. Return true if visiting should
          * continue, else false.
@@ -79,6 +80,8 @@ public abstract class MemoryWalker {
         boolean containsReferences(T region);
 
         boolean isWritable(T region);
+
+        boolean visitObjects(T region, ObjectVisitor visitor);
     }
 
     /** A set of access methods for visiting heap chunk memory. */
@@ -114,9 +117,9 @@ public abstract class MemoryWalker {
 
         UnsignedWord getStart(T codeInfo);
 
-        UnsignedWord getSize(T codeInfo);
+        UnsignedWord getCodeAndDataMemorySize(T codeInfo);
 
-        UnsignedWord getMetadataSize(T codeInfo);
+        UnsignedWord getNativeMetadataSize(T codeInfo);
 
         String getName(T codeInfo);
     }

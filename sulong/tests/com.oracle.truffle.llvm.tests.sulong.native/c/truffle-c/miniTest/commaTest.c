@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int a = 0;
-  int b = 0;
-  b = ++a, a;
-  return b;
+    int a = 0;
+    int b = 0;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-value"
+    b = ++a, a;
+#pragma clang diagnostic pop
+    return b;
 }

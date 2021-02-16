@@ -42,12 +42,11 @@ import org.graalvm.nativeimage.impl.ThreadingSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Safepoint.SafepointException;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -225,7 +224,11 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             } catch (SafepointException se) {
                 throw se;
             } catch (Throwable t) {
-                Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
+                /*
+                 * Recurring callbacks are specified to ignore all exceptions. We cannot even log
+                 * the exception because that could lead to a StackOverflowError (especially when
+                 * the recurring callback failed with a StackOverflowError).
+                 */
             }
         }
     }

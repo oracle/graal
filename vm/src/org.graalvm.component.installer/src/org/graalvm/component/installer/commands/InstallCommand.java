@@ -25,7 +25,10 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,6 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.zip.ZipException;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.CommandInput;
@@ -108,6 +112,9 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.LONG_OPTION_LOCAL_DEPENDENCIES, Commands.OPTION_LOCAL_DEPENDENCIES);
         OPTIONS.put(Commands.LONG_OPTION_NO_DEPENDENCIES, Commands.OPTION_NO_DEPENDENCIES);
 
+        OPTIONS.put(Commands.OPTION_USE_EDITION, "s");
+        OPTIONS.put(Commands.LONG_OPTION_USE_EDITION, Commands.OPTION_USE_EDITION);
+
         OPTIONS.putAll(ComponentInstaller.componentOptions);
     }
 
@@ -147,6 +154,9 @@ public class InstallCommand implements InstallerCommand {
     public InstallCommand() {
     }
 
+    /**
+     * Installers attached to individual parameters.
+     */
     Map<ComponentParam, Installer> realInstallers = new LinkedHashMap<>();
 
     private String current;
@@ -185,6 +195,7 @@ public class InstallCommand implements InstallerCommand {
             if (validateBeforeInstall) {
                 return 0;
             }
+            executeStep(this::acceptLicenses, false);
             executeStep(this::completeInstallers, false);
             executeStep(this::acceptLicenses, false);
             executeStep(this::doInstallation, false);
@@ -209,9 +220,27 @@ public class InstallCommand implements InstallerCommand {
         return 0;
     }
 
+    /**
+     * License IDs processed by the user.
+     */
+    private Set<String> processedLicenses = new HashSet<>();
+
+    /**
+     * Licenses, which must be accepted at most before the installation.
+     */
     private Map<String, List<MetadataLoader>> licensesToAccept = new LinkedHashMap<>();
 
+    /**
+     * Adds a license to be accepted. Does not add a license ID that has been already processed in
+     * previous round(s).
+     * 
+     * @param id license ID
+     * @param ldr loader that can deliver the license details.
+     */
     void addLicenseToAccept(String id, MetadataLoader ldr) {
+        if (processedLicenses.contains(id)) {
+            return;
+        }
         licensesToAccept.computeIfAbsent(id, (x) -> new ArrayList<>()).add(ldr);
     }
 
@@ -220,15 +249,40 @@ public class InstallCommand implements InstallerCommand {
                         allowUpgrades ? Version.Match.Type.INSTALLABLE : Version.Match.Type.COMPATIBLE);
     }
 
-    private void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
+    public void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
         if (ldr.getLicenseType() != null) {
             String path = ldr.getLicensePath();
-            if (path != null) {
-                inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+            if (inst != null && path != null) {
+                if (!SystemUtils.isRemotePath(path)) {
+                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+                }
             }
-            String licId = ldr.getLicenseID();
-            addLicenseToAccept(licId, ldr);
+            addLicenseToAccept(ldr);
         }
+    }
+
+    public void addLicenseToAccept(MetadataLoader ldr) {
+        String licId = ldr.getLicenseID();
+        if (licId == null) {
+            String tp = ldr.getLicenseType();
+            if (tp == null) {
+                return;
+            }
+            if (Pattern.matches("[-_., 0-9A-Za-z]+", tp)) { // NOI18N
+                licId = tp;
+            } else {
+                // better make a digest
+                try {
+                    MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+                    byte[] result = dg.digest(tp.getBytes("UTF-8"));
+                    licId = SystemUtils.fingerPrint(result, false);
+                } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
+                    feedback.error("INSTALL_CannotDigestLicense", ex, ex.getLocalizedMessage());
+                    licId = Integer.toHexString(tp.hashCode());
+                }
+            }
+        }
+        addLicenseToAccept(licId, ldr);
     }
 
     /**
@@ -413,12 +467,19 @@ public class InstallCommand implements InstallerCommand {
                 }
                 return true;
             } else {
+                Installer toReplace = inst.isComplete() ? inst : existing;
                 // if dependencies are processed, move the installer to the front
                 // of the work queue, to maintain the depenency-first order.
                 if (installDependencies) {
-                    installers.remove(i);
-                    installers.add(0, inst);
+                    installers.remove(existing);
+                    installers.add(0, toReplace);
+                    installerMap.put(info.getId(), toReplace);
+                } else if (!existing.isComplete() && inst.isComplete()) {
+                    // replace proxy for real installer:
+                    installers.set(i, toReplace);
+                    installerMap.put(info.getId(), toReplace);
                 }
+
                 return false;
             }
         }
@@ -436,9 +497,9 @@ public class InstallCommand implements InstallerCommand {
                 continue;
             }
             if (registerComponent(inst, p)) {
+                addLicenseToAccept(inst, ldr);
                 if (p.isComplete()) {
                     // null realInstaller will be handled in completeInstallers() later.
-                    addLicenseToAccept(inst, ldr);
                     realInstallers.put(p, inst);
                 } else {
                     realInstallers.put(p, null);
@@ -563,6 +624,7 @@ public class InstallCommand implements InstallerCommand {
             in = dependencies;
             // print required components prior to download
             printRequiredComponents();
+            installDependencies = true;
         } while (!in.isEmpty());
         dependencies = allDependencies;
         checkDependencyErrors();
@@ -579,7 +641,7 @@ public class InstallCommand implements InstallerCommand {
                     continue;
                 }
                 addLicenseToAccept(i, floader);
-                installers.add(i);
+                registerComponent(i, p);
 
                 if (validateBeforeInstall) {
                     current = i.getComponentInfo().getName();
@@ -595,7 +657,7 @@ public class InstallCommand implements InstallerCommand {
     }
 
     void doInstallation() throws IOException {
-        for (Installer i : realInstallers.values()) {
+        for (Installer i : installers) {
             current = i.getComponentInfo().getName();
             ensureExistingComponentRemoved(i.getComponentInfo());
             executedInstallers.add(i);
@@ -627,7 +689,14 @@ public class InstallCommand implements InstallerCommand {
         }
     }
 
+    /**
+     * Installers for individual component IDs.
+     */
     private final Map<String, Installer> installerMap = new HashMap<>();
+
+    /**
+     * The installation sequence; dependencies first.
+     */
     private final List<Installer> installers = new ArrayList<>();
     private final List<Installer> executedInstallers = new ArrayList<>();
 
@@ -678,13 +747,44 @@ public class InstallCommand implements InstallerCommand {
 
     }
 
+    CommandInput getInput() {
+        return input;
+    }
+
+    Feedback getFeedback() {
+        return feedback;
+    }
+
+    protected Map<String, List<MetadataLoader>> getLicensesToAccept() {
+        return licensesToAccept;
+    }
+
+    protected LicensePresenter createLicensePresenter() {
+        return new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept);
+    }
+
     /**
      * Forces the user to accept the licenses.
      * 
      * @throws IOException
      */
     void acceptLicenses() throws IOException {
-        new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept).run();
+        if (licensesToAccept.isEmpty()) {
+            return;
+        }
+        Set<String> processed = new HashSet<>(licensesToAccept.keySet());
+        createLicensePresenter().run();
+        processed.removeAll(licensesToAccept.keySet());
+        markLicensesProcessed(processed);
+        licensesToAccept.clear();
+    }
+
+    public Set<String> getProcessedLicenses() {
+        return new HashSet<>(processedLicenses);
+    }
+
+    public void markLicensesProcessed(Collection<String> licenseIDs) {
+        processedLicenses.addAll(licenseIDs);
     }
 
     public Set<String> getUnresolvedDependencies() {

@@ -51,11 +51,11 @@ import java.util.Random;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.object.PropertyMap;
 
+@SuppressWarnings("deprecation")
 public class PropertyMapTest {
 
     @Test
@@ -69,7 +69,7 @@ public class PropertyMapTest {
         int[] shuffledSequence = randomSequence.clone();
         shuffle(shuffledSequence, rnd);
 
-        Layout layout = Layout.newLayout().build();
+        com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
         // fill the map
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
@@ -144,7 +144,7 @@ public class PropertyMapTest {
     }
 
     @SuppressWarnings("deprecation")
-    private static Location newLocation(Layout layout, Object id) {
+    private static Location newLocation(com.oracle.truffle.api.object.Layout layout, Object id) {
         return layout.createAllocator().locationForValue(id);
     }
 

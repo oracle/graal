@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 /**
@@ -153,6 +153,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
      *
      * @return the value of the referenced variable
      */
+    @TruffleBoundary
     public Object getValue() {
         if (value == null) {
             return "";
@@ -388,11 +389,11 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
-        @SuppressWarnings("unused")
         boolean fitsInByte() {
             Object v = getValue();
             if (v instanceof BigInteger) {
                 try {
+                    @SuppressWarnings("unused")
                     byte b = ((BigInteger) v).byteValueExact();
                     return true;
                 } catch (ArithmeticException e) {
@@ -405,11 +406,11 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
-        @SuppressWarnings("unused")
         boolean fitsInShort() {
             Object v = getValue();
             if (v instanceof BigInteger) {
                 try {
+                    @SuppressWarnings("unused")
                     short s = ((BigInteger) v).shortValueExact();
                     return true;
                 } catch (ArithmeticException e) {
@@ -422,11 +423,11 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
-        @SuppressWarnings("unused")
         boolean fitsInInt() {
             Object v = getValue();
             if (v instanceof BigInteger) {
                 try {
+                    @SuppressWarnings("unused")
                     int i = ((BigInteger) v).intValueExact();
                     return true;
                 } catch (ArithmeticException e) {
@@ -439,11 +440,11 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
-        @SuppressWarnings("unused")
         boolean fitsInLong() {
             Object v = getValue();
             if (v instanceof BigInteger) {
                 try {
+                    @SuppressWarnings("unused")
                     long l = ((BigInteger) v).longValueExact();
                     return true;
                 } catch (ArithmeticException e) {
@@ -647,7 +648,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         private boolean isPointerToForeign() {
             if (value.isManagedPointer()) {
                 Object base = value.getManagedPointerBase();
-                return base instanceof LLVMTypedForeignObject;
+                return LLVMAsForeignLibrary.getFactory().getUncached().isForeign(base);
             } else {
                 return false;
             }
@@ -668,8 +669,8 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         public Object getMemberSafe(String identifier) {
             if (FOREIGN_KEYS[0].equals(identifier)) {
                 Object base = value.getManagedPointerBase();
-                if (base instanceof LLVMTypedForeignObject) {
-                    return ((LLVMTypedForeignObject) base).getForeign();
+                if (LLVMAsForeignLibrary.getFactory().getUncached().isForeign(base)) {
+                    return LLVMAsForeignLibrary.getFactory().getUncached().asForeign(base);
                 } else {
                     return "Cannot get foreign base pointer!";
                 }
@@ -792,8 +793,9 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
             }
 
             Object obj = value.asInteropValue();
-            if (obj instanceof LLVMTypedForeignObject) {
-                obj = ((LLVMTypedForeignObject) obj).getForeign();
+
+            if (LLVMAsForeignLibrary.getFactory().getUncached().isForeign(obj)) {
+                obj = LLVMAsForeignLibrary.getFactory().getUncached().asForeign(obj);
             }
             return obj;
         }
@@ -804,6 +806,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         }
     }
 
+    @TruffleBoundary
     public static LLVMDebugObject create(LLVMSourceType type, long baseOffset, LLVMDebugValue value, LLVMSourceLocation declaration) {
         if (type.getActualType() == LLVMSourceType.UNKNOWN || type.getActualType() == LLVMSourceType.UNSUPPORTED) {
             return new Unsupported(value, baseOffset, LLVMSourceType.UNSUPPORTED, declaration);

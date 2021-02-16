@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,7 +47,7 @@ public final class DoubleArrayObject implements TruffleObject {
     final double[] array;
     final Object type;
 
-    public DoubleArrayObject(double[] array, Object type) {
+    public DoubleArrayObject(Object type, double... array) {
         this.array = array;
         this.type = type;
     }

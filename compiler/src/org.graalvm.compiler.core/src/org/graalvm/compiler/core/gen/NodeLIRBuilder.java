@@ -28,8 +28,9 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.core.common.GraalOptions.MatchExpressions;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.AllTargets;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.AllTargets;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
+import static org.graalvm.compiler.core.match.ComplexMatchValue.INTERIOR_MATCH;
 import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 import static org.graalvm.compiler.lir.LIR.verifyBlock;
 
@@ -81,6 +82,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.ImplicitNullCheckNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -110,15 +112,18 @@ import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -137,6 +142,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     private final NodeMatchRules nodeMatchRules;
     private EconomicMap<Class<? extends Node>, List<MatchStatement>> matchRules;
+    private EconomicMap<Node, Integer> sharedMatchCounts;
 
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, NodeMatchRules nodeMatchRules) {
         this.gen = (LIRGenerator) gen;
@@ -146,6 +152,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         OptionValues options = graph.getOptions();
         if (MatchExpressions.getValue(options)) {
             matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass(), options, graph.getDebug());
+            sharedMatchCounts = EconomicMap.create();
         }
         traceLIRGeneratorLevel = TTY.isSuppressed() ? 0 : Options.TraceLIRGeneratorLevel.getValue(options);
 
@@ -158,7 +165,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-        return new DebugInfoBuilder(nodeValueMap, graph.getDebug());
+        return new DebugInfoBuilder(nodeValueMap, gen.getProviders().getMetaAccessExtensionProvider(), graph.getDebug());
     }
 
     /**
@@ -219,11 +226,28 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
      * ValueNodes.
      */
     public void setMatchResult(Node x, Value operand) {
-        assert operand.equals(ComplexMatchValue.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
+        assert operand.equals(INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
         assert operand instanceof ComplexMatchValue || MatchPattern.isSingleValueUser(x) : "interior matches must be single user";
         assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
+    }
+
+    /**
+     * Track how many users have consumed a sharedable match and disable emission of the value if
+     * all users have consumed it.
+     */
+    public void incrementSharedMatchCount(Node node) {
+        assert nodeOperands != null && nodeOperands.get(node) == null : "operand cannot be set twice";
+        Integer matchValue = sharedMatchCounts.get(node);
+        if (matchValue == null) {
+            matchValue = 0;
+        }
+        matchValue = matchValue + 1;
+        sharedMatchCounts.put(node, matchValue);
+        if (node.getUsageCount() == matchValue) {
+            nodeOperands.set(node, INTERIOR_MATCH);
+        }
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
@@ -319,7 +343,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     public void doBlockPrologue(@SuppressWarnings("unused") Block block, @SuppressWarnings("unused") OptionValues options) {
 
-        if (MitigateSpeculativeExecutionAttacks.getValue(options) == AllTargets) {
+        if (SpectrePHTBarriers.getValue(options) == AllTargets) {
             boolean hasControlSplitPredecessor = false;
             for (Block b : block.getPredecessors()) {
                 if (b.getSuccessorCount() > 1) {
@@ -384,7 +408,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                                 throw new GraalGraphError(e).addContext(valueNode);
                             }
                         }
-                    } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
+                    } else if (INTERIOR_MATCH.equals(operand)) {
                         // Doesn't need to be evaluated
                         debug.log("interior match for %s", valueNode);
                     } else if (operand instanceof ComplexMatchValue) {
@@ -761,7 +785,27 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             return new LIRFrameState(null, null, null);
         }
         assert state != null : "Deopt node=" + deopt + " needs a state ";
-        return getDebugInfoBuilder().build(deopt, state, exceptionEdge);
+        if (deopt instanceof ImplicitNullCheckNode) {
+            ImplicitNullCheckNode implicitNullCheck = (ImplicitNullCheckNode) deopt;
+            JavaConstant deoptReasonAndAction = implicitNullCheck.getDeoptReasonAndAction();
+            JavaConstant deoptSpeculation = implicitNullCheck.getDeoptSpeculation();
+            if (deoptSpeculation != null) {
+                assert deoptReasonAndAction != null;
+                assert isValidImplicitLIRFrameState(implicitNullCheck) : "Unsupported implicit exception";
+                return getDebugInfoBuilder().build(deopt, state, exceptionEdge, deoptReasonAndAction, deoptSpeculation);
+            }
+        }
+        return getDebugInfoBuilder().build(deopt, state, exceptionEdge, null, null);
+    }
+
+    private boolean isValidImplicitLIRFrameState(ImplicitNullCheckNode implicitNullCheck) {
+        if (GraalServices.supportsArbitraryImplicitException()) {
+            return true;
+        }
+        DeoptimizationReason deoptimizationReason = getLIRGeneratorTool().getMetaAccess().decodeDeoptReason(implicitNullCheck.getDeoptReasonAndAction());
+        SpeculationLog.Speculation speculation = getLIRGeneratorTool().getMetaAccess().decodeSpeculation(implicitNullCheck.getDeoptSpeculation(), implicitNullCheck.graph().getSpeculationLog());
+        return (deoptimizationReason == DeoptimizationReason.NullCheckException || deoptimizationReason == DeoptimizationReason.UnreachedCode ||
+                        deoptimizationReason == DeoptimizationReason.TypeCheckedInliningViolated) && speculation == SpeculationLog.NO_SPECULATION;
     }
 
     @Override

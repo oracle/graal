@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,12 +33,10 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
  * Positions are line end character agnostic. So you can not specify a position that denotes `\r|\n`
  * or `\n|` where `|` represents the character offset.
  */
-public class Position {
-
-    final JSONObject jsonData;
+public class Position extends JSONBase {
 
     Position(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -95,9 +93,9 @@ public class Position {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 23 * hash + Integer.hashCode(this.getLine());
-        hash = 23 * hash + Integer.hashCode(this.getCharacter());
+        int hash = 5;
+        hash = 89 * hash + Integer.hashCode(this.getLine());
+        hash = 89 * hash + Integer.hashCode(this.getCharacter());
         return hash;
     }
 

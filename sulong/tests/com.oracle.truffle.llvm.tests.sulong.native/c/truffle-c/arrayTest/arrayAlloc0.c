@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,5 +30,5 @@
 int arr[2][3] = { { 1, 2, 3 }, { 4, 5, 6 } };
 
 int main() {
-  return arr[1][2];
+    return arr[1][2];
 }

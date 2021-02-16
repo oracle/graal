@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,56 +40,10 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
-import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 abstract class CoreLocation extends LocationImpl {
     protected CoreLocation() {
-    }
-
-    @Override
-    public abstract Object get(DynamicObject store, boolean condition);
-
-    protected long getLong(DynamicObject store, boolean condition) throws UnexpectedResultException {
-        return expectLong(get(store, condition));
-    }
-
-    protected int getInt(DynamicObject store, boolean condition) throws UnexpectedResultException {
-        return expectInteger(get(store, condition));
-    }
-
-    protected double getDouble(DynamicObject store, boolean condition) throws UnexpectedResultException {
-        return expectDouble(get(store, condition));
-    }
-
-    protected boolean getBoolean(DynamicObject store, boolean condition) throws UnexpectedResultException {
-        return expectBoolean(get(store, condition));
-    }
-
-    protected void set(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
-        setInternal(store, value, condition);
-    }
-
-    protected abstract void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException;
-
-    /**
-     * Equivalent to {@link Shape#check(DynamicObject)}.
-     */
-    protected static boolean checkShape(DynamicObject store, Shape shape) {
-        return store.getShape() == shape;
-    }
-
-    @Override
-    protected final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
-        setInternal(store, value, false);
-    }
-
-    @Override
-    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-        setInternal(store, value, checkShape(store, shape));
     }
 
     @Override
@@ -98,31 +52,36 @@ abstract class CoreLocation extends LocationImpl {
         return typeString + getWhereString();
     }
 
-    static boolean expectBoolean(Object value) throws UnexpectedResultException {
-        if (value instanceof Boolean) {
-            return (boolean) value;
-        }
-        throw new UnexpectedResultException(value);
+    @Override
+    protected final boolean isIntLocation() {
+        return this instanceof CoreLocations.IntLocation;
     }
 
-    static int expectInteger(Object value) throws UnexpectedResultException {
-        if (value instanceof Integer) {
-            return (int) value;
-        }
-        throw new UnexpectedResultException(value);
+    @Override
+    protected final boolean isDoubleLocation() {
+        return this instanceof CoreLocations.DoubleLocation;
     }
 
-    static double expectDouble(Object value) throws UnexpectedResultException {
-        if (value instanceof Double) {
-            return (double) value;
-        }
-        throw new UnexpectedResultException(value);
+    @Override
+    protected final boolean isLongLocation() {
+        return this instanceof CoreLocations.LongLocation;
     }
 
-    static long expectLong(Object value) throws UnexpectedResultException {
-        if (value instanceof Long) {
-            return (long) value;
-        }
-        throw new UnexpectedResultException(value);
+    /**
+     * Boxed values need to be compared by value not by reference.
+     *
+     * The first parameter should be the one with the more precise type information.
+     *
+     * For sets to final locations, otherValue.equals(thisValue) seems more beneficial, since we
+     * usually know more about the value to be set.
+     */
+    @SuppressWarnings("deprecation")
+    static boolean valueEquals(Object val1, Object val2) {
+        return val1 == val2 || (val1 != null && equalsBoundary(val1, val2));
+    }
+
+    @TruffleBoundary // equals is blacklisted
+    private static boolean equalsBoundary(Object val1, Object val2) {
+        return val1.equals(val2);
     }
 }

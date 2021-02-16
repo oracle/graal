@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,8 +55,12 @@ public abstract class LLVMPolyglotHasMember extends LLVMIntrinsic {
         return interop.isMemberExisting(foreign, id);
     }
 
+    /**
+     * @param object @NodeChild
+     * @param name @NodeChild
+     * @see LLVMPolyglotHasMember
+     */
     @Fallback
-    @SuppressWarnings("unused")
     public Object fallback(Object object, Object name) {
         throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
     }

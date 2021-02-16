@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,7 +121,7 @@ final class PolyglotManagement extends AbstractManagementImpl {
                     return false;
                 } else if (sourceFilter != null) {
                     try {
-                        return sourceFilter.test(engineImpl.getPolyglotSource(s));
+                        return sourceFilter.test(engineImpl.getOrCreatePolyglotSource(s));
                     } catch (Throwable e) {
                         if (config.closing) {
                             // configuration is closing ignore errors.
@@ -479,7 +479,7 @@ final class PolyglotManagement extends AbstractManagementImpl {
 
         @TruffleBoundary(allowInlining = true)
         protected final void invokeExceptionAllocate(List<Value> inputValues, Throwable e) {
-            PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e) : null;
+            PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e, true) : null;
             config.onReturn.accept(config.management.newExecutionEvent(new DynamicEvent(this, inputValues, null, ex)));
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,6 +68,8 @@ import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -96,6 +98,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");
 
+    /*
+     * Any change to successor fields (reordering, renaming, adding or removing) would need an
+     * according update to SimplifyingGraphDecoder#earlyCanonicalization.
+     */
     @Successor AbstractBeginNode trueSuccessor;
     @Successor AbstractBeginNode falseSuccessor;
     @Input(InputType.Condition) LogicNode condition;
@@ -544,6 +550,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 return false;
             }
 
+            if (falseSuccessor instanceof LoopExitNode && ((LoopExitNode) falseSuccessor).stateAfter != null) {
+                return false;
+            }
+
             PhiNode phi = merge.phis().first();
             ValueNode falseValue = phi.valueAt(falseEnd);
             ValueNode trueValue = phi.valueAt(trueEnd);
@@ -582,9 +592,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (trueNext instanceof AbstractBeginNode) {
-                        // Cannot do this optimization for begin nodes, because it could
-                        // move guards above the if that need to stay below a branch.
+                    if (trueNext instanceof AbstractBeginNode || trueNext instanceof ControlFlowAnchored) {
+                        /*
+                         * Cannot do this optimization for begin nodes, because it could move guards
+                         * above the if that need to stay below a branch.
+                         *
+                         * Cannot do this optimization for ControlFlowAnchored nodes, because these
+                         * are anchored in their control-flow position, and should not be moved
+                         * upwards.
+                         */
                     } else if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
@@ -727,12 +743,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * Check it these two blocks end up at the same place. Meeting at the same merge, or
      * deoptimizing in the same way.
      */
-    private static boolean sameDestination(AbstractBeginNode succ1, AbstractBeginNode succ2) {
+    public static boolean sameDestination(AbstractBeginNode succ1, AbstractBeginNode succ2) {
         Node next1 = succ1.next();
         Node next2 = succ2.next();
-        if (next1 instanceof EndNode && next2 instanceof EndNode) {
-            EndNode end1 = (EndNode) next1;
-            EndNode end2 = (EndNode) next2;
+        if (next1 instanceof AbstractEndNode && next2 instanceof AbstractEndNode) {
+            AbstractEndNode end1 = (AbstractEndNode) next1;
+            AbstractEndNode end2 = (AbstractEndNode) next2;
             if (end1.merge() == end2.merge()) {
                 for (PhiNode phi : end1.merge().phis()) {
                     if (phi.valueAt(end1) != phi.valueAt(end2)) {
@@ -810,9 +826,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
 
                 if (comparableCondition != null) {
-                    Condition combined = conditionA.join(comparableCondition);
-                    if (combined == null) {
-                        // The two conditions are disjoint => can reorder.
+                    if (conditionA.trueIsDisjoint(comparableCondition)) {
+                        // The truth of the two conditions is disjoint => can reorder.
                         debug.log("Can swap disjoint coditions on same values: %s and %s", conditionA, comparableCondition);
                         return true;
                     }
@@ -864,6 +879,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
             AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
             AbstractMergeNode merge = trueEnd.merge();
+
+            if (falseSuccessor instanceof LoopExitNode && ((LoopExitNode) falseSuccessor).stateAfter != null) {
+                return false;
+            }
+
             if (merge == falseEnd.merge() && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
                 PhiNode singlePhi = null;
                 int distinct = 0;
@@ -982,6 +1002,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     protected void removeThroughFalseBranch(SimplifierTool tool, AbstractMergeNode merge) {
+        // If the LoopExitNode and the Merge still have states then it's incorrect to arbitrarily
+        // pick one side of the branch the represent the control flow. The state on the merge is the
+        // real after state but it would need to be adjusted to represent the effects of the
+        // conditional conversion.
+        assert !(falseSuccessor instanceof LoopExitNode) || ((LoopExitNode) falseSuccessor).stateAfter == null;
         AbstractBeginNode trueBegin = trueSuccessor();
         LogicNode conditionNode = condition();
         graph().removeSplitPropagate(this, trueBegin);
@@ -1026,6 +1051,51 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return null;
     }
 
+    private List<Node> getNodesForBlock(AbstractBeginNode successor) {
+        StructuredGraph.ScheduleResult schedule = graph().getLastSchedule();
+        if (schedule == null) {
+            return null;
+        }
+        if (schedule.getCFG().getNodeToBlock().isNew(successor)) {
+            // This can occur when nodes were created after the last schedule.
+            return null;
+        }
+        Block block = schedule.getCFG().blockFor(successor);
+        if (block == null) {
+            return null;
+        }
+        return schedule.nodesFor(block);
+    }
+
+    /**
+     * Check whether conversion of an If to a Conditional causes extra unconditional work. Generally
+     * that transformation is beneficial if it doesn't result in extra work in the main path.
+     */
+    private boolean isSafeConditionalInput(ValueNode value, AbstractBeginNode successor) {
+        assert successor.hasNoUsages();
+        if (value.isConstant() || condition.inputs().contains(value)) {
+            // Assume constants are cheap to evaluate. Any input to the condition itself is also
+            // unconditionally evaluated.
+            return true;
+        }
+
+        if (graph().isAfterFixedReadPhase()) {
+            if (value instanceof ParameterNode) {
+                // Assume Parameters are always evaluated but only apply this logic to graphs after
+                // inlining. Checking for ParameterNode causes it to apply to graphs which are going
+                // to be inlined into other graphs which is incorrect.
+                return true;
+            }
+            if (value instanceof FixedNode) {
+                List<Node> nodes = getNodesForBlock(successor);
+                // The successor block is empty so assume that this input evaluated before the
+                // condition.
+                return nodes != null && nodes.size() == 2;
+            }
+        }
+        return false;
+    }
+
     private ValueNode canonicalizeConditionalCascade(SimplifierTool tool, ValueNode trueValue, ValueNode falseValue) {
         if (trueValue.getStackKind() != falseValue.getStackKind()) {
             return null;
@@ -1033,7 +1103,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (trueValue.getStackKind() != JavaKind.Int && trueValue.getStackKind() != JavaKind.Long) {
             return null;
         }
-        if (trueValue.isConstant() && falseValue.isConstant()) {
+        if (isSafeConditionalInput(trueValue, trueSuccessor) && isSafeConditionalInput(falseValue, falseSuccessor)) {
             return graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
         }
         ValueNode value = canonicalizeConditionalViaImplies(trueValue, falseValue);

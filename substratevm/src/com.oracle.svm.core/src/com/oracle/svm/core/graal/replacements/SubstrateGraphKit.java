@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.GraphKit;
@@ -143,20 +144,24 @@ public class SubstrateGraphKit extends GraphKit {
         return unique((FloatingNode) loadIndexed);
     }
 
+    public ValueNode createStoreIndexed(ValueNode array, int index, JavaKind kind, ValueNode value) {
+        return append(new StoreIndexedNode(array, ConstantNode.forInt(index, getGraph()), null, null, kind, value));
+    }
+
     public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind, MetaAccessProvider metaAccess) {
         return append(new UnboxNode(boxed, targetKind, metaAccess));
     }
 
     public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
-        return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), bci(), args);
+        return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), args);
     }
 
     public ValueNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        return startInvokeWithException(targetMethod, kind, frameState, bci(), bci(), arguments);
+        return startInvokeWithException(targetMethod, kind, frameState, bci(), arguments);
     }
 
     public ValueNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), bci(), arguments);
+        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), arguments);
     }
 
     public ConstantNode createConstant(Constant value, JavaKind kind) {
@@ -263,6 +268,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         mergeUnwinds();
         assert graph.verify();
+        assert wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
         return graph;
     }
 
@@ -277,7 +283,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         if (unwinds.size() > 1) {
             MergeNode unwindMergeNode = add(new MergeNode());
-            ValueNode exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, unwinds, null, UnwindNode::exception);
+            ValueNode exceptionValue = InliningUtil.mergeUnwindExceptions(unwindMergeNode, unwinds);
             UnwindNode unwindReplacement = add(new UnwindNode(exceptionValue));
             unwindMergeNode.setNext(unwindReplacement);
 

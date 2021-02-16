@@ -146,7 +146,7 @@ public class ConstantPoolTool {
             if (kind == ConstantKind.UTF8) {
                 length = Short.toUnsignedInt(buffer.getShort()); // in bytes; advances buffer
             }
-            if (length <= 0 || kind.tableEntries <= 0) {
+            if (length < 0 || kind.tableEntries <= 0) {
                 throw new ConstantPoolException("Invalid constant pool entry kind: " + kind);
             }
             buffer.position(buffer.position() + length);

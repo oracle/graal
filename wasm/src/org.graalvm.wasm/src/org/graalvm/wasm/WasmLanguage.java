@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,75 +41,50 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import org.graalvm.wasm.exception.WasmValidationException;
-import org.graalvm.wasm.nodes.WasmEmptyRootNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
+import org.graalvm.wasm.memory.WasmMemory;
+
+import java.io.IOException;
 
 @TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false)
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
-    private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
-    private static final int MAX_DEFAULT_ASYNC_STACK_SIZE = 10_000_000;
+    private boolean isFirst = true;
 
     @Override
     protected WasmContext createContext(Env env) {
-        return new WasmContext(env, this);
+        WasmContext context = new WasmContext(env, this);
+        if (env.isPolyglotBindingsAccessAllowed()) {
+            env.exportSymbol("WebAssembly", new WebAssembly(context));
+        }
+        return context;
     }
 
     @Override
     protected CallTarget parse(ParsingRequest request) {
         final WasmContext context = getCurrentContext();
-        final String moduleName = request.getSource().getName();
+        final String moduleName = isFirst ? "main" : request.getSource().getName();
+        isFirst = false;
         final byte[] data = request.getSource().getBytes().toByteArray();
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        final WasmModule module = new WasmModule(moduleName, data, storeConstantsPolicy);
-        readModule(context, module, data);
-        context.registerModule(module);
-        return Truffle.getRuntime().createCallTarget(new WasmEmptyRootNode(this));
-    }
-
-    private void readModule(WasmContext context, WasmModule module, byte[] data) {
-        int binarySize = data.length;
-        final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
-        if (binarySize < asyncParsingBinarySize) {
-            readModuleSynchronously(context, module, data);
-        } else {
-            final Runnable parsing = new Runnable() {
-                @Override
-                public void run() {
-                    readModuleSynchronously(context, module, data);
-                }
-            };
-            final String name = "wasm-parsing-thread(" + module.name() + ")";
-            final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
-            final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
-            final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
-            final Thread parsingThread = new Thread(null, parsing, name, stackSize);
-            final ParsingExceptionHandler handler = new ParsingExceptionHandler();
-            parsingThread.setUncaughtExceptionHandler(handler);
-            parsingThread.start();
-            try {
-                parsingThread.join();
-                if (handler.parsingException() != null) {
-                    throw new WasmValidationException("Asynchronous parsing failed.", handler.parsingException());
-                }
-            } catch (InterruptedException e) {
-                throw new WasmValidationException("Asynchronous parsing interrupted.", e);
+        final WasmModule module = context.readModule(moduleName, data, null);
+        final WasmInstance instance = context.readInstance(module);
+        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            @Override
+            public WasmInstance execute(VirtualFrame frame) {
+                return instance;
             }
-        }
-    }
-
-    private void readModuleSynchronously(WasmContext context, WasmModule module, byte[] data) {
-        final BinaryParser reader = new BinaryParser(this, module, context, data);
-        reader.readModule();
+        });
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(WasmContext context) {
-        return context.getTopScopes();
+    protected Object getScope(WasmContext context) {
+        return context.getScope();
     }
 
     @Override
@@ -121,16 +96,19 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         return getCurrentContext(WasmLanguage.class);
     }
 
-    private class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
-        private Throwable parsingException = null;
-
-        @Override
-        public void uncaughtException(Thread t, Throwable e) {
-            this.parsingException = e;
+    @Override
+    protected void finalizeContext(WasmContext context) {
+        super.finalizeContext(context);
+        for (int i = 0; i < context.memories().count(); ++i) {
+            final WasmMemory memory = context.memories().memory(i);
+            if (memory instanceof UnsafeWasmMemory) {
+                ((UnsafeWasmMemory) memory).free();
+            }
         }
-
-        public Throwable parsingException() {
-            return parsingException;
+        try {
+            context.fdManager().close();
+        } catch (IOException e) {
+            throw new RuntimeException("Error while closing WasmFilesManager.");
         }
     }
 }

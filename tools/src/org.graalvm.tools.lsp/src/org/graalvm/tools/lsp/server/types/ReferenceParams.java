@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,31 @@ public class ReferenceParams extends TextDocumentPositionParams {
         return this;
     }
 
+    /**
+     * An optional token that a server can use to report work done progress.
+     */
+    public Object getWorkDoneToken() {
+        return jsonData.opt("workDoneToken");
+    }
+
+    public ReferenceParams setWorkDoneToken(Object workDoneToken) {
+        jsonData.putOpt("workDoneToken", workDoneToken);
+        return this;
+    }
+
+    /**
+     * An optional token that a server can use to report partial results (e.g. streaming) to the
+     * client.
+     */
+    public Object getPartialResultToken() {
+        return jsonData.opt("partialResultToken");
+    }
+
+    public ReferenceParams setPartialResultToken(Object partialResultToken) {
+        jsonData.putOpt("partialResultToken", partialResultToken);
+        return this;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -60,6 +85,12 @@ public class ReferenceParams extends TextDocumentPositionParams {
         if (!Objects.equals(this.getContext(), other.getContext())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
+        if (!Objects.equals(this.getPartialResultToken(), other.getPartialResultToken())) {
+            return false;
+        }
         if (!Objects.equals(this.getTextDocument(), other.getTextDocument())) {
             return false;
         }
@@ -71,8 +102,14 @@ public class ReferenceParams extends TextDocumentPositionParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 5;
         hash = 37 * hash + Objects.hashCode(this.getContext());
+        if (this.getWorkDoneToken() != null) {
+            hash = 37 * hash + Objects.hashCode(this.getWorkDoneToken());
+        }
+        if (this.getPartialResultToken() != null) {
+            hash = 37 * hash + Objects.hashCode(this.getPartialResultToken());
+        }
         hash = 37 * hash + Objects.hashCode(this.getTextDocument());
         hash = 37 * hash + Objects.hashCode(this.getPosition());
         return hash;

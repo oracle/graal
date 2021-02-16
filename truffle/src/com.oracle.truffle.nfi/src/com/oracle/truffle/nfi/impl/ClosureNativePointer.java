@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,6 +120,13 @@ final class ClosureNativePointer {
     final CallTarget callTarget;
 
     /**
+     * To keep the object alive.
+     *
+     * @see #callTarget
+     */
+    final Object receiver;
+
+    /**
      * The LibFFI closure structure keeps a pointer to the native signature. Keep a Java reference
      * to the signature around to prevent GC as long as the closure is alive.
      */
@@ -138,16 +145,17 @@ final class ClosureNativePointer {
      */
     private final NativeAllocation.Queue releaseRefQueue;
 
-    static ClosureNativePointer create(NFIContext context, long nativeClosure, long codePointer, CallTarget callTarget, LibFFISignature signature) {
-        ClosureNativePointer ret = new ClosureNativePointer(context, codePointer, callTarget, signature);
+    static ClosureNativePointer create(NFIContext context, long nativeClosure, long codePointer, CallTarget callTarget, LibFFISignature signature, Object receiver) {
+        ClosureNativePointer ret = new ClosureNativePointer(context, codePointer, callTarget, signature, receiver);
         NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new NativeDestructor(nativeClosure));
         return ret;
     }
 
-    private ClosureNativePointer(NFIContext context, long codePointer, CallTarget callTarget, LibFFISignature signature) {
+    private ClosureNativePointer(NFIContext context, long codePointer, CallTarget callTarget, LibFFISignature signature, Object receiver) {
         this.context = context;
         this.codePointer = codePointer;
         this.callTarget = callTarget;
+        this.receiver = receiver;
         this.signature = signature;
 
         // the code calling this constructor is responsible for calling registerManagedRef

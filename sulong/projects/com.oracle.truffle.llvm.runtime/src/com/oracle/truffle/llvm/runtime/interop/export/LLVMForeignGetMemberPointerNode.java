@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,11 +45,11 @@ public abstract class LLVMForeignGetMemberPointerNode extends LLVMNode {
 
     public abstract LLVMPointer execute(LLVMInteropType type, LLVMPointer pointer, String ident) throws UnsupportedMessageException, UnknownIdentifierException;
 
-    @Specialization(guards = {"cachedMember != null", "cachedMember.getStruct() == struct", "cachedIdent.equals(ident)"})
+    @Specialization(guards = {"cachedMember != null", "cachedMember.struct == struct", "cachedIdent.equals(ident)"})
     LLVMPointer doCached(@SuppressWarnings("unused") LLVMInteropType.Struct struct, LLVMPointer pointer, @SuppressWarnings("unused") String ident,
                     @Cached("ident") @SuppressWarnings("unused") String cachedIdent,
                     @Cached("struct.findMember(cachedIdent)") LLVMInteropType.StructMember cachedMember) {
-        return pointer.increment(cachedMember.getStartOffset()).export(cachedMember.getType());
+        return pointer.increment(cachedMember.startOffset).export(cachedMember.type);
     }
 
     @Specialization(replaces = "doCached")
@@ -60,11 +60,16 @@ public abstract class LLVMForeignGetMemberPointerNode extends LLVMNode {
             exception.enter();
             throw UnknownIdentifierException.create(ident);
         }
-        return pointer.increment(member.getStartOffset()).export(member.getType());
+        return pointer.increment(member.startOffset).export(member.type);
     }
 
+    /**
+     * @param type
+     * @param object
+     * @param ident
+     * @see #execute(LLVMInteropType, LLVMPointer, String)
+     */
     @Fallback
-    @SuppressWarnings("unused")
     static LLVMPointer doError(LLVMInteropType type, LLVMPointer object, String ident) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }

@@ -32,12 +32,10 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-
-import com.oracle.svm.core.graal.nodes.SubstrateVirtualArrayNode;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -63,11 +61,6 @@ public interface SubstrateArraysCopyOf extends Lowerable, VirtualizableAllocatio
     }
 
     @Override
-    default void lower(LoweringTool tool) {
-        tool.getLowerer().lower(asNode(), tool);
-    }
-
-    @Override
     default void virtualize(VirtualizerTool tool) {
         if (!getNewArrayType().isConstant()) {
             /*
@@ -81,6 +74,6 @@ public interface SubstrateArraysCopyOf extends Lowerable, VirtualizableAllocatio
         ValueNode from = ConstantNode.forInt(0);
         ResolvedJavaType newComponentType = tool.getConstantReflection().asJavaType(getNewArrayType().asConstant()).getComponentType();
         GraphUtil.virtualizeArrayCopy(tool, getOriginal(), getOriginalLength(), getNewLength(), from, newComponentType, JavaKind.Object, asNode().graph(),
-                        (componentType, length) -> new SubstrateVirtualArrayNode(componentType, length));
+                        (componentType, length) -> new VirtualArrayNode(componentType, length));
     }
 }

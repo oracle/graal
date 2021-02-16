@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,11 @@
  */
 
 int main() {
-  int i;
-  if (0 || 1) {
-    i = 14;
-  } else {
-    i = 15;
-  }
-  return i;
+    int i;
+    if (0 || 1) {
+        i = 14;
+    } else {
+        i = 15;
+    }
+    return i;
 }

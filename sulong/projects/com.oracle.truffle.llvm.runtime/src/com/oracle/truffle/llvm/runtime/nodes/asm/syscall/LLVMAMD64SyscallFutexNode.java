@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,15 @@ public abstract class LLVMAMD64SyscallFutexNode extends LLVMSyscallOperationNode
         return "futex";
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param uaddr
+     * @param futexOp
+     * @param val
+     * @param timeout
+     * @param uaddr2
+     * @param val3
+     * @see #execute(Object, Object, Object, Object, Object, Object)
+     */
     @Specialization
     protected long doI64(LLVMNativePointer uaddr, long futexOp, long val, LLVMNativePointer timeout, LLVMNativePointer uaddr2, long val3) {
         return -LLVMAMD64Error.ENOSYS;

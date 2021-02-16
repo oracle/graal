@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,12 +35,11 @@ void voidFuncNoArgs(void) {
 void voidFuncImplicitVarArgs() {
 }
 
-void voidFuncIntArg(int i) {
+void voidFuncIntArg(__attribute__((unused)) int i) {
 }
 
-void voidFuncIntVarArgs(int i, ...) {
+void voidFuncIntVarArgs(__attribute__((unused)) int i, ...) {
 }
-
 
 int intFuncNoArgs(void) {
     return 42;
@@ -50,15 +49,15 @@ int intFuncImplicitVarArgs() {
     return 42;
 }
 
-int intFuncIntArg(int i) {
+int intFuncIntArg(__attribute__((unused)) int i) {
     return 42;
 }
 
-int intFuncIntVarArgs(int i, ...) {
+int intFuncIntVarArgs(__attribute__((unused)) int i, ...) {
     return 42;
 }
 
-int start() __attribute__((constructor)) {
+__attribute__((constructor)) int start() {
     void (*voidFuncNoArgsPtr)(void) = &voidFuncNoArgs;
     void (*voidFuncImplicitVarArgsPtr)() = &voidFuncImplicitVarArgs;
     void (*voidFuncIntArgPtr)(int) = &voidFuncIntArg;

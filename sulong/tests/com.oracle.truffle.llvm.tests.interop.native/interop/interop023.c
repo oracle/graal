@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,14 +27,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
-
-int main() {
-  foo("foreign");
-  return foo("foreign");
-}
+#include <graalvm/llvm/polyglot.h>
 
 int foo(const char *name) {
-  void *obj = polyglot_import(name);
-  return polyglot_as_i32(polyglot_get_member(obj, "valueI"));
+    void *obj = polyglot_import(name);
+    return polyglot_as_i32(polyglot_get_member(obj, "valueI"));
+}
+
+int main() {
+    foo("foreign");
+    return foo("foreign");
 }

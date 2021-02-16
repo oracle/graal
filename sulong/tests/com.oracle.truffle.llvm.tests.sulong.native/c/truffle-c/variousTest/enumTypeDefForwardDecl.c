@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,6 @@ typedef enum asdf typedefenum;
 enum asdf { E1, E2 };
 
 int main() {
-  typedefenum test = E2;
-  return test;
+    typedefenum test = E2;
+    return test;
 }

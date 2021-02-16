@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+
+import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -43,14 +46,14 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.thread.Safepoint;
 
 final class SafepointSnippets extends SubstrateTemplates implements Snippets {
@@ -63,17 +66,24 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         }
     }
 
-    private SafepointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+    SafepointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, factories, providers, snippetReflection);
         lowerings.put(SafepointNode.class, new SafepointLowering());
+    }
+
+    private static LocationIdentity[] getKilledLocations() {
+        int newLength = TLAB_LOCATIONS.length + 1;
+        LocationIdentity[] locations = Arrays.copyOf(TLAB_LOCATIONS, newLength);
+        locations[newLength - 1] = Safepoint.getThreadLocalSafepointRequestedLocationIdentity();
+        return locations;
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native void callSlowPathSafepointCheck(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     class SafepointLowering implements NodeLoweringProvider<SafepointNode> {
-        private final SnippetInfo safepoint = snippet(SafepointSnippets.class, "safepointSnippet", Safepoint.getThreadLocalSafepointRequestedLocationIdentity());
+        private final SnippetInfo safepoint = snippet(SafepointSnippets.class, "safepointSnippet", getKilledLocations());
 
         @Override
         public void lower(SafepointNode node, LoweringTool tool) {
@@ -85,23 +95,20 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
             }
         }
     }
+}
 
-    @AutomaticFeature
-    static class SafepointFeature implements GraalFeature {
+@AutomaticFeature
+class SafepointFeature implements GraalFeature {
 
-        @Override
-        public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                        Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
-            for (SubstrateForeignCallDescriptor descriptor : Safepoint.FOREIGN_CALLS) {
-                foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
-            }
-        }
+    @Override
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        foreignCalls.register(providers, Safepoint.FOREIGN_CALLS);
+    }
 
-        @Override
-        @SuppressWarnings("unused")
-        public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                        SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-            new SafepointSnippets(options, factories, providers, snippetReflection, lowerings);
-        }
+    @Override
+    @SuppressWarnings("unused")
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        new SafepointSnippets(options, factories, providers, snippetReflection, lowerings);
     }
 }

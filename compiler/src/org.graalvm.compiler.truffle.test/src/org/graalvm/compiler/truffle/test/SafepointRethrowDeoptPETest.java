@@ -210,7 +210,7 @@ public class SafepointRethrowDeoptPETest extends PartialEvaluationTest {
                     /* spin */
                 }
                 /* Thread.sleep(100); */
-                compiledMethod.invalidate(cdl, "timed out");
+                compiledMethod.invalidate("timed out");
             } catch (InterruptedException e) {
                 Assert.fail("interrupted");
             }

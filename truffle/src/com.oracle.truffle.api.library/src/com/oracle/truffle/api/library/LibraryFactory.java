@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.library;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,9 +60,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.library.LibraryExport.DelegateExport;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 import sun.misc.Unsafe;
@@ -114,22 +116,48 @@ public abstract class LibraryFactory<T extends Library> {
     }
 
     /**
-     * Resets the state for native image generation.
+     * Reinitializes the state for native image generation.
      *
      * NOTE: this method is called reflectively by downstream projects.
      */
     @SuppressWarnings("unused")
-    private static void resetNativeImageState() {
-        assert TruffleOptions.AOT : "Only supported during image generation";
-        clearNonTruffleClasses(LIBRARIES);
-        clearNonTruffleClasses(ResolvedDispatch.CACHE);
-        clearNonTruffleClasses(ResolvedDispatch.REGISTRY);
+    private static void reinitializeNativeImageState() {
+        for (Map.Entry<Class<?>, LibraryFactory<?>> entry : LIBRARIES.entrySet()) {
+            LibraryFactory<?> libraryFactory = entry.getValue();
+            /* Trigger re-initialization of default exports. */
+            libraryFactory.initDefaultExports();
+        }
     }
 
-    private static void clearNonTruffleClasses(Map<Class<?>, ?> map) {
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     *
+     * @param imageClassLoader class loader passed by the image builder.
+     */
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState(ClassLoader imageClassLoader) {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        for (Map.Entry<Class<?>, LibraryFactory<?>> entry : LIBRARIES.entrySet()) {
+            LibraryFactory<?> libraryFactory = entry.getValue();
+            removeClassesLoadedDuringImageBuild(libraryFactory.exportCache, imageClassLoader);
+            removeClassesLoadedDuringImageBuild(libraryFactory.uncachedCache, imageClassLoader);
+            removeClassesLoadedDuringImageBuild(libraryFactory.cachedCache, imageClassLoader);
+            /* Reset the default exports. */
+            LibraryFactory.externalDefaultProviders = null;
+            libraryFactory.afterBuiltinDefaultExports = null;
+            libraryFactory.beforeBuiltinDefaultExports = null;
+        }
+        removeClassesLoadedDuringImageBuild(LIBRARIES, imageClassLoader);
+        removeClassesLoadedDuringImageBuild(ResolvedDispatch.CACHE, imageClassLoader);
+        removeClassesLoadedDuringImageBuild(ResolvedDispatch.REGISTRY, imageClassLoader);
+    }
+
+    private static void removeClassesLoadedDuringImageBuild(Map<Class<?>, ?> map, ClassLoader imageClassLoader) {
         Class<?>[] classes = map.keySet().toArray(new Class<?>[0]);
         for (Class<?> clazz : classes) {
-            if (LibraryAccessor.jdkServicesAccessor().isNonTruffleClass(clazz)) {
+            if (clazz.getClassLoader() == imageClassLoader) {
                 map.remove(clazz);
             }
         }
@@ -146,8 +174,8 @@ public abstract class LibraryFactory<T extends Library> {
 
     final DynamicDispatchLibrary dispatchLibrary;
 
-    final DefaultExportProvider[] beforeBuiltinDefaultExports;
-    final DefaultExportProvider[] afterBuiltinDefaultExports;
+    DefaultExportProvider[] beforeBuiltinDefaultExports;
+    DefaultExportProvider[] afterBuiltinDefaultExports;
 
     /**
      * Constructor for generated subclasses. Do not sub-class {@link LibraryFactory} manually.
@@ -180,6 +208,11 @@ public abstract class LibraryFactory<T extends Library> {
             }
         }
 
+        initDefaultExports();
+    }
+
+    /** Lazyily init the default exports data structures. */
+    private void initDefaultExports() {
         List<DefaultExportProvider> providers = getExternalDefaultProviders().get(libraryClass.getName());
         List<DefaultExportProvider> beforeBuiltin = null;
         List<DefaultExportProvider> afterBuiltin = null;
@@ -227,9 +260,9 @@ public abstract class LibraryFactory<T extends Library> {
      * <p>
      * Whenever the limit is reached for a node and the uncached version is in use, the current
      * enclosing node will be available to the uncached library export of the library using
-     * {@link NodeUtil#getCurrentEncapsulatingNode()}.
+     * {@link EncapsulatingNodeReference}.
      *
-     * @see NodeUtil#getCurrentEncapsulatingNode()
+     * @see EncapsulatingNodeReference
      * @see CachedLibrary
      * @since 19.0
      */
@@ -321,9 +354,16 @@ public abstract class LibraryFactory<T extends Library> {
             assert validateExport(receiver, dispatchClass, uncached);
             return uncached;
         }
+        return getUncachedSlowPath(receiver, dispatchClass);
+    }
+
+    /**
+     * Handles {@link #getUncached(Object)} cache miss.
+     */
+    private T getUncachedSlowPath(Object receiver, Class<?> dispatchClass) {
         ensureLibraryInitialized();
         LibraryExport<T> export = lookupExport(receiver, dispatchClass);
-        uncached = export.createUncached(receiver);
+        T uncached = export.createUncached(receiver);
         assert validateExport(receiver, dispatchClass, uncached);
         assert uncached.accepts(receiver);
         assert (uncached = createAssertionsImpl(export, uncached)) != null;
@@ -508,7 +548,7 @@ public abstract class LibraryFactory<T extends Library> {
      * @since 20.0
      */
     protected FinalBitSet createMessageBitSet(@SuppressWarnings({"unused", "hiding"}) Message... enabledMessages) {
-        throw new AssertionError("should be generated");
+        throw shouldNotReachHere("should be generated");
     }
 
     /**
@@ -572,7 +612,7 @@ public abstract class LibraryFactory<T extends Library> {
 
     private void validateExport(Object receiver, Class<?> dispatchedClass, LibraryExport<T> exports) throws AssertionError {
         if (!exports.getReceiverClass().isInstance(receiver)) {
-            throw new AssertionError(
+            throw shouldNotReachHere(
                             String.format("Receiver class %s was dynamically dispatched to incompatible exports %s. Expected receiver class %s.",
                                             receiver.getClass().getName(), dispatchedClass.getName(), exports.getReceiverClass().getName()));
         }
@@ -666,7 +706,7 @@ public abstract class LibraryFactory<T extends Library> {
     protected static <T extends Library> void register(Class<T> libraryClass, LibraryFactory<T> library) {
         LibraryFactory<?> lib = LIBRARIES.putIfAbsent(libraryClass, library);
         if (lib != null) {
-            throw new AssertionError("Reflection cannot be installed for a library twice.");
+            throw shouldNotReachHere("Reflection cannot be installed for a library twice.");
         }
     }
 
@@ -730,6 +770,7 @@ public abstract class LibraryFactory<T extends Library> {
             return (LibraryExport<T>) lib;
         }
 
+        /** NOTE: this method is called reflectively by downstream projects. */
         @TruffleBoundary
         static ResolvedDispatch lookup(Class<?> receiverClass) {
             ResolvedDispatch type = CACHE.get(receiverClass);
@@ -781,7 +822,7 @@ public abstract class LibraryFactory<T extends Library> {
                 loadGeneratedClass(dispatchClass);
                 libs = REGISTRY.get(dispatchClass);
                 if (libs == null) {
-                    throw new AssertionError(String.format("Libraries for class '%s' could not be resolved. Not registered?", dispatchClass.getName()));
+                    throw shouldNotReachHere(String.format("Libraries for class '%s' could not be resolved. Not registered?", dispatchClass.getName()));
                 }
             }
 
@@ -804,7 +845,7 @@ public abstract class LibraryFactory<T extends Library> {
             try {
                 Class.forName(generatedClassName, true, currentReceiverClass.getClassLoader());
             } catch (ClassNotFoundException e) {
-                throw new AssertionError(String.format("Generated class '%s' for class '%s' not found. " +
+                throw shouldNotReachHere(String.format("Generated class '%s' for class '%s' not found. " +
                                 "Did the Truffle annotation processor run?", generatedClassName, currentReceiverClass.getName()), e);
             }
         }

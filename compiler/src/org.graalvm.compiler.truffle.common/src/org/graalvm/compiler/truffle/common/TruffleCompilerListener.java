@@ -113,7 +113,16 @@ public interface TruffleCompilerListener {
      *            method on {@code graph} after this method returns will result in an
      *            {@link IllegalStateException}.
      */
-    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph);
+    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph);
+
+    /**
+     * @deprecated use
+     *             {@link #onSuccess(CompilableTruffleAST, TruffleMetaAccessProvider, GraphInfo, CompilationResultInfo, int)}
+     */
+    @Deprecated
+    default void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo) {
+        onSuccess(compilable, inliningPlan, graph, compilationResultInfo, 0);
+    }
 
     /**
      * Notifies this object when compilation of {@code compilable} succeeds.
@@ -128,8 +137,18 @@ public interface TruffleCompilerListener {
      *            object is only valid for the lifetime of a call to this method. Invoking any
      *            {@link CompilationResultInfo} method on {@code compilationResultInfo} after this
      *            method returns will result in an {@link IllegalStateException}.
+     * @param tier Which compilation tier was the compilation
      */
-    void onSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo);
+    default void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo, int tier) {
+    }
+
+    /**
+     * @deprecated use {@link #onFailure(CompilableTruffleAST, String, boolean, boolean, int)}
+     */
+    @Deprecated
+    default void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
+        onFailure(compilable, reason, bailout, permanentBailout, 0);
+    }
 
     /**
      * Notifies this object when compilation of {@code compilable} fails.
@@ -143,6 +162,27 @@ public interface TruffleCompilerListener {
      * @param permanentBailout specifies if a bailout is due to a condition that probably won't
      *            change if the {@code target} is compiled again. This value is meaningless if
      *            {@code bailout == false}.
+     * @param tier Which compilation tier was the compilation
      */
-    void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout);
+    default void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+
+    }
+
+    /**
+     * @deprecated use {@link #onCompilationRetry(CompilableTruffleAST, int)}
+     */
+    @Deprecated
+    default void onCompilationRetry(CompilableTruffleAST compilable) {
+        onCompilationRetry(compilable, 0);
+    }
+
+    /**
+     * Notifies this object when compilation of {@code compilable} is re-tried to diagnose a
+     * compilation problem.
+     *
+     * @param compilable the Truffle AST which is going to be re-compiled.
+     * @param tier Which compilation tier is in question.
+     */
+    default void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
+    }
 }

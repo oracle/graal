@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,13 +30,13 @@
 static int x = 1;
 
 int foo() {
-  if (x == 5) {
-    return 123;
-  } else {
-    x++;
-    return foo();
-  }
+    if (x == 5) {
+        return 123;
+    } else {
+        x++;
+        return foo();
+    }
 }
 int main() {
-  return foo();
+    return foo();
 }

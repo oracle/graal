@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,21 +29,21 @@
  */
 
 void *test_pointer_add(void *a, void *b) {
-  return (long) a + (long) b;
+    return (void *) ((long) a + (long) b);
 }
 
 void *test_pointer_sub(void *a, void *b) {
-  return (long) a - (long) b;
+    return (void *) ((long) a - (long) b);
 }
 
 void *test_pointer_mul(void *a, void *b) {
-  return (long) a * (long) b;
+    return (void *) ((long) a * (long) b);
 }
 
 void *test_pointer_xor(void *a, void *b) {
-  return (long) a ^ (long) b;
+    return (void *) ((long) a ^ (long) b);
 }
 
 char deref_pointer(char *p) {
-  return *p;
+    return *p;
 }

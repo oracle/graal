@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.api;
 
 import java.util.Optional;
+import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -38,7 +39,10 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This is an interface for the functionality that the hosting VM must support.
@@ -46,6 +50,8 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 public interface HostVM {
 
     OptionValues options();
+
+    ForkJoinPool executor();
 
     boolean isRelocatedPointer(Object originalObject);
 
@@ -58,6 +64,8 @@ public interface HostVM {
     void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind);
 
     void registerType(AnalysisType newValue);
+
+    void initializeType(AnalysisType newValue);
 
     boolean isInitialized(AnalysisType type);
 
@@ -79,5 +87,9 @@ public interface HostVM {
         return null;
     }
 
-    void checkMethod(BigBang bb, AnalysisMethod method, StructuredGraph graph);
+    void checkType(ResolvedJavaType type, AnalysisUniverse universe);
+
+    void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
+
+    void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
 }

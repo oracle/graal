@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,44 +42,89 @@ package com.oracle.truffle.dsl.processor.java.compiler;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.QualifiedNameable;
+import javax.tools.Diagnostic;
+
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 
 public abstract class AbstractCompiler implements Compiler {
 
-    protected static Object method(Object o, String methodName) throws Exception {
+    protected static Object method(Object o, String methodName) throws ReflectiveOperationException {
         Method method = o.getClass().getMethod(methodName);
         method.setAccessible(true);
         return method.invoke(o);
     }
 
-    protected static Object method(Object o, String methodName, Class<?>[] paramTypes, Object... values) throws Exception {
+    protected static Object method(Object o, String methodName, Class<?>[] paramTypes, Object... values) throws ReflectiveOperationException {
         Method method = o.getClass().getMethod(methodName, paramTypes);
         method.setAccessible(true);
         return method.invoke(o, values);
     }
 
-    protected static Object field(Object o, String fieldName) throws Exception {
+    protected static Object staticMethod(Class<?> clz, String methodName, Class<?>[] paramTypes, Object... values) throws ReflectiveOperationException {
+        Method method = clz.getMethod(methodName, paramTypes);
+        method.setAccessible(true);
+        return method.invoke(null, values);
+    }
+
+    protected static Object field(Object o, String fieldName) throws ReflectiveOperationException {
         if (o == null) {
             return null;
         }
-        Class<?> clazz = o.getClass();
-        Field field = null;
-        try {
-            field = clazz.getField(fieldName);
-        } catch (NoSuchFieldException e) {
-            while (clazz != null) {
-                try {
-                    field = clazz.getDeclaredField(fieldName);
-                    break;
-                } catch (NoSuchFieldException e1) {
-                    clazz = clazz.getSuperclass();
-                }
-            }
-            if (field == null) {
-                throw e;
-            }
-        }
-        field.setAccessible(true);
-        return field.get(o);
+        return lookupField(o.getClass(), fieldName).get(o);
     }
 
+    protected static Field lookupField(Class<?> clazz, String fieldName) {
+        // finding the right field can be expensive -> cache it.
+        Map<Class<?>, Map<String, Field>> fieldsCache = ProcessorContext.getInstance().getCacheMap(AbstractCompiler.class);
+        Map<String, Field> map = fieldsCache.computeIfAbsent(clazz, (c) -> new HashMap<>());
+        return map.computeIfAbsent(fieldName, (name) -> {
+            Field field = null;
+            Class<?> currentClass = clazz;
+            try {
+                field = currentClass.getField(fieldName);
+            } catch (NoSuchFieldException e) {
+                while (currentClass != null) {
+                    try {
+                        field = currentClass.getDeclaredField(fieldName);
+                        break;
+                    } catch (NoSuchFieldException e1) {
+                        currentClass = currentClass.getSuperclass();
+                    }
+                }
+                if (field == null) {
+                    throw new AssertionError(e);
+                }
+            }
+            field.setAccessible(true);
+            return field;
+        });
+
+    }
+
+    @Override
+    public final void emitDeprecationWarning(ProcessingEnvironment environment, Element element) {
+        if (!emitDeprecationWarningImpl(environment, element)) {
+            CharSequence ownerQualifiedName = "";
+            Element enclosingElement = element.getEnclosingElement();
+            if (enclosingElement != null) {
+                ElementKind kind = enclosingElement.getKind();
+                if (kind.isClass() || kind.isInterface() || kind == ElementKind.PACKAGE) {
+                    ownerQualifiedName = ((QualifiedNameable) enclosingElement).getQualifiedName();
+                }
+            }
+            environment.getMessager().printMessage(
+                            Diagnostic.Kind.WARNING,
+                            String.format("%s in %s has been deprecated", element.getSimpleName(), ownerQualifiedName),
+                            element);
+        }
+    }
+
+    protected abstract boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element);
 }

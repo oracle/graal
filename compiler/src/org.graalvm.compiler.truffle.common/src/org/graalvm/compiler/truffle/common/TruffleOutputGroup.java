@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.common;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.graalvm.graphio.GraphOutput;
@@ -43,11 +44,10 @@ public final class TruffleOutputGroup implements Closeable {
 
     private final GraphOutput<Void, ?> output;
 
-    private TruffleOutputGroup(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) {
-        String name = "Truffle::" + compilable.getName();
+    private TruffleOutputGroup(TruffleDebugContext debug, Map<Object, Object> properties, String name) throws IOException {
         GraphOutput<Void, ?> out = null;
         try {
-            out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 1));
+            out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
             Map<Object, Object> effectiveProperties;
             if (properties != null) {
                 effectiveProperties = new HashMap<>(properties);
@@ -58,9 +58,13 @@ public final class TruffleOutputGroup implements Closeable {
             out.beginGroup(null, name, name, null, 0, effectiveProperties);
         } catch (Throwable e) {
             if (out != null) {
-                out.close();
-                out = null;
+                try {
+                    out.close();
+                } catch (Throwable closeException) {
+                    e.addSuppressed(closeException);
+                }
             }
+            throw e;
         }
         this.output = out;
     }
@@ -81,10 +85,25 @@ public final class TruffleOutputGroup implements Closeable {
      * @param compilable the compiled AST
      * @param properties additional group properties or {@code null}
      * @return the opened {@link TruffleOutputGroup}
+     * @throws IOException in case of IO error
      */
-    public static TruffleOutputGroup open(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) {
+    public static TruffleOutputGroup openCallTarget(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) throws IOException {
         if (debug != null && debug.isDumpEnabled()) {
-            return new TruffleOutputGroup(debug, compilable, properties);
+            return new TruffleOutputGroup(debug, properties, "Truffle::" + compilable.getName());
+        }
+        return null;
+    }
+
+    /**
+     * Opens a new "Truffle::method_name" group.
+     *
+     * @param debug the {@link TruffleDebugContext} used for dumping
+     * @return the opened {@link TruffleOutputGroup}
+     * @throws IOException in case of IO error
+     */
+    public static TruffleOutputGroup openGraalGraphs(TruffleDebugContext debug) throws IOException {
+        if (debug != null && debug.isDumpEnabled()) {
+            return new TruffleOutputGroup(debug, Collections.emptyMap(), "Graal Graphs");
         }
         return null;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,17 +28,23 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct _point {
-  int x, y;
+    int x, y;
 };
 
 typedef struct _point myPoint;
 typedef struct _point yourPoint;
 
 void foo() {
-  yourPoint p;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+    yourPoint p;
+#pragma clang diagnostic pop
 }
 
 int main() {
-  myPoint p;
-  return 0;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+    myPoint p;
+#pragma clang diagnostic pop
+    return 0;
 }

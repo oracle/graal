@@ -26,9 +26,10 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -38,10 +39,8 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -55,21 +54,21 @@ public abstract class TruffleCallBoundaryInstrumentation extends CompilationResu
     protected final HotSpotRegistersProvider registers;
     protected final MetaAccessProvider metaAccess;
 
-    public TruffleCallBoundaryInstrumentation(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
+    public TruffleCallBoundaryInstrumentation(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
                     FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
-        super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, Register.None, null);
-        this.metaAccess = metaAccess;
+        super(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, Register.None, null);
+        this.metaAccess = providers.getMetaAccess();
         this.config = config;
         this.registers = registers;
     }
 
     @Override
-    public Mark recordMark(Object id) {
-        Mark mark = super.recordMark(id);
-        if ((int) id == config.MARKID_VERIFIED_ENTRY) {
+    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId id) {
+        CompilationResult.CodeMark mark = super.recordMark(id);
+        if (id == HotSpotMarkId.VERIFIED_ENTRY) {
             ResolvedJavaType optimizedCallTargetType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotOptimizedCallTarget");
             int installedCodeOffset = getFieldOffset("installedCode", optimizedCallTargetType);
-            int entryPointOffset = getFieldOffset("entryPoint", metaAccess.lookupJavaType(InstalledCode.class));
+            int entryPointOffset = getFieldOffset("entryPoint", TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, InstalledCode.class.getName()));
             injectTailCallCode(installedCodeOffset, entryPointOffset);
         }
         return mark;

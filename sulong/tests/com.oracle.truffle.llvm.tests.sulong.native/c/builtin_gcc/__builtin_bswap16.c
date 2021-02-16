@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  volatile short a = 0x0123;
+    volatile short a = 0x0123;
 #ifdef __clang__ // TODO: dragonegg uses incompatibe builtins!
-  if (__builtin_bswap16(a) != 0x2301) {
-    return 1;
-  }
+    if (__builtin_bswap16(a) != 0x2301) {
+        return 1;
+    }
 #endif
-  return 0;
+    return 0;
 }

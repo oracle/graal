@@ -27,6 +27,7 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -79,7 +80,7 @@ public class SubstrateStackIntrospection implements StackIntrospection {
     }
 }
 
-class PhysicalStackFrameVisitor<T> implements StackFrameVisitor {
+class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
 
     private ResolvedJavaMethod[] curMatchingMethods;
     private final ResolvedJavaMethod[] laterMatchingMethods;
@@ -201,7 +202,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     private Deoptimizer getDeoptimizer() {
         assert virtualFrame == null;
         if (deoptimizer == null) {
-            deoptimizer = new Deoptimizer(sp, codeInfo);
+            deoptimizer = new Deoptimizer(sp, codeInfo, CurrentIsolate.getCurrentThread());
         }
         return deoptimizer;
     }

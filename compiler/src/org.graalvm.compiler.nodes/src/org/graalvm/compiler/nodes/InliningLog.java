@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -151,7 +151,7 @@ public class InliningLog {
     public InliningLog(ResolvedJavaMethod rootMethod, boolean enabled, DebugContext debug) {
         this.root = new Callsite(null, null);
         this.root.target = rootMethod;
-        this.leaves = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        this.leaves = EconomicMap.create();
         this.enabled = enabled;
         this.debug = debug;
     }
@@ -171,7 +171,7 @@ public class InliningLog {
         if (!enabled) {
             return;
         }
-        assert leaves.containsKey(invoke);
+        assert leaves.containsKey(invoke) : invoke;
         assert (!positive && replacements == null && calleeLog == null) || (positive && replacements != null && calleeLog != null) ||
                         (positive && replacements == null && calleeLog == null);
         Callsite callsite = leaves.get(invoke);
@@ -447,6 +447,25 @@ public class InliningLog {
         @Override
         public ResolvedJavaMethod getContextMethod() {
             return callerMethod;
+        }
+
+        @Override
+        public int hashCode() {
+            return Integer.hashCode(bci) ^ callerMethod.hashCode() ^ method.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof PlaceholderInvokable) {
+                final PlaceholderInvokable that = (PlaceholderInvokable) obj;
+                return that.bci == this.bci && that.method.equals(this.method) && that.callerMethod.equals(this.callerMethod);
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Invokable(caller: %s, bci: %d, method: %s)", callerMethod.format("%H.%n"), bci, method.format("%H.%n"));
         }
     }
 

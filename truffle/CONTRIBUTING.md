@@ -11,6 +11,12 @@ speed execution up, improve the tooling, or give better control over the system.
 Once you believe your contribution is valuable for others, create a pull request.
 Please make sure to include a clear description of the intention of the change.
 
+If you are adding, changing or removing API you will need to regenerate the signature snapshot:
+```
+$ mx build
+$ mx sigtest --generate
+```
+
 # Reviews
 
 The core Truffle repository is the production ready intersection of all the exploratory

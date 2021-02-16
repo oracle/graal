@@ -29,34 +29,31 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class ArrayType extends AggregateType {
 
-    @CompilationFinal private Assumption elementTypeAssumption;
-    @CompilationFinal private Type elementType;
+    private Type elementType;
     /**
      * Length of the vector. The value is interpreted as an unsigned 64 bit integer value.
      */
     private final long length;
 
     public ArrayType(Type type, long length) {
-        this.elementTypeAssumption = Truffle.getRuntime().createAssumption("ArrayType.elementType");
         this.elementType = type;
         this.length = length;
     }
 
     public void setElementType(Type elementType) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        this.elementTypeAssumption.invalidate();
+        CompilerAsserts.neverPartOfCompilation();
+        verifyCycleFree(elementType);
         this.elementType = elementType;
-        this.elementTypeAssumption = Truffle.getRuntime().createAssumption("ArrayType.elementType");
     }
 
     @Override
@@ -70,9 +67,7 @@ public final class ArrayType extends AggregateType {
     }
 
     public Type getElementType() {
-        if (!elementTypeAssumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
+        CompilerAsserts.neverPartOfCompilation();
         return elementType;
     }
 
@@ -140,5 +135,20 @@ public final class ArrayType extends AggregateType {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public LLVMExpressionNode createNullConstant(NodeFactory nodeFactory, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        try {
+            long arraySize = getSize(dataLayout);
+            if (arraySize == 0) {
+                return null;
+            } else {
+                LLVMExpressionNode target = stackFactory.createGetStackSpace(nodeFactory, this);
+                return nodeFactory.createZeroNode(target, arraySize);
+            }
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 }

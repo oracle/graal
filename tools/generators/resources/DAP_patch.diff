@@ -1,0 +1,91 @@
+diff --git a/AttachRequestArguments.java b/AttachRequestArguments.java
+index a52411f..5ad36ea 100644
+--- a/AttachRequestArguments.java
++++ b/AttachRequestArguments.java
+@@ -47,6 +47,20 @@ public class AttachRequestArguments extends JSONBase {
+         return this;
+     }
+ 
++    /**
++     * Additional implementation specific attributes.
++     *
++     * @param attrName Attribute name.
++     */
++    public Object get(String attrName) {
++        return jsonData.opt(attrName);
++    }
++
++    public AttachRequestArguments set(String attrName, Object value) {
++        jsonData.putOpt(attrName, value);
++        return this;
++    }
++
+     @Override
+     public boolean equals(Object obj) {
+         if (this == obj) {
+diff --git a/DataBreakpointInfoArguments.java b/DataBreakpointInfoArguments.java
+index 15d99ac..a6b9031 100644
+--- a/DataBreakpointInfoArguments.java
++++ b/DataBreakpointInfoArguments.java
+@@ -45,7 +45,7 @@ public class DataBreakpointInfoArguments extends JSONBase {
+     }
+ 
+     /** The name of the Variable's child to obtain data breakpoint information for.
+-    If variableReference isn’t provided, this can be an expression.
++    If variableReference isn't provided, this can be an expression.
+      */
+     public String getName() {
+         return jsonData.getString("name");
+diff --git a/LaunchRequestArguments.java b/LaunchRequestArguments.java
+index 2691baf..0fe0bfc 100644
+--- a/LaunchRequestArguments.java
++++ b/LaunchRequestArguments.java
+@@ -58,6 +58,20 @@ public class LaunchRequestArguments extends JSONBase {
+         return this;
+     }
+ 
++    /**
++     * Additional implementation specific attributes.
++     *
++     * @param attrName Attribute name.
++     */
++    public Object get(String attrName) {
++        return jsonData.opt(attrName);
++    }
++
++    public LaunchRequestArguments set(String attrName, Object value) {
++        jsonData.putOpt(attrName, value);
++        return this;
++    }
++
+     @Override
+     public boolean equals(Object obj) {
+         if (this == obj) {
+diff --git a/SetExceptionBreakpointsArguments.java b/SetExceptionBreakpointsArguments.java
+index 37165f1..ccc41d3 100644
+--- a/SetExceptionBreakpointsArguments.java
++++ b/SetExceptionBreakpointsArguments.java
+@@ -75,8 +75,8 @@ public class SetExceptionBreakpointsArguments extends JSONBase {
+     public SetExceptionBreakpointsArguments setExceptionOptions(List<ExceptionOptions> exceptionOptions) {
+         if (exceptionOptions != null) {
+             final JSONArray json = new JSONArray();
+-            for (ExceptionOptions exceptionOptions: exceptionOptions) {
+-                json.put(exceptionOptions.jsonData);
++            for (ExceptionOptions options: exceptionOptions) {
++                json.put(options.jsonData);
+             }
+             jsonData.put("exceptionOptions", json);
+         }
+diff --git a/Source.java b/Source.java
+index 4947842..716ba7d 100644
+--- a/Source.java
++++ b/Source.java
+@@ -64,7 +64,7 @@ public class Source extends JSONBase {
+         return this;
+     }
+ 
+-    /** If sourceReference > 0 the contents of the source must be retrieved through the SourceRequest (even if a path is specified).
++    /** If sourceReference &gt 0 the contents of the source must be retrieved through the SourceRequest (even if a path is specified).
+     A sourceReference is only valid for a session, so it must not be used to persist a source.
+     The value should be less than or equal to 2147483647 (2^31 - 1).
+      */

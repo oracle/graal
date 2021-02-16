@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,12 +88,16 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(this);
+        return HostWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
-        return HostWrapper.equals(this, o);
+        if (o instanceof PolyglotFunction) {
+            return HostWrapper.equals(languageContext, guestObject, ((PolyglotFunction<?, ?>) o).guestObject);
+        } else {
+            return false;
+        }
     }
 
     @TruffleBoundary

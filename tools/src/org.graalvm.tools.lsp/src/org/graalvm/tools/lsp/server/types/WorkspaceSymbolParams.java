@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,16 +30,15 @@ import java.util.Objects;
 /**
  * The parameters of a [WorkspaceSymbolRequest](#WorkspaceSymbolRequest).
  */
-public class WorkspaceSymbolParams {
-
-    final JSONObject jsonData;
+public class WorkspaceSymbolParams extends WorkDoneProgressParams {
 
     WorkspaceSymbolParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
-     * A non-empty query string.
+     * A query string to filter symbols by. Clients may send an empty string here to request all
+     * symbols.
      */
     public String getQuery() {
         return jsonData.getString("query");
@@ -47,6 +46,19 @@ public class WorkspaceSymbolParams {
 
     public WorkspaceSymbolParams setQuery(String query) {
         jsonData.put("query", query);
+        return this;
+    }
+
+    /**
+     * An optional token that a server can use to report partial results (e.g. streaming) to the
+     * client.
+     */
+    public Object getPartialResultToken() {
+        return jsonData.opt("partialResultToken");
+    }
+
+    public WorkspaceSymbolParams setPartialResultToken(Object partialResultToken) {
+        jsonData.putOpt("partialResultToken", partialResultToken);
         return this;
     }
 
@@ -65,13 +77,25 @@ public class WorkspaceSymbolParams {
         if (!Objects.equals(this.getQuery(), other.getQuery())) {
             return false;
         }
+        if (!Objects.equals(this.getPartialResultToken(), other.getPartialResultToken())) {
+            return false;
+        }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 53 * hash + Objects.hashCode(this.getQuery());
+        hash = 97 * hash + Objects.hashCode(this.getQuery());
+        if (this.getPartialResultToken() != null) {
+            hash = 97 * hash + Objects.hashCode(this.getPartialResultToken());
+        }
+        if (this.getWorkDoneToken() != null) {
+            hash = 97 * hash + Objects.hashCode(this.getWorkDoneToken());
+        }
         return hash;
     }
 

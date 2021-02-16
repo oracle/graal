@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,32 +28,39 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int main() {
-  char name[L_tmpnam];
-  FILE *file = fopen(tmpnam(name), "w");
-  if (file == NULL) {
-    printf("Failed to open file\n");
-    abort();
-  }
-  fprintf(file, "asdfasdf");
-  fclose(file);
-  file = fopen(name, "r");
-  if (file == NULL) {
-    printf("Failed to open file\n");
-    abort();
-  }
-  int c;
-  int val = 0;
-
-  while ((c = fgetc(file)) != EOF) {
-    val++;
-    putchar(c);
-    if (val % 2 == 0) {
-      ungetc(c + val, file);
+    char name[] = "ungetc-XXXXXX";
+    int fd = mkstemp(name);
+    if (fd == -1) {
+        printf("Failed to create temporary file\n");
+        abort();
     }
-  }
-  putchar('\n');
-  fclose(file);
-  unlink(name);
+    FILE *file = fdopen(fd, "w");
+    if (file == NULL) {
+        printf("Failed to open file\n");
+        abort();
+    }
+    fprintf(file, "asdfasdf");
+    fclose(file);
+    file = fopen(name, "r");
+    if (file == NULL) {
+        printf("Failed to open file\n");
+        abort();
+    }
+    int c;
+    int val = 0;
+
+    while ((c = fgetc(file)) != EOF) {
+        val++;
+        putchar(c);
+        if (val % 2 == 0) {
+            ungetc(c + val, file);
+        }
+    }
+    putchar('\n');
+    fclose(file);
+    unlink(name);
 }

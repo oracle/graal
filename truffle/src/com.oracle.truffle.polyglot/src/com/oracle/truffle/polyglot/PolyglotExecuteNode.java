@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,8 +84,8 @@ abstract class PolyglotExecuteNode extends Node {
                     Class<?> resultClass, Type resultType,
                     @CachedLibrary("function") InteropLibrary interop,
                     @Cached ToHostNode toHost,
-                    @Cached("createBinaryProfile()") ConditionProfile executableCondition,
-                    @Cached("createBinaryProfile()") ConditionProfile instantiableCondition,
+                    @Cached ConditionProfile executableCondition,
+                    @Cached ConditionProfile instantiableCondition,
                     @Cached BranchProfile unsupportedError,
                     @Cached BranchProfile arityError,
                     @Cached BranchProfile unsupportedArgumentError) {

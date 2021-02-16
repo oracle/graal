@@ -31,9 +31,9 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode.LLVMDoubleOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "result", type = LLVMExpressionNode.class)
@@ -43,11 +43,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(value = "d", type = LLVMExpressionNode.class)
 public abstract class LLVMComplexDoubleMul extends LLVMExpressionNode {
 
-    @Child private LLVMDoubleStoreNode store;
-
-    public LLVMComplexDoubleMul() {
-        this.store = LLVMDoubleStoreNodeGen.create(null, null);
-    }
+    @Child private LLVMDoubleStoreNode storeReal = LLVMDoubleStoreNode.create();
+    @Child private LLVMDoubleOffsetStoreNode storeImag = LLVMDoubleOffsetStoreNode.create();
 
     @Specialization
     public LLVMPointer doDouble(LLVMPointer result, double a, double b, double c, double d) {
@@ -58,8 +55,8 @@ public abstract class LLVMComplexDoubleMul extends LLVMExpressionNode {
         double zReal = ac - bd;
         double zImag = ad + bc;
 
-        store.executeWithTarget(result, zReal);
-        store.executeWithTarget(result.increment(LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES), zImag);
+        storeReal.executeWithTarget(result, zReal);
+        storeImag.executeWithTarget(result, DOUBLE_SIZE_IN_BYTES, zImag);
 
         return result;
     }

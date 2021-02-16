@@ -206,9 +206,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-
         if (isLoopPhi()) {
-
             int valueCount = valueCount();
             assert valueCount >= 2;
             int i;
@@ -247,4 +245,11 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     public boolean isLoopPhi() {
         return merge() instanceof LoopBeginNode;
     }
+
+    /**
+     * Create a phi of the same kind on the given merge.
+     *
+     * @param newMerge the merge to use for the newly created phi
+     */
+    public abstract PhiNode duplicateOn(AbstractMergeNode newMerge);
 }

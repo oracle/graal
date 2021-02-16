@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,7 +52,13 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
         return doVoid(target, source, (long) length, isVolatile);
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param target @NodeChild
+     * @param source @NodeChild
+     * @param length @NodeChild
+     * @param isVolatile @NodeChild
+     * @see LLVMMemCopy
+     */
     @Specialization
     protected Object doVoid(LLVMPointer target, LLVMPointer source, long length, boolean isVolatile) {
         memMove.executeWithTarget(target, source, length);

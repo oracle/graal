@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,8 +35,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.macho.MachOSegmentCommand.MachOSection;
+import com.oracle.truffle.llvm.runtime.Magic;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
@@ -145,11 +145,11 @@ public final class MachOFile {
     }
 
     public static boolean isMachO32MagicNumber(long magic) {
-        return magic == BinaryParser.Magic.MH_MAGIC.magic || magic == BinaryParser.Magic.MH_CIGAM.magic;
+        return magic == Magic.MH_MAGIC.magic || magic == Magic.MH_CIGAM.magic;
     }
 
     public static boolean isMachO64MagicNumber(long magic) {
-        return magic == BinaryParser.Magic.MH_MAGIC_64.magic || magic == BinaryParser.Magic.MH_CIGAM_64.magic;
+        return magic == Magic.MH_MAGIC_64.magic || magic == Magic.MH_CIGAM_64.magic;
     }
 
 }

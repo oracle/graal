@@ -41,10 +41,10 @@
 
 package com.oracle.truffle.regex.tregex.util.json;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.util.ArrayList;
 import java.util.stream.Stream;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class Json {
 

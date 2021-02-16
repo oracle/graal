@@ -42,11 +42,9 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -57,13 +55,13 @@ public class LLVMGlobalRootNode extends RootNode {
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
-    @Child LLVMAccessSymbolNode accessMainFunction;
+    private final LLVMFunction mainFunction;
 
     public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunction mainFunction, CallTarget startFunction, String applicationPath) {
         super(language, descriptor);
+        this.mainFunction = mainFunction;
         this.startFunction = Truffle.getRuntime().createDirectCallNode(startFunction);
         this.mainFunctionType = getMainFunctionType(mainFunction);
-        this.accessMainFunction = LLVMAccessSymbolNodeGen.create(mainFunction);
         this.applicationPath = applicationPath;
     }
 
@@ -77,27 +75,27 @@ public class LLVMGlobalRootNode extends RootNode {
         return executeWithoutFrame();
     }
 
+    @SuppressWarnings("try")
     @TruffleBoundary
     private Object executeWithoutFrame() {
-        try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
-            try {
-                Object appPath = new LLVMArgumentBuffer(applicationPath);
-                LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(appPath));
-                Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj, accessMainFunction.execute()};
-                Object result = startFunction.call(realArgs);
-                getContext().awaitThreadTermination();
-                return (int) result;
-            } catch (LLVMExitException e) {
-                LLVMContext context = getContext();
-                // if any variant of exit or abort was called, we know that all the necessary
-                // cleanup was already done
-                context.setCleanupNecessary(false);
-                context.awaitThreadTermination();
-                return e.getExitStatus();
-            } finally {
-                // if not done already, we want at least call a shutdown command
-                getContext().shutdownThreads();
-            }
+        LLVMStack stack = getContext().getThreadingStack().getStack();
+        try {
+            Object appPath = new LLVMArgumentBuffer(applicationPath);
+            LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);
+            Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, getContext().getSymbol(mainFunction)};
+            Object result = startFunction.call(realArgs);
+            getContext().awaitThreadTermination();
+            return (int) result;
+        } catch (LLVMExitException e) {
+            LLVMContext context = getContext();
+            // if any variant of exit or abort was called, we know that all the necessary
+            // cleanup was already done
+            context.setCleanupNecessary(false);
+            context.awaitThreadTermination();
+            return e.getExceptionExitStatus();
+        } finally {
+            // if not done already, we want at least call a shutdown command
+            getContext().shutdownThreads();
         }
     }
 
@@ -108,10 +106,10 @@ public class LLVMGlobalRootNode extends RootNode {
      */
     private static int getMainFunctionType(LLVMFunction function) {
         CompilerAsserts.neverPartOfCompilation();
-        Type returnType = function.getType().getReturnType();
-        Type[] argumentTypes = function.getType().getArgumentTypes();
-        if (argumentTypes.length > 0 && argumentTypes[0] instanceof PrimitiveType) {
-            if (((PrimitiveType) argumentTypes[0]).getPrimitiveKind() == PrimitiveKind.I64) {
+        FunctionType functionType = function.getType();
+        Type returnType = functionType.getReturnType();
+        if (functionType.getNumberOfArguments() > 0 && functionType.getArgumentType(0) instanceof PrimitiveType) {
+            if (((PrimitiveType) functionType.getArgumentType(0)).getPrimitiveKind() == PrimitiveKind.I64) {
                 return 1;
             }
         }

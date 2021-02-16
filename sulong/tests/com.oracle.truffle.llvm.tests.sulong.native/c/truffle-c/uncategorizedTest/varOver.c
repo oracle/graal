@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int i;
-  int j;
-  i = 5;
-  for (j = 0; j < 5; j++) {
-    int i = 0;
-  }
-  return i;
+    int i;
+    int j;
+    i = 5;
+    for (j = 0; j < 5; j++) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+        int i = 0;
+#pragma clang diagnostic pop
+    }
+    return i;
 }

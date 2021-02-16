@@ -28,13 +28,13 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
-import java.util.Queue;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 import com.oracle.svm.driver.MacroOption.InvalidMacroException;
 import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
+import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.driver.NativeImage.BuildConfiguration;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -44,11 +44,11 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     @Override
-    public boolean consume(Queue<String> args) {
+    public boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
         boolean consumed = false;
         try {
-            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, new HashSet<>(), null, this::applyEnabled);
+            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, new HashSet<>(), null, enabledOption -> applyEnabled(enabledOption, args.argumentOrigin));
         } catch (VerboseInvalidMacroException e1) {
             NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
         } catch (InvalidMacroException | AddedTwiceException e) {
@@ -71,7 +71,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
-    private void applyEnabled(MacroOption.EnabledOption enabledOption) {
+    private void applyEnabled(MacroOption.EnabledOption enabledOption, String argumentOrigin) {
         Path imageJarsDirectory = enabledOption.getOption().getOptionDirectory();
         if (imageJarsDirectory == null) {
             return;
@@ -80,6 +80,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         BuildConfiguration config = nativeImage.config;
         if (!config.useJavaModules()) {
             enabledOption.forEachPropertyValue(config, "ImageBuilderBootClasspath8", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        } else {
+            enabledOption.forEachPropertyValue(config, "ImageIncludeBuiltinModules", entry -> nativeImage.addImageIncludeBuiltinModules(entry), ",");
         }
 
         if (!enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
@@ -109,7 +111,11 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         enabledOption.forEachPropertyValue(config, "JavaArgs", nativeImage::addImageBuilderJavaArgs);
-        NativeImage.NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor();
+        String origin = enabledOption.getOption().getDescription(true);
+        if (argumentOrigin != null) {
+            origin += " from " + argumentOrigin;
+        }
+        NativeImage.NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor(origin);
         enabledOption.forEachPropertyValue(config, "Args", args);
         args.apply(true);
     }

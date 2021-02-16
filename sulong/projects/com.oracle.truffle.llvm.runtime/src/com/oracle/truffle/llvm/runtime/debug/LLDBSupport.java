@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,14 +34,12 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -68,7 +66,7 @@ public final class LLDBSupport {
         @Override
         public Object execute(VirtualFrame frame) {
             LLVMPointer offsetPointer = LLVMPointer.cast(frame.getArguments()[0]);
-            return loadNode.executeWithTarget(offsetPointer);
+            return loadNode.executeWithTargetGeneric(offsetPointer);
         }
     }
 
@@ -76,7 +74,7 @@ public final class LLDBSupport {
     public CallTarget getLoadFunction(Type loadType) {
         CallTarget ret = loadFunctionCache.get(loadType);
         if (ret == null) {
-            ret = Truffle.getRuntime().createCallTarget(new LoadRootNode(this, loadType));
+            ret = LLVMLanguage.createCallTarget(new LoadRootNode(this, loadType));
             loadFunctionCache.put(loadType, ret);
         }
         return ret;
@@ -89,7 +87,7 @@ public final class LLDBSupport {
 
         final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(pointer);
         final Object target = managedPointer.getObject();
-        return target instanceof DynamicObject && ((DynamicObject) target).getShape().getObjectType() instanceof LLVMObjectAccess;
+        return !LLVMAsForeignLibrary.getFactory().getUncached().isForeign(target);
     }
 
     private static boolean isByteAligned(long bits) {

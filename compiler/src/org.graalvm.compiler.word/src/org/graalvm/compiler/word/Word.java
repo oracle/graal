@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,6 +104,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
         READ_BARRIERED,
         READ_HEAP,
         WRITE_POINTER,
+        WRITE_POINTER_SIDE_EFFECT_FREE,
         WRITE_OBJECT,
         WRITE_BARRIERED,
         CAS_POINTER,
@@ -933,6 +934,9 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Operation(opcode = Opcode.READ_HEAP)
     public native Object readObject(WordBase offset, BarrierType barrierType);
 
+    @Operation(opcode = Opcode.READ_HEAP)
+    public native Object readObject(WordBase offset, BarrierType barrierType, LocationIdentity locationIdentity);
+
     @Override
     @Operation(opcode = Opcode.READ_POINTER)
     public byte readByte(int offset) {
@@ -990,6 +994,11 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Operation(opcode = Opcode.READ_HEAP)
     public Object readObject(int offset, BarrierType barrierType) {
         return readObject(WordFactory.signed(offset), barrierType);
+    }
+
+    @Operation(opcode = Opcode.READ_HEAP)
+    public Object readObject(int offset, BarrierType barrierType, LocationIdentity locationIdentity) {
+        return readObject(WordFactory.signed(offset), barrierType, locationIdentity);
     }
 
     @Override

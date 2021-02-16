@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,6 @@
 int globalE = 5;
 
 int methodE(int a, int b) {
-  printf("E\n");
-  return (a << b) + globalE;
+    printf("E\n");
+    return (a << b) + globalE;
 }

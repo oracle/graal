@@ -609,4 +609,28 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             isSuperset(firstNode.getChildren(), secondNode.getChildren());
         }
     }
+
+    @Test
+    public void testNegativePeriod() {
+        expectProfilerException(() -> sampler.setPeriod(-1), () -> sampler.setCollecting(true));
+    }
+
+    @Test
+    public void testNegativeDelay() {
+        expectProfilerException(() -> sampler.setDelay(-1), () -> sampler.setCollecting(true));
+    }
+
+    @Test
+    public void testStackLimit() {
+        expectProfilerException(() -> sampler.setStackLimit(-1), () -> sampler.setCollecting(true));
+    }
+
+    @Test
+    public void testClosedConfig() {
+        expectProfilerException(() -> {
+            sampler.close();
+            sampler.setDelay(1);
+        }, () -> sampler.setCollecting(true));
+    }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.object;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -48,7 +49,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.object.Transition.DirectReplacePropertyTransition;
@@ -66,16 +66,7 @@ public abstract class LayoutStrategy {
     protected LayoutStrategy() {
     }
 
-    private static final LocationFactory DEFAULT_LOCATION_FACTORY = new LocationFactory() {
-        public Location createLocation(Shape shape, Object value) {
-            return ((ShapeImpl) shape).allocator().locationForValue(value, true, value != null);
-        }
-    };
-
-    /** @since 0.18 */
-    protected LocationFactory getDefaultLocationFactory() {
-        return DEFAULT_LOCATION_FACTORY;
-    }
+    protected abstract int getLocationOrdinal(Location location);
 
     /** @since 0.17 or earlier */
     protected abstract boolean updateShape(DynamicObject object);
@@ -94,19 +85,25 @@ public abstract class LayoutStrategy {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl defineProperty(ShapeImpl shape, Object key, Object value, int flags, LocationFactory locationFactory) {
+        return defineProperty(shape, key, value, flags, locationFactory, Flags.DEFAULT);
+    }
+
+    protected ShapeImpl defineProperty(ShapeImpl shape, Object key, Object value, int flags, LocationFactory locationFactory, long putFlags) {
         ShapeImpl oldShape = shape;
         if (!oldShape.isValid()) {
             oldShape = ensureValid(oldShape);
         }
         Property existing = oldShape.getProperty(key);
-        return defineProperty(oldShape, key, value, flags, locationFactory, existing, 0);
+        return defineProperty(oldShape, key, value, flags, locationFactory, existing, putFlags);
     }
 
-    protected ShapeImpl defineProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, LocationFactory locationFactory, Property existing, int putFlags) {
+    protected ShapeImpl defineProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, LocationFactory locationFactory, Property existing, long putFlags) {
         if (existing == null) {
-            Location location = locationFactory.createLocation(oldShape, value);
-            Property property = Property.create(key, location, propertyFlags);
-            return oldShape.addProperty(property);
+            if (Flags.isSeparateShape(putFlags)) {
+                return definePropertySeparateShape(oldShape, key, value, propertyFlags, putFlags, locationFactory);
+            } else {
+                return defineNewProperty(oldShape, key, value, propertyFlags, putFlags, locationFactory);
+            }
         } else {
             if (existing.getFlags() == propertyFlags) {
                 if (existing.getLocation().canSet(value)) {
@@ -115,23 +112,76 @@ public abstract class LayoutStrategy {
                     return definePropertyGeneralize(oldShape, existing, value, locationFactory, putFlags);
                 }
             } else {
-                Location oldLocation = existing.getLocation();
-                Location newLocation;
-                if (oldLocation.canSet(value)) {
-                    newLocation = oldLocation;
-                } else {
-                    newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
-                }
-                Property newProperty = Property.create(existing.getKey(), newLocation, propertyFlags);
-                oldShape.onPropertyTransition(existing);
-                return replaceProperty(oldShape, existing, newProperty);
+                return definePropertyChangeFlags(oldShape, value, propertyFlags, existing, putFlags);
             }
         }
     }
 
-    protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, LocationFactory locationFactory, int putFlags) {
-        if (oldProperty.getLocation().isValue()) {
-            Property newProperty = oldProperty.relocate(locationFactory.createLocation(oldShape, value));
+    private ShapeImpl defineNewProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, long putFlags, LocationFactory locationFactory) {
+        if (!Flags.isConstant(putFlags) && !Flags.isDeclaration(putFlags) && locationFactory == null) {
+            Class<?> locationType = detectLocationType(value);
+            if (locationType != null) {
+                AddPropertyTransition addTransition = new AddPropertyTransition(key, propertyFlags, locationType);
+                ShapeImpl cachedShape = oldShape.queryTransition(addTransition);
+                if (cachedShape != null) {
+                    return ensureValid(cachedShape);
+                }
+            }
+        }
+
+        Location location = createLocationForValue(oldShape, value, putFlags, locationFactory);
+        Property property = Property.create(key, location, propertyFlags);
+        return addProperty(oldShape, property);
+    }
+
+    protected Class<?> detectLocationType(Object value) {
+        if (value instanceof Integer) {
+            return int.class;
+        } else if (value instanceof Double) {
+            return double.class;
+        } else if (value instanceof Long) {
+            return long.class;
+        } else if (value instanceof Boolean) {
+            return boolean.class;
+        } else {
+            return Object.class;
+        }
+    }
+
+    private Location createLocationForValue(ShapeImpl oldShape, Object value, long putFlags, LocationFactory locationFactory) {
+        if (locationFactory != null) {
+            return locationFactory.createLocation(oldShape, value);
+        } else {
+            return createLocationForValue(oldShape, value, putFlags);
+        }
+    }
+
+    protected abstract Location createLocationForValue(ShapeImpl shape, Object value, long putFlags);
+
+    private ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, Object value, int propertyFlags, Property existing, long putFlags) {
+        assert existing != null && propertyFlags != existing.getFlags();
+        Location oldLocation = existing.getLocation();
+        Location newLocation;
+        if (oldLocation.canSet(value)) {
+            newLocation = oldLocation;
+        } else {
+            newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
+        }
+        Property newProperty = Property.create(existing.getKey(), newLocation, propertyFlags);
+        oldShape.onPropertyTransition(existing);
+        return replaceProperty(oldShape, existing, newProperty);
+    }
+
+    /** @since 1.0 */
+    protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, LocationFactory locationFactory, long putFlags) {
+        if (Flags.isSeparateShape(putFlags)) {
+            Location newLocation = createLocationForValue(oldShape, value, putFlags, locationFactory);
+            Property newProperty = oldProperty.relocate(newLocation);
+            oldShape.onPropertyTransition(oldProperty);
+            return separateReplaceProperty(oldShape, oldProperty, newProperty);
+        } else if (oldProperty.getLocation().isValue()) {
+            Location newLocation = createLocationForValue(oldShape, value, putFlags, locationFactory);
+            Property newProperty = oldProperty.relocate(newLocation);
             // Always use direct replace for value locations to avoid shape explosion
             oldShape.onPropertyTransition(oldProperty);
             return directReplaceProperty(oldShape, oldProperty, newProperty);
@@ -140,12 +190,7 @@ public abstract class LayoutStrategy {
         }
     }
 
-    /** @since 0.17 or earlier */
-    protected ShapeImpl generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape) {
-        return generalizeProperty(oldProperty, value, currentShape, nextShape, 0);
-    }
-
-    protected ShapeImpl generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape, int putFlags) {
+    protected ShapeImpl generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape, long putFlags) {
         Location oldLocation = oldProperty.getLocation();
         Location newLocation = currentShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
         Property newProperty = oldProperty.relocate(newLocation);
@@ -156,7 +201,7 @@ public abstract class LayoutStrategy {
     /** @since 0.17 or earlier */
     protected void propertySetFallback(Property property, DynamicObject store, Object value, ShapeImpl currentShape) {
         ShapeImpl oldShape = currentShape;
-        ShapeImpl newShape = defineProperty(oldShape, property.getKey(), value, property.getFlags(), getDefaultLocationFactory());
+        ShapeImpl newShape = defineProperty(oldShape, property.getKey(), value, property.getFlags(), null, Flags.DEFAULT);
         Property newProperty = newShape.getProperty(property.getKey());
         newProperty.setSafe(store, value, oldShape, newShape);
     }
@@ -164,7 +209,7 @@ public abstract class LayoutStrategy {
     /** @since 0.17 or earlier */
     protected void propertySetWithShapeFallback(Property property, DynamicObject store, Object value, ShapeImpl currentShape, ShapeImpl nextShape) {
         ShapeImpl oldShape = currentShape;
-        ShapeImpl newNextShape = generalizeProperty(property, value, oldShape, nextShape);
+        ShapeImpl newNextShape = generalizeProperty(property, value, oldShape, nextShape, Flags.DEFAULT);
         Property newProperty = newNextShape.getProperty(property.getKey());
         newProperty.setSafe(store, value, oldShape, newNextShape);
     }
@@ -183,15 +228,27 @@ public abstract class LayoutStrategy {
         }
     }
 
+    private ShapeImpl definePropertySeparateShape(ShapeImpl oldShape, Object key, Object value, int propertyFlags, long putFlags, LocationFactory locationFactory) {
+        Location location = createLocationForValue(oldShape, value, putFlags, locationFactory);
+        Property property = Property.create(key, location, propertyFlags);
+        return createSeparateShape(oldShape).addProperty(property);
+    }
+
     /** @since 0.17 or earlier */
     protected void objectRemoveProperty(DynamicObjectImpl object, Property property, ShapeImpl currentShape) {
         ShapeImpl oldShape = currentShape;
         ShapeImpl newShape = oldShape.removeProperty(property);
+
         reshapeAfterDelete(object, oldShape, newShape, ShapeImpl.findCommonAncestor(oldShape, newShape));
     }
 
     /** @since 0.17 or earlier */
     protected void reshapeAfterDelete(DynamicObjectImpl object, ShapeImpl oldShape, ShapeImpl newShape, ShapeImpl deletedParentShape) {
+        if (oldShape.isShared()) {
+            object.setShapeAndGrow(oldShape, newShape);
+            return;
+        }
+
         DynamicObject original = object.cloneWithShape(oldShape);
         object.setShapeAndResize(newShape);
         object.copyProperties(original, deletedParentShape);
@@ -204,35 +261,64 @@ public abstract class LayoutStrategy {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl removeProperty(ShapeImpl shape, Property property) {
-        assert !shape.isShared();
-        RemovePropertyTransition transition = new RemovePropertyTransition(property);
+        boolean direct = shape.isShared();
+        RemovePropertyTransition transition = newRemovePropertyTransition(property, direct);
         ShapeImpl cachedShape = shape.queryTransition(transition);
         if (cachedShape != null) {
             return ensureValid(cachedShape);
         }
 
-        ShapeImpl owningShape = getShapeFromProperty(shape, property.getKey());
-        if (owningShape != null) {
-            List<Transition> transitionList = new ArrayList<>();
-            ShapeImpl current = shape;
-            while (current != owningShape) {
-                if (!(current.getTransitionFromParent() instanceof Transition.DirectReplacePropertyTransition) ||
-                                !((Transition.DirectReplacePropertyTransition) current.getTransitionFromParent()).getPropertyBefore().getKey().equals(property.getKey())) {
-                    transitionList.add(current.getTransitionFromParent());
-                }
-                current = current.parent;
-            }
-            ShapeImpl newShape = owningShape.parent;
-            for (ListIterator<Transition> iterator = transitionList.listIterator(transitionList.size()); iterator.hasPrevious();) {
-                Transition previous = iterator.previous();
-                newShape = applyTransition(newShape, previous, true);
-            }
+        if (direct) {
+            return directRemoveProperty(shape, property, transition);
+        }
 
-            shape.addIndirectTransition(transition, newShape);
-            return newShape;
-        } else {
+        return indirectRemoveProperty(shape, property, transition);
+    }
+
+    protected RemovePropertyTransition newRemovePropertyTransition(Property property, boolean direct) {
+        return new RemovePropertyTransition(property, toLocationOrType(property.getLocation()), direct);
+    }
+
+    /**
+     * Removes a property by rewinding and replaying property transitions; moves any subsequent
+     * property locations to fill in the gap.
+     */
+    private ShapeImpl indirectRemoveProperty(ShapeImpl shape, Property property, RemovePropertyTransition transition) {
+        ShapeImpl owningShape = getShapeFromProperty(shape, property.getKey());
+        if (owningShape == null) {
             return null;
         }
+
+        List<Transition> transitionList = new ArrayList<>();
+        for (ShapeImpl current = shape; current != owningShape; current = current.parent) {
+            Transition transitionFromParent = current.getTransitionFromParent();
+            if (transitionFromParent instanceof Transition.DirectReplacePropertyTransition &&
+                            ((Transition.DirectReplacePropertyTransition) transitionFromParent).getPropertyBefore().getKey().equals(property.getKey())) {
+                continue;
+            } else {
+                transitionList.add(transitionFromParent);
+            }
+        }
+
+        ShapeImpl newShape = owningShape.parent;
+        for (ListIterator<Transition> iterator = transitionList.listIterator(transitionList.size()); iterator.hasPrevious();) {
+            Transition previous = iterator.previous();
+            newShape = applyTransition(newShape, previous, true);
+        }
+
+        shape.addIndirectTransition(transition, newShape);
+        return newShape;
+    }
+
+    /**
+     * Removes a property without moving property locations, leaving a gap that is lost forever.
+     */
+    private static ShapeImpl directRemoveProperty(ShapeImpl shape, Property property, RemovePropertyTransition transition) {
+        PropertyMap newPropertyMap = shape.getPropertyMap().removeCopy(property);
+        ShapeImpl newShape = shape.createShape(shape.getLayout(), shape.sharedData, shape, shape.objectType, newPropertyMap, transition, shape.allocator(), shape.flags);
+
+        shape.addDirectTransition(transition, newShape);
+        return newShape;
     }
 
     protected ShapeImpl directReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
@@ -266,6 +352,34 @@ public abstract class LayoutStrategy {
         return newShape;
     }
 
+    protected ShapeImpl separateReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
+        ShapeImpl newRoot = shape.createShape(shape.getLayout(), shape.sharedData, null, shape.objectType, PropertyMap.empty(), null, shape.getLayout().createAllocator(), shape.flags);
+        ShapeImpl newShape = newRoot;
+        boolean found = false;
+        for (Iterator<Property> iterator = shape.getPropertyMap().orderedValueIterator(); iterator.hasNext();) {
+            Property p = iterator.next();
+            if (!found && p.equals(oldProperty)) {
+                p = newProperty;
+                found = true;
+            }
+            newShape = newShape.addProperty(newProperty);
+        }
+        assert found;
+        assert newShape.isValid();
+        return newShape;
+    }
+
+    protected ShapeImpl createSeparateShape(ShapeImpl shape) {
+        ShapeImpl newRoot = shape.createShape(shape.getLayout(), shape.sharedData, null, shape.objectType, PropertyMap.empty(), null, shape.getLayout().createAllocator(), shape.flags);
+        ShapeImpl newShape = newRoot;
+        for (Iterator<Property> iterator = shape.getPropertyMap().orderedValueIterator(); iterator.hasNext();) {
+            Property p = iterator.next();
+            newShape = newShape.addProperty(p);
+        }
+        assert newShape.isValid();
+        return newShape;
+    }
+
     /** @since 0.17 or earlier */
     protected ShapeImpl addProperty(ShapeImpl shape, Property property) {
         return addProperty(shape, property, true);
@@ -274,8 +388,9 @@ public abstract class LayoutStrategy {
     /** @since 0.17 or earlier */
     protected ShapeImpl addProperty(ShapeImpl shape, Property property, boolean ensureValid) {
         assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
+        shape.onPropertyTransition(property);
 
-        AddPropertyTransition addTransition = new AddPropertyTransition(property);
+        AddPropertyTransition addTransition = newAddPropertyTransition(property);
         ShapeImpl cachedShape = shape.queryTransition(addTransition);
         if (cachedShape != null) {
             return ensureValid ? ensureValid(cachedShape) : cachedShape;
@@ -292,28 +407,50 @@ public abstract class LayoutStrategy {
         return newShape;
     }
 
+    protected AddPropertyTransition newAddPropertyTransition(Property property) {
+        return new AddPropertyTransition(property, toLocationOrType(property.getLocation()));
+    }
+
+    protected Object toLocationOrType(Location location) {
+        if (location instanceof LocationImpl) {
+            Class<?> type = ((LocationImpl) location).getType();
+            if (type != null) {
+                return type;
+            }
+        }
+        return location;
+    }
+
     /** @since 0.17 or earlier */
     protected ShapeImpl applyTransition(ShapeImpl shape, Transition transition, boolean append) {
         if (transition instanceof AddPropertyTransition) {
             Property property = ((AddPropertyTransition) transition).getProperty();
+            ShapeImpl newShape;
             if (append) {
-                return shape.append(property);
+                newShape = shape.append(property);
             } else {
-                shape.onPropertyTransition(property);
-                return addProperty(shape, property, false);
+                newShape = addProperty(shape, property, false);
             }
+            return newShape;
         } else if (transition instanceof ObjectTypeTransition) {
-            return shape.changeType(((ObjectTypeTransition) transition).getObjectType());
+            return shape.setDynamicType(((ObjectTypeTransition) transition).getObjectType());
         } else if (transition instanceof ObjectFlagsTransition) {
-            return shape.setObjectFlags(((ObjectFlagsTransition) transition).getObjectFlags());
+            return shape.setFlags(((ObjectFlagsTransition) transition).getObjectFlags());
         } else if (transition instanceof ReservePrimitiveArrayTransition) {
             return shape.reservePrimitiveExtensionArray();
         } else if (transition instanceof DirectReplacePropertyTransition) {
             Property oldProperty = ((DirectReplacePropertyTransition) transition).getPropertyBefore();
             Property newProperty = ((DirectReplacePropertyTransition) transition).getPropertyAfter();
             if (append) {
+                boolean sameLocation = oldProperty.getLocation().equals(newProperty.getLocation());
                 oldProperty = shape.getProperty(oldProperty.getKey());
-                newProperty = newProperty.relocate(shape.allocator().moveLocation(newProperty.getLocation()));
+                Location newLocation;
+                if (sameLocation) {
+                    newLocation = oldProperty.getLocation();
+                } else {
+                    newLocation = shape.allocator().moveLocation(newProperty.getLocation());
+                }
+                newProperty = newProperty.relocate(newLocation);
             }
             return directReplaceProperty(shape, oldProperty, newProperty, append);
         } else {
@@ -346,7 +483,7 @@ public abstract class LayoutStrategy {
         ShapeImpl current = shape;
         ShapeImpl root = shape.getRoot();
         while (current != root) {
-            if (current.getTransitionFromParent() instanceof AddPropertyTransition && ((AddPropertyTransition) current.getTransitionFromParent()).getProperty().getKey().equals(propertyName)) {
+            if (current.getTransitionFromParent() instanceof AddPropertyTransition && ((AddPropertyTransition) current.getTransitionFromParent()).getPropertyKey().equals(propertyName)) {
                 return current;
             }
             current = current.getParent();

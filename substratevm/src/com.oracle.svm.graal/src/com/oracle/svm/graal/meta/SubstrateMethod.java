@@ -44,7 +44,6 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.core.util.Replaced;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -59,7 +58,7 @@ import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 
-public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
+public class SubstrateMethod implements SharedRuntimeMethod {
 
     private final byte[] encodedLineNumberTable;
     private final int modifiers;

@@ -40,16 +40,14 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.util.Arrays;
-import java.util.Iterator;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.ImmutableSortedListOfIntRanges;
 import com.oracle.truffle.regex.charset.Range;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.BitSets;
 
 /**
  * Character matcher that uses an array of 256 bit sets to fully cover the 16 bit character space.
@@ -62,56 +60,50 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
     private static final int BYTE_MAX_VALUE = 255;
     private static final int BYTE_MIN_VALUE = 0;
 
-    private static final CompilationFinalBitSet MATCH_NONE = new CompilationFinalBitSet(BYTE_RANGE);
-    private static final CompilationFinalBitSet MATCH_ALL = new CompilationFinalBitSet(BYTE_RANGE);
+    private static final long[] MATCH_NONE = {0L, 0L, 0L, 0L};
+    private static final long[] MATCH_ALL = {~0L, ~0L, ~0L, ~0L};
 
-    static {
-        MATCH_ALL.invert();
-    }
-
-    public static MultiBitSetMatcher fromCodePointSet(boolean inverse, CodePointSet cps) {
-        CompilationFinalBitSet[] bitSets = new CompilationFinalBitSet[BYTE_RANGE];
+    public static MultiBitSetMatcher fromRanges(boolean inverse, ImmutableSortedListOfIntRanges cps) {
+        long[][] bitSets = new long[BYTE_RANGE][];
         Arrays.fill(bitSets, MATCH_NONE);
-        CompilationFinalBitSet cur = new CompilationFinalBitSet(BYTE_RANGE);
-        Iterator<Range> it = cps.iterator16Bit();
+        long[] cur = new long[4];
         int curByte = -1;
-        while (it.hasNext()) {
-            Range r = it.next();
+        for (Range r : cps) {
             if (curByte == -1) {
                 curByte = highByte(r.lo);
             }
             if (highByte(r.lo) > curByte) {
                 bitSets[curByte] = cur;
-                cur = new CompilationFinalBitSet(BYTE_RANGE);
+                cur = new long[4];
                 curByte = highByte(r.lo);
             }
             if (highByte(r.lo) == highByte(r.hi)) {
-                cur.setRange(lowByte(r.lo), lowByte(r.hi));
+                BitSets.setRange(cur, lowByte(r.lo), lowByte(r.hi));
             } else {
-                cur.setRange(lowByte(r.lo), BYTE_MAX_VALUE);
+                BitSets.setRange(cur, lowByte(r.lo), BYTE_MAX_VALUE);
                 bitSets[curByte] = cur;
                 for (int j = highByte(r.lo) + 1; j < highByte(r.hi); j++) {
                     bitSets[j] = MATCH_ALL;
                 }
-                cur = new CompilationFinalBitSet(BYTE_RANGE);
+                cur = new long[4];
                 curByte = highByte(r.hi);
-                cur.setRange(BYTE_MIN_VALUE, lowByte(r.hi));
+                BitSets.setRange(cur, BYTE_MIN_VALUE, lowByte(r.hi));
             }
         }
         bitSets[curByte] = cur;
         return MultiBitSetMatcherNodeGen.create(inverse, bitSets);
     }
 
-    @CompilationFinal(dimensions = 1) private final CompilationFinalBitSet[] bitSets;
+    @CompilationFinal(dimensions = 2) private final long[][] bitSets;
 
-    MultiBitSetMatcher(boolean invert, CompilationFinalBitSet[] bitSets) {
+    MultiBitSetMatcher(boolean invert, long[][] bitSets) {
         super(invert);
         this.bitSets = bitSets;
     }
 
     @Specialization
-    protected boolean match(char c, boolean compactString) {
-        return result(bitSets[compactString ? 0 : highByte(c)].get(lowByte(c)));
+    protected boolean match(int c) {
+        return result(BitSets.get(bitSets[highByte(c)], lowByte(c)));
     }
 
     @Override
@@ -126,7 +118,7 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
     public String toString() {
         StringBuilder sb = new StringBuilder(modifiersToString()).append("[\n");
         for (int i = 0; i < bitSets.length; i++) {
-            sb.append(String.format("    %02x: ", i)).append(bitSets[i]).append("\n");
+            sb.append(String.format("    %02x: ", i)).append(BitSets.toString(bitSets[i])).append("\n");
         }
         return sb.append("  ]").toString();
     }

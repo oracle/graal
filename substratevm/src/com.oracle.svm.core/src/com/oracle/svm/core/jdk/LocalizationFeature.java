@@ -36,9 +36,10 @@ import java.text.spi.DateFormatSymbolsProvider;
 import java.text.spi.DecimalFormatSymbolsProvider;
 import java.text.spi.NumberFormatProvider;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.List;
+import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.spi.CalendarDataProvider;
@@ -59,7 +60,9 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -86,7 +89,7 @@ public abstract class LocalizationFeature implements Feature {
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> IncludeResourceBundles = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
         @Option(help = "Make all hosted charsets available at run time")//
         public static final HostedOptionKey<Boolean> AddAllCharsets = new HostedOptionKey<>(false);
@@ -235,7 +238,8 @@ public abstract class LocalizationFeature implements Feature {
         /* Note that JDK 11 support overrides this method to register more bundles. */
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
-                        "sun.util.logging.resources.logging"
+                        "sun.util.logging.resources.logging",
+                        "sun.util.resources.TimeZoneNames"
         };
         for (String bundleName : alwaysRegisteredResourceBundles) {
             addBundleToCache(bundleName);
@@ -258,7 +262,25 @@ public abstract class LocalizationFeature implements Feature {
         if (bundleName.isEmpty()) {
             return;
         }
-        addBundleToCache(bundleName, ModuleSupport.getResourceBundle(bundleName, imageLocale, Thread.currentThread().getContextClassLoader()));
+
+        ResourceBundle resourceBundle;
+        try {
+            resourceBundle = ModuleSupport.getResourceBundle(bundleName, imageLocale, Thread.currentThread().getContextClassLoader());
+        } catch (MissingResourceException mre) {
+            if (!bundleName.contains("/")) {
+                throw mre;
+            }
+            // Due to a possible bug in the JDK, bundle names not following proper naming convention
+            // need to be
+            // converted to fully qualified class names before loading can succeed.
+            // see GR-24211
+            String dotBundleName = bundleName.replace("/", ".");
+            resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, imageLocale, Thread.currentThread().getContextClassLoader());
+        }
+        UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " +
+                        "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
+                        "verify the bundle path is accessible in the classpath.", bundleName);
+        addBundleToCache(bundleName, resourceBundle);
     }
 
     private void addBundleToCache(String bundleName, ResourceBundle bundle) {

@@ -36,6 +36,25 @@ meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> or
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> wrapMap(java.util.Map<{%%0},{%%1}>)
 meth public void putAll(org.graalvm.collections.EconomicMap<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}>)
 meth public void putAll(org.graalvm.collections.UnmodifiableEconomicMap<? extends {org.graalvm.collections.EconomicMap%0},? extends {org.graalvm.collections.EconomicMap%1}>)
+meth public {org.graalvm.collections.EconomicMap%1} putIfAbsent({org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1})
+
+CLSS public org.graalvm.collections.EconomicMapWrap<%0 extends java.lang.Object, %1 extends java.lang.Object>
+cons public init(java.util.Map<{org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1}>)
+intf org.graalvm.collections.EconomicMap<{org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1}>
+meth public boolean containsKey({org.graalvm.collections.EconomicMapWrap%0})
+meth public boolean isEmpty()
+meth public int size()
+meth public java.lang.Iterable<{org.graalvm.collections.EconomicMapWrap%0}> getKeys()
+meth public java.lang.Iterable<{org.graalvm.collections.EconomicMapWrap%1}> getValues()
+meth public org.graalvm.collections.MapCursor<{org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1}> getEntries()
+meth public void clear()
+meth public void replaceAll(java.util.function.BiFunction<? super {org.graalvm.collections.EconomicMapWrap%0},? super {org.graalvm.collections.EconomicMapWrap%1},? extends {org.graalvm.collections.EconomicMapWrap%1}>)
+meth public {org.graalvm.collections.EconomicMapWrap%1} get({org.graalvm.collections.EconomicMapWrap%0})
+meth public {org.graalvm.collections.EconomicMapWrap%1} put({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
+meth public {org.graalvm.collections.EconomicMapWrap%1} putIfAbsent({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
+meth public {org.graalvm.collections.EconomicMapWrap%1} removeKey({org.graalvm.collections.EconomicMapWrap%0})
+supr java.lang.Object
+hfds map
 
 CLSS public abstract interface org.graalvm.collections.EconomicSet<%0 extends java.lang.Object>
 intf org.graalvm.collections.UnmodifiableEconomicSet<{org.graalvm.collections.EconomicSet%0}>
@@ -103,6 +122,4 @@ CLSS public abstract interface org.graalvm.collections.UnmodifiableMapCursor<%0 
 meth public abstract boolean advance()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%0} getKey()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%1} getValue()
-
-CLSS abstract interface org.graalvm.collections.package-info
 

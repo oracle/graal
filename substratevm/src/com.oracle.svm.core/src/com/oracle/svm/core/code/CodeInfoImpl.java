@@ -24,15 +24,18 @@
  */
 package com.oracle.svm.core.code;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 
 import jdk.vm.ci.code.InstalledCode;
 
@@ -41,8 +44,15 @@ import jdk.vm.ci.code.InstalledCode;
  * interface methods from potential users as only the methods on {@link CodeInfoAccess} and
  * {@link UntetheredCodeInfoAccess} should be used for accessing {@link CodeInfo} data.
  * <p>
- * <b>NEVER</b> do a direct cast from {@link UntetheredCodeInfo} or {@link CodeInfo} to
- * {@link CodeInfoImpl}. For more details, refer to the {@link CodeInfoAccess} documentation.
+ * As {@link CodeInfo} objects have a complicated life-cycle that also involves the GC, it is
+ * crucial that all places that access or use this data observe the following rules:
+ * <ul>
+ * <li>When heap objects are stored into native-memory that is referenced by a {@link CodeInfo}
+ * object, then it is necessary to notify the GC about that (see
+ * {@link RuntimeCodeInfoGCSupport}).</li>
+ * <li><b>NEVER</b> do a direct cast from {@link UntetheredCodeInfo} or {@link CodeInfo} to
+ * {@link CodeInfoImpl}. For more details, refer to the {@link CodeInfoAccess} documentation.</li>
+ * </ul>
  */
 @RawStructure
 interface CodeInfoImpl extends CodeInfo {
@@ -54,6 +64,7 @@ interface CodeInfoImpl extends CodeInfo {
      * collection. Note that the object is not pinned, so this field must not be accessed during
      * garbage collection.
      */
+    @DuplicatedInNativeCode //
     int TETHER_OBJFIELD = FIRST_STRONGLY_REFERENCED_OBJFIELD;
 
     /**
@@ -62,14 +73,16 @@ interface CodeInfoImpl extends CodeInfo {
      * available even after the code is no longer available. Note that the String is not pinned, so
      * this field must not be accessed during garbage collection.
      */
+    @DuplicatedInNativeCode //
     int NAME_OBJFIELD = TETHER_OBJFIELD + 1;
 
+    @DuplicatedInNativeCode //
     int FIRST_WEAKLY_REFERENCED_OBJFIELD = NAME_OBJFIELD + 1;
 
     /**
      * Index of element of type {@link SubstrateInstalledCode} in {@link #getObjectFields}: The
      * handle to the compiled code for the outside world. We only have a weak reference to it, to
-     * avoid keeping code alive. Note that the both the InstalledCode and the weak reference are not
+     * avoid keeping code alive. Note that both the InstalledCode and the weak reference are not
      * pinned, so this field must not be accessed during garbage collection.
      */
     int INSTALLEDCODE_OBJFIELD = FIRST_WEAKLY_REFERENCED_OBJFIELD;
@@ -100,20 +113,50 @@ interface CodeInfoImpl extends CodeInfo {
     @RawField
     void setTier(int tier);
 
+    /** The address of the first instruction of this compiled code. */
     @RawField
     CodePointer getCodeStart();
 
     @RawField
+    void setCodeStart(CodePointer codeStart);
+
+    /** The size of the instructions of this compiled code. */
+    @RawField
     UnsignedWord getCodeSize();
 
+    /** The offset of this compiled code's data section from {@link #getCodeStart}. */
     @RawField
-    NonmovableArray<Byte> getReferenceMapEncoding();
+    UnsignedWord getDataOffset();
+
+    /** The size of this compiled code's data section at {@link #getDataOffset}. */
+    @RawField
+    UnsignedWord getDataSize();
+
+    /**
+     * The sum of the {@linkplain #getCodeSize size of the instructions}, the
+     * {@linkplain #getDataOffset size of the padding to the beginning of the data section}, and the
+     * {@linkplain #getDataSize size of the data section}.
+     */
+    @RawField
+    UnsignedWord getCodeAndDataMemorySize();
 
     @RawField
-    void setCodeStart(CodePointer codeStart);
+    NonmovableArray<Byte> getStackReferenceMapEncoding();
+
+    @RawField
+    void setStackReferenceMapEncoding(NonmovableArray<Byte> referenceMapEncoding);
 
     @RawField
     void setCodeSize(UnsignedWord codeSize);
+
+    @RawField
+    void setDataOffset(UnsignedWord dataOffset);
+
+    @RawField
+    void setDataSize(UnsignedWord dataSize);
+
+    @RawField
+    void setCodeAndDataMemorySize(UnsignedWord codeAndDataMemorySize);
 
     @RawField
     NonmovableArray<Byte> getCodeInfoIndex();
@@ -126,9 +169,6 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawField
     void setCodeInfoEncodings(NonmovableArray<Byte> codeInfoEncodings);
-
-    @RawField
-    void setReferenceMapEncoding(NonmovableArray<Byte> referenceMapEncoding);
 
     @RawField
     NonmovableArray<Byte> getFrameInfoEncodings();
@@ -167,16 +207,16 @@ interface CodeInfoImpl extends CodeInfo {
     void setState(int state);
 
     @RawField
-    NonmovableArray<Byte> getObjectsReferenceMapEncoding();
+    NonmovableArray<Byte> getCodeConstantsReferenceMapEncoding();
 
     @RawField
-    void setObjectsReferenceMapEncoding(NonmovableArray<Byte> objectsReferenceMapEncoding);
+    void setCodeConstantsReferenceMapEncoding(NonmovableArray<Byte> referenceMapEncoding);
 
     @RawField
-    long getObjectsReferenceMapIndex();
+    long getCodeConstantsReferenceMapIndex();
 
     @RawField
-    void setObjectsReferenceMapIndex(long objectsReferenceMapIndex);
+    void setCodeConstantsReferenceMapIndex(long objectsReferenceMapIndex);
 
     @RawField
     NonmovableArray<Integer> getDeoptimizationStartOffsets();
@@ -201,4 +241,14 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawField
     void setCodeObserverHandles(NonmovableArray<InstalledCodeObserverHandle> handles);
+
+    /** GC-specific data that may only be accessed by the GC. */
+    @RawField
+    Word getGCData();
+
+    @RawField
+    void setAllObjectsAreInImageHeap(boolean value);
+
+    @RawField
+    boolean getAllObjectsAreInImageHeap();
 }

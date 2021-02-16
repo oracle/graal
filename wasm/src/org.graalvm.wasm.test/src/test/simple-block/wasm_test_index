@@ -1,3 +1,4 @@
+block_empty_typeuse
 block_produce_const_long
 block_produce_const_int
 nested_produce_const_values

@@ -74,7 +74,7 @@ public final class UnsignedUtils {
      */
     @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static boolean isAMultiple(UnsignedWord that, UnsignedWord multiple) {
-        return that.equal(UnsignedUtils.roundDown(that, multiple));
+        return that.unsignedRemainder(multiple).equal(0);
     }
 
     /**
@@ -98,5 +98,15 @@ public final class UnsignedUtils {
      */
     public static UnsignedWord max(UnsignedWord x, UnsignedWord y) {
         return (x.aboveOrEqual(y)) ? x : y;
+    }
+
+    /**
+     * Converts an {@link UnsignedWord} to a positive signed {@code int}, asserting that it can be
+     * correctly represented.
+     */
+    public static int safeToInt(UnsignedWord w) {
+        long l = w.rawValue();
+        assert l >= 0 && l == (int) l;
+        return (int) l;
     }
 }

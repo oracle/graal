@@ -74,7 +74,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
     }
 
     /**
-     * Usage count for the objectStates array, to avoid unneessary copying.
+     * Usage count for the objectStates array, to avoid unnecessary copying.
      */
     private RefCount arrayRefCount;
 
@@ -118,6 +118,10 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
 
     public ObjectState getObjectStateOptional(int object) {
         return object >= objectStates.length ? null : objectStates[object];
+    }
+
+    public boolean hasObjectState(int object) {
+        return object >= 0 && object < objectStates.length && objectStates[object] != null;
     }
 
     /**

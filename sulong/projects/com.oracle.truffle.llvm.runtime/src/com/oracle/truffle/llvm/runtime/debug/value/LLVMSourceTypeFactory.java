@@ -103,8 +103,8 @@ public final class LLVMSourceTypeFactory {
             final LLVMSourceType resolvedReturnType = resolveType(type.getReturnType());
             types.add(resolvedReturnType);
 
-            for (Type argType : type.getArgumentTypes()) {
-                final LLVMSourceType resolvedArgType = resolveType(argType);
+            for (int i = 0; i < type.getNumberOfArguments(); i++) {
+                final LLVMSourceType resolvedArgType = resolveType(type.getArgumentType(i));
                 types.add(resolvedArgType);
             }
 

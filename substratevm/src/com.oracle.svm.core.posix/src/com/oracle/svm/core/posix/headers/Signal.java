@@ -139,15 +139,15 @@ public class Signal {
         GregsPointer uc_mcontext_gregs();
 
         @CFieldAddress("uc_mcontext")
-        @Platforms({Platform.LINUX_AARCH64.class})
+        @Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
         mcontext_t uc_mcontext();
 
         @CField("uc_mcontext")
-        @Platforms({Platform.DARWIN_AMD64.class, Platform.DARWIN_AARCH64.class})
+        @Platforms({Platform.DARWIN.class})
         MContext64 uc_mcontext64();
     }
 
-    @Platforms({Platform.DARWIN_AMD64.class, Platform.DARWIN_AARCH64.class})
+    @Platforms({Platform.DARWIN.class})
     @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
     public interface MContext64 extends PointerBase {
 
@@ -207,7 +207,7 @@ public class Signal {
     }
 
     @CStruct
-    @Platforms({Platform.LINUX_AARCH64.class})
+    @Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
     public interface mcontext_t extends PointerBase {
         @CField
         long fault_address();

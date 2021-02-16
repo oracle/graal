@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 78 CONTINUE "test"
+BREAK 77 CONTINUE "test"
     OPEN_SCOPE
         MEMBER exact "bool" "a" "true"
         MEMBER exact "bool" "b" "false"

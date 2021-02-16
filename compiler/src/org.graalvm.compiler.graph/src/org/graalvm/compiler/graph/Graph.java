@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -227,6 +228,24 @@ public class Graph {
 
     public static boolean trackNodeSourcePositionDefault(OptionValues options, DebugContext debug) {
         return (GraalOptions.TrackNodeSourcePosition.getValue(options) || debug.isDumpEnabledForMethod());
+    }
+
+    /**
+     * Add any per graph properties that might be useful for debugging (e.g., to view in the ideal
+     * graph visualizer).
+     */
+    public void getDebugProperties(Map<Object, Object> properties) {
+        properties.put("graph", toString());
+    }
+
+    /**
+     * This is called before nodes are transferred to {@code sourceGraph} by
+     * {@link NodeClass#addGraphDuplicate} to allow the transfer of any other state which should
+     * also be transferred.
+     *
+     * @param sourceGraph the source of the nodes that were duplicated
+     */
+    public void beforeNodeDuplication(Graph sourceGraph) {
     }
 
     /**
@@ -729,7 +748,9 @@ public class Graph {
         }
 
         Node result = cachedLeafNodes[leafId].get(node);
-        assert result == null || result.isAlive() : result;
+        if (result != null && !result.isAlive()) {
+            return null;
+        }
         return result;
     }
 

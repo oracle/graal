@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,9 +96,11 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return ConstantNode.forPrimitive(stamp, op.getZero(forX.stamp(view)));
         }
+
         if (forX.isConstant() && !forY.isConstant()) {
             return new XorNode(forY, forX);
         }
+
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
             if (op.isNeutral(c)) {
@@ -112,7 +114,7 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
                     return new NotNode(forX);
                 }
             }
-            return reassociate(self != null ? self : (XorNode) new XorNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
+            return reassociateMatchedValues(self != null ? self : (XorNode) new XorNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
         }
         return self != null ? self : new XorNode(forX, forY).maybeCommuteInputs();
     }

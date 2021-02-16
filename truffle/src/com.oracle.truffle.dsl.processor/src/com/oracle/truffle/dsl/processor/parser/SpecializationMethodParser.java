@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         spec.getAnnotations().add(new CachedParameterSpec(types.CachedLibrary));
         spec.getAnnotations().add(new CachedParameterSpec(types.CachedContext));
         spec.getAnnotations().add(new CachedParameterSpec(types.CachedLanguage));
+        spec.getAnnotations().add(new CachedParameterSpec(types.Bind));
         return spec;
     }
 
@@ -94,7 +95,8 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     private SpecializationData parseSpecialization(TemplateMethod method) {
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
         boolean unexpectedResultRewrite = false;
-        boolean annotated = false;
+        boolean reportPolymorphism = false;
+        boolean reportMegamorphism = false;
         if (method.getMethod() != null) {
             AnnotationValue rewriteValue = ElementUtils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
             List<TypeMirror> exceptionTypes = ElementUtils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
@@ -123,9 +125,10 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                     return ElementUtils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
                 }
             });
-            annotated = isAnnotatedWithReportPolymorphismExclude(method);
+            reportPolymorphism = !isAnnotatedWithReportPolymorphismExclude(method);
+            reportMegamorphism = isAnnotatedWithReportPolymorphismMegamorphic(method);
         }
-        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite, !annotated);
+        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite, reportPolymorphism, reportMegamorphism);
 
         if (method.getMethod() != null) {
             String insertBeforeName = ElementUtils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
@@ -157,5 +160,10 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     private boolean isAnnotatedWithReportPolymorphismExclude(TemplateMethod method) {
         assert method.getMethod() != null;
         return ElementUtils.findAnnotationMirror(method.getMethod(), types.ReportPolymorphism_Exclude) != null;
+    }
+
+    private boolean isAnnotatedWithReportPolymorphismMegamorphic(TemplateMethod method) {
+        assert method.getMethod() != null;
+        return ElementUtils.findAnnotationMirror(method.getMethod(), types.ReportPolymorphism_Megamorphic) != null;
     }
 }

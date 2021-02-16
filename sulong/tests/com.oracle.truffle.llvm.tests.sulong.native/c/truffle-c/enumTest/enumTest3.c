@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,6 @@
 enum TEST { A = 3, B = 1, C } t;
 
 int main() {
-  t = C;
-  return t;
+    t = C;
+    return t;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,13 @@ public final class GraalDirectives {
     }
 
     /**
+     * Determines if the method is called within the scope of a Graal intrinsic.
+     */
+    public static boolean inIntrinsic() {
+        return false;
+    }
+
+    /**
      * A call to this method will never be duplicated by control flow optimizations in the compiler.
      */
     public static void controlFlowAnchor() {
@@ -91,8 +98,8 @@ public final class GraalDirectives {
      * A call to this method will force the compiler to assume this instruction has a visible memory
      * effect killing all memory locations.
      */
-    public static int sideEffect(@SuppressWarnings("unused") int a) {
-        return 0;
+    public static int sideEffect(int a) {
+        return a;
     }
 
     /**

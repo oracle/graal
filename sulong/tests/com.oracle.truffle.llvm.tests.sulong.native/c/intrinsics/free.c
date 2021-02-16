@@ -30,28 +30,28 @@
 #include <stdlib.h>
 
 typedef struct pointstruct {
-  int x;
-  int y;
+    int x;
+    int y;
 } Point;
 
 Point *createPoint(int px, int py) {
-  Point *p = (Point *)malloc(sizeof(Point));
-  p->x = px;
-  p->y = py;
-  return p;
+    Point *p = (Point *) malloc(sizeof(Point));
+    p->x = px;
+    p->y = py;
+    return p;
 }
 
 int main() {
-  int *a = (int *)malloc(sizeof(int));
-  *a = 5;
-  free(a);
+    int *a = (int *) malloc(sizeof(int));
+    *a = 5;
+    free(a);
 
-  Point *point = createPoint(2, 3);
-  free(point);
+    Point *point = createPoint(2, 3);
+    free(point);
 
-  int *nullptr = NULL;
-  free(nullptr);
-  free(NULL);
+    int *nullptr = NULL;
+    free(nullptr);
+    free(NULL);
 
-  return 0;
+    return 0;
 }

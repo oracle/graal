@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,6 +70,6 @@ final class SulongNFILibrary implements TruffleObject {
                     @CachedLanguage SulongNFI language,
                     @CachedLibrary("this.library") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
         Object ret = interop.readMember(library, name);
-        return language.getTools().createBindableSymbol(new SulongNFIFunction(ret));
+        return language.getTools().createBindableSymbol(ret);
     }
 }

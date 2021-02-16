@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 88 CONTINUE "test"
+BREAK 87 CONTINUE "test"
     OPEN_SCOPE
         MEMBER structured "struct <anonymous>" "uiBool"
             MEMBER int "unsigned int" "a" "1"

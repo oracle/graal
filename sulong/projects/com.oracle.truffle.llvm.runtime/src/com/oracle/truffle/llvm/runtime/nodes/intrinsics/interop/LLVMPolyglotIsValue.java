@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-@SuppressWarnings("unused")
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotIsValue extends LLVMIntrinsic {
 
@@ -48,11 +47,19 @@ public abstract class LLVMPolyglotIsValue extends LLVMIntrinsic {
         return asForeign.execute(object) != null;
     }
 
+    /**
+     * @param str @NodeChild
+     * @see LLVMPolyglotIsValue
+     */
     @Specialization
     boolean isString(String str) {
         return true;
     }
 
+    /**
+     * @param object @NodeChild
+     * @see LLVMPolyglotIsValue
+     */
     @Fallback
     boolean fallback(Object object) {
         return false;

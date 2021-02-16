@@ -94,7 +94,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
         Word base = cardTableAddress().add(ptr.unsignedShiftRight(cardTableShift()));
         if (verifyOnly) {
             byte cardValue = base.readByte(0, GC_CARD_LOCATION);
-            AssertionNode.assertion(false, cardValue == dirtyCardValue(), "card must be dirty");
+            AssertionNode.dynamicAssert(cardValue == dirtyCardValue(), "card must be dirty");
         } else {
             base.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
         }
@@ -128,7 +128,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
             args.addConst("counters", counters);
             args.addConst("verifyOnly", barrier.getVerifyOnly());
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, SerialArrayRangeWriteBarrier barrier, LoweringTool tool) {
@@ -137,7 +137,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
             args.add("length", barrier.getLength());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getProviders().getMetaAccess(), barrier, DEFAULT_REPLACER, args);
+            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
         }
     }
 }

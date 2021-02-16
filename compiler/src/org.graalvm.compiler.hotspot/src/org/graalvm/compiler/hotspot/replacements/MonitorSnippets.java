@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,9 @@ import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.STACK_INSPECTABLE_LEAF;
 import static org.graalvm.compiler.hotspot.nodes.AcquiredCASLockNode.mark;
 import static org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode.beginLockScope;
 import static org.graalvm.compiler.hotspot.nodes.EndLockScopeNode.endLockScope;
@@ -76,6 +79,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAS
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static org.graalvm.word.LocationIdentity.any;
 import static org.graalvm.word.WordFactory.unsigned;
 import static org.graalvm.word.WordFactory.zero;
 
@@ -96,6 +100,7 @@ import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.nodes.CurrentLockNode;
@@ -129,6 +134,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -233,7 +239,7 @@ public class MonitorSnippets implements Snippets {
 
     @Snippet
     public static void monitorenter(Object object, KlassPointer hub, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister,
-                    @ConstantParameter boolean trace, @ConstantParameter Counters counters, @ConstantParameter boolean biasable) {
+                    @ConstantParameter boolean trace, @ConstantParameter Counters counters) {
         verifyOop(object);
 
         // Load the mark word - this includes a null-check on object
@@ -248,7 +254,7 @@ public class MonitorSnippets implements Snippets {
 
         incCounter();
 
-        if (biasable && useBiasedLocking(INJECTED_VMCONFIG)) {
+        if (useBiasedLocking(INJECTED_VMCONFIG)) {
             if (tryEnterBiased(object, hub, lock, mark, threadRegister, trace, counters)) {
                 return;
             }
@@ -488,10 +494,10 @@ public class MonitorSnippets implements Snippets {
 
     @Snippet
     public static void monitorexit(Object object, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace,
-                    @ConstantParameter Counters counters, @ConstantParameter boolean biasable) {
+                    @ConstantParameter Counters counters) {
         trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
         final Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
-        if (biasable && useBiasedLocking(INJECTED_VMCONFIG)) {
+        if (useBiasedLocking(INJECTED_VMCONFIG)) {
             // Check for biased locking unlock case, which is a no-op
             // Note: we do not have to check the thread ID for two reasons.
             // First, the interpreter checks for IllegalMonitorStateException at
@@ -684,7 +690,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     @Snippet
-    private static void checkCounter(@ConstantParameter String errMsg) {
+    private static void checkCounter(@ConstantParameter CStringConstant errMsg) {
         final Word counter = MonitorCounterNode.counter();
         final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
         if (count != 0) {
@@ -789,7 +795,6 @@ public class MonitorSnippets implements Snippets {
                 args.addConst("stackPointerRegister", registers.getStackPointerRegister());
                 args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(graph));
                 args.addConst("counters", counters);
-                args.addConst("biasable", monitorenterNode.isBiasable());
             } else {
                 args = new Arguments(monitorenterStub, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("object", monitorenterNode.object());
@@ -815,7 +820,6 @@ public class MonitorSnippets implements Snippets {
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(graph));
             args.addConst("counters", counters);
-            args.addConst("biasable", monitorexitNode.isBiasable());
 
             template(monitorexitNode, args).instantiate(providers.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
         }
@@ -880,12 +884,12 @@ public class MonitorSnippets implements Snippets {
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnStamp, null));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
                         Bytecode code = new ResolvedJavaMethodBytecode(graph.method());
-                        FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, new ValueNode[0], new ValueNode[0], 0, new ValueNode[0], null, false, false);
+                        FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, new ValueNode[0], new ValueNode[0], 0, null, null, new ValueNode[0], null, false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 
                         Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
-                        args.addConst("errMsg", msg);
+                        args.addConst("errMsg", new CStringConstant(msg));
                         inlineeGraph = template(invoke, args).copySpecializedGraph(graph.getDebug());
                         InliningUtil.inline(invoke, inlineeGraph, false, null);
                     }
@@ -894,8 +898,9 @@ public class MonitorSnippets implements Snippets {
         }
     }
 
-    public static final ForeignCallDescriptor MONITORENTER = new ForeignCallDescriptor("monitorenter", void.class, Object.class, Word.class);
-    public static final ForeignCallDescriptor MONITOREXIT = new ForeignCallDescriptor("monitorexit", void.class, Object.class, Word.class);
+    public static final HotSpotForeignCallDescriptor MONITORENTER = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "monitorenter", void.class, Object.class, Word.class);
+    public static final HotSpotForeignCallDescriptor MONITOREXIT = new HotSpotForeignCallDescriptor(STACK_INSPECTABLE_LEAF, NOT_REEXECUTABLE, any(), "monitorexit", void.class, Object.class,
+                    Word.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void monitorenterStubC(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);

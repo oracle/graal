@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,8 @@
 #include "nanolibc.h"
 
 int main(void) {
-  char *buf = "Hello world!\n";
-  int count = strlen(buf);
-  syscall(SYS_write, 1, buf, count);
-  syscall(SYS_exit, 42);
+    char *buf = "Hello world!\n";
+    int count = strlen(buf);
+    syscall(SYS_write, 1, buf, count);
+    syscall(SYS_exit, 42);
 }

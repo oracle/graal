@@ -40,6 +40,7 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
@@ -140,12 +141,17 @@ public class ProcessUtil {
     }
 
     public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
+        return executeSulongTestMainSameEngine(bitcodeFile, args, options, captureOutput, Engine.newBuilder().allowExperimentalOptions(true).build());
+    }
+
+    public static ProcessResult executeSulongTestMainSameEngine(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput, Engine engine)
+                    throws IOException {
         if (TestOptions.TEST_AOT_IMAGE == null) {
             org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
             Builder builder = Context.newBuilder();
             try (CaptureOutput out = captureOutput.apply(builder)) {
                 int result;
-                try (Context context = builder.arguments(LLVMLanguage.ID, args).options(options).allowAllAccess(true).build()) {
+                try (Context context = builder.engine(engine).arguments(LLVMLanguage.ID, args).options(options).allowAllAccess(true).build()) {
                     Value main = context.eval(source);
                     if (!main.canExecute()) {
                         throw new LLVMLinkerException("No main function found.");

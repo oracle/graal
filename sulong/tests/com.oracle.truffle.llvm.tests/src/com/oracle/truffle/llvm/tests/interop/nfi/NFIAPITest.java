@@ -33,7 +33,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.tests.interop.InteropTestBase;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -57,9 +56,9 @@ public class NFIAPITest {
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(InteropTestBase.getContextBuilder());
 
     private static final Path TEST_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "nfi");
-    private static final String SULONG_FILENAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
+    private static final String SULONG_FILENAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
-    public static TruffleObject sulongObject;
+    public static Object sulongObject;
     public static CallTarget lookupAndBind;
 
     @BeforeClass
@@ -72,12 +71,12 @@ public class NFIAPITest {
         return Truffle.getRuntime().createCallTarget(new LookupAndBindNode());
     }
 
-    private static TruffleObject loadLibrary(String lib, String filename) {
+    private static Object loadLibrary(String lib, String filename) {
         File file = new File(TEST_DIR.toFile(), lib + "/" + filename);
         String loadLib = "with llvm load '" + file.getAbsolutePath() + "'";
         Source source = Source.newBuilder("nfi", loadLib, "loadLibrary").internal(true).build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
-        return (TruffleObject) target.call();
+        return target.call();
     }
 
     private static final class LookupAndBindNode extends RootNode {
@@ -131,15 +130,15 @@ public class NFIAPITest {
 
     protected static class SendExecuteNode extends TestRootNode {
 
-        private final TruffleObject receiver;
+        private final Object receiver;
 
         @Child private InteropLibrary interop;
 
-        protected SendExecuteNode(TruffleObject library, String symbol, String signature) {
+        protected SendExecuteNode(Object library, String symbol, String signature) {
             this(lookupAndBind(library, symbol, signature));
         }
 
-        protected SendExecuteNode(TruffleObject receiver) {
+        protected SendExecuteNode(Object receiver) {
             this.receiver = receiver;
             this.interop = InteropLibrary.getFactory().create(receiver);
         }
@@ -150,7 +149,7 @@ public class NFIAPITest {
         }
     }
 
-    protected static TruffleObject lookupAndBind(TruffleObject lib, String name, String signature) {
-        return (TruffleObject) lookupAndBind.call(lib, name, signature);
+    protected static Object lookupAndBind(Object lib, String name, String signature) {
+        return lookupAndBind.call(lib, name, signature);
     }
 }

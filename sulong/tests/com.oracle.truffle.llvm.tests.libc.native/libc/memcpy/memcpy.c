@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,10 @@
 #include <string.h>
 
 int main() {
-  const char src[50] = "asdfasdf";
-  char dest[50];
+    const char src[50] = "asdfasdf";
+    char dest[50];
 
-  printf("%s\n", src);
-  memcpy(dest, src, strlen(src) + 1);
-  printf("%s\n", dest);
+    printf("%s\n", src);
+    memcpy(dest, src, strlen(src) + 1);
+    printf("%s\n", dest);
 }

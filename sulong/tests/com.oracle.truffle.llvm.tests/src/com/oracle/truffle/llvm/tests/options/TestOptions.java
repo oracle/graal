@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,8 +36,8 @@ public final class TestOptions {
     public static final String TEST_AOT_ARGS = System.getProperty("sulongtest.testAOTArgs");
     public static final String TEST_FILTER = System.getProperty("sulongtest.testFilter");
     public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
-    public static final String TEST_SUITE_PATH = System.getProperty("sulongtest.testSuitePath");
-    public static final String LL_TEST_SUITE_PATH = System.getProperty("sulongtest.llTestSuitePath");
+    public static final String TEST_SUITE_PATH = getTestDistribution("SULONG_TEST_SUITES");
+    public static final String LL_TEST_SUITE_PATH = getTestDistribution("SULONG_LL_TEST_SUITES");
     public static final String EXTERNAL_TEST_SUITE_PATH = System.getProperty("sulongtest.externalTestSuitePath");
     public static final String TEST_SOURCE_PATH = System.getProperty("sulongtest.testSourcePath");
     public static final String TEST_CONFIG_PATH = System.getProperty("sulongtest.testConfigPath");
@@ -49,5 +49,18 @@ public final class TestOptions {
         } else {
             return new String[0];
         }
+    }
+
+    /**
+     * Gets get path of an mx test distribution.
+     * 
+     * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
+     */
+    public static String getTestDistribution(String distribution) {
+        String property = System.getProperty("sulongtest.path." + distribution);
+        if (property == null) {
+            throw new RuntimeException("Test distribution does not exist: " + distribution);
+        }
+        return property;
     }
 }

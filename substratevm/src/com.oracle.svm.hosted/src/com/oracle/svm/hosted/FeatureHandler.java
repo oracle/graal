@@ -43,6 +43,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -59,7 +60,7 @@ public class FeatureHandler {
     public static class Options {
         @APIOption(name = "features") //
         @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
-        public static final HostedOptionKey<String[]> Features = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     private final ArrayList<Feature> featureInstances = new ArrayList<>();
@@ -124,7 +125,7 @@ public class FeatureHandler {
             try {
                 registerFeature(Class.forName(featureName, true, loader.getClassLoader()), specificClassProvider, access);
             } catch (ClassNotFoundException e) {
-                throw UserError.abort("feature " + featureName + " class not found on the classpath. Ensure that the name is correct and that the class is on the classpath.");
+                throw UserError.abort("Feature %s class not found on the classpath. Ensure that the name is correct and that the class is on the classpath.", featureName);
             }
         }
     }
@@ -137,7 +138,7 @@ public class FeatureHandler {
     @SuppressWarnings("unchecked")
     private void registerFeature(Class<?> baseFeatureClass, Function<Class<?>, Class<?>> specificClassProvider, IsInConfigurationAccessImpl access) {
         if (!Feature.class.isAssignableFrom(baseFeatureClass)) {
-            throw UserError.abort("Class does not implement " + Feature.class.getName() + ": " + baseFeatureClass.getName());
+            throw UserError.abort("Class does not implement %s: %s", Feature.class.getName(), baseFeatureClass.getName());
         }
 
         if (registeredFeatures.contains(baseFeatureClass)) {
@@ -156,7 +157,7 @@ public class FeatureHandler {
         try {
             feature = (Feature) ReflectionUtil.newInstance(featureClass);
         } catch (ReflectionUtilError ex) {
-            throw UserError.abort(ex.getCause(), "Error instantiating Feature class " + featureClass.getTypeName() + ". Ensure the class is not abstract and has a no-argument constructor.");
+            throw UserError.abort(ex.getCause(), "Error instantiating Feature class %s. Ensure the class is not abstract and has a no-argument constructor.", featureClass.getTypeName());
         }
 
         if (!feature.isInConfiguration(access)) {

@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -61,8 +62,7 @@ public abstract class SLIsInstanceBuiltin extends SLBuiltinNode {
         try {
             return metaLib.isMetaInstance(metaObject, value);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
     }
 

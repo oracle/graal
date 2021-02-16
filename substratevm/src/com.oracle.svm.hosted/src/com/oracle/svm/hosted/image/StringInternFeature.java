@@ -26,11 +26,12 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -44,6 +45,9 @@ class StringInternFeature implements Feature {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static ResolvedJavaField getInternedStringsField(MetaAccessProvider metaAccess) {
         try {
+            if (metaAccess instanceof AnalysisMetaAccess) {
+                ((AnalysisMetaAccess) metaAccess).lookupJavaType(StringInternSupport.class).registerAsReachable();
+            }
             return metaAccess.lookupJavaField(StringInternSupport.class.getDeclaredField("internedStrings"));
         } catch (NoSuchFieldException ex) {
             throw shouldNotReachHere(ex);

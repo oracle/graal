@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -49,7 +50,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.Constant;
@@ -57,7 +57,6 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -65,8 +64,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * to replace {@code _klass._java_mirror._klass} with {@code _klass}. The constant folding could be
  * handled by
  * {@link ReadNode#canonicalizeRead(ValueNode, AddressNode, LocationIdentity, CanonicalizerTool)}.
+ *
+ * Note that there is no {@code Klass} for primitive types in the Java HotSpot VM. If the input
+ * {@link Class} is a primitive type, the returned value is null.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
+@NodeIntrinsicFactory
 public final class ClassGetHubNode extends FloatingNode implements Lowerable, Canonicalizable, ConvertNode {
     public static final NodeClass<ClassGetHubNode> TYPE = NodeClass.create(ClassGetHubNode.class);
     @Input protected ValueNode clazz;
@@ -76,13 +79,12 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
         this.clazz = clazz;
     }
 
-    public static ValueNode create(ValueNode clazz, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean allUsagesAvailable) {
-        return canonical(null, metaAccess, constantReflection, allUsagesAvailable, KlassPointerStamp.klass(), clazz);
+    public static ValueNode create(ValueNode clazz, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        return canonical(null, metaAccess, constantReflection, false, KlassPointerStamp.klass(), clazz);
     }
 
-    @SuppressWarnings("unused")
-    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode clazz) {
-        ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection(), false);
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode clazz) {
+        ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection());
         b.push(JavaKind.Object, b.append(clazzValue));
         return true;
     }
@@ -94,8 +96,8 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
             return null;
         } else {
             if (clazz.isConstant() && !clazz.isNullConstant()) {
-                if (metaAccess != null) {
-                    ResolvedJavaType exactType = constantReflection.asJavaType(clazz.asJavaConstant());
+                ResolvedJavaType exactType = constantReflection.asJavaType(clazz.asConstant());
+                if (exactType != null && metaAccess != null) {
                     if (exactType.isPrimitive()) {
                         return ConstantNode.forConstant(stamp, JavaConstant.NULL_POINTER, metaAccess);
                     } else {
@@ -121,11 +123,6 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
     @Override
     public Node canonical(CanonicalizerTool tool) {
         return canonical(this, tool.getMetaAccess(), tool.getConstantReflection(), tool.allUsagesAvailable(), stamp(NodeView.DEFAULT), clazz);
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @NodeIntrinsic

@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.typestore;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FrozenFieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
@@ -39,8 +38,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
  */
 public abstract class FieldTypeStore {
 
-    private static final AtomicReferenceFieldUpdater<FieldTypeStore, FieldFilterTypeFlow> FILTER_FLOW_UPDATER = AtomicReferenceFieldUpdater.newUpdater(FieldTypeStore.class, FieldFilterTypeFlow.class,
-                    "filterFlow");
     private static final AtomicReferenceFieldUpdater<FieldTypeStore, FrozenFieldFilterTypeFlow> FROZEN_FILTER_FLOW_UPDATER = AtomicReferenceFieldUpdater.newUpdater(FieldTypeStore.class,
                     FrozenFieldFilterTypeFlow.class, "frozenFilterFlow");
     private static final AtomicReferenceFieldUpdater<FieldTypeStore, UnsafeWriteSinkTypeFlow> UNSAFE_WRITE_SINK_FLOW_UPDATER = AtomicReferenceFieldUpdater.newUpdater(FieldTypeStore.class,
@@ -49,14 +46,12 @@ public abstract class FieldTypeStore {
     /** The holder of the field flow. */
     protected final AnalysisObject object;
     protected final AnalysisField field;
-    /** A filter flow used for unsafe writes. */
-    private volatile FieldFilterTypeFlow filterFlow;
     /** A filter flow used for unsafe writes on frozen type state. */
     private volatile FrozenFieldFilterTypeFlow frozenFilterFlow;
     /** A sink used for unsafe writes on frozen type state. */
     private volatile UnsafeWriteSinkTypeFlow unsafeWriteSinkFlow;
 
-    public FieldTypeStore(AnalysisField field, AnalysisObject object) {
+    protected FieldTypeStore(AnalysisField field, AnalysisObject object) {
         this.field = field;
         this.object = object;
     }
@@ -72,18 +67,6 @@ public abstract class FieldTypeStore {
     public abstract FieldTypeFlow writeFlow();
 
     public abstract FieldTypeFlow readFlow();
-
-    /** The filter flow is used for unsafe writes. */
-    public FieldFilterTypeFlow filterFlow(BigBang bb) {
-        assert field.isUnsafeAccessed() : "Filter flow requested for non unsafe accessed field.";
-
-        if (filterFlow == null) {
-            if (FILTER_FLOW_UPDATER.compareAndSet(this, null, new FieldFilterTypeFlow(field))) {
-                filterFlow.addUse(bb, writeFlow());
-            }
-        }
-        return filterFlow;
-    }
 
     /** Overridden for field type stores that need lazy initialization. */
     public void init(@SuppressWarnings("unused") BigBang bb) {

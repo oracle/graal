@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -197,8 +197,7 @@ final class TruffleSplittingStrategy {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
         final EngineData engineData = callTarget.engine;
         if (engineData.splitting) {
-            final int newLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());
-            engineData.splitLimit = Math.min(newLimit, engineData.splittingMaxNumberOfSplitNodes);
+            engineData.splitLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());
         }
         if (engineData.traceSplittingSummary) {
             synchronized (engineData.splittingStatistics) {
@@ -285,7 +284,7 @@ final class TruffleSplittingStrategy {
                         out.printf(D_LONG_FORMAT, entry.getKey(), entry.getValue());
                     }
                 }
-                final TruffleLogger log = engineData.getLogger();
+                final TruffleLogger log = engineData.getEngineLogger();
                 log.log(Level.INFO, messageBuilder.toString());
             }
         }

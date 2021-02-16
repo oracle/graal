@@ -89,7 +89,6 @@ public class BinaryGraphPrinter implements
     public BinaryGraphPrinter(DebugContext ctx, SnippetReflectionProvider snippetReflection) throws IOException {
         // @formatter:off
         this.output = ctx.buildOutput(GraphOutput.newBuilder(this).
-                        protocolVersion(6, 1).
                         blocks(this).
                         elementsAndLocations(this, this).
                         types(this)
@@ -536,6 +535,17 @@ public class BinaryGraphPrinter implements
             public String getLanguage() {
                 return "Java";
             }
+
+            @Override
+            public int getNodeId() {
+                return -1;
+            }
+
+            @Override
+            public String getNodeClassName() {
+                return null;
+            }
+
         }
 
         List<SourceLanguagePosition> arr = new ArrayList<>();

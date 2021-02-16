@@ -29,8 +29,12 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 
 // Checkstyle: stop
 
@@ -39,6 +43,10 @@ import org.graalvm.word.PointerBase;
  */
 @CContext(WindowsDirectives.class)
 public class SysinfoAPI {
+
+    /** Retrieves the path of the system directory. */
+    @CFunction(transition = NO_TRANSITION)
+    public static native int GetSystemDirectoryW(WCharPointer lpBuffer, int uSize);
 
     /** Return information about the current computer system. */
     @CFunction(transition = NO_TRANSITION)
@@ -119,6 +127,47 @@ public class SysinfoAPI {
         long ullAvailExtendedVirtual();
     }
 
+    /** Returns version information about the currently running operating system. */
     @CFunction(transition = NO_TRANSITION)
-    public static native int GetVersion();
+    public static native int GetVersionExA(OSVERSIONINFOEXA lpVersionInformation);
+
+    /** Contains operating system version information. */
+    @CStruct
+    public interface OSVERSIONINFOEXA extends PointerBase {
+        @CField
+        int dwOSVersionInfoSize();
+
+        @CField
+        void dwOSVersionInfoSize(int value);
+
+        @CField
+        int dwMajorVersion();
+
+        @CField
+        int dwMinorVersion();
+
+        @CField
+        int dwBuildNumber();
+
+        @CField
+        int dwPlatformId();
+
+        @CFieldAddress
+        CCharPointer szCSDVersion();
+
+        @CField
+        short wServicePackMajor();
+
+        @CField
+        short wServicePackMinor();
+
+        @CField
+        short wSuiteMask();
+
+        @CField
+        byte wProductType();
+
+        @CField
+        byte wReserved();
+    }
 }

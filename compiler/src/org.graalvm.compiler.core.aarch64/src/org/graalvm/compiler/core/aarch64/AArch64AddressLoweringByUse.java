@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2017, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -239,14 +239,14 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
                 // assert value % size == 0
                 // we can try for a 12 bit scaled offset
                 if (NumUtil.isUnsignedNbit(12, encodedValue)) {
-                    return AddressingMode.IMMEDIATE_SCALED;
+                    return AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
                 }
             }
         }
 
         // we can try for a 9 bit unscaled offset
         if (NumUtil.isSignedNbit(9, value)) {
-            return AddressingMode.IMMEDIATE_UNSCALED;
+            return AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
         }
 
         // nope this index needs to be passed via offset register
@@ -254,13 +254,13 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
     }
 
     private static int computeScaleFactor(AArch64Kind kind, AddressingMode mode) {
-        if (mode == AddressingMode.IMMEDIATE_SCALED) {
+        if (mode == AddressingMode.IMMEDIATE_UNSIGNED_SCALED) {
             return kind.getSizeInBytes();
         }
         return 1;
     }
 
-    boolean isBaseOnlyMode(AddressingMode addressingMode) {
+    private static boolean isBaseOnlyMode(AddressingMode addressingMode) {
         return addressingMode == AddressingMode.BASE_REGISTER_ONLY;
     }
 
@@ -268,8 +268,8 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
         switch (addressingMode) {
             case IMMEDIATE_POST_INDEXED:
             case IMMEDIATE_PRE_INDEXED:
-            case IMMEDIATE_SCALED:
-            case IMMEDIATE_UNSCALED:
+            case IMMEDIATE_UNSIGNED_SCALED:
+            case IMMEDIATE_SIGNED_UNSCALED:
                 return true;
         }
         return false;

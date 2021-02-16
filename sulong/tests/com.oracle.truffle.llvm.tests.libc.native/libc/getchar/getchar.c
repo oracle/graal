@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,33 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 int main() {
-  int c;
-  int oldStdin = dup(0);
-  FILE *file = freopen(__FILE__, "r", stdin);
-  while ((c = getchar()) != EOF) {
-    putchar(c);
-  }
-  fclose(stdin);
-  dup2(oldStdin, 0);
-  close(oldStdin);
-  stdin = fdopen(0, "r");
+#ifdef __GLIBC__
+    // assigning stdin is nonportable but is known to work on glibc [GR-11416]
+    int c;
+    int oldStdin = dup(0);
+    FILE *file = freopen(__FILE__, "r", stdin);
+    if (file == NULL) {
+        return 1;
+    }
+    while ((c = getchar()) != EOF) {
+        putchar(c);
+    }
+    fclose(stdin);
+    dup2(oldStdin, 0);
+    close(oldStdin);
+    stdin = fdopen(0, "r");
+#else
+    int c;
+    FILE *file = fopen(__FILE__, "r");
+    if (file == NULL) {
+        return 1;
+    }
+    while ((c = getc(file)) != EOF) {
+        putchar(c);
+    }
+    fclose(file);
+#endif
 }

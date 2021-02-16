@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,15 @@
  */
 
 struct test {
-  int a;
-  int *p;
+    int a;
+    int *p;
 };
 
 int main() {
-  struct test *pStruct;
-  struct test str;
-  str.a = 5;
-  str.p = &str.a;
-  pStruct = &str;
-  return *(pStruct->p);
+    struct test *pStruct;
+    struct test str;
+    str.a = 5;
+    str.p = &str.a;
+    pStruct = &str;
+    return *(pStruct->p);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,13 +28,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int i = 2;
-  int sum = 0;
-  switch (i) {
-  case 2:
-    sum += 3;
-  default:
-    sum += 4;
-  }
-  return sum;
+    int i = 2;
+    int sum = 0;
+    switch (i) {
+        case 2:
+            sum += 3;
+        default:
+            sum += 4;
+    }
+    return sum;
 }

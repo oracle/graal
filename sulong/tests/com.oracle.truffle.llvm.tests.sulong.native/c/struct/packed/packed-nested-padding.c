@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,26 +36,26 @@
  */
 
 struct innerStruct {
-  double d;
-  int i1;
-  double d1;
-  int i2;
+    double d;
+    int i1;
+    double d1;
+    int i2;
 } __attribute__((packed));
 
 struct middleStruct {
-  struct innerStruct st;
-  int i;
+    struct innerStruct st;
+    int i;
 };
 
 struct outerStruct {
-  struct middleStruct st;
-  int i;
-  char c;
+    struct middleStruct st;
+    int i;
+    char c;
 };
 
 int main() {
-  struct outerStruct st = { { { 0.1, 2, 0.3, 4 }, 5 }, 6, '7' };
+    struct outerStruct st = { { { 0.1, 2, 0.3, 4 }, 5 }, 6, '7' };
 
-  int *addr = (int *)&(st.st);
-  printf("%d", *(addr + 7));
+    int *addr = (int *) &(st.st);
+    printf("%d", *(addr + 7));
 }

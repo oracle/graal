@@ -29,7 +29,6 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -47,8 +46,9 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -61,10 +61,8 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
     private static final SubstrateForeignCallDescriptor ARRAYS_COPY_OF = SnippetRuntime.findForeignCall(SubstrateArraysCopyOfSnippets.class, "doArraysCopyOf", true);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYS_COPY_OF};
 
-    public static void registerForeignCalls(Providers providers, Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls) {
-        for (SubstrateForeignCallDescriptor descriptor : FOREIGN_CALLS) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
-        }
+    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(providers, FOREIGN_CALLS);
     }
 
     @SuppressWarnings("unused")
@@ -81,7 +79,7 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
         int copiedLength = originalLength < newLength ? originalLength : newLength;
         if (LayoutEncoding.isObjectArray(layoutEncoding)) {
             DynamicHub originalHub = KnownIntrinsics.readHub(original);
-            if (originalHub == hub || hub.isAssignableFromHub(originalHub)) {
+            if (originalHub == hub || DynamicHub.toClass(hub).isAssignableFrom(DynamicHub.toClass(originalHub))) {
                 ArraycopySnippets.objectCopyForward(original, 0, newArray, 0, copiedLength, layoutEncoding);
             } else {
                 ArraycopySnippets.objectStoreCheckCopyForward(original, 0, newArray, 0, copiedLength);
@@ -113,7 +111,7 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
     }
 
     protected class ArraysCopyOfLowering implements NodeLoweringProvider<SubstrateArraysCopyOfNode> {
-        private final SnippetInfo arraysCopyOf = snippet(SubstrateArraysCopyOfSnippets.class, "arraysCopyOfSnippet");
+        private final SnippetInfo arraysCopyOf = snippet(SubstrateArraysCopyOfSnippets.class, "arraysCopyOfSnippet", SubstrateAllocationSnippets.ALLOCATION_LOCATIONS);
 
         @Override
         public void lower(SubstrateArraysCopyOfNode node, LoweringTool tool) {
@@ -136,9 +134,8 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
         @Override
         public void lower(SubstrateArraysCopyOfWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
-            ForeignCallsProvider foreignCalls = tool.getProviders().getForeignCalls();
             ForeignCallWithExceptionNode call = graph
-                            .add(new ForeignCallWithExceptionNode(foreignCalls, ARRAYS_COPY_OF, node.getNewArrayType(), node.getOriginal(), node.getOriginalLength(), node.getNewLength()));
+                            .add(new ForeignCallWithExceptionNode(ARRAYS_COPY_OF, node.getNewArrayType(), node.getOriginal(), node.getOriginalLength(), node.getNewLength()));
             call.setBci(node.bci());
             call.setStamp(node.stamp(NodeView.DEFAULT));
             graph.replaceWithExceptionSplit(node, call);

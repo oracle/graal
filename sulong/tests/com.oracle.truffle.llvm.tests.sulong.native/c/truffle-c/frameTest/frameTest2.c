@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,18 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-int foo(int a, int b, int c, int d, int e, int f) {
-  if (a == 5) {
-    if (e == 5) {
-      return 0;
+int foo(int a, __attribute__((unused)) int b, __attribute__((unused)) int c, __attribute__((unused)) int d, int e, __attribute__((unused)) int f) {
+    if (a == 5) {
+        if (e == 5) {
+            return 0;
+        }
+    } else {
+        return 1;
     }
-  } else {
-    return 1;
-  }
+
+    return 2;
 }
 
 int main() {
-  int a, b, c, d, e, f, g, h, i;
-  a = b = c = d = e = f = 5;
-  return foo(a, b, c, d, e, f);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+    int a, b, c, d, e, f, g, h, i;
+#pragma clang diagnostic pop
+    a = b = c = d = e = f = 5;
+    return foo(a, b, c, d, e, f);
 }

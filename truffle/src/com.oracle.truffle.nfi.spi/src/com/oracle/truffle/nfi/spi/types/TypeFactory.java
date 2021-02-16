@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,30 +64,5 @@ public abstract class TypeFactory {
 
     protected static NativeLibraryDescriptor createLibraryDescriptor(String filename, List<String> flags) {
         return new NativeLibraryDescriptor(filename, flags);
-    }
-
-    protected static NativeTypeMirror createArrayTypeMirror(NativeTypeMirror elementType) {
-        return new NativeArrayTypeMirror(elementType);
-    }
-
-    protected static NativeTypeMirror createEnvTypeMirror() {
-        return new NativeEnvTypeMirror();
-    }
-
-    protected static NativeTypeMirror createFunctionTypeMirror(NativeSignature signature) {
-        return new NativeFunctionTypeMirror(signature);
-    }
-
-    protected static NativeTypeMirror createSimpleTypeMirror(NativeSimpleType type) {
-        return new NativeSimpleTypeMirror(type);
-    }
-
-    protected static NativeSignature createSignature(NativeTypeMirror retType, List<NativeTypeMirror> argTypes) {
-        return new NativeSignature(retType, NativeSignature.NOT_VARARGS, argTypes);
-    }
-
-    protected static NativeSignature createVarargsSignature(NativeTypeMirror retType, int fixedArgCount, List<NativeTypeMirror> argTypes) {
-        assert 0 <= fixedArgCount && fixedArgCount <= argTypes.size();
-        return new NativeSignature(retType, fixedArgCount, argTypes);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -225,9 +225,10 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
     }
 
     @ExportLibrary(value = DefaultErrorLibrary3.class, receiverType = OtherClass.class)
-    @ExpectError("The following message(s) of library DefaultErrorLibrary3 are abstract%")
+    @ExpectError({
+                    "The following message(s) of library DefaultErrorLibrary3 are abstract%",
+    })
     abstract static class AbstractDefault {
-
     }
 
     @GenerateLibrary
@@ -236,10 +237,15 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
         public abstract int abstractMethod(Object receiver);
 
+        public int m0(Object receiver) {
+            return 42;
+        }
+
     }
 
     @ExportLibrary(value = DefaultLibrary.class)
-    @ExpectError("The following message(s) of library DefaultLibrary%")
+    @ExpectError({"The following message(s) of library DefaultLibrary%",
+                    "Exported library DefaultLibrary does not export any messages and therefore has no effect.%"})
     static final class DefaultExportError1 {
 
     }

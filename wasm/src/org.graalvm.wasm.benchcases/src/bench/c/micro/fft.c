@@ -90,7 +90,7 @@ int run_ffts() {
   return (int) c64;
 }
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 10;
 }
 
@@ -106,7 +106,7 @@ void benchmarkSetupEach() {
   }
 }
 
-void benchmarkTeardownEach() {
+void benchmarkTeardownEach(char* outputFile) {
 }
 
 int benchmarkRun() {

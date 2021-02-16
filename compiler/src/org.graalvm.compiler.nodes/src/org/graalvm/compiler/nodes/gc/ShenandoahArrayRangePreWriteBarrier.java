@@ -41,4 +41,8 @@ public class ShenandoahArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier 
         super(TYPE, address, length, elementStride);
     }
 
+    @Override
+    public Kind getKind() {
+        return Kind.PRE_BARRIER;
+    }
 }

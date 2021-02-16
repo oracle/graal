@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,6 @@
 enum Color { blue = 0, red = 1, yellow = 3 };
 
 int main() {
-  enum Color c = blue;
-  return (int)c;
+    enum Color c = blue;
+    return (int) c;
 }

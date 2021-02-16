@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,10 +83,42 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
 public class GeneratorUtils {
 
+    public static void pushEncapsulatingNode(CodeTreeBuilder builder, String nodeRef) {
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
+        builder.startStatement().type(types.EncapsulatingNodeReference).string(" encapsulating_ = ").//
+                        startStaticCall(types.EncapsulatingNodeReference, "getCurrent").end().end();
+        builder.startStatement().type(types.Node).string(" prev_ = encapsulating_.set(" + nodeRef + ")").end();
+    }
+
+    public static void popEncapsulatingNode(CodeTreeBuilder builder) {
+        builder.startStatement().string("encapsulating_.set(prev_)").end();
+    }
+
     public static CodeTree createTransferToInterpreterAndInvalidate() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement().startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end().end();
+        return builder.build();
+    }
+
+    public static CodeTree createShouldNotReachHere() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startThrow().startStaticCall(context.getTypes().CompilerDirectives, "shouldNotReachHere").end().end();
+        return builder.build();
+    }
+
+    public static CodeTree createShouldNotReachHere(String message) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startThrow().startStaticCall(context.getTypes().CompilerDirectives, "shouldNotReachHere").doubleQuote(message).end().end();
+        return builder.build();
+    }
+
+    public static CodeTree createShouldNotReachHere(CodeTree causeExpression) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startThrow().startStaticCall(context.getTypes().CompilerDirectives, "shouldNotReachHere").tree(causeExpression).end().end();
         return builder.build();
     }
 
@@ -124,6 +156,14 @@ public class GeneratorUtils {
         } else {
             method.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
+    }
+
+    public static void addOverride(CodeExecutableElement method) {
+        DeclaredType override = ProcessorContext.getInstance().getDeclaredType(Override.class);
+        if (ElementUtils.findAnnotationMirror(method, override) != null) {
+            return;
+        }
+        method.addAnnotationMirror(new CodeAnnotationMirror(override));
     }
 
     public static void mergeSupressWarnings(CodeElement<?> element, String... addWarnings) {
@@ -310,6 +350,17 @@ public class GeneratorUtils {
             return null;
         }
         return CodeExecutableElement.clone(method);
+    }
+
+    public static void addThrownExceptions(CodeExecutableElement executable, List<? extends TypeMirror> thrownTypes) {
+        outer: for (TypeMirror thrownType : thrownTypes) {
+            for (TypeMirror type : executable.getThrownTypes()) {
+                if (ElementUtils.typeEquals(type, thrownType)) {
+                    continue outer;
+                }
+            }
+            executable.addThrownType(thrownType);
+        }
     }
 
 }

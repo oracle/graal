@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An assertion that succeeds depending on whether another regular expression can be matched at the
@@ -66,13 +66,22 @@ public class LookAheadAssertion extends LookAroundAssertion {
         super(negated);
     }
 
-    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast, boolean recursive) {
-        super(copy, ast, recursive);
+    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast) {
+        super(copy, ast);
+    }
+
+    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast, CompilationBuffer compilationBuffer) {
+        super(copy, ast, compilationBuffer);
     }
 
     @Override
-    public LookAheadAssertion copy(RegexAST ast, boolean recursive) {
-        return ast.register(new LookAheadAssertion(this, ast, recursive));
+    public LookAheadAssertion copy(RegexAST ast) {
+        return ast.register(new LookAheadAssertion(this, ast));
+    }
+
+    @Override
+    public LookAheadAssertion copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return ast.register(new LookAheadAssertion(this, ast, compilationBuffer));
     }
 
     @Override

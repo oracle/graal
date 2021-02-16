@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * General parameters to to register for an notification or to register a provider.
  */
-public class Registration {
-
-    final JSONObject jsonData;
+public class Registration extends JSONBase {
 
     Registration(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -100,11 +98,11 @@ public class Registration {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 53 * hash + Objects.hashCode(this.getId());
-        hash = 53 * hash + Objects.hashCode(this.getMethod());
+        int hash = 5;
+        hash = 59 * hash + Objects.hashCode(this.getId());
+        hash = 59 * hash + Objects.hashCode(this.getMethod());
         if (this.getRegisterOptions() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getRegisterOptions());
+            hash = 59 * hash + Objects.hashCode(this.getRegisterOptions());
         }
         return hash;
     }

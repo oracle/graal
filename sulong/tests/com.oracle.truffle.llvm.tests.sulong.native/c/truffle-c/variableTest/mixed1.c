@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,12 @@
 int b = 8;
 
 int *test() {
-  static int a = 3;
-  a++;
-  return &a;
+    static int a = 3;
+    a++;
+    return &a;
 }
 
 int main() {
-  int c = 4;
-  return *test() + 8 + c;
+    int c = 4;
+    return *test() + 8 + c;
 }

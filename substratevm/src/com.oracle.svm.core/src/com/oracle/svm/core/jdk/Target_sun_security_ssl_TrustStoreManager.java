@@ -72,11 +72,12 @@ final class TrustStoreManagerFeature implements Feature {
 
         /*
          * The class initializer of UntrustedCertificates loads the file
-         * lib/security/blacklisted.certs, so this class must be initialized at image built time.
+         * lib/security/blacklisted.certs, so this class must be initialized at image build time.
          * This is the default anyway for code JDK classes, but since this this class is relevant
          * for security we spell it out explicitly.
          */
         RuntimeClassInitialization.initializeAtBuildTime(sun.security.util.UntrustedCertificates.class);
+        RuntimeClassInitialization.initializeAtBuildTime(org.jcp.xml.dsig.internal.dom.XMLDSigRI.class);
     }
 }
 

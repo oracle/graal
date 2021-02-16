@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.function.Consumer;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -135,6 +134,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected Object getScopedView(LanguageContext context, Node location, Frame frame, Object value) {
         if (wrapper) {
             delegate.languageInstance = this;
@@ -322,7 +322,8 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(LanguageContext context) {
+    @SuppressWarnings("deprecation")
+    protected Iterable<com.oracle.truffle.api.Scope> findTopScopes(LanguageContext context) {
         if (wrapper) {
             delegate.languageInstance = this;
             return delegate.findTopScopes(context);
@@ -332,12 +333,23 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
-    protected Iterable<Scope> findLocalScopes(LanguageContext context, Node node, Frame frame) {
+    @SuppressWarnings("deprecation")
+    protected Iterable<com.oracle.truffle.api.Scope> findLocalScopes(LanguageContext context, Node node, Frame frame) {
         if (wrapper) {
             delegate.languageInstance = this;
             return delegate.findLocalScopes(context, node, frame);
         } else {
             return super.findLocalScopes(context, node, frame);
+        }
+    }
+
+    @Override
+    protected Object getScope(LanguageContext context) {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            return delegate.getScope(context);
+        } else {
+            return super.getScope(context);
         }
     }
 

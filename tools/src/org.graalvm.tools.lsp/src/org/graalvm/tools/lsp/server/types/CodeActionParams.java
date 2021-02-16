@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,14 +28,12 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Params for the CodeActionRequest.
+ * The parameters of a [CodeActionRequest](#CodeActionRequest).
  */
-public class CodeActionParams {
-
-    final JSONObject jsonData;
+public class CodeActionParams extends WorkDoneProgressParams {
 
     CodeActionParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -74,6 +72,19 @@ public class CodeActionParams {
         return this;
     }
 
+    /**
+     * An optional token that a server can use to report partial results (e.g. streaming) to the
+     * client.
+     */
+    public Object getPartialResultToken() {
+        return jsonData.opt("partialResultToken");
+    }
+
+    public CodeActionParams setPartialResultToken(Object partialResultToken) {
+        jsonData.putOpt("partialResultToken", partialResultToken);
+        return this;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -95,15 +106,27 @@ public class CodeActionParams {
         if (!Objects.equals(this.getContext(), other.getContext())) {
             return false;
         }
+        if (!Objects.equals(this.getPartialResultToken(), other.getPartialResultToken())) {
+            return false;
+        }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 59 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 59 * hash + Objects.hashCode(this.getRange());
-        hash = 59 * hash + Objects.hashCode(this.getContext());
+        int hash = 7;
+        hash = 43 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 43 * hash + Objects.hashCode(this.getRange());
+        hash = 43 * hash + Objects.hashCode(this.getContext());
+        if (this.getPartialResultToken() != null) {
+            hash = 43 * hash + Objects.hashCode(this.getPartialResultToken());
+        }
+        if (this.getWorkDoneToken() != null) {
+            hash = 43 * hash + Objects.hashCode(this.getWorkDoneToken());
+        }
         return hash;
     }
 

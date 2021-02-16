@@ -108,6 +108,7 @@ public final class InspectorDebugger extends DebuggerDomain {
 
     private final InspectorExecutionContext context;
     private final Object suspendLock = new Object();
+    private volatile SuspendedCallbackImpl suspendedCallback;
     private volatile DebuggerSession debuggerSession;
     private volatile ScriptsHandler scriptsHandler;
     private volatile BreakpointsHandler breakpointsHandler;
@@ -155,7 +156,8 @@ public final class InspectorDebugger extends DebuggerDomain {
 
     private void startSession() {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
-        debuggerSession = tdbg.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
+        suspendedCallback = new SuspendedCallbackImpl();
+        debuggerSession = tdbg.startSession(suspendedCallback, SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSourcePath(context.getSourcePath());
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
         scriptsHandler = context.acquireScriptsHandler();
@@ -177,6 +179,8 @@ public final class InspectorDebugger extends DebuggerDomain {
         scriptsHandler.setDebuggerSession(null);
         debuggerSession.close();
         debuggerSession = null;
+        suspendedCallback.dispose();
+        suspendedCallback = null;
         context.releaseScriptsHandler();
         scriptsHandler = null;
         breakpointsHandler = null;
@@ -185,6 +189,15 @@ public final class InspectorDebugger extends DebuggerDomain {
                 running = true;
                 suspendLock.notifyAll();
             }
+        }
+    }
+
+    @Override
+    protected void notifyDisabled() {
+        // We might call startSession() in the constructor, without doEnable().
+        // That means that doDisable() might not have been called.
+        if (debuggerSession != null) {
+            doDisable();
         }
     }
 
@@ -240,7 +253,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         }
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
-        Source source = script.getSource();
+        Source source = script.getSourceLoaded();
         if (source.hasCharacters() && source.getLength() > 0) {
             int lc = source.getLineCount();
             int l1 = start.getLine();
@@ -1198,22 +1211,35 @@ public final class InspectorDebugger extends DebuggerDomain {
             return data;
         }
 
-        private class SchedulerThreadFactory implements ThreadFactory {
-
-            private final ThreadGroup group;
-
-            SchedulerThreadFactory() {
-                SecurityManager s = System.getSecurityManager();
-                this.group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+        private void dispose() {
+            unlock();
+            ScheduledFuture<?> sf = future.getAndSet(null);
+            if (sf != null) {
+                sf.cancel(true);
             }
-
-            @Override
-            public Thread newThread(Runnable r) {
-                Thread t = new Thread(group, r, "Suspend Unlocking Scheduler");
-                t.setDaemon(true);
-                t.setPriority(Thread.NORM_PRIORITY);
-                return t;
+            scheduler.shutdown();
+            try {
+                scheduler.awaitTermination(30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
             }
+        }
+    }
+
+    private static class SchedulerThreadFactory implements ThreadFactory {
+
+        private final ThreadGroup group;
+
+        SchedulerThreadFactory() {
+            SecurityManager s = System.getSecurityManager();
+            this.group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(group, r, "Suspend Unlocking Scheduler");
+            t.setDaemon(true);
+            t.setPriority(Thread.NORM_PRIORITY);
+            return t;
         }
     }
 

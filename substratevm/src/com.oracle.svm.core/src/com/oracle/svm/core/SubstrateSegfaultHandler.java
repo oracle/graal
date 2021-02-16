@@ -120,9 +120,7 @@ public abstract class SubstrateSegfaultHandler {
         PointerBase ip = RegisterDumper.singleton().getIP(context);
         SubstrateUtil.printDiagnostics(log, (Pointer) sp, (CodePointer) ip, context);
 
-        log.string("Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-        log.newline();
-        log.string("Bye bye ...").newline();
+        log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
         log.newline();
 
         ImageSingletons.lookup(LogHandler.class).fatalError();

@@ -42,9 +42,9 @@
 		]
 	},
 	{
-		"name": "ruby-standalone-svm-java8",
+		"name": "ruby-standalone-svm-java11",
 		"core": true,
-		"jdk": "jdk_8",
+		"jdk": "jdk_11",
 		"override_name":"truffleruby",
 		"artifacts": [
 			{
@@ -60,9 +60,9 @@
 		]
 	},
 	{
-		"name": "python-standalone-svm-java8",
+		"name": "python-standalone-svm-java11",
 		"core": true,
-		"jdk": "jdk_8",
+		"jdk": "jdk_11",
 		"override_name":"graalpython",
 		"artifacts": [
 			{
@@ -255,6 +255,10 @@
 			{
 				"os": "darwin",
 				"arch": "amd64"
+			},
+			{
+				"os": "windows",
+				"arch": "amd64"
 			}
 		]
 	},
@@ -268,7 +272,57 @@
 				"arch": "amd64"
 			},
 			{
+				"os": "linux",
+				"arch": "aarch64"
+			},
+			{
 				"os": "darwin",
+				"arch": "amd64"
+			},
+			{
+				"os": "windows",
+				"arch": "amd64"
+			}
+		]
+	},
+	{
+		"name": "espresso-installable-svm-java8",
+		"core": false,
+		"jdk": "jdk_8",
+		"artifacts": [
+			{
+				"os": "linux",
+				"arch": "amd64"
+			},
+			{
+				"os": "darwin",
+				"arch": "amd64"
+			},
+			{
+				"os": "windows",
+				"arch": "amd64"
+			}
+		]
+	},
+	{
+		"name": "espresso-installable-svm-java11",
+		"core": false,
+		"jdk": "jdk_11",
+		"artifacts": [
+			{
+				"os": "linux",
+				"arch": "amd64"
+			},
+			{
+				"os": "linux",
+				"arch": "aarch64"
+			},
+			{
+				"os": "darwin",
+				"arch": "amd64"
+			},
+			{
+				"os": "windows",
 				"arch": "amd64"
 			}
 		]

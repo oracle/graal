@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,23 +25,25 @@
 package org.graalvm.compiler.hotspot.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.core.common.GraalOptions.AOTVerifyOops;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -52,22 +54,12 @@ import jdk.vm.ci.meta.Value;
  * Represents {@link GraalHotSpotVMConfig} values that may change after compilation.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
+@NodeIntrinsicFactory
 public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerable, Canonicalizable {
     public static final NodeClass<GraalHotSpotVMConfigNode> TYPE = NodeClass.create(GraalHotSpotVMConfigNode.class);
 
     private final GraalHotSpotVMConfig config;
-    protected final int markId;
-
-    /**
-     * Constructor for {@link #areConfigValuesConstant()}.
-     *
-     * @param config
-     */
-    public GraalHotSpotVMConfigNode(@InjectedNodeParameter GraalHotSpotVMConfig config) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
-        this.config = config;
-        this.markId = 0;
-    }
+    protected final HotSpotMarkId markId;
 
     /**
      * Constructor for node intrinsics below.
@@ -75,10 +67,11 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
      * @param config
      * @param markId id of the config value
      */
-    public GraalHotSpotVMConfigNode(@InjectedNodeParameter Stamp stamp, @InjectedNodeParameter GraalHotSpotVMConfig config, int markId) {
+    public GraalHotSpotVMConfigNode(@InjectedNodeParameter Stamp stamp, @InjectedNodeParameter GraalHotSpotVMConfig config, HotSpotMarkId markId) {
         super(TYPE, stamp);
         this.config = config;
         this.markId = markId;
+        assert markId != null;
     }
 
     /**
@@ -88,10 +81,11 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
      * @param markId id of the config value
      * @param kind explicit type of the node
      */
-    public GraalHotSpotVMConfigNode(GraalHotSpotVMConfig config, int markId, JavaKind kind) {
+    public GraalHotSpotVMConfigNode(GraalHotSpotVMConfig config, HotSpotMarkId markId, JavaKind kind) {
         super(TYPE, StampFactory.forKind(kind));
         this.config = config;
         this.markId = markId;
+        assert markId != null;
     }
 
     @Override
@@ -101,95 +95,82 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
     }
 
     @NodeIntrinsic
-    private static native boolean areConfigValuesConstant();
+    private static native long loadLongConfigValue(@ConstantNodeParameter HotSpotMarkId markId);
 
     @NodeIntrinsic
-    private static native long loadLongConfigValue(@ConstantNodeParameter int markId);
+    private static native int loadIntConfigValue(@ConstantNodeParameter HotSpotMarkId markId);
 
     @NodeIntrinsic
-    private static native int loadIntConfigValue(@ConstantNodeParameter int markId);
-
-    @NodeIntrinsic
-    private static native byte loadByteConfigValue(@ConstantNodeParameter int markId);
+    private static native boolean loadBoolConfigValue(@ConstantNodeParameter HotSpotMarkId markId);
 
     public static long cardTableAddress() {
-        return loadLongConfigValue(cardTableAddressMark(INJECTED_VMCONFIG));
-    }
-
-    public static boolean isCardTableAddressConstant() {
-        return areConfigValuesConstant();
-    }
-
-    public static long heapTopAddress() {
-        return loadLongConfigValue(heapTopAddressMark(INJECTED_VMCONFIG));
-    }
-
-    public static long heapEndAddress() {
-        return loadLongConfigValue(heapEndAddressMark(INJECTED_VMCONFIG));
+        return loadLongConfigValue(HotSpotMarkId.CARD_TABLE_ADDRESS);
     }
 
     public static long crcTableAddress() {
-        return loadLongConfigValue(crcTableAddressMark(INJECTED_VMCONFIG));
+        return loadLongConfigValue(HotSpotMarkId.CRC_TABLE_ADDRESS);
     }
 
     public static int logOfHeapRegionGrainBytes() {
-        return loadIntConfigValue(logOfHeapRegionGrainBytesMark(INJECTED_VMCONFIG));
+        return loadIntConfigValue(HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES);
     }
 
-    public static boolean inlineContiguousAllocationSupported() {
-        return loadByteConfigValue(inlineContiguousAllocationSupportedMark(INJECTED_VMCONFIG)) != 0;
+    public static boolean verifyOops() {
+        return loadBoolConfigValue(HotSpotMarkId.VERIFY_OOPS);
     }
 
-    @Fold
-    public static int cardTableAddressMark(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.MARKID_CARD_TABLE_ADDRESS;
+    public static long verifyOopBits() {
+        return loadLongConfigValue(HotSpotMarkId.VERIFY_OOP_BITS);
     }
 
-    @Fold
-    public static int heapTopAddressMark(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.MARKID_HEAP_TOP_ADDRESS;
+    public static long verifyOopMask() {
+        return loadLongConfigValue(HotSpotMarkId.VERIFY_OOP_MASK);
     }
 
-    @Fold
-    public static int heapEndAddressMark(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.MARKID_HEAP_END_ADDRESS;
+    public static long verifyOopCounterAddress() {
+        return loadLongConfigValue(HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS);
     }
 
-    @Fold
-    public static int crcTableAddressMark(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.MARKID_CRC_TABLE_ADDRESS;
-    }
-
-    @Fold
-    public static int logOfHeapRegionGrainBytesMark(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.MARKID_LOG_OF_HEAP_REGION_GRAIN_BYTES;
-    }
-
-    @Fold
-    public static int inlineContiguousAllocationSupportedMark(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.MARKID_INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED;
+    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter GraalHotSpotVMConfig config, HotSpotMarkId mark) {
+        if (b.getReplacements().isEncodingSnippets()) {
+            // This plugin must be deferred so that these constants aren't embedded in libgraal
+            return false;
+        }
+        b.addPush(returnStamp.getStackKind(), new GraalHotSpotVMConfigNode(returnStamp, config, mark));
+        return true;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (markId == 0) {
-            return ConstantNode.forBoolean(!GeneratePIC.getValue(tool.getOptions()));
-        }
-        if (!GeneratePIC.getValue(tool.getOptions())) {
-            if (markId == config.MARKID_CARD_TABLE_ADDRESS) {
+        boolean generatePIC = GeneratePIC.getValue(tool.getOptions());
+        boolean aotVerifyOops = AOTVerifyOops.getValue(tool.getOptions());
+        if (!generatePIC || !markId.isAvailable()) {
+            if (markId == HotSpotMarkId.CARD_TABLE_ADDRESS) {
                 return ConstantNode.forLong(config.cardtableStartAddress);
-            } else if (markId == config.MARKID_HEAP_TOP_ADDRESS) {
-                return ConstantNode.forLong(config.heapTopAddress);
-            } else if (markId == config.MARKID_HEAP_END_ADDRESS) {
-                return ConstantNode.forLong(config.heapEndAddress);
-            } else if (markId == config.MARKID_CRC_TABLE_ADDRESS) {
+            } else if (markId == HotSpotMarkId.CRC_TABLE_ADDRESS) {
                 return ConstantNode.forLong(config.crcTableAddress);
-            } else if (markId == config.MARKID_LOG_OF_HEAP_REGION_GRAIN_BYTES) {
+            } else if (markId == HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES) {
                 return ConstantNode.forInt(config.logOfHRGrainBytes);
-            } else if (markId == config.MARKID_INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED) {
-                return ConstantNode.forBoolean(config.inlineContiguousAllocationSupported);
+            } else if (markId == HotSpotMarkId.VERIFY_OOPS) {
+                return ConstantNode.forBoolean(config.verifyOops);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_BITS) {
+                return ConstantNode.forLong(config.verifyOopBits);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_MASK) {
+                return ConstantNode.forLong(config.verifyOopMask);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS) {
+                return ConstantNode.forLong(config.verifyOopCounterAddress);
             } else {
-                assert false;
+                throw GraalError.shouldNotReachHere(markId.toString());
+            }
+        } else if (generatePIC && !aotVerifyOops) {
+            if (markId == HotSpotMarkId.VERIFY_OOPS) {
+                return ConstantNode.forBoolean(false);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_BITS) {
+                return ConstantNode.forLong(0L);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_MASK) {
+                return ConstantNode.forLong(0L);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS) {
+                return ConstantNode.forLong(0L);
             }
         }
         return this;

@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -55,6 +55,13 @@ public final class ClassIsAssignableFromNode extends BinaryOpLogicNode implement
 
     public ClassIsAssignableFromNode(ValueNode thisClass, ValueNode otherClass) {
         super(TYPE, thisClass, otherClass);
+
+        /*
+         * Values must have been null-checked beforehand, so that the lowering snippets do not need
+         * to worry about null values.
+         */
+        assert StampTool.isPointerNonNull(thisClass);
+        assert StampTool.isPointerNonNull(otherClass);
     }
 
     public ValueNode getThisClass() {
@@ -76,11 +83,6 @@ public final class ClassIsAssignableFromNode extends BinaryOpLogicNode implement
             }
         }
         return this;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override

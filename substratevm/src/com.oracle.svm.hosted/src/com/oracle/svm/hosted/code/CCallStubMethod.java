@@ -79,7 +79,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         FrameStateBuilder state = kit.getFrameState();
         List<ValueNode> arguments = kit.loadArguments(getParameterTypesForLoad(method));
         ValueNode callAddress = createTargetAddressNode(kit, providers, arguments);
-        Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit,
+        Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method,
                         method.getSignature().getReturnType(null), method.toParameterTypes(), arguments);
         state.clearLocals();
         ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, newThreadStatus, deoptimizationTarget);
@@ -100,7 +100,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     }
 
     protected Signature adaptSignatureAndConvertArguments(HostedProviders providers, NativeLibraries nativeLibraries,
-                    HostedGraphKit kit, JavaType returnType, JavaType[] parameterTypes, List<ValueNode> arguments) {
+                    HostedGraphKit kit, @SuppressWarnings("unused") ResolvedJavaMethod method, JavaType returnType, JavaType[] parameterTypes, List<ValueNode> arguments) {
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < parameterTypes.length; i++) {
@@ -128,8 +128,8 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
                     arguments.set(i, argumentValue);
                     parameterTypes[i] = metaAccess.lookupJavaType(cEnumKind.toJavaClass());
                 } else {
-                    throw UserError.abort("@" + getCorrespondingAnnotationName() + " parameter types are restricted to primitive types, word types and enumerations (@" +
-                                    CEnum.class.getSimpleName() + "): " + getOriginal().format("%H.%n(%p)"));
+                    throw UserError.abort("@%s parameter types are restricted to primitive types, word types and enumerations (@%s): %s",
+                                    getCorrespondingAnnotationName(), CEnum.class.getSimpleName(), getOriginal());
                 }
             }
         }
@@ -158,9 +158,8 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
             CInterfaceEnumTool tool = new CInterfaceEnumTool(providers.getMetaAccess(), providers.getSnippetReflection());
             returnValue = tool.createEnumLookupInvoke(kit, (ResolvedJavaType) declaredReturnType, (EnumInfo) typeInfo, cEnumKind, returnValue);
         } else {
-            throw UserError.abort("Return types of methods annotated with @" + getCorrespondingAnnotationName() +
-                            " are restricted to primitive types, word types and enumerations (@" +
-                            CEnum.class.getSimpleName() + "): " + getOriginal().format("%H.%n(%p)"));
+            throw UserError.abort("Return types of methods annotated with @%s are restricted to primitive types, word types and enumerations (@%s): %s",
+                            getCorrespondingAnnotationName(), CEnum.class.getSimpleName(), getOriginal());
         }
         return returnValue;
     }

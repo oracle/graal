@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,62 +28,62 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define TestType(T, BITS, PACKING)                  \
-struct {                                            \
-    T a : BITS;                                     \
-    T b : BITS;                                     \
-    T c : BITS;                                     \
-    T d : BITS;                                     \
-    T e : BITS;                                     \
-    T f : BITS;                                     \
-    T g : BITS;                                     \
-    T h : BITS;                                     \
-} PACKING
+#define TestType(T, BITS, PACKING)                                                                                                                   \
+    struct {                                                                                                                                         \
+        T a : BITS;                                                                                                                                  \
+        T b : BITS;                                                                                                                                  \
+        T c : BITS;                                                                                                                                  \
+        T d : BITS;                                                                                                                                  \
+        T e : BITS;                                                                                                                                  \
+        T f : BITS;                                                                                                                                  \
+        T g : BITS;                                                                                                                                  \
+        T h : BITS;                                                                                                                                  \
+    } PACKING
 
-#define TestDefine(T, BITS, PACKING, NAME)          \
-TestType(T, BITS, PACKING) NAME;
+#define TestDefine(T, BITS, PACKING, NAME) TestType(T, BITS, PACKING) NAME;
 
-#define TestAssign(NAME, A, B, C, D, E, F, G, H)    \
-NAME.a = A;                                         \
-NAME.b = B;                                         \
-NAME.c = C;                                         \
-NAME.d = D;                                         \
-NAME.e = E;                                         \
-NAME.f = F;                                         \
-NAME.g = G;                                         \
-NAME.h = H;
+#define TestAssign(NAME, A, B, C, D, E, F, G, H)                                                                                                     \
+    NAME.a = A;                                                                                                                                      \
+    NAME.b = B;                                                                                                                                      \
+    NAME.c = C;                                                                                                                                      \
+    NAME.d = D;                                                                                                                                      \
+    NAME.e = E;                                                                                                                                      \
+    NAME.f = F;                                                                                                                                      \
+    NAME.g = G;                                                                                                                                      \
+    NAME.h = H;
 
-__attribute__((constructor)) int test()
-{
-    TestDefine(unsigned int, 1, , uiBool)
-    TestDefine(signed int, 1, , siBool)
-    TestDefine(unsigned int, 1, __attribute__ ((packed)), uiPackedBool)
-    TestDefine(signed int, 1, __attribute__ ((packed)), siPackedBool)
-    
-    TestAssign(uiBool, 1, 0, 1, 0, 1, 0, 1, 0)
-    TestAssign(siBool, 1, 0, 1, 0, 1, 0, 1, 0)
-    TestAssign(uiPackedBool, 1, 0, 1, 0, 1, 0, 1, 0)
-    TestAssign(siPackedBool, 1, 0, 1, 0, 1, 0, 1, 0)
+__attribute__((constructor)) int test() {
+    // clang-format off
+  TestDefine(unsigned int, 1, , uiBool)
+  TestDefine(signed int, 1, , siBool)
+  TestDefine(unsigned int, 1, __attribute__ ((packed)), uiPackedBool)
+  TestDefine(signed int, 1, __attribute__ ((packed)), siPackedBool)
 
-    TestDefine(unsigned int, 3, , uiTriple)
-    TestDefine(signed int, 3, , siTriple)
-    TestDefine(unsigned int, 3, __attribute__ ((packed)), uiPackedTriple)
-    TestDefine(signed int, 3, __attribute__ ((packed)), siPackedTriple)
+  TestAssign(uiBool, 1, 0, 1, 0, 1, 0, 1, 0)
+  TestAssign(siBool, 1, 0, 1, 0, 1, 0, 1, 0)
+  TestAssign(uiPackedBool, 1, 0, 1, 0, 1, 0, 1, 0)
+  TestAssign(siPackedBool, 1, 0, 1, 0, 1, 0, 1, 0)
 
-    TestAssign(uiTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
-    TestAssign(siTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
-    TestAssign(uiPackedTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
-    TestAssign(siPackedTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
+  TestDefine(unsigned int, 3, , uiTriple)
+  TestDefine(signed int, 3, , siTriple)
+  TestDefine(unsigned int, 3, __attribute__ ((packed)), uiPackedTriple)
+  TestDefine(signed int, 3, __attribute__ ((packed)), siPackedTriple)
 
-    TestDefine(unsigned long int, 48, , ui48Long)
-    TestDefine(signed long int, 48, , si48Long)
-    TestDefine(unsigned long int, 48, __attribute__ ((packed)), uiPacked48Long)
-    TestDefine(signed long int, 48, __attribute__ ((packed)), siPacked48Long)
+  TestAssign(uiTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
+  TestAssign(siTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
+  TestAssign(uiPackedTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
+  TestAssign(siPackedTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
 
-    TestAssign(ui48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
-    TestAssign(si48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
-    TestAssign(uiPacked48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
-    TestAssign(siPacked48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
+  TestDefine(unsigned long int, 48, , ui48Long)
+  TestDefine(signed long int, 48, , si48Long)
+  TestDefine(unsigned long int, 48, __attribute__ ((packed)), uiPacked48Long)
+  TestDefine(signed long int, 48, __attribute__ ((packed)), siPacked48Long)
 
-    return 0;
+  TestAssign(ui48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
+  TestAssign(si48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
+  TestAssign(uiPacked48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
+  TestAssign(siPacked48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
+
+  return 0;
+    // clang-format on
 }

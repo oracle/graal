@@ -1,0 +1,143 @@
+name: GraalVM Gate
+
+on:
+  push:
+    paths-ignore:
+      - '.travis.yml'
+      - '.github/workflows/quarkus.yml'
+  pull_request:
+    paths-ignore:
+      - '.travis.yml'
+      - '.github/workflows/quarkus.yml'
+  workflow_dispatch: []
+
+env:
+  LANG: en_US.UTF-8
+  MX_GIT_CACHE: refcache
+  JAVA_HOME: ${{ github.workspace }}/jdk
+  MX_PATH: ${{ github.workspace }}/mx
+
+jobs:
+  build-graalvm:
+    name: ${{ matrix.env.JDK }} ${{ matrix.env.GATE }} ${{ matrix.env.PRIMARY }} ${{ matrix.env.WITHOUT_VCS }}
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env:
+              JDK: "openjdk8"
+              GATE: "style,fullbuild"
+              PRIMARY: "substratevm"
+          - env:
+              JDK: "openjdk8"
+              GATE: "build,test"
+              PRIMARY: "compiler"
+          - env:
+              JDK: "openjdk8"
+              GATE: "build,test,helloworld"
+              PRIMARY: "substratevm"
+          - env:
+              JDK: "openjdk8"
+              GATE: "build,test,helloworld_debug"
+              PRIMARY: "substratevm"
+          - env:
+              JDK: "openjdk8"
+              GATE: "build,bootstraplite"
+              PRIMARY: "compiler"
+          - env:
+              JDK: "openjdk8"
+              GATE: "style,fullbuild,sulongBasic"
+              PRIMARY: "sulong"
+          - env:
+              JDK: "openjdk8"
+              GATE: "build,sulong"
+              PRIMARY: "vm"
+              DYNAMIC_IMPORTS: "/sulong,/substratevm"
+              DISABLE_POLYGLOT: true
+              DISABLE_LIBPOLYGLOT: true
+          - env:
+              JDK: "openjdk8"
+              GATE: "build,debuginfotest"
+              PRIMARY: "substratevm"
+          - env:
+              JDK: "labsjdk-ce-11"
+              GATE: "build,debuginfotest"
+              PRIMARY: "substratevm"
+          - env:
+              JDK: "labsjdk-ce-11"
+              GATE: "style,fullbuild"
+              PRIMARY: "compiler"
+          - env:
+              JDK: "labsjdk-ce-11"
+              GATE: "build,test"
+              PRIMARY: "compiler"
+          - env:
+              JDK: "labsjdk-ce-11"
+              GATE: "build,bootstraplite"
+              PRIMARY: "compiler"
+          - env:
+              JDK: "labsjdk-ce-11"
+              WITHOUT_VCS: true
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - uses: actions/checkout@v2
+      with:
+        repository: graalvm/mx.git
+        fetch-depth: 1
+        ref: master
+        path: ${{ env.MX_PATH }}
+    - uses: actions/cache@v1
+      with:
+        path: ~/.mx
+        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+        restore-keys: ${{ runner.os }}-mx-
+    - name: Get JDK
+      env: ${{ matrix.env }}
+      run: |
+        mkdir jdk-dl
+        ${MX_PATH}/mx fetch-jdk --java-distribution ${JDK} --to jdk-dl --alias ${JAVA_HOME}
+    - name: Debug dependencies
+      if: ${{ contains(matrix.env.GATE, 'debug') }}
+      run: sudo apt install gdb
+    - name: Style dependencies
+      if: ${{ contains(matrix.env.GATE, 'style') }}
+      run: |
+        sudo apt install python-pip
+        sudo pip install astroid==1.1.0
+        sudo pip install pylint==1.1.0
+    - name: Build GraalVM and run gate
+      env: ${{ matrix.env }}
+      run: |
+        if [[ ${GATE} == *style* ]]
+        then
+          export ECLIPSE_TAR=eclipse.tar.gz
+          wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/eclipse-SDK-4.14-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
+          tar -xzf ${ECLIPSE_TAR}
+          export ECLIPSE_EXE=${PWD}/eclipse/eclipse
+
+          # the style gate needs the full commit history for checking copyright years
+          git fetch --unshallow
+        fi
+
+        if [[ ${GATE} == *fullbuild* ]]
+        then
+          # Only test JDT on JDK8
+          if [ "${JDK}" == "openjdk8" ]
+          then
+            export JDT=${MX_PATH}/ecj.jar
+            wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
+          fi
+        fi
+
+        echo ${JAVA_HOME}
+        ${JAVA_HOME}/bin/java -version
+        if [[ ${WITHOUT_VCS} ]]
+        then
+          rm -rf .git
+          ${MX_PATH}/mx --primary-suite-path substratevm native-image --help
+        else
+          ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+        fi

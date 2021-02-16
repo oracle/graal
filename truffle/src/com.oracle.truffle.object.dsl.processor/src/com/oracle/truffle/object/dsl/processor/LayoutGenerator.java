@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,10 @@ package com.oracle.truffle.object.dsl.processor;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.VariableElement;
@@ -72,6 +75,7 @@ public class LayoutGenerator {
         generateImports(stream);
 
         stream.println();
+        stream.println("@SuppressWarnings(\"deprecation\")");
         stream.printf("@GeneratedBy(%s.class)%n", layout.getInterfaceFullName());
         stream.printf("public class %sLayoutImpl", layout.getName());
 
@@ -188,10 +192,6 @@ public class LayoutGenerator {
 
         if (needsIncompatibleLocationException) {
             stream.println("import com.oracle.truffle.api.object.IncompatibleLocationException;");
-        }
-
-        if (layout.getSuperLayout() == null) {
-            stream.println("import com.oracle.truffle.api.object.Layout;");
         }
 
         if (layout.hasFinalInstanceProperties() || layout.hasNonNullableInstanceProperties()) {
@@ -335,10 +335,10 @@ public class LayoutGenerator {
 
     private void generateAllocator(final PrintStream stream) {
         if (layout.getSuperLayout() == null) {
-            stream.print("    protected static final Layout LAYOUT = Layout.newLayout()");
+            stream.print("    protected static final com.oracle.truffle.api.object.Layout LAYOUT = com.oracle.truffle.api.object.Layout.newLayout()");
 
             for (VariableElement implicitCast : layout.getImplicitCasts()) {
-                stream.print(".addAllowedImplicitCast(Layout.ImplicitCast.");
+                stream.print(".addAllowedImplicitCast(com.oracle.truffle.api.object.Layout.ImplicitCast.");
                 stream.print(implicitCast.getSimpleName().toString());
                 stream.print(")");
             }
@@ -743,7 +743,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasGetter()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsUncheckedCast(stream, property);
                 stream.println("    @Override");
                 stream.printf("    public %s %s(DynamicObject object) {%n", property.getType(), NameUtils.asGetter(property.getName()));
                 stream.printf("        assert is%s(object);%n", layout.getName());
@@ -784,7 +784,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasSetter() || property.hasUnsafeSetter()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsForSetter(stream, property);
                 if (property.isShapeProperty()) {
                     stream.println("    @TruffleBoundary");
                 }
@@ -840,7 +840,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasCompareAndSet()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsUncheckedCast(stream, property);
 
                 stream.println("    @Override");
                 stream.printf("    public boolean %s(DynamicObject object, %s expected_value, %s value) {%n",
@@ -875,7 +875,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasGetAndSet()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsUncheckedCast(stream, property);
 
                 stream.println("    @Override");
                 stream.printf("    public %s %s(DynamicObject object, %s value) {%n",
@@ -925,10 +925,27 @@ public class LayoutGenerator {
         }
     }
 
-    private static void addUncheckedCastWarning(final PrintStream stream, PropertyModel property) {
-        if (property.getType().toString().indexOf('<') != -1 ||
-                        (property.isVolatile() && !property.getType().getKind().isPrimitive())) {
-            stream.println("    @SuppressWarnings(\"unchecked\")");
+    private static boolean needsUncheckedCast(PropertyModel property) {
+        return property.getType().toString().indexOf('<') != -1 || (property.isVolatile() && !property.getType().getKind().isPrimitive());
+    }
+
+    private static void addSuppressWarningsUncheckedCast(final PrintStream stream, PropertyModel property) {
+        if (needsUncheckedCast(property)) {
+            addSuppressWarnings(stream, Collections.singleton("unchecked"));
+        }
+    }
+
+    private static void addSuppressWarningsForSetter(final PrintStream stream, PropertyModel property) {
+        Collection<String> warnings = new ArrayList<>(2);
+        if (needsUncheckedCast(property)) {
+            warnings.add("unchecked");
+        }
+        addSuppressWarnings(stream, warnings);
+    }
+
+    private static void addSuppressWarnings(final PrintStream stream, Collection<String> warnings) {
+        if (!warnings.isEmpty()) {
+            stream.printf("    @SuppressWarnings({%s})\n", warnings.stream().map(s -> '\"' + s + '\"').collect(Collectors.joining(", ")));
         }
     }
 

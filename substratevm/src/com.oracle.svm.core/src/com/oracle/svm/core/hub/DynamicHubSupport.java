@@ -37,10 +37,21 @@ import com.oracle.svm.core.c.NonmovableArrays;
 
 public final class DynamicHubSupport {
 
+    private int maxTypeId;
     @UnknownObjectField(types = {byte[].class}) private byte[] referenceMapEncoding;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHubSupport() {
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setMaxTypeId(int maxTypeId) {
+        this.maxTypeId = maxTypeId;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getMaxTypeId() {
+        return maxTypeId;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

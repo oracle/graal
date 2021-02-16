@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,7 @@
  */
 int a[1] = { 42 };
 int main() {
-  return 0;
-  // segfaults on gcc as well:
-  // return (( (int**) &a)[0])[0];
+    return 0;
+    // segfaults on gcc as well:
+    // return (( (int**) &a)[0])[0];
 }

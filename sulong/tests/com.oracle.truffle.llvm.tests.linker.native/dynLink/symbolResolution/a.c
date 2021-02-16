@@ -31,13 +31,13 @@
 #include <stdio.h>
 
 static void myprint_liba(char *str) {
-  printf("libA print: %s", str);
+    printf("libA print: %s", str);
 }
 
 extern void (*myprint)(char *);
 
 __attribute__((constructor)) static void beginA(void) {
-  myprint("ctor a\n");
-  myprint = myprint_liba;
-  myprint("ctor a\n");
+    myprint("ctor a\n");
+    myprint = myprint_liba;
+    myprint("ctor a\n");
 }

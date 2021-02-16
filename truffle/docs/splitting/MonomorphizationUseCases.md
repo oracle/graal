@@ -1,17 +1,12 @@
 # Monomorphization Use Cases
 
-This document illustrates through examples how monomorphization can improve
-performance of dynamic languages without going into any detail on how
-monomorphization is implemented (described in ["Splitting"](Splitting.md)) or
-how to leverage monomorphization in your language implementation (described in
-["Reporting Polymorphism"](ReportingPolymorphism.md))
+This guide demonstrates through examples how monomorphization can improve performance of dynamic languages without going into any detail on how monomorphization is implemented (described in the [Splitting](Splitting.md) guide) or how to leverage monomorphization in your language implementation (described in the [Reporting Polymorphism](ReportingPolymorphism.md) guide).
 
-## Monomorphization in a Nutshell
+## Monomorphization
 
-To better illustrate the benefits of monomorphization, let us first consider a
-small example written in JavaScript:
+To better illustrate the benefits of monomorphization, consider a small example written in JavaScript:
 
-```
+```js
 function add(arg1, arg2) {
     return arg1 + arg2;
 }
@@ -28,14 +23,12 @@ while (i < 1000) {
 }
 ```
 
-As we can see in this example, the `add` function is called from `callsAdd` once
-with integer arguments and once with string arguments.  Once `add` is executed
-enough times to be compiled its execution profile will show that the `+`
-operator has been executed with both integers and strings and thus handlers
-(i.e. type checks and execution) for both types will be compiled which has a
-performance impact. This can be avoided by rewriting the example as follows:
+As you can see in this example, the `add` function is called from `callsAdd` once with integer arguments and once with string arguments.
+Once `add` is executed enough times to be compiled its execution profile will show that the `+` operator has been executed with both integers and strings and thus handlers (i.e., type checks and execution) for both types will be compiled which has a
+performance impact.
+This can be avoided by rewriting the example as follows:
 
-```
+```js
 function addInt(arg1, arg2) {
     return arg1 + arg2;
 }
@@ -56,29 +49,20 @@ while (i < 1000) {
 }
 ```
 
-In this example the `add` has been duplicated (split) in such a way that each
-type profile is contained in a separate copy of the function (`addInt` and
-`addString`). The result is that, come compilation time, only a single type
-profile is available for each function avoiding potentially costly type checks
-in the compiled code.
+In this example the `add` has been duplicated (split) in such a way that each type profile is contained in a separate copy of the function (`addInt` and `addString`).
+The result is that, come compilation time, only a single type profile is available for each function avoiding potentially costly type checks in the compiled code.
 
-Automating the detection suitable candidates, as well as their duplication,
-performed at run time is what we call monomorphization. It is, in other words,
-automated run-time monomorphization of polymorphic nodes through AST
-duplication.
+Automating the detection suitable candidates, as well as their duplication, performed at run time is what we call monomorphization.
+It is, in other words, automated run-time monomorphization of polymorphic nodes through AST duplication.
 
-## Example 1 - Monomorphization of arguments
+## Example 1 - Monomorphization of Arguments
 
-This example is an extended version of the illustration example from the
-previous section. The `add` function is still the target for monomorphization
-and is called from the `action` function 3 times with 3 sets of different
-arguments (numbers, strings and arrays). We execute the `action` function for 15
-seconds in order to have enough time for warmup, and afterwards execute it for
-60 seconds keeping track of how long each execution took, reporting finally the
-average. We execute this code twice: once with and once without monomorphization
-enabled, and report the output of these two runs as well as the speedup.
+This example is an extended version of the illustration example from the previous section.
+The `add` function is still the target for monomorphization and is called from the `action` function 3 times with 3 sets of different arguments (numbers, strings and arrays).
+Execute the `action` function for 15 seconds in order to have enough time for warmup, and afterwards execute it for 60 seconds keeping track of how long each execution took, reporting finally the average.
+Execute this code twice: once with and once without monomorphization enabled and report the output of these two runs as well as the speedup.
 
-```
+```js
 function add(arg1, arg2) {
     return arg1 + arg2;
 }
@@ -111,27 +95,20 @@ while ((Date.now() - start) < 60000 /* 60 seconds */) {
     sum += thisIterationTime;
 }
 console.log(sum / iterations);
-
 ```
-Output **without** monomorphization: 4.494225288735564
 
-Output **with** monomorphization: 4.2421633923
+The output **without** monomorphization is 4.494225288735564.
+The output **with** monomorphization is 4.2421633923.
+The speedup is ~5%.
 
-Speedup: ~5%
+## Example 2 - Monomorphization of Indirect Calls
 
-## Example 2 - Monomorphization of indirect calls
+This example is slightly more complicated and illustrates how monomorphization benefits higher order functions. In the example, the `insertionSort` function is defined, which - given an array of items and a function for comparing these items - sorts the array using insertion sort.
+Define an array of 1000 random double values between 0 and 1 and sort it four times using 4 different sorting methods (in the `action` function).
+Finally, as with the previous example, warm up the `action` function for 15 second, and report the average execution time of
+this function over the next 60 seconds with and without monomorphization.
 
-This example is slightly more complicated and illustrates how monomorphization
-benefits higher order functions. In the example, we define the `insertionSort`
-function, which - given an array of items and a function for comparing these
-items - sorts the array using insertion sort. We define an array of 1000 random
-double values between 0 and 1 and sort it four times using 4 different sorting
-methods (in the `action` function). Finally, as with the previous example, we
-warm up the `action` function for 15 second, and report the average execution
-time of this function over the next 60 seconds with and without
-monomorphization.
-
-```
+```js
 function insertionSort (items, comparator) {
     for (var i = 0; i < items.length; i++) {
         let value = items[i];
@@ -174,8 +151,7 @@ while ((Date.now() - start) < 60000 /* 60 seconds */) {
 }
 console.log(sum / iterations);
 ```
-Output **without** monomorphization: 194.05161290322582
 
-Output **with** monomorphization: 175.41071428571428
-
-Speedup: ~10%
+The output **without** monomorphization is 194.05161290322582.
+The output **with** monomorphization is 175.41071428571428.
+The speedup is ~10%.

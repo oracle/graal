@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,5 +64,11 @@ public final class MemoryProxyNode extends ProxyNode implements SingleMemoryKill
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return locationIdentity;
+    }
+
+    @Override
+    public ProxyNode duplicateOn(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
+        assert newOriginalNode instanceof MemoryKill;
+        return graph().addWithoutUniqueWithInputs(new MemoryProxyNode((MemoryKill) newOriginalNode, newProxyPoint, getKilledLocationIdentity()));
     }
 }

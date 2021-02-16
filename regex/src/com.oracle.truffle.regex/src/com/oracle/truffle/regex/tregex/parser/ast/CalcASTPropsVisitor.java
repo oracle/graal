@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 
 /**
@@ -183,7 +184,16 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(Group group) {
+        if (group.size() > 1) {
+            ast.getProperties().setAlternations();
+        }
+        if (group.getGroupNumber() > 0) {
+            ast.getProperties().setCaptureGroups();
+        }
         if (group.isDead()) {
+            if (group.getParent() != null) {
+                group.getParent().markAsDead();
+            }
             return;
         }
         int minPath = Integer.MAX_VALUE;
@@ -299,6 +309,16 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(LookBehindAssertion assertion) {
+        if (isForward() && !assertion.isDead()) {
+            if (assertion.isNegated()) {
+                ast.getProperties().setNegativeLookBehindAssertions();
+            } else {
+                ast.getProperties().setLookBehindAssertions();
+            }
+            if (!assertion.isLiteral()) {
+                ast.getProperties().setNonLiteralLookBehindAssertions();
+            }
+        }
         leaveLookAroundAssertion(assertion);
     }
 
@@ -311,6 +331,13 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(LookAheadAssertion assertion) {
+        if (isForward() && !assertion.isDead()) {
+            if (assertion.isNegated()) {
+                ast.getProperties().setNegativeLookAheadAssertions();
+            } else {
+                ast.getProperties().setLookAheadAssertions();
+            }
+        }
         leaveLookAroundAssertion(assertion);
     }
 
@@ -318,12 +345,26 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (isForward() && !assertion.isDead()) {
             ast.getLookArounds().add(assertion);
         }
-        int flags = assertion.isNegated() || assertion.isLookBehindAssertion() ? assertion.getFlags(OR_FLAGS) : assertion.getFlags(CHANGED_FLAGS);
+        int flags = assertion.isNegated() || assertion.isLookBehindAssertion() ? assertion.getFlags(OR_FLAGS | RegexASTNode.FLAG_DEAD) : assertion.getFlags(CHANGED_FLAGS);
         assertion.getParent().setFlags(flags | assertion.getParent().getFlags(CHANGED_FLAGS), CHANGED_FLAGS);
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
+        if (isForward()) {
+            if (!characterClass.getCharSet().matchesSingleChar()) {
+                if (!characterClass.getCharSet().matches2CharsWith1BitDifference()) {
+                    ast.getProperties().unsetCharClassesCanBeMatchedWithMask();
+                }
+                if (!ast.getEncoding().isFixedCodePointWidth(characterClass.getCharSet())) {
+                    ast.getProperties().unsetFixedCodePointWidth();
+                }
+                ast.getProperties().setCharClasses();
+            }
+            if (Constants.SURROGATES.intersects(characterClass.getCharSet())) {
+                ast.getProperties().setLoneSurrogates();
+            }
+        }
         if (characterClass.hasNotUnrolledQuantifier()) {
             characterClass.getParent().setHasQuantifiers();
             setQuantifierIndex(characterClass);

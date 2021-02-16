@@ -29,16 +29,15 @@ import java.util.List;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
-import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.UnsafePartitionKind;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
+import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -199,6 +198,18 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         protected abstract AbstractUnsafeStoreTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows);
 
         @Override
+        public void initClone(BigBang bb) {
+            /*
+             * Unsafe store type flow models unsafe writes to both instance and static fields. From
+             * an analysis stand point for static fields the base doesn't matter. An unsafe store
+             * can write to any of the static fields marked for unsafe access.
+             */
+            for (AnalysisField field : bb.getUniverse().getUnsafeAccessedStaticFields()) {
+                this.addUse(bb, field.getStaticFieldFlow().filterFlow(bb));
+            }
+        }
+
+        @Override
         public boolean addState(BigBang bb, TypeState add) {
             /* Only a clone should be updated */
             assert this.isClone();
@@ -311,7 +322,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
      */
     public static class AtomicWriteTypeFlow extends AbstractUnsafeStoreTypeFlow {
 
-        public AtomicWriteTypeFlow(AtomicReadAndWriteNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+        public AtomicWriteTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
             super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
@@ -335,7 +346,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         protected final UnsafePartitionKind partitionKind;
         protected final AnalysisType partitionType;
 
-        public UnsafePartitionStoreTypeFlow(AnalysisUnsafePartitionStoreNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow,
+        public UnsafePartitionStoreTypeFlow(UnsafePartitionStoreNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow,
                         UnsafePartitionKind partitionKind, AnalysisType partitionType) {
             super(node, objectType, componentType, objectFlow, valueFlow);
             this.partitionKind = partitionKind;

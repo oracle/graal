@@ -172,8 +172,7 @@ public final class QuantifierGuard {
             case exitEmptyMatch:
                 return Kind.enterEmptyMatch;
             default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalStateException();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 

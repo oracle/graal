@@ -42,6 +42,9 @@ public abstract class Domain {
 
     protected abstract void doDisable();
 
+    protected void notifyDisabled() {
+    }
+
     public final void enable() {
         if (!enabled) {
             enabled = true;
@@ -54,6 +57,7 @@ public abstract class Domain {
             enabled = false;
             doDisable();
         }
+        notifyDisabled();
     }
 
     public final boolean isEnabled() {

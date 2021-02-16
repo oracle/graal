@@ -24,13 +24,17 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.SubstrateOperatingSystemMXBean;
-import java.lang.management.OperatingSystemMXBean;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
+import java.util.Arrays;
+import java.util.List;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.management.ManagementFeature;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.jdk.management.SubstrateOperatingSystemMXBean;
 
 class WindowsSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean {
 
@@ -40,7 +44,12 @@ class WindowsSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBe
 @AutomaticFeature
 class WindowsSubstrateOperatingSystemMXBeanFeature implements Feature {
     @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Arrays.asList(ManagementFeature.class);
+    }
+
+    @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(OperatingSystemMXBean.class, new WindowsSubstrateOperatingSystemMXBean());
+        ManagementSupport.getSingleton().addPlatformManagedObjectSingleton(com.sun.management.OperatingSystemMXBean.class, new WindowsSubstrateOperatingSystemMXBean());
     }
 }

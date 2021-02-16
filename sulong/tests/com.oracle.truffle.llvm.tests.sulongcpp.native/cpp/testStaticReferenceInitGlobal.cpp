@@ -30,15 +30,15 @@
 #include <stdio.h>
 
 struct Klass {
-  Klass() : y(1) {
-  }
-  int x;
-  int y;
+    Klass() : y(1) {
+    }
+    int x;
+    int y;
 };
 
 Klass m;
 static Klass &k = m;
 
 int main() {
-  return k.x + k.y;
+    return k.x + k.y;
 }

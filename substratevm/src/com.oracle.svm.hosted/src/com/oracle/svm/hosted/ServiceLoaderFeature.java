@@ -31,8 +31,11 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -50,6 +53,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -74,6 +78,18 @@ import com.oracle.svm.hosted.analysis.Inflation;
  *
  * For each service interface, a single service loader file is added as a resource to the image. The
  * single file combines all the individual files that can come from different .jar files.
+ * 
+ * Unfortunately, state of the art module support in SVM is not sophisticated enough to allow the
+ * original ServiceLoader infrastructure to discover providers registered in modules. Therefore, as
+ * a temporary solution, we're disabling the ModuleServicesLookupIterator in favour of the
+ * LazyClassPathLookupIterator looking for files in META-INF directory. Therefore this feature
+ * writes all services, even the ones from modules, into the corresponding META-INF file. All of
+ * them are then discovered by the LazyClassPathLookupIterator. TODO fix this once GR-19320 is done
+ *
+ * One possible problem might be inconsistency between JVM and SVM, but since the lookup in JVM is
+ * very dynamic in nature (depends on from which classloader or module you are starting), it might
+ * not be possible for us to deliver services in the exact same order with "flat" single loader
+ * approach.
  */
 @AutomaticFeature
 public class ServiceLoaderFeature implements Feature {
@@ -84,7 +100,35 @@ public class ServiceLoaderFeature implements Feature {
 
         @Option(help = "When enabled, each service loader resource and class will be printed out to standard output", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
+
+        @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+        @Option(help = "Comma-separated list of service providers that should be excluded", type = OptionType.Expert) //
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
     }
+
+    /**
+     * Services that should not be processes here, for example because they are handled by
+     * specialized features.
+     */
+    private final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
+                    "java.security.Provider",                       // see SecurityServicesFeature
+                    "sun.util.locale.provider.LocaleDataMetaInfo",  // see LocaleSubstitutions
+                    "org.graalvm.nativeimage.Platform"  // shouldn't be reachable after
+                                                        // intrinsification
+    ));
+
+    // NOTE: Platform class had to be added to this list since our analysis discovers that
+    // Platform.includedIn is reachable regardless of fact that it is constant folded at
+    // registerPlatformPlugins method of SubstrateGraphBuilderPlugins. This issue hasn't manifested
+    // before because implementation classes were instantiated using runtime reflection instead of
+    // ServiceLoader (and thus weren't reachable in analysis).
+
+    private final Set<String> serviceProvidersToSkip = new HashSet<>(Arrays.asList(
+                    "com.sun.jndi.rmi.registry.RegistryContextFactory"      // GR-26547
+    ));
 
     /** Copy of private field {@code ServiceLoader.PREFIX}. */
     private static final String LOCATION_PREFIX = "META-INF/services/";
@@ -95,11 +139,33 @@ public class ServiceLoaderFeature implements Feature {
      */
     private final Map<AnalysisType, Boolean> processedTypes = new ConcurrentHashMap<>();
 
+    /**
+     * Known services and their providers declared using modules.
+     */
+    private Map<String, List<String>> serviceProviders;
+
     private final boolean trace = Options.TraceServiceLoaderFeature.getValue();
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return Options.UseServiceLoaderFeature.getValue();
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        // TODO write a more sophisticated include/exclude filter to handle cases like GR-27605 ?
+        servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
+        serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        serviceProviders = ModuleAccess.lookupServiceProviders(access);
+        if (trace) {
+            int services = serviceProviders.keySet().size();
+            int providers = serviceProviders.values().stream().mapToInt(List::size).sum();
+            System.out.println("ServiceLoaderFeature: Discovered " + services + " with " + providers + " service providers registered using modules");
+        }
     }
 
     @SuppressWarnings("try")
@@ -124,7 +190,7 @@ public class ServiceLoaderFeature implements Feature {
 
     @SuppressWarnings("try")
     private boolean handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
-        if (!type.isInTypeCheck() || type.isArray()) {
+        if (!type.isReachable() || type.isArray()) {
             /*
              * Type is not seen as used yet by the static analysis. Note that a constant class
              * literal is enough to register a type as "in type check". Arrays are also never
@@ -139,6 +205,13 @@ public class ServiceLoaderFeature implements Feature {
 
         String serviceClassName = type.toClassName();
         String serviceResourceLocation = LOCATION_PREFIX + serviceClassName;
+
+        if (servicesToSkip.contains(serviceClassName)) {
+            if (trace) {
+                System.out.println("ServiceLoaderFeature: Skipping service " + serviceClassName);
+            }
+            return false;
+        }
 
         /*
          * We are using a TreeSet to remove duplicate entries and to have a stable order for the
@@ -155,15 +228,23 @@ public class ServiceLoaderFeature implements Feature {
         try {
             resourceURLs = access.getImageClassLoader().getClassLoader().getResources(serviceResourceLocation);
         } catch (IOException ex) {
-            throw UserError.abort(ex, "Error loading service implementation resources for service `" + serviceClassName + "`");
+            throw UserError.abort(ex, "Error loading service implementation resources for service `%s`", serviceClassName);
         }
         while (resourceURLs.hasMoreElements()) {
             URL resourceURL = resourceURLs.nextElement();
             try {
                 implementationClassNames.addAll(parseServiceResource(resourceURL));
             } catch (IOException ex) {
-                throw UserError.abort(ex, "Error loading service implementations for service `" + serviceClassName + "` from URL `" + resourceURL + "`");
+                throw UserError.abort(ex, "Error loading service implementations for service `%s` from URL `%s`", serviceClassName, resourceURL);
             }
+        }
+
+        List<String> providers = serviceProviders.get(serviceClassName);
+        if (providers != null) {
+            if (trace) {
+                System.out.println("ServiceLoaderFeature: found service declared using java modules: " + serviceClassName + " with providers: " + providers);
+            }
+            implementationClassNames.addAll(providers);
         }
 
         if (implementationClassNames.size() == 0) {
@@ -194,13 +275,20 @@ public class ServiceLoaderFeature implements Feature {
                 continue;
             }
 
+            if (serviceProvidersToSkip.contains(implementationClassName)) {
+                if (trace) {
+                    System.out.println("  ignoring implementation class: " + implementationClassName);
+                }
+                continue;
+            }
+
             if (trace) {
                 System.out.println("  adding implementation class: " + implementationClassName);
             }
 
             Class<?> implementationClass = access.findClassByName(implementationClassName);
             if (implementationClass == null) {
-                throw UserError.abort("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+                throw UserError.abort("Could not find registered service implementation class `%s` for service `%s`", implementationClassName, serviceClassName);
             }
             try {
                 access.getMetaAccess().lookupJavaType(implementationClass);
@@ -216,6 +304,20 @@ public class ServiceLoaderFeature implements Feature {
                 continue;
             }
 
+            try {
+                /*
+                 * Check if the implementation class has a nullary constructor. The
+                 * ServiceLoaderFeature documentation specifies that "the only requirement enforced
+                 * is that provider classes must have a zero-argument constructor so that they can
+                 * be instantiated during loading". Since we eagerly scan all services we ignore
+                 * service classes that don't respect the requirement. On HotSpot trying to load
+                 * such a service would lead to a ServiceConfigurationError.
+                 */
+                implementationClass.getDeclaredConstructor();
+            } catch (NoSuchMethodException ex) {
+                continue;
+            }
+
             /* Allow Class.forName at run time for the service implementation. */
             RuntimeReflection.register(implementationClass);
             /* Allow reflective instantiation at run time for the service implementation. */
@@ -224,6 +326,7 @@ public class ServiceLoaderFeature implements Feature {
             /* Add line to the new resource that will be available at run time. */
             newResourceValue.append(implementationClass.getName());
             newResourceValue.append('\n');
+
         }
 
         DebugContext debugContext = access.getDebugContext();

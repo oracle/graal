@@ -219,4 +219,40 @@ public interface Commands {
      */
     String OPTION_SHOW_VERSION = "#";
     String LONG_OPTION_SHOW_VERSION = "show-version";
+
+    /**
+     * Will not fail, if at least one of the catalogs can be read.
+     */
+    String OPTION_IGNORE_CATALOG_ERRORS = "E";
+    String LONG_OPTION_IGNORE_CATALOG_ERRORS = "no-catalog-errors";
+
+    /**
+     * Use specific edition.
+     */
+    String OPTION_USE_EDITION = "$";
+    String LONG_OPTION_USE_EDITION = "edition";
+
+    /**
+     * Show the core component.
+     */
+    String OPTION_SHOW_CORE = "%";
+    String LONG_OPTION_SHOW_CORE = "show-core";
+
+    /**
+     * Show updates to components. Implies --show-core.
+     */
+    String OPTION_SHOW_UPDATES = "&";
+    String LONG_OPTION_SHOW_UPDATES = "show-updates";
+
+    /**
+     * Install into target directory.
+     */
+    String OPTION_TARGET_DIRECTORY = "d";
+    String LONG_OPTION_TARGET_DIRECTORY = "target-dir";
+
+    /**
+     * Do not create or update symlink.
+     */
+    String OPTION_NO_SYMLINK = "S";
+    String LONG_OPTION_NO_SYMLINK = "no-symlink";
 }

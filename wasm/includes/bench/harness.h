@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,48 +44,35 @@
 
 // ------------------------
 // The following methods
-// can be called inside
-// the benchmarks.
-// ------------------------
-
-#ifdef DISABLE_TEST_API
-void __testutil_save_binary_file(char* filename, unsigned char* data, int size) {
-}
-#else
-extern void __testutil_save_binary_file(char* filename, unsigned char* data, int size);
-#endif
-
-// ------------------------
-// The following methods
 // must be implemented
 // by the benchmarks.
 // ------------------------
 
-int benchmarkWarmupCount();
+int benchmarkIterationsCount();
 
 void benchmarkSetupOnce();
 
 void benchmarkSetupEach();
 
-void benchmarkTeardownEach();
+void benchmarkTeardownEach(char* outputFile);
 
 int benchmarkRun();
 
 // -------------------------
 // Function pointer list.
 //
-// This is done to prevent the deoptimization of these functions.
+// This is done to prevent the optimization of these functions.
 // They need to be called by the harness programmatically,
 // which means that it must be possible to look them up.
 // -------------------------
 
-int (*functionWarmupCount)() = benchmarkWarmupCount;
+int (*functionIterationsCount)() = benchmarkIterationsCount;
 
 void (*functionSetupOnce)() = benchmarkSetupOnce;
 
 void (*functionSetupEach)() = benchmarkSetupEach;
 
-void (*functionTeardownEach)() = benchmarkTeardownEach;
+void (*functionTeardownEach)(char* outputFile) = benchmarkTeardownEach;
 
 int (*functionRun)() = benchmarkRun;
 
@@ -93,31 +80,41 @@ int (*functionRun)() = benchmarkRun;
 // End of the function pointer list.
 // -------------------------
 
-void runIteration(char* label, int i) {
-  functionSetupEach();
-  struct timeval start, end;
-  gettimeofday(&start, NULL);
-  int result = functionRun();
-  gettimeofday(&end, NULL);
-  long start_t = start.tv_sec * 1000000 + start.tv_usec;
-  long end_t = end.tv_sec * 1000000 + end.tv_usec;
-  double time = (end_t - start_t) / 1000000.0;
-  printf("%s: %d, result = %d, sec = %.3f, ops / sec = %.3f\n",
-    label, i, result, time, 1.0 / time);
-  functionTeardownEach();
-}
+int main(int argc, char* argv[]) {
+  int iterations = functionIterationsCount();
+  if (argc > 1) {
+    iterations = atoi(argv[1]);
+  }
+  printf("Will run %d iterations.\n", iterations);
 
-int main() {
-  functionSetupOnce();
-
-  // Execute warmup.
-  for (int i = 0; i != functionWarmupCount(); ++i) {
-    runIteration("warmup", i);
+  char* outputFile = NULL;
+  if (argc > 2) {
+    outputFile = argv[2];
   }
 
-  // Execute the benchmark itself.
-  runIteration("final run", 0);
+  if (iterations == 0) {
+    return 0;
+  }
+
+  functionSetupOnce();
+
+  for (int i = 0; i != iterations; ++i) {
+    functionSetupEach();
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+
+    int result = functionRun();
+
+    gettimeofday(&end, NULL);
+
+    long start_t = start.tv_sec * 1000000 + start.tv_usec;
+    long end_t = end.tv_sec * 1000000 + end.tv_usec;
+    double time = (end_t - start_t) / 1000000.0;
+
+    printf("Iteration %d, result = %d, sec = %.3f, ops / sec = %.3f\n", i, result, time, 1.0 / time);
+
+    functionTeardownEach(outputFile);
+  }
 
   return 0;
 }
-

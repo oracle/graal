@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,9 +38,15 @@ public interface TruffleCompiler {
     /**
      * Initializes the compiler before the first compilation.
      *
+     * @param options the options for initialization
+     * @param compilation the Truffle AST that triggered the initialization
+     * @param firstInitialization first initialization. For a multi-isolate compiler the
+     *            {@code firstInitialization} must be {@code true} for an initialization in the
+     *            first isolate and {@code false} for an initialization in the following isolates.
+     *
      * @since 20.0.0
      */
-    void initialize(Map<String, Object> options);
+    void initialize(Map<String, Object> options, CompilableTruffleAST compilation, boolean firstInitialization);
 
     /**
      * Opens a new compilation for {@code compilable}. Each call results in a new compilation
@@ -77,7 +83,7 @@ public interface TruffleCompiler {
      *            compilation is cancelled
      * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleInliningPlan inlining, TruffleCompilationTask task,
+    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleMetaAccessProvider inlining, TruffleCompilationTask task,
                     TruffleCompilerListener listener);
 
     /**
@@ -87,7 +93,7 @@ public interface TruffleCompiler {
 
     /**
      * Notifies this object that it will no longer being used and should thus perform all relevant
-     * finalization tasks.
+     * finalization tasks. This is typically performed when the process exits.
      */
     void shutdown();
 }

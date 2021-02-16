@@ -66,6 +66,9 @@ public class Unistd {
     public static native int _SC_CLK_TCK();
 
     @CConstant
+    public static native int _SC_OPEN_MAX();
+
+    @CConstant
     public static native int _SC_PAGESIZE();
 
     @CConstant
@@ -108,9 +111,6 @@ public class Unistd {
 
     @CFunction
     public static native int getpagesize();
-
-    @CFunction
-    public static native int getdtablesize();
 
     @CFunction
     public static native int sleep(int seconds);

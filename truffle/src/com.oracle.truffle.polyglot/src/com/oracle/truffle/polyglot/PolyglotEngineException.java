@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.polyglot;
 
-import org.graalvm.polyglot.Context;
-
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import org.graalvm.polyglot.Context;
+
+import java.util.ConcurrentModificationException;
+import java.util.NoSuchElementException;
 
 /**
  * Represents an expected user exception caused by the polyglot engine. It is wrapped such that it
@@ -96,10 +98,16 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 final class PolyglotEngineException extends RuntimeException {
 
     final RuntimeException e;
+    final boolean closingContext;
 
     private PolyglotEngineException(RuntimeException e) {
+        this(e, false);
+    }
+
+    private PolyglotEngineException(RuntimeException e, boolean closingContext) {
         super(null, e);
         this.e = e;
+        this.closingContext = closingContext;
     }
 
     @SuppressWarnings("sync-override")
@@ -126,6 +134,10 @@ final class PolyglotEngineException extends RuntimeException {
         return new PolyglotEngineException(new IllegalStateException(message));
     }
 
+    static PolyglotEngineException illegalState(String message, boolean closingContext) {
+        return new PolyglotEngineException(new IllegalStateException(message), closingContext);
+    }
+
     static PolyglotEngineException nullPointer(String message) {
         return new PolyglotEngineException(new NullPointerException(message));
     }
@@ -146,4 +158,15 @@ final class PolyglotEngineException extends RuntimeException {
         return new PolyglotEngineException(new ArrayIndexOutOfBoundsException(message));
     }
 
+    static PolyglotEngineException bufferIndexOutOfBounds(String message) {
+        return new PolyglotEngineException(new IndexOutOfBoundsException(message));
+    }
+
+    static PolyglotEngineException noSuchElement(String message) {
+        return new PolyglotEngineException(new NoSuchElementException(message));
+    }
+
+    static PolyglotEngineException concurrentModificationException(String message) {
+        return new PolyglotEngineException((new ConcurrentModificationException(message)));
+    }
 }

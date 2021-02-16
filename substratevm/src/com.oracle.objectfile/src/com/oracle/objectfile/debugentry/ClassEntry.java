@@ -26,70 +26,75 @@
 
 package com.oracle.objectfile.debugentry;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import org.graalvm.compiler.debug.DebugContext;
 
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * track debug info associated with a Java class.
+ * Track debug info associated with a Java class.
  */
-public class ClassEntry {
+public class ClassEntry extends StructureTypeEntry {
     /**
-     * the name of the associated class.
+     * Details of this class's superclass.
      */
-    private String className;
+    protected ClassEntry superClass;
     /**
-     * details of the associated file.
+     * Details of this class's interfaces.
+     */
+    protected LinkedList<InterfaceClassEntry> interfaces;
+    /**
+     * Details of the associated file.
      */
     private FileEntry fileEntry;
     /**
-     * a list recording details of all primary ranges included in this class sorted by ascending
+     * Details of methods located in this instance.
+     */
+    protected List<MethodEntry> methods;
+    /**
+     * A list recording details of all primary ranges included in this class sorted by ascending
      * address range.
      */
     private LinkedList<PrimaryEntry> primaryEntries;
     /**
-     * an index identifying primary ranges which have already been encountered.
+     * An index identifying primary ranges which have already been encountered.
      */
     private Map<Range, PrimaryEntry> primaryIndex;
     /**
-     * an index of all primary and secondary files referenced from this class's compilation unit.
+     * An index of all primary and secondary files referenced from this class's compilation unit.
      */
     private Map<FileEntry, Integer> localFilesIndex;
     /**
-     * a list of the same files.
+     * A list of the same files.
      */
     private LinkedList<FileEntry> localFiles;
     /**
-     * an index of all primary and secondary dirs referenced from this class's compilation unit.
+     * An index of all primary and secondary dirs referenced from this class's compilation unit.
      */
     private HashMap<DirEntry, Integer> localDirsIndex;
     /**
-     * a list of the same dirs.
+     * A list of the same dirs.
      */
     private LinkedList<DirEntry> localDirs;
     /**
-     * index of debug_info section compilation unit for this class.
+     * This flag is true iff the entry includes methods that are deopt targets.
      */
-    private int cuIndex;
-    /**
-     * index into debug_line section for associated compilation unit.
-     */
-    private int lineIndex;
-    /**
-     * size of line number info prologue region for associated compilation unit.
-     */
-    private int linePrologueSize;
-    /**
-     * total size of line number info region for associated compilation unit.
-     */
-    private int totalSize;
+    private boolean includesDeoptTarget;
 
-    public ClassEntry(String className, FileEntry fileEntry) {
-        this.className = className;
+    public ClassEntry(String className, FileEntry fileEntry, int size) {
+        super(className, size);
+        this.interfaces = new LinkedList<>();
         this.fileEntry = fileEntry;
+        this.methods = new LinkedList<>();
         this.primaryEntries = new LinkedList<>();
         this.primaryIndex = new HashMap<>();
         this.localFiles = new LinkedList<>();
@@ -105,39 +110,70 @@ public class ClassEntry {
                 localDirsIndex.put(dirEntry, localDirs.size());
             }
         }
-        this.cuIndex = -1;
-        this.lineIndex = -1;
-        this.linePrologueSize = -1;
-        this.totalSize = -1;
     }
 
-    public void addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    @Override
+    public DebugTypeKind typeKind() {
+        return DebugTypeKind.INSTANCE;
+    }
+
+    @Override
+    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        assert TypeEntry.canonicalize(debugTypeInfo.typeName()).equals(typeName);
+        DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
+        /* Add details of super and interface classes */
+        String superName = debugInstanceTypeInfo.superName();
+        if (superName != null) {
+            superName = TypeEntry.canonicalize(superName);
+        }
+        debugContext.log("typename %s adding super %s\n", typeName, superName);
+        if (superName != null) {
+            this.superClass = debugInfoBase.lookupClassEntry(superName);
+        }
+        debugInstanceTypeInfo.interfaces().forEach(interfaceName -> processInterface(interfaceName, debugInfoBase, debugContext));
+        /* Add details of fields and field types */
+        debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
+        /* Add details of methods and method types */
+        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.processMethod(methodFieldInfo, debugInfoBase, debugContext));
+    }
+
+    public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (primaryIndex.get(primary) == null) {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
             primaryEntries.add(primaryEntry);
             primaryIndex.put(primary, primaryEntry);
+            if (primary.isDeoptTarget()) {
+                includesDeoptTarget = true;
+            } else {
+                /* deopt targets should all come after normal methods */
+                assert includesDeoptTarget == false;
+            }
+            FileEntry primaryFileEntry = primary.getFileEntry();
+            assert primaryFileEntry != null;
+            indexLocalFileEntry(primaryFileEntry);
         }
     }
 
-    public void addSubRange(Range subrange, FileEntry subFileEntry) {
+    public void indexSubRange(Range subrange) {
         Range primary = subrange.getPrimary();
-        /*
-         * the subrange should belong to a primary range
-         */
+        /* The subrange should belong to a primary range. */
         assert primary != null;
         PrimaryEntry primaryEntry = primaryIndex.get(primary);
-        /*
-         * we should already have seen the primary range
-         */
+        /* We should already have seen the primary range. */
         assert primaryEntry != null;
         assert primaryEntry.getClassEntry() == this;
-        primaryEntry.addSubRange(subrange, subFileEntry);
+        primaryEntry.addSubRange(subrange);
+        FileEntry subFileEntry = subrange.getFileEntry();
         if (subFileEntry != null) {
-            if (localFilesIndex.get(subFileEntry) == null) {
-                localFiles.add(subFileEntry);
-                localFilesIndex.put(subFileEntry, localFiles.size());
-            }
-            DirEntry dirEntry = subFileEntry.getDirEntry();
+            indexLocalFileEntry(subFileEntry);
+        }
+    }
+
+    private void indexLocalFileEntry(FileEntry localFileEntry) {
+        if (localFilesIndex.get(localFileEntry) == null) {
+            localFiles.add(localFileEntry);
+            localFilesIndex.put(localFileEntry, localFiles.size());
+            DirEntry dirEntry = localFileEntry.getDirEntry();
             if (dirEntry != null && localDirsIndex.get(dirEntry) == null) {
                 localDirs.add(dirEntry);
                 localDirsIndex.put(dirEntry, localDirs.size());
@@ -151,6 +187,10 @@ public class ClassEntry {
         } else {
             return 0;
         }
+    }
+
+    public int localFilesIdx() {
+        return localFilesIndex.get(fileEntry);
     }
 
     public int localFilesIdx(@SuppressWarnings("hiding") FileEntry fileEntry) {
@@ -183,55 +223,15 @@ public class ClassEntry {
         }
     }
 
-    public void setCUIndex(int cuIndex) {
-        // Should only get set once to a non-negative value.
-        assert cuIndex >= 0;
-        assert this.cuIndex == -1;
-        this.cuIndex = cuIndex;
-    }
-
-    public int getCUIndex() {
-        // Should have been set before being read.
-        assert cuIndex >= 0;
-        return cuIndex;
-    }
-
-    public int getLineIndex() {
-        return lineIndex;
-    }
-
-    public void setLineIndex(int lineIndex) {
-        this.lineIndex = lineIndex;
-    }
-
-    public void setLinePrologueSize(int linePrologueSize) {
-        this.linePrologueSize = linePrologueSize;
-    }
-
-    public int getLinePrologueSize() {
-        return linePrologueSize;
-    }
-
-    public int getTotalSize() {
-        return totalSize;
-    }
-
-    public void setTotalSize(int totalSize) {
-        this.totalSize = totalSize;
-    }
-
     public FileEntry getFileEntry() {
         return fileEntry;
-    }
-
-    public String getClassName() {
-        return className;
     }
 
     public LinkedList<PrimaryEntry> getPrimaryEntries() {
         return primaryEntries;
     }
 
+    @SuppressWarnings("unused")
     public Object primaryIndexFor(Range primaryRange) {
         return primaryIndex.get(primaryRange);
     }
@@ -242,5 +242,120 @@ public class ClassEntry {
 
     public LinkedList<FileEntry> getLocalFiles() {
         return localFiles;
+    }
+
+    public boolean includesDeoptTarget() {
+        return includesDeoptTarget;
+    }
+
+    public String getCachePath() {
+        if (fileEntry != null) {
+            Path cachePath = fileEntry.getCachePath();
+            if (cachePath != null) {
+                return cachePath.toString();
+            }
+        }
+        return "";
+    }
+
+    private void processInterface(String interfaceName, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        debugContext.log("typename %s adding interface %s\n", typeName, interfaceName);
+        ClassEntry entry = debugInfoBase.lookupClassEntry(TypeEntry.canonicalize(interfaceName));
+        assert entry instanceof InterfaceClassEntry;
+        InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) entry;
+        interfaces.add(interfaceClassEntry);
+        interfaceClassEntry.addImplementor(this, debugContext);
+    }
+
+    protected void processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
+        String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
+        int modifiers = debugMethodInfo.modifiers();
+        List<String> paramTypes = debugMethodInfo.paramTypes();
+        List<String> paramNames = debugMethodInfo.paramNames();
+        assert paramTypes.size() == paramNames.size();
+        int paramCount = paramTypes.size();
+        debugContext.log("typename %s adding %s method %s %s(%s)\n",
+                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramTypes, paramNames));
+        TypeEntry resultType = debugInfoBase.lookupTypeEntry(resultTypeName);
+        TypeEntry[] paramTypeArray = new TypeEntry[paramCount];
+        String[] paramNameArray = new String[paramCount];
+        int idx = 0;
+        for (String paramTypeName : paramTypes) {
+            TypeEntry paramType = debugInfoBase.lookupTypeEntry(TypeEntry.canonicalize(paramTypeName));
+            paramTypeArray[idx++] = paramType;
+        }
+        paramNameArray = paramNames.toArray(paramNameArray);
+        String fileName = debugMethodInfo.fileName();
+        Path filePath = debugMethodInfo.filePath();
+        Path cachePath = debugMethodInfo.cachePath();
+        /*
+         * n.b. the method file may differ from the owning class file when the method is a
+         * substitution
+         */
+        FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
+        methods.add(new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers));
+    }
+
+    @Override
+    protected FieldEntry addField(DebugInfoProvider.DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        FieldEntry fieldEntry = super.addField(debugFieldInfo, debugInfoBase, debugContext);
+        FileEntry fieldFileEntry = fieldEntry.getFileEntry();
+        if (fieldFileEntry != null) {
+            indexLocalFileEntry(fieldFileEntry);
+        }
+        return fieldEntry;
+    }
+
+    private static String formatParams(List<String> paramTypes, List<String> paramNames) {
+        if (paramNames.size() == 0) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        String separator = "";
+        for (int i = 0; i < paramNames.size(); i++) {
+            builder.append(separator);
+            builder.append(paramTypes.get(i));
+            String paramName = paramNames.get(i);
+            if (paramName.length() > 0) {
+                builder.append(' ');
+                builder.append(paramName);
+            }
+            separator = ", ";
+        }
+
+        return builder.toString();
+    }
+
+    public boolean isPrimary() {
+        return primaryEntries.size() != 0;
+    }
+
+    public ClassEntry getSuperClass() {
+        return superClass;
+    }
+
+    public Range makePrimaryRange(String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry primaryFileEntry, int lo,
+                    int hi, int primaryLine,
+                    int modifiers, boolean isDeoptTarget) {
+        FileEntry fileEntryToUse = primaryFileEntry;
+        if (fileEntryToUse == null) {
+            /*
+             * Search for a matching method to supply the file entry or failing that use the one
+             * from this class.
+             */
+            for (MethodEntry methodEntry : methods) {
+                if (methodEntry.match(methodName, paramSignature, returnTypeName)) {
+                    /* maybe the method's file entry */
+                    fileEntryToUse = methodEntry.getFileEntry();
+                    break;
+                }
+            }
+            if (fileEntryToUse == null) {
+                /* Last chance is the class's file entry. */
+                fileEntryToUse = this.fileEntry;
+            }
+        }
+        return new Range(this.typeName, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntryToUse, lo, hi, primaryLine, modifiers, isDeoptTarget);
     }
 }

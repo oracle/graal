@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -142,8 +143,7 @@ public final class SLLanguageView implements TruffleObject {
                         return type.getName();
                     }
                 } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError();
+                    throw shouldNotReachHere(e);
                 }
             }
         }
@@ -172,8 +172,7 @@ public final class SLLanguageView implements TruffleObject {
         try {
             return !interop.hasLanguage(value) || interop.getLanguage(value) != SLLanguage.class;
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
     }
 
@@ -195,8 +194,7 @@ public final class SLLanguageView implements TruffleObject {
                 return create(value);
             }
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
     }
 

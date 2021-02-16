@@ -66,6 +66,8 @@ public interface LoweringTool {
 
     AnchoringNode getCurrentGuardAnchor();
 
+    boolean lowerOptimizableMacroNodes();
+
     /**
      * Marker interface lowering stages.
      */

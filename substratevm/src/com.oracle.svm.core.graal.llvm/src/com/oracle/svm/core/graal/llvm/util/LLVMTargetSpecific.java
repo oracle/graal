@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -221,7 +222,13 @@ class LLVMAArch64TargetSpecificFeature implements Feature {
 
             @Override
             public List<String> getLLCAdditionalOptions() {
-                return Collections.singletonList("--frame-pointer=all");
+                List<String> list = new ArrayList<>();
+                list.add("--frame-pointer=all");
+                list.add("--aarch64-frame-record-on-top");
+                if (Platform.includedIn(Platform.IOS.class)) {
+                    list.add("-mtriple=arm64-ios");
+                }
+                return list;
             }
 
             @Override

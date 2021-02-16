@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,18 +28,23 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int sum = 0;
-  if (0 && sum++) {
-    sum += 2;
-  }
-  if (1 && 2 && 3 && 4 && 5) {
-    sum += 4;
-  }
-  if (5 && 4 && 3 && 0) {
-    sum += 8;
-  }
-  if (!sum && !sum) {
-    sum += 16;
-  }
-  return sum;
+    int sum = 0;
+    if (0 && sum++) {
+        sum += 2;
+    }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconstant-logical-operand"
+    if (1 && 2 && 3 && 4 && 5) {
+        sum += 4;
+    }
+    if (5 && 4 && 3 && 0) {
+        sum += 8;
+    }
+#pragma clang diagnostic pop
+
+    if (!sum && !sum) {
+        sum += 16;
+    }
+    return sum;
 }

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -52,6 +53,9 @@ public class ImageCodeInfo {
 
     @UnknownPrimitiveField private CodePointer codeStart;
     @UnknownPrimitiveField private UnsignedWord codeSize;
+    @UnknownPrimitiveField private UnsignedWord dataOffset;
+    @UnknownPrimitiveField private UnsignedWord dataSize;
+    @UnknownPrimitiveField private UnsignedWord codeAndDataMemorySize;
 
     private final Object[] objectFields;
     @UnknownObjectField(types = {byte[].class}) byte[] codeInfoIndex;
@@ -65,7 +69,7 @@ public class ImageCodeInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
-        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(CodeInfoImpl.OBJFIELDS_COUNT);
+        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT);
         NonmovableArrays.setObject(objfields, CodeInfoImpl.NAME_OBJFIELD, CODE_INFO_NAME);
         // The image code info is never invalidated, so we consider it as always tethered.
         NonmovableArrays.setObject(objfields, CodeInfoImpl.TETHER_OBJFIELD, new CodeInfoTether(true));
@@ -84,9 +88,12 @@ public class ImageCodeInfo {
         info.setObjectFields(NonmovableArrays.fromImageHeap(objectFields));
         info.setCodeStart(codeStart);
         info.setCodeSize(codeSize);
+        info.setDataOffset(dataOffset);
+        info.setDataSize(dataSize);
+        info.setCodeAndDataMemorySize(codeAndDataMemorySize);
         info.setCodeInfoIndex(NonmovableArrays.fromImageHeap(codeInfoIndex));
         info.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(codeInfoEncodings));
-        info.setReferenceMapEncoding(NonmovableArrays.fromImageHeap(referenceMapEncoding));
+        info.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(referenceMapEncoding));
         info.setFrameInfoEncodings(NonmovableArrays.fromImageHeap(frameInfoEncodings));
         info.setFrameInfoObjectConstants(NonmovableArrays.fromImageHeap(frameInfoObjectConstants));
         info.setFrameInfoSourceClasses(NonmovableArrays.fromImageHeap(frameInfoSourceClasses));
@@ -121,7 +128,22 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public NonmovableArray<Byte> getReferenceMapEncoding() {
+        public UnsignedWord getDataOffset() {
+            return dataOffset;
+        }
+
+        @Override
+        public UnsignedWord getDataSize() {
+            return dataSize;
+        }
+
+        @Override
+        public UnsignedWord getCodeAndDataMemorySize() {
+            return codeAndDataMemorySize;
+        }
+
+        @Override
+        public NonmovableArray<Byte> getStackReferenceMapEncoding() {
             return NonmovableArrays.fromImageHeap(referenceMapEncoding);
         }
 
@@ -133,6 +155,21 @@ public class ImageCodeInfo {
         @Override
         public void setCodeSize(UnsignedWord value) {
             codeSize = value;
+        }
+
+        @Override
+        public void setDataOffset(UnsignedWord value) {
+            dataOffset = value;
+        }
+
+        @Override
+        public void setDataSize(UnsignedWord value) {
+            dataSize = value;
+        }
+
+        @Override
+        public void setCodeAndDataMemorySize(UnsignedWord value) {
+            codeAndDataMemorySize = value;
         }
 
         @Override
@@ -156,7 +193,7 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public void setReferenceMapEncoding(NonmovableArray<Byte> array) {
+        public void setStackReferenceMapEncoding(NonmovableArray<Byte> array) {
             referenceMapEncoding = NonmovableArrays.getHostedArray(array);
         }
 
@@ -241,22 +278,22 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public NonmovableArray<Byte> getObjectsReferenceMapEncoding() {
+        public NonmovableArray<Byte> getCodeConstantsReferenceMapEncoding() {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
         @Override
-        public void setObjectsReferenceMapEncoding(NonmovableArray<Byte> objectsReferenceMapEncoding) {
+        public void setCodeConstantsReferenceMapEncoding(NonmovableArray<Byte> objectsReferenceMapEncoding) {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
         @Override
-        public long getObjectsReferenceMapIndex() {
+        public long getCodeConstantsReferenceMapIndex() {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
         @Override
-        public void setObjectsReferenceMapIndex(long objectsReferenceMapIndex) {
+        public void setCodeConstantsReferenceMapIndex(long objectsReferenceMapIndex) {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
@@ -297,6 +334,21 @@ public class ImageCodeInfo {
 
         @Override
         public void setCodeObserverHandles(NonmovableArray<InstalledCodeObserver.InstalledCodeObserverHandle> handles) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public Word getGCData() {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setAllObjectsAreInImageHeap(boolean value) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public boolean getAllObjectsAreInImageHeap() {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 

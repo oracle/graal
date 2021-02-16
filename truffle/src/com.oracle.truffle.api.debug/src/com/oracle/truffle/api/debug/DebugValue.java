@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -213,7 +213,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -233,7 +233,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -258,7 +258,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -280,7 +280,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -305,7 +305,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not an int", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -326,7 +326,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -351,7 +351,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a boolean", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -373,7 +373,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -395,7 +395,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -420,7 +420,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a long", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -442,7 +442,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -467,7 +467,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a double", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -489,7 +489,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -514,7 +514,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a float", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -536,7 +536,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -561,7 +561,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a byte", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -583,7 +583,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -608,7 +608,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a short", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage());
         }
     }
 
@@ -630,7 +630,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -655,7 +655,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a date", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -677,7 +677,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -702,7 +702,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a time", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -744,7 +744,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not an instant", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -768,7 +768,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -792,7 +792,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a time", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -815,7 +815,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -839,7 +839,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a time", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -864,7 +864,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -890,7 +890,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a metaobject", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -916,7 +916,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a metaobject", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -944,7 +944,7 @@ public abstract class DebugValue {
         } catch (UnsupportedMessageException uex) {
             throw new UnsupportedOperationException("Not a metaobject", uex);
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -989,15 +989,15 @@ public abstract class DebugValue {
         }
         Object value = get();
         try {
-            return getProperties(value, getSession(), resolveLanguage(), null);
+            return getProperties(value, null, getSession(), resolveLanguage(), null);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
-    static ValuePropertiesCollection getProperties(Object value, DebuggerSession session, LanguageInfo language, DebugScope scope) {
+    static ValuePropertiesCollection getProperties(Object value, String receiverName, DebuggerSession session, LanguageInfo language, DebugScope scope) {
         if (INTEROP.hasMembers(value)) {
             Object keys;
             try {
@@ -1005,7 +1005,7 @@ public abstract class DebugValue {
             } catch (UnsupportedMessageException e) {
                 return null;
             }
-            return new ValuePropertiesCollection(session, language, value, keys, scope);
+            return new ValuePropertiesCollection(session, language, value, keys, receiverName, scope);
         }
         return null;
     }
@@ -1033,7 +1033,7 @@ public abstract class DebugValue {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
         } else {
             return null;
@@ -1080,10 +1080,12 @@ public abstract class DebugValue {
      * you want to utilize the Debugger API directly from within a guest language, or if you are an
      * instrument bound/dependent on a specific language.
      *
+     * This method is opposite to {@link DebugScope#convertRawValue(Class, Object)} where a raw
+     * guest language value is wrapped in a DebugValue.
+     *
      * @param languageClass the Truffle language class for a given guest language
      * @return the guest language object or null if the language differs from the language that
      *         created the underlying {@link DebugValue}
-     *
      * @since 20.1
      */
     public Object getRawValue(Class<? extends TruffleLanguage<?>> languageClass) {
@@ -1124,7 +1126,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -1171,7 +1173,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
         return null;
     }
@@ -1197,7 +1199,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -1217,7 +1219,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -1242,7 +1244,7 @@ public abstract class DebugValue {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -1344,7 +1346,7 @@ public abstract class DebugValue {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
             throw new UnsupportedOperationException();
         }
@@ -1483,7 +1485,7 @@ public abstract class DebugValue {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -1538,7 +1540,7 @@ public abstract class DebugValue {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -1550,7 +1552,7 @@ public abstract class DebugValue {
                 INTEROP.writeMember(object, member, primitiveValue);
                 resetCachedValue();
             } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -1587,7 +1589,7 @@ public abstract class DebugValue {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -1642,7 +1644,7 @@ public abstract class DebugValue {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -1654,7 +1656,7 @@ public abstract class DebugValue {
                 INTEROP.writeArrayElement(array, index, primitiveValue);
                 resetCachedValue();
             } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+                throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
             }
         }
 

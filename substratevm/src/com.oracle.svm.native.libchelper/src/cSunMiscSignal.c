@@ -93,6 +93,9 @@ static volatile long cSunMiscSignal_table[NSIG];
 
 /* A semaphore to notify of increments to the map. */
 static sem_t* cSunMiscSignal_semaphore = NULL;
+#ifdef __linux__
+static sem_t cSunMiscSignal_semaphore_value;
+#endif
 
 /*
  * Public functions.
@@ -109,18 +112,19 @@ int cSunMiscSignal_open() {
 		  cSunMiscSignal_table[i] = 0;
 		  i += 1;
 	    }
-#if POSIX_C_SOURCE >= 200112L
-		/* Create an anonymous semaphore. */
-		cSunMiscSignal_semaphore = malloc(sizeof(sem_t));
-		if (! cSunMiscSignal_semaphore) {
-			return -1;
-		}
-		if (! sem_init(cSunMiscSemaphore, 0)) {
-			free(cSunMiscSignal_semaphore);
+#ifdef __linux__
+		/*
+		 * Linux supports unnamed semaphore.
+		 */
+		cSunMiscSignal_semaphore = &cSunMiscSignal_semaphore_value;
+		if (sem_init(cSunMiscSignal_semaphore, 0, 0) != 0) {
 			cSunMiscSignal_semaphore = NULL;
 			return -1;
 		}
-#else /* POSIX_C_SOURCE >= 200112L */
+#else /* __linux__ */
+		/*
+		 * Use named semaphore elsewhere (e.g. OSX).
+		 */
 		/* Get a process-specific name for the semaphore. */
 		char cSunMiscSignal_semaphoreName[NAME_MAX];
 		const char* const nameFormat = "/cSunMiscSignal-%d";
@@ -141,7 +145,7 @@ int cSunMiscSignal_open() {
 		if (unlinkResult != 0) {
 			return unlinkResult;
 		}
-#endif /* POSIX_C_SOURCE >= 200112L */
+#endif /* __linux__ */
 		return 0;
 	}
 	errno = EBUSY;
@@ -151,17 +155,14 @@ int cSunMiscSignal_open() {
 /* Close the C signal handler mechanism. */
 int cSunMiscSignal_close() {
 	if (haveSemaphore()) {
-#if POSIX_C_SOURCE >= 200112L
+#ifdef __linux__
 		int const semCloseResult = sem_destroy(cSunMiscSignal_semaphore);
-#else /* POSIX_C_SOURCE >= 200112L */
+#else /* __linux__ */
 		int const semCloseResult = sem_close(cSunMiscSignal_semaphore);
-#endif /* POSIX_C_SOURCE >= 200112L */
+#endif /* __linux__ */
 		if (semCloseResult != 0) {
 			return semCloseResult;
 		}
-#if POSIX_C_SOURCE >= 200112L
-		free(cSunMiscSignal_semaphore);
-#endif /* POSIX_C_SOURCE >= 200112L */
 		cSunMiscSignal_semaphore = NULL;
 	}
 

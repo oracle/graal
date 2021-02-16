@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,7 +139,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
         for (int j = 1; j < 100; j++) {
 
-            target.invalidate(this, "test");
+            target.invalidate("test");
             for (int i = 0; i < reprofileCount; i++) {
                 assertNotCompiled(target);
                 target.call();
@@ -186,7 +186,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         String testName = "testRewriteAssumption";
         final int compilationThreshold = 20;
 
-        setupContext("engine.Inlining", "true", "engine.CompilationThreshold", String.valueOf(compilationThreshold));
+        setupContext("engine.Inlining", "true", "engine.CompilationThreshold", String.valueOf(compilationThreshold), "engine.MultiTier", "false");
         OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
             @Child private AbstractTestNode child = new ConstantTestNode(42);
             @Child private AbstractTestNode dummy = new ConstantTestNode(17);
@@ -210,7 +210,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
         assertNull("assumption is initially null", getRewriteAssumption(innermostCallTarget));
 
-        IntStream.range(0, compilationThreshold / 2).parallel().forEach(k -> {
+        IntStream.range(0, compilationThreshold / 2).forEach(k -> {
             assertEquals(42, outermostCallTarget.call(k));
             assertNull("assumption stays null in the interpreter", getRewriteAssumption(innermostCallTarget));
         });
@@ -221,7 +221,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         assertNotNull("assumption must not be null after compilation", firstRewriteAssumption);
         assertTrue(firstRewriteAssumption.isValid());
 
-        List<Assumption> rewriteAssumptions = IntStream.range(0, 2 * compilationThreshold).parallel().mapToObj(k -> {
+        List<Assumption> rewriteAssumptions = IntStream.range(0, 2 * compilationThreshold).mapToObj(k -> {
             assertEquals(42, outermostCallTarget.call(k));
 
             Assumption rewriteAssumptionAfter = getRewriteAssumption(innermostCallTarget);
@@ -263,7 +263,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
         // test single include
 
-        setupContext("engine.CompileOnly", "foobar");
+        setupContext("engine.CompileOnly", "foobar", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
@@ -282,7 +282,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     @Test
     public void testCompileOnly2() {
         // test single exclude
-        setupContext("engine.CompileOnly", "~foobar");
+        setupContext("engine.CompileOnly", "~foobar", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
@@ -301,7 +301,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     @Test
     public void testCompileOnly3() {
         // test two includes/excludes
-        setupContext("engine.CompileOnly", "foo,baz");
+        setupContext("engine.CompileOnly", "foo,baz", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
@@ -354,6 +354,29 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget osrTarget = findOSRTarget(loop);
         if (osrTarget != null) {
             assertNotCompiled(osrTarget);
+        }
+    }
+
+    @Test
+    public void testCompilation() {
+        testCompilationImpl(null, true);
+        testCompilationImpl(true, true);
+        testCompilationImpl(false, false);
+    }
+
+    private void testCompilationImpl(Boolean compileOptionValue, boolean expectedCompiled) {
+        String[] options = compileOptionValue == null ? new String[]{"engine.MultiTier", "false"} : new String[]{"engine.Compilation", compileOptionValue.toString(), "engine.MultiTier", "false"};
+        setupContext(options);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
+        for (int i = 0; i < compilationThreshold; i++) {
+            assertNotCompiled(target);
+            target.call();
+        }
+        if (expectedCompiled) {
+            assertCompiled(target);
+        } else {
+            assertNotCompiled(target);
         }
     }
 

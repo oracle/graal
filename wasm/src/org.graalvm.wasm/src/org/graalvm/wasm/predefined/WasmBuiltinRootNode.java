@@ -40,22 +40,26 @@
  */
 package org.graalvm.wasm.predefined;
 
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
 public abstract class WasmBuiltinRootNode extends WasmRootNode {
-    protected final WasmModule module;
 
-    public WasmBuiltinRootNode(WasmLanguage language, WasmModule module) {
-        super(language, null);
-        this.module = module;
+    public WasmBuiltinRootNode(WasmLanguage language, WasmInstance instance) {
+        super(language, instance, null);
     }
 
     public abstract String builtinNodeName();
+
+    protected WasmMemory memory() {
+        return instance.memory();
+    }
 
     @Override
     public String getName() {
         return "wasm-function:" + builtinNodeName();
     }
+
 }

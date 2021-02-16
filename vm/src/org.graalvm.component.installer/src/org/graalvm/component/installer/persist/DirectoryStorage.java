@@ -50,6 +50,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -58,6 +59,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.Config;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.SystemUtils;
@@ -65,6 +67,7 @@ import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.ManagementStorage;
+import org.graalvm.component.installer.model.StabilityLevel;
 
 /**
  * Directory-based implementation of component storage.
@@ -111,7 +114,13 @@ public class DirectoryStorage implements ManagementStorage {
     /**
      * Template for license accepted records.
      */
-    private static final String LICENSE_FILE_TEMPLATE = LICENSE_DIR + "/{0}.accepted/{1}"; // NOI18N'
+    private static final String LICENSE_CONTENTS_ID = LICENSE_DIR + "/{0}.id"; // NOI18N'
+
+    /**
+     * 
+     * Template for license accepted records.
+     */
+    static final String LICENSE_FILE_TEMPLATE = LICENSE_DIR + "/{0}.accepted/_all"; // NOI18N'
 
     /**
      * 
@@ -152,12 +161,21 @@ public class DirectoryStorage implements ManagementStorage {
     private static final String VM_ENTERPRISE_COMPONENT = "vm-enterprise:"; // NOI18N
 
     private String javaVersion;
+    private Config config;
 
     public DirectoryStorage(Feedback feedback, Path storagePath, Path graalHomePath) {
         this.feedback = feedback;
         this.registryPath = storagePath;
         this.graalHomePath = graalHomePath;
         this.javaVersion = "" + SystemUtils.getJavaMajorVersion(); // NOI18N
+    }
+
+    public Config getConfig() {
+        return config;
+    }
+
+    public void setConfig(Config config) {
+        this.config = config;
     }
 
     public String getJavaVersion() {
@@ -271,7 +289,7 @@ public class DirectoryStorage implements ManagementStorage {
             // properties store date/time into the stream as a comment. Cannot be disabled
             // programmatically,
             // must filter out.
-            return SystemUtils.digestString(wr.toString().replaceAll("#.*\n", ""), false); // NOI18N
+            return SystemUtils.digestString(wr.toString().replaceAll("#.*\r?\n\r?", ""), false); // NOI18N
         }
     }
 
@@ -291,6 +309,10 @@ public class DirectoryStorage implements ManagementStorage {
     }
 
     public static ComponentInfo propertiesToMeta(Properties loaded, ComponentInfo ci, Feedback fb) {
+        String stability = loaded.getProperty(BundleConstants.BUNDLE_STABILITY);
+        if (stability != null) {
+            ci.setStability(StabilityLevel.valueOfMixedCase(stability));
+        }
         String license = loaded.getProperty(BundleConstants.BUNDLE_LICENSE_PATH);
         if (license != null) {
             SystemUtils.checkCommonRelative(null, license);
@@ -549,6 +571,9 @@ public class DirectoryStorage implements ManagementStorage {
         if (info.getLicenseType() != null) {
             p.setProperty(BundleConstants.BUNDLE_LICENSE_TYPE, info.getLicenseType());
         }
+        if (info.getStability() != StabilityLevel.Undefined) {
+            p.setProperty(BundleConstants.BUNDLE_STABILITY, info.getStability().toString());
+        }
         for (String k : info.getRequiredGraalValues().keySet()) {
             String v = info.getRequiredGraalValues().get(k);
             if (v == null) {
@@ -600,10 +625,8 @@ public class DirectoryStorage implements ManagementStorage {
                         StandardOpenOption.TRUNCATE_EXISTING);
     }
 
-    private static void checkLicenseID(String licenseID) {
-        if (licenseID.contains("/")) {
-            throw new IllegalArgumentException("Invalid license ID: " + licenseID);
-        }
+    private static String transliterateLicenseId(String licenseID) {
+        return licenseID.replaceAll("[^-\\p{Alnum}.,_()@^{}~]", "_");
     }
 
     @Override
@@ -611,9 +634,9 @@ public class DirectoryStorage implements ManagementStorage {
         if (!SystemUtils.isLicenseTrackingEnabled()) {
             return null;
         }
-        checkLicenseID(licenseID);
+        String id = transliterateLicenseId(licenseID);
         try {
-            String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, licenseID, info.getId());
+            String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, id, info == null ? "_all" : info.getId());
             Path listFile = registryPath.resolve(SystemUtils.fromCommonRelative(fn));
             if (!Files.isReadable(listFile)) {
                 return null;
@@ -648,9 +671,23 @@ public class DirectoryStorage implements ManagementStorage {
                     return;
                 }
                 int dot = fn.lastIndexOf('.');
-                String id = fn.substring(0, dot);
+                String fnid = fn.substring(0, dot);
+                String id;
+                try {
+                    Path p = registryPath.resolve(SystemUtils.fromCommonRelative(MessageFormat.format(LICENSE_CONTENTS_ID, fnid)));
+                    if (Files.exists(p)) {
+                        List<String> lines = Files.readAllLines(p);
+                        id = lines.get(0);
+                    } else {
+                        id = fnid;
+                    }
+                } catch (IOException ex) {
+                    throw new UncheckedIOException(ex);
+                }
                 result.computeIfAbsent(id, (x) -> new ArrayList<>()).add(lp.getFileName().toString());
             });
+        } catch (UncheckedIOException ex) {
+            throw feedback.failure("ERR_CannotReadAcceptance", ex.getCause(), "(all)");
         } catch (IOException ex) {
             throw feedback.failure("ERR_CannotReadAcceptance", ex, "(all)");
         }
@@ -666,8 +703,8 @@ public class DirectoryStorage implements ManagementStorage {
             clearRecordedLicenses();
             return;
         }
-        checkLicenseID(licenseID);
-        String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, licenseID, info.getId());
+        String id = transliterateLicenseId(licenseID);
+        String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, id, info == null ? "_all" : info.getId());
         Path listFile = registryPath.resolve(SystemUtils.fromCommonRelative(fn));
         if (listFile == null) {
             throw new IllegalArgumentException(licenseID);
@@ -680,8 +717,12 @@ public class DirectoryStorage implements ManagementStorage {
             // create the directory
             Files.createDirectories(dir);
             Path contentsFile = registryPath.resolve(SystemUtils.fromCommonRelative(
-                            MessageFormat.format(LICENSE_CONTENTS_NAME, licenseID)));
+                            MessageFormat.format(LICENSE_CONTENTS_NAME, id)));
             Files.write(contentsFile, Arrays.asList(licenseText.split("\n")));
+            if (!id.equals(licenseID)) {
+                Path p = registryPath.resolve(SystemUtils.fromCommonRelative(MessageFormat.format(LICENSE_CONTENTS_ID, id)));
+                Files.write(p, Arrays.asList(licenseID));
+            }
         }
         String ds = (d == null ? new Date() : d).toString();
         Files.write(listFile, Collections.singletonList(ds), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -710,7 +751,7 @@ public class DirectoryStorage implements ManagementStorage {
     @Override
     public String licenseText(String licID) {
         Path contentsFile = registryPath.resolve(SystemUtils.fromCommonRelative(
-                        MessageFormat.format(LICENSE_CONTENTS_NAME, licID)));
+                        MessageFormat.format(LICENSE_CONTENTS_NAME, transliterateLicenseId(licID))));
         try {
             return Files.lines(contentsFile).collect(Collectors.joining("\n"));
         } catch (IOException ex) {
@@ -732,4 +773,30 @@ public class DirectoryStorage implements ManagementStorage {
         }
         throw feedback.failure("ERROR_MustBecomeAdmin", null);
     }
+
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 97 * hash + Objects.hashCode(this.graalHomePath);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final DirectoryStorage other = (DirectoryStorage) obj;
+        if (!Objects.equals(this.graalHomePath, other.graalHomePath)) {
+            return false;
+        }
+        return true;
+    }
+
 }

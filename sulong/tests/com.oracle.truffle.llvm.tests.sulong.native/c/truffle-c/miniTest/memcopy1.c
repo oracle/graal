@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,9 +31,9 @@
 #include <string.h>
 
 int main() {
-  char src[50] = "asdfasdfyxdfasfasd";
-  char dest[50];
+    char src[50] = "asdfasdfyxdfasfasd";
+    char dest[50];
 
-  memcpy(dest, src, strlen(src) + 1);
-  return strcmp(dest, src);
+    memcpy(dest, src, strlen(src) + 1);
+    return strcmp(dest, src);
 }

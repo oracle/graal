@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,13 +69,17 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
 final class HostInteropReflect {
     static final Object[] EMPTY = {};
     static final String STATIC_TO_CLASS = "class";
     static final String CLASS_TO_STATIC = "static";
+    static final String ADAPTER_SUPER_MEMBER = "super";
+    static final String ADAPTER_DELEGATE_MEMBER = "this";
 
     private HostInteropReflect() {
     }
@@ -95,6 +99,10 @@ final class HostInteropReflect {
         return null;
     }
 
+    static boolean isSignature(String name) {
+        return name.length() > 0 && name.charAt(name.length() - 1) == ')' && name.indexOf('(') != -1;
+    }
+
     static boolean isJNIName(String name) {
         return name.contains("__");
     }
@@ -103,6 +111,9 @@ final class HostInteropReflect {
     static HostMethodDesc findMethod(PolyglotEngineImpl impl, Class<?> clazz, String name, boolean onlyStatic) {
         HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
+        if (foundMethod == null && isSignature(name)) {
+            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
+        }
         if (foundMethod == null && isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
         }
@@ -121,6 +132,11 @@ final class HostInteropReflect {
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
+        } else if (isSignature(name)) {
+            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
+            if (foundMethod != null) {
+                return true;
+            }
         } else if (isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
             if (foundMethod != null) {
@@ -166,6 +182,11 @@ final class HostInteropReflect {
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
+        } else if (isSignature(name)) {
+            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
+            if (foundMethod != null) {
+                return true;
+            }
         } else if (isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
             if (foundMethod != null) {
@@ -179,7 +200,14 @@ final class HostInteropReflect {
     static boolean isInternal(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
         HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
-        if (foundMethod == null && isJNIName(name)) {
+        if (foundMethod != null) {
+            return false;
+        } else if (isSignature(name)) {
+            foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
+            if (foundMethod != null) {
+                return true;
+            }
+        } else if (isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
             if (foundMethod != null) {
                 return true;
@@ -246,13 +274,46 @@ final class HostInteropReflect {
         return HostObject.forObject(obj, languageContext);
     }
 
+    @TruffleBoundary
     static Object newProxyInstance(Class<?> clazz, Object obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
         return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new ObjectProxyHandler(obj, languageContext, clazz));
+    }
+
+    @TruffleBoundary
+    static Object newAdapterInstance(Class<?> clazz, Object obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
+        if (TruffleOptions.AOT) {
+            throw PolyglotEngineException.unsupported("Unsupported target type.");
+        }
+
+        HostClassDesc classDesc = HostClassDesc.forClass(languageContext.getEngine(), clazz);
+        AdapterResult adapter = classDesc.getAdapter(languageContext.context.getHostContextImpl());
+        if (!adapter.isAutoConvertible()) {
+            throw PolyglotEngineException.illegalArgument("Cannot convert to " + clazz);
+        }
+        HostMethodDesc.SingleMethod adapterConstructor = adapter.getValueConstructor();
+        Object[] arguments = new Object[]{obj};
+        try {
+            return ((HostObject) HostExecuteNodeGen.getUncached().execute(adapterConstructor, null, arguments, languageContext)).obj;
+        } catch (UnsupportedTypeException e) {
+            throw HostInteropErrors.invalidExecuteArgumentType(languageContext, null, e.getSuppliedValues());
+        } catch (ArityException e) {
+            throw HostInteropErrors.invalidExecuteArity(languageContext, null, arguments, e.getExpectedArity(), e.getActualArity());
+        }
     }
 
     static boolean isStaticTypeOrInterface(Class<?> t) {
         // anonymous classes are private, they should be eliminated elsewhere
         return Modifier.isPublic(t.getModifiers()) && (t.isInterface() || t.isEnum() || Modifier.isStatic(t.getModifiers()));
+    }
+
+    static boolean isAbstractType(Class<?> targetType) {
+        return targetType.isInterface() ||
+                        (!TruffleOptions.AOT && (Modifier.isAbstract(targetType.getModifiers()) && !targetType.isArray() && !targetType.isPrimitive() && !Number.class.isAssignableFrom(targetType)));
+    }
+
+    static boolean isExtensibleType(Class<?> targetType) {
+        return targetType.isInterface() ||
+                        (!TruffleOptions.AOT && (!Modifier.isFinal(targetType.getModifiers()) && !targetType.isArray() && !targetType.isPrimitive() && !Number.class.isAssignableFrom(targetType)));
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -297,6 +358,21 @@ final class HostInteropReflect {
             return Object.class;
         }
         return method.getGenericReturnType();
+    }
+
+    static String toNameAndSignature(Method m) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(m.getName());
+        sb.append('(');
+        Class<?>[] arr = m.getParameterTypes();
+        for (int i = 0; i < arr.length; i++) {
+            if (i != 0) {
+                sb.append(',');
+            }
+            sb.append(arr[i].getTypeName());
+        }
+        sb.append(')');
+        return sb.toString();
     }
 
     static String jniName(Method m) {
@@ -447,6 +523,20 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
     }
 
     @Override
+    public int hashCode() {
+        return HostWrapper.hashCode(languageContext, functionObj);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof FunctionProxyHandler) {
+            return HostWrapper.equals(languageContext, functionObj, ((FunctionProxyHandler) o).functionObj);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
         Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
@@ -479,7 +569,7 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
                 case "equals":
                     return HostWrapper.equalsProxy(host, arguments[0]);
                 case "hashCode":
-                    return HostWrapper.hashCode(host);
+                    return HostWrapper.hashCode(host.getLanguageContext(), host.getGuestObject());
                 case "toString":
                     return HostWrapper.toString(host);
                 default:
@@ -587,9 +677,10 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("getMethodGenericReturnType(method)") Type returnType,
                     @CachedLibrary("receiver") InteropLibrary receivers,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary members,
-                    @Cached("createBinaryProfile()") ConditionProfile branchProfile,
-                    @Cached("create()") ToHostNode toHost) {
-        Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile);
+                    @Cached ConditionProfile branchProfile,
+                    @Cached("create()") ToHostNode toHost,
+                    @Cached BranchProfile error) {
+        Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile, error);
         return toHost.execute(result, returnClass, returnType, languageContext, true);
     }
 
@@ -600,7 +691,7 @@ abstract class ProxyInvokeNode extends Node {
 
     private Object invokeOrExecute(PolyglotLanguageContext polyglotContext, Object receiver, Object[] arguments, String member, InteropLibrary receivers,
                     InteropLibrary members,
-                    ConditionProfile invokeProfile) {
+                    ConditionProfile invokeProfile, BranchProfile error) {
         try {
             boolean localInvokeFailed = this.invokeFailed;
             if (!localInvokeFailed) {
@@ -624,19 +715,19 @@ abstract class ProxyInvokeNode extends Node {
                     }
                 }
             }
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
         } catch (UnknownIdentifierException e) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
         } catch (UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invalidExecuteArgumentType(polyglotContext, receiver, e.getSuppliedValues());
         } catch (ArityException e) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invalidExecuteArity(polyglotContext, receiver, arguments, e.getExpectedArity(), e.getActualArity());
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
         }
     }

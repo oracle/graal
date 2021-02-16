@@ -47,6 +47,8 @@ package com.oracle.truffle.regex.charset;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 class UnicodePropertyData {
 
     static final EconomicMap<String, String> PROPERTY_ALIASES = EconomicMap.create(105);
@@ -56,6 +58,7 @@ class UnicodePropertyData {
 
     public static CodePointSet retrieveProperty(String propertySpec) {
         if (!SET_ENCODINGS.containsKey(propertySpec)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Unsupported Unicode character property escape");
         }
         return SET_ENCODINGS.get(propertySpec);

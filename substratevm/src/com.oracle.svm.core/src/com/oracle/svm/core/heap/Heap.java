@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.lang.management.MemoryMXBean;
 import java.lang.ref.Reference;
 import java.util.List;
 
@@ -37,6 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -74,6 +74,8 @@ public abstract class Heap {
 
     public abstract GC getGC();
 
+    public abstract RuntimeCodeInfoGCSupport getRuntimeCodeInfoGCSupport();
+
     /**
      * Walk all the objects in the heap. Must only be executed as part of a VM operation that causes
      * a safepoint.
@@ -92,6 +94,9 @@ public abstract class Heap {
      */
     public abstract boolean walkCollectedHeapObjects(ObjectVisitor visitor);
 
+    /** Returns the number of classes in the heap. */
+    public abstract int getClassCount();
+
     /** Return a list of all the classes in the heap. */
     public abstract List<Class<?>> getClassList();
 
@@ -107,9 +112,6 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
 
-    /** Get the MemoryMXBean for this heap. */
-    public abstract MemoryMXBean getMemoryMXBean();
-
     /** Tear down the heap and free all allocated virtual memory chunks. */
     @Uninterruptible(reason = "Tear-down in progress.")
     public abstract boolean tearDown();
@@ -124,6 +126,14 @@ public abstract class Heap {
      * Returns a suitable {@link BarrierSet} for the garbage collector that is used for this heap.
      */
     public abstract BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
+
+    /**
+     * Returns a multiple to which the heap address space should be aligned to at runtime.
+     *
+     * @see CommittedMemoryProvider#guaranteesHeapPreferredAddressSpaceAlignment()
+     */
+    @Fold
+    public abstract int getPreferredAddressSpaceAlignment();
 
     /**
      * Returns the offset that the image heap should have when mapping the native image file to the

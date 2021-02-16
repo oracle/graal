@@ -54,6 +54,6 @@ public abstract class LLVMDerefHandleGetReceiverNode extends LLVMNode {
     @Specialization
     public LLVMManagedPointer doLong(long address,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        return context.getDerefHandleContainer().getValue(address).copy();
+        return context.getDerefHandleContainer().getValue(this, address).copy();
     }
 }

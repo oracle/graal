@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -85,8 +85,11 @@ class Mode:
     def compile():
         if not Mode._compile:
             Mode._compile = Mode('compile', [
-                '-Dgraal.TruffleCompileImmediately=true',
-                '-Dgraal.TruffleBackgroundCompilation=false',
+                '-Dpolyglot.engine.AllowExperimentalOptions=true',
+                '-Dpolyglot.engine.Mode=latency',
+                # '-Dpolyglot.engine.CompilationFailureAction=Throw', GR-29208
+                '-Dpolyglot.engine.CompileImmediately=true',
+                '-Dpolyglot.engine.BackgroundCompilation=false',
                 '-Dtck.inlineVerifierInstrument=false'])
         return Mode._compile
 
@@ -120,26 +123,33 @@ class _ClassPathEntry:
 
 class _MvnClassPathEntry(_ClassPathEntry):
 
-    def __init__(self, groupId, artifactId, version, repository=None):
+    def __init__(self, groupId, artifactId, version, required=True, repository=None):
         self.repository = repository
         self.groupId = groupId
         self.artifactId = artifactId
         self.version = version
+        self.required = required
         _ClassPathEntry.__init__(self, None)
 
     def install(self, folder):
         _log(LogLevel.INFO, 'Installing {0}'.format(self))
-        self.pull()
-        install_folder = os.path.join(folder, self.artifactId)
-        os.mkdir(install_folder)
-        self.copy(install_folder)
-        self.path = os.pathsep.join([os.path.join(install_folder, f) for f in os.listdir(install_folder) if f.endswith('.jar')])
+        if self.pull():
+            install_folder = os.path.join(folder, self.artifactId)
+            os.mkdir(install_folder)
+            self.copy(install_folder)
+            self.path = os.pathsep.join([os.path.join(install_folder, f) for f in os.listdir(install_folder) if f.endswith('.jar')])
+        else:
+            self.path = ''
 
     def pull(self):
         process = _MvnClassPathEntry._run_maven(['dependency:get', '-DgroupId=' + self.groupId, '-DartifactId=' + self.artifactId, '-Dversion=' + self.version], self.repository)
         ret_code = process.wait()
         if ret_code != 0:
-            raise Abort('Cannot download artifact {0} '.format(self))
+            if self.required:
+                raise Abort('Cannot download artifact {0} '.format(self))
+            return False
+        else:
+            return True
 
     def copy(self, folder):
         process = _MvnClassPathEntry._run_maven(['dependency:copy', '-Dartifact=' + self.groupId + ':' + self.artifactId + ':' + self.version, '-DoutputDirectory=' + folder], self.repository)
@@ -259,6 +269,7 @@ def _find_unit_tests(cp, pkgs=None):
                         name = name[:len(name) - 6].replace('/', '.')
                         if includes(name):
                             tests.append(name)
+    tests.sort(reverse=True)
     return tests
 
 def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, cp, truffle_cp, boot_cp, vm_args, debug_port):
@@ -324,18 +335,33 @@ def set_log_level(log_level):
     _log_level = log_level
 
 _MVN_DEPENDENCIES = {
-    'JUNIT' : [
-        {'groupId':'junit', 'artifactId':'junit', 'version':'4.12'},
-        {'groupId':'org/hamcrest', 'artifactId':'hamcrest-all', 'version':'1.3'}
+    'TESTS' : [
+        {'groupId':'junit', 'artifactId':'junit', 'version':'4.12', 'required':True},
+        {'groupId':'org/hamcrest', 'artifactId':'hamcrest-all', 'version':'1.3', 'required':True},
+        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-tests', 'required':False},
     ],
     'TCK' : [
-        {'groupId':'org.graalvm.sdk', 'artifactId':'polyglot-tck'},
-        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-common'},
+        {'groupId':'org.graalvm.sdk', 'artifactId':'polyglot-tck', 'required':True}
+    ],
+    'COMMON' : [
+        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-common', 'required':True}
     ],
     'INSTRUMENTS' : [
-        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-instrumentation'},
+        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-instrumentation', 'required':True},
     ]
 }
+
+def _is_modular_jvm(java_home):
+    release_file = os.path.join(java_home, 'release')
+    if os.path.isfile(release_file) and os.access(release_file, os.R_OK):
+        p = re.compile(r'JAVA_VERSION="(.*)"')
+        with open(release_file) as f:
+            for l in f.readlines():
+                m = p.match(l)
+                if m:
+                    version = m.group(1)
+                    return not (version.startswith('1.8.') or version.startswith('8.'))
+    return True
 
 def _main(argv):
 
@@ -395,9 +421,14 @@ def _main(argv):
         if parsed_args.tck_values:
             values = parsed_args.tck_values.split(',')
         os.mkdir(cache_folder)
-        boot = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _MVN_DEPENDENCIES['TCK']]
-        cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _MVN_DEPENDENCIES['JUNIT']]
-        truffle_cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _MVN_DEPENDENCIES['INSTRUMENTS']]
+        boot = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['COMMON']]
+        cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TESTS']]
+        truffle_cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['INSTRUMENTS']]
+        tck = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TCK']]
+        if _is_modular_jvm(parsed_args.graalvm_home):
+            cp.extend(tck)
+        else:
+            boot.extend(tck)
         if parsed_args.class_path:
             for e in parsed_args.class_path.split(os.pathsep):
                 cp.append(_ClassPathEntry(os.path.abspath(e)))

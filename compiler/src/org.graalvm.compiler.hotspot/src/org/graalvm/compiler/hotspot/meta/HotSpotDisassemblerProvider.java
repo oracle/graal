@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.meta;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DisassemblerProvider;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -39,7 +40,7 @@ import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 public class HotSpotDisassemblerProvider implements DisassemblerProvider {
 
     @Override
-    public String disassembleCompiledCode(CodeCacheProvider codeCache, CompilationResult compResult) {
+    public String disassembleCompiledCode(OptionValues options, CodeCacheProvider codeCache, CompilationResult compResult) {
         return null;
     }
 

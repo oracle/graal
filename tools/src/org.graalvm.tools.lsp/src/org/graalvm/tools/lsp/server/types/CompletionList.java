@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,10 @@ import java.util.Objects;
 /**
  * Represents a collection of [completion items](#CompletionItem) to be presented in the editor.
  */
-public class CompletionList {
-
-    final JSONObject jsonData;
+public class CompletionList extends JSONBase {
 
     CompletionList(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -98,9 +96,9 @@ public class CompletionList {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 83 * hash + Boolean.hashCode(this.isIncomplete());
-        hash = 83 * hash + Objects.hashCode(this.getItems());
+        int hash = 7;
+        hash = 59 * hash + Boolean.hashCode(this.isIncomplete());
+        hash = 59 * hash + Objects.hashCode(this.getItems());
         return hash;
     }
 

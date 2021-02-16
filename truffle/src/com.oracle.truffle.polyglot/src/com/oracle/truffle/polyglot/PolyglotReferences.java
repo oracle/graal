@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ final class PolyglotReferences {
         // no instances
     }
 
-    static ContextReference<Object> createAlwaysSingleContext(PolyglotLanguage language, boolean strong) {
+    static AbstractContextReference createAlwaysSingleContext(PolyglotLanguage language, boolean strong) {
         if (strong) {
             return new StrongSingleContext(language);
         } else {
@@ -69,7 +69,7 @@ final class PolyglotReferences {
         }
     }
 
-    static ContextReference<Object> createAssumeSingleContext(PolyglotLanguage language,
+    static AbstractContextReference createAssumeSingleContext(PolyglotLanguage language,
                     Assumption validIf0,
                     Assumption validIf1,
                     ContextReference<Object> fallback, boolean strong) {
@@ -77,7 +77,7 @@ final class PolyglotReferences {
         return new AssumeSingleContext(language, validIf0, validIf1, fallback, strong);
     }
 
-    static ContextReference<Object> createAlwaysMultiContext(PolyglotLanguage language) {
+    static AbstractContextReference createAlwaysMultiContext(PolyglotLanguage language) {
         return new MultiContextSupplier(language);
     }
 
@@ -97,7 +97,7 @@ final class PolyglotReferences {
         return new MultiLanguageSupplier(language);
     }
 
-    private static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
+    static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
         Exception e = new Exception();
         StringBuilder stack = new StringBuilder();
         Exception exceptionCreating = null;
@@ -135,7 +135,7 @@ final class PolyglotReferences {
         if (exceptionCreating != null) {
             error.addSuppressed(exceptionCreating);
         }
-        return error;
+        throw error;
     }
 
     static StackTraceElement createJavaStackFrame(PolyglotLanguage language, String rootName, SourceSection sourceLocation) {
@@ -212,7 +212,7 @@ final class PolyglotReferences {
 
     }
 
-    private static final class WeakSingleContext extends ContextReference<Object> {
+    private static final class WeakSingleContext extends AbstractContextReference {
 
         private final PolyglotLanguage language;
         @CompilationFinal private volatile WeakReference<Object> languageContextImpl;
@@ -230,14 +230,19 @@ final class PolyglotReferences {
             WeakReference<Object> ref = languageContextImpl;
             if (ref == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                PolyglotLanguageContext langContext = language.getCurrentLanguageContext();
-                assert setLanguageContext(langContext);
-                this.languageContextImpl = ref = new WeakReference<>(langContext.getContextImpl());
+                ref = initialize(language.getCurrentLanguageContext());
             }
             Object context = ref.get();
             assert checkContextCollected(context);
             assert assertDirectContextAccess(context, this.languageContext);
             return context;
+        }
+
+        private WeakReference<Object> initialize(PolyglotLanguageContext langContext) {
+            WeakReference<Object> ref;
+            assert setLanguageContext(langContext);
+            this.languageContextImpl = ref = new WeakReference<>(langContext.getContextImpl());
+            return ref;
         }
 
         private static boolean assertDirectContextAccess(Object seenContext, WeakReference<PolyglotLanguageContext> contextRef) {
@@ -262,7 +267,7 @@ final class PolyglotReferences {
 
     }
 
-    private static final class StrongSingleContext extends ContextReference<Object> {
+    private static final class StrongSingleContext extends AbstractContextReference {
 
         private static final Object NO_CONTEXT = new Object();
 
@@ -282,12 +287,17 @@ final class PolyglotReferences {
             Object context = languageContextImpl;
             if (context == NO_CONTEXT) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                PolyglotLanguageContext langContext = language.getCurrentLanguageContext();
-                assert setLanguageContext(langContext);
-                this.languageContextImpl = context = langContext.getContextImpl();
+                context = initialize(language.getCurrentLanguageContext());
             }
             assert checkContextCollected(context);
             assert assertDirectContextAccess(this.languageContext, context);
+            return context;
+        }
+
+        private Object initialize(PolyglotLanguageContext langContext) {
+            Object context;
+            assert setLanguageContext(langContext);
+            this.languageContextImpl = context = langContext.getContextImpl();
             return context;
         }
 
@@ -297,7 +307,7 @@ final class PolyglotReferences {
         }
     }
 
-    private static final class AssumeSingleContext extends ContextReference<Object> {
+    private static final class AssumeSingleContext extends AbstractContextReference {
 
         private final ContextReference<Object> singleContextReference;
         private final ContextReference<Object> fallbackReference;
@@ -361,7 +371,7 @@ final class PolyglotReferences {
         }
     }
 
-    private static final class MultiContextSupplier extends ContextReference<Object> {
+    private static final class MultiContextSupplier extends AbstractContextReference {
 
         final PolyglotLanguage language;
 
@@ -374,6 +384,10 @@ final class PolyglotReferences {
             assert language.assertCorrectEngine();
             return PolyglotContextImpl.currentEntered(language.engine).getContextImpl(language);
         }
+    }
+
+    abstract static class AbstractContextReference extends ContextReference<Object> {
+
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,5 +54,11 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode {
     @Override
     public PhiNode createPhi(AbstractMergeNode merge) {
         return graph().addWithoutUnique(new GuardPhiNode(merge));
+    }
+
+    @Override
+    public ProxyNode duplicateOn(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
+        assert newOriginalNode instanceof GuardNode;
+        return graph().addWithoutUnique(new GuardProxyNode((GuardingNode) newOriginalNode, newProxyPoint));
     }
 }

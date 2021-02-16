@@ -1,22 +1,102 @@
 {
+  "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
+
   "jdks": {
-    "oraclejdk8":      {"name": "oraclejdk", "version": "8u241-jvmci-20.1-b01", "platformspecific": true },
-    "openjdk8":        {"name": "openjdk",   "version": "8u242-jvmci-20.1-b01", "platformspecific": true },
-    "oraclejdk8Debug": {"name": "oraclejdk", "version": "8u241-jvmci-20.1-b01-fastdebug", "platformspecific": true },
-    "oraclejdk11":     {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
-    "openjdk11":       {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
-    "labsjdk-ce-11":   {"name": "labsjdk",   "version": "ce-11.0.6+9-jvmci-20.1-b01", "platformspecific": true },
-    "labsjdk-ee-11":   {"name": "labsjdk",   "version": "ee-11.0.6+8-jvmci-20.1-b01", "platformspecific": true }
+    "openjdk8":           {"name": "openjdk",   "version": "8u282+08-jvmci-21.1-b01", "platformspecific": true },
+    "oraclejdk8":         {"name": "oraclejdk", "version": "8u281+09-jvmci-21.1-b01", "platformspecific": true },
+    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u281+09-jvmci-21.1-b01-fastdebug", "platformspecific": true },
+
+    "openjdk11":          {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
+    "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.10+9-jvmci-21.1-b01", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.10+8-jvmci-21.1-b01", "platformspecific": true },
+
+    "oraclejdk16":        {"name": "oraclejdk", "version": "16.0.1+4", "platformspecific": true },
+    "labsjdk-ce-16":      {"name": "labsjdk",   "version": "ce-16+29-jvmci-21.1-b01", "platformspecific": true },
+    "labsjdk-ce-16Debug": {"name": "labsjdk",   "version": "ce-16+29-jvmci-21.1-b01-debug", "platformspecific": true },
+    "labsjdk-ee-16":      {"name": "labsjdk",   "version": "ee-16.0.1+2-jvmci-21.1-b01", "platformspecific": true },
+    "labsjdk-ee-16Debug": {"name": "labsjdk",   "version": "ee-16.0.1+2-jvmci-21.1-b01-debug", "platformspecific": true }
   },
 
+  "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
+  "devkits": {
+      "windows-oraclejdk8": { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
+      "windows-openjdk8":   { "packages" : { "devkit:VS2017-15.5.5+1"  : "==0" }},
+      "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
+      "windows-jdk16":      { "packages" : { "devkit:VS2019-16.7.2+1"  : "==1" }}
+  },
+  "deps": {
+    "common": {
+      "timelimit": "30:00",
+      "environment": {
+        "MX_PYTHON": "python3"
+      },
+      "packages": {
+        "pip:logilab-common ": "==1.4.4",
+        "pip:pylint": "==1.9.3",
+        "pip:ninja_syntax": "==1.7.2"
+      }
+    },
+
+    "linux": {
+      "packages": {
+        "git": ">=1.8.3",
+        "mercurial": ">=2.2",
+        "apache/ant": ">=1.9.4"
+      }
+    },
+    "COMMENT.darwin": [
+      "Required to keep pylint happy on Darwin",
+      "https://coderwall.com/p/-k_93g/mac-os-x-valueerror-unknown-locale-utf-8-in-python"
+    ],
+    "darwin": {
+      "environment": {
+        "LC_ALL": "en_US.UTF-8"
+      }
+    },
+    "windows": {
+    }
+
+  },
+  "downloads": {
+    "eclipse": {
+      "downloads": {
+        "ECLIPSE": {
+          "name": "eclipse",
+          "version": "4.14.0",
+          "platformspecific": true
+        }
+      },
+      "environment": {
+        "ECLIPSE_EXE": "$ECLIPSE/eclipse"
+      }
+    },
+    "jdt": {
+      "downloads": {
+        "JDT": {
+          "name": "ecj",
+          "version": "4.14.0",
+          "platformspecific": false
+        }
+      }
+    }
+  },
   "sulong": {
     "deps": {
       "linux": {
         "packages": {
-          "cmake": "==3.6.1"
+          "cmake": "==3.15.2"
         }
       },
       "darwin": {
+        "packages": {
+          "cmake": "==3.15.2"
+        }
+      },
+      "windows": {
+        "packages": {
+          "msvc": "==10.0"
+        }
       }
     }
   }
