@@ -87,9 +87,10 @@ final class ReferenceObjectProcessing {
 
     private static void discover(Object obj, ObjectReferenceVisitor refVisitor) {
         Reference<?> dr = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
-        Log trace = Log.noopLog().string("[ReferenceObjectProcessing.discover: ").object(dr);
-        if (ReferenceInternals.getNextDiscovered(dr) != null) {
-            trace.string(" already discovered]").newline();
+        // The discovered field might contain an object with a forwarding header
+        // to avoid issues during the cast just look at it as a raw pointer
+        if (ReferenceInternals.getDiscoveredPointer(dr).isNonNull()) {
+            // Was already discovered earlier.
             return;
         }
         Pointer referentAddr = ReferenceInternals.getReferentPointer(dr);
