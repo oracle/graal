@@ -43,7 +43,7 @@ public class SideEffectFreeWrite extends WriteNode {
     public static final NodeClass<SideEffectFreeWrite> TYPE = NodeClass.create(SideEffectFreeWrite.class);
 
     public SideEffectFreeWrite(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
-        super(TYPE, address, location, value, barrierType);
+        super(TYPE, address, location, location, value, barrierType);
     }
 
     public static WriteNode createWithoutSideEffect(AddressNode address, LocationIdentity location, ValueNode value) {

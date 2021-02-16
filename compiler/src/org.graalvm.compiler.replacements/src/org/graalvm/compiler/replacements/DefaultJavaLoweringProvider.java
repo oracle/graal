@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.replacements;
 
-import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
@@ -303,6 +299,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerVolatileRead(((VolatileReadNode) n), tool);
             } else if (n instanceof VolatileWriteNode) {
                 lowerVolatileWrite(((VolatileWriteNode) n), tool);
+            } else if (n instanceof VolatileReadNode) {
+                lowerVolatileRead(((VolatileReadNode) n), tool);
             } else if (n instanceof RegisterFinalizerNode) {
                 return;
             } else if (n instanceof IdentityHashCodeNode) {
@@ -1279,32 +1277,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return IntegerConvertNode.convert(ret, StampFactory.forKind(JavaKind.Int), graph, NodeView.DEFAULT);
     }
 
-    private static void lowerVolatileRead(VolatileReadNode n, LoweringTool tool) {
-        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-            return;
-        }
-        final StructuredGraph graph = n.graph();
-        MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
-        graph.addBeforeFixed(n, preMembar);
-        MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_READ));
-        graph.addAfterFixed(n, postMembar);
-        n.replaceAtUsages(postMembar, InputType.Memory);
-        ReadNode nonVolatileRead = graph.add(new ReadNode(n.getAddress(), n.getLocationIdentity(), n.getAccessStamp(NodeView.DEFAULT), n.getBarrierType()));
-        graph.replaceFixedWithFixed(n, nonVolatileRead);
+    @SuppressWarnings("unused")
+    protected void lowerVolatileRead(VolatileReadNode n, LoweringTool tool) {
+        // This may be lowered as nodes but don't have to be so provide an empty implementation
     }
 
-    private static void lowerVolatileWrite(VolatileWriteNode n, LoweringTool tool) {
-        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-            return;
-        }
-        final StructuredGraph graph = n.graph();
-        MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
-        graph.addBeforeFixed(n, preMembar);
-        MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_WRITE));
-        graph.addAfterFixed(n, postMembar);
-        n.replaceAtUsages(postMembar, InputType.Memory);
-        WriteNode nonVolatileWrite = graph.add(new WriteNode(n.getAddress(), n.getLocationIdentity(), n.value(), n.getBarrierType()));
-        graph.replaceFixedWithFixed(n, nonVolatileWrite);
+    @SuppressWarnings("unused")
+    protected void lowerVolatileWrite(VolatileWriteNode n, LoweringTool tool) {
+        // This may be lowered as nodes but don't have to be so provide an empty implementation
     }
 
     @Override

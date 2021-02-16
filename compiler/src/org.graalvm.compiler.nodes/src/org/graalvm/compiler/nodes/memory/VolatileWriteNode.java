@@ -27,9 +27,8 @@
 package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -39,11 +38,11 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(nameTemplate = "VolatileWrite#{p#location/s}")
-public class VolatileWriteNode extends WriteNode implements Lowerable {
+public class VolatileWriteNode extends WriteNode implements Lowerable, OrderedMemoryAccess {
     public static final NodeClass<VolatileWriteNode> TYPE = NodeClass.create(VolatileWriteNode.class);
 
     public VolatileWriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
-        super(TYPE, address, location, value, barrierType);
+        super(TYPE, address, location, LocationIdentity.any(), value, barrierType);
     }
 
     @Override
@@ -58,13 +57,7 @@ public class VolatileWriteNode extends WriteNode implements Lowerable {
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        return this;
+    public MemoryOrderMode getMemoryOrder() {
+        return MemoryOrderMode.VOLATILE;
     }
-
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
-    }
-
 }
