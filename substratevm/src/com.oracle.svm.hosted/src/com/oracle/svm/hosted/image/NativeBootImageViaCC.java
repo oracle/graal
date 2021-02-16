@@ -356,7 +356,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
-        inv.setOutputKind(imageKind);
         inv.setTempDirectory(tempDirectory);
 
         inv.addLibPath(tempDirectory.toString());
