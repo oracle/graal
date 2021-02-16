@@ -1645,9 +1645,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a boolean.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
-     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
+     * conversion is not possible, throws {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
@@ -1662,9 +1662,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a byte.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
-     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
+     * conversion is not possible, throws {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
@@ -1679,9 +1679,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a short.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
-     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
+     * conversion is not possible, throws {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
@@ -1696,9 +1696,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a char.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
-     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
+     * conversion is not possible, throws {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
@@ -1713,9 +1713,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to an int.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
-     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
+     * conversion is not possible, throws {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
@@ -1730,9 +1730,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a float.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
-     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
+     * conversion is not possible, throws {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
@@ -1747,9 +1747,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a double.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
-     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
+     * conversion is not possible, throws {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
@@ -1764,9 +1764,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a long.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will take the lower bits that fit in the primitive type or fill upper
-     * bits with 0. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
+     * conversion is not possible, throws {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
@@ -1781,9 +1781,9 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a Object value to a StaticObject.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will return StaticObject.NULL when the Object value is not a
-     * StaticObject. If the conversion is not possible, throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will return StaticObject.NULL when the Object value is not a StaticObject. If the conversion
+     * is not possible, throws {@link EspressoError}.
      */
     public StaticObject asObject(Object value) {
         if (value instanceof StaticObject) {
@@ -1795,9 +1795,9 @@ public final class Meta implements ContextAccess {
     /**
      * Bitwise conversion from a boxed value to a long.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the
-     * conversion is lax and will fill the upper bits with 0. If the conversion is not possible,
-     * throws {@link EspressoError}.
+     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * will fill the upper bits with 0. If the conversion is not possible, throws
+     * {@link EspressoError}.
      *
      * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
      *            null}, the conversion will return the default value of the primitive type.
