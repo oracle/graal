@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
@@ -85,8 +86,8 @@ final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
-        if (ImageInfo.isSharedLibrary()) {
-            throw new IllegalArgumentException("Installing signal handlers is not allowed for native-image shared libraries.");
+        if (!SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw new IllegalArgumentException("Installing signal handlers is not enabled");
         }
         return Util_jdk_internal_misc_Signal.handle0(sig, nativeH);
     }

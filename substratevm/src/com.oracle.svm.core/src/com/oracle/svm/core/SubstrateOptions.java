@@ -535,4 +535,20 @@ public class SubstrateOptions {
     public static boolean areMethodHandlesSupported() {
         return JavaVersionUtil.JAVA_SPEC >= 11;
     }
+
+    @Option(help = "", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+    public static final HostedOptionKey<Boolean> EnableSignalAPI = new HostedOptionKey<Boolean>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (values.containsKey(this)) {
+                return (Boolean) values.get(this);
+            }
+            return !SharedLibrary.getValueOrDefault(values);
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
 }
