@@ -14,9 +14,40 @@
     ' (build "%s")' % b.name
   else "",
 
-  jdk8:: common.oraclejdk8,
+  local isNonEmptyString(s) = std.isString(s) && std.length(s)> 0,
+
+  build_template:: {
+    targets: [],
+    suite:: error "suite not set" + $.nameOrEmpty(self),
+    jdk:: error "jdk not set" + $.nameOrEmpty(self),
+    os:: error "os not set" + $.nameOrEmpty(self),
+    arch:: error "arch not set" + $.nameOrEmpty(self),
+    job:: error "job not set" + $.nameOrEmpty(self),
+    bitcode_config:: [],
+    sulong_config:: [],
+    gen_name_componentes::
+      assert std.isArray(self.targets) : "targest must be an array" + $.nameOrEmpty(self);
+      assert isNonEmptyString(self.suite) : "suite must be a non-empty string" + $.nameOrEmpty(self);
+      assert isNonEmptyString(self.jdk) : "jdk must be a non-empty string" + $.nameOrEmpty(self);
+      assert isNonEmptyString(self.os) : "os must be a non-empty string" + $.nameOrEmpty(self);
+      assert isNonEmptyString(self.arch) : "arch must be a non-empty string" + $.nameOrEmpty(self);
+      assert isNonEmptyString(self.job) : "job must be a non-empty string" + $.nameOrEmpty(self);
+      assert std.isArray(self.bitcode_config) : "bitcode_config must be an array" + $.nameOrEmpty(self);
+      assert std.isArray(self.sulong_config) : "sulong_config must be an array" + $.nameOrEmpty(self);
+      self.targets + [self.suite] + [self.job] + self.bitcode_config + self.sulong_config + [self.jdk] + [self.os] + [self.arch],
+    gen_name:: std.join("-", self.gen_name_componentes),
+  },
+
+  defBuild(b):: $.build_template + b + {
+    assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name]
+  },
+
+  jdk8:: common.oraclejdk8 + {
+    jdk:: "jdk8",
+  },
 
   labsjdk_ce_11: common["labsjdk-ce-11"] {
+    jdk:: "jdk11",
     downloads+: {
       # FIXME: do we really need to set EXTRA_JAVA_HOMES to an empty list?
       EXTRA_JAVA_HOMES: { pathlist: [] },
@@ -49,8 +80,32 @@
     extra_mx_args+: ["--strict-compliance"],
   },
 
+  local firstLower(s) =
+    if std.length(s) > 0 then
+      std.asciiLower(s[0]) + s[1:]
+    else s,
+
   gateTags(tags):: $.mxCommand + {
+    # sorted and unique
+    local prefixes = std.uniq(std.sort(["sulong"] + if std.objectHasAll(self, "suite") then [self.suite] else [])),
+    local processTags(tags) =
+      local stripPrefix(prefix, tag) =
+        if std.startsWith(tag, prefix) then
+          std.asciiLower(std.stripChars(tag[std.length(prefix):], "-"))
+        else
+          tag
+        ;
+      local res = [
+        # foldr because `prefixes` is sorted and we want to match longer entries first
+        std.foldr(stripPrefix, prefixes, tag)
+        for tag in std.filter(function(tag) tag != "build", tags)
+      ];
+      if std.length(res) > 0 then res
+      # return tags if we would have returned an empty array
+      else tags
+    ,
     extra_gate_args:: [],
+    job:: std.join("-", processTags(std.split(tags, ","))),
     run+:
       # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
       assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self);
@@ -86,6 +141,7 @@
   },
 
   llvm4:: $.sulong_gateTest_default_tools {
+    bitcode_config +:: ["v40"],
     packages+: {
       llvm: "==4.0.1",
     },
@@ -99,6 +155,7 @@
   },
 
   llvm6:: $.sulong_gateTest_default_tools {
+    bitcode_config +:: ["v60"],
     packages+: {
       llvm: "==6.0.1",
     },
@@ -110,6 +167,7 @@
   },
 
   llvm8: $.sulong_gateTest_default_tools {
+    bitcode_config +:: ["v80"],
     packages+: {
       llvm: "==8.0.0",
     },
