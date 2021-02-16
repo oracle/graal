@@ -327,7 +327,8 @@ class PolyglotArgs {
      */
     protected static OutputStream newLogStream(Path path) throws IOException {
         Path usedPath = path;
-        String fileName = path.getFileName().toString();
+        Path fileNamePath = path.getFileName();
+        String fileName = fileNamePath == null ? "" : fileNamePath.toString();
         Path lockFile = null;
         FileChannel lockFileChannel = null;
         for (int unique = 0;; unique++) {
