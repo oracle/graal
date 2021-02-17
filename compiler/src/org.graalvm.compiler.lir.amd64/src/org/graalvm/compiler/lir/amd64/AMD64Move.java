@@ -548,13 +548,13 @@ public class AMD64Move {
             } else if (isStackSlot(result)) {
                 reg2stack(moveKind, crb, masm, result, asRegister(input));
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
                 stack2reg(moveKind, crb, masm, asRegister(result), input);
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
@@ -562,10 +562,10 @@ public class AMD64Move {
             } else if (isStackSlot(result)) {
                 const2stack(crb, masm, result, asJavaConstant(input));
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
             }
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere("input=" + input + " input.class=" + input.getClass().getName());
         }
     }
 
