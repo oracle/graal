@@ -453,11 +453,6 @@ public abstract class LoopTransformations {
          * merges, however after introducing the pre-main-post scheme all original usages outside of
          * the loop will go through the post loop, so we rewrite the new phis created and replace
          * all phis created on the merges after with the value proxies of the final(post) loop
-         *
-         * Note for interted loops: This is also correct for inverted loop since the phis created
-         * for the proxies include the original proxies of the pre loop which proxy the correct
-         * values, so we can be sure the proxied (and phi-ed value) is the correct one to route out
-         * of the post loop.
          */
         for (LoopExitNode exit : mainLoopBegin.loopExits()) {
             for (ProxyNode proxy : exit.proxies()) {

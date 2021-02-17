@@ -55,7 +55,7 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
 
     @Override
     public PhiNode createPhi(AbstractMergeNode merge) {
-        return graph().addWithoutUnique(new ValuePhiNode(stamp(NodeView.DEFAULT), merge));
+        return graph().addWithoutUnique(new ValuePhiNode(stamp(NodeView.DEFAULT).unrestricted(), merge));
     }
 
     @Override

@@ -210,15 +210,12 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
             if (visited.isMarked(cur)) {
                 continue;
             }
+            if (!(cur instanceof FloatingNode || cur instanceof VirtualState || cur instanceof CallTargetNode)) {
+                return false;
+            }
             visited.mark(cur);
             for (Node usage : cur.usages()) {
                 stack.push(usage);
-            }
-        }
-
-        for (Node v : visited) {
-            if (!(v instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode)) {
-                return false;
             }
         }
         return true;

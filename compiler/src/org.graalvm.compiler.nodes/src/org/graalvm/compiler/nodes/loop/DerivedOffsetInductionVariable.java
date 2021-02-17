@@ -201,6 +201,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
         if (newValue instanceof BinaryArithmeticNode<?>) {
             return new DerivedOffsetInductionVariable(loop, newBase, offset, (BinaryArithmeticNode<?>) newValue);
         } else {
+            assert newValue instanceof IntegerConvertNode<?, ?>;
             return new DerivedConvertedInductionVariable(loop, newBase, newValue.stamp(NodeView.DEFAULT), newValue);
         }
     }
