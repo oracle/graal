@@ -1543,6 +1543,92 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
+    # <editor-fold desc="External Test Suites">
+    "SULONG_GCC_C" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:gcc_c/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_GCC_CPP" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:gcc_cpp/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_GCC_FORTRAN" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:gcc_fortran/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_PARSER_TORTURE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:parserTorture/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_LLVM" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:llvm/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_SHOOTOUT" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:shootout/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_NWCC" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:nwcc/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    # </editor-fold>
     "SULONG_TCK_NATIVE" : {
       "native" : True,
       "relpath" : True,
