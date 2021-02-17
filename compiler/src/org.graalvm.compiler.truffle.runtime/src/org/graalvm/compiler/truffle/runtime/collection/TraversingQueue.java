@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.collection;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -71,13 +72,17 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     }
 
     private E maxFirstTier() {
-        E max = firstTierEntries.get(0);
-        int inc = task(max).getIncrease();
-        for (E entry : firstTierEntries) {
+        assert !firstTierEntries.isEmpty() : "Must not be called if firstTierEntries is empty";
+        long time = System.nanoTime();
+        Iterator<E> it = firstTierEntries.iterator();
+        E max = it.next();
+        double maxWeight = task(max).weight(time);
+        while (it.hasNext()) {
+            E entry = it.next();
             CompilationTask task = task(entry);
-            int increase = task.getIncrease();
-            if (increase > inc) {
-                inc = increase;
+            double weight = task.weight(time);
+            if (weight > maxWeight) {
+                maxWeight = weight;
                 max = entry;
             }
         }

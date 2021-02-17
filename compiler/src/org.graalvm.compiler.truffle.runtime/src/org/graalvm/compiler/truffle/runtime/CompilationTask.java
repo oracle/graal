@@ -42,6 +42,8 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
 
     final WeakReference<OptimizedCallTarget> targetRef;
     private final BackgroundCompileQueue.Priority priority;
+    private int lastCount;
+    private long lastTime;
     private final boolean multiTier;
     private final boolean priorityQueue;
     private final long id;
@@ -77,6 +79,8 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         this.action = action;
         this.id = id;
         OptimizedCallTarget target = targetRef.get();
+        lastCount = target != null ? target.getCallAndLoopCount() : Integer.MIN_VALUE;
+        lastTime = System.nanoTime();
         priorityQueue = target != null && target.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
         multiTier = target != null && target.getOptionValue(PolyglotCompilerOptions.MultiTier);
     }
@@ -181,9 +185,21 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return null;
     }
 
-    public int getIncrease() {
+    public double weight(long time) {
         OptimizedCallTarget target = targetRef.get();
-        return target != null ? target.getCallAndLoopCount() : Integer.MIN_VALUE;
+        if (target == null) {
+            return -1.0;
+        }
+        int count = target.getCallAndLoopCount();
+        double weight = rate(count, time) * count;
+        lastTime = time;
+        lastCount = count;
+        return weight;
+    }
+
+    private double rate(int count, long time) {
+        double rawRate = (double) ((count) - lastCount) / (time - lastTime);
+        return 1.0 + (Double.isNaN(rawRate) ? 0 : rawRate);
     }
 
     /**
