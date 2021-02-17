@@ -29,10 +29,8 @@ import static org.junit.Assume.assumeTrue;
 
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ASIMDSize;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ElementSize;
-import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Before;
 import org.junit.Test;

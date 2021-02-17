@@ -26,8 +26,8 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ASIMDSize;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ElementSize;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.debug.GraalError;
@@ -133,7 +133,7 @@ public class AArch64Convert {
             } else {
                 do {
                     masm.neon.xtnVector(currentESize, result, input);
-                    currentESize = currentESize.halvedSize();
+                    currentESize = currentESize.narrow();
                 } while (currentESize != finalESize);
             }
         }
@@ -165,7 +165,7 @@ public class AArch64Convert {
             } else {
                 do {
                     masm.neon.sxtlVector(currentESize, result, input);
-                    currentESize = currentESize.doubledSize();
+                    currentESize = currentESize.expand();
                 } while (currentESize != finalESize);
             }
         }
@@ -197,7 +197,7 @@ public class AArch64Convert {
             } else {
                 do {
                     masm.neon.uxtlVector(currentESize, result, input);
-                    currentESize = currentESize.doubledSize();
+                    currentESize = currentESize.expand();
                 } while (currentESize != finalESize);
             }
         }

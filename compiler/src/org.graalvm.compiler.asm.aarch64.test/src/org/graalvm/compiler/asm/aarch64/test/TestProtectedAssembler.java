@@ -29,7 +29,7 @@ import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
@@ -544,7 +544,7 @@ class TestProtectedAssembler extends AArch64Assembler {
         throw new UnsupportedOperationException();
     }
 
-    public static class TestProtectedASIMDAssembler extends ASIMDAssembler {
+    public static class TestProtectedASIMDAssembler extends AArch64ASIMDAssembler {
 
         protected TestProtectedASIMDAssembler(AArch64Assembler asm) {
             super(asm);

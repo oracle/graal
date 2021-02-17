@@ -45,7 +45,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ASIMDAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -520,7 +520,7 @@ public class AArch64Move {
             masm.mov(size, dst, src);
         } else if (size == 128) {
             assert kind.isSIMD() && kind == result.getPlatformKind();
-            masm.neon.moveVector(ASIMDAssembler.ASIMDSize.FullReg, dst, src);
+            masm.neon.moveVector(AArch64ASIMDAssembler.ASIMDSize.FullReg, dst, src);
         } else {
             masm.fmov(size, dst, src);
         }
