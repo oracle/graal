@@ -80,7 +80,7 @@ public abstract class ExternalTestCaseCollector {
         // rel --> abs
         Map<Path, Path> tests = getWhiteListTestFolders(configPath, suiteDir);
         // abs
-        Set<Path> availableSourceFiles = BaseTestHarness.getFiles(sourceDir);
+        Set<Path> availableSourceFiles = CommonTestUtils.getFiles(sourceDir);
         // abs
         Set<Path> compiledTests = collectTestCases(testDiscoveryPath);
 
@@ -103,7 +103,7 @@ public abstract class ExternalTestCaseCollector {
 
     private static Set<Path> collectTestCases(String testDiscoveryPath) throws AssertionError {
         try (Stream<Path> files = Files.walk(Paths.get(testDiscoveryPath))) {
-            return files.filter(BaseTestHarness.isExecutable).map(f -> f.getParent()).collect(Collectors.toSet());
+            return files.filter(CommonTestUtils.isExecutable).map(f -> f.getParent()).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
@@ -134,7 +134,7 @@ public abstract class ExternalTestCaseCollector {
             }
         };
         try (Stream<Path> files = Files.walk(configDir)) {
-            return files.filter(BaseTestHarness.isIncludeFile).flatMap(f -> {
+            return files.filter(CommonTestUtils.isIncludeFile).flatMap(f -> {
                 try {
                     return Files.lines(f).filter(file -> file.length() > 0);
                 } catch (IOException e) {

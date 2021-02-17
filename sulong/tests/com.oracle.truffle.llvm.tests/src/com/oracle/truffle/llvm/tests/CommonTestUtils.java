@@ -39,7 +39,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public abstract class BaseTestHarness {
+public abstract class CommonTestUtils {
 
     public static final String TEST_DIR_EXT = ".dir";
 

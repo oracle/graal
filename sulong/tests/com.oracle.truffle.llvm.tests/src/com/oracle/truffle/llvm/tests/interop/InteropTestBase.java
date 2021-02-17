@@ -48,7 +48,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.tests.BaseTestHarness;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.TruffleRunner;
 
@@ -65,7 +65,7 @@ public class InteropTestBase {
     public static final String TEST_FILE_NAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     protected static Object loadTestBitcodeInternal(String name) {
-        File file = Paths.get(testBase.toString(), name + BaseTestHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         CallTarget target = getTestBitcodeCallTarget(file);
         return target.call();
     }
@@ -81,7 +81,7 @@ public class InteropTestBase {
     }
 
     protected static Value loadTestBitcodeValue(String name) {
-        File file = Paths.get(testBase.toString(), name + BaseTestHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();

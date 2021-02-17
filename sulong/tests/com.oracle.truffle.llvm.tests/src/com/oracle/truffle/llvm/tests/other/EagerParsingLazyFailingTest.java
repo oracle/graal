@@ -48,7 +48,7 @@ import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.tests.BaseTestHarness;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 public class EagerParsingLazyFailingTest {
@@ -80,7 +80,7 @@ public class EagerParsingLazyFailingTest {
         Value load() {
             if (library == null) {
                 try {
-                    File file = TEST_DIR.resolve(testName + BaseTestHarness.TEST_DIR_EXT).resolve(FILENAME).toFile();
+                    File file = TEST_DIR.resolve(testName + CommonTestUtils.TEST_DIR_EXT).resolve(FILENAME).toFile();
                     Source source = Source.newBuilder(LLVMLanguage.ID, file).build();
                     library = context.eval(source);
                 } catch (RuntimeException e) {

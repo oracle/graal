@@ -65,7 +65,7 @@ public final class ParserTortureSuite {
     @Test
     public void test() throws IOException {
         try (Stream<Path> files = Files.walk(path)) {
-            for (Path candidate : (Iterable<Path>) files.filter(BaseTestHarness.isFile).filter(BaseTestHarness.isSulong)::iterator) {
+            for (Path candidate : (Iterable<Path>) files.filter(CommonTestUtils.isFile).filter(CommonTestUtils.isSulong)::iterator) {
 
                 if (!candidate.toAbsolutePath().toFile().exists()) {
                     throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
