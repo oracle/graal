@@ -55,6 +55,7 @@ public final class ParserTortureSuite {
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
+    @Parameter(value = 2) public String excludeReason;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
