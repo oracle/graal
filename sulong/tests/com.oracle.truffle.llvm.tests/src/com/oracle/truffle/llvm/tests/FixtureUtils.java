@@ -146,7 +146,7 @@ public final class FixtureUtils {
         }
     }
 
-    private static class FileVisitors {
+    private static final class FileVisitors {
         private final Path skip;
         private final Map<String, String> excludeTestToFile;
 
