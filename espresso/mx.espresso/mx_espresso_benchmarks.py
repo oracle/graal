@@ -58,10 +58,10 @@ class EspressoVm(GuestVm, JavaVm):
                 import mx_vm_benchmark
                 # If needed, clone the host_vm and replace the `--native` argument with `-truffle`
                 if isinstance(host_vm, mx_vm_benchmark.GraalVm) and '--native' in host_vm.extra_launcher_args:
-                    extra_launcher_args = host_vm.extra_launcher_args
+                    extra_launcher_args = list(host_vm.extra_launcher_args)
                     extra_launcher_args.remove('--native')
                     extra_launcher_args.append('-truffle')
-                    _host_vm = mx_vm_benchmark.GraalVm(host_vm.name(), host_vm.config_name(), host_vm.extra_java_args, extra_launcher_args)
+                    _host_vm = mx_vm_benchmark.GraalVm(host_vm.name(), host_vm.config_name(), list(host_vm.extra_java_args), extra_launcher_args)
         return self.__class__(self.config_name(), self._options, _host_vm)
 
     def run(self, cwd, args):
