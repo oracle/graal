@@ -24,12 +24,6 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
-import com.oracle.svm.core.graal.nodes.aarch64.AArch64ISBNode;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.nodes.CodeSynchronizationNode;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.aarch64.AArch64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -41,6 +35,14 @@ import org.graalvm.compiler.nodes.memory.VolatileReadNode;
 import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
+
+import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
+import com.oracle.svm.core.graal.nodes.aarch64.AArch64ISBNode;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateAArch64LoweringProvider extends SubstrateBasicLoweringProvider implements AArch64LoweringProviderMixin {
 

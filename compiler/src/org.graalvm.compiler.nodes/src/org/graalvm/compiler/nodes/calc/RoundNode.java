@@ -25,8 +25,8 @@
 
 package org.graalvm.compiler.nodes.calc;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
+
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
@@ -42,7 +42,8 @@ import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Round floating-point value.

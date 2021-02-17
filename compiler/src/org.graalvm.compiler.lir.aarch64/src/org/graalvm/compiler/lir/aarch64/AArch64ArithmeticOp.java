@@ -24,9 +24,14 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.ARITHMETIC;
+import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.LOGICAL;
+import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.NONE;
+import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.SHIFT;
+
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
@@ -35,13 +40,9 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.ARITHMETIC;
-import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.LOGICAL;
-import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.NONE;
-import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.SHIFT;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
 
 public enum AArch64ArithmeticOp {
     // TODO At least add and sub *can* be used with SP, so this should be supported

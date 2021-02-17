@@ -24,8 +24,13 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Constant;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.CFG_SIMPLIFICATION;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.FINAL_CANONICALIZATION;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
+import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
+
+import java.util.EnumSet;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -62,12 +67,8 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
 
-import java.util.EnumSet;
-
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.CFG_SIMPLIFICATION;
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.FINAL_CANONICALIZATION;
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Constant;
 
 public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 

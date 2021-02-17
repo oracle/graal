@@ -24,8 +24,12 @@
  */
 package org.graalvm.compiler.nodes;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.Assumptions;
+import static org.graalvm.compiler.nodeinfo.InputType.Guard;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+
+import java.util.List;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -50,11 +54,8 @@ import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
-import java.util.List;
-
-import static org.graalvm.compiler.nodeinfo.InputType.Guard;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.Assumptions;
 
 /**
  * Graph decoder that simplifies nodes during decoding. The standard

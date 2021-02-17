@@ -24,7 +24,10 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
-import jdk.vm.ci.meta.JavaConstant;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+import static org.graalvm.compiler.nodes.calc.CompareNode.createCompareNode;
+
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -45,9 +48,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
-import static org.graalvm.compiler.nodes.calc.CompareNode.createCompareNode;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two (eagerly

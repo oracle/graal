@@ -24,8 +24,9 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+
+import jdk.vm.ci.meta.Value;
 
 /**
  * This interface can be used to generate AArch64 LIR for arithmetic operations.

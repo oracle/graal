@@ -24,9 +24,10 @@
  */
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
-import jdk.vm.ci.code.Architecture;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.util.Providers;
+
+import jdk.vm.ci.code.Architecture;
 
 /**
  * Registers invocation plugins that are specific to a particular compiler configuration.

@@ -24,12 +24,13 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.options.OptionValues;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Provides a capability for replacing a higher node with one or more lower level nodes.

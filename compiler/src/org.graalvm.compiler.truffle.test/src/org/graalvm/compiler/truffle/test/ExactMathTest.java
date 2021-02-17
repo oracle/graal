@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.ExactMath;
-import jdk.vm.ci.amd64.AMD64;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -33,6 +31,10 @@ import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPl
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
+
+import com.oracle.truffle.api.ExactMath;
+
+import jdk.vm.ci.amd64.AMD64;
 
 public class ExactMathTest extends GraalCompilerTest {
 

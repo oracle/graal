@@ -24,17 +24,18 @@
  */
 package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
+
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @ServiceProvider(GraphBuilderInvocationPluginProvider.class)
 public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPluginProvider {

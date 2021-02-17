@@ -24,9 +24,10 @@
  */
 package org.graalvm.compiler.virtual.phases.ea;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
+import static org.graalvm.compiler.core.common.GraalOptions.MaximumEscapeAnalysisArrayLength;
+
+import java.util.List;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -46,9 +47,9 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 
-import java.util.List;
-
-import static org.graalvm.compiler.core.common.GraalOptions.MaximumEscapeAnalysisArrayLength;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Forwards calls from {@link VirtualizerTool} to the actual {@link PartialEscapeBlockState}.
