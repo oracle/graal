@@ -517,7 +517,7 @@ public final class EspressoContext {
             available.add(provider.id());
             if (nativeBackend.equals(provider.id())) {
                 getLogger().fine("Native backend: " + nativeBackend);
-                return provider.create(this);
+                return provider.create(getEnv());
             }
         }
         throw abort("Cannot find native backend '" + nativeBackend + "'. Available backends: " + available);

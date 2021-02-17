@@ -177,6 +177,6 @@ public interface NativeAccess {
      */
     interface Provider {
         String id();
-        NativeAccess create(EspressoContext context);
+        NativeAccess create(TruffleLanguage.Env env);
     }
 }

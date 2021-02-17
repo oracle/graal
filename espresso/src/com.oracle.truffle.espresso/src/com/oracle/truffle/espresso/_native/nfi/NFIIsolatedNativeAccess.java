@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso._native.nfi;
 import java.nio.file.Path;
 import java.util.Collections;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso._native.NativeAccess;
 import com.oracle.truffle.espresso._native.NativeSignature;
 
@@ -41,6 +43,7 @@ import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import org.graalvm.home.HomeFinder;
 
 final class NFIIsolatedNativeAccess extends NFINativeAccess {
 
@@ -50,10 +53,11 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
     final @Pointer TruffleObject realloc;
     final @Pointer TruffleObject ctypeInit;
 
-    public NFIIsolatedNativeAccess(EspressoContext context) {
-        super(context);
+    public NFIIsolatedNativeAccess(TruffleLanguage.Env env) {
+        super(env);
         // libeden.so must be the first library loaded in the isolated namespace.
-        Path espressoLibraryPath = context.getVmProperties().espressoHome().resolve("lib");
+        Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
+        Path espressoLibraryPath = espressoHome.resolve("lib");
         this.edenLibrary = loadLibrary(Collections.singletonList(espressoLibraryPath), "eden", true);
         this.malloc = lookupAndBindSymbol(edenLibrary, "malloc", NativeSignature.create(NativeType.POINTER, NativeType.LONG));
         this.realloc = lookupAndBindSymbol(edenLibrary, "realloc", NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.LONG));
@@ -135,8 +139,8 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
         }
 
         @Override
-        public NativeAccess create(EspressoContext context) {
-            return new NFIIsolatedNativeAccess(context);
+        public NativeAccess create(TruffleLanguage.Env env) {
+            return new NFIIsolatedNativeAccess(env);
         }
     }
 }

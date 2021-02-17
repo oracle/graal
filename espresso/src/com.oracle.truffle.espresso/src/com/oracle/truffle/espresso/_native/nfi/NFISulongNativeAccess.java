@@ -1,6 +1,7 @@
 package com.oracle.truffle.espresso._native.nfi;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso._native.NativeAccess;
 import com.oracle.truffle.espresso._native.Pointer;
@@ -10,8 +11,8 @@ import java.nio.file.Path;
 
 public final class NFISulongNativeAccess extends NFINativeAccess {
 
-    public NFISulongNativeAccess(EspressoContext context) {
-        super(context);
+    public NFISulongNativeAccess(TruffleLanguage.Env env) {
+        super(env);
     }
 
     @Override
@@ -28,8 +29,8 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
         }
 
         @Override
-        public NativeAccess create(EspressoContext context) {
-            return new NFISulongNativeAccess(context);
+        public NativeAccess create(TruffleLanguage.Env env) {
+            return new NFISulongNativeAccess(env);
         }
     }
 }
