@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,6 +45,8 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -81,6 +83,21 @@ public final class LLVMParser {
             } else {
                 defineGlobal(global);
                 definedGlobals.add(global);
+            }
+        }
+        for (GlobalVariable g : globals) {
+            if (g.getSourceSymbol() != null && g.getSourceSymbol().getType() instanceof LLVMSourceArrayLikeType) {
+                LLVMSourceArrayLikeType sourceArrayLikeType = (LLVMSourceArrayLikeType) g.getSourceSymbol().getType();
+                if (sourceArrayLikeType.getBaseType() instanceof LLVMSourceStructLikeType) {
+                    LLVMSourceStructLikeType sourceStructLikeType = (LLVMSourceStructLikeType) sourceArrayLikeType.getBaseType();
+                    String cppTypeInfo = sourceStructLikeType.getCppTypeInfo();
+                    if (cppTypeInfo != null) {
+                        LLVMSymbol llvmSymbol = runtime.getFileScope().get(cppTypeInfo);
+                        if (llvmSymbol != null && llvmSymbol.isGlobalVariable()) {
+                            llvmSymbol.asGlobalVariable().setSourceSymbol(g.getSourceSymbol());
+                        }
+                    }
+                }
             }
         }
     }

@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -45,13 +46,11 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @ExportLibrary(InteropLibrary.class)
 public class LLVMUserExceptionAccessor implements TruffleObject {
     final Supplier<LLVMPointer> supplier;
-    LLVMPointer exceptionObject;
-    final InteropLibrary interop;
+    private LLVMPointer exceptionObject;
 
     public LLVMUserExceptionAccessor(Supplier<LLVMPointer> supplier) {
         this.supplier = supplier;
         this.exceptionObject = null;
-        this.interop = InteropLibrary.getUncached();
     }
 
     protected LLVMPointer get() {
@@ -61,53 +60,60 @@ public class LLVMUserExceptionAccessor implements TruffleObject {
         return exceptionObject;
     }
 
-    @ExportMessage
-    final boolean hasMembers() {
+    @ExportMessage(limit = "3")
+    final boolean hasMembers(@CachedLibrary("this.get()") InteropLibrary interop) {
         return interop.hasMembers(get());
     }
 
-    @ExportMessage
-    public Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+    @ExportMessage(limit = "3")
+    public Object getMembers(boolean includeInternal,
+                    @CachedLibrary("this.get()") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.getMembers(get(), includeInternal);
     }
 
-    @ExportMessage
-    public Object readMember(String ident) throws UnsupportedMessageException, UnknownIdentifierException {
+    @ExportMessage(limit = "3")
+    public Object readMember(String ident,
+                    @CachedLibrary("this.get()") InteropLibrary interop) throws UnsupportedMessageException, UnknownIdentifierException {
         return interop.readMember(get(), ident);
     }
 
-    @ExportMessage
-    public boolean isMemberInvocable(String ident) {
+    @ExportMessage(limit = "3")
+    public boolean isMemberInvocable(String ident,
+                    @CachedLibrary("this.get()") InteropLibrary interop) {
         return interop.isMemberInvocable(get(), ident);
     }
 
-    @ExportMessage
-    public boolean hasArrayElements() {
+    @ExportMessage(limit = "3")
+    public boolean hasArrayElements(@CachedLibrary("this.get()") InteropLibrary interop) {
         return interop.hasArrayElements(get());
     }
 
-    @ExportMessage
-    public boolean isMemberReadable(String member) {
+    @ExportMessage(limit = "3")
+    public boolean isMemberReadable(String member,
+                    @CachedLibrary("this.get()") InteropLibrary interop) {
         return interop.isMemberReadable(get(), member);
     }
 
-    @ExportMessage
-    public Object invokeMember(String member, Object[] arguments) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+    @ExportMessage(limit = "3")
+    public Object invokeMember(String member, Object[] arguments,
+                    @CachedLibrary("this.get()") InteropLibrary interop) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
         return interop.invokeMember(get(), member, arguments);
     }
 
-    @ExportMessage
-    public Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+    @ExportMessage(limit = "3")
+    public Object readArrayElement(long index,
+                    @CachedLibrary("this.get()") InteropLibrary interop) throws UnsupportedMessageException, InvalidArrayIndexException {
         return interop.readArrayElement(get(), index);
     }
 
-    @ExportMessage
-    public long getArraySize() throws UnsupportedMessageException {
+    @ExportMessage(limit = "3")
+    public long getArraySize(@CachedLibrary("this.get()") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.getArraySize(get());
     }
 
-    @ExportMessage
-    public boolean isArrayElementReadable(long index) {
+    @ExportMessage(limit = "3")
+    public boolean isArrayElementReadable(long index,
+                    @CachedLibrary("this.get()") InteropLibrary interop) {
         return interop.isArrayElementReadable(get(), index);
     }
 

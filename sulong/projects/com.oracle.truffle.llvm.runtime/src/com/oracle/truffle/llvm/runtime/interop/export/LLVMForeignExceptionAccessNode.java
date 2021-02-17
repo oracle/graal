@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -44,6 +43,9 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
 public abstract class LLVMForeignExceptionAccessNode extends LLVMNode {
+
+    public static final long TYPEINFO_OFFSET = -0x50;
+    public static final long THROWNOBJECT_OFFSET = 0x20;
 
     public abstract LLVMPointer execute(LLVMPointer unwindHeader);
 
@@ -55,17 +57,17 @@ public abstract class LLVMForeignExceptionAccessNode extends LLVMNode {
     public LLVMPointer doResolve(LLVMPointer unwindHeader,
                     @Cached LLVMForeignReadNode read,
                     @CachedContext(value = LLVMLanguage.class) LLVMContext context) {
-        final LLVMPointer typeInfo = LLVMPointer.cast(read.execute(unwindHeader.increment(-0x50), LLVMInteropType.ValueKind.POINTER.type));
+        final LLVMPointer typeInfo = LLVMPointer.cast(read.execute(unwindHeader.increment(TYPEINFO_OFFSET), LLVMInteropType.ValueKind.POINTER.type));
+        final LLVMGlobal typeInfoSymbol = context.findGlobal(typeInfo);
+        final LLVMInteropType arrayType = typeInfoSymbol.getInteropType(context);
+        LLVMInteropType thrownObjectType = null;
+        if (arrayType instanceof LLVMInteropType.Array) {
+            thrownObjectType = ((LLVMInteropType.Array) arrayType).elementType;
+        }
 
-        LLVMGlobal typeInfoSymbol = context.findGlobal(typeInfo);
-        LLVMInteropType interopType = typeInfoSymbol.getInteropType(context);// TODO does not work
-        interopType = context.getLanguage().getInteropType(LLVMSourceStructLikeType.sourceTIMap.get(typeInfoSymbol.getName()));
-        /*
-         * LLVMSourceType is missing in typeInfoSymbol, TODO (pichristoph) correct
-         */
-        final LLVMPointer untypedObjectPtr = LLVMPointer.cast(read.execute(unwindHeader.increment(0x20), LLVMInteropType.ValueKind.POINTER.type));
+        final Object untypedObjectPtr = read.execute(unwindHeader.increment(THROWNOBJECT_OFFSET), LLVMInteropType.ValueKind.POINTER.type);
 
-        return untypedObjectPtr.export(interopType);
+        return LLVMPointer.cast(untypedObjectPtr).export(thrownObjectType);
     }
 
 }

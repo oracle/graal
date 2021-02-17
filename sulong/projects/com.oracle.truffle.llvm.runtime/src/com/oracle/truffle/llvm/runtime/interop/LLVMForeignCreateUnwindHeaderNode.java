@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import java.lang.reflect.InvocationTargetException;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;

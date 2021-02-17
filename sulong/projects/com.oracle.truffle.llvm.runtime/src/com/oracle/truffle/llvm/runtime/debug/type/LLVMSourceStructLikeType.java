@@ -34,33 +34,31 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.function.Supplier;
 
 public class LLVMSourceStructLikeType extends LLVMSourceType {
 
-    // TODO: remove map, since temporary solution
-    public static HashMap<String, LLVMSourceStructLikeType> sourceTIMap = new HashMap<>();
-
     protected final List<LLVMSourceMemberType> dynamicMembers;
 
     protected final LLVMSourceStaticMemberType.CollectionType staticMembers;
 
+    protected final String cppTypeInfo;
+
     @TruffleBoundary
-    public LLVMSourceStructLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
+    public LLVMSourceStructLikeType(String name, long size, long align, long offset, LLVMSourceLocation location, String identifier) {
         super(() -> name, size, align, offset, location);
         this.dynamicMembers = new ArrayList<>();
         this.staticMembers = new LLVMSourceStaticMemberType.CollectionType();
-        sourceTIMap.put("_ZTIP" + name.length() + name, this);
+        this.cppTypeInfo = identifier != null && identifier.startsWith("_ZTS") ? "_ZTIP" + identifier.substring(4) : null;
     }
 
     protected LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
-                    LLVMSourceLocation location) {
+                    LLVMSourceLocation location, String cppTypeInfo) {
         super(name, size, align, offset, location);
         this.dynamicMembers = dynamicMembers;
         this.staticMembers = staticMembers;
-        sourceTIMap.put("_ZTIP" + name.get().length() + name.get(), this);
+        this.cppTypeInfo = cppTypeInfo;
     }
 
     @TruffleBoundary
@@ -76,7 +74,7 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, getLocation());
+        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, getLocation(), cppTypeInfo);
     }
 
     @Override
@@ -196,4 +194,9 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         }
         return null;
     }
+
+    public String getCppTypeInfo() {
+        return cppTypeInfo;
+    }
+
 }
