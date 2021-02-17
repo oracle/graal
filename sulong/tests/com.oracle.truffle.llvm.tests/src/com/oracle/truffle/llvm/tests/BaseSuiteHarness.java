@@ -65,7 +65,7 @@ public abstract class BaseSuiteHarness {
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
-    @Parameter(value = 2) public String reason;
+    @Parameter(value = 2) public String exclusionReason;
 
     protected Path getTestDirectory() {
         return path;
@@ -75,8 +75,8 @@ public abstract class BaseSuiteHarness {
         return testName;
     }
 
-    protected String getReason() {
-        return reason;
+    protected String getExclusionReason() {
+        return exclusionReason;
     }
 
     private static final List<Path> passingTests = new ArrayList<>();
@@ -223,8 +223,8 @@ public abstract class BaseSuiteHarness {
     }
 
     protected void assumeNotExcluded() {
-        if (getReason() != null) {
-            throw new AssumptionViolatedException("Test excluded: " + getReason());
+        if (getExclusionReason() != null) {
+            throw new AssumptionViolatedException("Test excluded: " + getExclusionReason());
         }
     }
 
