@@ -53,9 +53,7 @@ import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso._native.RawPointer;
 import com.oracle.truffle.espresso._native.TruffleByteBuffer;
-import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
@@ -155,6 +153,11 @@ class NFINativeAccess implements NativeAccess {
         CompilerAsserts.neverPartOfCompilation();
         String nfiSource = String.format("load(RTLD_LAZY) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
+    }
+
+    @Override
+    public @Pointer TruffleObject loadDefaultLibrary() {
+        return loadLibraryHelper("default");
     }
 
     protected @Pointer TruffleObject loadLibraryHelper(String nfiSource) {

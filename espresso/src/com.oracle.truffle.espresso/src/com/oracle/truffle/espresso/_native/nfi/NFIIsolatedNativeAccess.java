@@ -25,25 +25,24 @@ package com.oracle.truffle.espresso._native.nfi;
 import java.nio.file.Path;
 import java.util.Collections;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso._native.NativeAccess;
-import com.oracle.truffle.espresso._native.NativeSignature;
+import org.graalvm.home.HomeFinder;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso._native.Buffer;
+import com.oracle.truffle.espresso._native.NativeAccess;
+import com.oracle.truffle.espresso._native.NativeSignature;
 import com.oracle.truffle.espresso._native.NativeType;
 import com.oracle.truffle.espresso._native.Pointer;
 import com.oracle.truffle.espresso._native.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import org.graalvm.home.HomeFinder;
 
 final class NFIIsolatedNativeAccess extends NFINativeAccess {
 
@@ -70,6 +69,11 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
         CompilerAsserts.neverPartOfCompilation();
         String nfiSource = String.format("load(RTLD_LAZY|ISOLATED_NAMESPACE) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
+    }
+
+    @Override
+    public @Pointer TruffleObject loadDefaultLibrary() {
+        return null; // not supported
     }
 
     @Override

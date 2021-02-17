@@ -1169,11 +1169,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         TruffleObject library = handle2Lib.get(nativePtr);
         if (library == null) {
             if (nativePtr == rtldDefaultValue) {
-                if (!safeRTLDDefaultLookup) {
-                    getLogger().warning("JVM_FindLibraryEntry from default/global namespace is not supported in TruffleNFIIsolatedNamespace mode: " + name);
+                library = getNativeAccess().loadDefaultLibrary();
+                if (library == null) {
+                    getLogger().warning("JVM_FindLibraryEntry from default/global namespace is supported mode: " + name);
                     return RawPointer.nullInstance();
                 }
-                library = NativeLibrary.loadDefaultLibrary();
                 handle2Lib.put(nativePtr, library);
             } else {
                 getLogger().warning("JVM_FindLibraryEntry with unknown handle (" + libraryPtr + " / " + Long.toHexString(nativePtr) + "): " + name);

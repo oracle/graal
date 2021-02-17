@@ -1,13 +1,12 @@
 package com.oracle.truffle.espresso._native.nfi;
 
+import java.nio.file.Path;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso._native.NativeAccess;
 import com.oracle.truffle.espresso._native.Pointer;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-
-import java.nio.file.Path;
 
 public final class NFISulongNativeAccess extends NFINativeAccess {
 
@@ -20,6 +19,11 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
         CompilerAsserts.neverPartOfCompilation();
         String nfiSource = String.format("with llvm load(RTLD_LAZY) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
+    }
+
+    @Override
+    public @Pointer TruffleObject loadDefaultLibrary() {
+        return null; // not supported
     }
 
     public static final class Provider implements NativeAccess.Provider {
