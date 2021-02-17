@@ -26,7 +26,7 @@
     bitcode_config:: [],
     sulong_config:: [],
     gen_name_componentes::
-      assert std.isArray(self.targets) : "targest must be an array" + $.nameOrEmpty(self);
+      assert std.isArray(self.targets) : "targets must be an array" + $.nameOrEmpty(self);
       assert isNonEmptyString(self.suite) : "suite must be a non-empty string" + $.nameOrEmpty(self);
       assert isNonEmptyString(self.jdk) : "jdk must be a non-empty string" + $.nameOrEmpty(self);
       assert isNonEmptyString(self.os) : "os must be a non-empty string" + $.nameOrEmpty(self);
