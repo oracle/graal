@@ -1253,7 +1253,6 @@ suite = {
       "native" : True,
       "vpath" : True,
       "variants" : ["O1_OUT"],
-      "extraLibs" : ["libgmp.so.10"],
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_LDFLAGS" : "-lm -lgmp",
