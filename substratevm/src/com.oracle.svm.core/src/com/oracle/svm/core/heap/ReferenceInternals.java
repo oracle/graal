@@ -117,6 +117,11 @@ public final class ReferenceInternals {
         return uncast(cast(instance).discovered);
     }
 
+    /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered} as a pointer. */
+    public static <T> Pointer getDiscoveredPointer(Reference<T> instance) {
+        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)));
+    }
+
     public static long getNextDiscoveredFieldOffset() {
         return Target_java_lang_ref_Reference.discoveredFieldOffset;
     }
