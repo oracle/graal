@@ -95,11 +95,26 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
+        "com.oracle.truffle.tools.heapdump" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "org.graalvm.tools.insight",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+            ],
+            "javaCompliance" : "8+",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "workingSets" : "Tools",
+        },
         "org.graalvm.tools.insight.test" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.agentscript",
+                "com.oracle.truffle.tools.heapdump",
                 "truffle:TRUFFLE_TEST",
                 "mx:JUNIT"
             ],
@@ -366,7 +381,8 @@ suite = {
             },
             "dependencies": [
                 "org.graalvm.tools.insight",
-                "com.oracle.truffle.tools.agentscript"
+                "com.oracle.truffle.tools.agentscript",
+                "com.oracle.truffle.tools.heapdump"
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
