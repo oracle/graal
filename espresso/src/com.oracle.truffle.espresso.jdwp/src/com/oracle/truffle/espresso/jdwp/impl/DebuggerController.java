@@ -815,6 +815,7 @@ public final class DebuggerController implements ContextsListener {
             List<Callable<Void>> jobs = new ArrayList<>();
 
             boolean hit = false;
+            boolean handledLineBreakpoint = false;
             HashSet<Breakpoint> handled = new HashSet<>(event.getBreakpoints().size());
             for (Breakpoint bp : event.getBreakpoints()) {
                 if (handled.contains(bp)) {
@@ -824,6 +825,11 @@ public final class DebuggerController implements ContextsListener {
                 suspendPolicy = info.getSuspendPolicy();
 
                 if (info.isLineBreakpoint()) {
+                    // only allow one line breakpoint to avoid confusing the debugger
+                    if (handledLineBreakpoint) {
+                        continue;
+                    }
+                    handledLineBreakpoint = true;
                     hit = true;
                     // check if breakpoint request limited to a specific thread
                     Object thread = info.getThread();
