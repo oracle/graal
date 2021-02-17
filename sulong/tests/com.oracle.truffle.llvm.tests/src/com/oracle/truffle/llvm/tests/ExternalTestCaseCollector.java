@@ -50,7 +50,7 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 public abstract class ExternalTestCaseCollector {
 
     /**
-     * @return see {@link FixtureUtils#getFixtureObjects}
+     * @return see {@link TestCaseCollector#collectTestCases}
      */
     public static Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
         String testDiscoveryPath = TestOptions.TEST_DISCOVERY_PATH;

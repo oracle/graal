@@ -48,7 +48,7 @@ public class SulongSuite extends BaseSuiteHarness {
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
-        return FixtureUtils.getFixtureObjects(SulongSuite.class, suitesPath, SulongSuite::isReference);
+        return TestCaseCollector.collectTestCases(SulongSuite.class, suitesPath, SulongSuite::isReference);
     }
 
     private static boolean isReference(Path path) {

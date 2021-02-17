@@ -50,9 +50,9 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 /**
  * Utils for collecting test cases and exclusion reasons.
  * 
- * @see #getFixtureObjects
+ * @see #collectTestCases
  */
-public final class FixtureUtils {
+public final class TestCaseCollector {
 
     public static final String COMMENT_LINE_PREFIX = "#";
 
@@ -94,7 +94,7 @@ public final class FixtureUtils {
      *         absolute path to the test, the test name, and an exclude reason or {@code null} if
      *         there is none.
      */
-    public static Collection<Object[]> getFixtureObjects(Class<?> testSuiteClass, Path suitesPath, Predicate<? super Path> predicate) {
+    public static Collection<Object[]> collectTestCases(Class<?> testSuiteClass, Path suitesPath, Predicate<? super Path> predicate) {
         try {
             // collect excludes
             Map<String, String> excludedTests = getExcludedTests(testSuiteClass);
