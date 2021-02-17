@@ -24,18 +24,10 @@
  */
 package org.graalvm.compiler.hotspot.jdk9.test;
 
-import static org.junit.Assume.assumeFalse;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.junit.Before;
 import org.junit.Test;
 
 public final class MathFMAConstantInputTest extends GraalCompilerTest {
-
-    @Before
-    public void checkNotSPARC() {
-        assumeFalse("skipping test on SPARC ", isSPARC(getTarget().arch));
-    }
 
     public static float floatFMA() {
         return Math.fma(2.0f, 2.0f, 2.0f);

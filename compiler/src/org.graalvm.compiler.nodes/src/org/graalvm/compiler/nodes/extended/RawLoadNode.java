@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
@@ -82,8 +83,37 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
         super(TYPE, stamp, object, offset, accessKind, locationIdentity, false);
     }
 
+    static Stamp computeStampForArrayAccess(ValueNode object, JavaKind accessKind, Stamp oldStamp) {
+        TypeReference type = StampTool.typeReferenceOrNull(object);
+        // Loads from instances will generally be raised into a LoadFieldNode and end up with a
+        // precise stamp but array accesses will not, so manually compute a better stamp from
+        // the underlying object.
+        if (accessKind.isObject() && type != null && type.getType().isArray()) {
+            TypeReference oldType = StampTool.typeReferenceOrNull(oldStamp);
+            TypeReference componentType = TypeReference.create(object.graph().getAssumptions(), type.getType().getComponentType());
+            // Don't allow the type to get worse
+            if (oldType == null || oldType.getType().isAssignableFrom(componentType.getType())) {
+                return StampFactory.object(componentType);
+            }
+        }
+        if (oldStamp != null) {
+            return oldStamp;
+        } else {
+            return StampFactory.forKind(accessKind);
+        }
+    }
+
     protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        super(c, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, false);
+        super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, false);
+    }
+
+    @Override
+    public boolean inferStamp() {
+        // Primitive stamps can't get any better
+        if (accessKind.isObject()) {
+            return updateStamp(computeStampForArrayAccess(object, accessKind, stamp));
+        }
+        return false;
     }
 
     @Override

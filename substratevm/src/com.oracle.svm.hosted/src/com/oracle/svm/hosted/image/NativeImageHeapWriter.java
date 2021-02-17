@@ -107,7 +107,7 @@ public final class NativeImageHeapWriter {
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : heap.getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isInImageHeap()) {
                 assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
                 writeField(buffer, fields, field, null, null);

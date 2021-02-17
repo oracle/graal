@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -96,9 +97,11 @@ public final class HostAccess {
     final boolean allowArrayAccess;
     final boolean allowListAccess;
     final boolean allowBufferAccess;
+    final boolean allowIterableAccess;
+    final boolean allowIteratorAccess;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -149,6 +152,7 @@ public final class HostAccess {
                     allowAllImplementations(true).//
                     allowAllClassImplementations(true).//
                     allowArrayAccess(true).allowListAccess(true).allowBufferAccess(true).//
+                    allowIterableAccess(true).allowIteratorAccess(true).//
                     name("HostAccess.ALL").build();
 
     /**
@@ -168,7 +172,8 @@ public final class HostAccess {
                     EconomicSet<Class<? extends Annotation>> implementableAnnotations,
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
-                    boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess) {
+                    boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
+                    boolean allowIterableAccess, boolean allowIteratorAccess) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
@@ -183,6 +188,8 @@ public final class HostAccess {
         this.allowArrayAccess = allowArrayAccess;
         this.allowListAccess = allowListAccess;
         this.allowBufferAccess = allowBufferAccess;
+        this.allowIterableAccess = allowListAccess || allowIterableAccess;
+        this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowIteratorAccess;
     }
 
     /**
@@ -201,6 +208,8 @@ public final class HostAccess {
                         && allowAllClassImplementations == other.allowAllClassImplementations//
                         && allowArrayAccess == other.allowArrayAccess//
                         && allowListAccess == other.allowListAccess//
+                        && allowIterableAccess == other.allowIterableAccess//
+                        && allowIteratorAccess == other.allowIteratorAccess//
                         && equalsMap(excludeTypes, other.excludeTypes)//
                         && equalsSet(members, other.members)//
                         && equalsSet(implementableAnnotations, other.implementableAnnotations)//
@@ -221,6 +230,8 @@ public final class HostAccess {
                         allowAllClassImplementations,
                         allowArrayAccess,
                         allowListAccess,
+                        allowIterableAccess,
+                        allowIteratorAccess,
                         hashMap(excludeTypes),
                         hashSet(members),
                         hashSet(implementableAnnotations),
@@ -551,6 +562,8 @@ public final class HostAccess {
         private boolean allowArrayAccess;
         private boolean allowListAccess;
         private boolean allowBufferAccess;
+        private boolean allowIterableAccess;
+        private boolean allowIteratorAccess;
         private boolean allowAllImplementations;
         private boolean allowAllClassImplementations;
         private String name;
@@ -571,6 +584,8 @@ public final class HostAccess {
             this.allowPublic = access.allowPublic;
             this.allowListAccess = access.allowListAccess;
             this.allowArrayAccess = access.allowArrayAccess;
+            this.allowIterableAccess = access.allowIterableAccess;
+            this.allowIteratorAccess = access.allowIteratorAccess;
             this.allowAllImplementations = access.allowAllInterfaceImplementations;
             this.allowAllClassImplementations = access.allowAllClassImplementations;
         }
@@ -755,13 +770,44 @@ public final class HostAccess {
 
         /**
          * Allows the guest application to access lists as values with
-         * {@link Value#hasArrayElements() array elements}. By default no array access is allowed.
+         * {@link Value#hasArrayElements() array elements} and {@link Value#hasIterator()
+         * iterators}. By default no array access is allowed. Allowing list access implies also
+         * allowing of {@link #allowIterableAccess(boolean) iterables} and
+         * {@link #allowIteratorAccess(boolean) iterators}.
          *
          * @see Value#hasArrayElements()
+         * @see Value#hasIterator()
          * @since 19.0
          */
         public Builder allowListAccess(boolean listAccess) {
             this.allowListAccess = listAccess;
+            return this;
+        }
+
+        /**
+         * Allows the guest application to access {@link Iterable iterables} as values with
+         * {@link Value#hasIterator() iterators}. By default no iterable access is allowed. Allowing
+         * iterable access implies also allowing of {@link #allowIteratorAccess(boolean) iterators}.
+         *
+         * @see Value#hasIterator()
+         * @since 21.1
+         */
+        public Builder allowIterableAccess(boolean iterableAccess) {
+            this.allowIterableAccess = iterableAccess;
+            return this;
+        }
+
+        /**
+         * Allows the guest application to access {@link Iterator iterators} as
+         * {@link Value#isIterator() iterator} values. By default no iterator access is allowed.
+         *
+         * @see Value#isIterator()
+         * @see Value#hasIteratorNextElement()
+         * @see Value#getIteratorNextElement()
+         * @since 21.1
+         */
+        public Builder allowIteratorAccess(boolean iteratorAccess) {
+            this.allowIteratorAccess = iteratorAccess;
             return this;
         }
 
@@ -942,7 +988,7 @@ public final class HostAccess {
          */
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
-                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess);
+                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess, allowIteratorAccess);
         }
     }
 

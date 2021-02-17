@@ -113,9 +113,6 @@ public class SubstrateUtil {
             case "arm64":
                 arch = "aarch64";
                 break;
-            case "sparcv9":
-                arch = "sparc";
-                break;
         }
         return arch;
     }
@@ -260,7 +257,7 @@ public class SubstrateUtil {
 
     /**
      * Emits a node that triggers a breakpoint in debuggers.
-     * 
+     *
      * @param arg0 value to inspect when the breakpoint hits
      * @see BreakpointNode how to use breakpoints and inspect breakpoint values in the debugger
      */

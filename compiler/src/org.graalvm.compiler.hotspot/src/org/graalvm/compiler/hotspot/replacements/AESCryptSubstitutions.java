@@ -99,23 +99,6 @@ public class AESCryptSubstitutions {
         crypt(rcvr, in, inOffset, out, outOffset, false, false);
     }
 
-    /**
-     * Variation for platforms (e.g. SPARC) that need do key expansion in stubs due to compatibility
-     * issues between Java key expansion and hardware crypto instructions.
-     */
-    @MethodSubstitution(value = "decryptBlock", isStatic = false)
-    static void decryptBlockWithOriginalKey(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        crypt(rcvr, in, inOffset, out, outOffset, false, true);
-    }
-
-    /**
-     * @see #decryptBlockWithOriginalKey(Object, byte[], int, byte[], int)
-     */
-    @MethodSubstitution(value = "implDecryptBlock", isStatic = false)
-    static void implDecryptBlockWithOriginalKey(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
-        crypt(rcvr, in, inOffset, out, outOffset, false, true);
-    }
-
     private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt, boolean withOriginalKey) {
         checkArgs(in, inOffset, out, outOffset);
         Object realReceiver = PiNode.piCastNonNull(rcvr, aesCryptType(INJECTED_INTRINSIC_CONTEXT));

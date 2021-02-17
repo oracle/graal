@@ -40,10 +40,15 @@
  */
 package com.oracle.truffle.api.test.host;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
+import java.util.Collection;
 import java.util.Collections;
 
+import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.polyglot.Value;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
@@ -193,6 +198,17 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
 
         assertFails(() -> INTEROP.invokeMember(hostObj, "cce", 42), hostExceptionClass, null);
         assertFails(() -> INTEROP.execute(foo, 42), hostExceptionClass, null);
+    }
+
+    @Test
+    public void testIterator() throws StopIterationException, UnsupportedMessageException {
+        Collection<Integer> c = Collections.singleton(42);
+        Object iterator = env.asGuestValue(c.iterator());
+        assertTrue(INTEROP.hasIteratorNextElement(iterator));
+        INTEROP.getIteratorNextElement(iterator);
+        assertFalse(INTEROP.hasIteratorNextElement(iterator));
+        assertFails(() -> INTEROP.getIteratorNextElement(iterator), StopIterationException.class, null);
+
     }
 
     @ExportLibrary(InteropLibrary.class)

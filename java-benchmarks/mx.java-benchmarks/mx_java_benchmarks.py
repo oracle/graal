@@ -38,6 +38,7 @@ from tempfile import mkdtemp, mkstemp
 import mx
 import mx_benchmark
 from mx_benchmark import ParserEntry
+import mx_sdk_benchmark
 
 
 _suite = mx.suite('java-benchmarks')
@@ -170,7 +171,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
-class ShopCartBenchmarkSuite(mx_benchmark.JMeterBenchmarkSuite):
+class ShopCartBenchmarkSuite(mx_sdk_benchmark.JMeterBenchmarkSuite):
     """Benchmark suite for the ShopCart benchmark."""
 
     def name(self):
@@ -184,6 +185,9 @@ class ShopCartBenchmarkSuite(mx_benchmark.JMeterBenchmarkSuite):
 
     def version(self):
         return "0.1"
+
+    def validateReturnCode(self, retcode):
+        return retcode == 143
 
     def benchmarkList(self, bmSuiteArgs):
         return ["tiny", "small", "large"]
@@ -772,7 +776,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
             # No benchmark specified in the command line, so run everything.
-            benchmarks = [b for b in self.benchmarkList(bmSuiteArgs)]
+            benchmarks = self.benchmarkList(bmSuiteArgs)
 
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)

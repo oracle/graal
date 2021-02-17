@@ -211,6 +211,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         adaptArgumentValues(providers, kit, parameterTypes, parameterEnumInfos, args);
 
         ResolvedJavaMethod universeTargetMethod = unwrapMethodAndLookupInUniverse(metaAccess);
+        kit.emitEnsureInitializedCall(universeTargetMethod.getDeclaringClass());
 
         int invokeBci = kit.bci();
         // Also support non-static test methods (they are not allowed to use the receiver)

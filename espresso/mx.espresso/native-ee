@@ -1,8 +1,6 @@
-# mx --dy /vm-enterprise,/substratevm-enterprise --components="Espresso Launcher,SubstrateVM Enterprise" --native-images=espresso --disable-polyglot --disable-libpolyglot --force-bash-launchers=native-image graalvm-show
+# mx --dynamicimports=/vm-enterprise,/substratevm-enterprise,/tools-enterprise --components="Java on Truffle,SubstrateVM Enterprise,suite:tools,suite:tools-enterprise" --native-images=lib:espresso --disable-installables=true graalvm-show
 
-DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise
-COMPONENTS=Espresso Launcher,SubstrateVM Enterprise
-NATIVE_IMAGES=espresso,lib:espresso
-DISABLE_POLYGLOT=true
-DISABLE_LIBPOLYGLOT=true
-FORCE_BASH_LAUNCHERS=native-image
+DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,/tools-enterprise
+COMPONENTS=Java on Truffle,SubstrateVM Enterprise,suite:tools,suite:tools-enterprise
+NATIVE_IMAGES=lib:espresso
+DISABLE_INSTALLABLES=true

@@ -31,10 +31,12 @@ from __future__ import print_function
 import os
 import re
 from glob import glob
+import threading
 
 import zipfile
 import mx
 import mx_benchmark
+import mx_sdk_benchmark
 import mx_java_benchmarks
 
 _suite = mx.suite("substratevm")
@@ -59,46 +61,33 @@ def list_jars(path):
     return jars
 
 
-_RENAISSANCE_EXTRA_AGENT_ARGS = [
-    '-Dnative-image.benchmark.extra-agent-run-arg=-r',
-    '-Dnative-image.benchmark.extra-agent-run-arg=1'
-]
-
-RENAISSANCE_EXTRA_PROFILE_ARGS = [
-    # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
-    '-Dnative-image.benchmark.extra-profile-run-arg=-r',
-    '-Dnative-image.benchmark.extra-profile-run-arg=1',
-    # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
-    '-Dnative-image.benchmark.extra-agent-profile-run-arg=-r',
-    '-Dnative-image.benchmark.extra-agent-profile-run-arg=5'
-]
-
-_RENAISSANCE_EXTRA_VM_ARGS = {
+_RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'chi-square'        : [
-                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                           '--allow-incomplete-classpath',
+                           '--report-unsupported-elements-at-runtime',
                           ],
     'finagle-http'      : [
-                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'
+                           '--allow-incomplete-classpath'
                           ],
     'log-regression'    : [
-                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                           '--allow-incomplete-classpath',
+                           '--report-unsupported-elements-at-runtime',
                           ],
-    'movie-lens'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+    'movie-lens'        : [
+                           '--allow-incomplete-classpath',
+                           '--report-unsupported-elements-at-runtime',
                           ],
     'dec-tree'          : [
-                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                           '--allow-incomplete-classpath',
+                           '--report-unsupported-elements-at-runtime',
                           ],
     'page-rank'         : [
-                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'
+                           '--allow-incomplete-classpath',
+                           '--report-unsupported-elements-at-runtime'
                           ],
     'naive-bayes'       : [
-                            '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'
+                            '--allow-incomplete-classpath',
+                            '--report-unsupported-elements-at-runtime'
                           ],
 }
 
@@ -147,7 +136,41 @@ def benchmark_scalaversion(benchmark):
     return _renaissance_config[benchmark][1]
 
 
-class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchmarkSuite): #pylint: disable=too-many-ancestors
+class ShopCartNativeImageBenchmarkSuite(mx_java_benchmarks.ShopCartBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin):
+
+    def name(self):
+        return 'shopcart-native-image'
+
+    def benchSuiteName(self):
+        return 'shopcart'
+
+    def run_stage(self, stage, server_command, out, err, cwd, nonZeroIsFatal):
+        if 'image' in stage:
+            # For image stages, we just run the given command
+            return super(ShopCartNativeImageBenchmarkSuite, self).run_stage(stage, server_command, out, err, cwd, nonZeroIsFatal)
+        else:
+            # For run stages, we need to run the server and the loader
+            threading.Thread(target=ShopCartNativeImageBenchmarkSuite.runJMeterInBackground, args=[self, self.benchmarkName()]).start()
+            return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+
+    def skip_agent_assertions(self, benchmark, args):
+        user_args = super(ShopCartNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def stages(self, args):
+        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.stages=', args)
+        if len(parsed_args) > 1:
+            mx.abort('Native Image benchmark stages should only be specified once.')
+        return parsed_args[0].split(',') if parsed_args else ['instrument-image', 'instrument-run', 'image', 'run']
+
+
+mx_benchmark.add_bm_suite(ShopCartNativeImageBenchmarkSuite())
+
+
+class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     """
     Building an image for a renaissance benchmark requires all libraries for the group this benchmark belongs to
     and a harness project compiled with the same scala version as the benchmark.
@@ -186,23 +209,48 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     def renaissance_additional_lib(self, lib):
         return mx.library(lib).get_path(True)
 
+    def extra_agent_run_arg(self, benchmark, args):
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args)
+        if user_args:
+            return user_args + [benchmark]
+        else:
+            return ['-r', '1'] + [benchmark]
+
+    def extra_profile_run_arg(self, benchmark, args):
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args)
+        if user_args:
+            return user_args + [benchmark]
+        else:
+            return ['-r', '1'] + [benchmark]
+
+    def extra_agent_profile_run_arg(self, benchmark, args):
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args)
+        if user_args:
+            return user_args + [benchmark]
+        else:
+            return ['-r', '5'] + [benchmark]
+
+    def skip_agent_assertions(self, benchmark, args):
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def extra_image_build_argument(self, benchmark, args):
+        default_args = _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _DACAPO_EXTRA_IMAGE_BUILD_ARGS else []
+        return default_args + super(RenaissanceNativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        bench_arg = ""
         if benchmarks is None:
             mx.abort("Suite can only run a single benchmark per VM instance.")
         elif len(benchmarks) != 1:
             mx.abort("Must specify exactly one benchmark.")
         else:
-            bench_arg = benchmarks[0]
-        run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
-        vm_args = self.vmArgs(bmSuiteArgs) + self.extra_vm_args(bench_arg)
-
-        agent_args = _RENAISSANCE_EXTRA_AGENT_ARGS + ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg]
-        pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg, '-Dnative-image.benchmark.extra-agent-profile-run-arg=' + bench_arg]
-        benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
-        benchmark_suite_name = '-Dnative-image.benchmark.benchmark-suite-name=' + self.benchSuiteName()
-
-        return agent_args + pgo_args + [benchmark_name, benchmark_suite_name] + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.renaissancePath()] + run_args + [bench_arg]
+            self.benchmark_name = benchmarks[0]
+        run_args = self.postprocessRunArgs(self.benchmarkName(), self.runArgs(bmSuiteArgs))
+        vm_args = self.vmArgs(bmSuiteArgs)
+        return ['-cp', self.create_classpath(self.benchmarkName())] + vm_args + ['-jar', self.renaissancePath()] + run_args + [self.benchmarkName()]
 
     def successPatterns(self):
         return super(RenaissanceNativeImageBenchmarkSuite, self).successPatterns() + [
@@ -213,9 +261,6 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject('harness', benchmark_scalaversion(benchArg), self)
         group_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject(benchmark_group(benchArg), benchmark_scalaversion(benchArg), self, harness_project)
         return ':'.join([mx.classpath(harness_project), mx.classpath(group_project)])
-
-    def extra_vm_args(self, benchmark):
-        return _RENAISSANCE_EXTRA_VM_ARGS[benchmark] if benchmark in _RENAISSANCE_EXTRA_VM_ARGS else []
 
     class RenaissanceDependency(mx.ClasspathDependency):
         def __init__(self, name, path): # pylint: disable=super-init-not-called
@@ -301,7 +346,7 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         return extract_archive(dacapo_path, 'dacapo.extracted')
 
     def benchmark_resources(self, benchmark):
-        pass
+        return None
 
     def additional_lib(self, lib):
         return mx.library(lib).get_path(True)
@@ -335,41 +380,30 @@ class BaseDaCapoNativeImageBenchmarkSuite():
 # This argument can be added to either:
 # 1. The agent stage: -Dnative-image.benchmark.extra-agent-run-arg=-preserve
 # 2. The image run stage: -Dnative-image.benchmark.extra-run-arg=-preserve
-_DACAPO_EXTRA_VM_ARGS = {
-    'h2':         ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'pmd':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true'],
-    'sunflow':    ['-Dnative-image.benchmark.skip-agent-assertions=true'],
+_DACAPO_SKIP_AGENT_ASSERTIONS = {
+    'pmd':        True,
+    'sunflow':    True,
+    'fop':        True
+}
+
+_DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
+    'h2' :      ['--allow-incomplete-classpath'],
+    'pmd':      ['--allow-incomplete-classpath'],
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
-    'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
+    'xalan':    ['--report-unsupported-elements-at-runtime',
+                 '--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
     # There are two main issues with fop:
     # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However, DaCapo Harness sets the logging config file path system property at runtime.
     #    This causes us to incorrectly parse the default log configuration, leading to output on stderr.
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
-    'fop':        [
-                    '-Dnative-image.benchmark.skip-agent-assertions=true',
-                    '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                    '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
-                    '-Dnative-image.benchmark.extra-image-build-argument=-H:-EnableLoggingFeature',
-                    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'
-                  ],
-    'batik':      ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
+    'fop':      ['--allow-incomplete-classpath',
+                 '--report-unsupported-elements-at-runtime',
+                 '-H:-EnableLoggingFeature',
+                 '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
+    'batik':    ['--allow-incomplete-classpath']
 }
-
-_DACAPO_EXTRA_AGENT_ARGS = [
-    '-Dnative-image.benchmark.extra-agent-run-arg=-n',
-    '-Dnative-image.benchmark.extra-agent-run-arg=1'
-]
-
-_DACAPO_EXTRA_PROFILE_ARGS = [
-    # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
-    '-Dnative-image.benchmark.extra-profile-run-arg=-n',
-    '-Dnative-image.benchmark.extra-profile-run-arg=1',
-    # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
-    '-Dnative-image.benchmark.extra-agent-profile-run-arg=-n',
-    '-Dnative-image.benchmark.extra-agent-profile-run-arg=5'
-]
 
 '''
 Benchmarks from DaCapo suite may require one or more zip archives from `dat` directory on the classpath.
@@ -418,7 +452,7 @@ _daCapo_exclude_lib = {
     'fop'         : ['saxon-9.1.0.8.jar', 'saxon-9.1.0.8-dom.jar'],  # Native-image picks the wrong service provider from these jars
 }
 
-class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
+class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     def name(self):
         return 'dacapo-native-image'
 
@@ -448,22 +482,52 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
 
+    def extra_agent_run_arg(self, benchmark, args):
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args)
+        if user_args:
+            return [benchmark] + user_args
+        else:
+            return [benchmark] + ['-n', '1']
+
+    def extra_profile_run_arg(self, benchmark, args):
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args)
+        if user_args:
+            return [benchmark] + user_args
+        else:
+            # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
+            return [benchmark] + ['-n', '1']
+
+    def extra_agent_profile_run_arg(self, benchmark, args):
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args)
+        if user_args:
+            return [benchmark] + user_args
+        else:
+            # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
+            return [benchmark] + ['-n', '5']
+
+    def skip_agent_assertions(self, benchmark, args):
+        default_args = _DACAPO_SKIP_AGENT_ASSERTIONS[benchmark] if benchmark in _DACAPO_SKIP_AGENT_ASSERTIONS else []
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return default_args
+
+    def extra_image_build_argument(self, benchmark, args):
+        default_args = _DACAPO_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _DACAPO_EXTRA_IMAGE_BUILD_ARGS else []
+        return default_args + super(DaCapoNativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        bench_arg = ""
         if benchmarks is None:
             mx.abort("Suite can only run a single benchmark per VM instance.")
         elif len(benchmarks) != 1:
             mx.abort("Must specify exactly one benchmark.")
         else:
-            bench_arg = benchmarks[0]
-        agent_args = ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg] + _DACAPO_EXTRA_AGENT_ARGS
-        pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg, '-Dnative-image.benchmark.extra-agent-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
-        benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
-        benchmark_suite_name = '-Dnative-image.benchmark.benchmark-suite-name=' + self.benchSuiteName()
+            self.benchmark_name = benchmarks[0]
 
-        run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
-        vm_args = self.vmArgs(bmSuiteArgs) + (_DACAPO_EXTRA_VM_ARGS[bench_arg] if bench_arg in _DACAPO_EXTRA_VM_ARGS else [])
-        return agent_args + pgo_args + [benchmark_name, benchmark_suite_name] + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.daCapoPath()] + [bench_arg] + run_args
+        run_args = self.postprocessRunArgs(self.benchmarkName(), self.runArgs(bmSuiteArgs))
+        vm_args = self.vmArgs(bmSuiteArgs)
+        return ['-cp', self.create_classpath(self.benchmarkName())] + vm_args + ['-jar', self.daCapoPath()] + [self.benchmarkName()] + run_args
 
     def create_classpath(self, benchmark):
         dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)
@@ -508,11 +572,11 @@ _scala_dacapo_iterations = {
     'tmt'           : 12,
 }
 
-_SCALA_DACAPO_EXTRA_VM_ARGS = {
-    'scalariform'   : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'scalatest'     : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'specs'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'tmt'           : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
+_SCALA_DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
+    'scalariform'   : ['--allow-incomplete-classpath'],
+    'scalatest'     : ['--allow-incomplete-classpath'],
+    'specs'         : ['--allow-incomplete-classpath'],
+    'tmt'           : ['--allow-incomplete-classpath'],
 }
 
 _scala_daCapo_exclude_lib = {
@@ -529,7 +593,7 @@ _scala_daCapo_additional_lib = {
 }
 
 
-class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
+class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     def name(self):
         return 'scala-dacapo-native-image'
 
@@ -551,22 +615,37 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
 
+    def extra_agent_run_arg(self, benchmark, args):
+        return [benchmark] + super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args)
+
+    def extra_profile_run_arg(self, benchmark, args):
+        return [benchmark] + super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args)
+
+    def extra_agent_profile_run_arg(self, benchmark, args):
+        return [benchmark] + super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args)
+
+    def skip_agent_assertions(self, benchmark, args):
+        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def extra_image_build_argument(self, benchmark, args):
+        default_args = _SCALA_DACAPO_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _SCALA_DACAPO_EXTRA_IMAGE_BUILD_ARGS else []
+        return default_args + super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        bench_arg = ""
         if benchmarks is None:
             mx.abort("Suite can only run a single benchmark per VM instance.")
         elif len(benchmarks) != 1:
             mx.abort("Must specify exactly one benchmark.")
         else:
-            bench_arg = benchmarks[0]
-        agent_args = ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg] + _DACAPO_EXTRA_AGENT_ARGS
-        pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg, '-Dnative-image.benchmark.extra-agent-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
-        benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
-        benchmark_suite_name = '-Dnative-image.benchmark.benchmark-suite-name=' + self.benchSuiteName()
+            self.benchmark_name = benchmarks[0]
 
-        run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
-        vm_args = self.vmArgs(bmSuiteArgs) + (_SCALA_DACAPO_EXTRA_VM_ARGS[bench_arg] if bench_arg in _SCALA_DACAPO_EXTRA_VM_ARGS else [])
-        return agent_args + pgo_args + [benchmark_name, benchmark_suite_name] + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.daCapoPath()] + [bench_arg] + run_args
+        run_args = self.postprocessRunArgs(self.benchmarkName(), self.runArgs(bmSuiteArgs))
+        vm_args = self.vmArgs(bmSuiteArgs)
+        return ['-cp', self.create_classpath(self.benchmarkName())] + vm_args + ['-jar', self.daCapoPath()] + [self.benchmarkName()] + run_args
 
     def create_classpath(self, benchmark):
         dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)

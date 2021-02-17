@@ -2325,8 +2325,7 @@ def get_standalone_distribution(comp_dir_name):
             if standalone.main_comp_dir_name == comp_dir_name:
                 return standalone
         raise mx.abort("Cannot find a standalone with dir_name '{}'.\nAvailable standalones:\n{}".format(comp_dir_name, '\n'.join((('- ' + s.main_comp_dir_name for s in standalones)))))
-    else:
-        raise mx.abort('No standalones available. Did you forget to dynamically import a component?')
+    raise mx.abort('No standalones available. Did you forget to dynamically import a component?')
 
 
 def has_svm_polyglot_lib():

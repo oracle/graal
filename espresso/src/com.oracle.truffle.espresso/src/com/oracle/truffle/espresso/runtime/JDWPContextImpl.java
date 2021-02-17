@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,7 +68,6 @@ import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class JDWPContextImpl implements JDWPContext {
 
@@ -593,7 +592,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null);
     }
 
     @Override
@@ -603,6 +602,15 @@ public final class JDWPContextImpl implements JDWPContext {
             return asGuestThread(lock.getOwnerThread());
         }
         return null;
+    }
+
+    @Override
+    public int getMonitorEntryCount(Object monitor) {
+        if (monitor instanceof StaticObject) {
+            EspressoLock lock = ((StaticObject) monitor).getLock();
+            return lock.getEntryCount();
+        }
+        return -1;
     }
 
     @Override
@@ -633,14 +641,12 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public boolean forceEarlyReturn(Object returnValue, CallFrame topFrame) {
-        // exit all monitors on the current top frame
-        MonitorStackInfo[] ownedMonitors = getOwnedMonitors(new CallFrame[]{topFrame});
-        for (MonitorStackInfo ownedMonitor : ownedMonitors) {
-            InterpreterToVM.monitorExit((StaticObject) ownedMonitor.getMonitor(), context.getMeta());
+    public void clearFrameMonitors(CallFrame frame) {
+        RootNode rootNode = frame.getRootNode();
+        if (rootNode instanceof EspressoRootNode) {
+            EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
+            espressoRootNode.abortInternalMonitors(frame.getFrame());
         }
-        eventListener.forceEarlyReturn(returnValue);
-        return true;
     }
 
     @Override

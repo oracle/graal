@@ -661,7 +661,7 @@ public class NativeImageGenerator {
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
                         this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
-                        image.build(debug);
+                        image.build(imageName, debug);
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
                              * This debug output must be printed _after_ and not _during_ image

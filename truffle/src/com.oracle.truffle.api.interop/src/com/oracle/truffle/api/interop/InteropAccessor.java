@@ -131,6 +131,11 @@ final class InteropAccessor extends Accessor {
             }
             return receiver;
         }
+
+        @Override
+        public Object createDefaultIterator(Object receiver) {
+            return new ArrayIterator(receiver);
+        }
     }
 
     static final class EmptyTruffleObject implements TruffleObject {

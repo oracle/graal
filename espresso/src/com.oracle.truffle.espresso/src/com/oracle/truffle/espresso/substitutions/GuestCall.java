@@ -33,4 +33,6 @@ import java.lang.annotation.Target;
 @Target(value = {TYPE_USE})
 public @interface GuestCall {
     String target() default "";
+
+    boolean original() default false;
 }

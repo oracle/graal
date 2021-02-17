@@ -410,6 +410,7 @@ public final class JNIUtil {
     /*----------------- TRACING ------------------*/
 
     private static Integer traceLevel;
+    private static final ThreadLocal<Boolean> inTrace = ThreadLocal.withInitial(() -> false);
 
     private static final String JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
 
@@ -443,10 +444,23 @@ public final class JNIUtil {
      */
     public static void trace(int level, String format, Object... args) {
         if (traceLevel() >= level) {
-            JNILibGraalScope<?> scope = JNILibGraalScope.scopeOrNull();
-            String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
-            String prefix = "[" + IsolateUtil.getIsolateID() + ":" + Thread.currentThread().getName() + "]";
-            TTY.printf(prefix + indent + format + "%n", args);
+            // Prevents nested tracing of JNI calls originated from this method.
+            // The TruffleCompilerImpl redirects the TTY using a TTY.Filter to the
+            // TruffleCompilerRuntime#log(). In libgraal the HSTruffleCompilerRuntime#log() uses a
+            // FromLibGraalCalls#callVoid() to do the JNI call to the GraalTruffleRuntime#log(). The
+            // FromLibGraalCalls#callVoid() also traces the JNI call by calling trace(). The nested
+            // trace call should be ignored.
+            if (!inTrace.get()) {
+                inTrace.set(true);
+                try {
+                    JNILibGraalScope<?> scope = JNILibGraalScope.scopeOrNull();
+                    String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
+                    String prefix = "[" + IsolateUtil.getIsolateID() + ":" + Thread.currentThread().getName() + "]";
+                    TTY.printf(prefix + indent + format + "%n", args);
+                } finally {
+                    inTrace.remove();
+                }
+            }
         }
     }
 

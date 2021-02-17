@@ -95,6 +95,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     private static final CounterKey COUNTER_INFER_STAMP_CALLED = DebugContext.counter("InferStampCalled");
     private static final CounterKey COUNTER_STAMP_CHANGED = DebugContext.counter("StampChanged");
     private static final CounterKey COUNTER_SIMPLIFICATION_CONSIDERED_NODES = DebugContext.counter("SimplificationConsideredNodes");
+    private static final CounterKey COUNTER_CUSTOM_SIMPLIFICATION_CONSIDERED_NODES = DebugContext.counter("CustomSimplificationConsideredNodes");
     private static final CounterKey COUNTER_GLOBAL_VALUE_NUMBERING_HITS = DebugContext.counter("GlobalValueNumberingHits");
 
     private final EnumSet<CanonicalizerFeature> features;
@@ -415,19 +416,27 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     }
                 }
 
-                if (features.contains(CFG_SIMPLIFICATION) && nodeClass.isSimplifiable()) {
-                    debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: simplifying %s", node);
-                    COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
+                if (features.contains(CFG_SIMPLIFICATION)) {
                     if (customSimplification != null) {
+                        debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: customSimplification simplifying %s", node);
+                        COUNTER_CUSTOM_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
+
                         customSimplification.simplify(node, tool);
+                        if (node.isDeleted()) {
+                            debug.log("Canonicalizer: customSimplification simplified %s", node);
+                            return true;
+                        }
                     }
-                    if (node.isAlive()) {
+                    if (nodeClass.isSimplifiable()) {
+                        debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: simplifying %s", node);
+                        COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
+
                         node.simplify(tool);
                         if (node.isDeleted()) {
                             debug.log("Canonicalizer: simplified %s", node);
+                            return true;
                         }
                     }
-                    return node.isDeleted();
                 }
                 return false;
             } catch (Throwable throwable) {

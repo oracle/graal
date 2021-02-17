@@ -170,7 +170,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     name: name,
   },
 
-  espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[]):
+  espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[], timelimit='3:00:00'):
     self.build_espresso(env) +
     {
       run+: that.maybe_set_ld_debug_flag(env) + [
@@ -184,7 +184,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
               '--vm.Xss32m'] + extra_args
           ),
       ],
-      timelimit: '3:00:00',
+      timelimit: timelimit,
     } +
     self.bench_upload,
 
@@ -201,7 +201,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env),
       guest_jvm='espresso', guest_jvm_config=guest_jvm_config,
       fork_file='ci_common/scala-dacapo-warmup-forks.json',
-      extra_args=extra_args
+      extra_args=extra_args,
+      timelimit='5:00:00'
     ),
 
   graal_benchmark(env, suite, host_jvm='server', host_jvm_config=_graal_host_jvm_config(env), extra_args=[]):

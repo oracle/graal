@@ -22,6 +22,14 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
 * The native image build fails if a method known as not suitable for partial evaluation is reachable for runtime compilation. The check can be disabled by the `-H:-TruffleCheckBlackListedMethods` native image option.
 * Added `ExactMath.truncate(float)` and `ExactMath.truncate(double)` methods to remove the decimal part (round toward zero) of a float or of a double respectively. These methods are intrinsified.
+* Added `SuspendedEvent.prepareUnwindFrame(DebugStackFrame, Object)` to support forced early return values from a debugger.
+* Added `DebugScope.convertRawValue(Class<? extends TruffleLanguage<?>>, Object)` to enable wrapping a raw guest language object into a DebugValue.
+* Added new messages to the `InteropLibrary` to support iterables and iterators:
+	* Added `hasIterator(Object)` that allows to specify that the receiver is an iterable.
+    * Added `getIterator(Object)` to return the iterator for an interable receiver.
+    * Added `isIterator(Object)` that allows to specify that the receiver is an iterator.
+    * Added `hasIteratorNextElement(Object)`  that allows to specify that the iterator receiver has element(s) to return by calling the `getIteratorNextElement(Object)` method.
+    * Added `getIteratorNextElement(Object)` to return the current iterator element.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the exception interop messages are executed without a context being entered. The event listeners called during the context enter are:

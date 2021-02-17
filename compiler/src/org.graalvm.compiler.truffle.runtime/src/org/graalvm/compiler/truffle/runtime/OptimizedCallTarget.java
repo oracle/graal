@@ -431,7 +431,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
         Node prev = encapsulating.set(null);
         try {
-            profileArguments(args);
             return callIndirect(prev, args);
         } catch (Throwable t) {
             GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
@@ -443,6 +442,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public Object callIndirect(Node location, Object... args) {
+        /*
+         * Indirect calls should not invalidate existing compilations of the callee, and the callee
+         * should still be able to use profiled arguments until an incompatible argument is passed.
+         * So we profile arguments for indirect calls too, but behind a truffle boundary.
+         */
+        profileIndirectArguments(args);
+
         try {
             return doInvoke(args);
         } finally {
@@ -451,6 +457,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
+    /**
+     * In compiled code, this is only used if the callee is <i>not</i> inlined. If the callee is
+     * inlined, {@link #callInlined(Node, Object...)} is used instead, which does not profile
+     * arguments, as it is estimated redundant. See the docs of {@link OptimizedCallTarget}.
+     */
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Node location, Object... args) {
         try {
@@ -471,14 +482,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    private static boolean keepAlive(@SuppressWarnings("unused") Object o) {
-        return true;
-    }
-
-    public final Object callOSR(Object... args) {
-        return doInvoke(args);
-    }
-
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlined(Node location, Object... arguments) {
         try {
@@ -488,6 +491,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert keepAlive(location);
         }
+    }
+
+    private static boolean keepAlive(@SuppressWarnings("unused") Object o) {
+        return true;
+    }
+
+    public final Object callOSR(Object... args) {
+        return doInvoke(args);
     }
 
     /**
@@ -1119,20 +1130,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
     // endregion
 
-    // This should be private but can't be. GR-19397
-    public final void stopProfilingArguments() {
-        assert !callProfiled;
-
-        ArgumentsProfile argumentsProfile = this.argumentsProfile;
-        if (argumentsProfile != ArgumentsProfile.INVALID) {
-            // Argument profiling is not possible for targets of indirect calls.
-            // The assumption will invalidate the callee but we shouldn't invalidate the caller.
-            CompilerDirectives.transferToInterpreter();
-
-            transitionToInvalidArgumentsProfile();
-        }
-    }
-
     private void transitionToInvalidArgumentsProfile() {
         while (true) {
             ArgumentsProfile oldProfile = argumentsProfile;
@@ -1156,6 +1153,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             oldProfile.assumption.invalidate();
         }
         return ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, oldProfile, newProfile);
+    }
+
+    @TruffleBoundary
+    private void profileIndirectArguments(Object[] args) {
+        profileArguments(args);
     }
 
     // This should be private but can't be. GR-19397

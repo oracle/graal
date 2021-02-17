@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,7 +101,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     NFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NFIContext");
     ret->NFIContext_getNativeEnv = (*env)->GetMethodID(env, NFIContext, "getNativeEnv", "()J");
     ret->NFIContext_createClosureNativePointer = (*env)->GetMethodID(env, NFIContext, "createClosureNativePointer",
-            "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/impl/LibFFISignature;)Lcom/oracle/truffle/nfi/impl/ClosureNativePointer;");
+            "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/impl/LibFFISignature;Ljava/lang/Object;)Lcom/oracle/truffle/nfi/impl/ClosureNativePointer;");
     ret->NFIContext_newClosureRef = (*env)->GetMethodID(env, NFIContext, "newClosureRef", "(J)V");
     ret->NFIContext_releaseClosureRef = (*env)->GetMethodID(env, NFIContext, "releaseClosureRef", "(J)V");
     ret->NFIContext_getClosureObject = (*env)->GetMethodID(env, NFIContext, "getClosureObject", "(J)Ljava/lang/Object;");

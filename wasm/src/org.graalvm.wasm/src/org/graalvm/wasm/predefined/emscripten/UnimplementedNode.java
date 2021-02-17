@@ -40,7 +40,7 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
@@ -67,7 +67,7 @@ public class UnimplementedNode extends WasmBuiltinRootNode {
         return name;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private WasmException fail() {
         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Not implemented: " + builtinNodeName());
     }

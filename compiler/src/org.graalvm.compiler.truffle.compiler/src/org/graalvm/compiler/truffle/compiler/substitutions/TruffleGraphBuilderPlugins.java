@@ -82,6 +82,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
@@ -125,6 +126,7 @@ public class TruffleGraphBuilderPlugins {
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
         registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
+        registerMemorySegmentProxyPlugins(plugins, metaAccess);
     }
 
     private static void registerObjectsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
@@ -831,6 +833,20 @@ public class TruffleGraphBuilderPlugins {
                 value.getDebug().dump(DebugContext.VERBOSE_LEVEL, value.graph(), "Graph before bailout at node %s", sb);
                 throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb);
             }
+        }
+    }
+
+    public static void registerMemorySegmentProxyPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
+        if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            final ResolvedJavaType memorySegmentProxyType = getRuntime().resolveType(metaAccess, "jdk.internal.access.foreign.MemorySegmentProxy");
+            Registration r = new Registration(plugins, new ResolvedJavaSymbol(memorySegmentProxyType));
+            r.register1("scope", Receiver.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NullCheckException));
+                    return true;
+                }
+            });
         }
     }
 }

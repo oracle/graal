@@ -147,8 +147,7 @@ class _MvnClassPathEntry(_ClassPathEntry):
         if ret_code != 0:
             if self.required:
                 raise Abort('Cannot download artifact {0} '.format(self))
-            else:
-                return False
+            return False
         else:
             return True
 

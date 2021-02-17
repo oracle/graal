@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.jdk9.test;
 
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 import java.util.ArrayList;
@@ -35,7 +34,7 @@ import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -45,9 +44,8 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public final class MathDoubleFMATest extends GraalCompilerTest {
 
-    @Before
-    public void checkNotSPARC() {
-        assumeFalse("skipping tests on SPARC", isSPARC(getTarget().arch));
+    @BeforeClass
+    public static void checkUseFMAIntrinsics() {
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         assumeTrue("skipping FMA specific test", rt.getVMConfig().useFMAIntrinsics);
     }

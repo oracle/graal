@@ -163,9 +163,7 @@ public abstract class ConstantPool {
         return at(index, null);
     }
 
-    public byte[] getRawBytes() {
-        return new byte[0];
-    }
+    public abstract byte[] getRawBytes();
 
     static @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
         CompilerDirectives.transferToInterpreter();
