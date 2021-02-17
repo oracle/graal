@@ -28,6 +28,7 @@
 import mx
 import mx_subst
 import mx_unittest
+import mx_sdk_vm
 import mx_sdk_vm_impl
 
 import functools
@@ -63,9 +64,9 @@ class VmGateTasks:
 
 
 def gate_body(args, tasks):
-    # all mx_sdk_vm_impl gate tasks can also be run as vm gate tasks
-    if not args.all_suites:
-        mx_sdk_vm_impl.gate_body(args, tasks)
+    with Task('Vm: GraalVM dist names', tasks, tags=['names']) as t:
+        if t:
+            mx_sdk_vm.verify_graalvm_configs(suites=['vm', 'vm-enterprise'])
 
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
         if t and mx_sdk_vm_impl.has_component('GraalVM compiler'):
