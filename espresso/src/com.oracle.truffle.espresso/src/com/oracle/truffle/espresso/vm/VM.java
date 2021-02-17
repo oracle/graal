@@ -1151,9 +1151,14 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @TruffleBoundary
-    public void JVM_UnloadLibrary(@SuppressWarnings("unused") @Pointer TruffleObject handle) {
-        // TODO(peterssen): Do unload the library.
-        getLogger().severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", NativeUtils.interopAsPointer(handle)));
+    public void JVM_UnloadLibrary(@Pointer TruffleObject libraryPtr) {
+        long nativeLibraryPtr = NativeUtils.interopAsPointer(libraryPtr);
+        TruffleObject library = handle2Lib.get(nativeLibraryPtr);
+        if (library == null) {
+            getLogger().severe("JVM_UnloadLibrary with unknown library (not loaded through JVM_LoadLibrary?): " + libraryPtr + " / " + Long.toHexString(nativeLibraryPtr));
+        } else {
+            getNativeAccess().unloadLibrary(library);
+        }
     }
 
     @VmImpl
