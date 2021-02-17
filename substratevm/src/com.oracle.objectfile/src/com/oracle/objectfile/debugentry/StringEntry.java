@@ -45,10 +45,7 @@ public class StringEntry {
     }
 
     public int getOffset() {
-        /*
-         * Offset must be set before this can be fetched
-         */
-        assert offset >= 0;
+        assert offset >= -1;
         return offset;
     }
 

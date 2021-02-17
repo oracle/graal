@@ -58,6 +58,7 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -348,7 +349,7 @@ public class HostAccessTest {
         } catch (UnsupportedOperationException e) {
         }
         assertEquals(0, value.getMemberKeys().size());
-        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
     @Test
@@ -393,26 +394,97 @@ public class HostAccessTest {
 
         assertEquals(0, value.getMemberKeys().size());
 
-        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
         assertArrayAccessDisabled(context);
     }
 
     @Test
     public void testListAccessDisabled() {
         setupEnv(HostAccess.newBuilder().allowListAccess(false));
-        assertListAccessDisabled(context);
+        assertListAccessDisabled(context, false);
+    }
+
+    @Test
+    public void testIterableAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(true));
+        Iterable<Integer> iterable = new IterableImpl<>(1, 2, 3);
+        Value value = context.asValue(iterable);
+        assertTrue(value.hasIterator());
+        Value iterator = value.getIterator();
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(1, iterator.getIteratorNextElement().asInt());
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(2, iterator.getIteratorNextElement().asInt());
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(3, iterator.getIteratorNextElement().asInt());
+        assertFalse(iterator.hasIteratorNextElement());
+        assertSame(iterable, value.asHostObject());
+        assertEquals(0, value.getMemberKeys().size());
+        ValueAssert.assertValue(value, false, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertListAccessDisabled(context, true);
+        assertArrayAccessDisabled(context);
+    }
+
+    @Test
+    public void testIterableAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(false));
+        assertIterableAccessDisabled(context);
+    }
+
+    @Test
+    public void testIteratorAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowIteratorAccess(true));
+        Iterator<Integer> iterator = new IteratorImpl<>(1, 2, 3);
+        Value value = context.asValue(iterator);
+        assertTrue(value.hasIteratorNextElement());
+        assertEquals(1, value.getIteratorNextElement().asInt());
+        assertTrue(value.hasIteratorNextElement());
+        assertEquals(2, value.getIteratorNextElement().asInt());
+        assertTrue(value.hasIteratorNextElement());
+        assertEquals(3, value.getIteratorNextElement().asInt());
+        assertFalse(value.hasIteratorNextElement());
+        assertSame(iterator, value.asHostObject());
+        assertEquals(0, value.getMemberKeys().size());
+        ValueAssert.assertValue(value, false, Trait.ITERATOR, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertIterableAccessDisabled(context);
+        assertListAccessDisabled(context, false);
+        assertArrayAccessDisabled(context);
+    }
+
+    @Test
+    public void testIteratorAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowIteratorAccess(false));
+        assertIteratorAccessDisabled(context);
     }
 
     @Test
     public void testPublicAccessNoListAccess() {
         setupEnv(HostAccess.newBuilder().allowPublicAccess(true).allowListAccess(false));
-        assertListAccessDisabled(context);
+        assertListAccessDisabled(context, false);
     }
 
-    private static void assertListAccessDisabled(Context context) {
+    private static void assertListAccessDisabled(Context context, boolean iterableAccess) {
         List<Integer> array = new ArrayList<>(Arrays.asList(1, 2, 3));
         Value value = context.asValue(array);
         assertSame(array, value.asHostObject());
+        List<Trait> expectedTypes = new ArrayList<>(Arrays.asList(Trait.MEMBERS, Trait.HOST_OBJECT));
+        if (iterableAccess) {
+            expectedTypes.add(Trait.ITERABLE);
+        }
+        ValueAssert.assertValue(value, false, expectedTypes.toArray(new Trait[expectedTypes.size()]));
+    }
+
+    private static void assertIterableAccessDisabled(Context context) {
+        Iterable<Integer> iterable = new IterableImpl<>(1, 2, 3);
+        Value value = context.asValue(iterable);
+        assertSame(iterable, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    private static void assertIteratorAccessDisabled(Context context) {
+        Iterator<Integer> iterator = new IteratorImpl<>(1, 2, 3);
+        Value value = context.asValue(iterator);
+        assertSame(iterator, value.asHostObject());
         ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
@@ -1563,6 +1635,42 @@ public class HostAccessTest {
         @Override
         protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
             return super.loadClass(name, resolve);
+        }
+    }
+
+    private static final class IteratorImpl<T> implements Iterator<T> {
+
+        private final T[] values;
+        private int index;
+
+        @SuppressWarnings("unchecked")
+        IteratorImpl(T... values) {
+            this.values = values;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < values.length;
+        }
+
+        @Override
+        public T next() {
+            return values[index++];
+        }
+    }
+
+    private static final class IterableImpl<T> implements Iterable<T> {
+
+        private final T[] values;
+
+        @SuppressWarnings("unchecked")
+        IterableImpl(T... values) {
+            this.values = values;
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            return new IteratorImpl<>(values);
         }
     }
 }

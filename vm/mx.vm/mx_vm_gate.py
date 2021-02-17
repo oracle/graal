@@ -64,7 +64,8 @@ class VmGateTasks:
 
 def gate_body(args, tasks):
     # all mx_sdk_vm_impl gate tasks can also be run as vm gate tasks
-    mx_sdk_vm_impl.gate_body(args, tasks)
+    if not args.all_suites:
+        mx_sdk_vm_impl.gate_body(args, tasks)
 
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
         if t and mx_sdk_vm_impl.has_component('GraalVM compiler'):
@@ -260,7 +261,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             '-cp',
             cp,
             '--no-server',
-            '-H:+TruffleCheckBlackListedMethods',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
             '-H:Path={}'.format(svmbuild),
@@ -312,7 +312,6 @@ def gate_svm_sl_tck(tasks):
                         '--macro:truffle',
                         '--tool:all',
                         '-H:Path={}'.format(svmbuild),
-                        '-H:+TruffleCheckBlackListedMethods',
                         '-H:Class=org.junit.runner.JUnitCore',
                     ]
                     tests_image = native_image(vm_image_args + options)

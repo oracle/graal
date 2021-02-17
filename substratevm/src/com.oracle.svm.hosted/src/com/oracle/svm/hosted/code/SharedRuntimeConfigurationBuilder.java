@@ -184,7 +184,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
         int typeIDSlotsOffset = HybridLayout.getTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
 
-        int componentHubOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentHub")).getLocation();
+        int componentHubOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentType")).getLocation();
 
         int javaFrameAnchorLastSPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaSP");
         int javaFrameAnchorLastIPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaIP");

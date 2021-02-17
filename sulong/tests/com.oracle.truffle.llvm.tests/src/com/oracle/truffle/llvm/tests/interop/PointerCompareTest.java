@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -60,7 +61,7 @@ public class PointerCompareTest extends InteropTestBase {
 
         @ExportMessage
         void toNative() {
-            Assert.fail("unexpected toNative");
+            CompilerDirectives.shouldNotReachHere("unexpected toNative");
         }
     }
 
@@ -95,7 +96,7 @@ public class PointerCompareTest extends InteropTestBase {
 
         @ExportMessage
         void toNative() {
-            Assert.fail("unexpected toNative");
+            CompilerDirectives.shouldNotReachHere("unexpected toNative");
         }
     }
 

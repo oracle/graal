@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -162,6 +162,9 @@ public class WasmLauncher extends AbstractLanguageLauncher {
             throw e;
         } catch (IOException e) {
             throw abort(String.format("Error loading file '%s': %s", file, e.getMessage()));
+        } finally {
+            System.out.flush();
+            System.err.flush();
         }
     }
 

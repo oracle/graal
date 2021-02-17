@@ -84,21 +84,21 @@ public final class DebuggerConnection implements Commands {
     @Override
     public void stepInto(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOver(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OVER, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOut(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OUT, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
         addBlocking(debuggerCommand);
     }
 

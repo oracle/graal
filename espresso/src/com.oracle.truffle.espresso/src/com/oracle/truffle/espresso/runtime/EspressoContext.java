@@ -156,6 +156,7 @@ public final class EspressoContext {
     public final boolean Polyglot;
     public final boolean ExitHost;
     private final String multiThreadingDisabled;
+    public final boolean NativeAccessAllowed;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -248,6 +249,7 @@ public final class EspressoContext {
             }
         }
         this.multiThreadingDisabled = multiThreadingDisabledReason;
+        this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
 
         // Isolated (native) namespaces via dlmopen is only supported on Linux.

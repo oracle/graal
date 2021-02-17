@@ -376,11 +376,10 @@ final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = JDK14OrLater.class)
     private static void clearInterruptEvent() {
-        // In the JDK, this is a noop except on Windows
-        // The JDK resets the interrupt event used by Process.waitFor
-        // ResetEvent((HANDLE) JVM_GetThreadInterruptEvent());
-        // Our implementation in WindowsJavaThreads.java takes care
-        // of this ResetEvent.
-        VMError.unimplemented();
+        /*
+         * In the JDK, this is a no-op except on Windows. The JDK resets the interrupt event used by
+         * Process.waitFor ResetEvent((HANDLE) JVM_GetThreadInterruptEvent()); Our implementation in
+         * WindowsJavaThreads.java takes care of this ResetEvent.
+         */
     }
 }

@@ -30,11 +30,13 @@ public final class SteppingInfo {
     private long stepOutMethodId = -1;
     private long stepOutKlassId = -1;
     private final boolean isPopFrames;
+    private final boolean isForceEarlyReturn;
 
-    public SteppingInfo(int requestId, byte suspendPolicy, boolean isPopFrames) {
+    public SteppingInfo(int requestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn) {
         this.requestId = requestId;
         this.suspendPolicy = suspendPolicy;
         this.isPopFrames = isPopFrames;
+        this.isForceEarlyReturn = isForceEarlyReturn;
     }
 
     public int getRequestId() {
@@ -57,6 +59,10 @@ public final class SteppingInfo {
 
     public boolean isPopFrames() {
         return isPopFrames;
+    }
+
+    public boolean isForceEarlyReturn() {
+        return isForceEarlyReturn;
     }
 
     public boolean isStepOutFrame(long methodId, long klassId) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -1170,7 +1172,7 @@ public class LLVMInteropTest {
 
         @ExportMessage
         int readMember(String member) {
-            Assert.assertEquals("foo", member);
+            assertEquals("foo", member);
             return foo;
         }
 
@@ -1187,7 +1189,7 @@ public class LLVMInteropTest {
         @ExportMessage(limit = "3")
         void writeMember(String member, Object value,
                         @CachedLibrary("value") InteropLibrary numbers) throws UnsupportedTypeException {
-            Assert.assertEquals("foo", member);
+            assertEquals("foo", member);
             try {
                 foo = numbers.asInt(value) * 2;
             } catch (InteropException ex) {
@@ -1211,8 +1213,13 @@ public class LLVMInteropTest {
             try {
                 interop.execute(testToNative, this);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                Assert.fail("TO_NATIVE should have created a handle");
+                CompilerDirectives.shouldNotReachHere("TO_NATIVE should have created a handle");
             }
+        }
+
+        @TruffleBoundary
+        void assertEquals(Object expected, Object value) {
+            Assert.assertEquals(expected, value);
         }
     }
 

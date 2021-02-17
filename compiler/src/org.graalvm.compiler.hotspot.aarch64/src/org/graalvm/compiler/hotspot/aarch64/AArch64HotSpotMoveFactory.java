@@ -66,9 +66,6 @@ public class AArch64HotSpotMoveFactory extends AArch64MoveFactory {
             if (constant.isCompressed()) {
                 return new AArch64HotSpotMove.LoadHotSpotObjectConstantInline(constant, dst);
             } else {
-                // XXX Do we need the constant table?
-                // return new SPARCHotSpotMove.LoadHotSpotObjectConstantFromTable(constant, dst,
-                // constantTableBaseProvider.getConstantTableBase());
                 return new AArch64HotSpotMove.LoadHotSpotObjectConstantInline(constant, dst);
             }
         } else {

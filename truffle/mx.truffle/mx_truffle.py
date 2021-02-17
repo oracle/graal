@@ -447,10 +447,10 @@ def mx_post_parse_cmd_line(opts):
             if _uses_truffle_dsl_processor(d):
                 d.set_archiveparticipant(TruffleArchiveParticipant())
 
-_debuggertestHelpSuffix = """
+_tckHelpSuffix = """
     TCK options:
 
-      --tck-configuration                  configuration {default|debugger}
+      --tck-configuration                  configuration {compiler|debugger|default}
           compile                          executes TCK tests with immediate comilation
           debugger                         executes TCK tests with enabled debugalot instrument
           default                          executes TCK tests
@@ -506,7 +506,7 @@ def execute_tck(graalvm_home, mode='default', language_filter=None, values_filte
 def _tck(args):
     """runs TCK tests"""
 
-    parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_debuggertestHelpSuffix)
+    parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_tckHelpSuffix)
     parser.add_argument("--tck-configuration", help="TCK configuration", choices=["compile", "debugger", "default"], default="default")
     parsed_args, args = parser.parse_known_args(args)
     tckConfiguration = parsed_args.tck_configuration
@@ -537,11 +537,18 @@ def _tck(args):
     elif tckConfiguration == "compile":
         if not _is_graalvm(mx.get_jdk()):
             mx.abort("The 'compile' TCK configuration requires graalvm execution, run with --java-home=<path_to_graalvm>.")
-        unittest(unitTestOptions + ["--"] + jvmOptions + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleCompilationExceptionsAreThrown=true"] + tests)
+        compileOptions = [
+            "-Dpolyglot.engine.AllowExperimentalOptions=true",
+            "-Dpolyglot.engine.Mode=latency",
+            "-Dpolyglot.engine.CompilationFailureAction=Throw",
+            "-Dpolyglot.engine.CompileImmediately=true",
+            "-Dpolyglot.engine.BackgroundCompilation=false",
+        ]
+        unittest(unitTestOptions + ["--"] + jvmOptions + compileOptions + tests)
 
 
 mx.update_commands(_suite, {
-    'tck': [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
+    'tck': [_tck, "[--tck-configuration {compile|debugger|default}] [unittest options] [--] [VM options] [filters...]", _tckHelpSuffix]
 })
 
 

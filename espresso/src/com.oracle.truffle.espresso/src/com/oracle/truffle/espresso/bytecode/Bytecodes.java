@@ -32,6 +32,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.FIELD_WRITE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.INVOKE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.LOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.PRODUCE_FOREIGN;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.QUICKENABLE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.QUICKENED;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.RECEIVE_FOREIGN;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.STOP;
@@ -355,6 +356,11 @@ public final class Bytecodes {
          * GETFIELD for an Espresso object).
          */
         static final int RECEIVE_FOREIGN = 0x00008000;
+
+        /**
+         * Denotes an instruction which might get quickened.
+         */
+        static final int QUICKENABLE = 0x00010000;
     }
 
     // Performs a sanity check that none of the flags overlap.
@@ -594,21 +600,21 @@ public final class Bytecodes {
         // e.g. getField pops the receiver (-1), but the result size depends on the field, so it's not included in the effect.
         def(GETSTATIC           , "getstatic"       , "bjj"  ,  0, TRAP | FIELD_READ | PRODUCE_FOREIGN);
         def(PUTSTATIC           , "putstatic"       , "bjj"  ,  0, TRAP | FIELD_WRITE);
-        def(GETFIELD            , "getfield"        , "bjj"  , -1, TRAP | FIELD_READ | RECEIVE_FOREIGN | PRODUCE_FOREIGN);
-        def(PUTFIELD            , "putfield"        , "bjj"  , -1, TRAP | FIELD_WRITE | RECEIVE_FOREIGN);
+        def(GETFIELD            , "getfield"        , "bjj"  , -1, TRAP | FIELD_READ | RECEIVE_FOREIGN | PRODUCE_FOREIGN | QUICKENABLE);
+        def(PUTFIELD            , "putfield"        , "bjj"  , -1, TRAP | FIELD_WRITE | RECEIVE_FOREIGN | QUICKENABLE);
 
-        def(INVOKEVIRTUAL       , "invokevirtual"   , "bjj"  , -1, TRAP | INVOKE | PRODUCE_FOREIGN);
-        def(INVOKESPECIAL       , "invokespecial"   , "bjj"  , -1, TRAP | INVOKE | PRODUCE_FOREIGN);
-        def(INVOKESTATIC        , "invokestatic"    , "bjj"  ,  0, TRAP | INVOKE | PRODUCE_FOREIGN);
-        def(INVOKEINTERFACE     , "invokeinterface" , "bjja_", -1, TRAP | INVOKE | RECEIVE_FOREIGN | PRODUCE_FOREIGN);
-        def(INVOKEDYNAMIC       , "invokedynamic"   , "bjjjj",  0, TRAP | INVOKE | PRODUCE_FOREIGN);
+        def(INVOKEVIRTUAL       , "invokevirtual"   , "bjj"  , -1, TRAP | INVOKE | PRODUCE_FOREIGN | QUICKENABLE);
+        def(INVOKESPECIAL       , "invokespecial"   , "bjj"  , -1, TRAP | INVOKE | PRODUCE_FOREIGN | QUICKENABLE);
+        def(INVOKESTATIC        , "invokestatic"    , "bjj"  ,  0, TRAP | INVOKE | PRODUCE_FOREIGN | QUICKENABLE);
+        def(INVOKEINTERFACE     , "invokeinterface" , "bjja_", -1, TRAP | INVOKE | RECEIVE_FOREIGN | PRODUCE_FOREIGN | QUICKENABLE);
+        def(INVOKEDYNAMIC       , "invokedynamic"   , "bjjjj",  0, TRAP | INVOKE | PRODUCE_FOREIGN | QUICKENABLE);
         def(NEW                 , "new"             , "bii"  ,  1, TRAP);
         def(NEWARRAY            , "newarray"        , "bc"   ,  0, TRAP);
         def(ANEWARRAY           , "anewarray"       , "bii"  ,  0, TRAP);
         def(ARRAYLENGTH         , "arraylength"     , "b"    ,  0, TRAP | RECEIVE_FOREIGN);
         def(ATHROW              , "athrow"          , "b"    , -1, TRAP | STOP);
-        def(CHECKCAST           , "checkcast"       , "bii"  ,  0, TRAP);
-        def(INSTANCEOF          , "instanceof"      , "bii"  ,  0, TRAP);
+        def(CHECKCAST           , "checkcast"       , "bii"  ,  0, TRAP | QUICKENABLE);
+        def(INSTANCEOF          , "instanceof"      , "bii"  ,  0, TRAP | QUICKENABLE);
         def(MONITORENTER        , "monitorenter"    , "b"    , -1, TRAP);
         def(MONITOREXIT         , "monitorexit"     , "b"    , -1, TRAP);
         def(WIDE                , "wide"            , ""     ,  0);
@@ -763,6 +769,16 @@ public final class Bytecodes {
      */
     public static boolean isQuickened(int opcode) {
         return (flagsArray[opcode & 0xff] & QUICKENED) != 0;
+    }
+
+    /**
+     * Determines if a given opcode denotes a quickenable instruction.
+     *
+     * @param opcode an opcode to test
+     * @return {@code true} iff {@code opcode} is a quickenable bytecode, {@code false} otherwise
+     */
+    public static boolean isQuickenable(int opcode) {
+        return (flagsArray[opcode & 0xff] & QUICKENABLE) != 0;
     }
 
     /**

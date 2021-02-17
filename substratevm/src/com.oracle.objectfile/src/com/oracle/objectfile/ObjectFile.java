@@ -24,8 +24,8 @@
  */
 package com.oracle.objectfile;
 
-import java.io.Closeable;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -52,8 +52,6 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
-
-import sun.nio.ch.DirectBuffer;
 
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
@@ -1268,12 +1266,32 @@ public abstract class ObjectFile {
         int totalSize = bake(sortedObjectFileElements);
         try {
             ByteBuffer buffer = outputChannel.map(MapMode.READ_WRITE, 0, totalSize);
-            try (Closeable ignored = () -> ((DirectBuffer) buffer).cleaner().clean()) {
+            try {
                 writeBuffer(sortedObjectFileElements, buffer);
+            } finally {
+                cleanBuffer(buffer); // unmap immediately
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void cleanBuffer(ByteBuffer buffer) throws IOException {
+        // The Cleaner class returned by DirectBuffer.cleaner() was moved from to jdk.internal from
+        // sun.misc, so we need to call it reflectively to ensure binary compatibility between JDKs
+        Object cleaner;
+        try {
+            cleaner = getMethodAndSetAccessible(buffer.getClass(), "cleaner").invoke(buffer);
+            getMethodAndSetAccessible(cleaner.getClass(), "clean").invoke(cleaner);
+        } catch (ReflectiveOperationException e) {
+            throw new IOException("Could not clean mapped ByteBuffer", e);
+        }
+    }
+
+    private static Method getMethodAndSetAccessible(Class<?> clazz, String name, Class<?>... parameterTypes) throws NoSuchMethodException {
+        Method method = clazz.getMethod(name, parameterTypes);
+        method.setAccessible(true);
+        return method;
     }
 
     /*

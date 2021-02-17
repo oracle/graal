@@ -227,6 +227,8 @@ public abstract class Accessor {
 
         public abstract boolean isScopeObject(Object receiver);
 
+        public abstract Object createDefaultIterator(Object receiver);
+
     }
 
     public abstract static class EngineSupport extends Support {

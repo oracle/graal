@@ -74,6 +74,8 @@ import com.oracle.svm.core.util.VMError;
  * via {@link #getHostedArray} and they must be cast back via {@link #fromImageHeap} at runtime.
  */
 public final class NonmovableArrays {
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private static final HostedNonmovableArray<?> HOSTED_NULL_VALUE = new HostedNonmovableObjectArray<>(null);
 
     private static final UninterruptibleUtils.AtomicLong runtimeArraysInExistence = new UninterruptibleUtils.AtomicLong(0);

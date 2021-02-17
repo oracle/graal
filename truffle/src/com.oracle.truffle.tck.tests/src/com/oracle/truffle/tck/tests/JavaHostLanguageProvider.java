@@ -47,6 +47,8 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyIterable;
+import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.proxy.ProxyTime;
 import org.graalvm.polyglot.proxy.ProxyTimeZone;
@@ -67,8 +69,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -146,6 +150,38 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         for (Primitive primitive : primitives.values()) {
             result.add(createProxyArray(context, primitive));
         }
+
+        // Iterables
+        result.add(Snippet.newBuilder("Iterable<int>", export(context,
+                        new ValueSupplier<>(new IterableImpl(1, 2))),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.iterable(TypeDescriptor.NUMBER))).build());
+        result.add(Snippet.newBuilder("Iterable<java.lang.Object>", export(context, new ValueSupplier<>(new IterableImpl(1, "TEST"))),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.iterable(TypeDescriptor.union(TypeDescriptor.NUMBER,
+                                        TypeDescriptor.STRING)))).build());
+
+        // Iterable Proxies
+        result.add(Snippet.newBuilder("Proxy<Iterable<int>>", export(context, new ValueSupplier<>(ProxyIterable.from(new IterableImpl(1, 2)))),
+                        TypeDescriptor.iterable(TypeDescriptor.NUMBER)).build());
+
+        result.add(Snippet.newBuilder("Proxy<Iterable<java.lang.Object>>", export(context, new ValueSupplier<>(ProxyIterable.from(new IterableImpl(1, "TEST")))),
+                        TypeDescriptor.iterable(TypeDescriptor.union(TypeDescriptor.NUMBER,
+                                        TypeDescriptor.STRING))).build());
+
+        // Iterators
+        result.add(Snippet.newBuilder("Iterator<int>", export(context, new ValueSupplier<>(new IteratorImpl(1, 2))),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.iterator(TypeDescriptor.NUMBER))).build());
+
+        result.add(Snippet.newBuilder("Iterator<java.lang.Object>", export(context, new ValueSupplier<>(new IteratorImpl(1, "TEST"))),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.iterator(TypeDescriptor.union(TypeDescriptor.NUMBER,
+                                        TypeDescriptor.STRING)))).build());
+
+        // Iterator Proxies
+        result.add(Snippet.newBuilder("Proxy<Iterator<int>>", export(context, new ValueSupplier<>(ProxyIterator.from(new IteratorImpl(1, 2)))),
+                        TypeDescriptor.iterator(TypeDescriptor.NUMBER)).build());
+
+        result.add(Snippet.newBuilder("Proxy<Iterator<java.lang.Object>>", export(context, new ValueSupplier<>(ProxyIterator.from(new IteratorImpl(1, "TEST")))),
+                        TypeDescriptor.iterator(TypeDescriptor.union(TypeDescriptor.NUMBER,
+                                        TypeDescriptor.STRING))).build());
 
         // Buffers
         result.add(Snippet.newBuilder("HeapByteBuffer", export(context, new ValueSupplier<>(ByteBuffer.wrap(new byte[]{1, 2, 3}))), TypeDescriptor.OBJECT).build());
@@ -399,6 +435,43 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
 
         public double abs() {
             return Math.sqrt(real * real + imag * imag);
+        }
+    }
+
+    public static final class IteratorImpl implements Iterator<Object> {
+
+        private final Object[] values;
+        private int index;
+
+        IteratorImpl(Object... values) {
+            this.values = values;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < values.length;
+        }
+
+        @Override
+        public Object next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            return values[index++];
+        }
+    }
+
+    public static final class IterableImpl implements Iterable<Object> {
+
+        private final Object[] values;
+
+        IterableImpl(Object... values) {
+            this.values = values;
+        }
+
+        @Override
+        public Iterator<Object> iterator() {
+            return new IteratorImpl(values);
         }
     }
 }

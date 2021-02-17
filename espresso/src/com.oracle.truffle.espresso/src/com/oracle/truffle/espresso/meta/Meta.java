@@ -254,6 +254,12 @@ public final class Meta implements ContextAccess {
         java_io_InputStream = knownKlass(Type.java_io_InputStream);
         java_io_InputStream_read = java_io_InputStream.lookupMethod(Name.read, Signature._int_byte_array_int_int);
         java_io_InputStream_close = java_io_InputStream.lookupMethod(Name.close, Signature._void);
+        java_io_PrintStream = knownKlass(Type.java_io_PrintStream);
+        java_io_PrintStream_println = java_io_PrintStream.lookupDeclaredMethod(Name.println, Signature._void_String);
+
+        sun_launcher_LauncherHelper = knownKlass(Type.sun_launcher_LauncherHelper);
+        sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.lookupDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
+        sun_launcher_LauncherHelper_ostream = sun_launcher_LauncherHelper.lookupDeclaredField(Name.ostream, Type.java_io_PrintStream);
 
         // Guest reflection.
         java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
@@ -405,13 +411,13 @@ public final class Meta implements ContextAccess {
         // References
         java_lang_ref_Reference = knownKlass(Type.java_lang_ref_Reference);
         java_lang_ref_Reference_referent = java_lang_ref_Reference.lookupDeclaredField(Name.referent, Type.java_lang_Object);
+        java_lang_ref_Reference_enqueue = java_lang_ref_Reference.lookupDeclaredMethod(Name.enqueue, Signature._boolean);
 
         java_lang_ref_Reference_discovered = java_lang_ref_Reference.lookupDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
         java_lang_ref_Reference_next = java_lang_ref_Reference.lookupDeclaredField(Name.next, Type.java_lang_ref_Reference);
         java_lang_ref_Reference_queue = java_lang_ref_Reference.lookupDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
         java_lang_ref_ReferenceQueue = knownKlass(Type.java_lang_ref_ReferenceQueue);
         java_lang_ref_ReferenceQueue_NULL = java_lang_ref_ReferenceQueue.lookupDeclaredField(Name.NULL, Type.java_lang_ref_ReferenceQueue);
-        java_lang_ref_ReferenceQueue_enqueue = java_lang_ref_ReferenceQueue.lookupDeclaredMethod(Name.enqueue, Signature._boolean_Reference);
 
         java_lang_ref_WeakReference = knownKlass(Type.java_lang_ref_WeakReference);
         java_lang_ref_SoftReference = knownKlass(Type.java_lang_ref_SoftReference);
@@ -705,6 +711,10 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_ClassLoader_getResourceAsStream;
     public final Method java_lang_ClassLoader_loadClass;
 
+    public final ObjectKlass sun_launcher_LauncherHelper;
+    public final Method sun_launcher_LauncherHelper_printHelpMessage;
+    public final Field sun_launcher_LauncherHelper_ostream;
+
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
 
     public final ObjectKlass java_lang_Module;
@@ -824,6 +834,9 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_io_InputStream;
     public final Method java_io_InputStream_read;
     public final Method java_io_InputStream_close;
+
+    public final ObjectKlass java_io_PrintStream;
+    public final Method java_io_PrintStream_println;
 
     // Array support.
     public final ObjectKlass java_lang_Cloneable;
@@ -954,6 +967,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_ref_Reference_next;
     public final Field java_lang_ref_Reference_queue;
     public final Field java_lang_ref_Reference_lock;
+    public final Method java_lang_ref_Reference_enqueue;
     public final ObjectKlass java_lang_ref_WeakReference;
     public final ObjectKlass java_lang_ref_SoftReference;
     public final ObjectKlass java_lang_ref_PhantomReference;
@@ -963,7 +977,6 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_HOST_REFERENCE;
 
     public final ObjectKlass java_lang_ref_ReferenceQueue;
-    public final Method java_lang_ref_ReferenceQueue_enqueue;
     public final Field java_lang_ref_ReferenceQueue_NULL;
     public final Method sun_reflect_Reflection_getCallerClass;
 

@@ -123,7 +123,7 @@ public abstract class AbstractBootImage {
      * Build the image. Calling this method is a precondition to calling {@link #write}. It
      * typically finalizes content of the object. It does not build debug information.
      */
-    public abstract void build(DebugContext debug);
+    public abstract void build(String imageName, DebugContext debug);
 
     /**
      * Write the image to the named file. This also writes debug information -- either to the same

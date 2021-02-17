@@ -56,6 +56,13 @@ class EspressoVm(GuestVm, JavaVm):
 
     def run(self, cwd, args):
         if hasattr(self.host_vm(), 'run_launcher'):
+            if mx.suite('vm', fatalIfMissing=False):
+                import mx_vm_benchmark
+                if isinstance(self.host_vm(), mx_vm_benchmark.GraalVm) and '--native' in self.host_vm().extra_launcher_args:
+                    # The host-vm is a GraalVM in native mode. Do not pass `--native` and run `java -truffle`.
+                    self.host_vm().extra_launcher_args.remove('--native')
+                    return self.host_vm().run_launcher('java', ['-truffle'] + self._options + args, cwd)
+            # The host-vm is in JVM mode. Run the `espresso` launcher.
             return self.host_vm().run_launcher('espresso', self._options + args, cwd)
         else:
             return self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(self._options + args))
@@ -116,7 +123,8 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('default', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter', ['--experimental-options', '--engine.Compilation=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter-inline-accessors', ['--experimental-options', '--engine.Compilation=false', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('single-tier', ['--experimental-options', '--engine.MultiTier=false']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier=true']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
 

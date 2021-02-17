@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
 
     @Alias
     native Target_com_oracle_truffle_nfi_impl_ClosureNativePointer createClosureNativePointer(long nativeClosure, long codePointer, CallTarget callTarget,
-                    Target_com_oracle_truffle_nfi_impl_LibFFISignature signature);
+                    Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, Object receiver);
 
     @Alias
     native void newClosureRef(long codePointer);
@@ -123,23 +123,23 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
     }
 
     @Substitute
-    Target_com_oracle_truffle_nfi_impl_ClosureNativePointer allocateClosureObjectRet(Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget) {
-        return NativeClosure.prepareClosure(this, signature, callTarget, NativeClosure.INVOKE_CLOSURE_OBJECT_RET.getFunctionPointer());
+    Target_com_oracle_truffle_nfi_impl_ClosureNativePointer allocateClosureObjectRet(Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, Object receiver) {
+        return NativeClosure.prepareClosure(this, signature, callTarget, receiver, NativeClosure.INVOKE_CLOSURE_OBJECT_RET.getFunctionPointer());
     }
 
     @Substitute
-    Target_com_oracle_truffle_nfi_impl_ClosureNativePointer allocateClosureStringRet(Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget) {
-        return NativeClosure.prepareClosure(this, signature, callTarget, NativeClosure.INVOKE_CLOSURE_STRING_RET.getFunctionPointer());
+    Target_com_oracle_truffle_nfi_impl_ClosureNativePointer allocateClosureStringRet(Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, Object receiver) {
+        return NativeClosure.prepareClosure(this, signature, callTarget, receiver, NativeClosure.INVOKE_CLOSURE_STRING_RET.getFunctionPointer());
     }
 
     @Substitute
-    Target_com_oracle_truffle_nfi_impl_ClosureNativePointer allocateClosureBufferRet(Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget) {
-        return NativeClosure.prepareClosure(this, signature, callTarget, NativeClosure.INVOKE_CLOSURE_BUFFER_RET.getFunctionPointer());
+    Target_com_oracle_truffle_nfi_impl_ClosureNativePointer allocateClosureBufferRet(Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, Object receiver) {
+        return NativeClosure.prepareClosure(this, signature, callTarget, receiver, NativeClosure.INVOKE_CLOSURE_BUFFER_RET.getFunctionPointer());
     }
 
     @Substitute
-    Target_com_oracle_truffle_nfi_impl_ClosureNativePointer allocateClosureVoidRet(Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget) {
-        return NativeClosure.prepareClosure(this, signature, callTarget, NativeClosure.INVOKE_CLOSURE_VOID_RET.getFunctionPointer());
+    Target_com_oracle_truffle_nfi_impl_ClosureNativePointer allocateClosureVoidRet(Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, Object receiver) {
+        return NativeClosure.prepareClosure(this, signature, callTarget, receiver, NativeClosure.INVOKE_CLOSURE_VOID_RET.getFunctionPointer());
     }
 
     @Substitute

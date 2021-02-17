@@ -29,7 +29,6 @@ import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -42,7 +41,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -61,7 +59,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
@@ -147,22 +144,6 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
         typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
 
-        if (getName().startsWith("$SWITCH_TABLE$")) {
-            /*
-             * The Eclipse Java compiler generates methods that lazily initializes tables for Enum
-             * switches. The first invocation fills the table, subsequent invocations reuse the
-             * table. We call the method here, so that the table gets built. This ensures that Enum
-             * switches are allocation-free at run time.
-             */
-            assert Modifier.isStatic(getModifiers());
-            assert getSignature().getParameterCount(false) == 0;
-            try {
-                Method switchTableMethod = ReflectionUtil.lookupMethod(getDeclaringClass().getJavaClass(), getName());
-                switchTableMethod.invoke(null);
-            } catch (ReflectiveOperationException ex) {
-                throw GraalError.shouldNotReachHere(ex);
-            }
-        }
         this.qualifiedName = format("%H.%n(%P)");
     }
 

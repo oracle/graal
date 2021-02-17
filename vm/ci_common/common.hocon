@@ -294,7 +294,7 @@ libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
 binutils2_34: {
     packages: {
       # On Linux AMD64, SVM object files with debuginfo are apparently more likely to be subject
-      # to linker incompatibilities so we need to use the same linker used for building JDK 15
+      # to linker incompatibilities so we need to use the same linker used for building JDK 16
       binutils: "==2.34"
     }
 }
@@ -311,13 +311,11 @@ builds += [
   }
   ${libgraal_compiler} ${vm_java_8}  { name: gate-vm-libgraal-compiler-8-linux-amd64 }
   ${libgraal_compiler} ${vm_java_11} { name: gate-vm-libgraal-compiler-11-linux-amd64 }
-  # GR-25369 ${libgraal_compiler} ${vm_java_15} { name: gate-vm-libgraal-compiler-15-linux-amd64 }
-  ${libgraal_compiler} ${vm_java_15Debug} { name: daily-vm-libgraal-compiler-15-linux-amd64 } ${dailyJDK15Debug} ${binutils2_34}
+  ${libgraal_compiler} ${vm_java_16} { name: gate-vm-libgraal-compiler-16-linux-amd64 } ${binutils2_34}
 
   ${libgraal_truffle} ${vm_java_8}  { name: gate-vm-libgraal-truffle-8-linux-amd64 }
   ${libgraal_truffle} ${vm_java_11} { name: gate-vm-libgraal-truffle-11-linux-amd64 }
-  # GR-25369 ${libgraal_truffle} ${vm_java_15} { name: gate-vm-libgraal-truffle-15-linux-amd64 }
-  ${libgraal_truffle} ${vm_java_15Debug} { name: daily-vm-libgraal-truffle-15-linux-amd64 } ${dailyJDK15Debug} ${binutils2_34}
+  ${libgraal_truffle} ${vm_java_16} { name: gate-vm-libgraal-truffle-16-linux-amd64 } ${binutils2_34}
 
   ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [

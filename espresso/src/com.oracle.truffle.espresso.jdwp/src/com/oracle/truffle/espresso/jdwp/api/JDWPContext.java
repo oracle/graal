@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import java.nio.file.Path;
+import java.util.List;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import java.nio.file.Path;
-import java.util.List;
 
 /**
  * Interface that defines required methods for a guest language when implementing JDWP.
@@ -426,6 +426,14 @@ public interface JDWPContext {
     Object getMonitorOwnerThread(Object monitor);
 
     /**
+     * Returns the entry count for the monitor on the current thread.
+     *
+     * @param monitor the monitor
+     * @return entry count of monitor
+     */
+    int getMonitorEntryCount(Object monitor);
+
+    /**
      * Returns all owned guest-language monitor object of the input call frames.
      *
      * @param callFrames the current call frames
@@ -443,16 +451,6 @@ public interface JDWPContext {
     Object getCurrentContendedMonitor(Object guestThread);
 
     /**
-     * Forces an early return on the top-most frame with the given return value. All monitors held
-     * on the current top frame are released before the early return.
-     *
-     * @param returnValue the value to return
-     * @param topFrame the current top frame
-     * @return {@code true} if the early return can be performed or {@code false} otherwise
-     */
-    boolean forceEarlyReturn(Object returnValue, CallFrame topFrame);
-
-    /**
      * Returns the language class associated with the implementing class of this interface.
      *
      * @return the Truffle language class
@@ -468,4 +466,12 @@ public interface JDWPContext {
      * @return 0 on success or the appropriate {@link ErrorCodes} if an error occur
      */
     int redefineClasses(RedefineInfo[] redefineInfos);
+
+    /**
+     * Exit all monitors that was entered by the frame.
+     * 
+     * @param frame
+     */
+    void clearFrameMonitors(CallFrame frame);
+
 }

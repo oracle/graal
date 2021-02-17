@@ -50,10 +50,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  sparc: self.common + {
-    capabilities: ['solaris', 'sparcv9'],
-  },
-
   darwin: self.common + {
     environment+: {
       // for compatibility with macOS El Capitan
@@ -158,7 +154,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
   maybe_set_ld_debug_flag(env): if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
 
-  espresso_gate(allow_warnings, tags, name, ld_debug=false, mx_args=[], imports=null, timelimit='15:00'): {
+  espresso_gate(allow_warnings, tags, name, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00'): {
     local mx_cmd =
       ['mx']
       + mx_args
@@ -168,13 +164,13 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       mx_cmd + ['sversions'],
     ],
     run+: [
-      mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags] + ( if allow_warnings then ['--no-warning-as-error'] else []),
+      mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags] + ( if allow_warnings then ['--no-warning-as-error'] else []) + gate_args,
     ],
     timelimit: timelimit,
     name: name,
   },
 
-  espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[]):
+  espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[], timelimit='3:00:00'):
     self.build_espresso(env) +
     {
       run+: that.maybe_set_ld_debug_flag(env) + [
@@ -188,7 +184,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
               '--vm.Xss32m'] + extra_args
           ),
       ],
-      timelimit: '3:00:00',
+      timelimit: timelimit,
     } +
     self.bench_upload,
 
@@ -204,8 +200,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       self.scala_dacapo_jvm_fast(warmup=true),
       host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env),
       guest_jvm='espresso', guest_jvm_config=guest_jvm_config,
-      fork_file='mx.espresso/scala-dacapo-warmup-forks.json',
-      extra_args=extra_args
+      fork_file='ci_common/scala-dacapo-warmup-forks.json',
+      extra_args=extra_args,
+      timelimit='5:00:00'
     ),
 
   graal_benchmark(env, suite, host_jvm='server', host_jvm_config=_graal_host_jvm_config(env), extra_args=[]):

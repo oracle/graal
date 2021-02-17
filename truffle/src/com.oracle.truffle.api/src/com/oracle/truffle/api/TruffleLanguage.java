@@ -40,7 +40,36 @@
  */
 package com.oracle.truffle.api;
 
-import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile.FileSystemContext;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.ReadOnlyArrayList;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
+import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,37 +94,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
 
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Context.Builder;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
-
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleFile.FileSystemContext;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.ReadOnlyArrayList;
-import com.oracle.truffle.api.io.TruffleProcessBuilder;
-import com.oracle.truffle.api.nodes.ExecutableNode;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
+import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -2830,6 +2829,8 @@ public abstract class TruffleLanguage<C> {
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
+         * @throws UnsupportedOperationException when the {@link FileSystem} supports only
+         *             {@link URI}
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -2854,6 +2855,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
+         * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -2882,6 +2884,8 @@ public abstract class TruffleLanguage<C> {
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.3.0
+         * @throws UnsupportedOperationException when the {@link FileSystem} supports only
+         *             {@link URI}
          * @see #getPublicTruffleFile(java.lang.String)
          */
         @TruffleBoundary
@@ -2910,6 +2914,7 @@ public abstract class TruffleLanguage<C> {
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.3.0
+         * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @see #getPublicTruffleFile(java.net.URI)
          */
         @TruffleBoundary

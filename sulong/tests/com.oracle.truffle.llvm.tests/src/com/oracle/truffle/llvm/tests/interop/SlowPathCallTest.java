@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -87,7 +87,7 @@ public class SlowPathCallTest extends InteropTestBase {
                 Object e = interop.execute(function[4], frame.getArguments());
                 assertResult(a, b, c, d, e);
             } catch (InteropException ex) {
-                throw new AssertionError(ex);
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
             return null;
         }

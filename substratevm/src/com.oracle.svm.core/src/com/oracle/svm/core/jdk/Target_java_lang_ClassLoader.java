@@ -293,8 +293,11 @@ final class Target_java_lang_ClassLoader {
     @Alias
     private native boolean checkName(String name);
 
-    @Delete
-    native Class<?> loadClass(String name, boolean resolve);
+    @Substitute
+    @SuppressWarnings("unused")
+    Class<?> loadClass(String name, boolean resolve) {
+        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.loadClass(String, boolean)");
+    }
 
     @Delete
     native Class<?> findBootstrapClassOrNull(String name);
@@ -410,14 +413,23 @@ final class Target_java_lang_ClassLoader {
     @Delete
     private static native void registerNatives();
 
-    @Delete
-    private native Class<?> defineClass(String name, byte[] b, int off, int len);
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private Class<?> defineClass(String name, byte[] b, int off, int len) {
+        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+    }
 
-    @Delete
-    private native Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain);
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
+        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+    }
 
-    @Delete
-    private native Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain);
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
+        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+    }
 
     @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)

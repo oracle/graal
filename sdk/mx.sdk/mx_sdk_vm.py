@@ -478,7 +478,7 @@ def jdk_has_new_jlink_options(jdk):
         output = mx.OutputCapture()
         jlink_exe = jdk.javac.replace('javac', 'jlink')
         mx.run([jlink_exe, '--list-plugins'], out=output)
-        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data)
+        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data or '--add-options ' in output.data)
     return getattr(jdk, '.supports_new_jlink_options')
 
 def jdk_supports_enablejvmciproduct(jdk):

@@ -36,6 +36,7 @@ import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.memory.MemoryMap;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
@@ -276,7 +277,17 @@ public enum CEOptimization {
      *
      * This phase is enabled by default and can be disabled with {@link GraalOptions#PartialUnroll}.
      */
-    PartialLoopUnrolling(GraalOptions.PartialUnroll, LoopPartialUnrollPhase.class);
+    PartialLoopUnrolling(GraalOptions.PartialUnroll, LoopPartialUnrollPhase.class),
+
+    /**
+     * {@link BoxNodeOptimizationPhase} is a compiler optimization for Java box operations. The
+     * phase tries to re-use dominating boxed/unboxed values to avoid repetitive boxing while it
+     * respects the caching behavior specified by {@link Integer#valueOf(int)}.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase.Options#ReuseOutOfCacheBoxedValues}.
+     */
+    BoxNodeOptimization(BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues, BoxNodeOptimizationPhase.class);
 
     private final OptionKey<?> option;
     private final Class<? extends BasePhase<?>> optimization;

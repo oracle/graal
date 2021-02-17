@@ -32,8 +32,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -55,15 +53,15 @@ public class HostedOptionParser implements HostedOptionProvider {
 
     private EconomicMap<OptionKey<?>, Object> hostedValues = OptionValues.newOptionMap();
     private EconomicMap<OptionKey<?>, Object> runtimeValues = OptionValues.newOptionMap();
-    private SortedMap<String, OptionDescriptor> allHostedOptions = new TreeMap<>();
-    private SortedMap<String, OptionDescriptor> allRuntimeOptions = new TreeMap<>();
+    private EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
+    private EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
 
     public HostedOptionParser(ImageClassLoader imageClassLoader) {
         collectOptions(imageClassLoader.findSubclasses(OptionDescriptors.class, true), allHostedOptions, allRuntimeOptions);
     }
 
-    public static void collectOptions(List<Class<? extends OptionDescriptors>> optionsClasses, SortedMap<String, OptionDescriptor> allHostedOptions,
-                    SortedMap<String, OptionDescriptor> allRuntimeOptions) {
+    public static void collectOptions(List<Class<? extends OptionDescriptors>> optionsClasses, EconomicMap<String, OptionDescriptor> allHostedOptions,
+                    EconomicMap<String, OptionDescriptor> allRuntimeOptions) {
         for (Class<? extends OptionDescriptors> optionsClass : optionsClasses) {
             if (Modifier.isAbstract(optionsClass.getModifiers()) || OptionDescriptorsMap.class.isAssignableFrom(optionsClass)) {
                 continue;
@@ -132,8 +130,8 @@ public class HostedOptionParser implements HostedOptionProvider {
          * However, we set these options to null here, so that at least they do not have a sensible
          * value.
          */
-        for (OptionDescriptor descriptor : allRuntimeOptions.values()) {
-            if (!allHostedOptions.containsValue(descriptor)) {
+        for (OptionDescriptor descriptor : allRuntimeOptions.getValues()) {
+            if (!allHostedOptions.containsKey(descriptor.getName())) {
                 hostedValues.put(descriptor.getOptionKey(), null);
             }
         }
@@ -153,7 +151,7 @@ public class HostedOptionParser implements HostedOptionProvider {
 
     public EconomicSet<String> getRuntimeOptionNames() {
         EconomicSet<String> res = EconomicSet.create(allRuntimeOptions.size());
-        allRuntimeOptions.keySet().forEach(res::add);
+        allRuntimeOptions.getKeys().forEach(res::add);
         return res;
     }
 }

@@ -1907,15 +1907,14 @@ public class BytecodeParser implements GraphBuilderContext {
                 return null;
             }
 
-            if (!invokeKind.isIndirect()) {
+            if (invokeKind.isDirect()) {
                 if (tryInvocationPlugin(invokeKind, args, targetMethod, resultType)) {
                     if (TraceParserPlugins.getValue(options)) {
                         traceWithContext("used invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
                     }
                     return null;
                 }
-            }
-            if (invokeKind.isDirect()) {
+
                 inlineInfo = tryInline(args, targetMethod);
                 if (inlineInfo == SUCCESSFULLY_INLINED) {
                     return null;
@@ -2434,7 +2433,6 @@ public class BytecodeParser implements GraphBuilderContext {
                     nodes.add(node);
                 }
             }
-            replaceeGraph.recordAssumptions(snippet);
             UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacementsMap);
             if (scope != null) {
                 replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());

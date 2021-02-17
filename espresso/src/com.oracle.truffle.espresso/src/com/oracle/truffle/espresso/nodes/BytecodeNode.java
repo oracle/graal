@@ -233,6 +233,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
@@ -299,6 +300,7 @@ import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastNode;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.nodes.quick.VolatileArrayAccess;
 import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayStoreNodeGen;
@@ -678,12 +680,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                 if (instrument != null) {
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
                     statementIndex = nextStatementIndex;
-
-                    // check for early return
-                    Object earlyReturnValue = getContext().getJDWPListener().getEarlyReturnValue();
-                    if (earlyReturnValue != null) {
-                        return notifyReturn(frame, statementIndex, exitMethodEarlyAndReturn(earlyReturnValue));
-                    }
                 }
 
                 // @formatter:off
@@ -714,7 +710,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case SIPUSH: putInt(primitives, top, bs.readShort(curBCI)); break;
                     case LDC: // fall through
                     case LDC_W: // fall through
-                    case LDC2_W: putPoolConstant(primitives, refs, top, bs.readCPI(curBCI), curOpcode); break;
+                    case LDC2_W: putPoolConstant(primitives, refs, top, readCPI(curBCI), curOpcode); break;
 
                     case ILOAD: putInt(primitives, top, getLocalInt(primitives, bs.readLocalIndex(curBCI))); break;
                     case LLOAD: putLong(primitives, top, getLocalLong(primitives, bs.readLocalIndex(curBCI))); break;
@@ -1036,9 +1032,13 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                     // TODO(peterssen): Order shuffled.
                     case GETSTATIC : // fall through
-                    case GETFIELD  : top += getField(frame, primitives, refs, top, resolveField(curOpcode, bs.readCPI(curBCI)), curBCI, curOpcode, statementIndex); break;
+                    case GETFIELD  : top += getField(frame, primitives, refs, top,
+                                     resolveField(curOpcode, /* Quickenable -> read from original code for thread safety */ readOriginalCPI(curBCI)),
+                                     curBCI, curOpcode, statementIndex); break;
                     case PUTSTATIC : // fall through
-                    case PUTFIELD  : top += putField(frame, primitives, refs, top, resolveField(curOpcode, bs.readCPI(curBCI)), curBCI, curOpcode, statementIndex); break;
+                    case PUTFIELD  : top += putField(frame, primitives, refs, top,
+                                     resolveField(curOpcode, /* Quickenable -> read from original code for thread safety */ readOriginalCPI(curBCI)),
+                                     curBCI, curOpcode, statementIndex); break;
 
                     case INVOKEVIRTUAL: // fall through
                     case INVOKESPECIAL: // fall through
@@ -1046,9 +1046,9 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                     case INVOKEINTERFACE: top += quickenInvoke(frame, primitives, refs, top, curBCI, curOpcode, statementIndex); break;
 
-                    case NEW         : putObject(refs, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
+                    case NEW         : putObject(refs, top, InterpreterToVM.newObject(resolveType(curOpcode, readCPI(curBCI)), true)); break;
                     case NEWARRAY    : putObject(refs, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(primitives, top - 1), getMeta())); break;
-                    case ANEWARRAY   : putObject(refs, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), popInt(primitives, top - 1))); break;
+                    case ANEWARRAY   : putObject(refs, top - 1, allocateArray(resolveType(curOpcode, readCPI(curBCI)), popInt(primitives, top - 1))); break;
                     case ARRAYLENGTH : arrayLength(frame, primitives, refs, top, curBCI); break;
                     case ATHROW      : throw Meta.throwException(nullCheck(popObject(refs, top - 1)));
 
@@ -1062,7 +1062,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
 
-                    case MULTIANEWARRAY: top += allocateMultiArray(primitives, refs, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
+                    case MULTIANEWARRAY: top += allocateMultiArray(primitives, refs, top, resolveType(curOpcode, readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
 
                     case BREAKPOINT:
                         CompilerDirectives.transferToInterpreter();
@@ -1070,14 +1070,20 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                     case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, primitives, refs, top, curBCI, curOpcode); break;
                     case QUICK: {
-                        QuickNode quickNode = nodes[bs.readCPI(curBCI)];
+                        // Force a volatile read of the opcode.
+                        if (bs.currentVolatileBC(curBCI) != QUICK) {
+                            // Possible case of read reordering. Retry handling the bytecode to make sure we get a correct CPI.
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            continue loop;
+                        }
+                        QuickNode quickNode = nodes[readCPI(curBCI)];
                         if (quickNode.removedByRedefintion()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             synchronized (this) {
                                 // re-check if node was already replaced by another thread
-                                if (quickNode != nodes[bs.readCPI(curBCI)]) {
+                                if (quickNode != nodes[readCPI(curBCI)]) {
                                     // another thread beat us
-                                    quickNode = nodes[bs.readCPI(curBCI)];
+                                    quickNode = nodes[readCPI(curBCI)];
                                 } else {
                                     // other threads might still have beat us but if
                                     // so, the resolution failed and so will we below
@@ -1086,7 +1092,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                     int nodeOpcode = original.currentBC(curBCI);
                                     Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
                                     quickNode = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
-                                    nodes[bs.readCPI(curBCI)] = quickNode;
+                                    nodes[readCPI(curBCI)] = quickNode;
                                 }
                             }
                             top += quickNode.execute(frame, primitives, refs);
@@ -1198,7 +1204,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (noForeignObjects.isValid() && (bs.currentBC(curBCI) == QUICK || bs.currentBC(curBCI) == SLIM_QUICK)) {
                 QuickNode quickNode;
                 if (bs.currentBC(curBCI) == QUICK) {
-                    quickNode = nodes[bs.readCPI(curBCI)];
+                    quickNode = nodes[readCPI(curBCI)];
                 } else {
                     assert bs.currentBC(curBCI) == SLIM_QUICK;
                     quickNode = sparseNodes[curBCI];
@@ -1536,6 +1542,16 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region Bytecode quickening
 
+    private char readCPI(int curBCI) {
+        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) || Thread.holdsLock(this)) : //
+        "Reading the CPI for a quickenable bytecode must be done under the BytecodeNode lock. Please obtain the lock, or use readOriginalCPI.";
+        return bs.readCPI(curBCI);
+    }
+
+    private char readOriginalCPI(int curBCI) {
+        return BytecodeStream.readCPI(getMethodVersion().getOriginalCode(), curBCI);
+    }
+
     private char addQuickNode(QuickNode node) {
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
@@ -1560,7 +1576,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         byte[] code = getMethodVersion().getCodeAttribute().getCode();
 
         int oldBC = code[bci];
-        code[bci] = opcode;
         if (opcode == (byte) QUICK) {
             code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
             code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
@@ -1569,6 +1584,9 @@ public final class BytecodeNode extends EspressoMethodNode {
         for (int i = Bytecodes.lengthOf(opcode); i < Bytecodes.lengthOf(oldBC); ++i) {
             code[bci + i] = (byte) NOP;
         }
+        // Make sure the Quickened bytecode is written after the rest, as it is used for
+        // synchronization.
+        VolatileArrayAccess.volatileWrite(code, bci, opcode);
     }
 
     private QuickNode injectQuick(int curBCI, QuickNode quick, int opcode) {
@@ -1584,6 +1602,16 @@ public final class BytecodeNode extends EspressoMethodNode {
         return quick;
     }
 
+    private QuickNode tryPatchQuick(int curBCI, Supplier<QuickNode> newQuickNode) {
+        synchronized (this) {
+            if (bs.currentVolatileBC(curBCI) == QUICK) {
+                return nodes[readCPI(curBCI)];
+            } else {
+                return injectQuick(curBCI, newQuickNode.get(), QUICK);
+            }
+        }
+    }
+
     private int quickenCheckCast(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int opcode) {
         if (StaticObject.isNull(peekObject(refs, top - 1))) {
             // Skip resolution.
@@ -1591,15 +1619,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == CHECKCAST;
-        QuickNode quick;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[bs.readCPI(curBCI)];
-            } else {
-                Klass typeToCheck = resolveType(CHECKCAST, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, new CheckCastNode(typeToCheck, top, curBCI), QUICK);
-            }
-        }
+        QuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
         return quick.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -1611,15 +1631,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == INSTANCEOF;
-        QuickNode quick;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[bs.readCPI(curBCI)];
-            } else {
-                Klass typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, new InstanceOfNode(typeToCheck, top, curBCI), QUICK);
-            }
-        }
+        QuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
         return quick.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -1627,19 +1639,13 @@ public final class BytecodeNode extends EspressoMethodNode {
         QUICKENED_INVOKES.inc();
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opcode);
-        QuickNode quick;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[bs.readCPI(curBCI)];
-            } else {
-                // During resolution of the symbolic reference to the method, any of the exceptions
-                // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
-                char cpi = bs.readCPI(curBCI);
-                Method resolutionSeed = resolveMethod(opcode, cpi);
-                QuickNode invoke = dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors);
-                quick = injectQuick(curBCI, invoke, QUICK);
-            }
-        }
+        QuickNode quick = tryPatchQuick(curBCI, () -> {
+            // During resolution of the symbolic reference to the method, any of the exceptions
+            // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
+            char cpi = readCPI(curBCI);
+            Method resolutionSeed = resolveMethod(opcode, cpi);
+            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors);
+        });
         // Perform the call outside of the lock.
         return quick.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
@@ -1654,7 +1660,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode invoke = null;
         synchronized (this) {
             assert bs.currentBC(curBCI) == QUICK;
-            char cpi = bs.readCPI(curBCI);
+            char cpi = readCPI(curBCI);
             invoke = dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, false);
             nodes[cpi] = nodes[cpi].replace(invoke);
         }
@@ -1667,28 +1673,14 @@ public final class BytecodeNode extends EspressoMethodNode {
     public int quickenGetField(final VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == GETFIELD;
-        QuickNode getField;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                getField = nodes[bs.readCPI(curBCI)];
-            } else {
-                getField = injectQuick(curBCI, new QuickenedGetFieldNode(top, curBCI, statementIndex, field), QUICK);
-            }
-        }
+        QuickNode getField = tryPatchQuick(curBCI, () -> new QuickenedGetFieldNode(top, curBCI, statementIndex, field));
         return getField.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
 
     public int quickenPutField(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == PUTFIELD;
-        QuickNode putField;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                putField = nodes[bs.readCPI(curBCI)];
-            } else {
-                putField = injectQuick(curBCI, new QuickenedPutFieldNode(top, curBCI, field, statementIndex), QUICK);
-            }
-        }
+        QuickNode putField = tryPatchQuick(curBCI, () -> new QuickenedPutFieldNode(top, curBCI, field, statementIndex));
         return putField.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -1696,7 +1688,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode arrayLengthNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+            if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
                 arrayLengthNode = sparseNodes[curBCI];
             } else {
                 arrayLengthNode = injectQuick(curBCI, ArrayLengthNodeGen.create(top, curBCI), SLIM_QUICK);
@@ -1709,7 +1701,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode arrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+            if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
                 arrayLoadNode = sparseNodes[curBCI];
             } else {
                 // @formatter:off
@@ -1740,7 +1732,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode arrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+            if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
                 arrayStoreNode = sparseNodes[curBCI];
             } else {
                 // @formatter:off
@@ -1882,12 +1874,12 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode quick = null;
         int indyIndex = -1;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
+            if (bs.currentVolatileBC(curBCI) == QUICK) {
                 // Check if someone did the job for us. Defer the call until we are out of the lock.
-                quick = nodes[bs.readCPI(curBCI)];
+                quick = nodes[readCPI(curBCI)];
             } else {
                 // fetch indy under lock.
-                indyIndex = bs.readCPI(curBCI);
+                indyIndex = readCPI(curBCI);
             }
         }
         if (quick != null) {
@@ -1900,9 +1892,9 @@ public final class BytecodeNode extends EspressoMethodNode {
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
+            if (bs.currentVolatileBC(curBCI) == QUICK) {
                 // someone beat us to it, just trust him.
-                quick = nodes[bs.readCPI(curBCI)];
+                quick = nodes[readCPI(curBCI)];
             } else {
                 quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(inDy.getMemberName(), inDy.getUnboxedAppendix(), inDy.getParsedSignature(), getMeta(), top, curBCI), QUICK);
             }
@@ -1989,14 +1981,6 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private static Object exitMethodAndReturn() {
         return exitMethodAndReturnObject(StaticObject.NULL);
-    }
-
-    private Object exitMethodEarlyAndReturn(Object result) {
-        if (Signatures.returnKind(getMethod().getParsedSignature()) == JavaKind.Void) {
-            return exitMethodAndReturn();
-        } else {
-            return result;
-        }
     }
 
     // endregion Method return
@@ -2540,8 +2524,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
-            if (context.getJDWPListener().hasMethodBreakpoint(method, returnValue)) {
-                enterAt(frame, statementIndex);
+            if (method.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onMethodReturn(method, returnValue)) {
+                    enterAt(frame, statementIndex);
+                }
             }
         }
 
@@ -2555,14 +2541,18 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
-            if (context.getJDWPListener().hasFieldModificationBreakpoint(field, receiver, value)) {
-                enterAt(frame, index);
+            if (field.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onFieldModification(field, receiver, value)) {
+                    enterAt(frame, index);
+                }
             }
         }
 
         public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
-            if (context.getJDWPListener().hasFieldAccessBreakpoint(field, receiver)) {
-                enterAt(frame, index);
+            if (field.hasActiveBreakpoint()) {
+                if (context.getJDWPListener().onFieldAccess(field, receiver)) {
+                    enterAt(frame, index);
+                }
             }
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -58,6 +59,22 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/native";
+
+    private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("libffi backend single context");
+
+    static NFILanguageImpl getCurrentLanguage() {
+        return getCurrentLanguage(NFILanguageImpl.class);
+    }
+
+    static Assumption getSingleContextAssumption() {
+        return getCurrentLanguage().singleContextAssumption;
+    }
+
+    @Override
+    protected void initializeMultipleContexts() {
+        super.initializeMultipleContexts();
+        singleContextAssumption.invalidate();
+    }
 
     @CompilationFinal private NFIBackendImpl backend;
 

@@ -1,8 +1,8 @@
 # Build targets
 
 builds += [
-  ${gateJAOTC} ${oraclejdk15} ${gateLinuxAMD64} {name: "gate-compiler-jaotc-15-linux-amd64", timelimit:   "30:00"}
-  ${gateJAOTC} ${oraclejdk15} ${gateLinuxAMD64} {name: "daily-jaotc-15-linux-amd64",         timelimit: "1:20:00"} {
+  ${gateJAOTC} ${oraclejdk16} ${gateLinuxAMD64} {name: "gate-compiler-jaotc-16-linux-amd64", timelimit:   "30:00"}
+  ${gateJAOTC} ${oraclejdk16} ${gateLinuxAMD64} {name: "daily-jaotc-16-linux-amd64",         timelimit: "1:20:00"} {
     environment: {
       JAOTC_TEST_GROUP: "daily"
     }

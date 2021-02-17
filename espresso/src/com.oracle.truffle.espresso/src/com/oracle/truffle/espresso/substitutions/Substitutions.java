@@ -290,4 +290,9 @@ public final class Substitutions implements ContextAccess {
         }
         return factory.createNodeIfValid(method);
     }
+
+    public boolean hasSubstitutionFor(Method method) {
+        MethodRef key = getMethodKey(method);
+        return STATIC_SUBSTITUTIONS.containsKey(key) || runtimeSubstitutions.containsKey(key);
+    }
 }
