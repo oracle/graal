@@ -1178,8 +1178,7 @@ suite = {
       "requireDragonegg" : True,
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
-      "extraLibs" : ["libgfortran.so.3"],
+      "variants" : ["O0_OUT"],
       "single_job" : True, # problem with parallel builds and temporary module files
       "buildRef" : True,
       "buildEnv" : {
