@@ -257,10 +257,6 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<LivenessAnalysisMode> LivenessAnalysis = new OptionKey<>(LivenessAnalysisMode.DISABLED, LIVENESS_ANALYSIS_MODE_OPTION_TYPE);
 
-    @Option(help = "Load native libraries on a per-context, isolated linking namespace; by default enabled on the JVM, disabled on SVM.", //
-                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> UseTruffleNFIIsolatedNamespace = new OptionKey<>(!RUNNING_ON_SVM);
-
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
 

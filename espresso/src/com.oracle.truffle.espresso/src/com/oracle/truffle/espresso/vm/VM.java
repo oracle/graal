@@ -116,7 +116,6 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.JniVersion;
 import com.oracle.truffle.espresso.jni.NativeEnv;
-import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -169,7 +168,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject getPackageAt;
 
     private final long rtldDefaultValue;
-    private final boolean safeRTLDDefaultLookup;
 
     private final JniEnv jniEnv;
 
@@ -317,8 +315,6 @@ public final class VM extends NativeEnv implements ContextAccess {
             getPackageAt = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getPackageAt",
                             NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
-            OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
-            this.safeRTLDDefaultLookup = !options.get(EspressoOptions.UseTruffleNFIIsolatedNamespace);
 
             // void* fetch_by_name(char* function_name)
             @Pointer
