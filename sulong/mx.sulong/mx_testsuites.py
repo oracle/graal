@@ -141,8 +141,6 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
     def runTestSuite(self, testClasses=None, vmArgs=None):
         if vmArgs is None:
             vmArgs = []
-        if hasattr(self, 'extraLibs'):
-            vmArgs.append('-Dpolyglot.llvm.libraries=' + ':'.join(self.extraLibs))
         if hasattr(self, 'fileExts'):
             vmArgs += ['-Dsulongtest.fileExtensionFilter=' + ':'.join(self.fileExts)]
         if testClasses is None:
@@ -265,8 +263,6 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
             "-Dsulongtest.testSourcePath=" + self.get_test_source(),
             "-Dsulongtest.testConfigPath=" + os.path.join(self.dir, "..", self.configDir),
             ]
-        if hasattr(self, 'extraLibs'):
-            vmArgs.append('-Dpolyglot.llvm.libraries=' + ':'.join(self.extraLibs))
         if hasattr(self, 'fileExts'):
             vmArgs += ['-Dsulongtest.fileExtensionFilter=' + ':'.join(self.fileExts)]
         if testClasses is None:
