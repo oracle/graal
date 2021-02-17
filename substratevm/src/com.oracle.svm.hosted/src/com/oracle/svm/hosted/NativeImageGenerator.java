@@ -465,8 +465,7 @@ public class NativeImageGenerator {
             setSystemPropertiesForImageLate(k);
 
             ImageSingletonsSupportImpl.HostedManagement.installInThread(new ImageSingletonsSupportImpl.HostedManagement());
-            int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
-            this.buildExecutor = createForkJoinPool(maxConcurrentThreads);
+            this.buildExecutor = createForkJoinPool(compilationExecutor.getParallelism());
             buildExecutor.submit(() -> {
                 ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
                 ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
