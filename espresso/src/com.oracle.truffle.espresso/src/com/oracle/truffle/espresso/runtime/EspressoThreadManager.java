@@ -328,7 +328,7 @@ class EspressoThreadManager implements ContextAccess {
         mainThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
         // Notify native backend about main thread.
-        getNativeAccess().threadStart();
+        getNativeAccess().prepareThread();
 
         mainThreadCreated = true;
         logger.fine(() -> {

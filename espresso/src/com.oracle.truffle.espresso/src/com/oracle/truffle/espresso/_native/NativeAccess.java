@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -166,12 +167,10 @@ public interface NativeAccess {
     }
 
     /**
-     * Hook called when starting guest threads, some native backends may need to prepare external
-     * threads (e.g. initialiye TLS storage).
+     * Hook called when starting guest threads, some native backends may need to  external
+     * threads (e.g. initialize TLS storage).
      */
-    default void threadStart() {
-        // nop
-    }
+    void prepareThread();
 
     /**
      * NativeAccess SPI.

@@ -119,7 +119,7 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
     }
 
     @Override
-    public void threadStart() {
+    public void prepareThread() {
         try {
             uncachedInterop.execute(ctypeInit);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

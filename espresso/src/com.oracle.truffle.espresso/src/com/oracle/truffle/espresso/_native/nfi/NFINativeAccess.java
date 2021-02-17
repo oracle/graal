@@ -328,6 +328,11 @@ class NFINativeAccess implements NativeAccess {
     }
 
     @Override
+    public void prepareThread() {
+        // nop
+    }
+
+    @Override
     public @Buffer TruffleObject allocateMemory(long size) {
         long address = 0L;
         try {

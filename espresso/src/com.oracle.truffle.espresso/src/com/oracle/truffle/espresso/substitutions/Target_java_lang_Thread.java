@@ -218,7 +218,7 @@ public final class Target_java_lang_Thread {
                         context.getVM().attachThread(Thread.currentThread());
                         try {
                             // Initialize TLS related to __ctype_b_loc to avoid glibc crashes.
-                            meta.getNativeAccess().threadStart();
+                            meta.getNativeAccess().prepareThread();
                             // Execute the payload
                             self.getKlass().vtableLookup(meta.java_lang_Thread_run.getVTableIndex()).invokeDirect(self);
                             checkDeprecatedState(meta, self);
