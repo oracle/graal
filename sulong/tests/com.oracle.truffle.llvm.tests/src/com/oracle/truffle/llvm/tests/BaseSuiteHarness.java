@@ -61,10 +61,27 @@ import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 
+/**
+ * Base class for parameterized tests that run a {@link #getIsExecutableFilter() reference
+ * executable} and compare the result against one or multiple {@link #getIsSulongFilter() bitcode
+ * files}.
+ */
 public abstract class BaseSuiteHarness {
 
+    /**
+     * The absolute path to the test case. The test case always a directory containing
+     * {@link #getIsExecutableFilter() a reference executable} and {@link #getIsSulongFilter()
+     * bitcode files}.
+     */
     @Parameter(value = 0) public Path path;
+    /**
+     * The test case name. Usually {@link #path} relative to the test suite base directory.
+     */
     @Parameter(value = 1) public String testName;
+    /**
+     * The reason why a test case should be excluded or {@code null} if the test case should not be
+     * excluded.
+     */
     @Parameter(value = 2) public String exclusionReason;
 
     protected Path getTestDirectory() {
@@ -206,7 +223,7 @@ public abstract class BaseSuiteHarness {
             List<Path> files = walk.filter(getIsExecutableFilter()).collect(Collectors.toList());
 
             // some tests do not compile with certain versions of clang
-            Assume.assumeFalse("reference binary missing", files.isEmpty());
+            assumeFalse("reference binary missing", files.isEmpty());
 
             referenceBinary = files.get(0);
             referenceResult = runReference(referenceBinary);
@@ -226,6 +243,10 @@ public abstract class BaseSuiteHarness {
         if (getExclusionReason() != null) {
             throw new AssumptionViolatedException("Test excluded: " + getExclusionReason());
         }
+    }
+
+    protected void assumeFalse(String message, boolean b) {
+        Assume.assumeFalse(message, b);
     }
 
     protected Predicate<? super Path> getIsSulongFilter() {

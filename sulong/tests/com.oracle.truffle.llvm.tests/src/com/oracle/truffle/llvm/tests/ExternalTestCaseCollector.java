@@ -44,8 +44,14 @@ import java.util.stream.Stream;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
+/**
+ * Test case collector for external test suites.
+ */
 public abstract class ExternalTestCaseCollector {
 
+    /**
+     * @return see {@link FixtureUtils#getFixtureObjects}
+     */
     public static Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
         String testDiscoveryPath = TestOptions.TEST_DISCOVERY_PATH;
         if (testDiscoveryPath == null) {

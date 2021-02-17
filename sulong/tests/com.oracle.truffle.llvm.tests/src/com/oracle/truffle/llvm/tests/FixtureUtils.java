@@ -47,6 +47,11 @@ import java.util.stream.Stream;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
+/**
+ * Utils for collecting test cases and exclusion reasons.
+ * 
+ * @see #getFixtureObjects
+ */
 public final class FixtureUtils {
 
     public static final String COMMENT_LINE_PREFIX = "#";
