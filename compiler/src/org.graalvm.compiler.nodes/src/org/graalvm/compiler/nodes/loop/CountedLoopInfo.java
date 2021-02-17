@@ -60,17 +60,21 @@ public class CountedLoopInfo {
     protected final LoopEx loop;
     protected InductionVariable iv;
     protected ValueNode end;
-    protected boolean oneOff;
+    /**
+     * {@code true} iff the limit is included in the limit test, e.g., the limit test is
+     * {@code i <= n} rather than {@code i < n}.
+     */
+    protected boolean isLimitIncluded;
     protected AbstractBeginNode body;
     protected IfNode ifNode;
     protected final boolean unsigned;
 
-    protected CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean oneOff, AbstractBeginNode body, boolean unsigned) {
+    protected CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean isLimitIncluded, AbstractBeginNode body, boolean unsigned) {
         assert iv.direction() != null;
         this.loop = loop;
         this.iv = iv;
         this.end = end;
-        this.oneOff = oneOff;
+        this.isLimitIncluded = isLimitIncluded;
         this.body = body;
         this.ifNode = ifNode;
         this.unsigned = unsigned;
@@ -128,7 +132,7 @@ public class CountedLoopInfo {
         ValueNode range = sub(max, min);
 
         ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
-        if (oneOff) {
+        if (isLimitIncluded) {
             range = add(range, one);
         }
         // round-away-from-zero divison: (range + stride -/+ 1) / stride
@@ -166,7 +170,7 @@ public class CountedLoopInfo {
             max = iv.initNode();
             min = end;
         }
-        if (oneOff) {
+        if (isLimitIncluded) {
             // Ensure the constant is value numbered in the graph. Don't add other nodes to the
             // graph, they will be dead code.
             StructuredGraph graph = iv.valueNode().graph();
@@ -223,7 +227,7 @@ public class CountedLoopInfo {
             range = iv.constantInit() - endValue;
             absStride = -iv.constantStride();
         }
-        if (oneOff) {
+        if (isLimitIncluded) {
             range += 1;
         }
         long denominator = range + absStride - 1;
@@ -266,7 +270,7 @@ public class CountedLoopInfo {
 
     @Override
     public String toString() {
-        return "iv=" + iv + " until " + end + (oneOff ? iv.direction() == Direction.Up ? "+1" : "-1" : "");
+        return "iv=" + iv + " until " + end + (isLimitIncluded ? iv.direction() == Direction.Up ? "+1" : "-1" : "");
     }
 
     public ValueNode getLimit() {
@@ -282,7 +286,7 @@ public class CountedLoopInfo {
     }
 
     public boolean isLimitIncluded() {
-        return oneOff;
+        return isLimitIncluded;
     }
 
     public AbstractBeginNode getBody() {
@@ -314,7 +318,7 @@ public class CountedLoopInfo {
         if (loop.loopBegin().canNeverOverflow()) {
             return true;
         }
-        if (iv.isConstantStride() && abs(iv.constantStride()) == 1) {
+        if (!isLimitIncluded && iv.isConstantStride() && abs(iv.constantStride()) == 1) {
             return true;
         }
         // @formatter:off
@@ -371,10 +375,10 @@ public class CountedLoopInfo {
         IntegerHelper integerHelper = getCounterIntegerHelper();
         if (getDirection() == Direction.Up) {
             long max = integerHelper.maxValue();
-            return integerHelper.compare(endStamp.upperBound(), max - (strideStamp.upperBound() - 1) - (oneOff ? 1 : 0)) <= 0;
+            return integerHelper.compare(endStamp.upperBound(), max - (strideStamp.upperBound() - 1) - (isLimitIncluded ? 1 : 0)) <= 0;
         } else if (getDirection() == Direction.Down) {
             long min = integerHelper.minValue();
-            return integerHelper.compare(min + (1 - strideStamp.lowerBound()) + (oneOff ? 1 : 0), endStamp.lowerBound()) <= 0;
+            return integerHelper.compare(min + (1 - strideStamp.lowerBound()) + (isLimitIncluded ? 1 : 0), endStamp.lowerBound()) <= 0;
         }
         return false;
     }
@@ -393,14 +397,14 @@ public class CountedLoopInfo {
             ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
             if (iv.direction() == Direction.Up) {
                 ValueNode v1 = sub(ConstantNode.forIntegerStamp(stamp, integerHelper.maxValue()), sub(iv.strideNode(), one));
-                if (oneOff) {
+                if (isLimitIncluded) {
                     v1 = sub(v1, one);
                 }
                 cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(v1, end, NodeView.DEFAULT));
             } else {
                 assert iv.direction() == Direction.Down;
                 ValueNode v1 = add(ConstantNode.forIntegerStamp(stamp, integerHelper.minValue()), sub(one, iv.strideNode()));
-                if (oneOff) {
+                if (isLimitIncluded) {
                     v1 = add(v1, one);
                 }
                 cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(end, v1, NodeView.DEFAULT));
