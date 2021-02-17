@@ -3680,7 +3680,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     } else {
                         throw getHashValueUnsupported(context, receiver, key);
                     }
-                } catch (UnknownHashKeyException | UnsupportedTypeException e) {
+                } catch (UnknownHashKeyException e) {
                     invalidKey.enter();
                     throw invalidHashKey(context, receiver, key);
                 }
@@ -3767,7 +3767,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     } else {
                         result = Boolean.FALSE;
                     }
-                } catch (UnknownHashKeyException | UnsupportedTypeException e) {
+                } catch (UnknownHashKeyException e) {
                     invalidKey.enter();
                     result = Boolean.FALSE;
                 }

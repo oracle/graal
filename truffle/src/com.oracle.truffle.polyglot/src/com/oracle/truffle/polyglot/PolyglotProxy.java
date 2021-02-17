@@ -56,6 +56,8 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyHashEntry;
+import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyIterable;
@@ -628,6 +630,143 @@ final class PolyglotProxy implements TruffleObject {
         if (proxy instanceof ProxyIterator) {
             PolyglotLanguageContext languageContext = context.get().internalContext;
             Object result = guestToHostCall(library, language.getHostToGuestCache().getIteratorNextElement, languageContext, proxy);
+            return languageContext.toGuestValue(library, result);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean hasHashEntries() {
+        return proxy instanceof ProxyHashMap;
+    }
+
+    @ExportMessage(name = "isHashValueReadable")
+    @ExportMessage(name = "isHashEntryModifiable")
+    @ExportMessage(name = "isHashEntryRemovable")
+    @TruffleBoundary
+    boolean isHashValueExisting(Object key,
+                    @CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) {
+        if (proxy instanceof ProxyHashMap) {
+            PolyglotLanguageContext languageContext = context.get().internalContext;
+            Value keyValue = languageContext.asValue(key);
+            return (boolean) guestToHostCall(library, language.getHostToGuestCache().hasHashEntry, languageContext, proxy, keyValue);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object readHashValue(Object key,
+                    @CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyHashMap) {
+            PolyglotLanguageContext languageContext = context.get().internalContext;
+            Value keyValue = languageContext.asValue(key);
+            Object result = guestToHostCall(library, language.getHostToGuestCache().getHashValue, languageContext, proxy, keyValue);
+            return languageContext.toGuestValue(library, result);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isHashEntryInsertable(Object key,
+                    @CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) {
+        if (proxy instanceof ProxyHashMap) {
+            return !isHashValueExisting(key, library, context, language);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    void writeHashEntry(Object key, Object value,
+                    @CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyHashMap) {
+            PolyglotLanguageContext languageContext = context.get().internalContext;
+            Value keyValue = languageContext.asValue(key);
+            Value valueValue = languageContext.asValue(value);
+            guestToHostCall(library, language.getHostToGuestCache().putHashEntry, languageContext, proxy, keyValue, valueValue);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    void removeHashEntry(Object key,
+                    @CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyHashMap) {
+            PolyglotLanguageContext languageContext = context.get().internalContext;
+            Value keyValue = languageContext.asValue(key);
+            guestToHostCall(library, language.getHostToGuestCache().removeHashEntry, languageContext, proxy, keyValue);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getHashEntriesIterator(@CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyHashMap) {
+            PolyglotLanguageContext languageContext = context.get().internalContext;
+            Object result = guestToHostCall(library, language.getHostToGuestCache().getHashEntriesIterator, languageContext, proxy);
+            Object guestValue = languageContext.toGuestValue(library, result);
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            if (!interop.isIterator(guestValue)) {
+                throw illegalProxy(languageContext, "getEntriesIterator() returned an invalid value %s but must return an iterator.",
+                                languageContext.asValue(guestValue).toString());
+            }
+            return guestValue;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isHashEntry() {
+        return proxy instanceof ProxyHashEntry;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getHashEntryKey(@CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyHashEntry) {
+            PolyglotLanguageContext languageContext = context.get().internalContext;
+            Object result = guestToHostCall(library, language.getHostToGuestCache().getHashEntryKey, languageContext, proxy);
+            return languageContext.toGuestValue(library, result);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getHashEntryValue(@CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyHashEntry) {
+            PolyglotLanguageContext languageContext = context.get().internalContext;
+            Object result = guestToHostCall(library, language.getHostToGuestCache().getHashEntryValue, languageContext, proxy);
             return languageContext.toGuestValue(library, result);
         } else {
             throw UnsupportedMessageException.create();

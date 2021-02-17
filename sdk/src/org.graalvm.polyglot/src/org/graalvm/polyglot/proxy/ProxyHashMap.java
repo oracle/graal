@@ -46,7 +46,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-public interface ProxyHashMap extends ProxyIterable {
+public interface ProxyHashMap {
 
     boolean hasEntry(Value key);
 
@@ -57,6 +57,8 @@ public interface ProxyHashMap extends ProxyIterable {
     default boolean removeEntry(@SuppressWarnings("unused") Value key) {
         throw new UnsupportedOperationException("remove() not supported.");
     }
+
+    Object getEntriesIterator();
 
     static ProxyHashMap fromMap(Map<Object, Object> values) {
         return new ProxyHashMap() {
@@ -101,7 +103,7 @@ public interface ProxyHashMap extends ProxyIterable {
             }
 
             @Override
-            public Object getIterator() {
+            public Object getEntriesIterator() {
                 Iterator<? extends Map.Entry<?, ?>> entryIterator = values.entrySet().iterator();
                 return new ProxyIterator() {
                     @Override
@@ -111,7 +113,8 @@ public interface ProxyHashMap extends ProxyIterable {
 
                     @Override
                     public Object getNext() throws NoSuchElementException, UnsupportedOperationException {
-                        return ProxyHashEntry.create(entryIterator.next());
+                        Map.Entry<?, ?> entry = entryIterator.next();
+                        return ProxyHashEntry.create(entry.getKey(), entry.getValue());
                     }
                 };
             }

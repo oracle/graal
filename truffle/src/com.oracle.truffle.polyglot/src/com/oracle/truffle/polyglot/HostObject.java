@@ -1779,13 +1779,13 @@ final class HostObject implements TruffleObject {
                         @Shared("isMap") @Cached IsMapNode isMap,
                         @Shared("toHost") @Cached ToHostNode toHost,
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest,
-                        @Shared("error") @Cached BranchProfile error) throws UnknownHashKeyException, UnsupportedTypeException {
+                        @Shared("error") @Cached BranchProfile error) throws UnknownHashKeyException {
             Object hostKey;
             try {
                 hostKey = toHost.execute(key, Object.class, null, receiver.languageContext, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{key}, getMessage(e));
+                throw UnknownHashKeyException.create(key);
             }
             Object hostResult = getImpl((Map<Object, Object>) receiver.obj, hostKey, UNDEFINED);
             if (hostResult == UNDEFINED) {
@@ -1869,13 +1869,13 @@ final class HostObject implements TruffleObject {
         protected static void doMap(HostObject receiver, Object key,
                         @Shared("isMap") @Cached IsMapNode isMap,
                         @Shared("toHost") @Cached ToHostNode toHost,
-                        @Shared("error") @Cached BranchProfile error) throws UnknownHashKeyException, UnsupportedTypeException {
+                        @Shared("error") @Cached BranchProfile error) throws UnknownHashKeyException {
             Object hostKey;
             try {
                 hostKey = toHost.execute(key, Object.class, null, receiver.languageContext, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{key}, getMessage(e));
+                throw UnknownHashKeyException.create(key);
             }
             boolean removed = removeImpl((Map<Object, Object>) receiver.obj, hostKey);
             if (!removed) {
