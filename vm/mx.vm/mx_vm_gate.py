@@ -66,7 +66,7 @@ class VmGateTasks:
 def gate_body(args, tasks):
     with Task('Vm: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
-            mx_sdk_vm.verify_graalvm_configs(['--suites', 'vm,vm-enterprise'])
+            mx_sdk_vm.verify_graalvm_configs(suites=['vm', 'vm-enterprise'])
 
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
         if t and mx_sdk_vm_impl.has_component('GraalVM compiler'):

@@ -803,19 +803,19 @@ grant codeBase "file:${java.home}/languages/-" {
         mx.abort('Error generating CDS shared archive')
 
 
-def verify_graalvm_configs(args):
+def verify_graalvm_configs(suites=None):
+    """
+    Check the consistency of registered GraalVM configs.
+    :param suites: optionally restrict the check to the configs registered by this list of suites.
+    :type suites: list[str] or None
+    """
     import mx_sdk_vm_impl
-    parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify the consistency of registered GraalVM configs')
-    parser.add_argument('--suites', help='comma-separated list of suites to restrict the set of GraalVM configs to check')
-    args = parser.parse_args(args)
-
-    suites = args.suites.split(',') if args.suites is not None else None
     child_env = os.environ.copy()
     for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS', 'DISABLE_POLYGLOT', 'DISABLE_LIBPOLYGLOT']:
         if env_var in child_env:
             del child_env[env_var]
     for dist_name, _, components, suite, env_file in _vm_configs:
-        if env_file is not False and (not suites or suite.name in suites):
+        if env_file is not False and (suites is None or suite.name in suites):
             _env_file = env_file or dist_name
             graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=mx_sdk_vm_impl._graalvm_base_name, dist_name=dist_name, jdk_version=mx_sdk_vm_impl._src_jdk_version).upper().replace('-', '_')
             mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(_env_file, suite.name, graalvm_dist_name))
@@ -847,9 +847,5 @@ Actual component list:
 {}
 {}Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components, diff))
 
-
-mx.update_commands(mx.suite('sdk'), {
-    'verify-graalvm-configs': [verify_graalvm_configs, ''],
-})
 
 register_known_vm('truffle')

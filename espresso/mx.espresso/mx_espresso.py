@@ -95,7 +95,7 @@ def _espresso_gate_runner(args, tasks):
 
     with Task('Espresso: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
-            mx_sdk_vm.verify_graalvm_configs(['--suites', 'espresso'])
+            mx_sdk_vm.verify_graalvm_configs(suites=['espresso'])
 
     mokapot_header_gate_name = 'Verify consistency of mokapot headers'
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:

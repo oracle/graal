@@ -152,7 +152,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 def gate_body(args, tasks):
     with mx_gate.Task('Sdk: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
-            mx_sdk_vm.verify_graalvm_configs([])
+            mx_sdk_vm.verify_graalvm_configs()
 
 
 mx_gate.add_gate_runner(_suite, gate_body)
