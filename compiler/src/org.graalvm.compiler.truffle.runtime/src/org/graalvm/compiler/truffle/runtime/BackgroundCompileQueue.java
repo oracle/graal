@@ -133,7 +133,8 @@ public class BackgroundCompileQueue {
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
             if (callTarget.getOptionValue(PolyglotCompilerOptions.ConfigurableCompilationQueue)) {
-                this.compilationQueue = new DelegatingBlockingQueue<>(new TraversingQueue<>());
+                boolean priority = callTarget.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
+                this.compilationQueue = new DelegatingBlockingQueue<>(new TraversingQueue<>(priority));
             } else {
                 this.compilationQueue = new IdlingPriorityBlockingQueue<>();
             }

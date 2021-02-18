@@ -31,12 +31,17 @@ import java.util.List;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 
 public class TraversingQueue<E> implements SerialQueue<E> {
+    private final boolean priority;
     List<E> firstTierEntries = new LinkedList<>();
     LinkedList<E> lastTierEntries = new LinkedList<>();
 
+    public TraversingQueue(boolean priority) {
+        this.priority = priority;
+    }
+
     @Override
     public void add(E x) {
-        if (task(x).isFirstTier()) {
+        if (!priority || task(x).isFirstTier()) {
             firstTierEntries.add(x);
         } else {
             lastTierEntries.add(x);
