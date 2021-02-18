@@ -54,7 +54,7 @@ public final class TestOptions {
     }
 
     /**
-     * Gets get path of an mx test distribution.
+     * Gets the path of an mx test distribution.
      * 
      * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
      */
@@ -62,6 +62,32 @@ public final class TestOptions {
         String property = System.getProperty("sulongtest.path." + distribution);
         if (property == null) {
             throw new RuntimeException("Test distribution does not exist: " + distribution);
+        }
+        return property;
+    }
+
+    /**
+     * Gets the file extension filter defined by the projects of of an mx test distribution.
+     *
+     * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
+     */
+    public static String[] getFileExtensions(String distribution) {
+        String property = System.getProperty("sulongtest.fileExts." + distribution);
+        if (property == null) {
+            return new String[0];
+        }
+        return property.split(",");
+    }
+
+    /**
+     * Gets the path of a test source.
+     *
+     * The properties are manually set in {@code suite.py}.
+     */
+    public static String getSourcePath(String source) {
+        String property = System.getProperty("sulongtest.source." + source);
+        if (property == null) {
+            throw new RuntimeException("Test sources does not exist: " + source);
         }
         return property;
     }
