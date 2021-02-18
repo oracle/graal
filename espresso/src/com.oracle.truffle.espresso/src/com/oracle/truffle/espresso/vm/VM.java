@@ -1127,23 +1127,27 @@ public final class VM extends NativeEnv implements ContextAccess {
     public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
+        TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
+        if (lib == null) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_UnsatisfiedLinkError, name);
+        }
+        long handle = getLibraryHandle(lib);
+        handle2Lib.put(handle, lib);
+        getLogger().fine(String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
+        return RawPointer.create(handle);
+    }
+
+    private static long getLibraryHandle(TruffleObject lib) {
+        // TODO(peterssen): Add a proper API to get native handle for libraries.
         try {
-            @Pointer
-            TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
-            if (lib == null) {
-                throw Meta.throwExceptionWithMessage(getMeta().java_lang_UnsatisfiedLinkError, name);
-            }
-            long handle = 0L;
-            try {
-                java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
-                f.setAccessible(true);
-                handle = (long) f.get(lib);
-            } catch (NoSuchFieldException e) {
-                handle = libraryHandles.getAndIncrement();
-            }
-            getLogger().fine(String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
-            handle2Lib.put(handle, lib);
-            return RawPointer.create(handle);
+            // Try NFI internals first.
+            // TODO(peterssen): Expose library handle via interop asPointer?
+            java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
+            f.setAccessible(true);
+            return (long) f.get(lib);
+        } catch (NoSuchFieldException e) {
+            // Probably a Sulong library, cannot get its native handle, create a fake one.
+            return libraryHandles.getAndIncrement();
         } catch (IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -1172,7 +1176,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             if (nativePtr == rtldDefaultValue) {
                 library = getNativeAccess().loadDefaultLibrary();
                 if (library == null) {
-                    getLogger().warning("JVM_FindLibraryEntry from default/global namespace is supported mode: " + name);
+                    getLogger().warning("JVM_FindLibraryEntry from default/global namespace is not supported: " + name);
                     return RawPointer.nullInstance();
                 }
                 handle2Lib.put(nativePtr, library);
