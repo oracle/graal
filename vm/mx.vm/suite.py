@@ -204,6 +204,7 @@ suite = {
                 "./interpreter/": [
                     "file:benchmarks/interpreter/*.js",
                     "file:benchmarks/interpreter/*.rb",
+                    "file:benchmarks/interpreter/*.py",
                 ],
                 "./interpreter/dependencies/": [
                     "file:benchmarks/interpreter/dependencies/*",

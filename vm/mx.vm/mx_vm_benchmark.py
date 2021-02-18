@@ -630,7 +630,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self):
         super(PolyBenchBenchmarkSuite, self).__init__()
-        self._extensions = [".js", ".rb", ".wasm", ".bc"]
+        self._extensions = [".js", ".rb", ".wasm", ".bc", ".py"]
 
     def _get_benchmark_root(self):
         if not hasattr(self, '_benchmark_root'):
