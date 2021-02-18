@@ -59,6 +59,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
                 try {
                     ((GraalTruffleRuntime) Truffle.getRuntime()).doCompile(callTarget, task);
                 } finally {
+                    callTarget.compiledTier(task.tier());
                     task.finished();
                 }
             }
@@ -200,6 +201,14 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private double rate(int count, long time) {
         double rawRate = (double) ((count) - lastCount) / (time - lastTime);
         return 1.0 + (Double.isNaN(rawRate) ? 0 : rawRate);
+    }
+
+    public boolean targetPreviouslyCompiled() {
+        OptimizedCallTarget target = targetRef.get();
+        if (target == null) {
+            return false;
+        }
+        return target.getHighestCompiledTier() > 0;
     }
 
     /**

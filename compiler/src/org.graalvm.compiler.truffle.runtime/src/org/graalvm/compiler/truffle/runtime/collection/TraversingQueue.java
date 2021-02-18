@@ -32,7 +32,7 @@ import org.graalvm.compiler.truffle.runtime.CompilationTask;
 
 public class TraversingQueue<E> implements SerialQueue<E> {
     List<E> firstTierEntries = new LinkedList<>();
-    List<E> lastTierEntries = new LinkedList<>();
+    LinkedList<E> lastTierEntries = new LinkedList<>();
 
     @Override
     public void add(E x) {
@@ -47,22 +47,9 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     @SuppressWarnings("unchecked")
     public E poll() {
         if (firstTierEntries.isEmpty()) {
-            return nextLastTier();
+            return lastTierEntries.poll();
         }
         return maxFirstTier();
-    }
-
-    private E nextLastTier() {
-        if (lastTierEntries.isEmpty()) {
-            return null;
-        }
-        E e = lastTierEntries.get(0);
-        lastTierEntries.remove(e);
-        return e;
-    }
-
-    private List<E> entries() {
-        return firstTierEntries.isEmpty() ? lastTierEntries : firstTierEntries;
     }
 
     @Override
@@ -77,8 +64,14 @@ public class TraversingQueue<E> implements SerialQueue<E> {
         Iterator<E> it = firstTierEntries.iterator();
         E max = it.next();
         double maxWeight = task(max).weight(time);
+        if (task(max).targetPreviouslyCompiled()) {
+            return remove(max);
+        }
         while (it.hasNext()) {
             E entry = it.next();
+            if (task(entry).targetPreviouslyCompiled()) {
+                return remove(entry);
+            }
             CompilationTask task = task(entry);
             double weight = task.weight(time);
             if (weight > maxWeight) {
@@ -86,6 +79,10 @@ public class TraversingQueue<E> implements SerialQueue<E> {
                 max = entry;
             }
         }
+        return remove(max);
+    }
+
+    private E remove(E max) {
         firstTierEntries.remove(max);
         return max;
     }

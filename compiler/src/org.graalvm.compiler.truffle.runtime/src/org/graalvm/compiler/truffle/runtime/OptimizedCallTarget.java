@@ -148,6 +148,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * real call to the call target. Reset by TruffleFeature after image generation.
      */
     private int callAndLoopCount;
+    private int highestCompiledTier = 0;
+
+    public void compiledTier(int tier) {
+        highestCompiledTier = Math.max(highestCompiledTier, tier);
+    }
+
+    public int getHighestCompiledTier() {
+        return highestCompiledTier;
+    }
 
     /*
      * Profiling information (types and Assumption) are kept in 2-final-fields objects to ensure to
