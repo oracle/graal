@@ -65,7 +65,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 @GenerateIntrinsification(target = ManagementImpl.class)
-public class Management extends IntrinsifiedNativeEnv {
+public final class Management extends IntrinsifiedNativeEnv {
     // Partial/incomplete implementation disclaimer!
     //
     // This is a partial implementation of the {@link java.lang.management} APIs. Some APIs go
@@ -177,13 +177,9 @@ public class Management extends IntrinsifiedNativeEnv {
             return RawPointer.nullInstance();
         }
         if (managementPtr == null) {
-            try {
-                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, getLookupCallback(), version);
-                managementVersion = version;
-                assert getUncached().isPointer(managementPtr);
-            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+            managementPtr = initializeAndGetEnv(initializeManagementContext, version);
+            managementVersion = version;
+            assert getUncached().isPointer(managementPtr);
             assert managementPtr != null && !getUncached().isNull(managementPtr);
         } else if (version != managementVersion) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -215,6 +211,8 @@ public class Management extends IntrinsifiedNativeEnv {
     public EspressoContext getContext() {
         return context;
     }
+
+    // Checkstyle: stop method name check
 
     @JniImpl
     @ManagementImpl
@@ -629,4 +627,6 @@ public class Management extends IntrinsifiedNativeEnv {
             }
         }
     }
+
+    // Checkstyle: resume method name check
 }

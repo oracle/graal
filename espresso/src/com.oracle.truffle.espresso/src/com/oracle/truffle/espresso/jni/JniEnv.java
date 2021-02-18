@@ -343,7 +343,7 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
             popLong = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_long", NativeSignature.create(NativeType.LONG, NativeType.POINTER));
             popObject = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_object", NativeSignature.create(NativeType.OBJECT, NativeType.POINTER));
 
-            this.jniEnvPtr = (TruffleObject) getUncached().execute(initializeNativeContext, getLookupCallback());
+            this.jniEnvPtr = initializeAndGetEnv(initializeNativeContext);
             assert getUncached().isPointer(jniEnvPtr);
 
             this.handles = new JNIHandles();

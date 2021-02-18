@@ -277,13 +277,8 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
 
             getPackageAt = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getPackageAt",
-                            NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
-
-            // void* fetch_by_name(char* function_name)
-            @Pointer
-            TruffleObject lookupVmImplNativeCallback = getNativeAccess().createNativeClosure(getLookupCallback(), NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
-
-            this.mokapotEnvPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplNativeCallback);
+                    NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
+            this.mokapotEnvPtr = initializeAndGetEnv(true, initializeMokapotContext, jniEnv.getNativePointer());
             this.rtldDefaultValue = getUncached().asPointer(getUncached().execute(mokapotGetRTLDDefault));
             assert getUncached().isPointer(this.mokapotEnvPtr);
             assert !getUncached().isNull(this.mokapotEnvPtr);

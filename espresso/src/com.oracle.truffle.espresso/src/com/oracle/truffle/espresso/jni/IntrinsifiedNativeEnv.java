@@ -32,8 +32,11 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
@@ -66,23 +69,10 @@ import com.oracle.truffle.espresso.substitutions.JniEnvCollector;
  */
 public abstract class IntrinsifiedNativeEnv extends NativeEnv implements ContextAccess {
 
-    protected static final int LOOKUP_CALLBACK_ARGS_COUNT = 1;
+    private static final int LOOKUP_CALLBACK_ARGS_COUNT = 1;
 
-    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, this.getClass());
     private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
-
-    private Map<String, IntrinsicSubstitutor.Factory> methods = buildMethodsMap();
-
-    protected abstract List<IntrinsicSubstitutor.Factory> getCollector();
-
-    private Map<String, IntrinsicSubstitutor.Factory> buildMethodsMap() {
-        Map<String, IntrinsicSubstitutor.Factory> map = new HashMap<>();
-        for (IntrinsicSubstitutor.Factory method : getCollector()) {
-            assert !map.containsKey(method.methodName()) : "Substitution for " + method + " already exists";
-            map.put(method.methodName(), method);
-        }
-        return Collections.unmodifiableMap(map);
-    }
 
     private final Callback lookupCallback = new Callback(LOOKUP_CALLBACK_ARGS_COUNT, new Callback.Function() {
         @Override
@@ -100,8 +90,12 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         }
     });
 
-    protected final Callback getLookupCallback() {
-        return lookupCallback;
+    private Map<String, IntrinsicSubstitutor.Factory> methods;
+
+    // region Exposed interface
+
+    public JNIHandles getHandles() {
+        return jni().getHandles();
     }
 
     protected final InteropLibrary getUncached() {
@@ -116,13 +110,77 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         return getContext().getJNI();
     }
 
-    public JNIHandles getHandles() {
-        return jni().getHandles();
+    // endregion Exposed interface
+
+    // region Initialization helper
+
+    protected abstract List<IntrinsicSubstitutor.Factory> getCollector();
+
+    protected TruffleObject initializeAndGetEnv(TruffleObject initializeFunctionPointer, Object... extraArgs) {
+        return initializeAndGetEnv(false, initializeFunctionPointer, extraArgs);
+    }
+
+    protected TruffleObject initializeAndGetEnv(boolean prependExtra, TruffleObject initializeFunctionPointer, Object... extraArgs) {
+        // Prepare call and initialize helper structures
+        Object[] newArgs = prepareInit(prependExtra, extraArgs);
+
+        // Do call
+        TruffleObject res;
+        try {
+            res = (TruffleObject) getUncached().execute(initializeFunctionPointer, newArgs);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+
+        // Free up helper structures
+        cleanupAfterInit();
+        return res;
+    }
+
+    private Map<String, IntrinsicSubstitutor.Factory> buildMethodsMap() {
+        Map<String, IntrinsicSubstitutor.Factory> map = new HashMap<>();
+        for (IntrinsicSubstitutor.Factory method : getCollector()) {
+            assert !map.containsKey(method.methodName()) : "Substitution for " + method + " already exists";
+            map.put(method.methodName(), method);
+        }
+        return Collections.unmodifiableMap(map);
+    }
+
+    private Object[] prepareInit(boolean prependExtra, Object[] extraArgs) {
+        Object[] newArgs = new Object[extraArgs.length + 1];
+        int pos;
+        if (prependExtra) {
+            newArgs[newArgs.length - 1] = getLookupCallback();
+            pos = 0;
+        } else {
+            newArgs[0] = getLookupCallback();
+            pos = 1;
+        }
+        for (Object arg : extraArgs) {
+            newArgs[pos] = arg;
+            pos++;
+        }
+        // Map building + multiple lookup should be faster than multiple list lookups.
+        methods = buildMethodsMap();
+        return newArgs;
+    }
+
+    private void cleanupAfterInit() {
+        methods = null;
+    }
+
+    private Callback getLookupCallback() {
+        return lookupCallback;
+    }
+
+    private IntrinsicSubstitutor.Factory lookupFactory(String methodName) {
+        assert methods != null;
+        return methods.get(methodName);
     }
 
     @TruffleBoundary
     private TruffleObject lookupIntrinsic(String methodName) {
-        IntrinsicSubstitutor.Factory factory = methods.get(methodName);
+        IntrinsicSubstitutor.Factory factory = lookupFactory(methodName);
         // Dummy placeholder for unimplemented/unknown methods.
         if (factory == null) {
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
@@ -179,4 +237,6 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
             }
         });
     }
+
+    // endregion Initialization helper
 }
