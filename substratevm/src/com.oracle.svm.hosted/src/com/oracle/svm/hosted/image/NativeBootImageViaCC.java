@@ -50,6 +50,8 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.macho.MachOSymtab;
+import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
@@ -457,10 +459,24 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
                 }
 
+                Path imagePath = inv.getOutputFile();
+                BuildArtifacts.singleton().add(imageKind.isExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIB, imagePath);
+
                 if (OS.getCurrent() == OS.WINDOWS && !imageKind.isExecutable) {
                     /* Provide an import library for the built shared library. */
                     String importLib = imageName + ".lib";
-                    Files.move(inv.getTempDirectory().resolve(importLib), inv.getOutputFile().resolveSibling(importLib), StandardCopyOption.REPLACE_EXISTING);
+                    Path importLibPath = imagePath.resolveSibling(importLib);
+                    Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
+                    BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIB, importLibPath);
+                }
+
+                if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
+                    if (OS.getCurrent() == OS.WINDOWS) {
+                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
+                    } else {
+                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);
+                    }
                 }
             } catch (IOException e) {
                 throw handleLinkerFailure(e.toString(), commandLine, null);

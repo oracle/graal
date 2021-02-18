@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -153,6 +154,8 @@ import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
+import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.ClassLoaderQuery;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
@@ -466,7 +469,10 @@ public class NativeImageGenerator {
 
             ImageSingletonsSupportImpl.HostedManagement.installInThread(new ImageSingletonsSupportImpl.HostedManagement());
             this.buildExecutor = createForkJoinPool(compilationExecutor.getParallelism());
+
+            Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
             buildExecutor.submit(() -> {
+                ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
                 ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
                 ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
                 ImageSingletons.add(HostedOptionOverrideValues.class, new HostedOptionOverrideValues());
@@ -479,6 +485,14 @@ public class NativeImageGenerator {
                     watchdog.close();
                 }
             }).get();
+
+            Path buildDir = generatedFiles(HostedOptionValues.singleton());
+            ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"),
+                            writer -> buildArtifacts.forEach((artifactType, paths) -> {
+                                writer.println("[" + artifactType + "]");
+                                paths.stream().map(buildDir::relativize).forEach(writer::println);
+                                writer.println();
+                            }));
         } catch (InterruptedException | CancellationException e) {
             System.out.println("Interrupted!");
             throw new InterruptImageBuilding(e);
