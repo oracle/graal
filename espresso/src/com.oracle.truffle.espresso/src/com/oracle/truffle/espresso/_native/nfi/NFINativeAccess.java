@@ -145,7 +145,7 @@ class NFINativeAccess implements NativeAccess {
                         : signatureProvider.apply(nativeSignature);
     }
 
-    public NFINativeAccess(TruffleLanguage.Env env) {
+    NFINativeAccess(TruffleLanguage.Env env) {
         this.env = env;
         signatureCache = CACHE_SIGNATURES
                         ? new ConcurrentHashMap<>()
