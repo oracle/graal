@@ -62,6 +62,10 @@ import com.oracle.truffle.object.DebugCounter;
 
 import sun.misc.Unsafe;
 
+/**
+ * Espresso native interface implementation based on TruffleNFI, this class is fully functional on
+ * its own (nfi-native backend) and also serves as base for other NFI backends.
+ */
 class NFINativeAccess implements NativeAccess {
 
     private static final Unsafe UNSAFE = UnsafeAccess.get();

@@ -31,7 +31,6 @@ import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ServiceLoader;
@@ -42,7 +41,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso._native.NativeAccess;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -60,6 +58,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso._native.NativeAccess;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;

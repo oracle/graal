@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso._native;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ReadOnlyBufferException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -63,6 +65,18 @@ public final class TruffleByteBuffer implements TruffleObject {
     public static @Buffer TruffleObject create(@Pointer TruffleObject addressPtr, long size, JavaKind kind) {
         long byteCapacity = Math.multiplyExact(size, kind.getByteCount());
         return new TruffleByteBuffer(addressPtr, byteCapacity);
+    }
+
+    public static @Buffer TruffleObject allocateDirectStringUTF8(String string) {
+        return allocateDirectString(string, StandardCharsets.UTF_8);
+    }
+
+    public static @Buffer TruffleObject allocateDirectString(String string, Charset charset) {
+        byte[] bytes = string.getBytes(charset);
+        ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length + 1);
+        buffer.put(bytes);
+        buffer.put((byte) 0);
+        return create(buffer);
     }
 
     /**
