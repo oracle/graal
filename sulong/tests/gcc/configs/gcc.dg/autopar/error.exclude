@@ -1,0 +1,10 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr46799.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr46561.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr57103.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr46066.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr47060.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr46099.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr57185.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr46194.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr46969.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr46885.c

@@ -1,0 +1,13 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr48377.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/ggc-pr37574.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr30795.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/fast-math-vect-pow-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr63530.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr49771.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr53185-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr59651.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr48172.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr62021.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr49038.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr30771.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr52298.c

@@ -1,0 +1,4 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/alloca-4.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/alloca-3.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/push-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/alloca-2.c

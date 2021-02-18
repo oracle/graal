@@ -1,0 +1,4 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/setjmp-3.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/setjmp-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/setjmp-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/setjmp-4.c

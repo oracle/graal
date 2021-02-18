@@ -1,0 +1,13 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr55555.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr58417.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr57425-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr57425-3.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr64365.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr60930.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr57425-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr19683-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr60183.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr25654.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/alias-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/fp-compare.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/vec-cvt-1.c

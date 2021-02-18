@@ -1,0 +1,2 @@
+gcc-5.2.0/gcc/testsuite/gfortran.dg/vect/no-fre-no-copy-prop-O3-pr51704.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/vect/fast-math-pr33299.f90

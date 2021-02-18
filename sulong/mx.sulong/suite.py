@@ -176,6 +176,7 @@ suite = {
         "test.sulongtest.lib" : "<path:SULONG_TEST_NATIVE>/<lib:sulongtest>",
         "test.sulongtest.lib.path" : "<path:SULONG_TEST_NATIVE>",
         "sulongtest.projectRoot" : "<path:com.oracle.truffle.llvm>/../",
+        "sulongtest.source.GCC_SOURCE" : "<path:GCC_SOURCE>",
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -1197,7 +1198,6 @@ suite = {
     "parserTorture" : {
       "subDir" : "tests/gcc",
       "class" : "ExternalTestSuite",
-      "testClasses" : ["com.oracle.truffle.llvm.tests.ParserTortureSuite"],
       "testDir" : "gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile",
       "configDir" : "configs/gcc.c-torture/compile",
       "fileExts" : [".c"],

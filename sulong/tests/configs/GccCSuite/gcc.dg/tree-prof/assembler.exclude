@@ -1,0 +1,3 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/pr59003.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/stringop-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/stringop-1.c
