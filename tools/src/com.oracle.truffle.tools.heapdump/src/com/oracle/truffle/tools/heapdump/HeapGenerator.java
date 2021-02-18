@@ -64,11 +64,9 @@ final class HeapGenerator {
     void record(Object[] args) throws UnsupportedTypeException, UnsupportedMessageException {
         try {
             InteropLibrary iop = InteropLibrary.getUncached();
-            if (args.length < 1 || !iop.hasArrayElements(args[0])) {
-                throw UnsupportedTypeException.create(args, "Use as record(obj: [], depth?: number)");
-            }
-            if (args.length == 2 && !iop.fitsInInt(args[1])) {
-                throw UnsupportedTypeException.create(args, "Use as record(obj: [], depth?: number)");
+            if (args.length < 1 || !iop.hasArrayElements(args[0]) || (args.length > 1 && !iop.fitsInInt(args[1]))) {
+                final String errMessage = "Use as record(obj: [], depth?: number)";
+                throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
             }
             Object events = args[0];
             int depth = args.length == 2 ? iop.asInt(args[1]) : Integer.MAX_VALUE;
@@ -80,6 +78,8 @@ final class HeapGenerator {
                         Object stack = readMember(iop, ithEvent, "stack");
                         if (iop.hasArrayElements(stack)) {
                             dumpStack(data, iop, stack, depth);
+                        } else {
+                            throw new HeapException("'stack' shall be an array");
                         }
                     }
                     while (!pending.isEmpty()) {
@@ -95,7 +95,18 @@ final class HeapGenerator {
         }
     }
 
-    private static String asStringOrNull(InteropLibrary iop, Object value) throws UnsupportedMessageException {
+    private static String asStringOrNull(InteropLibrary iop, Object from, String key) throws UnsupportedMessageException {
+        Object value;
+        if (key != null) {
+            try {
+                value = iop.readMember(from, key);
+            } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                return null;
+            }
+        } else {
+            value = from;
+        }
+
         if (iop.isString(value)) {
             return iop.asString(value);
         } else {
@@ -103,13 +114,40 @@ final class HeapGenerator {
         }
     }
 
-    private static Object readMember(InteropLibrary iop, Object obj, String member) throws UnknownIdentifierException, UnsupportedMessageException {
+    private static Integer asIntOrNull(InteropLibrary iop, Object from, String key) throws UnsupportedMessageException {
+        Object value;
+        if (key != null) {
+            try {
+                value = iop.readMember(from, key);
+            } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                return null;
+            }
+        } else {
+            value = from;
+        }
+
+        if (iop.fitsInInt(value)) {
+            return iop.asInt(value);
+        } else {
+            return null;
+        }
+    }
+
+    private static Object readMember(InteropLibrary iop, Object obj, String member) {
+        String errMsg;
         try {
-            return iop.readMember(obj, member);
-        } catch (UnknownIdentifierException unknownIdentifierException) {
+            Object value = iop.readMember(obj, member);
+            if (!iop.isNull(value)) {
+                return value;
+            }
+            errMsg = "'" + member + "' should be defined";
+        } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+            errMsg = "Cannot find '" + member + "'";
+        }
+        StringBuilder sb = new StringBuilder(errMsg);
+        try {
             Object members = iop.getMembers(obj);
             long count = iop.getArraySize(members);
-            StringBuilder sb = new StringBuilder(member);
             sb.append(" among [");
             String sep = "";
             for (long i = 0; i < count; i++) {
@@ -122,8 +160,10 @@ final class HeapGenerator {
                 sep = ", ";
             }
             sb.append("]");
-            throw UnknownIdentifierException.create(sb.toString());
+        } catch (UnsupportedMessageException cannotDumpMembers) {
+            sb.append(" in " + iop.toDisplayString(obj));
         }
+        throw new HeapException(sb.toString());
     }
 
     private void dumpStack(HeapDump seg, InteropLibrary iop, Object stack, int depth) throws UnsupportedMessageException, InvalidArrayIndexException, UnknownIdentifierException, IOException {
@@ -134,13 +174,13 @@ final class HeapGenerator {
             Object at = readMember(iop, stackTraceElement, "at");
             Object frame = readMember(iop, stackTraceElement, "frame");
 
-            String rootName = asStringOrNull(iop, readMember(iop, at, "name"));
+            String rootName = asStringOrNull(iop, at, "name");
             Object source = readMember(iop, at, "source");
-            ClassInstance language = findLanguage(seg, asStringOrNull(iop, readMember(iop, source, "language")));
-            String srcName = asStringOrNull(iop, readMember(iop, source, "name"));
-            int line = iop.asInt(readMember(iop, at, "line"));
-            int charIndex = iop.asInt(readMember(iop, at, "charIndex"));
-            int charLength = iop.asInt(readMember(iop, at, "charLength"));
+            ClassInstance language = findLanguage(seg, asStringOrNull(iop, source, "language"));
+            String srcName = asStringOrNull(iop, source, "name");
+            Integer line = asIntOrNull(iop, at, "line");
+            Integer charIndex = asIntOrNull(iop, at, "charIndex");
+            Integer charLength = asIntOrNull(iop, at, "charLength");
 
             if (unreachable == null) {
                 ClassInstance unreachClass = seg.newClass("unreachable").addField("<unreachable>", boolean.class).dumpClass();
@@ -154,7 +194,7 @@ final class HeapGenerator {
             int sourceId = dumpSource(iop, seg, source, srcName);
             int sectionId = dumpSourceSection(seg, sourceId, charIndex, charLength);
             int localFrame = dumpObject(iop, seg, "frame:" + rootName, frame, depth);
-            threadBuilder.addStackFrame(language, rootName, srcName, line, localFrame, sectionId);
+            threadBuilder.addStackFrame(language, rootName, srcName, line == null ? -1 : line, localFrame, sectionId);
         }
         if (threadBuilder != null) {
             threadBuilder.dumpThread();
@@ -222,7 +262,7 @@ final class HeapGenerator {
             if (metaName == null) {
                 try {
                     Object meta = iop.getMetaObject(obj);
-                    metaName = asStringOrNull(iop, iop.getMetaQualifiedName(meta));
+                    metaName = asStringOrNull(iop, iop.getMetaQualifiedName(meta), null);
                 } catch (UnsupportedMessageException unsupportedMessageException) {
                     metaName = "Frame";
                 }
@@ -242,12 +282,12 @@ final class HeapGenerator {
         return clazz;
     }
 
-    private int dumpSourceSection(HeapDump seg, int sourceId, int charIndex, int charLength) throws IOException {
+    private int dumpSourceSection(HeapDump seg, int sourceId, Integer charIndex, Integer charLength) throws IOException {
         if (sourceSectionClass == null) {
             sourceSectionClass = seg.newClass("com.oracle.truffle.api.source.SourceSection").addField("source", Object.class).addField("charIndex", int.class).addField("charLength",
                             int.class).dumpClass();
         }
-        SourceSectionKey key = new SourceSectionKey(sourceId, charIndex, charLength);
+        SourceSectionKey key = new SourceSectionKey(sourceId, charIndex == null ? -1 : charIndex, charLength == null ? -1 : charLength);
         Integer id = sourceSections.get(key);
         if (id == null) {
             id = seg.newInstance(sourceSectionClass).put("source", sourceId).put("charIndex", charIndex).put("charLength", charLength).dumpInstance();
@@ -257,9 +297,9 @@ final class HeapGenerator {
     }
 
     private int dumpSource(InteropLibrary iop, HeapDump seg, Object source, String srcName) throws IOException, UnknownIdentifierException, UnsupportedMessageException, UnknownIdentifierException {
-        String mimeType = asStringOrNull(iop, readMember(iop, source, "mimeType"));
-        String uri = asStringOrNull(iop, readMember(iop, source, "uri"));
-        String characters = asStringOrNull(iop, readMember(iop, source, "characters"));
+        String mimeType = asStringOrNull(iop, source, "mimeType");
+        String uri = asStringOrNull(iop, source, "uri");
+        String characters = asStringOrNull(iop, source, "characters");
 
         SourceKey key = new SourceKey(srcName, uri, mimeType, characters);
         Integer prevId = sources.get(key);
