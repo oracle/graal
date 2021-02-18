@@ -1346,7 +1346,7 @@ public class ValueAPITest {
         assertFails(() -> other.as(List.class), ClassCastException.class,
                         "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.List': Value must have array elements.");
         assertFails(() -> other.as(Map.class), ClassCastException.class,
-                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.Map': Value must have members or array elements.");
+                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.Map': Value must have members, array elements or hash entries.");
         assertFails(() -> other.as(Function.class), ClassCastException.class,
                         "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.function.Function': Value must be executable or instantiable.");
         assertFails(() -> other.as(JavaInterface.class), ClassCastException.class,
