@@ -158,8 +158,13 @@ static __attribute__((constructor)) void initialize(void) {
     LOG("Current locale: %s\n", setlocale(LC_ALL, NULL));
 }
 
+#define UNINITIALIZED ((void*) ~0)
+
 void ctypeInit(void) {
-    void(*__ctype_init)(void) = dlsym(get_libc(), "__ctype_init");
+    static void (*__ctype_init)(void) = UNINITIALIZED;
+    if (__ctype_init == UNINITIALIZED) {
+        __ctype_init = dlsym(get_libc(), "__ctype_init");
+    }
     if (__ctype_init != NULL) {
         __ctype_init();
     }
