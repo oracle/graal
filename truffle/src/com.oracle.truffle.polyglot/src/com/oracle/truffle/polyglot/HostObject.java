@@ -1764,6 +1764,28 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
+    abstract static class GetHashSize {
+
+        @Specialization(guards = "isMap.execute(receiver)", limit = "1")
+        protected static long doMap(HostObject receiver,
+                        @Shared("isMap") @Cached IsMapNode isMap,
+                        @Shared("error") @Cached BranchProfile error) {
+            return sizeImpl((Map<?, ?>) receiver.obj);
+        }
+
+        @TruffleBoundary
+        private static int sizeImpl(Map<?, ?> map) {
+            return map.size();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMap.execute(receiver)", limit = "1")
+        protected static long doNotMap(HostObject receiver, @Shared("isMap") @Cached IsMapNode isMap) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
     boolean isHashValueReadable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
         return containsKey.execute(this, key);
     }

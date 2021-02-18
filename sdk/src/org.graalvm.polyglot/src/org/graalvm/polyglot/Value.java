@@ -1858,6 +1858,10 @@ public final class Value {
         return impl.hasHashEntries(receiver);
     }
 
+    public long getHashSize() {
+        return impl.getHashSize(receiver);
+    }
+
     public boolean hasHashEntry(Object key) {
         return impl.hasHashEntry(receiver, key);
     }

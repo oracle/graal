@@ -71,6 +71,7 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.ContainsKeyNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.EntrySetNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.HashEntriesIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.HashSizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.PutNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.RemoveBooleanNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.RemoveNodeGen;
@@ -340,7 +341,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
         @Override
         public int size() {
-            return 0;   // TODO: Fix me
+            return (int) cache.hashSize.call(languageContext, guestObject);
         }
     }
 
@@ -389,6 +390,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
         final CallTarget removeBoolean;
         final CallTarget containsKey;
         final CallTarget hashEntriesIterator;
+        final CallTarget hashSize;
         final CallTarget apply;
 
         Cache(Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
@@ -405,6 +407,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             this.remove = initializeCall(RemoveNodeGen.create(this));
             this.removeBoolean = initializeCall(RemoveBooleanNodeGen.create(this));
             this.hashEntriesIterator = initializeCall(HashEntriesIteratorNodeGen.create(this));
+            this.hashSize = initializeCall(HashSizeNodeGen.create(this));
             this.apply = initializeCall(new Apply(this));
         }
 
@@ -835,10 +838,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 if (interop.hasHashEntries(receiver)) {
                     try {
                         Object iterator = interop.getHashEntriesIterator(receiver);
-                        return toHost.execute(iterator, Iterator.class, null, languageContext, true);   // TODO:
-                                                                                                        // fix
-                                                                                                        // generic
-                                                                                                        // type
+                        return toHost.execute(iterator, Iterator.class, null, languageContext, true);
                     } catch (UnsupportedMessageException e) {
                         error.enter();
                         throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "iterator");
@@ -846,6 +846,35 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 } else {
                     error.enter();
                     throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "iterator");
+                }
+            }
+        }
+
+        abstract static class HashSizeNode extends PolyglotMapNode {
+
+            HashSizeNode(Cache cache) {
+                super(cache);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "size";
+            }
+
+            @Specialization(limit = "LIMIT")
+            protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, @SuppressWarnings("unused") Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary interop,
+                            @Cached BranchProfile error) {
+                if (interop.hasHashEntries(receiver)) {
+                    try {
+                        return interop.getHashSize(receiver);
+                    } catch (UnsupportedMessageException e) {
+                        error.enter();
+                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "size");
+                    }
+                } else {
+                    error.enter();
+                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "size");
                 }
             }
         }

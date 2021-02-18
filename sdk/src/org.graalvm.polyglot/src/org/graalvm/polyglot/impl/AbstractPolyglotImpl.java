@@ -824,6 +824,8 @@ public abstract class AbstractPolyglotImpl {
             return false;
         }
 
+        public abstract long getHashSize(Object receiver);
+
         public boolean hasHashEntry(Object receiver, Object key) {
             return false;
         }

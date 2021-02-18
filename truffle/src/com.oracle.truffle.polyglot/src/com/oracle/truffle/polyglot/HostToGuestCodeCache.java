@@ -394,6 +394,15 @@ final class HostToGuestCodeCache {
         }
     });
 
+    final CallTarget getHashSize = createGuestToHost(new GuestToHostRootNode(ProxyHashMap.class, "getSize") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
+            return ((ProxyHashMap) receiver).getSize();
+        }
+    });
+
     final CallTarget getHashValue = createGuestToHost(new GuestToHostRootNode(ProxyHashMap.class, "getValue") {
         @Override
         @TruffleBoundary

@@ -48,6 +48,8 @@ import java.util.NoSuchElementException;
 
 public interface ProxyHashMap {
 
+    long getSize();
+
     boolean hasEntry(Value key);
 
     Object getValue(Value key);
@@ -62,6 +64,11 @@ public interface ProxyHashMap {
 
     static ProxyHashMap fromMap(Map<Object, Object> values) {
         return new ProxyHashMap() {
+
+            @Override
+            public long getSize() {
+                return values.size();
+            }
 
             @Override
             public boolean hasEntry(Value key) {

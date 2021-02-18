@@ -75,6 +75,7 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashEntriesIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashEntryKeyNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashEntryValueNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashSizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashValueNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetIteratorNextElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetIteratorNodeGen;
@@ -987,6 +988,23 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @Override
+    public long getHashSize(Object receiver) {
+        Object prev = hostEnter(languageContext);
+        try {
+            throw getHashSizeUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static final RuntimeException getHashSizeUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getHashSize()", "hasHashEntries()");
+    }
+
+    @Override
     public Value getHashValue(Object receiver, Object key) {
         Object prev = hostEnter(languageContext);
         try {
@@ -1103,7 +1121,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @TruffleBoundary
     static final RuntimeException setHashEntryValueUnsupported(PolyglotLanguageContext context, Object receiver) {
-        throw unsupported(context, receiver, "setHashEntryValue()", "isHashEntry()");
+        throw unsupported(context, receiver, "setHashEntryValue(Object)", "isHashEntry()");
     }
 
     protected Value getMetaObjectImpl(Object receiver) {
@@ -1571,6 +1589,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget hasIteratorNextElement;
         final CallTarget getIteratorNextElement;
         final CallTarget hasHashEntries;
+        final CallTarget getHashSize;
         final CallTarget hasHashEntry;
         final CallTarget getHashValue;
         final CallTarget putHashEntry;
@@ -1657,6 +1676,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.hasIteratorNextElement = createTarget(HasIteratorNextElementNodeGen.create(this));
             this.getIteratorNextElement = createTarget(GetIteratorNextElementNodeGen.create(this));
             this.hasHashEntries = createTarget(HasHashEntriesNodeGen.create(this));
+            this.getHashSize = createTarget(GetHashSizeNodeGen.create(this));
             this.hasHashEntry = createTarget(HasHashEntryNodeGen.create(this));
             this.getHashValue = createTarget(GetHashValueNodeGen.create(this));
             this.putHashEntry = createTarget(PutHashEntryNodeGen.create(this));
@@ -3646,6 +3666,35 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
+        abstract static class GetHashSizeNode extends InteropNode {
+
+            protected GetHashSizeNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getHashSize";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary hashes,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return hashes.getHashSize(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw getHashSizeUnsupported(context, receiver);
+                }
+            }
+        }
+
         abstract static class HasHashEntryNode extends InteropNode {
 
             protected HasHashEntryNode(InteropCodeCache interop) {
@@ -4844,6 +4893,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public boolean hasHashEntries(Object receiver) {
             return (boolean) RUNTIME.callProfiled(cache.hasHashEntries, languageContext, receiver);
+        }
+
+        @Override
+        public long getHashSize(Object receiver) {
+            return (long) RUNTIME.callProfiled(cache.getHashSize, languageContext, receiver);
         }
 
         @Override

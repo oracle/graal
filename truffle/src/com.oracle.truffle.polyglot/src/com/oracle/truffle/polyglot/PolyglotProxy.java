@@ -642,6 +642,19 @@ final class PolyglotProxy implements TruffleObject {
         return proxy instanceof ProxyHashMap;
     }
 
+    @ExportMessage
+    @TruffleBoundary
+    long getHashSize(@CachedLibrary("this") InteropLibrary library,
+                    @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyHashMap) {
+            PolyglotLanguageContext languageContext = context.get().internalContext;
+            return (long) guestToHostCall(library, language.getHostToGuestCache().getHashSize, languageContext, proxy);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     @ExportMessage(name = "isHashValueReadable")
     @ExportMessage(name = "isHashEntryModifiable")
     @ExportMessage(name = "isHashEntryRemovable")
