@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.collection;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -67,6 +68,7 @@ public class TraversingQueue<E> implements SerialQueue<E> {
 
     private E maxFirstTier() {
         assert !firstTierEntries.isEmpty() : "Must not be called if firstTierEntries is empty";
+        List<E> toRemove = new ArrayList<>();
         StringBuilder builder = new StringBuilder("Queue:[ ");
         long time = System.nanoTime();
         Iterator<E> it = firstTierEntries.iterator();
@@ -83,6 +85,10 @@ public class TraversingQueue<E> implements SerialQueue<E> {
             }
             CompilationTask task = task(entry);
             double weight = task.weight(time);
+            if (task(entry).isCancelled() || weight < 0) {
+                toRemove.add(entry);
+                continue;
+            }
             append(builder, task, weight);
             if (weight > maxWeight) {
                 maxWeight = weight;
@@ -90,14 +96,23 @@ public class TraversingQueue<E> implements SerialQueue<E> {
             }
         }
         builder.append("]");
+        builder.append(System.lineSeparator());
+        builder.append("Picked: ");
+        append(builder, task(max), maxWeight);
+        builder.append(" ").append(task(max).name());
         if (trace) {
-            builder.append(System.lineSeparator());
-            builder.append("Picked: ");
-            append(builder, task(max), maxWeight);
-            builder.append(" ").append(task(max).name());
             System.out.println(builder);
         }
+        remove(toRemove);
         return remove(max);
+    }
+
+    private void remove(List<E> toRemove) {
+        if (!toRemove.isEmpty()) {
+            for (E e : toRemove) {
+                firstTierEntries.remove(e);
+            }
+        }
     }
 
     private StringBuilder append(StringBuilder builder, CompilationTask task, double maxWeight) {
