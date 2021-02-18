@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_Nati
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.getTag;
 import static com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_alloc;
 
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -62,14 +63,26 @@ import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_arg;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_callback;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 
 final class NativeClosure {
 
-    private final CallTarget callTarget;
+    /*
+     * Weak to break reference cycles via the global ObjectHandles table in TruffleNFISupport. Will
+     * never actually die as long as this object is alive. See comment in ClosureNativePointer.
+     */
+    private final WeakReference<CallTarget> callTarget;
+    private final WeakReference<Object> receiver;
+
     private final Target_com_oracle_truffle_nfi_impl_LibFFISignature signature;
 
-    private NativeClosure(CallTarget callTarget, Target_com_oracle_truffle_nfi_impl_LibFFISignature signature) {
-        this.callTarget = callTarget;
+    private NativeClosure(CallTarget callTarget, Object receiver, Target_com_oracle_truffle_nfi_impl_LibFFISignature signature) {
+        this.callTarget = new WeakReference<>(callTarget);
+        if (receiver != null) {
+            this.receiver = new WeakReference<>(receiver);
+        } else {
+            this.receiver = null;
+        }
         this.signature = signature;
     }
 
@@ -83,8 +96,8 @@ final class NativeClosure {
     }
 
     static Target_com_oracle_truffle_nfi_impl_ClosureNativePointer prepareClosure(Target_com_oracle_truffle_nfi_impl_NFIContext ctx,
-                    Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, ffi_closure_callback callback) {
-        NativeClosure closure = new NativeClosure(callTarget, signature);
+                    Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, Object receiver, ffi_closure_callback callback) {
+        NativeClosure closure = new NativeClosure(callTarget, receiver, signature);
         NativeClosureHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createClosureHandle(closure);
 
         WordPointer codePtr = StackValue.get(WordPointer.class);
@@ -95,18 +108,22 @@ final class NativeClosure {
         PointerBase code = codePtr.read();
         LibFFI.ffi_prep_closure_loc(data.ffiClosure(), WordFactory.pointer(signature.cif), callback, data, code);
 
-        return ctx.createClosureNativePointer(data.rawValue(), code.rawValue(), callTarget, signature);
+        return ctx.createClosureNativePointer(data.rawValue(), code.rawValue(), callTarget, signature, receiver);
     }
 
     private Object call(WordPointer argPointers, ByteBuffer retBuffer) {
         Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo[] argTypes = signature.signatureInfo.getArgTypes();
         int length = argTypes.length;
+        if (receiver != null) {
+            length++;
+        }
         if (retBuffer != null) {
             length++;
         }
 
         Object[] args = new Object[length];
-        for (int i = 0; i < argTypes.length; i++) {
+        int i;
+        for (i = 0; i < argTypes.length; i++) {
             Object type = argTypes[i];
             if (Target_com_oracle_truffle_nfi_impl_LibFFIType_StringType.class.isInstance(type)) {
                 CCharPointerPointer argPtr = argPointers.read(i);
@@ -125,11 +142,23 @@ final class NativeClosure {
             }
         }
 
+        if (receiver != null) {
+            args[i++] = receiver.get();
+        }
         if (retBuffer != null) {
-            args[argTypes.length] = retBuffer;
+            args[i++] = retBuffer;
         }
 
-        return callTarget.call(args);
+        CallTarget c = callTarget.get();
+        if (c == null) {
+            /*
+             * Can never happen: The CallTarget is kept alive by the ClosureNativePointer object,
+             * and when the ClosureNativePointer object is GCed, the native stub that calls this
+             * code is freed. We still need to check to make findbugs happy.
+             */
+            CompilerDirectives.shouldNotReachHere("Native closure used after free.");
+        }
+        return c.call(args);
     }
 
     private static NativeClosure lookup(ClosureData data) {

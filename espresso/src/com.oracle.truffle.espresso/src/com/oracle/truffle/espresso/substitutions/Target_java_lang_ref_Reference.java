@@ -27,7 +27,7 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.InvocationTargetException;
 import java.security.ProtectionDomain;
 
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -178,6 +178,9 @@ public class Target_java_lang_ref_Reference {
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     public static boolean enqueue(@Host(java.lang.ref.Reference.class) StaticObject self,
+                    // Checkstyle: stop
+                    @GuestCall(target = "java_lang_ref_Reference_enqueue", original = true) DirectCallNode enqueue,
+                    // Checkstyle: resume
                     @InjectMeta Meta meta) {
         if (meta.getJavaVersion().java9OrLater()) {
             /*
@@ -195,15 +198,6 @@ public class Target_java_lang_ref_Reference {
             }
         }
 
-        // TODO(garcia): Give substitutions the power of calling the original method they
-        // substitute.
-
-        // Replicates the behavior of guest Reference.enqueue()
-        if (meta.getJavaVersion().java9OrLater()) {
-            meta.java_lang_ref_Reference_referent.set(self, StaticObject.NULL);
-        }
-        StaticObject queue = meta.java_lang_ref_Reference_queue.getObject(self);
-        Method m = queue.getKlass().vtableLookup(meta.java_lang_ref_ReferenceQueue_enqueue.getVTableIndex());
-        return (boolean) m.invokeDirect(queue, self);
+        return (boolean) enqueue.call(self);
     }
 }

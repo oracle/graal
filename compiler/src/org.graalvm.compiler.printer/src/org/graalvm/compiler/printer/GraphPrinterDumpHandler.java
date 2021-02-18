@@ -186,10 +186,9 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             try (DebugContext.Scope s = debug.sandbox("PrintingGraph", null)) {
                 // Finally, output the graph.
                 Map<Object, Object> properties = new HashMap<>();
-                properties.put("graph", graph.toString());
                 properties.put("scope", currentScopeName);
+                graph.getDebugProperties(properties);
                 if (graph instanceof StructuredGraph) {
-                    properties.put("compilationIdentifier", ((StructuredGraph) graph).compilationId());
                     try {
                         int size = NodeCostUtil.computeGraphSize((StructuredGraph) graph);
                         properties.put("node-cost graph size", size);

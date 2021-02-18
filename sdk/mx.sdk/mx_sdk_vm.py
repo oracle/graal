@@ -478,7 +478,7 @@ def jdk_has_new_jlink_options(jdk):
         output = mx.OutputCapture()
         jlink_exe = jdk.javac.replace('javac', 'jlink')
         mx.run([jlink_exe, '--list-plugins'], out=output)
-        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data)
+        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data or '--add-options ' in output.data)
     return getattr(jdk, '.supports_new_jlink_options')
 
 def jdk_supports_enablejvmciproduct(jdk):
@@ -800,6 +800,51 @@ grant codeBase "file:${java.home}/languages/-" {
     if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
         mx.log(out.data)
         mx.abort('Error generating CDS shared archive')
+
+
+def verify_graalvm_configs(suites=None):
+    """
+    Check the consistency of registered GraalVM configs.
+    :param suites: optionally restrict the check to the configs registered by this list of suites.
+    :type suites: list[str] or None
+    """
+    import mx_sdk_vm_impl
+    child_env = os.environ.copy()
+    for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS', 'DISABLE_POLYGLOT', 'DISABLE_LIBPOLYGLOT']:
+        if env_var in child_env:
+            del child_env[env_var]
+    for dist_name, _, components, suite, env_file in _vm_configs:
+        if env_file is not False and (suites is None or suite.name in suites):
+            _env_file = env_file or dist_name
+            graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=mx_sdk_vm_impl._graalvm_base_name, dist_name=dist_name, jdk_version=mx_sdk_vm_impl._src_jdk_version).upper().replace('-', '_')
+            mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(_env_file, suite.name, graalvm_dist_name))
+            out = mx.LinesOutputCapture()
+            err = mx.LinesOutputCapture()
+            retcode = mx.run_mx(['--quiet', '--no-warning', '--env', _env_file, 'graalvm-dist-name'], suite, out=out, err=err, env=child_env, nonZeroIsFatal=False)
+            if retcode != 0:
+                mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output:\n{}\nError:\n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines), '\n'.join(err.lines)))
+            if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
+                out2 = mx.LinesOutputCapture()
+                retcode2 = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-components'], suite, out=out2, err=out2, env=child_env, nonZeroIsFatal=False)
+                if retcode2 or len(out2.lines) != 1:
+                    got_components = '<error>'
+                    diff = ''
+                else:
+                    got_components = out2.lines[0]  # example string: "['bpolyglot', 'cmp']"
+                    got_components_set = set(got_components[1:-1].replace('\'', '').split(', '))
+                    components_set = set(components)
+                    added = list(got_components_set - components_set)
+                    removed = list(components_set - got_components_set)
+                    diff = ('Added:\n{}\n'.format(added) if added else '') + ('Removed:\n{}\n'.format(removed) if removed else '')
+                mx.abort("""\
+Unexpected GraalVM dist name for env file '{}' in suite '{}'.
+Expected dist name: '{}'
+Actual dist name: '{}'.
+Expected component list:
+{}
+Actual component list:
+{}
+{}Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components, diff))
 
 
 register_known_vm('truffle')

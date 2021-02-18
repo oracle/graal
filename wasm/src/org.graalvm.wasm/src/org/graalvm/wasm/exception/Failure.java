@@ -104,6 +104,8 @@ public enum Failure {
     INCOMPATIBLE_IMPORT_TYPE(Type.UNLINKABLE, "incompatible import type"),
     ELEMENTS_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "elements segment does not fit"),
     DATA_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "data segment does not fit"),
+    // GraalWasm-specific:
+    INVALID_WASI_DIRECTORIES_MAPPING(Type.UNLINKABLE, "invalid wasi directories mapping"),
 
     // TODO(mbovel): replace UNSPECIFIED_TRAP usages with appropriate errors.
     UNSPECIFIED_TRAP(Type.TRAP, "unspecified"),

@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.junit.Assume.assumeFalse;
-
 import java.util.concurrent.Semaphore;
 import java.util.function.Predicate;
 
@@ -189,8 +187,6 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
     @Test
     @SuppressWarnings("try")
     public void testStatementLimitContextMultiThread() throws InterruptedException {
-        assumeFalse("skipping SPARC unsupported test", isSPARC(getBackend().getTarget().arch));
-
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
                         build();

@@ -49,6 +49,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
     @Override
     public void before() {
         setupContext("engine.MultiTier", "false");
+        globalState[0] = null;
     }
 
     @Test
@@ -177,7 +178,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
         @Override
         public Object doExecute(VirtualFrame frame) {
-            return indirectCallNode.call((CallTarget) frame.getArguments()[0], new Object[]{LOREM_IPSUM});
+            return indirectCallNode.call((CallTarget) frame.getArguments()[0], LOREM_IPSUM);
         }
 
         @Override
@@ -243,5 +244,90 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
         // saveArgumentToGlobalState compilation is delayed by the invalidation
         assertNotCompiled(toInterpreterOnString);
         assertNotDeoptimized(toInterpreterOnString);
+    }
+
+    @Test
+    public void testIndirectCallDoesNotDeoptInliningDirectCaller() {
+        final OptimizedCallTarget callee = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(0));
+        final Object[] directArguments = new Object[]{"direct arg"};
+        final OptimizedCallTarget directCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(callee, directArguments));
+        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) runtime.createCallTarget(new IndirectCallTargetFromArgument());
+        final int compilationThreshold = callee.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
+
+        try (DeoptInvalidateListener directListener = new DeoptInvalidateListener(runtime, directCall)) {
+            for (int i = 0; i < compilationThreshold; i++) {
+                directCall.call();
+            }
+            // make sure the direct call target is compiled too not just inlined
+            for (int i = 0; i < compilationThreshold; i++) {
+                callee.call(directArguments);
+            }
+
+            assertCompiled(callee);
+            directListener.assertValid();
+
+            indirectCall.call(callee);
+
+            // This works because arguments profiling is skipped for inlined direct calls, and so
+            // the callee arguments profiling assumption of callee is not registered for directCall.
+            directListener.assertValid();
+        }
+    }
+
+    @Test
+    public void testIndirectCallDoesNotDeoptNotInliningDirectCaller() {
+        setupContext("engine.MultiTier", "false", "engine.Inlining", "false");
+
+        final OptimizedCallTarget callee = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(0));
+        final Object[] directArguments = new Object[]{"direct arg"};
+        final OptimizedCallTarget directCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(callee, directArguments));
+        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) runtime.createCallTarget(new IndirectCallTargetFromArgument());
+        final int compilationThreshold = callee.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
+
+        try (DeoptInvalidateListener directListener = new DeoptInvalidateListener(runtime, directCall)) {
+            for (int i = 0; i < compilationThreshold; i++) {
+                directCall.call();
+            }
+            // make sure the direct call target is compiled too not just inlined
+            for (int i = 0; i < compilationThreshold; i++) {
+                callee.call(directArguments);
+            }
+
+            assertCompiled(callee);
+            directListener.assertValid();
+
+            indirectCall.call(callee);
+
+            // This only works if the indirect call does not invalidate the argument profile
+            directListener.assertValid();
+        }
+    }
+
+    @Test
+    public void testIndirectCallDoesNotDeoptCallee() {
+        final OptimizedCallTarget callee = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(0));
+        final Object[] directArguments = new Object[]{"direct arg"};
+        final OptimizedCallTarget directCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(callee, directArguments));
+        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) runtime.createCallTarget(new IndirectCallTargetFromArgument());
+        final int compilationThreshold = callee.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
+
+        try (DeoptInvalidateListener calleeListener = new DeoptInvalidateListener(runtime, callee)) {
+            // make sure the direct callee is compiled too not just inlined
+            for (int i = 0; i < compilationThreshold; i++) {
+                directCall.call();
+            }
+            // make sure the direct call target is compiled too not just inlined
+            for (int i = 0; i < compilationThreshold; i++) {
+                callee.call(directArguments);
+            }
+
+            assertCompiled(directCall);
+            calleeListener.assertValid();
+
+            indirectCall.call(callee);
+
+            // This only works if the indirect call does not invalidate the argument profile
+            calleeListener.assertValid();
+        }
     }
 }

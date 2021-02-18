@@ -248,6 +248,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
+    public void abortInternalMonitors(Frame frame) {
+        getMonitorStack(frame).exitInternalMonitors(getMeta());
+    }
+
     static final class Synchronized extends EspressoRootNode {
 
         Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
@@ -275,11 +279,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             try {
                 result = methodNode.execute(frame);
             } finally {
-                // force early return has already released the monitor on the frame, so don't
-                // do an unbalanced monitor exit here
-                if (getContext().getJDWPListener().getAndRemoveEarlyReturnValue() == null) {
-                    exitSynchronized(frame, monitor);
-                }
+                InterpreterToVM.monitorExit(monitor, getMeta());
             }
             return result;
         }
@@ -289,10 +289,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             MonitorStack monitorStack = new MonitorStack();
             monitorStack.synchronizedMethodMonitor = monitor;
             initMonitorStack(frame, monitorStack);
-        }
-
-        private void exitSynchronized(@SuppressWarnings("unused") VirtualFrame frame, StaticObject monitor) {
-            InterpreterToVM.monitorExit(monitor, getMeta());
         }
     }
 
@@ -362,6 +358,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                 } catch (Throwable e) {
                     /* ignore */
                 }
+            }
+        }
+
+        public void exitInternalMonitors(Meta meta) {
+            for (int i = 0; i < top; i++) {
+                InterpreterToVM.monitorExit(monitors[i], meta);
             }
         }
 

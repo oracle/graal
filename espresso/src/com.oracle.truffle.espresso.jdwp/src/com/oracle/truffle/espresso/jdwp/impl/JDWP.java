@@ -22,20 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
-import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
-import com.oracle.truffle.espresso.jdwp.api.FieldRef;
-import com.oracle.truffle.espresso.jdwp.api.CallFrame;
-import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
-import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
-import com.oracle.truffle.espresso.jdwp.api.LocalRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
-import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.jdwp.api.TagConstants;
+import static com.oracle.truffle.espresso.jdwp.api.TagConstants.BOOLEAN;
+import static com.oracle.truffle.espresso.jdwp.api.TagConstants.VOID;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,14 +31,27 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import static com.oracle.truffle.espresso.jdwp.api.TagConstants.BOOLEAN;
-import static com.oracle.truffle.espresso.jdwp.api.TagConstants.VOID;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.espresso.jdwp.api.CallFrame;
+import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
+import com.oracle.truffle.espresso.jdwp.api.FieldRef;
+import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
+import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
+import com.oracle.truffle.espresso.jdwp.api.LocalRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
 final class JDWP {
 
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
 
     private static final boolean CAN_GET_INSTANCE_INFO = false;
+    private static final long SUSPEND_TIMEOUT = 400;
 
     private static final int ACC_SYNTHETIC = 0x00001000;
     private static final int JDWP_SYNTHETIC = 0xF0000000;
@@ -952,8 +953,7 @@ final class JDWP {
 
                 JDWPConstantPool constantPool = klass.getJDWPConstantPool();
 
-                int count = constantPool.getCount() + 1;
-
+                int count = constantPool.getCount();
                 reply.writeInt(count);
 
                 byte[] poolBytes = constantPool.getBytes();
@@ -1609,28 +1609,44 @@ final class JDWP {
 
                 JDWPContext context = controller.getContext();
                 long objectId = input.readLong();
-                Object object = context.getIds().fromId((int) objectId);
+                Object monitor = context.getIds().fromId((int) objectId);
 
-                if (object == context.getNullObject()) {
+                if (monitor == context.getNullObject()) {
                     reply.errorCode(ErrorCodes.INVALID_OBJECT);
                     return new CommandResult(reply);
                 }
 
-                Object monitorOwnerThread = context.getMonitorOwnerThread(object);
+                Object monitorOwnerThread = context.getMonitorOwnerThread(monitor);
                 if (monitorOwnerThread == null) {
                     reply.writeLong(0);
                     reply.writeInt(0);
                     reply.writeInt(0);
                 } else {
-                    MonitorInfo info = controller.getEventListener().getMonitorInfo(monitorOwnerThread, object);
+                    reply.writeLong(context.getIds().getIdAsLong(monitorOwnerThread));
+
+                    // go through the suspended info to obtain the entry count
+                    SuspendedInfo info = controller.getSuspendedInfo(monitorOwnerThread);
 
                     if (info == null) {
-                        reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                        reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
                         return new CommandResult(reply);
                     }
 
-                    reply.writeLong(context.getIds().getIdAsLong(monitorOwnerThread));
-                    reply.writeInt(info.getEntryCount());
+                    if (info instanceof UnknownSuspendedInfo) {
+                        awaitSuspendedInfo(controller, monitorOwnerThread, info);
+                        if (info instanceof UnknownSuspendedInfo) {
+                            // still no known suspension state
+                            reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
+                            return new CommandResult(reply);
+                        }
+                    }
+                    int entryCount = info.getMonitorEntryCount(monitor);
+
+                    if (entryCount == -1) {
+                        reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                        return new CommandResult(reply);
+                    }
+                    reply.writeInt(entryCount);
 
                     ArrayList<Object> waiters = new ArrayList<>();
                     for (Object activeThread : context.getAllGuestThreads()) {
@@ -1638,7 +1654,7 @@ final class JDWP {
                             continue;
                         }
                         Object contendedMonitor = context.getCurrentContendedMonitor(activeThread);
-                        if (contendedMonitor != null && contendedMonitor == object) {
+                        if (contendedMonitor != null && contendedMonitor == monitor) {
                             waiters.add(activeThread);
                         }
                     }
@@ -1743,7 +1759,7 @@ final class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object object = controller.getContext().getIds().fromId((int) objectId);
 
-                if (object == controller.getContext().getNullObject()) {
+                if (object == null || object == controller.getContext().getNullObject()) {
                     reply.errorCode(ErrorCodes.INVALID_OBJECT);
                     return new CommandResult(reply);
                 }
@@ -1837,8 +1853,6 @@ final class JDWP {
 
     static class ThreadReference {
         public static final int ID = 11;
-
-        private static final long SUSPEND_TIMEOUT = 400;
 
         static class NAME {
             public static final int ID = 1;
@@ -2114,13 +2128,21 @@ final class JDWP {
                     }
                 }
 
-                CallFrame[] callFrames = info.getStackFrames();
+                // fetch all monitors on current stack
+                MonitorStackInfo[] ownedMonitors = context.getOwnedMonitors(info.getStackFrames());
 
-                MonitorStackInfo[] ownedMonitors = context.getOwnedMonitors(callFrames);
-                reply.writeInt(ownedMonitors.length);
+                // filter out monitors not owned by thread
+                ArrayList<Object> filtered = new ArrayList<>(ownedMonitors.length);
+                for (MonitorStackInfo ownedMonitor : ownedMonitors) {
+                    Object monitor = ownedMonitor.getMonitor();
+                    if (context.getMonitorOwnerThread(monitor) == thread) {
+                        filtered.add(monitor);
+                    }
+                }
 
-                for (MonitorStackInfo monitorStackInfo : ownedMonitors) {
-                    Object monitor = monitorStackInfo.getMonitor();
+                reply.writeInt(filtered.size());
+
+                for (Object monitor : filtered) {
                     reply.writeByte(context.getTag(monitor));
                     reply.writeLong(context.getIds().getIdAsLong(monitor));
                 }
@@ -2244,8 +2266,17 @@ final class JDWP {
                 }
 
                 MonitorStackInfo[] ownedMonitorInfos = context.getOwnedMonitors(suspendedInfo.getStackFrames());
-                reply.writeInt(ownedMonitorInfos.length);
-                for (MonitorStackInfo ownedMonitorInfo : ownedMonitorInfos) {
+                // filter out monitors not owned by thread
+                ArrayList<MonitorStackInfo> filtered = new ArrayList<>(ownedMonitorInfos.length);
+                for (MonitorStackInfo ownedMonitor : ownedMonitorInfos) {
+                    Object monitor = ownedMonitor.getMonitor();
+                    if (context.getMonitorOwnerThread(monitor) == thread) {
+                        filtered.add(ownedMonitor);
+                    }
+                }
+
+                reply.writeInt(filtered.size());
+                for (MonitorStackInfo ownedMonitorInfo : filtered) {
                     reply.writeByte(context.getTag(ownedMonitorInfo.getMonitor()));
                     reply.writeLong(context.getIds().getIdAsLong(ownedMonitorInfo.getMonitor()));
                     reply.writeInt(ownedMonitorInfo.getStackDepth());
@@ -2288,50 +2319,31 @@ final class JDWP {
                 final SuspendedInfo suspendedInfo = info;
 
                 Object returnValue = readValue(input, controller.getContext());
+                if (returnValue == Void.TYPE) {
+                    // we have to use an Interop value, so simply use
+                    // the NULL object, since it will be popped for void
+                    // return type methods anyway
+                    returnValue = controller.getContext().getNullObject();
+                }
+                CallFrame topFrame = suspendedInfo.getStackFrames().length > 0 ? suspendedInfo.getStackFrames()[0] : null;
+                if (!controller.forceEarlyReturn(thread, topFrame, returnValue)) {
+                    reply.errorCode(ErrorCodes.OPAQUE_FRAME);
+                }
 
-                ThreadJob<Boolean> job = new ThreadJob<>(thread, new Callable<Boolean>() {
+                // make sure owned monitors taken in frame are exited
+                ThreadJob<Void> job = new ThreadJob<>(thread, new Callable<Void>() {
                     @Override
-                    public Boolean call() {
-                        // make sure to release all monitors held on the current frame
-                        CallFrame topFrame = suspendedInfo.getStackFrames().length > 0 ? suspendedInfo.getStackFrames()[0] : null;
-                        return controller.getContext().forceEarlyReturn(returnValue, topFrame);
+                    public Void call() {
+                        controller.getContext().clearFrameMonitors(topFrame);
+                        return null;
                     }
                 });
                 controller.postJobForThread(job);
-
-                if (!job.getResult().getResult()) {
-                    reply.errorCode(ErrorCodes.OPAQUE_FRAME);
-                    return new CommandResult(reply);
-                }
+                // don't return here before job completed
+                job.getResult();
 
                 return new CommandResult(reply);
             }
-        }
-
-        private static SuspendedInfo awaitSuspendedInfo(DebuggerController controller, Object thread, SuspendedInfo suspendedInfo) {
-            // OK, we hard suspended this thread, but it hasn't yet actually suspended
-            // in a code location known to Truffle
-            // let's check if the thread is RUNNING and give it a moment to reach
-            // the suspended state
-            SuspendedInfo result = suspendedInfo;
-            Thread hostThread = controller.getContext().asHostThread(thread);
-            if (hostThread.getState() == Thread.State.RUNNABLE) {
-                JDWPLogger.log("Awaiting suspended info for thread %s", JDWPLogger.LogLevel.THREAD, controller.getContext().getThreadName(thread));
-
-                long timeout = System.currentTimeMillis() + SUSPEND_TIMEOUT;
-                while (result instanceof UnknownSuspendedInfo && System.currentTimeMillis() < timeout) {
-                    try {
-                        Thread.sleep(10);
-                        result = controller.getSuspendedInfo(thread);
-                    } catch (InterruptedException e) {
-                        // ignore this here
-                    }
-                }
-            }
-            if (result instanceof UnknownSuspendedInfo) {
-                JDWPLogger.log("Still no suspended info for thread %s", JDWPLogger.LogLevel.THREAD, controller.getContext().getThreadName(thread));
-            }
-            return result;
         }
     }
 
@@ -2771,6 +2783,32 @@ final class JDWP {
         }
     }
 
+    private static SuspendedInfo awaitSuspendedInfo(DebuggerController controller, Object thread, SuspendedInfo suspendedInfo) {
+        // OK, we hard suspended this thread, but it hasn't yet actually suspended
+        // in a code location known to Truffle
+        // let's check if the thread is RUNNING and give it a moment to reach
+        // the suspended state
+        SuspendedInfo result = suspendedInfo;
+        Thread hostThread = controller.getContext().asHostThread(thread);
+        if (hostThread.getState() == Thread.State.RUNNABLE) {
+            JDWPLogger.log("Awaiting suspended info for thread %s", JDWPLogger.LogLevel.THREAD, controller.getContext().getThreadName(thread));
+
+            long timeout = System.currentTimeMillis() + SUSPEND_TIMEOUT;
+            while (result instanceof UnknownSuspendedInfo && System.currentTimeMillis() < timeout) {
+                try {
+                    Thread.sleep(10);
+                    result = controller.getSuspendedInfo(thread);
+                } catch (InterruptedException e) {
+                    // ignore this here
+                }
+            }
+        }
+        if (result instanceof UnknownSuspendedInfo) {
+            JDWPLogger.log("Still no suspended info for thread %s", JDWPLogger.LogLevel.THREAD, controller.getContext().getThreadName(thread));
+        }
+        return result;
+    }
+
     private static Object readValue(byte valueKind, PacketStream input, JDWPContext context) {
         switch (valueKind) {
             case TagConstants.BOOLEAN:
@@ -2806,7 +2844,7 @@ final class JDWP {
         byte valueKind = input.readByte();
         switch (valueKind) {
             case VOID:
-                return Void.class;
+                return Void.TYPE;
             case BOOLEAN:
                 return input.readBoolean();
             case TagConstants.BYTE:

@@ -42,9 +42,9 @@
 		]
 	},
 	{
-		"name": "ruby-standalone-svm-java8",
+		"name": "ruby-standalone-svm-java11",
 		"core": true,
-		"jdk": "jdk_8",
+		"jdk": "jdk_11",
 		"override_name":"truffleruby",
 		"artifacts": [
 			{
@@ -60,9 +60,9 @@
 		]
 	},
 	{
-		"name": "python-standalone-svm-java8",
+		"name": "python-standalone-svm-java11",
 		"core": true,
-		"jdk": "jdk_8",
+		"jdk": "jdk_11",
 		"override_name":"graalpython",
 		"artifacts": [
 			{

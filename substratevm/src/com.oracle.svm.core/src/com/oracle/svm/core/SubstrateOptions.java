@@ -451,7 +451,7 @@ public class SubstrateOptions {
         }
     };
 
-    private static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
+    public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
         // force update of TrackNodeSourcePosition and DeleteLocalSymbols
         TrackNodeSourcePosition.update(values, newValue > 0);
         DeleteLocalSymbols.update(values, newValue == 0);
@@ -471,6 +471,9 @@ public class SubstrateOptions {
             throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
         }
     }
+
+    @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
+    public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
 
     /** Command line option to disable image build server. */
     public static final String NO_SERVER = "--no-server";

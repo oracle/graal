@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,10 +60,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.impl.ClosureArgumentNode.BufferClosureArgumentNode;
 import com.oracle.truffle.nfi.impl.ClosureArgumentNode.InjectedClosureArgumentNode;
-import com.oracle.truffle.nfi.impl.ClosureArgumentNode.ObjectClosureArgumentNode;
-import com.oracle.truffle.nfi.impl.ClosureArgumentNode.StringClosureArgumentNode;
+import com.oracle.truffle.nfi.impl.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
+import com.oracle.truffle.nfi.impl.ClosureArgumentNodeFactory.ObjectClosureArgumentNodeGen;
+import com.oracle.truffle.nfi.impl.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.impl.LibFFIType.ArrayType.HostObjectHelperNode.WrongTypeException;
 import com.oracle.truffle.nfi.impl.LibFFITypeFactory.ArrayTypeFactory.CachedHostObjectHelperNodeGen;
 import com.oracle.truffle.nfi.impl.NativeArgumentBuffer.TypeTag;
@@ -173,7 +173,7 @@ final class LibFFIType {
             this.injectedArgument = injectedArgument;
         }
 
-        public abstract ClosureArgumentNode createClosureArgumentNode();
+        public abstract ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg);
 
         public abstract Object deserializeRet(NativeArgumentBuffer buffer, NFILanguageImpl language);
 
@@ -365,8 +365,8 @@ final class LibFFIType {
         }
 
         @Override
-        public ClosureArgumentNode createClosureArgumentNode() {
-            return new BufferClosureArgumentNode(this);
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
+            return BufferClosureArgumentNodeGen.create(this, arg);
         }
 
         @Override
@@ -399,7 +399,7 @@ final class LibFFIType {
         }
 
         @Override
-        public ClosureArgumentNode createClosureArgumentNode() {
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             throw new AssertionError("invalid argument type VOID");
         }
 
@@ -416,8 +416,8 @@ final class LibFFIType {
         }
 
         @Override
-        public ClosureArgumentNode createClosureArgumentNode() {
-            return new StringClosureArgumentNode();
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
+            return StringClosureArgumentNodeGen.create(arg);
         }
     }
 
@@ -428,8 +428,8 @@ final class LibFFIType {
         }
 
         @Override
-        public ClosureArgumentNode createClosureArgumentNode() {
-            return new ObjectClosureArgumentNode();
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
+            return ObjectClosureArgumentNodeGen.create(arg);
         }
     }
 
@@ -440,8 +440,8 @@ final class LibFFIType {
         }
 
         @Override
-        public ClosureArgumentNode createClosureArgumentNode() {
-            return new ObjectClosureArgumentNode();
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
+            return ObjectClosureArgumentNodeGen.create(arg);
         }
     }
 
@@ -660,7 +660,7 @@ final class LibFFIType {
         }
 
         @Override
-        public ClosureArgumentNode createClosureArgumentNode() {
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
     }
@@ -687,7 +687,7 @@ final class LibFFIType {
         }
 
         @Override
-        public ClosureArgumentNode createClosureArgumentNode() {
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return new InjectedClosureArgumentNode();
         }
     }

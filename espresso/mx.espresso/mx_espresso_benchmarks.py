@@ -52,16 +52,22 @@ class EspressoVm(GuestVm, JavaVm):
         return mx_benchmark.java_vm_registry
 
     def with_host_vm(self, host_vm):
-        return self.__class__(self.config_name(), self._options, host_vm)
+        _host_vm = host_vm
+        if hasattr(host_vm, 'run_launcher'):
+            if mx.suite('vm', fatalIfMissing=False):
+                import mx_vm_benchmark
+                # If needed, clone the host_vm and replace the `--native` argument with `-truffle`
+                if isinstance(host_vm, mx_vm_benchmark.GraalVm) and '--native' in host_vm.extra_launcher_args:
+                    extra_launcher_args = list(host_vm.extra_launcher_args)
+                    extra_launcher_args.remove('--native')
+                    extra_launcher_args.append('-truffle')
+                    _host_vm = mx_vm_benchmark.GraalVm(host_vm.name(), host_vm.config_name(), list(host_vm.extra_java_args), extra_launcher_args)
+        return self.__class__(self.config_name(), self._options, _host_vm)
 
     def run(self, cwd, args):
         if hasattr(self.host_vm(), 'run_launcher'):
-            if mx.suite('vm', fatalIfMissing=False):
-                import mx_vm_benchmark
-                if isinstance(self.host_vm(), mx_vm_benchmark.GraalVm) and '--native' in self.host_vm().extra_launcher_args:
-                    # The host-vm is a GraalVM in native mode. Do not pass `--native` and run `java -truffle`.
-                    self.host_vm().extra_launcher_args.remove('--native')
-                    return self.host_vm().run_launcher('java', ['-truffle'] + self._options + args, cwd)
+            if '-truffle' in self.host_vm().extra_launcher_args:
+                return self.host_vm().run_launcher('java', self._options + args, cwd)
             # The host-vm is in JVM mode. Run the `espresso` launcher.
             return self.host_vm().run_launcher('espresso', self._options + args, cwd)
         else:
@@ -123,6 +129,9 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('default', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter', ['--experimental-options', '--engine.Compilation=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter-inline-accessors', ['--experimental-options', '--engine.Compilation=false', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('single-tier', ['--experimental-options', '--engine.MultiTier=false']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier=true']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
 
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)

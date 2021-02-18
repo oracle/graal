@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -367,6 +368,16 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else if (deleteAnnotation != null) {
+            if (SubstrateOptions.VerifyNamingConventions.getValue()) {
+                int modifiers = original.getModifiers();
+                if (Modifier.isProtected(modifiers) || Modifier.isPublic(modifiers)) {
+                    String format = "Detected a public or protected method annotated with @Delete: %s. " +
+                                    "Such usages of @Delete are not permited since these methods can be called " +
+                                    "from third party code and can lead to unsupported features. " +
+                                    "Instead the method should be replaced with a @Substitute method and `throw VMError.unsupportedFeature()`.";
+                    throw UserError.abort(format, annotatedMethod);
+                }
+            }
             registerAsDeleted(annotated, original, deleteAnnotation);
         } else if (substituteAnnotation != null) {
             SubstitutionMethod substitution = new SubstitutionMethod(original, annotated);

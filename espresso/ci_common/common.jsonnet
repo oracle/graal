@@ -154,23 +154,20 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
   maybe_set_ld_debug_flag(env): if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
 
-  espresso_gate(allow_warnings, tags, name, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00'): {
+  espresso_gate(allow_warnings, tags, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00', name=null): {
     local mx_cmd =
       ['mx']
       + mx_args
       + (if imports != null then ['--dynamicimports=' + imports] else []),
-    setup+: [
-      if ld_debug then ['set-export', 'LD_DEBUG', 'unused'] else ['unset', 'LD_DEBUG'],
-      mx_cmd + ['sversions'],
-    ],
     run+: [
+      if ld_debug then ['set-export', 'LD_DEBUG', 'unused'] else ['unset', 'LD_DEBUG'],
       mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags] + ( if allow_warnings then ['--no-warning-as-error'] else []) + gate_args,
     ],
-    timelimit: timelimit,
-    name: name,
-  },
+  }
+  + (if timelimit != null then {timelimit: timelimit} else {})
+  + (if name != null then {name: name} else {}),
 
-  espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[]):
+  espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[], timelimit='3:00:00'):
     self.build_espresso(env) +
     {
       run+: that.maybe_set_ld_debug_flag(env) + [
@@ -184,9 +181,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
               '--vm.Xss32m'] + extra_args
           ),
       ],
-      timelimit: '3:00:00',
-    } +
-    self.bench_upload,
+      timelimit: timelimit,
+    }
+    + self.bench_upload,
 
   espresso_minheap_benchmark(env, suite, guest_jvm_config):
     self.espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='default', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']),
@@ -201,7 +198,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env),
       guest_jvm='espresso', guest_jvm_config=guest_jvm_config,
       fork_file='ci_common/scala-dacapo-warmup-forks.json',
-      extra_args=extra_args
+      extra_args=extra_args,
+      timelimit='5:00:00'
     ),
 
   graal_benchmark(env, suite, host_jvm='server', host_jvm_config=_graal_host_jvm_config(env), extra_args=[]):
@@ -217,8 +215,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
           ),
       ],
       timelimit: '1:00:00',
-    } +
-    self.bench_upload,
+    }
+    + self.bench_upload,
 
   # Scala DaCapo benchmarks that run in both JVM and native modes,
   # Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.

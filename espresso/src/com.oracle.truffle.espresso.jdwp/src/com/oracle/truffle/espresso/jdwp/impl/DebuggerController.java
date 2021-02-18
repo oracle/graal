@@ -22,6 +22,16 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.regex.Pattern;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
@@ -50,16 +60,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.regex.Pattern;
+import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 
 public final class DebuggerController implements ContextsListener {
 
@@ -140,9 +141,9 @@ public final class DebuggerController implements ContextsListener {
         return options.host;
     }
 
-    public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy, boolean isPopFrames) {
+    public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn) {
         JDWPLogger.log("Adding step command request in thread %s with ID %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread), commandRequestId);
-        commandRequestIds.put(thread, new SteppingInfo(commandRequestId, suspendPolicy, isPopFrames));
+        commandRequestIds.put(thread, new SteppingInfo(commandRequestId, suspendPolicy, isPopFrames, isForceEarlyReturn));
     }
 
     /**
@@ -282,8 +283,20 @@ public final class DebuggerController implements ContextsListener {
         SuspendedInfo susp = suspendedInfos.get(guestThread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             susp.getEvent().prepareUnwindFrame(frameToPop.getDebugStackFrame());
-            setCommandRequestId(guestThread, packetId, SuspendStrategy.NONE, true);
+            setCommandRequestId(guestThread, packetId, SuspendStrategy.EVENT_THREAD, true, false);
             resume(guestThread, false);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean forceEarlyReturn(Object guestThread, CallFrame frame, Object returnValue) {
+        SuspendedInfo susp = suspendedInfos.get(guestThread);
+        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
+            // Truffle unwind will take us to exactly the right location in the caller method
+            susp.getEvent().prepareUnwindFrame(frame.getDebugStackFrame(), frame.asDebugValue(returnValue));
+            susp.setForceEarlyReturnInProgress();
+            setCommandRequestId(guestThread, -1, SuspendStrategy.NONE, false, true);
             return true;
         }
         return false;
@@ -298,13 +311,12 @@ public final class DebuggerController implements ContextsListener {
                 // already running, so nothing to do
                 return true;
             }
-
             threadSuspension.resumeThread(thread);
             int suspensionCount = threadSuspension.getSuspensionCount(thread);
 
             if (suspensionCount == 0) {
                 // only resume when suspension count reaches 0
-
+                SuspendedInfo suspendedInfo = getSuspendedInfo(thread);
                 if (!isStepping(thread)) {
                     if (!sessionClosed) {
                         try {
@@ -317,11 +329,16 @@ public final class DebuggerController implements ContextsListener {
                 } else {
                     // we're currently stepping, so make sure to
                     // commit the recorded step kind to Truffle
-                    SuspendedInfo suspendedInfo = getSuspendedInfo(thread);
-                    if (suspendedInfo != null) {
+                    if (suspendedInfo != null && !suspendedInfo.isForceEarlyReturnInProgress()) {
                         DebuggerCommand.Kind stepKind = suspendedInfo.getStepKind();
                         if (stepKind != null) {
                             switch (stepKind) {
+                                // force early return doesn't trigger any events, so the debugger
+                                // will send out a step command, to reach the next location, in this
+                                // case the caller method after the return value has been obtained.
+                                // Truffle handles this by Unwind and we will already reach the
+                                // given location without performing the explicit step command, so
+                                // we shouldn't prepare the event here.
                                 case STEP_INTO:
                                     suspendedInfo.getEvent().prepareStepInto(STEP_CONFIG);
                                     break;
@@ -721,12 +738,22 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, instrument.getEnv(), null));
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, instrument.getEnv(), null,
+                                context.getLanguageClass()));
                 return null;
             }
         });
         CallFrame[] result = callFrames.toArray(new CallFrame[callFrames.size()]);
-        suspendedInfos.put(guestThread, new SuspendedInfo(result, guestThread));
+
+        // collect monitor info
+        MonitorStackInfo[] ownedMonitorInfos = context.getOwnedMonitors(result);
+        HashMap<Object, Integer> entryCounts = new HashMap<>(ownedMonitorInfos.length);
+        for (MonitorStackInfo ownedMonitorInfo : ownedMonitorInfos) {
+            Object monitor = ownedMonitorInfo.getMonitor();
+            entryCounts.put(monitor, context.getMonitorEntryCount(monitor));
+        }
+
+        suspendedInfos.put(guestThread, new SuspendedInfo(context, result, guestThread, entryCounts));
         return result;
     }
 
@@ -762,6 +789,10 @@ public final class DebuggerController implements ContextsListener {
             JDWPLogger.log("Suspended at: %s in thread: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection().toString(), getThreadName(currentThread));
             SteppingInfo steppingInfo = commandRequestIds.remove(currentThread);
             if (steppingInfo != null) {
+                if (steppingInfo.isForceEarlyReturn()) {
+                    JDWPLogger.log("not suspending here due to force early return: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection());
+                    return;
+                }
                 CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1, steppingInfo);
                 // get the top frame for checking instance filters
                 if (callFrames.length > 0 && checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
@@ -775,7 +806,7 @@ public final class DebuggerController implements ContextsListener {
             CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1, steppingInfo);
             RootNode callerRootNode = callFrames.length > 1 ? callFrames[1].getRootNode() : null;
 
-            SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread, callerRootNode);
+            SuspendedInfo suspendedInfo = new SuspendedInfo(DebuggerController.this, event, callFrames, currentThread, callerRootNode);
             suspendedInfos.put(currentThread, suspendedInfo);
 
             byte suspendPolicy = SuspendStrategy.EVENT_THREAD;
@@ -1018,7 +1049,7 @@ public final class DebuggerController implements ContextsListener {
                     }
                 }
 
-                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame, context.getLanguageClass()));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);

@@ -33,6 +33,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -60,9 +61,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -124,7 +125,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal volatile KlassVersion klassVersion;
 
     // used for class redefintion when refreshing vtables etc.
-    private ArrayList<WeakReference<ObjectKlass>> subTypes;
+    private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
 
     public static final int LOADED = 0;
     public static final int LINKED = 1;
@@ -211,10 +212,20 @@ public final class ObjectKlass extends Klass {
     }
 
     private void addSubType(ObjectKlass objectKlass) {
-        if (subTypes == null) {
-            subTypes = new ArrayList<>(1);
+        // We only build subtypes model iff jdwp is enabled
+        if (getContext().JDWPOptions != null) {
+            if (subTypes == null) {
+                synchronized (this) {
+                    // double-checked locking
+                    if (subTypes == null) {
+                        subTypes = new ArrayList<>(1);
+                    }
+                }
+            }
+            synchronized (subTypes) {
+                subTypes.add(new WeakReference<>(objectKlass));
+            }
         }
-        subTypes.add(new WeakReference<>(objectKlass));
     }
 
     private boolean verifyTables() {
@@ -1256,17 +1267,20 @@ public final class ObjectKlass extends Klass {
     }
 
     private List<ObjectKlass> getSubTypes() {
-        List<ObjectKlass> result = new ArrayList<>();
         if (subTypes != null) {
-            for (WeakReference<ObjectKlass> subType : subTypes) {
-                ObjectKlass sub = subType.get();
-                if (sub != null) {
-                    result.add(sub);
-                    result.addAll(sub.getSubTypes());
+            List<ObjectKlass> result = new ArrayList<>();
+            synchronized (subTypes) {
+                for (WeakReference<ObjectKlass> subType : subTypes) {
+                    ObjectKlass sub = subType.get();
+                    if (sub != null) {
+                        result.add(sub);
+                        result.addAll(sub.getSubTypes());
+                    }
                 }
             }
+            return result;
         }
-        return result;
+        return Collections.emptyList();
     }
 
     private static boolean isVirtual(ParserMethod m) {

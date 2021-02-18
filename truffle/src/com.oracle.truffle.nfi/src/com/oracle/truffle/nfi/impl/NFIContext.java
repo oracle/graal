@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -141,8 +141,8 @@ class NFIContext {
     }
 
     // called from native
-    ClosureNativePointer createClosureNativePointer(long nativeClosure, long codePointer, CallTarget callTarget, LibFFISignature signature) {
-        ClosureNativePointer ret = ClosureNativePointer.create(this, nativeClosure, codePointer, callTarget, signature);
+    ClosureNativePointer createClosureNativePointer(long nativeClosure, long codePointer, CallTarget callTarget, LibFFISignature signature, Object receiver) {
+        ClosureNativePointer ret = ClosureNativePointer.create(this, nativeClosure, codePointer, callTarget, signature, receiver);
         synchronized (nativePointerMap) {
             nativePointerMap.put(codePointer, ret);
         }
@@ -221,29 +221,33 @@ class NFIContext {
         }
     }
 
-    ClosureNativePointer allocateClosureObjectRet(LibFFISignature signature, CallTarget callTarget) {
-        return allocateClosureObjectRet(nativeContext, signature, callTarget);
+    ClosureNativePointer allocateClosureObjectRet(LibFFISignature signature, CallTarget callTarget, Object receiver) {
+        return allocateClosureObjectRet(nativeContext, signature, callTarget, receiver);
     }
 
-    ClosureNativePointer allocateClosureStringRet(LibFFISignature signature, CallTarget callTarget) {
-        return allocateClosureStringRet(nativeContext, signature, callTarget);
+    ClosureNativePointer allocateClosureStringRet(LibFFISignature signature, CallTarget callTarget, Object receiver) {
+        return allocateClosureStringRet(nativeContext, signature, callTarget, receiver);
     }
 
-    ClosureNativePointer allocateClosureBufferRet(LibFFISignature signature, CallTarget callTarget) {
-        return allocateClosureBufferRet(nativeContext, signature, callTarget);
+    ClosureNativePointer allocateClosureBufferRet(LibFFISignature signature, CallTarget callTarget, Object receiver) {
+        return allocateClosureBufferRet(nativeContext, signature, callTarget, receiver);
     }
 
-    ClosureNativePointer allocateClosureVoidRet(LibFFISignature signature, CallTarget callTarget) {
-        return allocateClosureVoidRet(nativeContext, signature, callTarget);
+    ClosureNativePointer allocateClosureVoidRet(LibFFISignature signature, CallTarget callTarget, Object receiver) {
+        return allocateClosureVoidRet(nativeContext, signature, callTarget, receiver);
     }
 
-    private static native ClosureNativePointer allocateClosureObjectRet(long nativeContext, LibFFISignature signature, CallTarget callTarget);
+    @TruffleBoundary
+    private static native ClosureNativePointer allocateClosureObjectRet(long nativeContext, LibFFISignature signature, CallTarget callTarget, Object receiver);
 
-    private static native ClosureNativePointer allocateClosureStringRet(long nativeContext, LibFFISignature signature, CallTarget callTarget);
+    @TruffleBoundary
+    private static native ClosureNativePointer allocateClosureStringRet(long nativeContext, LibFFISignature signature, CallTarget callTarget, Object receiver);
 
-    private static native ClosureNativePointer allocateClosureBufferRet(long nativeContext, LibFFISignature signature, CallTarget callTarget);
+    @TruffleBoundary
+    private static native ClosureNativePointer allocateClosureBufferRet(long nativeContext, LibFFISignature signature, CallTarget callTarget, Object receiver);
 
-    private static native ClosureNativePointer allocateClosureVoidRet(long nativeContext, LibFFISignature signature, CallTarget callTarget);
+    @TruffleBoundary
+    private static native ClosureNativePointer allocateClosureVoidRet(long nativeContext, LibFFISignature signature, CallTarget callTarget, Object receiver);
 
     long prepareSignature(LibFFIType retType, int argCount, LibFFIType... args) {
         assert args.length >= argCount;

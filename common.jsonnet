@@ -22,15 +22,15 @@
   openjdk8::             { downloads+: { JAVA_HOME : jdks.openjdk8 }},
 
   oraclejdk11::          { downloads+: { JAVA_HOME : jdks.oraclejdk11 }},
-  oraclejdk15::          { downloads+: { JAVA_HOME : jdks.oraclejdk15 }},
+  oraclejdk16::          { downloads+: { JAVA_HOME : jdks.oraclejdk16 }},
   openjdk11::            { downloads+: { JAVA_HOME : jdks.openjdk11 }},
 
   "labsjdk-ce-11"::      { downloads+: { JAVA_HOME : jdks["labsjdk-ce-11"] }},
   "labsjdk-ee-11"::      { downloads+: { JAVA_HOME : jdks["labsjdk-ee-11"] }},
-  "labsjdk-ce-15"::      { downloads+: { JAVA_HOME : jdks["labsjdk-ce-15"] }},
-  "labsjdk-ee-15"::      { downloads+: { JAVA_HOME : jdks["labsjdk-ee-15"] }},
-  "labsjdk-ce-15Debug":: { downloads+: { JAVA_HOME : jdks["labsjdk-ce-15Debug"] }},
-  "labsjdk-ee-15Debug":: { downloads+: { JAVA_HOME : jdks["labsjdk-ee-15Debug"] }},
+  "labsjdk-ce-16"::      { downloads+: { JAVA_HOME : jdks["labsjdk-ce-16"] }},
+  "labsjdk-ee-16"::      { downloads+: { JAVA_HOME : jdks["labsjdk-ee-16"] }},
+  "labsjdk-ce-16Debug":: { downloads+: { JAVA_HOME : jdks["labsjdk-ce-16Debug"] }},
+  "labsjdk-ee-16Debug":: { downloads+: { JAVA_HOME : jdks["labsjdk-ee-16Debug"] }},
 
   common:: deps.common + self.mx + {
     # enforce self.os (useful for generating job names)

@@ -81,7 +81,6 @@ final class CodeSectionProcessor {
                     if (callInfopoint.target instanceof HotSpotForeignCallLinkage &&
                                     target.arch instanceof AMD64) {
                         // TODO 4 is x86 size of relative displacement.
-                        // For SPARC need something different.
                         int destOffset = infopoint.pcOffset + callInfopoint.size - 4;
                         targetCode[destOffset + 0] = 0;
                         targetCode[destOffset + 1] = 0;

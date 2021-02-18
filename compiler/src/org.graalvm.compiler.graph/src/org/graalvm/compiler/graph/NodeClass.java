@@ -867,6 +867,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             // Use sparse map
             newNodes = EconomicMap.create(Equivalence.IDENTITY);
         }
+        graph.beforeNodeDuplication(oldGraph);
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 
         InplaceUpdateClosure replacementClosure = new InplaceUpdateClosure() {

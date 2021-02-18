@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.time.Duration;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -569,10 +570,12 @@ public final class Context implements AutoCloseable {
      * object}. Host objects expose all their public java fields and methods as
      * {@link Value#getMember(String) members}. In addition, Java arrays and subtypes of
      * {@link List} will be interpreted as a value with {@link Value#hasArrayElements() array
-     * elements} and single method interfaces annotated with {@link FunctionalInterface} are
-     * {@link Value#execute(Object...) executable} directly. Java {@link Class} instances are
-     * interpreted as {@link Value#canInstantiate() instantiable}, but they do not expose Class
-     * methods as members.
+     * elements}. The subtypes of {@link Iterable} will be interpreted as a value with
+     * {@link Value#hasIterator()} iterator}. The subtypes of {@link Iterator} will be interpreted
+     * as an {@link Value#isIterator() iterator} value. And single method interfaces annotated with
+     * {@link FunctionalInterface} are {@link Value#execute(Object...) executable} directly. Java
+     * {@link Class} instances are interpreted as {@link Value#canInstantiate() instantiable}, but
+     * they do not expose Class methods as members.
      * </ol>
      * <p>
      * <b>Basic Examples:</b>

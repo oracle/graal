@@ -28,7 +28,6 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -49,10 +48,6 @@ public class PrimaryEntry {
      */
     private List<Range> subranges;
     /**
-     * A mapping from subranges to their associated file entry.
-     */
-    private HashMap<Range, FileEntry> subrangeIndex;
-    /**
      * Details of of compiled method frame size changes.
      */
     private List<DebugFrameSizeChange> frameSizeInfos;
@@ -65,22 +60,19 @@ public class PrimaryEntry {
         this.primary = primary;
         this.classEntry = classEntry;
         this.subranges = new LinkedList<>();
-        this.subrangeIndex = new HashMap<>();
         this.frameSizeInfos = frameSizeInfos;
         this.frameSize = frameSize;
     }
 
-    public void addSubRange(Range subrange, FileEntry subFileEntry) {
+    public void addSubRange(Range subrange) {
         /*
          * We should not see a subrange more than once.
          */
         assert !subranges.contains(subrange);
-        assert subrangeIndex.get(subrange) == null;
         /*
          * We need to generate a file table entry for all ranges.
          */
         subranges.add(subrange);
-        subrangeIndex.put(subrange, subFileEntry);
     }
 
     public Range getPrimary() {
@@ -93,10 +85,6 @@ public class PrimaryEntry {
 
     public List<Range> getSubranges() {
         return subranges;
-    }
-
-    public FileEntry getSubrangeFileEntry(Range subrange) {
-        return subrangeIndex.get(subrange);
     }
 
     public List<DebugFrameSizeChange> getFrameSizeInfos() {

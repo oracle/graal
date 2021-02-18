@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ import org.graalvm.options.OptionType;
 
 @Option.Group("wasm")
 public class WasmOptions {
-    @Option(help = "A comma-separated list of builtin modules to use: <linking-name>:<builtin-module-name>.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
+    @Option(help = "A comma-separated list of builtin modules to use: [<linking-name>:]<builtin-module-name>.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
     public static final OptionKey<String> Builtins = new OptionKey<>("");
 
     @Option(help = "The minimal binary size for which to use async parsing.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
@@ -56,6 +56,9 @@ public class WasmOptions {
 
     @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
     public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(0);
+
+    @Option(help = "A comma-separated list of pre-opened Wasi directories: [<virtual-dir>:]<host-dir>.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
+    public static final OptionKey<String> WasiMapDirs = new OptionKey<>("");
 
     public enum ConstantsStorePolicy {
         ALL,

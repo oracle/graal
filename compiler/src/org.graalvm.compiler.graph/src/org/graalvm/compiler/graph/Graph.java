@@ -31,6 +31,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -227,6 +228,24 @@ public class Graph {
 
     public static boolean trackNodeSourcePositionDefault(OptionValues options, DebugContext debug) {
         return (GraalOptions.TrackNodeSourcePosition.getValue(options) || debug.isDumpEnabledForMethod());
+    }
+
+    /**
+     * Add any per graph properties that might be useful for debugging (e.g., to view in the ideal
+     * graph visualizer).
+     */
+    public void getDebugProperties(Map<Object, Object> properties) {
+        properties.put("graph", toString());
+    }
+
+    /**
+     * This is called before nodes are transferred to {@code sourceGraph} by
+     * {@link NodeClass#addGraphDuplicate} to allow the transfer of any other state which should
+     * also be transferred.
+     *
+     * @param sourceGraph the source of the nodes that were duplicated
+     */
+    public void beforeNodeDuplication(Graph sourceGraph) {
     }
 
     /**

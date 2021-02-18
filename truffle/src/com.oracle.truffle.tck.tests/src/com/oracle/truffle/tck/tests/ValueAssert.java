@@ -80,6 +80,8 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERATOR;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NATIVE;
@@ -121,6 +123,10 @@ public class ValueAssert {
     private static final TypeLiteral<Map<Double, Object>> DOUBLE_OBJECT_MAP = new TypeLiteral<Map<Double, Object>>() {
     };
     private static final TypeLiteral<Function<Object, Object>> FUNCTION = new TypeLiteral<Function<Object, Object>>() {
+    };
+    private static final TypeLiteral<Iterable<Object>> OBJECT_ITERABLE = new TypeLiteral<Iterable<Object>>() {
+    };
+    private static final TypeLiteral<Iterator<Object>> OBJECT_ITERATOR = new TypeLiteral<Iterator<Object>>() {
     };
 
     public static void assertValue(Value value) {
@@ -449,6 +455,15 @@ public class ValueAssert {
                     assertFails(() -> value.getMetaSimpleName(), UnsupportedOperationException.class);
                     assertFails(() -> value.isMetaInstance(""), UnsupportedOperationException.class);
                     break;
+                case ITERABLE:
+                    assertFalse(value.hasIterator());
+                    assertFails(() -> value.getIterator(), UnsupportedOperationException.class);
+                    break;
+                case ITERATOR:
+                    assertFalse(value.isIterator());
+                    assertFails(() -> value.hasIteratorNextElement(), UnsupportedOperationException.class);
+                    assertFails(() -> value.getIteratorNextElement(), UnsupportedOperationException.class);
+                    break;
                 default:
                     throw new AssertionError();
             }
@@ -653,7 +668,14 @@ public class ValueAssert {
                     assertNotNull(value.getMetaSimpleName());
                     value.isMetaInstance("");
                     break;
-
+                case ITERABLE:
+                    assertTrue(msg, value.hasIterator());
+                    assertValueIterable(value, depth, hasHostAccess);
+                    break;
+                case ITERATOR:
+                    assertTrue(msg, value.isIterator());
+                    value.hasIteratorNextElement();
+                    break;
                 default:
                     throw new AssertionError();
             }
@@ -821,6 +843,32 @@ public class ValueAssert {
                     break;
             }
         }
+    }
+
+    private static void assertValueIterable(Value value, int depth, boolean hasHostAccess) {
+        assertTrue(value.hasIterator());
+        List<Object> receivedObjects = new ArrayList<>();
+        Value iterator = value.getIterator();
+        while (iterator.hasIteratorNextElement()) {
+            Value element = iterator.getIteratorNextElement();
+            receivedObjects.add(element.as(Object.class));
+            assertValueImpl(element, depth + 1, hasHostAccess, detectSupportedTypes(element));
+        }
+        Iterable<Object> objectIterable = value.as(OBJECT_ITERABLE);
+        assertTrue(objectIterable.equals(objectIterable));
+        assertTrue(value.as(OBJECT_ITERABLE).equals(value.as(OBJECT_ITERABLE)));
+        assertNotEquals(0, objectIterable.hashCode());
+        assertNotNull(objectIterable.toString());
+
+        Iterator<Object> receivedIterator = receivedObjects.iterator();
+        Iterator<Object> objectIterator1 = objectIterable.iterator();
+        Iterator<Object> objectIterator2 = value.getIterator().as(OBJECT_ITERATOR);
+        while (objectIterator1.hasNext() && objectIterator2.hasNext() && receivedIterator.hasNext()) {
+            Object expected = receivedIterator.next();
+            assertEqualValues(expected, objectIterator1.next());
+            assertEqualValues(expected, objectIterator2.next());
+        }
+        assertFalse(objectIterator1.hasNext() || objectIterator2.hasNext() || receivedIterator.hasNext());
     }
 
     @SafeVarargs
@@ -1025,6 +1073,12 @@ public class ValueAssert {
         if (value.isMetaObject()) {
             valueTypes.add(META);
         }
+        if (value.hasIterator()) {
+            valueTypes.add(ITERABLE);
+        }
+        if (value.isIterator()) {
+            valueTypes.add(ITERATOR);
+        }
         return valueTypes.toArray(new Trait[0]);
     }
 
@@ -1048,6 +1102,8 @@ public class ValueAssert {
         DURATION,
         EXCEPTION,
         META,
+        ITERABLE,
+        ITERATOR,
     }
 
 }

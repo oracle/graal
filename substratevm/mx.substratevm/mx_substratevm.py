@@ -750,20 +750,33 @@ def _debuginfotest(native_image, path, build_only, args):
     for key, value in javaProperties.items():
         args.append("-D" + key + "=" + value)
 
+
     native_image_args = ["--native-image-info", "-H:Path=" + path,
                          '-H:+VerifyNamingConventions',
                          '-cp', classpath('com.oracle.svm.test'),
                          '-Dgraal.LogFile=graal.log',
                          '-g',
+                         '-H:-OmitInlinedMethodDebugLineInfo',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
                          'hello.Hello'] + args
-    mx.log('native_image {}'.format(native_image_args))
-    native_image(native_image_args)
 
+    def build_debug_test(extra_args):
+        build_args = native_image_args + extra_args
+        mx.log('native_image {}'.format(build_args))
+        native_image(build_args)
+
+    # build with and without Isolates and check both work
+
+    build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
-        mx.run(['gdb', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
+        os.environ.update({'debuginfotest.isolates' : 'yes'})
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
 
+    build_debug_test(['-H:-SpawnIsolates'])
+    if mx.get_os() == 'linux' and not build_only:
+        os.environ.update({'debuginfotest.isolates' : 'no'})
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
@@ -1485,8 +1498,10 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
                 'java.base/sun.util.locale.provider',
                 'java.base/sun.util.resources',
                 'java.base/sun.security.util',
+                'java.base/sun.util.calendar',
                 'java.base/sun.security.provider',
                 'java.base/sun.reflect.generics.repository',
+                'java.base/sun.reflect.annotation',
                 'java.base/sun.invoke.util',
                 'java.xml.crypto/org.jcp.xml.dsig.internal.dom'
             ]

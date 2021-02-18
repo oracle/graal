@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,17 +50,17 @@ public final class EmptyListener implements VMListener {
     }
 
     @Override
-    public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
+    public boolean onFieldModification(FieldRef field, Object receiver, Object value) {
         return false;
     }
 
     @Override
-    public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
+    public boolean onFieldAccess(FieldRef field, Object receiver) {
         return false;
     }
 
     @Override
-    public boolean hasMethodBreakpoint(MethodRef method, Object returnValue) {
+    public boolean onMethodReturn(MethodRef method, Object returnValue) {
         return false;
     }
 
@@ -87,30 +87,5 @@ public final class EmptyListener implements VMListener {
     @Override
     public Object getCurrentContendedMonitor(Object guestThread) {
         return null;
-    }
-
-    @Override
-    public Object getEarlyReturnValue() {
-        return null;
-    }
-
-    @Override
-    public Object getAndRemoveEarlyReturnValue() {
-        return null;
-    }
-
-    @Override
-    public void forceEarlyReturn(Object returnValue) {
-
-    }
-
-    @Override
-    public void onMonitorEnter(Object monitor) {
-
-    }
-
-    @Override
-    public void onMonitorExit(Object monitor) {
-
     }
 }
