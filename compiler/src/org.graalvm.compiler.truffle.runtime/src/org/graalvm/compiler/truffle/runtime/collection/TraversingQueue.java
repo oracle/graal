@@ -32,11 +32,13 @@ import org.graalvm.compiler.truffle.runtime.CompilationTask;
 
 public class TraversingQueue<E> implements SerialQueue<E> {
     private final boolean priority;
+    private final boolean trace;
     List<E> firstTierEntries = new LinkedList<>();
     LinkedList<E> lastTierEntries = new LinkedList<>();
 
-    public TraversingQueue(boolean priority) {
+    public TraversingQueue(boolean priority, boolean trace) {
         this.priority = priority;
+        this.trace = trace;
     }
 
     @Override
@@ -65,6 +67,7 @@ public class TraversingQueue<E> implements SerialQueue<E> {
 
     private E maxFirstTier() {
         assert !firstTierEntries.isEmpty() : "Must not be called if firstTierEntries is empty";
+        StringBuilder builder = new StringBuilder("Queue:[ ");
         long time = System.nanoTime();
         Iterator<E> it = firstTierEntries.iterator();
         E max = it.next();
@@ -72,6 +75,7 @@ public class TraversingQueue<E> implements SerialQueue<E> {
         if (task(max).targetPreviouslyCompiled()) {
             return remove(max);
         }
+        append(builder, task(max), maxWeight);
         while (it.hasNext()) {
             E entry = it.next();
             if (task(entry).targetPreviouslyCompiled()) {
@@ -79,12 +83,25 @@ public class TraversingQueue<E> implements SerialQueue<E> {
             }
             CompilationTask task = task(entry);
             double weight = task.weight(time);
+            append(builder, task, weight);
             if (weight > maxWeight) {
                 maxWeight = weight;
                 max = entry;
             }
         }
+        builder.append("]");
+        if (trace) {
+            builder.append(System.lineSeparator());
+            builder.append("Picked: ");
+            append(builder, task(max), maxWeight);
+            builder.append(" ").append(task(max).name());
+            System.out.println(builder);
+        }
         return remove(max);
+    }
+
+    private StringBuilder append(StringBuilder builder, CompilationTask task, double maxWeight) {
+        return builder.append(task.getId()).append(":").append(maxWeight).append(" ");
     }
 
     private E remove(E max) {

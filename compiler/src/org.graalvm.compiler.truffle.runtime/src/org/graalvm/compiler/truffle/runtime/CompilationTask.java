@@ -218,6 +218,15 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return target.getHighestCompiledTier() > 0;
     }
 
+    public long getId() {
+        return id;
+    }
+
+    public String name() {
+        OptimizedCallTarget target = targetRef.get();
+        return target == null ? "" : target.toString();
+    }
+
     /**
      * Since {@link BackgroundCompileQueue} uses a {@link java.util.concurrent.ThreadPoolExecutor}
      * to run compilations, and since the executor expects each {@link Callable} (in our case, the

@@ -134,7 +134,8 @@ public class BackgroundCompileQueue {
 
             if (callTarget.getOptionValue(PolyglotCompilerOptions.ConfigurableCompilationQueue)) {
                 boolean priority = callTarget.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
-                this.compilationQueue = new DelegatingBlockingQueue<>(new TraversingQueue<>(priority));
+                boolean trace = callTarget.getOptionValue(PolyglotCompilerOptions.TraceCompilationQueue);
+                this.compilationQueue = new DelegatingBlockingQueue<>(new TraversingQueue<>(priority, trace));
             } else {
                 this.compilationQueue = new IdlingPriorityBlockingQueue<>();
             }
