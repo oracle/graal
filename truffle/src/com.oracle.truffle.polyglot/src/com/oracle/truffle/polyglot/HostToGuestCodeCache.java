@@ -441,6 +441,7 @@ final class HostToGuestCodeCache {
 
     final CallTarget getHashEntryKey = createGuestToHost(new GuestToHostRootNode(ProxyHashEntry.class, "getKey") {
         @Override
+        @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
             return ((ProxyHashEntry) receiver).getKey();
         }
@@ -448,8 +449,22 @@ final class HostToGuestCodeCache {
 
     final CallTarget getHashEntryValue = createGuestToHost(new GuestToHostRootNode(ProxyHashEntry.class, "getValue") {
         @Override
+        @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
             return ((ProxyHashEntry) receiver).getValue();
+        }
+    });
+
+    final CallTarget setHashEntryValue = createGuestToHost(new GuestToHostRootNode(ProxyHashEntry.class, "setValue") {
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
+            try {
+                ((ProxyHashEntry) receiver).setValue((Value) arguments[ARGUMENT_OFFSET]);
+                return null;
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
         }
     });
 }

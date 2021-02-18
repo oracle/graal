@@ -1975,6 +1975,37 @@ final class HostObject implements TruffleObject {
         }
     }
 
+    @ExportMessage
+    abstract static class SetHashEntryValue {
+
+        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
+        @SuppressWarnings("unchecked")
+        protected static void doMapEntry(HostObject receiver, Object value,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
+                        @Shared("toHost") @Cached ToHostNode toHost,
+                        @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException {
+            Object hostValue;
+            try {
+                hostValue = toHost.execute(value, Object.class, null, receiver.languageContext, true);
+            } catch (PolyglotEngineException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+            }
+            setValueImpl((Map.Entry<Object, Object>) receiver.obj, hostValue);
+        }
+
+        @TruffleBoundary
+        private static Object setValueImpl(Map.Entry<Object, Object> entry, Object value) {
+            return entry.setValue(value);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isMapEntry.execute(receiver)", limit = "1")
+        protected static void doNotMapEntry(HostObject receiver, Object value, @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasMetaObject() {

@@ -145,12 +145,6 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException mapEntryUnsupported(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, String operation) {
-        String message = String.format("Unsupported operation %s for Map.Entry<%s, %s> %s.", operation, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver));
-        throw PolyglotEngineException.unsupported(message);
-    }
-
-    @TruffleBoundary
     static RuntimeException invalidMapValue(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, Object identifier, Object value) {
         throw PolyglotEngineException.classCast(
                         String.format("Invalid value %s for Map<%s, %s> %s and identifier '%s'.",
@@ -168,6 +162,19 @@ final class HostInteropErrors {
                             String.format("Illegal identifier type '%s' for Map<%s, %s> %s.", identifier == null ? "null" : identifier.getClass().getTypeName(), formatComponentType(keyType),
                                             formatComponentType(valueType), getValueInfo(context, receiver)));
         }
+    }
+
+    @TruffleBoundary
+    static RuntimeException mapEntryUnsupported(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, String operation) {
+        String message = String.format("Unsupported operation %s for Map.Entry<%s, %s> %s.", operation, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException invalidMapEntryValue(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, Object value) {
+        throw PolyglotEngineException.classCast(
+                        String.format("Invalid value %s for Map.Entry<%s, %s> %s.",
+                                        getValueInfo(context, value), formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver)));
     }
 
     @TruffleBoundary

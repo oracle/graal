@@ -843,6 +843,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Value getHashEntryKey(Object receiver);
 
         public abstract Value getHashEntryValue(Object receiver);
+
+        public abstract void setHashEntryValue(Object receiver, Object value);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

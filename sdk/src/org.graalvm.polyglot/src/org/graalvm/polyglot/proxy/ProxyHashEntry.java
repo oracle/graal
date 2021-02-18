@@ -40,22 +40,35 @@
  */
 package org.graalvm.polyglot.proxy;
 
+import org.graalvm.polyglot.Value;
+
+import java.util.Map;
+
 public interface ProxyHashEntry extends Proxy {
 
     Object getKey();
 
     Object getValue();
 
-    static ProxyHashEntry create(Object key, Object value) {
+    default void setValue(@SuppressWarnings("unused") Value value) {
+        throw new UnsupportedOperationException();
+    }
+
+    static ProxyHashEntry create(Map.Entry<Object, Object> entry) {
         return new ProxyHashEntry() {
             @Override
             public Object getKey() {
-                return key;
+                return entry.getKey();
             }
 
             @Override
             public Object getValue() {
-                return value;
+                return entry.getValue();
+            }
+
+            @Override
+            public void setValue(Value value) {
+                entry.setValue(value.isHostObject() ? value.asHostObject() : value);
             }
         };
     }

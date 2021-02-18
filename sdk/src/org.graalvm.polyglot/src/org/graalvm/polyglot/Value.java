@@ -1866,7 +1866,7 @@ public final class Value {
         return impl.getHashValue(receiver, key);
     }
 
-    public void putHashEntry(Object key, Object value) throws UnsupportedOperationException {
+    public void putHashEntry(Object key, Object value) throws IllegalArgumentException, UnsupportedOperationException {
         impl.putHashEntry(receiver, key, value);
     }
 
@@ -1888,6 +1888,10 @@ public final class Value {
 
     public Value getHashEntryValue() throws UnsupportedOperationException {
         return impl.getHashEntryValue(receiver);
+    }
+
+    public void setHashEntryValue(Object value) throws IllegalArgumentException, UnsupportedOperationException {
+        impl.setHashEntryValue(receiver, value);
     }
 
     /**

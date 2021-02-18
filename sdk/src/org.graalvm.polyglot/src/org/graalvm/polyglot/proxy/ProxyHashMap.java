@@ -104,7 +104,7 @@ public interface ProxyHashMap {
 
             @Override
             public Object getEntriesIterator() {
-                Iterator<? extends Map.Entry<?, ?>> entryIterator = values.entrySet().iterator();
+                Iterator<Map.Entry<Object, Object>> entryIterator = values.entrySet().iterator();
                 return new ProxyIterator() {
                     @Override
                     public boolean hasNext() {
@@ -113,8 +113,8 @@ public interface ProxyHashMap {
 
                     @Override
                     public Object getNext() throws NoSuchElementException, UnsupportedOperationException {
-                        Map.Entry<?, ?> entry = entryIterator.next();
-                        return ProxyHashEntry.create(entry.getKey(), entry.getValue());
+                        Map.Entry<Object, Object> entry = entryIterator.next();
+                        return ProxyHashEntry.create(entry);
                     }
                 };
             }

@@ -931,6 +931,11 @@ public abstract class InteropLibrary extends Library {
         throw UnsupportedMessageException.create();
     }
 
+    @Abstract(ifExported = {"isHashEntry"})
+    public void setHashEntryValue(Object receiver, Object value) throws UnsupportedMessageException, UnsupportedTypeException {
+        throw UnsupportedMessageException.create();
+    }
+
     // Array Messages
 
     /**
