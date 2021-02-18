@@ -96,12 +96,13 @@ public final class HostAccess {
     private final boolean allowAllClassImplementations;
     final boolean allowArrayAccess;
     final boolean allowListAccess;
+    final boolean allowMapAccess;
     final boolean allowBufferAccess;
     final boolean allowIterableAccess;
     final boolean allowIteratorAccess;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -151,7 +152,7 @@ public final class HostAccess {
                     allowPublicAccess(true).//
                     allowAllImplementations(true).//
                     allowAllClassImplementations(true).//
-                    allowArrayAccess(true).allowListAccess(true).allowBufferAccess(true).//
+                    allowArrayAccess(true).allowListAccess(true).allowBufferAccess(true).allowMapAccess(true).//
                     allowIterableAccess(true).allowIteratorAccess(true).//
                     name("HostAccess.ALL").build();
 
@@ -173,7 +174,7 @@ public final class HostAccess {
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
                     boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
-                    boolean allowIterableAccess, boolean allowIteratorAccess) {
+                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
@@ -187,6 +188,7 @@ public final class HostAccess {
         this.allowAllClassImplementations = allowAllClassImplementations;
         this.allowArrayAccess = allowArrayAccess;
         this.allowListAccess = allowListAccess;
+        this.allowMapAccess = allowMapAccess;
         this.allowBufferAccess = allowBufferAccess;
         this.allowIterableAccess = allowListAccess || allowIterableAccess;
         this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowIteratorAccess;
@@ -208,6 +210,7 @@ public final class HostAccess {
                         && allowAllClassImplementations == other.allowAllClassImplementations//
                         && allowArrayAccess == other.allowArrayAccess//
                         && allowListAccess == other.allowListAccess//
+                        && allowMapAccess == other.allowMapAccess//
                         && allowIterableAccess == other.allowIterableAccess//
                         && allowIteratorAccess == other.allowIteratorAccess//
                         && equalsMap(excludeTypes, other.excludeTypes)//
@@ -230,6 +233,7 @@ public final class HostAccess {
                         allowAllClassImplementations,
                         allowArrayAccess,
                         allowListAccess,
+                        allowMapAccess,
                         allowIterableAccess,
                         allowIteratorAccess,
                         hashMap(excludeTypes),
@@ -561,6 +565,7 @@ public final class HostAccess {
         private boolean allowPublic;
         private boolean allowArrayAccess;
         private boolean allowListAccess;
+        private boolean allowMapAccess;
         private boolean allowBufferAccess;
         private boolean allowIterableAccess;
         private boolean allowIteratorAccess;
@@ -583,6 +588,7 @@ public final class HostAccess {
             this.targetMappings = access.targetMappings;
             this.allowPublic = access.allowPublic;
             this.allowListAccess = access.allowListAccess;
+            this.allowMapAccess = access.allowMapAccess;
             this.allowArrayAccess = access.allowArrayAccess;
             this.allowIterableAccess = access.allowIterableAccess;
             this.allowIteratorAccess = access.allowIteratorAccess;
@@ -781,6 +787,18 @@ public final class HostAccess {
          */
         public Builder allowListAccess(boolean listAccess) {
             this.allowListAccess = listAccess;
+            return this;
+        }
+
+
+        /**
+         * Allows the guest application to access map element with dot operator.
+         * By default no map access is allowed.
+         *
+         * @since 21.1
+         */
+        public Builder allowMapAccess(boolean mapAccess) {
+            this.allowMapAccess = mapAccess;
             return this;
         }
 
@@ -988,7 +1006,7 @@ public final class HostAccess {
          */
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
-                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess, allowIteratorAccess);
+                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess, allowIteratorAccess, allowMapAccess);
         }
     }
 

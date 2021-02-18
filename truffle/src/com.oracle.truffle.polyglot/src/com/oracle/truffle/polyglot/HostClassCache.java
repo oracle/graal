@@ -65,6 +65,7 @@ final class HostClassCache {
     final HostAccess hostAccess;
     private final boolean arrayAccess;
     private final boolean listAccess;
+    private final boolean mapAccess;
     private final boolean bufferAccess;
     private final boolean iterableAccess;
     private final boolean iteratorAccess;
@@ -75,6 +76,7 @@ final class HostClassCache {
         this.hostAccess = conf;
         this.arrayAccess = apiAccess.isArrayAccessible(hostAccess);
         this.listAccess = apiAccess.isListAccessible(hostAccess);
+        this.mapAccess = apiAccess.isMapAccessible(hostAccess);
         this.bufferAccess = apiAccess.isBufferAccessible(hostAccess);
         this.iterableAccess = apiAccess.isIterableAccessible(hostAccess);
         this.iteratorAccess = apiAccess.isIteratorAccessible(hostAccess);
@@ -227,6 +229,10 @@ final class HostClassCache {
 
     boolean isListAccess() {
         return listAccess;
+    }
+
+    boolean isMapAccess() {
+        return mapAccess;
     }
 
     boolean isBufferAccess() {

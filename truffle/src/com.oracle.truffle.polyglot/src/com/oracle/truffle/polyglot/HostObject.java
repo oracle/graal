@@ -84,6 +84,7 @@ import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
@@ -276,6 +277,14 @@ final class HostObject implements TruffleObject {
         }
         boolean isStatic = isStaticClass();
         Class<?> lookupClass = getLookupClass();
+
+        if (this.getHostClassCache().isMapAccess() && this.obj instanceof Map) {
+            final Map<?, ?> mapObject = (Map<?, ?>) this.obj;
+            if (mapObject.containsKey(name)) {
+                return mapObject.get(name);
+            }
+        }
+
         HostFieldDesc foundField = lookupField.execute(this, lookupClass, name, isStatic);
         if (foundField != null) {
             return readField.execute(foundField, this);

@@ -675,6 +675,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isMapAccessible(HostAccess access) {
+            return access.allowMapAccess;
+        }
+
+        @Override
         public boolean isBufferAccessible(HostAccess access) {
             return access.allowBufferAccess;
         }

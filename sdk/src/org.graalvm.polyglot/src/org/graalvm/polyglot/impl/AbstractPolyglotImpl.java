@@ -180,6 +180,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isListAccessible(HostAccess access);
 
+        public abstract boolean isMapAccessible(HostAccess access);
+
         public abstract boolean isBufferAccessible(HostAccess access);
 
         public abstract boolean isIterableAccessible(HostAccess access);
