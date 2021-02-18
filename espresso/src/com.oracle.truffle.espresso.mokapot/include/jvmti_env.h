@@ -26,21 +26,7 @@
 #include <trufflenfi.h>
 #include <jni.h>
 
-JNIEXPORT void* JNICALL initializeJvmtiContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *), const int version);
+JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *), const int version);
 
-JNIEXPORT void JNICALL disposeJvmtiContext(TruffleEnv *truffle_env, void *management_ptr, int version);
-
-/* 
- * JVMCI interface changes dramatically between versions, changing
- * functions offset, thus breaking compatibility. 
- * 
- * Since the differentiation between which version we will use is 
- * done at runtime, we need to provide the native part of espresso with
- * a way to choose which of the interface to create, depending on the 
- * requested version.
- */
-
-void* initializeJvmtiContextImpl(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
-
-void disposeJvmtiContextImpl(TruffleEnv *truffle_env, void *management_ptr);
+JNIEXPORT void JNICALL disposeJvmtiContext(TruffleEnv *truffle_env, jvmtiEnv *env, int version);
 #endif // _MANAGEMENT_H
