@@ -80,7 +80,7 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
     private final @Pointer TruffleObject dlsym;
     private final DefaultLibrary defaultLibrary;
 
-    public NFIIsolatedNativeAccess(TruffleLanguage.Env env) {
+    NFIIsolatedNativeAccess(TruffleLanguage.Env env) {
         super(env);
         // libeden.so must be the first library loaded in the isolated namespace.
         Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
