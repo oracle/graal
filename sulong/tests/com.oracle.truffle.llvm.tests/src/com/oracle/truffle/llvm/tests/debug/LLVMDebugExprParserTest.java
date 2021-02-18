@@ -62,6 +62,7 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.DebuggerTester;
 
@@ -82,10 +83,17 @@ public final class LLVMDebugExprParserTest {
     @Parameters(name = "{0}")
     public static Collection<Object[]> getConfigurations() {
         try (Stream<Path> dirs = Files.walk(BC_DIR_PATH)) {
-            return dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{getTestSource(path), CONFIGURATION}).collect(Collectors.toSet());
+            return dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{getTestSource(path), CONFIGURATION}).filter(x -> includeFilter(x[0])).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Error while finding tests!", e);
         }
+    }
+
+    private static boolean includeFilter(Object testName) {
+        if (Platform.isAArch64()) {
+            return !"testPointerStruct.c".equals(testName);
+        }
+        return true;
     }
 
     private static String getTestSource(Path path) {
