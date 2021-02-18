@@ -176,8 +176,17 @@ def _unittest_config_participant(config):
 
 
 def get_test_distribution_path_properties(suite):
-    return ['-Dsulongtest.path.{}={}'.format(d.name, d.get_output()) for d in suite.dists if
-            d.is_test_distribution() and not d.isClasspathDependency()]
+    def _generate():
+        for d in suite.dists:
+            if d.is_test_distribution() and not d.isClasspathDependency():
+                yield '-Dsulongtest.path.{}={}'.format(d.name, d.get_output())
+                fileExts = set()
+                for buildDep in d.buildDependencies:
+                    if hasattr(buildDep, 'fileExts'):
+                        fileExts = fileExts.union(set(buildDep.fileExts))
+                if fileExts:
+                    yield '-Dsulongtest.fileExts.{}={}'.format(d.name, ','.join(fileExts))
+    return list(_generate())
 
 
 mx_unittest.add_config_participant(_unittest_config_participant)
