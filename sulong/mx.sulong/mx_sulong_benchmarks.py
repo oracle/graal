@@ -359,21 +359,48 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
         # Prepending the summary lines by the run number
         ret_code, out, vm_dims = result
-        newResult = ""
-        forkNum1 = 0
-        forkNum2 = 0
+        new_result = ""
+
+        # "forknums"
+        first_20_warmup_iters_runs = 0
+        last_10_iters_runs = 0
+        pure_startup_runs = 0
+        startup_runs = 0
+        early_warmup_runs = 0
+        late_warmup_runs = 0
+
+        def make_runs_line(runs, line):
+            return "run " + str(runs) + " " + line + "\n"
+
         for line in out.splitlines():
             if line.startswith("first"):
-                newResult += "run " + str(forkNum1) + " " + line + "\n"
-                forkNum1 += 1
+                new_result += make_runs_line(first_20_warmup_iters_runs, line)
+                first_20_warmup_iters_runs += 1
                 continue
-            if line.startswith("last"):
-                newResult += "run " + str(forkNum2) + " " + line + "\n"
-                forkNum2 += 1
+            elif line.startswith("last"):
+                new_result += make_runs_line(last_10_iters_runs, line)
+                last_10_iters_runs += 1
                 continue
-            newResult += line + "\n"
+            elif line.startswith("Pure-startup"):
+                new_result += make_runs_line(pure_startup_runs, line)
+                pure_startup_runs += 1
+                continue
+            elif line.startswith("Startup"):
+                new_result += make_runs_line(startup_runs, line)
+                startup_runs += 1
+                continue
+            elif line.startswith("Early-warmup"):
+                new_result += make_runs_line(early_warmup_runs, line)
+                early_warmup_runs += 1
+                continue
+            elif line.startswith("Late-warmup"):
+                new_result += make_runs_line(late_warmup_runs, line)
+                late_warmup_runs += 1
+                continue
 
-        return ret_code, newResult, vm_dims
+            new_result += line + "\n"
+
+        return ret_code, new_result, vm_dims
 
     def prepare_env(self, env):
         # if hasattr(self.host_vm(), 'run_launcher'):
