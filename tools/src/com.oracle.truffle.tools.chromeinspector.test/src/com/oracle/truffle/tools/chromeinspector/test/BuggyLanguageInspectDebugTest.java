@@ -102,6 +102,23 @@ public class BuggyLanguageInspectDebugTest {
             }
 
             @Override
+            protected boolean isMetaObject() {
+                return true;
+            }
+
+            @Override
+            protected String getMetaSimpleName() throws UnsupportedMessageException {
+                throwBugCallback.accept(id);
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+
+            @Override
+            protected String getMetaQualifiedName() throws UnsupportedMessageException {
+                throwBugCallback.accept(id);
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+
+            @Override
             protected Object toDisplayString(boolean allowSideEffects) {
                 throwBugCallback.accept(id);
                 throw CompilerDirectives.shouldNotReachHere();
