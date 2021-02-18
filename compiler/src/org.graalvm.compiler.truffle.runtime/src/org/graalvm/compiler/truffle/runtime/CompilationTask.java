@@ -44,6 +44,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private final BackgroundCompileQueue.Priority priority;
     private int lastCount;
     private long lastTime;
+    private double lastWeight;
     private final boolean multiTier;
     private final boolean priorityQueue;
     private final long id;
@@ -82,6 +83,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         OptimizedCallTarget target = targetRef.get();
         lastCount = target != null ? target.getCallAndLoopCount() : Integer.MIN_VALUE;
         lastTime = System.nanoTime();
+        lastWeight = target != null ? target.getCallAndLoopCount() : -1;
         priorityQueue = target != null && target.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
         multiTier = target != null && target.getOptionValue(PolyglotCompilerOptions.MultiTier);
     }
@@ -191,15 +193,20 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         if (target == null) {
             return -1.0;
         }
+        long elapsed = time - lastTime;
+        if (elapsed < 1_000_000) {
+            return lastWeight;
+        }
         int count = target.getCallAndLoopCount();
-        double weight = rate(count, time) * count;
+        double weight = rate(count, elapsed) * count;
         lastTime = time;
         lastCount = count;
+        lastWeight = weight;
         return weight;
     }
 
-    private double rate(int count, long time) {
-        double rawRate = (double) ((count) - lastCount) / (time - lastTime);
+    private double rate(int count, long elapsed) {
+        double rawRate =  ((double) count - lastCount) / elapsed;
         return 1.0 + (Double.isNaN(rawRate) ? 0 : rawRate);
     }
 
