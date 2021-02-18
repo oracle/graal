@@ -67,10 +67,12 @@ public final class TruffleByteBuffer implements TruffleObject {
         return new TruffleByteBuffer(addressPtr, byteCapacity);
     }
 
+    @TruffleBoundary
     public static @Buffer TruffleObject allocateDirectStringUTF8(String string) {
         return allocateDirectString(string, StandardCharsets.UTF_8);
     }
 
+    @TruffleBoundary
     public static @Buffer TruffleObject allocateDirectString(String string, Charset charset) {
         byte[] bytes = string.getBytes(charset);
         ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length + 1);
