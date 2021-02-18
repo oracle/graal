@@ -38,9 +38,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
@@ -91,13 +89,9 @@ public final class LLVMDebugExprParserTest {
         }
     }
 
-    private static final List<String> aarch64Exclude = Arrays.asList(
-                    "testInvalid.c",
-                    "testPointerStruct.c");
-
     private static boolean includeFilter(Object testName) {
         if (Platform.isAArch64()) {
-            return !aarch64Exclude.contains(testName);
+            return !"testPointerStruct.c".equals(testName);
         }
         return true;
     }
