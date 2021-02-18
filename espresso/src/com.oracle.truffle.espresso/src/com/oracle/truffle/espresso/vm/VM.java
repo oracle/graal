@@ -39,7 +39,6 @@ import java.io.File;
 import java.lang.reflect.Array;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -277,7 +276,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
 
             getPackageAt = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getPackageAt",
-                    NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
+                            NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
             this.mokapotEnvPtr = initializeAndGetEnv(true, initializeMokapotContext, jniEnv.getNativePointer());
             this.rtldDefaultValue = getUncached().asPointer(getUncached().execute(mokapotGetRTLDDefault));
             assert getUncached().isPointer(this.mokapotEnvPtr);
@@ -771,8 +770,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
             interopPtr = jniEnv.getNativePointer();
         }
         if (interopPtr != null) {
-            LongBuffer buf = NativeUtils.directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
-            buf.put(NativeUtils.interopAsPointer(interopPtr));
+            NativeUtils.writeToPointerPointer(getUncached(), envPtr, interopPtr);
             return JNI_OK;
         }
         return JNI_EVERSION;
@@ -2104,8 +2102,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
         if (bufLen > 0) {
             getContext().getJNI().GetJavaVM(vmBufPtr);
             if (!getUncached().isNull(numVMsPtr)) {
-                IntBuffer numVMsBuf = NativeUtils.directByteBuffer(numVMsPtr, 1, JavaKind.Int).asIntBuffer();
-                numVMsBuf.put(1);
+                NativeUtils.writeToIntPointer(getUncached(), numVMsPtr, 1);
             }
         }
         return JNI_OK;

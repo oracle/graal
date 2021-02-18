@@ -120,6 +120,7 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         return initializeAndGetEnv(false, initializeFunctionPointer, extraArgs);
     }
 
+    @TruffleBoundary
     protected TruffleObject initializeAndGetEnv(boolean prependExtra, TruffleObject initializeFunctionPointer, Object... extraArgs) {
         // Prepare call and initialize helper structures
         Object[] newArgs = prepareInit(prependExtra, extraArgs);

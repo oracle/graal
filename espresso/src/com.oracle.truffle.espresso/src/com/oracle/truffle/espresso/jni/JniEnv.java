@@ -41,19 +41,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.ffi.NativeSignature;
-import com.oracle.truffle.espresso.ffi.NativeType;
-import com.oracle.truffle.espresso.ffi.Pointer;
-import com.oracle.truffle.espresso.ffi.RawPointer;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -61,6 +54,11 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Validation;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -320,38 +318,34 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
     private JniEnv(EspressoContext context) {
         EspressoProperties props = context.getVmProperties();
         this.context = context;
-        try {
-            Path espressoLibraryPath = props.espressoHome().resolve("lib");
-            nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
-            initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "initializeNativeContext",
-                            NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
-            disposeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "disposeNativeContext",
-                            NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
+        Path espressoLibraryPath = props.espressoHome().resolve("lib");
+        nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
+        initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "initializeNativeContext",
+                        NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
+        disposeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "disposeNativeContext",
+                        NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
 
-            getSizeMax = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "get_SIZE_MAX", NativeSignature.create(NativeType.LONG));
+        getSizeMax = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "get_SIZE_MAX", NativeSignature.create(NativeType.LONG));
 
-            assert sizeMax() > Integer.MAX_VALUE : "size_t must be 64-bit wide";
+        assert sizeMax() > Integer.MAX_VALUE : "size_t must be 64-bit wide";
 
-            // Varargs native bindings.
-            popBoolean = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_boolean", NativeSignature.create(NativeType.BOOLEAN, NativeType.POINTER));
-            popByte = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_byte", NativeSignature.create(NativeType.BYTE, NativeType.POINTER));
-            popChar = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_char", NativeSignature.create(NativeType.CHAR, NativeType.POINTER));
-            popShort = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_short", NativeSignature.create(NativeType.SHORT, NativeType.POINTER));
-            popInt = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_int", NativeSignature.create(NativeType.INT, NativeType.POINTER));
-            popFloat = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_float", NativeSignature.create(NativeType.FLOAT, NativeType.POINTER));
-            popDouble = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_double", NativeSignature.create(NativeType.DOUBLE, NativeType.POINTER));
-            popLong = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_long", NativeSignature.create(NativeType.LONG, NativeType.POINTER));
-            popObject = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_object", NativeSignature.create(NativeType.OBJECT, NativeType.POINTER));
+        // Varargs native bindings.
+        popBoolean = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_boolean", NativeSignature.create(NativeType.BOOLEAN, NativeType.POINTER));
+        popByte = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_byte", NativeSignature.create(NativeType.BYTE, NativeType.POINTER));
+        popChar = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_char", NativeSignature.create(NativeType.CHAR, NativeType.POINTER));
+        popShort = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_short", NativeSignature.create(NativeType.SHORT, NativeType.POINTER));
+        popInt = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_int", NativeSignature.create(NativeType.INT, NativeType.POINTER));
+        popFloat = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_float", NativeSignature.create(NativeType.FLOAT, NativeType.POINTER));
+        popDouble = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_double", NativeSignature.create(NativeType.DOUBLE, NativeType.POINTER));
+        popLong = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_long", NativeSignature.create(NativeType.LONG, NativeType.POINTER));
+        popObject = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_object", NativeSignature.create(NativeType.OBJECT, NativeType.POINTER));
 
-            this.jniEnvPtr = initializeAndGetEnv(initializeNativeContext);
-            assert getUncached().isPointer(jniEnvPtr);
+        this.jniEnvPtr = initializeAndGetEnv(initializeNativeContext);
+        assert getUncached().isPointer(jniEnvPtr);
 
-            this.handles = new JNIHandles();
+        this.handles = new JNIHandles();
 
-            assert jniEnvPtr != null && !getUncached().isNull(jniEnvPtr);
-        } catch (UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
-            throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
-        }
+        assert jniEnvPtr != null && !getUncached().isNull(jniEnvPtr);
     }
 
     @Override
@@ -2720,8 +2714,7 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
 
     @JniImpl
     public int GetJavaVM(@Pointer TruffleObject vmPtr) {
-        ByteBuffer buf = NativeUtils.directByteBuffer(vmPtr, 1, JavaKind.Long); // 64 bits pointer
-        buf.putLong(NativeUtils.interopAsPointer(getVM().getJavaVM()));
+        NativeUtils.writeToPointerPointer(getUncached(), vmPtr, getVM().getJavaVM());
         return JNI_OK;
     }
 
