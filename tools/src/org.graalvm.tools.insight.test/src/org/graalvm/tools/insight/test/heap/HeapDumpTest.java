@@ -94,12 +94,12 @@ public class HeapDumpTest {
         }
         Source nullSource = new Source(null, null, null, null, null);
         heap.invokeMember("record", new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<Object, Object>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
         }, 1);
 
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
         heap.invokeMember("record", new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<Object, Object>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
         }, 1);
     }
 
