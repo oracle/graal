@@ -56,7 +56,7 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
     private final EspressoContext context;
 
     @CompilationFinal //
-    private @Pointer TruffleObject jvmtiPtr;
+    private @Pointer TruffleObject jvmtiEnvPtr;
     @CompilationFinal //
     private int jvmtiVersion;
 
@@ -80,11 +80,11 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
 
         public TruffleObject create(int version) {
             if (!isSupportedJvmtiVersion(version)) {
-                return RawPointer.nullInstance();
+                return null;
             }
             JVMTI jvmti = new JVMTI(context, initializeJvmtiContext, version);
             created.add(jvmti);
-            return jvmti.jvmtiPtr;
+            return jvmti.jvmtiEnvPtr;
         }
 
         public void dispose() {
@@ -97,13 +97,17 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
     public JVMTI(EspressoContext context, TruffleObject initializeJvmtiContext, int version) {
         this.context = context;
         try {
-            jvmtiPtr = (TruffleObject) getUncached().execute(initializeJvmtiContext, getLookupCallback(), version);
+            jvmtiEnvPtr = (TruffleObject) getUncached().execute(initializeJvmtiContext, getLookupCallback(), version);
             jvmtiVersion = version;
-            assert getUncached().isPointer(jvmtiPtr);
+            assert getUncached().isPointer(jvmtiEnvPtr);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
-        assert jvmtiPtr != null && !getUncached().isNull(jvmtiPtr);
+        assert jvmtiEnvPtr != null && !getUncached().isNull(jvmtiEnvPtr);
+    }
+
+    public static boolean isJvmtiVersion(int version) {
+        return JvmtiVersion.isJvmtiVersion(version);
     }
 
     public static boolean isSupportedJvmtiVersion(int version) {
@@ -111,10 +115,10 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
     }
 
     public void dispose(TruffleObject disposeJvmtiContext) {
-        if (jvmtiPtr != null) {
+        if (jvmtiEnvPtr != null) {
             try {
-                getUncached().execute(disposeJvmtiContext, jvmtiPtr, jvmtiVersion);
-                this.jvmtiPtr = null;
+                getUncached().execute(disposeJvmtiContext, jvmtiEnvPtr, jvmtiVersion);
+                this.jvmtiEnvPtr = null;
                 this.jvmtiVersion = 0;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere("Cannot dispose Espresso jvmti (mokapot).");

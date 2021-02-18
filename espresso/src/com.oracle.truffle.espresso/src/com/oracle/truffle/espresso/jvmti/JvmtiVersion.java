@@ -23,7 +23,9 @@
 
 package com.oracle.truffle.espresso.jvmti;
 
+@SuppressWarnings("unused")
 class JvmtiVersion {
+    // Known versions
     private static final int JVMTI_VERSION_1 = 0x30010000;
     private static final int JVMTI_VERSION_1_0 = 0x30010000;
     private static final int JVMTI_VERSION_1_1 = 0x30010100;
@@ -33,7 +35,57 @@ class JvmtiVersion {
     /* version: 11.0. 0 */
     private static final int JVMTI_VERSION = 0x30000000 + (11 * 0x10000) + (0 * 0x100) + 0;
 
+    // Version bit fiddling
+    private static final int JVMTI_VERSION_MASK = 0x70000000;
+    private static final int JVMTI_VERSION_VALUE = 0x30000000;
+
+    public static boolean isJvmtiVersion(int version) {
+        return (version & JVMTI_VERSION_MASK) == JVMTI_VERSION_VALUE;
+    }
+
     public static boolean isSupportedJvmtiVersion(int version) {
-        return version == JVMTI_VERSION || version == JVMTI_VERSION_1_1;
+        return DecodedJVMTIVersion.decode(version).isSupported();
+    }
+
+    private static final class DecodedJVMTIVersion {
+        private static final int JVMTI_VERSION_MASK_MAJOR = 0x0FFF0000;
+        private static final int JVMTI_VERSION_MASK_MINOR = 0x0000FF00;
+        private static final int JVMTI_VERSION_MASK_MICRO = 0x000000FF;
+
+        private static final int JVMTI_VERSION_SHIFT_MAJOR = 16;
+        private static final int JVMTI_VERSION_SHIFT_MINOR = 8;
+        private static final int JVMTI_VERSION_SHIFT_MICRO = 0;
+
+        private final int major;
+        private final int minor;
+        private final int micro;
+
+        DecodedJVMTIVersion(int major, int minor, int micro) {
+            this.major = major;
+            this.minor = minor;
+            this.micro = micro;
+        }
+
+        static DecodedJVMTIVersion decode(int version) {
+            return new DecodedJVMTIVersion((version & JVMTI_VERSION_MASK_MAJOR) >> JVMTI_VERSION_SHIFT_MAJOR,
+                            (version & JVMTI_VERSION_MASK_MINOR) >> JVMTI_VERSION_SHIFT_MINOR,
+                            (version & JVMTI_VERSION_MASK_MICRO) >> JVMTI_VERSION_SHIFT_MICRO);
+        }
+
+        boolean isSupported() {
+            if (major == 1) {
+                // version 1.{0,1,2}.<micro> is recognized
+                return (minor == 0) || (minor == 1) || (minor == 2);
+            }
+            if (major == 9) {
+                // version 9.0.<micro> is recognized
+                return (minor == 0);
+            }
+            if (major == 11) {
+                // version 11.0.<micro> is recognized
+                return (minor == 0);
+            }
+            return false;
+        }
     }
 }

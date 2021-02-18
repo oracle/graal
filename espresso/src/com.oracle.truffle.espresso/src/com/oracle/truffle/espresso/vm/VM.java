@@ -760,20 +760,24 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
     @TruffleBoundary
     public int GetEnv(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject envPtr, int version) {
         assert NativeUtils.interopAsPointer(getJavaVM()) == NativeUtils.interopAsPointer(vmPtr_);
-        if (JVMTI.isSupportedJvmtiVersion(version)) {
+        TruffleObject interopPtr = null;
+        if (JVMTI.isJvmtiVersion(version)) {
             // JVMTI is requested before the main thread is created.
-            LongBuffer buf = NativeUtils.directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
-            TruffleObject interopPtr = jvmti.create(version);
-            buf.put(NativeUtils.interopAsPointer(interopPtr));
-            return JNI_OK;
-        }
-        StaticObject currentThread = getContext().getGuestThreadFromHost(Thread.currentThread());
-        if (currentThread == null) {
-            return JNI_EDETACHED;
+            interopPtr = jvmti.create(version);
+            if (interopPtr == null) {
+                return JNI_EVERSION;
+            }
         }
         if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
+            StaticObject currentThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+            if (currentThread == null) {
+                return JNI_EDETACHED;
+            }
+            interopPtr = jniEnv.getNativePointer();
+        }
+        if (interopPtr != null) {
             LongBuffer buf = NativeUtils.directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
-            buf.put(NativeUtils.interopAsPointer(jniEnv.getNativePointer()));
+            buf.put(NativeUtils.interopAsPointer(interopPtr));
             return JNI_OK;
         }
         return JNI_EVERSION;
