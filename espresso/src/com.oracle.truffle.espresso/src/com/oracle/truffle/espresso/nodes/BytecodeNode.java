@@ -2493,7 +2493,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                 // don't allow multiple entries with same line, keep only the first one
                 // reduce the checks needed heavily by keeping track of max seen line number
                 int[] seenLines = new int[entries.length];
-                int maxSeenLine = 0;
+                Arrays.fill(seenLines, -1);
+                int maxSeenLine = -1;
 
                 this.statementNodes = new EspressoInstrumentableNode[entries.length];
                 this.hookBCIToNodeIndex = new MapperBCI(table);
