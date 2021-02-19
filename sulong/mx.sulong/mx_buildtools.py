@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -244,11 +244,28 @@ def isFileUpToDate(inputFile, outputFile):
     return os.path.exists(outputFile) and os.path.getmtime(inputFile) < os.path.getmtime(outputFile)
 
 def collectExcludes(path):
-    for root, _, files in os.walk(path):
-        for f in files:
-            if f.endswith('.exclude'):
-                for line in open(os.path.join(root, f)):
-                    yield line.strip()
+    def _collect(path, skip=None):
+        for root, _, files in os.walk(path):
+            if skip and skip(os.path.relpath(root, path)):
+                continue
+            for f in files:
+                if f.endswith('.exclude'):
+                    for line in open(os.path.join(root, f)):
+                        yield line.strip()
+    # use `yield from` in python 3.3
+    for x in _collect(path, lambda p: p.startswith('os_arch')):
+        yield x
+
+    os_arch_root = os.path.join(path, 'os_arch')
+    if os.path.exists(os_arch_root):
+        try:
+            os_path = next(x for x in (os.path.join(os_arch_root, os_dir) for os_dir in [mx.get_os(), 'others']) if os.path.exists(x))
+            os_arch_path = next(x for x in (os.path.join(os_path, arch_dir) for arch_dir in [mx.get_arch(), 'others']) if os.path.exists(x))
+            # use `yield from` in python 3.3
+            for x in _collect(os_arch_path):
+                yield x
+        except StopIteration:
+            pass
 
 def collectExcludePattern(path):
     return prepareMatchPattern(collectExcludes(path))
