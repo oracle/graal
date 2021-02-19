@@ -177,6 +177,7 @@ suite = {
         "test.sulongtest.lib.path" : "<path:SULONG_TEST_NATIVE>",
         "sulongtest.projectRoot" : "<path:com.oracle.truffle.llvm>/../",
         "sulongtest.source.GCC_SOURCE" : "<path:GCC_SOURCE>",
+        "sulongtest.source.LLVM_TEST_SUITE" : "<path:LLVM_TEST_SUITE>",
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -1222,7 +1223,6 @@ suite = {
     "llvm" : {
       "subDir" : "tests/llvm",
       "class" : "ExternalTestSuite",
-      "testClasses" : ["com.oracle.truffle.llvm.tests.LLVMSuite"],
       "testDir" : "test-suite-3.2.src",
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m"],
       "native" : True,
