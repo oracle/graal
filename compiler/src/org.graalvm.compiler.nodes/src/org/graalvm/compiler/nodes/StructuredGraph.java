@@ -542,6 +542,21 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     @Override
+    protected Object beforeNodeIdChange(Node node) {
+        if (node instanceof Invokable) {
+            return inliningLog.removeLeafCallsite((Invokable) node);
+        }
+        return null;
+    }
+
+    @Override
+    protected void afterNodeIdChange(Node node, Object value) {
+        if (node instanceof Invokable) {
+            inliningLog.addLeafCallsite((Invokable) node, (InliningLog.Callsite) value);
+        }
+    }
+
+    @Override
     public boolean maybeCompress() {
         if (super.maybeCompress()) {
             /*
