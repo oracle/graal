@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 import java.util.Objects;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
