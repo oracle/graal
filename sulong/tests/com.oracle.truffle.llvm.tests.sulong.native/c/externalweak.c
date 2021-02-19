@@ -30,15 +30,17 @@
 
 #include <stdio.h>
 
+#ifdef __linux__
 __attribute__((weak)) int foo();
+#else
+void *foo = NULL; //No weak external support for Darwin. This will pretend to be the same.
+#endif
 
 int main() {
-#ifdef __linux__
     if (foo) {
         printf("External weak function is defined!\n");
     } else {
         printf("External weak function is NOT defined!\n");
     }
-#endif
     return 0;
 }
