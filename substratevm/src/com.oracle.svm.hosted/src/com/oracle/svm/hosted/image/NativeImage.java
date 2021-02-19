@@ -122,7 +122,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class NativeBootImage extends AbstractBootImage {
+public abstract class NativeImage extends AbstractImage {
     public static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
 
     private final ObjectFile objectFile;
@@ -135,7 +135,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     private Section rwDataSection;
     private Section heapSection;
 
-    public NativeBootImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
+    public NativeImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
 
@@ -187,7 +187,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                         .collect(Collectors.groupingBy(Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toList())));
 
         hostedMethods.forEach((headerClass, methods) -> {
-            methods.sort(NativeBootImage::sortMethodsByFileNameAndPosition);
+            methods.sort(NativeImage::sortMethodsByFileNameAndPosition);
             Header header = headerClass == Header.class ? defaultCHeaderAnnotation(imageName) : instantiateCHeader(headerClass);
             writeHeaderFile(outputDir, header, methods, dynamic);
         });
@@ -206,7 +206,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         writer.writeCStandardHeaders();
 
         List<String> dependencies = header.dependsOn().stream()
-                        .map(NativeBootImage::instantiateCHeader)
+                        .map(NativeImage::instantiateCHeader)
                         .map(depHeader -> "<" + depHeader.name() + dynamicSuffix + ">").collect(Collectors.toList());
         writer.includeFiles(dependencies);
 
@@ -400,7 +400,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     @Override
     @SuppressWarnings("try")
     public void build(String imageName, DebugContext debug) {
-        try (DebugContext.Scope buildScope = debug.scope("NativeBootImage.build")) {
+        try (DebugContext.Scope buildScope = debug.scope("NativeImage.build")) {
             final CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
 
             long roSectionSize = codeCache.getAlignedConstantsSize();

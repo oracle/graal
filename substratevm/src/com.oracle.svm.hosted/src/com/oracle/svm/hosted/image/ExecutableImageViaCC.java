@@ -35,15 +35,15 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
-public class ExecutableViaCCBootImage extends NativeBootImageViaCC {
+public class ExecutableImageViaCC extends NativeImageViaCC {
 
-    public ExecutableViaCCBootImage(AbstractBootImage.NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
+    public ExecutableImageViaCC(AbstractImage.NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
                     NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader classLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
     }
 
     @Override
-    public String[] makeLaunchCommand(AbstractBootImage.NativeImageKind k, String imageName, Path binPath, Path workPath, Method method) {
+    public String[] makeLaunchCommand(AbstractImage.NativeImageKind k, String imageName, Path binPath, Path workPath, Method method) {
         ArrayList<String> cmd = new ArrayList<>();
         cmd.add(workPath.relativize(binPath.resolve("./" + imageName)).normalize().toString());
 

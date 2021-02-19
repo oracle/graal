@@ -885,7 +885,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String symbolNameForMethod() {
-            return NativeBootImage.localSymbolNameForMethod(hostedMethod);
+            return NativeImage.localSymbolNameForMethod(hostedMethod);
         }
 
         @Override
@@ -1059,7 +1059,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String symbolNameForMethod() {
-            return NativeBootImage.localSymbolNameForMethod(method);
+            return NativeImage.localSymbolNameForMethod(method);
         }
 
         @Override
