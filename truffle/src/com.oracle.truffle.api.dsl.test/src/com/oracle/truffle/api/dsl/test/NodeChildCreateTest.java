@@ -43,7 +43,14 @@ package com.oracle.truffle.api.dsl.test;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NodeChildCreateTestFactory.CreateTestChildNodeGen;
+import com.oracle.truffle.api.dsl.test.NodeChildCreateTestFactory.CreateTestNodeGen;
+import com.oracle.truffle.api.dsl.test.NodeChildCreateTestFactory.CustomCreateTestNodeGen;
 import com.oracle.truffle.api.nodes.Node;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class NodeChildCreateTest {
 
@@ -71,18 +78,70 @@ public class NodeChildCreateTest {
         }
     }
 
+    @Test
+    public void testImplicit() {
+        CreateTestNode node = CreateTestNodeGen.create();
+        Assert.assertThat("child0", node.getChild0(), is(notNullValue()));
+        Assert.assertTrue("child0 is adoptable", node.getChild0().isAdoptable());
+        Assert.assertEquals("result", 6, node.execute());
+    }
+
     @NodeChild(value = "child0", type = CreateTestBaseNode.class, implicitCreate = "customCreate()")
     abstract static class CustomCreateTestNode extends CreateTestBaseNode {
 
-        static CreateTestChildNode customCreate() {
-            return CreateTestChildNodeGen.create();
+        static CreateTestBaseNode customCreate() {
+            return CreateTestNodeGen.create();
         }
 
         abstract CreateTestBaseNode getChild0();
 
         @Specialization
         int doInt(int child0) {
-            return child0 + 1;
+            return child0 + 3;
+        }
+    }
+
+    @Test
+    public void testImplicitCreate() {
+        CustomCreateTestNode node = CustomCreateTestNodeGen.create();
+        Assert.assertThat("child0", node.getChild0(), is(instanceOf(CreateTestNode.class)));
+        Assert.assertTrue("child0 is adoptable", node.getChild0().isAdoptable());
+        Assert.assertEquals("result", 9, node.execute());
+    }
+
+    @ExpectError("Error parsing expression 'create()': " +
+                    "The method create is undefined for the enclosing scope.")
+    @NodeChild(type = CreateTestBaseNode.class, implicit = true)
+    abstract static class NotUncachableTestNode extends CreateTestBaseNode {
+
+        @Specialization
+        int doInt(int child0) {
+            return child0;
+        }
+    }
+
+    @ExpectError("Error parsing expression 'error': error cannot be resolved.")
+    @NodeChild(type = CreateTestBaseNode.class, implicitCreate = "error")
+    abstract static class InvalidExpressionTestNode extends CreateTestBaseNode {
+
+        @Specialization
+        int doInt(int child0) {
+            return child0;
+        }
+    }
+
+    @ExpectError("The attributes 'implicit' and 'implicitCreate' are mutually exclusive. " +
+                    "Remove one of the attributes to resolve this.")
+    @NodeChild(type = CreateTestBaseNode.class, implicitCreate = "custom()", implicit = true)
+    abstract static class RedundantPropertyTestNode extends CreateTestBaseNode {
+
+        static CreateTestBaseNode custom() {
+            return CreateTestChildNodeGen.create();
+        }
+
+        @Specialization
+        int doInt(int child0) {
+            return child0;
         }
     }
 }

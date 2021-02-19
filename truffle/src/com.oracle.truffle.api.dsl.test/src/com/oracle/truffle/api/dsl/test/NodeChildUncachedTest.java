@@ -40,12 +40,18 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.NodeChildUncachedTestFactory.CustomUncachedTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NodeChildUncachedTestFactory.TestChildNodeGen;
+import com.oracle.truffle.api.dsl.test.NodeChildUncachedTestFactory.UncachedTestNodeGen;
+import com.oracle.truffle.api.dsl.test.NodeChildUncachedTestFactory.UncachedTestWithNodeGen;
 import com.oracle.truffle.api.nodes.Node;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 public class NodeChildUncachedTest {
 
@@ -77,10 +83,22 @@ public class NodeChildUncachedTest {
         }
     }
 
+    @Test
+    public void testUncachedChild() {
+        UncachedTestNode node = UncachedTestNodeGen.getUncached();
+        Assert.assertSame("child0", TestChildNodeGen.getUncached(), node.getChild0());
+        Assert.assertEquals("execute()", 6, node.execute());
+        Assert.assertEquals("executeWith(41)", 42, node.executeWith(41));
+    }
+
     @NodeChild(value = "child0", type = TestBaseNode.class)
     @NodeChild(value = "child1", type = UncachedTestNode.class, allowUncached = true, executeWith = "child0")
     @GenerateUncached
     abstract static class UncachedTestWithNode extends TestBaseNode {
+
+        abstract TestBaseNode getChild0();
+
+        abstract UncachedTestNode getChild1();
 
         abstract int executeWith(int child0);
 
@@ -88,6 +106,28 @@ public class NodeChildUncachedTest {
         int doInt(int child0, int child1) {
             return child0 + child1;
         }
+    }
+
+    @Test
+    public void testUncachedWith() {
+        UncachedTestWithNode node = UncachedTestWithNodeGen.getUncached();
+        Assert.assertSame("child1", UncachedTestNodeGen.getUncached(), node.getChild1());
+        Assert.assertEquals("executeWith(41)", 83, node.executeWith(41));
+    }
+
+    @Rule public ExpectedException exception = ExpectedException.none();
+
+    @Test
+    public void testChildNotAvailable() {
+        exception.expectMessage("This getter method cannot be used for uncached node versions as it requires child nodes to be present.");
+        UncachedTestWithNodeGen.getUncached().getChild0();
+    }
+
+    @Test
+    public void testExecuteNotAvailable() {
+        exception.expectMessage("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
+                        "Use an execute method that takes all arguments as parameters.");
+        UncachedTestWithNodeGen.getUncached().execute();
     }
 
     @NodeChild(value = "child0", type = TestBaseNode.class, uncached = "customGetUncached()")
@@ -104,7 +144,51 @@ public class NodeChildUncachedTest {
 
         @Specialization
         int doInt(int child0) {
-            return child0 + 1;
+            return child0 + 3;
+        }
+    }
+
+    @Test
+    public void testCustomUncached() {
+        CustomUncachedTestNode node = CustomUncachedTestNodeGen.getUncached();
+        Assert.assertSame("child0", CustomUncachedTestNode.customGetUncached(), node.getChild0());
+        Assert.assertEquals("execute()", 8, node.execute());
+        Assert.assertEquals("executeWith(41)", 44, node.executeWith(41));
+    }
+
+    @ExpectError("Error parsing expression 'getUncached()': " +
+                    "The method getUncached is undefined for the enclosing scope.")
+    @NodeChild(type = TestBaseNode.class, allowUncached = true)
+    abstract static class NotUncachableTestNode extends TestBaseNode {
+
+        @Specialization
+        int doInt(int child0) {
+            return child0;
+        }
+    }
+
+    @ExpectError("Error parsing expression 'error': error cannot be resolved.")
+    @NodeChild(type = TestBaseNode.class, uncached = "error")
+    abstract static class InvalidExpressionTestNode extends TestBaseNode {
+
+        @Specialization
+        int doInt(int child0) {
+            return child0;
+        }
+    }
+
+    @ExpectError("The attributes 'allowUncached' and 'uncached' are mutually exclusive. " +
+                    "Remove one of the attributes to resolve this.")
+    @NodeChild(type = TestBaseNode.class, uncached = "custom()", allowUncached = true)
+    abstract static class RedundantPropertyTestNode extends TestBaseNode {
+
+        static TestBaseNode custom() {
+            return TestChildNodeGen.getUncached();
+        }
+
+        @Specialization
+        int doInt(int child0) {
+            return child0;
         }
     }
 }
