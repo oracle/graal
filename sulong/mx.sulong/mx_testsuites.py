@@ -68,13 +68,6 @@ def compileTestSuite(testsuiteproject, extra_build_args):
     mx.command_function('build')(defaultBuildArgs + extra_build_args)
 
 
-def runTestSuite(testsuiteproject, args, testClasses=None, vmArgs=None):
-    """compile and run external testsuite projects"""
-    project = mx.project(testsuiteproject)
-    assert isinstance(project, SulongTestSuite)
-    project.runTestSuite(testClasses, vmArgs)
-
-
 class SulongTestSuiteBuildTask(mx.NativeBuildTask):
     """Track whether we are checking if a build is required or actually building."""
     def needsBuild(self, newestInput):
@@ -137,15 +130,6 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
 
     def defaultTestClasses(self):
         return ["SulongSuite"]
-
-    def runTestSuite(self, testClasses=None, vmArgs=None):
-        if vmArgs is None:
-            vmArgs = []
-        if hasattr(self, 'fileExts'):
-            vmArgs += ['-Dsulongtest.fileExtensionFilter=' + ':'.join(self.fileExts)]
-        if testClasses is None:
-            testClasses = self.testClasses
-        return run(vmArgs, testClasses)
 
     @staticmethod
     def haveDragonegg():
@@ -255,19 +239,6 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         if not hasattr(self, 'configDir'):
             self.configDir = 'configs'
 
-    def runTestSuite(self, testClasses=None, vmArgs=None):
-        if vmArgs is None:
-            vmArgs = []
-        vmArgs += [
-            "-Dsulongtest.externalTestSuitePath=" + self.getOutput(),
-            "-Dsulongtest.testSourcePath=" + self.get_test_source(),
-            "-Dsulongtest.testConfigPath=" + os.path.join(self.dir, "..", self.configDir),
-            ]
-        if hasattr(self, 'fileExts'):
-            vmArgs += ['-Dsulongtest.fileExtensionFilter=' + ':'.join(self.fileExts)]
-        if testClasses is None:
-            testClasses = self.testClasses
-        return run(vmArgs, testClasses)
 
     def defaultTestClasses(self):
         return ["com.oracle.truffle.llvm.tests.GCCSuite"]

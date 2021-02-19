@@ -120,26 +120,6 @@ def _lib_versioned(arg):
 mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
 
 
-def _sulong_gate_testdist(title, test_dist, tasks, args, tags=None, testClasses=None, vmArgs=None):
-    if tags is None:
-        tags = [test_dist]
-    build_tags = ['build_' + t for t in tags]
-    run_tags = ['run_' + t for t in tags]
-    with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_testsuites.compileTestSuite(test_dist, args.extra_build_args)
-    with Task('Test' + title, tasks, tags=tags + run_tags) as t:
-        if t: mx_testsuites.runTestSuite(test_dist, args, testClasses, vmArgs)
-
-def _sulong_gate_testsuite(title, test_suite, tasks, args, tags=None, testClasses=None, vmArgs=None):
-    if tags is None:
-        tags = [test_suite]
-    build_tags = ['build_' + t for t in tags]
-    run_tags = ['run_' + t for t in tags]
-    with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
-    with Task('Test' + title, tasks, tags=tags + run_tags) as t:
-        if t: mx_testsuites.runTestSuite(test_suite, args, testClasses, (vmArgs or []) + args.extra_llvm_arguments)
-
 def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
     if tags is None:
         tags = [test_suite]
