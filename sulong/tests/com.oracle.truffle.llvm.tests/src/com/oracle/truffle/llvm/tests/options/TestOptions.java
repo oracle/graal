@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.tests.options;
 
+import org.junit.Assume;
+
 public final class TestOptions {
     public static final String[] FILE_EXTENSION_FILTER = getFileExtensions();
     public static final String TEST_DISCOVERY_PATH = System.getProperty("sulongtest.testDiscoveryPath");
@@ -37,7 +39,6 @@ public final class TestOptions {
     public static final String TEST_FILTER = System.getProperty("sulongtest.testFilter");
     public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
     public static final String TEST_SUITE_PATH = getTestDistribution("SULONG_TEST_SUITES");
-    public static final String LL_TEST_SUITE_PATH = getTestDistribution("SULONG_LL_TEST_SUITES");
     public static final String EXTERNAL_TEST_SUITE_PATH = System.getProperty("sulongtest.externalTestSuitePath");
     public static final String TEST_SOURCE_PATH = System.getProperty("sulongtest.testSourcePath");
     public static final String TEST_CONFIG_PATH = System.getProperty("sulongtest.testConfigPath");
@@ -62,5 +63,12 @@ public final class TestOptions {
             throw new RuntimeException("Test distribution does not exist: " + distribution);
         }
         return property;
+    }
+
+    /**
+     * Assumption that the tests have been compiled with the bundled LLVM version.
+     */
+    public static void assumeBundledLLVM() {
+        Assume.assumeTrue("Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'", System.getenv("CLANG_CC") == null);
     }
 }
