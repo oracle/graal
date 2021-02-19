@@ -58,7 +58,7 @@ public class NativeImageBytecodeInstrumentationAgent {
 
     private static byte[] applyInitializationTrackingTransformation(@SuppressWarnings("unused") String moduleName, @SuppressWarnings("unused") ClassLoader loader, String className,
                     byte[] classfileBuffer) {
-        if (advisor.shouldTraceClassInitialization(className)) {
+        if (advisor.shouldTraceClassInitialization(className.replace('/', '.'))) {
             ClassReader reader = new ClassReader(classfileBuffer);
             ClassWriter writer = new ClassWriter(reader, COMPUTE_FRAMES);
             ClinitGenerationVisitor visitor = new ClinitGenerationVisitor(writer);
