@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 /**
  * This substitution is only needed when using the Sulong backend, since installing signal handlers
- * is not supported.
+ * is not supported. See GR-29359.
  */
 @EspressoSubstitutions
 public final class Target_sun_nio_ch_NativeThread {
