@@ -160,12 +160,17 @@ static __attribute__((constructor)) void initialize(void) {
 
 #define UNINITIALIZED ((void*) ~0)
 
-void ctypeInit(void) {
+void eden_ctypeInit(void) {
     static void (*__ctype_init)(void) = UNINITIALIZED;
     if (__ctype_init == UNINITIALIZED) {
         __ctype_init = dlsym(get_libc(), "__ctype_init");
     }
+    // Older versions of glibc do not have __ctype_init since they do not use TLS.
     if (__ctype_init != NULL) {
         __ctype_init();
     }
+}
+
+void* eden_RTLD_DEFAULT(void) {
+    return RTLD_DEFAULT;
 }
