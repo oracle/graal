@@ -217,8 +217,8 @@ class JMeterBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averagi
             mx.abort("Failed to terminate server application in JMeterBenchmarkSuite")
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
-        ret_code, _, dims = super(JMeterBenchmarkSuite, self).runAndReturnStdOut(benchmarks, bmSuiteArgs)
-        return ret_code, self.jmeterOutput.underlying.data, dims
+        ret_code, applicationOutput, dims = super(JMeterBenchmarkSuite, self).runAndReturnStdOut(benchmarks, bmSuiteArgs)
+        return ret_code, self.jmeterOutput.underlying.data + applicationOutput, dims
 
     def run(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) > 1:
