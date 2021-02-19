@@ -260,6 +260,10 @@ public final class PolyglotCompilerOptions {
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> SingleTierCompilationThreshold = new OptionKey<>(1000);
 
+    @Option(help = "Deprecated: use FirstTierCompilationThreshold and LastTierCompilationThreshold, or SingleTierCompilationThreshold if multi-tier compilation is disabled.",
+            category = OptionCategory.EXPERT, deprecated = true)
+    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);
+
     @Option(help = "Minimum number of calls before a call target is compiled", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(3);
 

@@ -33,6 +33,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
@@ -390,6 +391,10 @@ public final class EngineData {
         if (multiTier) {
             return options.get(FirstTierCompilationThreshold);
         } else {
+            // TODO: GR-29467 - Legacy behaviour, should be removed
+            if (options.hasBeenSet(CompilationThreshold)) {
+                return options.get(CompilationThreshold);
+            }
             return options.get(SingleTierCompilationThreshold);
         }
     }
@@ -404,6 +409,10 @@ public final class EngineData {
     private int computeCallAndLoopThresholdInFirstTier(OptionValues options) {
         if (compileImmediately) {
             return 0;
+        }
+        // TODO: GR-29467 - Legacy behaviour, should be removed
+        if (options.hasBeenSet(CompilationThreshold)) {
+            return options.get(CompilationThreshold);
         }
         return options.get(LastTierCompilationThreshold);
     }
