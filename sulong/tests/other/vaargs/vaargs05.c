@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,9 +35,39 @@ void foo(int count, ...) {
 
     va_start(ap1, count);
 
+    printf("%f\n", va_arg(ap1, double));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
     printf("%i\n", va_arg(ap1, int));
     printf("%f\n", va_arg(ap1, double));
-    printf("%c\n", va_arg(ap1, int));
+
+    printf("%f\n", va_arg(ap1, double));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%f\n", va_arg(ap1, double));
+
+    printf("%f\n", va_arg(ap1, double));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%f\n", va_arg(ap1, double));
+
+    printf("%f\n", va_arg(ap1, double));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%f\n", va_arg(ap1, double));
+
+    printf("%f\n", va_arg(ap1, double));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%f\n", va_arg(ap1, double));
+
+    printf("%f\n", va_arg(ap1, double));
+    printf("%i\n", va_arg(ap1, int));
+    printf("%i\n", va_arg(ap1, int));
     printf("%i\n", va_arg(ap1, int));
     printf("%f\n", va_arg(ap1, double));
 
@@ -46,6 +76,6 @@ void foo(int count, ...) {
 
 int main() {
 
-    foo(3, 1, 2.0, 'a', 4, 5.0);
+    foo(3, 1.0, 2, 3, 4, 5.0, 1.0, 2, 3, 4, 5.0, 1.0, 2, 3, 4, 5.0, 1.0, 2, 3, 4, 5.0, 1.0, 2, 3, 4, 5.0, 1.0, 2, 3, 4, 5.0);
     return 0;
 }
