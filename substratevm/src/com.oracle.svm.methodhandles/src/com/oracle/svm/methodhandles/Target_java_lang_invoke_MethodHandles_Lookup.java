@@ -34,8 +34,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK11_0_10OrEarlier;
+import com.oracle.svm.core.jdk.JDK11_0_11OrLater;
 import com.oracle.svm.core.jdk.JDK16OrLater;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup", onlyWith = MethodHandlesSupported.class)
@@ -48,7 +48,7 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
 
     @SuppressWarnings({"static-method", "unused"})
     @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    @TargetElement(onlyWith = JDK11_0_10OrEarlier.class)
     private MethodHandle maybeBindCaller(Target_java_lang_invoke_MemberName method, MethodHandle mh,
                     Class<?> boundCallerClass)
                     throws IllegalAccessException {
@@ -58,7 +58,7 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
 
     @SuppressWarnings({"static-method", "unused"})
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK11_0_11OrLater.class)
     private MethodHandle maybeBindCaller(Target_java_lang_invoke_MemberName method, MethodHandle mh,
                     Target_java_lang_invoke_MethodHandles_Lookup boundCaller)
                     throws IllegalAccessException {
