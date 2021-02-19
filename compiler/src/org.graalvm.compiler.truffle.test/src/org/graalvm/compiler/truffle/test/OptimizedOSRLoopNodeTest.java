@@ -118,7 +118,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @SuppressWarnings("try")
     @Theory
     public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
-        setupContext("engine.CompilationThreshold", "3");
+        setupContext("engine.SingleTierCompilationThreshold", "3");
         TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(osrThreshold, factory, new TestRepeatingNode());
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         target.call(osrThreshold + 1);

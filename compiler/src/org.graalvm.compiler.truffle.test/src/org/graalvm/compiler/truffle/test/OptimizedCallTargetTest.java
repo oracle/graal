@@ -186,7 +186,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         String testName = "testRewriteAssumption";
         final int compilationThreshold = 20;
 
-        setupContext("engine.Inlining", "true", "engine.CompilationThreshold", String.valueOf(compilationThreshold), "engine.MultiTier", "false");
+        setupContext("engine.Inlining", "true", "engine.SingleTierCompilationThreshold", String.valueOf(compilationThreshold), "engine.MultiTier", "false");
         OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
             @Child private AbstractTestNode child = new ConstantTestNode(42);
             @Child private AbstractTestNode dummy = new ConstantTestNode(17);

@@ -139,6 +139,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * call target. Reset by TruffleFeature after image generation.
      */
     private int callCount;
+
     /**
      * The call and loop threshold is counted up for each real call until it reaches a
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or

@@ -43,7 +43,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     @Test
     public void testVisibleOptions() {
         Engine engine = Engine.create();
-        OptionDescriptor compilationThreshold = engine.getOptions().get("engine.CompilationThreshold");
+        OptionDescriptor compilationThreshold = engine.getOptions().get("engine.SingleTierCompilationThreshold");
         Assert.assertNotNull(compilationThreshold);
         engine.close();
     }
@@ -63,7 +63,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testPolyglotCompilerOptionsAreUsed() {
-        setupContext("engine.CompilationThreshold", "27", //
+        setupContext("engine.LastTierCompilationThreshold", "27", //
                         "engine.TraceCompilation", "true", //
                         "engine.TraceCompilationDetails", "true", //
                         "engine.Inlining", "false", //
@@ -98,7 +98,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
     private void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
         Context ctx = setupContext(compilationThresholdOption == null ? new String[]{"engine.MultiTier", "false"}
-                        : new String[]{"engine.CompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
+                        : new String[]{"engine.SingleTierCompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
         ctx.eval("sl", "function test() {}");
         SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
 
