@@ -269,21 +269,22 @@ final class HostObject implements TruffleObject {
                     @Shared("lookupField") @Cached LookupFieldNode lookupField,
                     @Shared("readField") @Cached ReadFieldNode readField,
                     @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
+                    @Cached IsMapNode isMapNode,
                     @Cached LookupInnerClassNode lookupInnerClass,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, UnknownIdentifierException {
         if (isNull()) {
             error.enter();
             throw UnsupportedMessageException.create();
         }
-        boolean isStatic = isStaticClass();
-        Class<?> lookupClass = getLookupClass();
 
-        if (this.getHostClassCache().isMapAccess() && this.obj instanceof Map) {
-            final Map<?, ?> mapObject = (Map<?, ?>) this.obj;
-            if (mapObject.containsKey(name)) {
-                return HostObject.forObject(mapObject.get(name), this.languageContext);
+        if (isMapNode.execute(this)) {
+            if (((Map<?, ?>) this.obj).containsKey(name)) {
+                return HostObject.forObject(((Map<?, ?>) this.obj).get(name), this.languageContext);
             }
         }
+
+        boolean isStatic = isStaticClass();
+        Class<?> lookupClass = getLookupClass();
 
         HostFieldDesc foundField = lookupField.execute(this, lookupClass, name, isStatic);
         if (foundField != null) {
@@ -2204,6 +2205,20 @@ final class HostObject implements TruffleObject {
                         @Cached(value = "receiver.getHostClassCache().isListAccess()", allowUncached = true) boolean isListAccess) {
             assert receiver.getHostClassCache().isListAccess() == isListAccess;
             return isListAccess && receiver.obj instanceof List;
+        }
+
+    }
+
+    @GenerateUncached
+    abstract static class IsMapNode extends Node {
+
+        public abstract boolean execute(HostObject receiver);
+
+        @Specialization
+        public boolean doDefault(HostObject receiver,
+                                 @Cached(value = "receiver.getHostClassCache().isMapAccess()", allowUncached = true) boolean isMapAccess) {
+            assert receiver.getHostClassCache().isMapAccess() == isMapAccess;
+            return isMapAccess && receiver.obj instanceof Map;
         }
 
     }
