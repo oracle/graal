@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso._native;
+package com.oracle.truffle.espresso.ffi;
 
 import java.nio.file.Path;
 import java.util.List;

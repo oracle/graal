@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.vm;
 
-import com.oracle.truffle.espresso._native.NativeSignature;
-import com.oracle.truffle.espresso._native.NativeType;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 

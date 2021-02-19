@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso._native.nfi;
+package com.oracle.truffle.espresso.ffi.nfi;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -33,8 +33,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso._native.Pointer;
-import com.oracle.truffle.espresso._native.RawPointer;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;

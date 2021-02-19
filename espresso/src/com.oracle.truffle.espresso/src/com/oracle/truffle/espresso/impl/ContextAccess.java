@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso._native.NativeAccess;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;

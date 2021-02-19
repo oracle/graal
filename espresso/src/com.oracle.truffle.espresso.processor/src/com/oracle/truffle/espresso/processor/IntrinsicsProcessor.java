@@ -33,12 +33,12 @@ import javax.lang.model.type.ReferenceType;
 
 public abstract class IntrinsicsProcessor extends EspressoProcessor {
     static final String JNI_PACKAGE = "com.oracle.truffle.espresso.jni";
-    private static final String POINTER = "com.oracle.truffle.espresso._native" + "." + "Pointer";
+    protected static final String FFI_PACKAGE = "com.oracle.truffle.espresso.ffi";
+    private static final String POINTER = FFI_PACKAGE + "." + "Pointer";
     private static final String HANDLE = JNI_PACKAGE + "." + "Handle";
 
-    protected static final String NATIVE_PACKAGE = "com.oracle.truffle.espresso._native";
-    protected static final String IMPORT_NATIVE_SIGNATURE = "import " + NATIVE_PACKAGE + "." + "NativeSignature" + ";\n";
-    protected static final String IMPORT_NATIVE_TYPE = "import " + NATIVE_PACKAGE + "." + "NativeType" + ";\n";
+    protected static final String IMPORT_NATIVE_SIGNATURE = "import " + FFI_PACKAGE + "." + "NativeSignature" + ";\n";
+    protected static final String IMPORT_NATIVE_TYPE = "import " + FFI_PACKAGE + "." + "NativeType" + ";\n";
 
     // @Pointer
     TypeElement pointerAnnotation;

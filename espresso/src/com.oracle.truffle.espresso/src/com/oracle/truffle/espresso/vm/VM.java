@@ -62,8 +62,8 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso._native.RawPointer;
-import com.oracle.truffle.espresso._native.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -84,9 +84,9 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso._native.NativeSignature;
-import com.oracle.truffle.espresso._native.NativeType;
-import com.oracle.truffle.espresso._native.Pointer;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;

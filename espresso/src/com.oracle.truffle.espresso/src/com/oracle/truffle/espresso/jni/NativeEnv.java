@@ -28,9 +28,9 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso._native.NativeType;
-import com.oracle.truffle.espresso._native.Pointer;
-import com.oracle.truffle.espresso._native.RawPointer;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 

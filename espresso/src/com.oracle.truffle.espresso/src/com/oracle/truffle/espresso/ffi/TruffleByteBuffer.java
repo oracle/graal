@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso._native;
+package com.oracle.truffle.espresso.ffi;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -39,7 +39,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso._native.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
 @ExportLibrary(InteropLibrary.class)

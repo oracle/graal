@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso._native.nfi;
+package com.oracle.truffle.espresso.ffi.nfi;
 
 import java.nio.file.Path;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso._native.NativeAccess;
-import com.oracle.truffle.espresso._native.Pointer;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.Pointer;
 
 final class NFISulongNativeAccess extends NFINativeAccess {
 

@@ -30,7 +30,7 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso._native.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class RawBuffer implements AutoCloseable {

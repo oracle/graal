@@ -20,12 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso._native.nfi;
+package com.oracle.truffle.espresso.ffi.nfi;
 
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Objects;
 
+import com.oracle.truffle.espresso.ffi.Buffer;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import org.graalvm.home.HomeFinder;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -43,13 +47,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso._native.Buffer;
-import com.oracle.truffle.espresso._native.NativeAccess;
-import com.oracle.truffle.espresso._native.NativeSignature;
-import com.oracle.truffle.espresso._native.NativeType;
-import com.oracle.truffle.espresso._native.Pointer;
-import com.oracle.truffle.espresso._native.RawPointer;
-import com.oracle.truffle.espresso._native.TruffleByteBuffer;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.meta.EspressoError;
 

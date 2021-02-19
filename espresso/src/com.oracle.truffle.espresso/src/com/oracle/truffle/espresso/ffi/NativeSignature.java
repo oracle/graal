@@ -20,21 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso._native;
-
-import static java.lang.annotation.ElementType.TYPE_USE;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import com.oracle.truffle.api.interop.InteropLibrary;
+package com.oracle.truffle.espresso.ffi;
 
 /**
- * Marker for parameters and return values that can be treated like
- * {@link InteropLibrary#hasBufferElements(Object) Truffle buffers}.
+ * Represents a valid native signature.
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {TYPE_USE})
-public @interface Buffer {
+public interface NativeSignature {
+    /**
+     * Return type.
+     */
+    NativeType getReturnType();
+
+    /**
+     * Number of parameters.
+     */
+    int getParameterCount();
+
+    /**
+     * Returns the i-th (0-based) parameter type, guaranteed to be != {@link NativeType#VOID void}.
+     *
+     * @throws IndexOutOfBoundsException if the index is negative or >= {@link #getParameterCount()}
+     */
+    NativeType parameterTypeAt(int index);
+
+    static NativeSignature create(NativeType returnType, NativeType... parameterTypes) {
+        return new NativeSignatureImpl(returnType, parameterTypes);
+    }
 }
