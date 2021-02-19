@@ -34,7 +34,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Collections;
 import java.util.Map;
 import org.graalvm.tools.insight.Insight.SymbolProvider;
@@ -63,7 +65,9 @@ final class HeapObject implements TruffleObject, SymbolProvider {
     synchronized HeapUtils.HprofGenerator getGenerator() throws IOException {
         if (generator == null) {
             TruffleFile file = env.getTruffleFile(path);
-            generator = new HeapUtils.HprofGenerator(file.newOutputStream());
+            final OutputStream rawStream = file.newOutputStream();
+            final OutputStream bufferedStream = new BufferedOutputStream(rawStream);
+            generator = new HeapUtils.HprofGenerator(bufferedStream);
         }
         return generator;
     }
@@ -75,7 +79,7 @@ final class HeapObject implements TruffleObject, SymbolProvider {
 
             try {
                 HeapGenerator heap = new HeapGenerator(getGenerator());
-                heap.record(args);
+                heap.dump(args);
                 return this;
             } catch (IOException ex) {
                 throw new RuntimeException(ex);

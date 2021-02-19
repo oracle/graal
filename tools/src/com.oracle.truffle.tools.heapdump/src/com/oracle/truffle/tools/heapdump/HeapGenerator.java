@@ -64,7 +64,7 @@ final class HeapGenerator {
         this.generator = generator;
     }
 
-    void record(Object[] args) throws UnsupportedTypeException, UnsupportedMessageException {
+    void dump(Object[] args) throws UnsupportedTypeException, UnsupportedMessageException {
         try {
             InteropLibrary iop = InteropLibrary.getUncached();
             if (args.length < 1 || !iop.hasArrayElements(args[0]) || (args.length > 1 && !iop.fitsInInt(args[1]))) {
