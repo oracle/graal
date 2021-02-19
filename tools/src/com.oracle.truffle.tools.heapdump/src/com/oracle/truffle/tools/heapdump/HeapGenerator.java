@@ -37,19 +37,19 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
-import java.util.WeakHashMap;
 
 final class HeapGenerator {
     private final HeapUtils.HprofGenerator generator;
     private final Map<TreeSet<String>, ClassInstance> classes = new HashMap<>();
     private final Map<String, ClassInstance> languages = new HashMap<>();
-    private final Map<Object, Integer> objects = new WeakHashMap<>();
-    private final Map<SourceKey, Integer> sources = new WeakHashMap<>();
-    private final Map<SourceSectionKey, Integer> sourceSections = new WeakHashMap<>();
+    private final Map<Object, Integer> objects = new IdentityHashMap<>();
+    private final Map<SourceKey, Integer> sources = new HashMap<>();
+    private final Map<SourceSectionKey, Integer> sourceSections = new HashMap<>();
     private final LinkedList<Dump> pending = new LinkedList<>();
     private ClassInstance sourceSectionClass;
     private Integer unreachable;
@@ -219,8 +219,12 @@ final class HeapGenerator {
         if (depth <= 0) {
             return unreachable;
         }
-        if (obj instanceof String) {
-            return seg.dumpString((String) obj);
+        if (iop.isString(obj)) {
+            try {
+                return seg.dumpString(iop.asString(obj));
+            } catch (UnsupportedMessageException ex) {
+                throw new HeapException(ex);
+            }
         }
         if (!(obj instanceof TruffleObject)) {
             return seg.dumpPrimitive(obj);
@@ -233,7 +237,7 @@ final class HeapGenerator {
         objects.put(obj, builder.id());
         pending.add(() -> {
             for (String n : clazz.names()) {
-                final Object v = readMember(iop, obj, n);
+                final Object v = iop.readMember(obj, n);
                 int vId = dumpObject(iop, seg, null, v, depth - 1);
                 builder.put(n, vId);
             }
