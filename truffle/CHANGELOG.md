@@ -30,6 +30,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `isIterator(Object)` that allows to specify that the receiver is an iterator.
     * Added `hasIteratorNextElement(Object)`  that allows to specify that the iterator receiver has element(s) to return by calling the `getIteratorNextElement(Object)` method.
     * Added `getIteratorNextElement(Object)` to return the current iterator element.
+* Added new features to the DSL `@NodeChild` annotation:
+    * Added `implicit` and `implicitCreate` attributes to allow implicit creation of child nodes by the parent factory method.
+    * Added `allowUncached` and `uncached` attributes to allow using `@NodeChild` with `@GenerateUncached`.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the exception interop messages are executed without a context being entered. The event listeners called during the context enter are:
