@@ -241,8 +241,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected CallTarget parse(final ParsingRequest request) throws Exception {
-        final EspressoContext context = getCurrentContext();
-        assert context.isInitialized();
+        assert getCurrentContext().isInitialized();
         String contents = request.getSource().getCharacters().toString();
         if (DestroyVMNode.EVAL_NAME.equals(contents)) {
             RootNode node = new DestroyVMNode(this);
@@ -273,10 +272,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static EspressoContext getCurrentContext() {
         return getCurrentContext(EspressoLanguage.class);
-    }
-
-    public String getEspressoHome() {
-        return getLanguageHome();
     }
 
     @Override

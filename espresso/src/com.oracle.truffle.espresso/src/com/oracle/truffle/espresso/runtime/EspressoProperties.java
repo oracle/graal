@@ -239,7 +239,7 @@ public interface EspressoProperties {
                         .extDirs(EspressoOptions.parsePaths(System.getProperty("java.ext.dirs")));
     }
 
-    static Builder processOptions(EspressoLanguage language, Builder builder, OptionValues options) {
+    static Builder processOptions(Builder builder, OptionValues options) {
         // Always set JavaHome first.
         Path javaHome = options.hasBeenSet(EspressoOptions.JavaHome)
                         ? options.get(EspressoOptions.JavaHome)
@@ -274,7 +274,7 @@ public interface EspressoProperties {
 
         // Inject polyglot.jar.
         if (options.get(EspressoOptions.Polyglot)) {
-            Path espressoHome = Paths.get(language.getEspressoHome());
+            Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
             Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
             if (Files.isReadable(polyglotJar)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);

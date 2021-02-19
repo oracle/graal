@@ -541,7 +541,7 @@ public final class EspressoContext {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
-        vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
+        vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
         javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
     }
 
