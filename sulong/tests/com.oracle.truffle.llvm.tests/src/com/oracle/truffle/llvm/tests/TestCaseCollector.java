@@ -41,6 +41,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -126,23 +127,16 @@ public final class TestCaseCollector {
 
             // walk os/arch dirs. if "os" or "arch" does not exists, try a directory called "others"
             if (osArchDirectory.toFile().exists()) {
-                // try <os>, others
-                for (String osSubDir : new String[]{OS, OTHERS}) {
-                    Path osDirectory = osArchDirectory.resolve(osSubDir);
-                    if (osDirectory.toFile().exists()) {
-                        // try <arch>, others
-                        for (String archSubDir : new String[]{ARCH, OTHERS}) {
-                            Path archDirectory = osDirectory.resolve(archSubDir);
-                            if (archDirectory.toFile().exists()) {
-                                // visit os/arch subdir
-                                Files.walkFileTree(archDirectory, visitors.visitor());
-                                // do not look for other
-                                break;
-                            }
-                        }
-                        // do not look for other
-                        break;
-                    }
+                try {
+                    Predicate<Path> exists = p -> p.toFile().exists();
+                    // try <os>, others
+                    Path osDirectory = Stream.of(OS, OTHERS).map(osArchDirectory::resolve).filter(exists).iterator().next();
+                    // try <arch>, others
+                    Path archDirectory = Stream.of(ARCH, OTHERS).map(osDirectory::resolve).filter(exists).iterator().next();
+                    // visit os/arch subdir
+                    Files.walkFileTree(archDirectory, visitors.visitor());
+                } catch (NoSuchElementException e) {
+                    // either os or arch directory is missing
                 }
             }
             return visitors.getExcludeMap();
