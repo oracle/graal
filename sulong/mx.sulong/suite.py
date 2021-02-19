@@ -991,16 +991,13 @@ suite = {
         },
       },
     },
-    "inlineassemblytests" : {
+    "com.oracle.truffle.llvm.tests.inlineasm.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
       },
-      "dependencies" : [
-        "SULONG_TEST_SUITES",
-      ],
       "buildDependencies" : [
         "LINUX_AMD64_SUPPORT",
       ],
@@ -1530,6 +1527,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.linker.native/*",
           "dependency:com.oracle.truffle.llvm.tests.va.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.inlineasm.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
