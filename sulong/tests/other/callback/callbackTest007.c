@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,32 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
+#include <stdlib.h>
 
-int (*get_callback_function())(int, int);
+void printPointerToArray(int **a);
 
 int main() {
-    int (*fn)(int, int);
-    fn = get_callback_function();
-    return fn(7, 3);
+    int *a = malloc(sizeof(int) * 3);
+    a[0] = 42;
+    a[1] = 43;
+    a[2] = 44;
+
+    fprintf(stderr, "Sulong: a[0] = %i\n", a[0]);
+    fprintf(stderr, "Sulong: a[1] = %i\n", a[1]);
+    fprintf(stderr, "Sulong: a[2] = %i\n", a[2]);
+    fprintf(stderr, "Sulong: a = %p\n", a);
+    fprintf(stderr, "Sulong: &a = %p\n", &a);
+
+    int **b = &a;
+
+    fprintf(stderr, "Sulong: b = %p\n", b);
+    fprintf(stderr, "Sulong: *b = %p\n", *b);
+
+    fprintf(stderr, "Sulong: *b[0] = %i\n", (*b)[0]);
+    fprintf(stderr, "Sulong: *b[1] = %i\n", (*b)[1]);
+    fprintf(stderr, "Sulong: *b[2] = %i\n", (*b)[2]);
+
+    printPointerToArray(&a);
+
+    return 0;
 }

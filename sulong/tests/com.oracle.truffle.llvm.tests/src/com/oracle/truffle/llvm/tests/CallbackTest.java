@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,7 +46,8 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class CallbackTest extends BaseSulongOnlyHarness {
 
-    private static final String OTHER_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "..", "tests", "other").toString();
+    private static final String OTHER_ROOT = TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES");
+    private static final String OTHER_DIR = Paths.get(OTHER_ROOT, "callback").toString();
     private static final String testSuffix = "O1.bc";
 
     @Parameter(value = 0) public Path path;
@@ -80,7 +81,8 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
         runs.put(Paths.get(OTHER_DIR, "callbackCast.c.dir", testSuffix),
                         new RunConfiguration(0, "126\n"));
 
-        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());
+        Path other = Paths.get(OTHER_ROOT);
+        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), other.relativize(k.getParent()).toString()}).collect(Collectors.toList());
     }
 
     @Override

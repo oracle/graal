@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,24 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include <stdio.h>
-#include <stdlib.h>
 
-void printArray(int *a);
+struct container {
+    int (*callback)(int p1, int p2);
+    int p1;
+};
+
+int (*get_callback_function())(int, int);
+int call_callback(void *container, int p2);
 
 int main() {
-    int *a = malloc(sizeof(int) * 3);
-    a[0] = 42;
-    a[1] = 43;
-    a[2] = 44;
-
-    fprintf(stderr, "Sulong: a[0] = %i\n", a[0]);
-    fprintf(stderr, "Sulong: a[1] = %i\n", a[1]);
-    fprintf(stderr, "Sulong: a[2] = %i\n", a[2]);
-    fprintf(stderr, "Sulong: a = %p\n", a);
-
-    printArray(a);
-
-    return 0;
+    struct container c;
+    c.callback = get_callback_function();
+    c.p1 = 37;
+    return call_callback(&c, 5);
 }

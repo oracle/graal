@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,15 +28,17 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
-#include <math.h>
 
-int call_typecast(int (*)(void));
+struct container {
+    int (*callback)(int p1, int p2);
+    int p1;
+};
 
-int foo(int x) {
-    return 3 * x;
-}
+void store_native_function(struct container *);
 
-int main(void) {
-    printf("%d\n", call_typecast((int (*)(void)) foo));
+int main() {
+    struct container c;
+    store_native_function(&c);
+    fprintf(stderr, "%p\n", c.callback);
     return 0;
 }

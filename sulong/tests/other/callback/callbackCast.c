@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,13 @@
 #include <stdio.h>
 #include <math.h>
 
-double caller_f64(double (*)(double), double);
+int call_typecast(int (*)(void));
+
+int foo(int x) {
+    return 3 * x;
+}
 
 int main(void) {
-    printf("%f\n", caller_f64(cos, 2.0));
+    printf("%d\n", call_typecast((int (*)(void)) foo));
     return 0;
 }

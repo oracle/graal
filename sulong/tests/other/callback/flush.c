@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,6 @@
  */
 #include <stdio.h>
 
-struct container {
-    int (*callback)(int p1, int p2);
-    int p1;
-};
-
-void store_native_function(struct container *);
-
 int main() {
-    struct container c;
-    store_native_function(&c);
-    return c.callback(22, 20);
+    fflush(stdout);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,10 @@
  */
 #include <stdio.h>
 
+int (*get_callback_function())(int, int);
+
 int main() {
-    fflush(stdout);
+    int (*fn)(int, int);
+    fn = get_callback_function();
+    return fn(7, 3);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,19 @@
  */
 #include <stdio.h>
 
-void *create_container(int (*callback)(int p1, int p2), int p1);
-int call_callback(void *container, int p2);
+struct container {
+    int (*callback)(int p1, int p2);
+    int p1;
+};
+
+int call_callback2(struct container *p);
+
+int add(int a, int b) {
+    return a + b;
+}
 
 int main() {
-    __attribute__((unused)) void *container = create_container(0, 14);
-    return 14;
+    struct container c;
+    c.callback = add;
+    return call_callback2(&c);
 }
