@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.substitutions.Substitutor;
-import com.oracle.truffle.object.DebugCounter;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 
 public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     @Child private Substitutor substitution;
