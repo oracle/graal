@@ -45,10 +45,56 @@ import java.util.Set;
 import java.util.TreeMap;
 
 final class HeapUtils {
+    // constants for the Java Profiler Heap Dump Format
+    // http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/manual.html
+    //
+    private static final String MAGIC_WITH_SEGMENTS = "JAVA PROFILE 1.0.1";
+    private static final int TAG_STRING = 0x01;
+    private static final int TAG_LOAD_CLASS = 0x02;
+    private static final int TAG_STACK_FRAME = 0x04;
+    private static final int TAG_STACK_TRACE = 0x05;
+    private static final int TAG_START_THREAD = 0x0A;
+    private static final int TAG_HEAP_DUMP = 0x0c;
+
+    // heap dump codes
+    private static final int HEAP_ROOT_JAVA_FRAME = 0x03;
+    private static final int HEAP_ROOT_THREAD_OBJECT = 0x08;
+    private static final int HEAP_CLASS_DUMP = 0x20;
+    private static final int HEAP_INSTANCE_DUMP = 0x21;
+    private static final int HEAP_PRIMITIVE_ARRAY_DUMP = 0x23;
+
+    // types used in heap dump
+    private static final int TYPE_OBJECT = 0x02;
+    private static final int TYPE_BOOLEAN = 0x04;
+    private static final int TYPE_CHAR = 0x05;
+    private static final int TYPE_FLOAT = 0x06;
+    private static final int TYPE_DOUBLE = 0x07;
+    private static final int TYPE_BYTE = 0x08;
+    private static final int TYPE_SHORT = 0x09;
+    private static final int TYPE_INT = 0x0a;
+    private static final int TYPE_LONG = 0x0b;
+
+    private enum Identifiers {
+        FOUR,
+        EIGHT;
+
+        int sizeOf() {
+            return this == FOUR ? 4 : 8;
+        }
+
+        void writeID(DataOutputStream os, long id) throws IOException {
+            if (this == FOUR) {
+                int intId = (int) id;
+                assert intId == id;
+                os.writeInt(intId);
+            } else {
+                os.writeLong(id);
+            }
+        }
+    }
+
     static final class HprofGenerator implements Closeable {
-
-        private static final String MAGIC_WITH_SEGMENTS = "JAVA PROFILE 1.0.2";
-
+        private final Identifiers ids;
         private final Map<String, Integer> wholeStrings = new HashMap<>();
         private final Map<String, Integer> heapStrings = new HashMap<>();
         private final Map<Class<?>, ClassInstance> primitiveClasses = new HashMap<>();
@@ -60,10 +106,15 @@ final class HeapUtils {
         private ClassInstance typeThread;
 
         HprofGenerator(OutputStream os) throws IOException {
+            this(Identifiers.FOUR, os);
+        }
+
+        private HprofGenerator(Identifiers ids, OutputStream os) throws IOException {
             this.whole = new DataOutputStream(os);
+            this.ids = ids;
             whole.write(MAGIC_WITH_SEGMENTS.getBytes());
-            whole.write(0);
-            whole.writeInt(4);
+            whole.write(0); // null terminated string
+            whole.writeInt(ids.sizeOf());
             whole.writeLong(System.currentTimeMillis());
         }
 
@@ -106,11 +157,11 @@ final class HeapUtils {
 
                 int instanceId = ++objectCounter;
 
-                heap.writeByte(0x23);
-                heap.writeInt(instanceId);
+                heap.writeByte(HEAP_PRIMITIVE_ARRAY_DUMP);
+                ids.writeID(heap, instanceId);
                 heap.writeInt(instanceId); // serial number
                 heap.writeInt(text.length()); // number of elements
-                heap.writeByte(0x05); // char
+                heap.writeByte(TYPE_CHAR);
                 for (char ch : text.toCharArray()) {
                     heap.writeChar(ch);
                 }
@@ -205,8 +256,8 @@ final class HeapUtils {
                     int stackTraceId = writeStackTrace(threadId, frameIds);
                     writeThreadStarted(threadId, name, groupName, stackTraceId);
 
-                    heap.writeByte(0x08);
-                    heap.writeInt(threadId); // object ID
+                    heap.writeByte(HEAP_ROOT_THREAD_OBJECT);
+                    ids.writeID(heap, threadId);
                     heap.writeInt(threadId); // serial #
                     heap.writeInt(stackTraceId); // stacktrace #
 
@@ -214,8 +265,8 @@ final class HeapUtils {
                     for (Object[] frame : stacks) {
                         int[] locals = (int[]) frame[3];
                         for (int objId : locals) {
-                            heap.writeByte(0x03); // frame GC root
-                            heap.writeInt(objId);
+                            heap.writeByte(HEAP_ROOT_JAVA_FRAME); // frame GC root
+                            ids.writeID(heap, objId);
                             heap.writeInt(threadId); // thread serial #
                             heap.writeInt(cnt); // frame number
                         }
@@ -243,15 +294,15 @@ final class HeapUtils {
                 }
 
                 public ClassInstance dumpClass() throws IOException {
-                    heap.writeByte(0x20);
-                    heap.writeInt(classId); // class ID
+                    heap.writeByte(HEAP_CLASS_DUMP);
+                    ids.writeID(heap, classId);
                     heap.writeInt(classId); // stacktrace serial number
-                    heap.writeInt(superId); // superclass ID
-                    heap.writeInt(0); // classloader ID
-                    heap.writeInt(0); // signers ID
-                    heap.writeInt(0); // protection domain ID
-                    heap.writeInt(0); // reserved 1
-                    heap.writeInt(0); // reserved 2
+                    ids.writeID(heap, superId);
+                    ids.writeID(heap, 0); // classloader ID
+                    ids.writeID(heap, 0); // signers ID
+                    ids.writeID(heap, 0); // protection domain ID
+                    ids.writeID(heap, 0); // reserved 1
+                    ids.writeID(heap, 0); // reserved 2
                     heap.writeInt(0); // instance size
                     heap.writeShort(0); // # of constant pool entries
                     heap.writeShort(0); // # of static fields
@@ -263,34 +314,34 @@ final class HeapUtils {
                         final Class<?> type = entry.getValue();
                         if (type.isPrimitive()) {
                             if (type == Boolean.TYPE) {
-                                heap.writeByte(0x04);
+                                heap.writeByte(TYPE_BOOLEAN);
                                 fieldBytes++;
                             } else if (type == Character.TYPE) {
-                                heap.writeByte(0x05);
+                                heap.writeByte(TYPE_CHAR);
                                 fieldBytes += 2;
                             } else if (type == Float.TYPE) {
-                                heap.writeByte(0x06);
+                                heap.writeByte(TYPE_FLOAT);
                                 fieldBytes += 4;
                             } else if (type == Double.TYPE) {
-                                heap.writeByte(0x07);
+                                heap.writeByte(TYPE_DOUBLE);
                                 fieldBytes += 8;
                             } else if (type == Byte.TYPE) {
-                                heap.writeByte(0x08);
+                                heap.writeByte(TYPE_BYTE);
                                 fieldBytes++;
                             } else if (type == Short.TYPE) {
-                                heap.writeByte(0x09);
+                                heap.writeByte(TYPE_SHORT);
                                 fieldBytes += 2;
                             } else if (type == Integer.TYPE) {
-                                heap.writeByte(0x0a);
+                                heap.writeByte(TYPE_INT);
                                 fieldBytes += 4;
                             } else if (type == Long.TYPE) {
-                                heap.writeByte(0x0b);
+                                heap.writeByte(TYPE_LONG);
                                 fieldBytes += 8;
                             } else {
                                 throw new IllegalStateException("Unsupported primitive type: " + type);
                             }
                         } else {
-                            heap.writeByte(0x02); // object
+                            heap.writeByte(TYPE_OBJECT);
                             fieldBytes += 4;
                         }
                     }
@@ -330,10 +381,10 @@ final class HeapUtils {
                     for (int i = 0; i < stringValueSeq.length; i += 2) {
                         values.put((String) stringValueSeq[i], stringValueSeq[i + 1]);
                     }
-                    heap.writeByte(0x21);
-                    heap.writeInt(instanceId);
+                    heap.writeByte(HEAP_INSTANCE_DUMP);
+                    ids.writeID(heap, instanceId);
                     heap.writeInt(instanceId); // serial number
-                    heap.writeInt(clazz.id);
+                    ids.writeID(heap, clazz.id);
                     heap.writeInt(clazz.fieldBytes);
                     for (Map.Entry<String, Class<?>> entry : clazz.fieldNamesAndTypes.entrySet()) {
                         final Class<?> type = entry.getValue();
@@ -395,7 +446,7 @@ final class HeapUtils {
             generator.generate(seg);
             seg.flush();
             if (rawHeap.size() > 0) {
-                whole.writeByte(0x0c);
+                whole.writeByte(TAG_HEAP_DUMP);
                 whole.writeInt(0); // ms
                 final byte[] bytes = rawHeap.toByteArray();
                 whole.writeInt(bytes.length);
@@ -414,15 +465,15 @@ final class HeapUtils {
             int threadNameId = writeString(threadName);
             int groupNameId = writeString(groupName);
 
-            whole.writeByte(0x0A);
+            whole.writeByte(TAG_START_THREAD);
             whole.writeInt(0); // ms
-            whole.writeInt(6 * 4);
+            whole.writeInt(8 + ids.sizeOf() * 4); // size of following entries
             whole.writeInt(id); // serial number
-            whole.writeInt(id); // object id
+            ids.writeID(whole, id); // object id
             whole.writeInt(stackTraceId); // stacktrace serial number
-            whole.writeInt(threadNameId);
-            whole.writeInt(groupNameId);
-            whole.writeInt(0); // parent group
+            ids.writeID(whole, threadNameId);
+            ids.writeID(whole, groupNameId);
+            ids.writeID(whole, 0); // parent group
         }
 
         private int writeStackFrame(ClassInstance language, String rootName, String sourceFile, int lineNumber) throws IOException {
@@ -432,13 +483,13 @@ final class HeapUtils {
             int signatureId = 0;
             int sourceFileId = writeString(sourceFile);
 
-            whole.writeByte(0x04);
+            whole.writeByte(TAG_STACK_FRAME);
             whole.writeInt(0); // ms
-            whole.writeInt(6 * 4);
-            whole.writeInt(id);
-            whole.writeInt(rootNameId);
-            whole.writeInt(signatureId);
-            whole.writeInt(sourceFileId);
+            whole.writeInt(8 + ids.sizeOf() * 4); // size of following entries
+            ids.writeID(whole, id);
+            ids.writeID(whole, rootNameId);
+            ids.writeID(whole, signatureId);
+            ids.writeID(whole, sourceFileId);
             whole.writeInt(language.id);
             whole.writeInt(lineNumber);
 
@@ -448,14 +499,14 @@ final class HeapUtils {
         private int writeStackTrace(int threadId, int... frames) throws IOException {
             int id = ++objectCounter;
 
-            whole.writeByte(0x05);
+            whole.writeByte(TAG_STACK_TRACE);
             whole.writeInt(0); // ms
-            whole.writeInt(12 + 4 * frames.length);
-            whole.writeInt(id);
-            whole.writeInt(threadId);
+            whole.writeInt(12 + ids.sizeOf() * frames.length); // size of following entries
+            whole.writeInt(id); // stack trace serial number
+            whole.writeInt(threadId); // thread serial number
             whole.writeInt(frames.length);
             for (int fId : frames) {
-                whole.writeInt(fId);
+                ids.writeID(whole, fId);
             }
 
             return id;
@@ -465,13 +516,13 @@ final class HeapUtils {
             int classId = ++objectCounter;
             int classNameId = writeString(className);
 
-            whole.writeByte(0x02);
+            whole.writeByte(TAG_LOAD_CLASS);
             whole.writeInt(0); // ms
-            whole.writeInt(4 * 4);
+            whole.writeInt(8 + ids.sizeOf() * 2); // size of following entries
             whole.writeInt(classId); // class serial number
-            whole.writeInt(classId); // class object ID
+            ids.writeID(whole, classId); // class object ID
             whole.writeInt(stackTrace); // stack trace serial number
-            whole.writeInt(classNameId); // class name string ID
+            ids.writeID(whole, classNameId); // class name string ID
 
             return classId;
         }
@@ -485,11 +536,11 @@ final class HeapUtils {
                 return prevId;
             }
             int stringId = ++objectCounter;
-            whole.writeByte(0x01);
+            whole.writeByte(TAG_STRING);
             whole.writeInt(0); // ms
             byte[] utf8 = text.getBytes(StandardCharsets.UTF_8);
-            whole.writeInt(4 + utf8.length);
-            whole.writeInt(stringId);
+            whole.writeInt(ids.sizeOf() + utf8.length);
+            ids.writeID(whole, stringId);
             whole.write(utf8);
 
             wholeStrings.put(text, stringId);
