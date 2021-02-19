@@ -1540,6 +1540,19 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
+    "SULONG_EMBEDDED_TEST_SUITES" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:other/*",
+        ],
+      },
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
     # <editor-fold desc="External Test Suites">
     "SULONG_GCC_C" : {
       "native" : True,
