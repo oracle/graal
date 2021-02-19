@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.MultiKillingBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerification;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -108,8 +109,9 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
 
     @Override
     public boolean verify() {
-        assertTrue(stateAfter() != null, "an exception handler needs a frame state");
-        assertTrue(stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object,
+        assertTrue(graph().getFrameStateVerification() == FrameStateVerification.NONE || stateAfter() != null, "an exception handler needs a frame state");
+        assertTrue(graph().getFrameStateVerification() == FrameStateVerification.NONE ||
+                        stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object,
                         "an exception handler's frame state must have only the exception on the stack");
         return super.verify();
     }

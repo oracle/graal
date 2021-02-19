@@ -294,9 +294,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NativeImageGenerator {
 
-    private final FeatureHandler featureHandler;
-    private final ImageClassLoader loader;
-    private final HostedOptionProvider optionProvider;
+    protected final FeatureHandler featureHandler;
+    protected final ImageClassLoader loader;
+    protected final HostedOptionProvider optionProvider;
 
     private ForkJoinPool buildExecutor;
     private DeadlockWatchdog watchdog;
@@ -525,7 +525,7 @@ public class NativeImageGenerator {
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
-    private ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
+    protected ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
         ImageSingletonsSupportImpl.HostedManagement vmConfig = ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
         return new ForkJoinPool(
                         maxConcurrentThreads,
