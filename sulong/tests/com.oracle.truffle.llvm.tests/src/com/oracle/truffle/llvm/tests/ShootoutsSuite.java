@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.tests;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,7 +58,7 @@ public final class ShootoutsSuite extends BaseSulongOnlyHarness {
     public static Collection<Object[]> data() {
 
         final Map<Path, RunConfiguration> runs = new HashMap<>();
-        String dir = TestOptions.EXTERNAL_TEST_SUITE_PATH + SHOOTOUTS_SUITE_SUBDIR;
+        String dir = Paths.get(TestOptions.getTestDistribution("SULONG_SHOOTOUT"), SHOOTOUTS_SUITE_SUBDIR).toString();
         runs.put(new File(dir + "/binarytrees/binarytrees.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"12"}));
         runs.put(new File(dir + "/binarytrees/binarytrees.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"12"}));
         runs.put(new File(dir + "/fannkuchredux/fannkuchredux.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"9"}));
