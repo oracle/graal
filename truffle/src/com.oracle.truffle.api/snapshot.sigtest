@@ -204,6 +204,7 @@ hfds RUNTIME
 CLSS public final com.oracle.truffle.api.TruffleContext
 innr public final Builder
 intf java.lang.AutoCloseable
+meth public <%0 extends java.lang.Object> {%%0} leaveAndEnter(com.oracle.truffle.api.nodes.Node,java.util.function.Supplier<{%%0}>)
 meth public boolean equals(java.lang.Object)
 meth public boolean isActive()
 meth public boolean isCancelling()

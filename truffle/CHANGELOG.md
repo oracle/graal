@@ -29,6 +29,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `isIterator(Object)` that allows to specify that the receiver is an iterator.
     * Added `hasIteratorNextElement(Object)`  that allows to specify that the iterator receiver has element(s) to return by calling the `getIteratorNextElement(Object)` method.
     * Added `getIteratorNextElement(Object)` to return the current iterator element.
+* Added `TruffleContext.leaveAndEnter(Node, Supplier)` to wait for another thread without triggering multithreading.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:
