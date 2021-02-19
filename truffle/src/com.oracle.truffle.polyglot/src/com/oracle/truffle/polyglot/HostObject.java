@@ -281,7 +281,7 @@ final class HostObject implements TruffleObject {
         if (this.getHostClassCache().isMapAccess() && this.obj instanceof Map) {
             final Map<?, ?> mapObject = (Map<?, ?>) this.obj;
             if (mapObject.containsKey(name)) {
-                return mapObject.get(name);
+                return HostObject.forObject(mapObject.get(name), this.languageContext);
             }
         }
 
