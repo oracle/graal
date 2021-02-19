@@ -187,7 +187,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
                 context.getLogger().log(Level.WARNING,
-                                EspressoOptions.INCEPTION_NAME + " Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
+                                "Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
                                                 " throws IllegalAccessError");
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
             }
