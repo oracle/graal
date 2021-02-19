@@ -178,6 +178,7 @@ suite = {
         "sulongtest.projectRoot" : "<path:com.oracle.truffle.llvm>/../",
         "sulongtest.source.GCC_SOURCE" : "<path:GCC_SOURCE>",
         "sulongtest.source.LLVM_TEST_SUITE" : "<path:LLVM_TEST_SUITE>",
+        "sulongtest.source.NWCC_SUITE" : "<path:NWCC_SUITE>",
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -1270,7 +1271,6 @@ suite = {
     "nwcc" : {
       "subDir" : "tests/nwcc",
       "class" : "ExternalTestSuite",
-      "testClasses" : ["com.oracle.truffle.llvm.tests.NWCCSuite"],
       "testDir" : "nwcc_0.8.3",
       "fileExts" : [".c"],
       "native" : True,
