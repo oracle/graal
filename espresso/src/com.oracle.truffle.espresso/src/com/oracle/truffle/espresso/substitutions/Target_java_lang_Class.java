@@ -53,6 +53,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -146,7 +147,7 @@ public final class Target_java_lang_Class {
                 klass.safeInitialize();
             }
             return klass.mirror();
-        } catch (EspressoException e) {
+        } catch (EspressoException | EspressoExitException e) {
             throw e;
         } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
