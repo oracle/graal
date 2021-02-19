@@ -438,11 +438,11 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
-    private static String OPTION_PREFIX = "espresso.";
-    public static final boolean DebugCounters = booleanProperty(OPTION_PREFIX + "DebugCounters", false);
-    public static final boolean DumpDebugCounters = booleanProperty(OPTION_PREFIX + "DumpDebugCounters", true);
+    // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
+    public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
+    public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);
 
-    static private boolean booleanProperty(String name, boolean defaultValue) {
+    private static boolean booleanProperty(String name, boolean defaultValue) {
         String value = System.getProperty(name);
         return value == null ? defaultValue : value.equalsIgnoreCase("true");
     }
