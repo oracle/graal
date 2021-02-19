@@ -265,7 +265,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
         setupContext("engine.CompileOnly", "foobar", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -284,7 +284,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         // test single exclude
         setupContext("engine.CompileOnly", "~foobar", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -303,7 +303,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         // test two includes/excludes
         setupContext("engine.CompileOnly", "foo,baz", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -368,7 +368,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         String[] options = compileOptionValue == null ? new String[]{"engine.MultiTier", "false"} : new String[]{"engine.Compilation", compileOptionValue.toString(), "engine.MultiTier", "false"};
         setupContext(options);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();

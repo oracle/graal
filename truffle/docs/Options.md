@@ -58,9 +58,11 @@ Expert engine options:
                                                only supported on the HotSpot (non-libgraal) Truffle runtime.On runtimes which does not support it the option has no
                                                effect.
   --engine.FirstTierCompilationThreshold=<Integer>
-                                               Minimum number of invocations or loop iterations needed to compile a guest language root in first tier mode.
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root in first tier.
   --engine.FirstTierMinInvokeThreshold=<Integer>
-                                               Minimum number of calls before a call target is compiled in the first tier.
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root in last tier.
+  --engine.LastTierCompilationThreshold=<Integer>      
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.
   --engine.SingleTierCompilationThreshold=<Integer>      
                                                Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.
   --engine.Inlining=<Boolean>                  Enable automatic inlining of guest language call targets.

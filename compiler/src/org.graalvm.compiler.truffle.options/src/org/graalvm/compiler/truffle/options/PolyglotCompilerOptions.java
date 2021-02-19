@@ -290,11 +290,11 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
 
-    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in first tier mode.",
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in first tier.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(400);
 
-    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in last tier mode.",
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in last tier.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> LastTierCompilationThreshold = new OptionKey<>(10000);
 
