@@ -46,7 +46,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-public interface ProxyHashMap {
+public interface ProxyHashMap extends Proxy {
 
     long getSize();
 

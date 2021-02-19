@@ -3565,12 +3565,12 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             try {
                 Object result = delegate.getHashEntryValue(receiver);
-                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert delegate.isHashEntry(receiver) : violationInvariant(receiver);
                 assert validReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
-                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert !delegate.isHashEntry(receiver) : violationInvariant(receiver);
                 throw e;
             }
         }
@@ -3585,7 +3585,7 @@ public abstract class InteropLibrary extends Library {
             assert validArgument(receiver, value);
             try {
                 delegate.setHashEntryValue(receiver, value);
-                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, value);
+                assert delegate.isHashEntry(receiver) : violationInvariant(receiver, value);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
                 throw e;
