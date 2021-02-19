@@ -134,18 +134,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * The call threshold is counted up for each real call until it reaches a
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation threshold, and
-     * triggers a {@link #compile(boolean) compilation}. It is incremented for each real call to the
-     * call target. Reset by TruffleFeature after image generation.
+     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
+     * real call to the call target. Reset by TruffleFeature after image generation.
      */
     private int callCount;
 
     /**
      * The call and loop threshold is counted up for each real call until it reaches a
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation threshold, and
-     * triggers a {@link #compile(boolean) compilation}. It is incremented for each real call to the
-     * call target. Reset by TruffleFeature after image generation.
+     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
+     * real call to the call target. Reset by TruffleFeature after image generation.
      */
     private int callAndLoopCount;
 

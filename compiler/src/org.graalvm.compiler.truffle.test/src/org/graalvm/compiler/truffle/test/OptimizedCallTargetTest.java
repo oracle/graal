@@ -201,7 +201,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 return child.execute(frame);
             }
         }));
-        assertEquals(compilationThreshold, (int) innermostCallTarget.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold));
+        assertEquals(compilationThreshold, (int) innermostCallTarget.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));
 
         OptimizedCallTarget ct = innermostCallTarget;
         ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 1, new CallTestNode(ct)));

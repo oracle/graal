@@ -24,10 +24,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.util.Arrays;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
@@ -47,6 +48,7 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
 
     private static final String[] DEFAULT_OPTIONS = {
                     "engine.BackgroundCompilation", Boolean.FALSE.toString(), //
+                    "engine.SingleTierCompilationThreshold", "10", //
                     "engine.LastTierCompilationThreshold", "10", //
                     "engine.FirstTierCompilationThreshold", "5", //
                     "engine.CompileImmediately", Boolean.FALSE.toString()
