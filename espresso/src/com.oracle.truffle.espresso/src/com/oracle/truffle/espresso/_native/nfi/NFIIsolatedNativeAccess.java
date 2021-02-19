@@ -90,7 +90,7 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
         this.realloc = lookupAndBindSymbol(edenLibrary, "realloc", NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.LONG));
         this.free = lookupAndBindSymbol(edenLibrary, "free", NativeSignature.create(NativeType.VOID, NativeType.POINTER));
         this.dlsym = lookupAndBindSymbol(edenLibrary, "dlsym", NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER));
-        this.ctypeInit = lookupAndBindSymbol(edenLibrary, "ctypeInit", NativeSignature.create(NativeType.VOID));
+        this.ctypeInit = lookupAndBindSymbol(edenLibrary, "eden_ctypeInit", NativeSignature.create(NativeType.VOID));
         /*
          * The default library provided by NFI does not work inside (dlmopen) isolated namespaces
          * because is based on calling dlsym located outside the isolated namespace. libeden.so,
