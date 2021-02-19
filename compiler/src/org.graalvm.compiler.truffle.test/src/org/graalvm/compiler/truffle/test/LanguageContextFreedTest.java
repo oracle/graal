@@ -172,7 +172,7 @@ public class LanguageContextFreedTest {
             });
             getContext(request.getSource().getLanguage()).currentTarget = target;
 
-            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
+            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));
             return target;
         }
 

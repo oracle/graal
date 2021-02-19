@@ -256,9 +256,9 @@ public final class PolyglotCompilerOptions {
             category = OptionCategory.EXPERT)
     public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(1000L);
 
-    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(10000);
+    public static final OptionKey<Integer> SingleTierCompilationThreshold = new OptionKey<>(1000);
 
     @Option(help = "Minimum number of calls before a call target is compiled", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(3);
@@ -286,9 +286,13 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
 
-    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in first tier mode.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(400);
+
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in last tier mode.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> LastTierCompilationThreshold = new OptionKey<>(10000);
 
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(1);
