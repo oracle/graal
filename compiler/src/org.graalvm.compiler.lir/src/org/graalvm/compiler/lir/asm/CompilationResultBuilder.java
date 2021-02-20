@@ -582,7 +582,7 @@ public class CompilationResultBuilder {
                     afterOp.accept(op);
                 }
             } catch (GraalError e) {
-                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op + "\n" + Arrays.toString(lir.codeEmittingOrder()));
+                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op);
             }
         }
     }
