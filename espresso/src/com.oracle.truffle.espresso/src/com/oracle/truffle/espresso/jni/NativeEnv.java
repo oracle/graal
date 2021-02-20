@@ -32,7 +32,6 @@ import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class NativeEnv {
 
@@ -51,7 +50,8 @@ public abstract class NativeEnv {
             case DOUBLE  : return 0D;
             case POINTER : return RawPointer.nullInstance();
             case VOID    : // fall-through
-            case OBJECT  : return StaticObject.NULL;
+            // JNI handle for the NULL object (0L) and not StaticObject.NULL directly.
+            case OBJECT  : return 0L; // NULL handle
         }
         // @formatter:on
         CompilerDirectives.transferToInterpreterAndInvalidate();

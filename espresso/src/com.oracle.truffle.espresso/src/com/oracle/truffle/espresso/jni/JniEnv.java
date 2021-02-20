@@ -2968,6 +2968,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
 
         guestClass.setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, protectionDomain);
+        // FindClass should initialize the class.
+        guestClass.getMirrorKlass().safeInitialize();
 
         return guestClass;
     }
