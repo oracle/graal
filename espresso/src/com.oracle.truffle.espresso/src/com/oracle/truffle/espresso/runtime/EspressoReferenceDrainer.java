@@ -155,7 +155,7 @@ class EspressoReferenceDrainer implements ContextAccess {
         if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().sun_misc_Cleaner)) {
             wrapper.clear();
         }
-        ref.compareAndSwapField(getMeta().java_lang_ref_Reference_next, StaticObject.NULL, ref);
+        getMeta().java_lang_ref_Reference_next.compareAndSwapObject(ref, StaticObject.NULL, ref);
     }
 
     private abstract class ReferenceDrain implements Runnable {
@@ -168,7 +168,7 @@ class EspressoReferenceDrainer implements ContextAccess {
             Meta meta = getMeta();
             try {
                 getVM().attachThread(Thread.currentThread());
-                final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
+                final StaticObject lock = meta.java_lang_ref_Reference_lock.getObject(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
                         // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
@@ -178,7 +178,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                         do {
                             head = (EspressoReference) referenceQueue.remove();
                             assert head != null;
-                        } while (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(head.getGuestReference())));
+                        } while (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(head.getGuestReference())));
 
                         lock.getLock().lock();
                         try {
@@ -188,7 +188,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                             EspressoReference prev = head;
                             EspressoReference ref;
                             while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
-                                if (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(ref.getGuestReference()))) {
+                                if (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(ref.getGuestReference()))) {
                                     continue;
                                 }
                                 meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());

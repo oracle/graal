@@ -104,11 +104,11 @@ public final class Target_sun_misc_Unsafe {
 
         // Inherit host class's protection domain.
         StaticObject clazz = defineAnonymousKlass(parserKlass, context, classLoader, hostKlass).mirror();
-        StaticObject pd = (StaticObject) hostClass.getHiddenField(meta.HIDDEN_PROTECTION_DOMAIN);
+        StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(hostClass);
         if (pd == null) {
             pd = StaticObject.NULL;
         }
-        clazz.setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
+        meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(clazz, pd);
 
         return clazz;
     }
@@ -252,7 +252,7 @@ public final class Target_sun_misc_Unsafe {
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
         Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader);
-        klass.mirror().setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
+        meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(klass.mirror(), pd);
         return klass.mirror();
     }
 
@@ -280,7 +280,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.compareAndSwapField(f, before, after);
+        return f.compareAndSwapObject(holder, before, after);
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
@@ -291,7 +291,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.compareAndSwapIntField(f, before, after);
+        return f.compareAndSwapInt(holder, before, after);
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
@@ -302,7 +302,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.compareAndSwapLongField(f, before, after);
+        return f.compareAndSwapLong(holder, before, after);
     }
 
     // endregion compareAndSwap*
@@ -316,11 +316,11 @@ public final class Target_sun_misc_Unsafe {
     private static StaticObject doStaticObjectCompareExchange(StaticObject holder, Field f, StaticObject before, StaticObject after) {
         StaticObject result;
         do {
-            result = holder.getFieldVolatile(f);
+            result = f.getObject(holder, true);
             if (result != before) {
                 return result;
             }
-        } while (!holder.compareAndSwapField(f, before, after));
+        } while (!f.compareAndSwapObject(holder, before, after));
         return before;
     }
 
@@ -351,11 +351,11 @@ public final class Target_sun_misc_Unsafe {
     private static int doStaticObjectCompareExchangeInt(StaticObject holder, Field f, int before, int after) {
         int result;
         do {
-            result = holder.getIntFieldVolatile(f);
+            result = f.getInt(holder, true);
             if (result != before) {
                 return result;
             }
-        } while (!holder.compareAndSwapIntField(f, before, after));
+        } while (!f.compareAndSwapInt(holder, before, after));
         return before;
     }
 
@@ -386,11 +386,11 @@ public final class Target_sun_misc_Unsafe {
     private static long doStaticObjectCompareExchangeLong(StaticObject holder, Field f, long before, long after) {
         long result;
         do {
-            result = holder.getLongFieldVolatile(f);
+            result = f.getLong(holder, true);
             if (result != before) {
                 return result;
             }
-        } while (!holder.compareAndSwapLongField(f, before, after));
+        } while (!f.compareAndSwapLong(holder, before, after));
         return before;
     }
 
@@ -555,7 +555,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (byte) f.get(holder);
+        return f.getAsByte(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -568,7 +568,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (StaticObject) f.get(holder);
+        return f.getAsObject(meta, holder);
     }
 
     @Substitution(hasReceiver = true)
@@ -578,7 +578,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (boolean) f.get(holder);
+        return f.getAsBoolean(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -588,7 +588,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (char) f.get(holder);
+        return f.getAsChar(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -598,7 +598,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (short) f.get(holder);
+        return f.getAsShort(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -608,7 +608,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (int) f.get(holder);
+        return f.getAsInt(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -618,7 +618,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (float) f.get(holder);
+        return f.getAsFloat(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -628,7 +628,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (double) f.get(holder);
+        return f.getAsDouble(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -638,7 +638,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (long) f.get(holder);
+        return f.getAsLong(meta, holder, false);
     }
 
     // endregion get*(Object holder, long offset)
@@ -653,7 +653,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getByteFieldVolatile(f) != 0;
+        return f.getAsBoolean(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -664,7 +664,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getByteFieldVolatile(f);
+        return f.getAsByte(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -675,7 +675,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getShortFieldVolatile(f);
+        return f.getAsShort(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -686,7 +686,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getCharFieldVolatile(f);
+        return f.getAsChar(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -697,7 +697,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getFloatFieldVolatile(f);
+        return f.getAsFloat(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -708,7 +708,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getIntFieldVolatile(f);
+        return f.getAsInt(meta, holder, false, true);
     }
 
     @Substitution(hasReceiver = true)
@@ -718,7 +718,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getLongFieldVolatile(f);
+        return f.getAsLong(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -729,7 +729,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getDoubleField(f);
+        return f.getAsDouble(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -741,7 +741,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getFieldVolatile(f);
+        return f.getAsObject(meta, holder, true);
     }
 
     // endregion get*Volatile(Object holder, long offset)
@@ -782,9 +782,9 @@ public final class Target_sun_misc_Unsafe {
     public static double getDouble(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
         return UnsafeAccess.getIfAllowed(meta).getDouble(offset);
     }
-
     // endregion get*(long offset)
 
+    // region put*Volatile(Object holder, long offset)
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
     public static void putObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
@@ -798,7 +798,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert !f.getKind().isSubWord();
-        holder.setFieldVolatile(f, value);
+        f.setObject(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -813,7 +813,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setIntFieldVolatile(f, value);
+        f.setInt(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -828,7 +828,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().needsTwoSlots();
-        holder.setLongFieldVolatile(f, value);
+        f.setLong(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -844,7 +844,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setBooleanFieldVolatile(f, value);
+        f.setBoolean(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -859,7 +859,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setCharFieldVolatile(f, value);
+        f.setChar(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -874,7 +874,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setShortFieldVolatile(f, value);
+        f.setShort(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -889,7 +889,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setFloatFieldVolatile(f, value);
+        f.setFloat(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -904,7 +904,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().needsTwoSlots();
-        holder.setDoubleFieldVolatile(f, value);
+        f.setDouble(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -919,8 +919,9 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setByteFieldVolatile(f, value);
+        f.setByte(holder, value, true);
     }
+    // endregion put*Volatile(Object holder, long offset)
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz,
@@ -1009,7 +1010,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setObject(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1022,7 +1023,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setBoolean(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1035,7 +1036,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setByte(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1048,7 +1049,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setChar(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1061,7 +1062,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setShort(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1074,7 +1075,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setInt(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1087,7 +1088,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setFloat(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1100,7 +1101,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setDouble(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1113,7 +1114,7 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setLong(holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1127,7 +1128,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         // TODO(peterssen): Volatile is stronger than needed.
-        holder.setIntFieldVolatile(f, value);
+        f.setInt(holder, value, true);
     }
 
     @Substitution(hasReceiver = true)
@@ -1141,7 +1142,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         // TODO(peterssen): Volatile is stronger than needed.
-        holder.setLongFieldVolatile(f, value);
+        f.setLong(holder, value, true);
     }
 
     @Substitution(hasReceiver = true)
@@ -1156,7 +1157,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         // TODO(peterssen): Volatile is stronger than needed.
-        holder.setFieldVolatile(f, value);
+        f.setObject(holder, value, true);
     }
 
     // endregion put*(Object holder, long offset, * value)
@@ -1293,7 +1294,7 @@ public final class Target_sun_misc_Unsafe {
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
         Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
-        StaticObject guestBlocker = thread.getField(parkBlocker);
+        StaticObject guestBlocker = parkBlocker.getObject(thread);
         // LockSupport.park(/* guest blocker */);
         if (!StaticObject.isNull(guestBlocker)) {
             unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
@@ -1325,7 +1326,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void unpark(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject thread,
                     @InjectMeta Meta meta) {
-        Thread hostThread = (Thread) thread.getHiddenField(meta.HIDDEN_HOST_THREAD);
+        Thread hostThread = (Thread) meta.HIDDEN_HOST_THREAD.getHiddenObject(thread);
         UnsafeAccess.getIfAllowed(meta).unpark(hostThread);
     }
 

@@ -364,10 +364,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             StaticObject staticStorage = meta.polyglot.ExceptionType.tryInitializeAndGetStatics();
             // @formatter:off
             switch (exceptionType) {
-                case EXIT          : return (StaticObject) meta.polyglot.ExceptionType_EXIT.get(staticStorage);
-                case INTERRUPT     : return (StaticObject) meta.polyglot.ExceptionType_INTERRUPT.get(staticStorage);
-                case RUNTIME_ERROR : return (StaticObject) meta.polyglot.ExceptionType_RUNTIME_ERROR.get(staticStorage);
-                case PARSE_ERROR   : return (StaticObject) meta.polyglot.ExceptionType_PARSE_ERROR.get(staticStorage);
+                case EXIT          : return meta.polyglot.ExceptionType_EXIT.getObject(staticStorage);
+                case INTERRUPT     : return meta.polyglot.ExceptionType_INTERRUPT.getObject(staticStorage);
+                case RUNTIME_ERROR : return meta.polyglot.ExceptionType_RUNTIME_ERROR.getObject(staticStorage);
+                case PARSE_ERROR   : return meta.polyglot.ExceptionType_PARSE_ERROR.getObject(staticStorage);
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere("Unexpected ExceptionType: ", exceptionType);

@@ -60,7 +60,7 @@ public final class Target_sun_launcher_LauncherHelper {
         printHelpMessage.call(printToStderr);
 
         // Append espresso specific help
-        StaticObject stream = meta.sun_launcher_LauncherHelper.tryInitializeAndGetStatics().getField(meta.sun_launcher_LauncherHelper_ostream);
+        StaticObject stream = meta.sun_launcher_LauncherHelper_ostream.getObject(meta.sun_launcher_LauncherHelper.tryInitializeAndGetStatics());
         if (!StaticObject.isNull(stream)) {
             println.call(stream, meta.toGuestString(helpMessage));
         }
