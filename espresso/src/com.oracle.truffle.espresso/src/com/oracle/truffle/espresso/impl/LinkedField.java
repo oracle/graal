@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,19 +28,18 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-final class LinkedField {
+final class LinkedField extends StaticProperty {
     private final ParserField parserField;
-    private final int index;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot, int index) {
+    LinkedField(ParserField parserField, int slot, int offset) {
+        super(parserField.getKind(), offset);
         this.parserField = parserField;
         this.slot = slot;
-        this.index = index;
     }
 
-    public static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
-        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, index);
+    public static LinkedField createHidden(Symbol<Name> name, int slot, int offset) {
+        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, offset);
     }
 
     /**
@@ -48,13 +47,6 @@ final class LinkedField {
      */
     public int getSlot() {
         return slot;
-    }
-
-    /**
-     * The index is the actual position in the field array of an actual instance.
-     */
-    public int getIndex() {
-        return index;
     }
 
     public Symbol<Type> getType() {

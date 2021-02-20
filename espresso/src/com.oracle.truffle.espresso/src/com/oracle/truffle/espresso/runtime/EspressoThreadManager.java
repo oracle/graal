@@ -165,7 +165,7 @@ class EspressoThreadManager implements ContextAccess {
             return String.format("unregisterThread([GUEST:%s, %d])", guestName, guestId);
         });
         activeThreads.remove(thread);
-        Thread hostThread = (Thread) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        Thread hostThread = (Thread) thread.getKlass().getMeta().HIDDEN_HOST_THREAD.getHiddenObject(thread);
         int id = Math.toIntExact(hostThread.getId());
         synchronized (activeThreadLock) {
             if (id == mainThreadId) {
@@ -267,9 +267,9 @@ class EspressoThreadManager implements ContextAccess {
             vm.attachThread(hostThread);
             StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
             // Allow guest Thread.currentThread() to work.
-            guestThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-            guestThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-            guestThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
+            meta.java_lang_Thread_priority.setInt(guestThread, Thread.NORM_PRIORITY);
+            meta.HIDDEN_HOST_THREAD.setHiddenObject(guestThread, Thread.currentThread());
+            meta.HIDDEN_DEATH.setHiddenObject(guestThread, Target_java_lang_Thread.KillStatus.NORMAL);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
@@ -279,7 +279,7 @@ class EspressoThreadManager implements ContextAccess {
             } else {
                 meta.java_lang_Thread_init_ThreadGroup_String.invokeDirect(guestThread, threadGroup, meta.toGuestString(name));
             }
-            guestThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
+            meta.java_lang_Thread_threadStatus.setInt(guestThread, Target_java_lang_Thread.State.RUNNABLE.value);
 
             // now add to the main thread group
             meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
@@ -306,9 +306,9 @@ class EspressoThreadManager implements ContextAccess {
         Thread hostThread = Thread.currentThread();
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
-        mainThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
-        mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
+        meta.java_lang_Thread_priority.setInt(mainThread, Thread.NORM_PRIORITY);
+        meta.HIDDEN_HOST_THREAD.setHiddenObject(mainThread, hostThread);
+        meta.HIDDEN_DEATH.setHiddenObject(mainThread, Target_java_lang_Thread.KillStatus.NORMAL);
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
 
         registerMainThread(hostThread, mainThread);
@@ -325,7 +325,7 @@ class EspressoThreadManager implements ContextAccess {
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
-        mainThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
+        meta.java_lang_Thread_threadStatus.setInt(mainThread, Target_java_lang_Thread.State.RUNNABLE.value);
 
         // Notify native backend about main thread.
         getNativeAccess().prepareThread();

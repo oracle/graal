@@ -3,9 +3,9 @@ suite = {
   "name": "java-benchmarks",
 
   "libraries" : {
-    "SHOPCART_0.1": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.1.zip"],
-      "sha1": "c5743bc9ae3429dd6590420c2c9e329efbf8fc29",
+    "SHOPCART_0.2": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.2.zip"],
+      "sha1": "a216a44f7a52b9e5d09a1cd1e4f4ffd3d86c7bd1",
       "packedResource": True,
     },
 

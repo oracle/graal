@@ -35,6 +35,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -58,7 +59,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     private final int argCount;
     private final Linker linker;
-    private final int hiddenVmtarget;
+    private final Field hiddenVmtarget;
     private final boolean hasReceiver;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
@@ -66,7 +67,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
         this.argCount = Signatures.parameterCount(method.getParsedSignature(), false);
-        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET.getIndex();
+        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET;
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
         this.linker = findLinker(id);
         assert method.isStatic();
@@ -152,6 +153,6 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         assert args.length >= 1;
         StaticObject memberName = (StaticObject) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.java_lang_invoke_MemberName);
-        return (Method) memberName.getUnsafeField(hiddenVmtarget);
+        return (Method) hiddenVmtarget.getHiddenObject(memberName);
     }
 }

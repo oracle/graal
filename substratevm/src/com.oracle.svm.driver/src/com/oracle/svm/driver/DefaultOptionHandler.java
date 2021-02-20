@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionType;
 
@@ -150,6 +151,18 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case verboseServerOption:
                 args.poll();
                 NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
+                return true;
+            case "--exclude-config":
+                args.poll();
+                String excludeJar = args.poll();
+                if (excludeJar == null) {
+                    NativeImage.showError(headArg + " requires two arguments: a jar regular expression and a resource regular expression");
+                }
+                String excludeConfig = args.poll();
+                if (excludeConfig == null) {
+                    NativeImage.showError(headArg + " requires resource regular expression");
+                }
+                nativeImage.addExcludeConfig(Pattern.compile(excludeJar), Pattern.compile(excludeConfig));
                 return true;
         }
 

@@ -640,6 +640,26 @@ public abstract class ProxyInteropObject implements TruffleObject {
             return INTEROP.toDisplayString(delegate, allowSideEffects);
         }
 
+        @Override
+        protected boolean hasMetaObject() {
+            return INTEROP.hasMetaObject(delegate);
+        }
+
+        @Override
+        protected Object getMetaObject() throws UnsupportedMessageException {
+            return INTEROP.getMetaObject(delegate);
+        }
+
+        @Override
+        protected String getMetaQualifiedName() throws UnsupportedMessageException {
+            return INTEROP.asString(INTEROP.getMetaQualifiedName(delegate));
+        }
+
+        @Override
+        protected String getMetaSimpleName() throws UnsupportedMessageException {
+            return INTEROP.asString(INTEROP.getMetaSimpleName(delegate));
+        }
+
     }
 
 }

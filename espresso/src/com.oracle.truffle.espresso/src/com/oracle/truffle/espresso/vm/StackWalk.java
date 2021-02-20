@@ -94,7 +94,7 @@ public class StackWalk {
     }
 
     private static int getConstantField(Klass stackStreamFactory, StaticObject statics, String name, Meta meta) {
-        return statics.getIntField(stackStreamFactory.lookupDeclaredField(meta.getNames().getOrCreate(name), Symbol.Type._int));
+        return stackStreamFactory.lookupDeclaredField(meta.getNames().getOrCreate(name), Symbol.Type._int).getInt(statics);
     }
 
     public StackWalk() {
@@ -356,10 +356,10 @@ public class StackWalk {
          */
         private void fillFrame(FrameInstance frameInstance, Method m, int index) {
             StaticObject frame = frames.get(index);
-            StaticObject memberName = frame.getField(meta.java_lang_StackFrameInfo_memberName);
+            StaticObject memberName = meta.java_lang_StackFrameInfo_memberName.getObject(frame);
             Target_java_lang_invoke_MethodHandleNatives.plantResolvedMethod(memberName, m, m.getRefKind(), meta);
-            memberName.setField(meta.java_lang_invoke_MemberName_clazz, m.getDeclaringKlass().mirror());
-            frame.setIntField(meta.java_lang_StackFrameInfo_bci, VM.getEspressoRootFromFrame(frameInstance).readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
+            meta.java_lang_invoke_MemberName_clazz.setObject(memberName, m.getDeclaringKlass().mirror());
+            meta.java_lang_StackFrameInfo_bci.setInt(frame, VM.getEspressoRootFromFrame(frameInstance).readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
         }
     }
 }

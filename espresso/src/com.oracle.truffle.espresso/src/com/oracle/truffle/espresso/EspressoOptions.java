@@ -310,6 +310,9 @@ public final class EspressoOptions {
                                         port = inputPort;
                                         break;
                                     case "transport":
+                                        if (!"dt_socket".equals(value)) {
+                                            throw new IllegalArgumentException("Invalid transport " + value + ". Espresso only supports dt_socket currently.");
+                                        }
                                         transport = value;
                                         break;
                                     case "server":

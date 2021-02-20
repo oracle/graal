@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
@@ -51,30 +50,55 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
     public static final NodeClass<ReverseBytesNode> TYPE = NodeClass.create(ReverseBytesNode.class);
 
     public ReverseBytesNode(ValueNode value) {
-        super(TYPE, StampFactory.forKind(value.getStackKind()), value);
-        assert getStackKind() == JavaKind.Int || getStackKind() == JavaKind.Long;
+        super(TYPE, value.stamp(NodeView.DEFAULT).unrestricted(), value);
     }
 
     @Override
     public Stamp foldStamp(Stamp newStamp) {
         assert newStamp.isCompatible(getValue().stamp(NodeView.DEFAULT));
-        IntegerStamp valueStamp = (IntegerStamp) newStamp;
-        if (getStackKind() == JavaKind.Int) {
-            long mask = CodeUtil.mask(JavaKind.Int.getBitCount());
-            return IntegerStamp.stampForMask(valueStamp.getBits(), Integer.reverseBytes((int) valueStamp.downMask()) & mask, Integer.reverseBytes((int) valueStamp.upMask()) & mask);
-        } else if (getStackKind() == JavaKind.Long) {
-            return IntegerStamp.stampForMask(valueStamp.getBits(), Long.reverseBytes(valueStamp.downMask()), Long.reverseBytes(valueStamp.upMask()));
-        } else {
-            return stamp(NodeView.DEFAULT);
+        if (newStamp instanceof IntegerStamp) {
+            IntegerStamp valueStamp = (IntegerStamp) newStamp;
+            switch (valueStamp.getBits()) {
+                case 1:
+                case 8: {
+                    return stamp(NodeView.DEFAULT);
+                }
+                case 16: {
+                    long mask = CodeUtil.mask(16);
+                    return IntegerStamp.stampForMask(16, Short.reverseBytes((short) valueStamp.downMask()) & mask, Short.reverseBytes((short) valueStamp.upMask()) & mask);
+                }
+                case 32: {
+                    long mask = CodeUtil.mask(32);
+                    return IntegerStamp.stampForMask(32, Integer.reverseBytes((int) valueStamp.downMask()) & mask, Integer.reverseBytes((int) valueStamp.upMask()) & mask);
+                }
+                case 64: {
+                    return IntegerStamp.stampForMask(64, Long.reverseBytes(valueStamp.downMask()), Long.reverseBytes(valueStamp.upMask()));
+                }
+                default:
+                    throw GraalError.unimplemented("Unsupported bit size " + valueStamp.getBits());
+            }
         }
+        return stamp(NodeView.DEFAULT);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (forValue.isConstant()) {
-            JavaConstant c = forValue.asJavaConstant();
-            long reversed = getStackKind() == JavaKind.Int ? Integer.reverseBytes(c.asInt()) : Long.reverseBytes(c.asLong());
-            return ConstantNode.forIntegerKind(getStackKind(), reversed);
+        JavaConstant c = forValue.asJavaConstant();
+        if (c != null) {
+            switch (c.getJavaKind()) {
+                case Byte:
+                    return ConstantNode.forByte((byte) c.asInt(), forValue.graph());
+                case Short:
+                    return ConstantNode.forShort(Short.reverseBytes((short) c.asInt()), forValue.graph());
+                case Char:
+                    return ConstantNode.forChar(Character.reverseBytes((char) c.asInt()), forValue.graph());
+                case Int:
+                    return ConstantNode.forInt(Integer.reverseBytes(c.asInt()));
+                case Long:
+                    return ConstantNode.forLong(Long.reverseBytes(c.asLong()));
+                default:
+                    throw GraalError.unimplemented("Unhandled byte reverse on constant of kind " + c.getJavaKind());
+            }
         }
         return this;
     }

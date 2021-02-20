@@ -404,7 +404,7 @@ final class LoadingConstraints implements ContextAccess {
         if (StaticObject.isNull(loader)) {
             return meta.getContext().getBootClassLoaderID();
         }
-        ClassRegistry classRegistry = (ClassRegistry) loader.getHiddenFieldVolatile(meta.HIDDEN_CLASS_LOADER_REGISTRY);
+        ClassRegistry classRegistry = (ClassRegistry) meta.HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObject(loader, true);
         if (classRegistry == null) {
             throw EspressoError.shouldNotReachHere();
         }
