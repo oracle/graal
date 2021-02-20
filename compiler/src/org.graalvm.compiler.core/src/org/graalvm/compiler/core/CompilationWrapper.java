@@ -33,6 +33,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosit
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import static org.graalvm.compiler.debug.DebugOptions.MethodFilter;
+import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -327,6 +328,7 @@ public abstract class CompilationWrapper<T> {
                             Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
                             MethodFilter, null,
                             DumpPath, dumpPath.getPath(),
+                            PrintBackendCFG, true,
                             TrackNodeSourcePosition, true);
 
             ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
