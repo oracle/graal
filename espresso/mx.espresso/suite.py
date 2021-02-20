@@ -95,7 +95,6 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
                 "com.oracle.truffle.espresso.jdwp",
-                "sulong:SULONG_NFI"
             ],
             "uses": [
                 "com.oracle.truffle.espresso._native.NativeAccess.Provider",
