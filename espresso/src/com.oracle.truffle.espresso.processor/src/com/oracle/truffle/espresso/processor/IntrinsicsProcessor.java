@@ -30,6 +30,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ReferenceType;
+import javax.tools.Diagnostic;
 
 public abstract class IntrinsicsProcessor extends EspressoProcessor {
     static final String JNI_PACKAGE = "com.oracle.truffle.espresso.jni";
@@ -95,6 +96,9 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
                 // Override NFI type.
                 pointer = getAnnotation(param.asType(), pointerAnnotation);
                 handle = getAnnotation(param.asType(), handleAnnotation);
+                if (pointer != null && handle != null) {
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, String.format("Parameter cannot be be annotated with both %s and %s", pointer, handle), param);
+                }
                 if (pointer != null) {
                     signature.add(NativeType.POINTER);
                 } else if (handle != null) {
