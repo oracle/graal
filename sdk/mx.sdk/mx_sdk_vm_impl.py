@@ -51,6 +51,7 @@ import os
 from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir, islink, isabs
 import pprint
 import re
+import shutil
 import subprocess
 import sys
 
@@ -323,6 +324,11 @@ def _graalvm_maven_attributes(tag='graalvm'):
     """
     return {'groupId': 'org.graalvm', 'tag': tag}
 
+mx.add_argument('--no-jlinking', action='store_true', help='Do not jlink graal libraries in the generated JDK. Warning: The resulting VM will be HotSpot, not GraalVM.')
+
+def _jlink_libraries():
+    return not (mx.get_opts().no_jlinking or mx.env_var_to_bool('NO_JLINKING'))
+
 
 class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistribution)):
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution,
@@ -398,7 +404,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             for _src in list(src):
                 src_dict = mx.LayoutDistribution._as_source_dict(_src, name, dest)
                 if src_dict['source_type'] == 'dependency' and src_dict['path'] is None:
-                    if with_sources and _include_sources(src_dict['dependency']) and (_src_jdk_version == 8 or src_dict['dependency'] not in self.jimage_jars):
+                    if with_sources and _include_sources(src_dict['dependency']) and (_src_jdk_version == 8 or src_dict['dependency'] not in self.jimage_jars or not _jlink_libraries()):
                         src_src_dict = {
                             'source_type': 'dependency',
                             'dependency': src_dict['dependency'],
@@ -607,6 +613,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
             if _src_jdk_version == 8:
                 _add(layout, '<jre_base>/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
+            elif not _jlink_libraries():
+                _add(layout, '<jre_base>/lib/jvmci/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
             _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions + _component.jvmci_parent_jars], _component, with_sources=True)
             _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component, with_sources=True)
             _add(layout, _component_base, [{
@@ -627,7 +635,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 'exclude': [],
                 'path': None,
             } for d in _component.support_libraries_distributions], _component)
-            if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _src_jdk_version == 8:
+            if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and (_src_jdk_version == 8 or not _jlink_libraries()):
                 _add(layout, '<jre_base>/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component, with_sources=True)
 
             if isinstance(_component, mx_sdk.GraalVmJdkComponent):
@@ -695,7 +703,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 _add_native_image_macro(_library_config, _component)
 
-            if _src_jdk_version == 8:
+            if _src_jdk_version == 8 or not _jlink_libraries():
                 graalvm_dists.difference_update(_component.boot_jars)
             graalvm_dists.difference_update(_component.jar_distributions)
             graalvm_dists.difference_update(_component.jvmci_parent_jars)
@@ -1447,7 +1455,12 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         def with_source(dep):
             return not isinstance(dep, mx.Dependency) or (_include_sources(dep.qualifiedName()) and dep.isJARDistribution() and not dep.is_stripped())
         vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
-        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
+
+        if _jlink_libraries():
+            mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
+        else:
+            mx.warn("--no-jlinking flag used. The resulting VM will be HotSpot, not GraalVM")
+            shutil.copytree(_src_jdk.home, self.subject.output_directory(), symlinks=True)
 
         release_file = join(self.subject.output_directory(), 'release')
         _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
@@ -1777,11 +1790,26 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
 
         def _get_extra_jvm_args():
             image_config = self.subject.native_image_config
-            return mx.list_to_cmd_line(image_config.extra_jvm_args)
+            extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
+            if not _jlink_libraries():
+                if mx.is_windows():
+                    extra_jvm_args = ' '.join([extra_jvm_args, r"--upgrade-module-path %location%\..\..\jvmci\graal.jar",
+                                               r"--add-modules org.graalvm.truffle,org.graalvm.sdk",
+                                               r"--module-path %location%\..\..\truffle\truffle-api.jar:%location%\..\..\jvmci\graal-sdk.jar"])
+                else:
+                    extra_jvm_args = ' '.join([extra_jvm_args, "--upgrade-module-path ${location}/../../jvmci/graal.jar",
+                                               "--add-modules org.graalvm.truffle,org.graalvm.sdk",
+                                               "--module-path ${location}/../../truffle/truffle-api.jar:${location}/../../jvmci/graal-sdk.jar"])
+            return extra_jvm_args
 
         def _get_option_vars():
             image_config = self.subject.native_image_config
             return ' '.join(image_config.option_vars)
+
+        def _get_launcher_args():
+            if not _jlink_libraries():
+                return '-J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler'
+            return ''
 
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('classpath', _get_classpath)
@@ -1790,6 +1818,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         _template_subst.register_no_arg('extra_jvm_args', _get_extra_jvm_args)
         _template_subst.register_no_arg('macro_name', GraalVmNativeProperties.macro_name(self.subject.native_image_config))
         _template_subst.register_no_arg('option_vars', _get_option_vars)
+        _template_subst.register_no_arg('launcher_args', _get_launcher_args)
 
         with open(self._template_file(), 'r') as template, mx.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
             for line in template:
@@ -1836,7 +1865,7 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
     jimage_deps = jimage.deps if jimage else None
     mx.logv("Composing classpath for " + str(dependencies) + ". Entries:\n" + '\n'.join(('- {}:{}'.format(d.suite, d.name) for d in mx.classpath_entries(dependencies))))
     for _cp_entry in mx.classpath_entries(dependencies):
-        if jimage_deps and _cp_entry in jimage_deps:
+        if jimage_deps and _jlink_libraries() and _cp_entry in jimage_deps:
             continue
         if _cp_entry.isJdkLibrary() or _cp_entry.isJreLibrary():
             jdk = _src_jdk

@@ -46,7 +46,7 @@ for e in "${relative_cp[@]}"; do
 done
 
 jvm_args=("-Dorg.graalvm.launcher.shell=true" "-Dorg.graalvm.launcher.executablename=$0")
-launcher_args=()
+launcher_args=(<launcher_args>)
 
 # Unfortunately, parsing of `--vm.*` arguments has to be done blind:
 # Maybe some of those arguments where not really intended for the launcher but were application arguments
