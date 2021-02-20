@@ -399,6 +399,29 @@ public class HostAccessTest {
     }
 
     @Test
+    public void testMapAccessEnabled() {
+
+        this.setupEnv(HostAccess.newBuilder().allowMapAccess(true));
+        final  Map<String, Integer> map = new HashMap<>();
+        map.put("one", 1);
+
+        final Value value = this.context.asValue(map);
+        final Value one = value.getMember("one");
+        assertEquals(1, one.asInt());
+    }
+
+    @Test
+    public void testMapAccessDisabled() {
+
+        this.setupEnv(HostAccess.newBuilder().allowMapAccess(false));
+        final  Map<String, Integer> map = new HashMap<>();
+        map.put("one", 1);
+
+        final Value value = this.context.asValue(map);
+        assertNull(value.getMember("one"));
+    }
+
+    @Test
     public void testListAccessDisabled() {
         setupEnv(HostAccess.newBuilder().allowListAccess(false));
         assertListAccessDisabled(context, false);

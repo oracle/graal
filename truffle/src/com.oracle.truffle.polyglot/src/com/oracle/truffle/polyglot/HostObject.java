@@ -278,8 +278,8 @@ final class HostObject implements TruffleObject {
         }
 
         if (isMapNode.execute(this)) {
-            if (((Map<?, ?>) this.obj).containsKey(name)) {
-                return HostObject.forObject(((Map<?, ?>) this.obj).get(name), this.languageContext);
+            if (IsMapNode.containsKey(this.obj, name)) {
+                return HostObject.forObject(IsMapNode.get(this.obj, name), this.languageContext);
             }
         }
 
@@ -2219,6 +2219,14 @@ final class HostObject implements TruffleObject {
                                  @Cached(value = "receiver.getHostClassCache().isMapAccess()", allowUncached = true) boolean isMapAccess) {
             assert receiver.getHostClassCache().isMapAccess() == isMapAccess;
             return isMapAccess && receiver.obj instanceof Map;
+        }
+
+        public static boolean containsKey(Object map, String key) {
+            return ((Map<?, ?>) map).containsKey(key);
+        }
+
+        public static Object get(Object map, String key) {
+            return ((Map<?, ?>) map).get(key);
         }
 
     }
