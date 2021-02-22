@@ -69,7 +69,7 @@ import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 public abstract class BaseSuiteHarness {
 
     /**
-     * The absolute path to the test case. The test case always a directory containing
+     * The absolute path to the test case. The test case is always a directory containing
      * {@link #getIsExecutableFilter() a reference executable} and {@link #getIsSulongFilter()
      * bitcode files}.
      */

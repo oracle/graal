@@ -76,7 +76,7 @@ public final class TestCaseCollector {
      * Second, the method collects excluded test cases based on a predefined exclude file structure.
      * Exclude files are files with a {@code .exclude} extension. Every line specifies a <em>test
      * case</em> (a directory) that should be excluded. Lines that start with {@code #} are ignored.
-     * Exclude files are recursively search in the {@code testSuiteClass#getSimpleName()}
+     * Exclude files are recursively searched in the {@code testSuiteClass#getSimpleName()}
      * subdirectory of {@link TestOptions#CONFIG_ROOT}. The exclude file name (relative to
      * {@link TestOptions#CONFIG_ROOT}) is used as the exclude reason.
      *
