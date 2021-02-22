@@ -44,7 +44,7 @@ import com.oracle.svm.core.jni.JNIRuntimeAccess;
  */
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticFeature
-class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
+public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
@@ -88,8 +88,11 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
             }
         }
 
-        if (JavaVersionUtil.JAVA_SPEC < 14) {
+        if (JavaVersionUtil.JAVA_SPEC < 13) {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerDatagramChannelImplInitIDs, method(a, "sun.nio.ch.DatagramChannelImpl", "initIDs"));
+        } else {
+            // JDK-8220738
+            a.registerReachabilityHandler(JNIRegistrationJavaNio::registerNetInitIDs, method(a, "sun.nio.ch.Net", "initIDs"));
         }
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileChannelImplInitIDs, method(a, "sun.nio.ch.FileChannelImpl", "initIDs"));
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileKeyInitIDs, method(a, "sun.nio.ch.FileKey", "initIDs"));
@@ -131,6 +134,11 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.ch.DatagramChannelImpl"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.ch.DatagramChannelImpl", "sender", "cachedSenderInetAddress", "cachedSenderPort"));
+    }
+
+    private static void registerNetInitIDs(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(clazz(a, "java.net.InetSocketAddress"));
+        JNIRuntimeAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
     }
 
     private static void registerFileChannelImplInitIDs(DuringAnalysisAccess a) {
