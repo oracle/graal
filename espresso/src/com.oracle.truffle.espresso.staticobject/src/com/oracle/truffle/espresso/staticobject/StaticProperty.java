@@ -25,11 +25,12 @@ package com.oracle.truffle.espresso.staticobject;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import sun.misc.Unsafe;
 
+import java.lang.reflect.Field;
+
 public class StaticProperty {
-    private static final Unsafe UNSAFE = UnsafeAccess.get();
+    private static final Unsafe UNSAFE = getUnsafe();
     private final byte internalKind;
     private final int offset;
 
@@ -284,5 +285,19 @@ public class StaticProperty {
     public final void setShortVolatile(StaticObject obj, short value) {
         checkKind(JavaKind.Short);
         UNSAFE.putShortVolatile(obj.getPrimitiveFieldStorage(), offset, value);
+    }
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
     }
 }
