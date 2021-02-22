@@ -47,6 +47,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
@@ -282,7 +283,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             synchronized (this) {
                 result = suite;
                 if (result == null) {
-                    result = getTruffleCompiler(callTarget).createGraphBuilderSuite();
+                    TruffleCompilerImpl compiler = getTruffleCompiler(callTarget);
+                    result = compiler.createGraphBuilderSuite(compiler.getConfig().lastTier());
                     suite = result;
                 }
             }
