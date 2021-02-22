@@ -343,25 +343,7 @@ public abstract class PartialEvaluator {
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
-                try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
-                    new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
-                }
-                inlineReplacements(request);
-                try (DebugCloseable a = TruffleConditionalEliminationTimer.start(request.debug)) {
-                    new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
-                }
-                try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
-                    canonicalizer.apply(request.graph, request.highTierContext);
-                }
-                boolean performFrameClear = request.options.get(ForceFrameLivenessAnalysis) || request.graph.hasNode(VirtualFrameClearNode.TYPE);
-                try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
-                    partialEscape(request);
-                }
-                if (performFrameClear) {
-                    try (DebugCloseable a = TruffleFrameClearTimer.start(request.debug)) {
-                        new FrameClearPhase(knownTruffleTypes, canonicalizer, request.compilable).apply(request.graph, request.highTierContext);
-                    }
-                }
+                truffleTier(request);
                 // recompute loop frequencies now that BranchProbabilities have been canonicalized
                 ComputeLoopFrequenciesClosure.compute(request.graph);
                 applyInstrumentationPhases(request);
@@ -375,7 +357,6 @@ public abstract class PartialEvaluator {
                 TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
                 setIdentityForValueTypes(request, rt);
                 handleInliningAcrossTruffleBoundary(request, rt);
-
             } catch (Throwable e) {
                 throw request.debug.handle(e);
             }
@@ -547,20 +528,43 @@ public abstract class PartialEvaluator {
     }
 
     public void doGraphPE(Request request, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
-        LoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
-        ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(request.compilable);
-
-        ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
-        InlineInvokePlugin[] inlineInvokePlugins;
-        NodeLimitControlPlugin nodeLimitControlPlugin = new NodeLimitControlPlugin(request.options.get(MaximumGraalNodeCount));
-        inlineInvokePlugins = new InlineInvokePlugin[]{replacements, nodeLimitControlPlugin, inlineInvokePlugin};
-
-        SourceLanguagePositionProvider sourceLanguagePosition = new TruffleSourceLanguagePositionProvider(request.inliningPlan);
-        InvocationPlugins decodingPlugins = request.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins;
-        PEGraphDecoder decoder = createGraphDecoder(request, loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin,
+        InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
+                        (ReplacementsImpl) providers.getReplacements(),
+                        new NodeLimitControlPlugin(request.options.get(MaximumGraalNodeCount)),
+                        inlineInvokePlugin
+        };
+        PEGraphDecoder decoder = createGraphDecoder(request,
+                        new PELoopExplosionPlugin(),
+                        request.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins,
+                        inlineInvokePlugins,
+                        new InterceptReceiverPlugin(request.compilable),
                         nodePlugins,
-                        sourceLanguagePosition, graphCache);
+                        new TruffleSourceLanguagePositionProvider(request.inliningPlan),
+                        graphCache);
         decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
+    }
+
+    @SuppressWarnings("try")
+    public void truffleTier(Request request) {
+        try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
+            new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
+        }
+        inlineReplacements(request);
+        try (DebugCloseable a = TruffleConditionalEliminationTimer.start(request.debug)) {
+            new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
+        }
+        try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
+            canonicalizer.apply(request.graph, request.highTierContext);
+        }
+        boolean performFrameClear = request.options.get(ForceFrameLivenessAnalysis) || request.graph.hasNode(VirtualFrameClearNode.TYPE);
+        try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
+            partialEscape(request);
+        }
+        if (performFrameClear) {
+            try (DebugCloseable a = TruffleFrameClearTimer.start(request.debug)) {
+                new FrameClearPhase(knownTruffleTypes, canonicalizer, request.compilable).apply(request.graph, request.highTierContext);
+            }
+        }
     }
 
     /**

@@ -325,6 +325,11 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         }
 
         @Override
+        public boolean supportsRounding() {
+            return tool.supportsRounding();
+        }
+
+        @Override
         public OptionValues getOptions() {
             return tool.getOptions();
         }

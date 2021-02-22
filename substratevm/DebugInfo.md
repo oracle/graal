@@ -16,9 +16,11 @@ At present it makes no difference which positive value is supplied to the `Gener
 
 The `GenerateDebugInfo` option also enables caching of sources for any
 JDK runtime classes, GraalVM classes, and application classes which can
-be located during native image generation. By default, the cache is
-created under local subdirectory sources (a command line option can be
-used to specify an alternative location). It is used to configure
+be located during native image generation. By default, the cache is created
+alongside the generated native image in a subdirectory named `sources`. If a
+target directory for the image is specified using option `-H:Path=...` then
+the cache is also relocated under that same target. A command line option can
+be used to provide an alternative path to `sources`. It is used to configure
 source file search path roots for the debugger. Files in the cache are
 located in a directory hierarchy that matches the file path
 information included in the native image debug records. The source
@@ -43,7 +45,7 @@ javac -cp apps/greeter/classes \
     --source-path apps/hello/src \
     -d apps/hello/classes org/my/hello/Hello.java
 native-image -H:GenerateDebugInfo=1 \
-    -H:-UseIsolates \
+    -H:-SpawnIsolates \
     -H:DebugInfoSourceSearchPath=apps/hello/src \
     -H:DebugInfoSourceSearchPath=apps/greeter/src \
     -cp apps/hello/classes:apps/greeter/classes org.my.hello.Hello
@@ -61,21 +63,27 @@ native-image -H:GenerateDebugInfo=1 \
     org.my.Hello
 ```
 By default, the cache of application, GraalVM, and JDK sources is
-located under local directory sources. The `DebugInfoSourceCacheRoot`
-option can be used to specify an alternative location for the top level
-directory. As an example, the following variant of the previous
-command specifies the same target but employs an absolute path:
+created in a directory named `sources`. The `DebugInfoSourceCacheRoot`
+option can be used to specify an alternative path, which can be
+absolute or relative. In the latter case the path is interpreted
+relative to the target directory for the generated native image
+specified via option `-H:Path` (which defaults to the current
+working directory). As an example, the following variant of the
+previous command specifies an absolute temporary directory path
+constructed using the current process id:
 ```shell
-SOURCE_CACHE_ROOT=$PWD/sources
+SOURCE_CACHE_ROOT=/tmp/$$/sources
 native-image -H:GenerateDebugInfo=1 \
-    -H:-UseIsolates \
+    -H:-SpawnIsolates \
     -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
     org.my.Hello
 ```
-If you specify a root directory that does not yet exist, it will be
-created during population of the cache.
+The resulting cache directory will be something like `/tmp/1272696/sources`.
+
+If the source cache path includes a directory that does not yet exist,
+it will be created during population of the cache.
 
 Note that in all the examples above the `DebugInfoSourceSearchPath`
 options are actually redundant. In the first case, the classpath
@@ -652,7 +660,7 @@ Windows support is still under development.
 ## Debugging with Isolates
 
 Note that it is currently recommended to disable use of Isolates by
-passing flag `-H:-UseIsolates` on the command line when debug info
+passing flag `-H:-SpawnIsolates` on the command line when debug info
 generation is enabled. Enabling of Isolates affects the way that oops
 (object references) are encoded. In turn that means the debug info
 generator has to provide gdb with information about how to translate

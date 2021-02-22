@@ -25,13 +25,12 @@
 
 package org.graalvm.compiler.asm.aarch64.test;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
 
 /**
  * Cheat so that we can test protected functions of assembler.
@@ -415,11 +414,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     @Override
     public void scvtf(int targetSize, int srcSize, Register dst, Register src) {
         super.scvtf(targetSize, srcSize, dst, src);
-    }
-
-    @Override
-    protected void frintz(int size, Register dst, Register src) {
-        super.frintz(size, dst, src);
     }
 
     @Override

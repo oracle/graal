@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,8 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
     @Override
     public void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification) {
         if (architecture instanceof AMD64) {
-            registerArrayUtilsPlugins(plugins, providers.getMetaAccess(), providers.getReplacements());
+            MetaAccessProvider metaAccess = providers.getMetaAccess();
+            registerArrayUtilsPlugins(plugins, metaAccess, providers.getReplacements());
         }
     }
 
@@ -66,4 +67,5 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", char[].class, int.class, char[].class, int.class, char[].class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEqualsWithOrMask", String.class, int.class, String.class, int.class, String.class);
     }
+
 }

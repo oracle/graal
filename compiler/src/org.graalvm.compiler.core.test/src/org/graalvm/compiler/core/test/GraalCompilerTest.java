@@ -1493,6 +1493,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getReplacements();
     }
 
+    protected Architecture getArchitecture() {
+        return backend.getTarget().arch;
+    }
+
     /**
      * Test if the current test runs on the given platform. The name must match the name given in
      * the {@link Architecture#getName()}.
@@ -1501,7 +1505,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return true if we run on the architecture given by name
      */
     protected boolean isArchitecture(String name) {
-        return name.equals(backend.getTarget().arch.getName());
+        return name.equals(getArchitecture().getName());
     }
 
     protected CanonicalizerPhase createCanonicalizerPhase() {
