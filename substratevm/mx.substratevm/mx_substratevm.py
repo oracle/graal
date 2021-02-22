@@ -1506,6 +1506,12 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
                 'java.xml.crypto/org.jcp.xml.dsig.internal.dom'
             ]
             graal_compiler_flags_map[16] = graal_compiler_flags_map[11] + ['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages_jdk16]
+            add_opens_packages_jdk17 = [
+                'java.base/sun.util.calendar',
+                'jdk.jdeps/com.sun.tools.classfile',
+                'jdk.jfr/jdk.jfr.events',
+            ]
+            graal_compiler_flags_map[17] = graal_compiler_flags_map[16] + ['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages_jdk17]
 
         graal_compiler_flags_base = [
             '-XX:+UseParallelGC',  # native image generation is a throughput-oriented task
