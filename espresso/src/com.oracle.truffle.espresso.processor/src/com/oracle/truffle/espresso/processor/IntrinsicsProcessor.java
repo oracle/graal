@@ -26,10 +26,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ReferenceType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
 public abstract class IntrinsicsProcessor extends EspressoProcessor {
@@ -70,19 +73,39 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         }
     }
 
+    /**
+     * Converts a parameter/return type into Espresso's NativeType, taking into account @Pointer
+     * and @Handle annotations.
+     *
+     * @param typeMirror type to convert
+     * @param element used to report proper error locations
+     */
+    private NativeType extractNativeType(TypeMirror typeMirror, Element element) {
+        AnnotationMirror pointer = getAnnotation(typeMirror, pointerAnnotation);
+        AnnotationMirror handle = getAnnotation(typeMirror, handleAnnotation);
+        if (pointer != null && handle != null) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, String.format("Parameter cannot be be annotated with both %s and %s", pointer, handle), element);
+        }
+        if (pointer != null) {
+            if (typeMirror.getKind().isPrimitive()) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@Pointer annotation must be used only with 'TruffleObject' parameters/return types.", element);
+            }
+            return NativeType.POINTER;
+        } else if (handle != null) {
+            if (typeMirror.getKind() != TypeKind.LONG) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@Handle annotation must be used only with 'long' parameters/return types.", element);
+            }
+            return NativeType.LONG; // word size
+        } else {
+            return classToType(typeMirror.getKind());
+        }
+    }
+
     NativeType[] jniNativeSignature(ExecutableElement method, boolean prependJniEnv) {
         List<NativeType> signature = new ArrayList<>(16);
 
         // Return type is always first.
-        AnnotationMirror pointer = getAnnotation(method.getReturnType(), pointerAnnotation);
-        AnnotationMirror handle = getAnnotation(method.getReturnType(), handleAnnotation);
-        if (pointer != null) {
-            signature.add(NativeType.POINTER);
-        } else if (handle != null) {
-            signature.add(NativeType.LONG);
-        } else {
-            signature.add(classToType(method.getReturnType().getKind()));
-        }
+        signature.add(extractNativeType(method.getReturnType(), method));
 
         // Arguments...
 
@@ -93,19 +116,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
 
         for (VariableElement param : method.getParameters()) {
             if (isActualParameter(param)) {
-                // Override NFI type.
-                pointer = getAnnotation(param.asType(), pointerAnnotation);
-                handle = getAnnotation(param.asType(), handleAnnotation);
-                if (pointer != null && handle != null) {
-                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, String.format("Parameter cannot be be annotated with both %s and %s", pointer, handle), param);
-                }
-                if (pointer != null) {
-                    signature.add(NativeType.POINTER);
-                } else if (handle != null) {
-                    signature.add(NativeType.LONG); // word size
-                } else {
-                    signature.add(classToType(param.asType().getKind()));
-                }
+                signature.add(extractNativeType(param.asType(), param));
             }
         }
 
