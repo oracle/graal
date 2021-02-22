@@ -260,6 +260,10 @@ public class ClassInitializationFeature implements GraalFeature {
                 reportSafeTypeInitiazliation(universe, initGraph, path, provenSafe);
                 reportMethodInitializationInfo(path);
             }
+
+            if (SubstrateOptions.TraceClassInitialization.hasBeenSet()) {
+                reportTrackedClassInitializationTraces(path);
+            }
         }
     }
 
@@ -292,6 +296,22 @@ public class ClassInitializationFeature implements GraalFeature {
                                             .map(Class::getTypeName)
                                             .sorted()
                                             .forEach(writer::println));
+        }
+    }
+
+    private static void reportTrackedClassInitializationTraces(String path) {
+        Map<Class<?>, StackTraceElement[]> initializedClasses = ConfigurableClassInitialization.getInitializedClasses();
+        int size = initializedClasses.size();
+        if (size > 0) {
+            ReportUtils.report(size + " class initialization trace(s) of class(es) traced by " + SubstrateOptions.TraceClassInitialization.getName(), path, "traced_class_initialization", "txt",
+                            writer -> {
+                                initializedClasses.forEach((k, v) -> {
+                                    writer.println(k.getName());
+                                    writer.println("---------------------------------------------");
+                                    writer.println(ConfigurableClassInitialization.getTraceString(v));
+                                    writer.println();
+                                });
+                            });
         }
     }
 

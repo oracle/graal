@@ -293,7 +293,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (classObject instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) classObject;
             if (staticObject.getKlass().getType() == Symbol.Type.java_lang_Class) {
-                return (KlassRef) staticObject.getHiddenField(context.getMeta().HIDDEN_MIRROR_KLASS);
+                return (KlassRef) context.getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(staticObject);
             }
         }
         return null;
@@ -647,6 +647,11 @@ public final class JDWPContextImpl implements JDWPContext {
             EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
             espressoRootNode.abortInternalMonitors(frame.getFrame());
         }
+    }
+
+    @Override
+    public void abort(int exitCode) {
+        context.doExit(197);
     }
 
     @Override

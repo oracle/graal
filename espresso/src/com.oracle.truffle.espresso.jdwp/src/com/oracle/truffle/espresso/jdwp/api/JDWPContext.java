@@ -474,4 +474,10 @@ public interface JDWPContext {
      */
     void clearFrameMonitors(CallFrame frame);
 
+    /**
+     * Aborts the context.
+     *
+     * @param exitCode the system exit code
+     */
+    void abort(int exitCode);
 }

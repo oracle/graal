@@ -536,4 +536,13 @@ public enum JavaKind {
                 return -1;
         }
     }
+
+    public static JavaKind fromByte(byte b) {
+        return JavaKind.values()[b];
+    }
+
+    public byte toByte() {
+        assert JavaKind.values().length < java.lang.Byte.MAX_VALUE;
+        return (byte) ordinal();
+    }
 }

@@ -332,6 +332,14 @@ public class SubstrateOptions {
     @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
 
+    @Option(help = "Enable wildcard expansion in command line arguments on Windows.")//
+    public static final HostedOptionKey<Boolean> EnableWildcardExpansion = new HostedOptionKey<Boolean>(true) {
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return super.getValue(values) && ParseRuntimeOptions.getValue(values);
+        }
+    };
+
     @Option(help = "Perform method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
 
@@ -465,8 +473,7 @@ public class SubstrateOptions {
 
     public static Path getDebugInfoSourceCacheRoot() {
         try {
-            Path sourceRoot = Paths.get(DebugInfoSourceCacheRoot.getValue());
-            return sourceRoot;
+            return Paths.get(Path.getValue()).resolve(DebugInfoSourceCacheRoot.getValue());
         } catch (InvalidPathException ipe) {
             throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
         }

@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import sun.misc.Unsafe;
 
 final class LinkedKlassFieldLayout {
@@ -205,29 +206,30 @@ final class LinkedKlassFieldLayout {
 
         for (ParserField parserField : parserKlass.getFields()) {
             JavaKind kind = parserField.getKind();
-            int index;
+            int offset;
             if (parserField.isStatic()) {
                 if (kind.isPrimitive()) {
-                    index = staticPrimitiveFieldIndexes.getIndex(kind);
+                    offset = staticPrimitiveFieldIndexes.getOffset(kind);
                 } else {
-                    index = nextStaticObjectFieldIndex++;
+                    offset = StaticObject.getObjectArrayOffset(nextStaticObjectFieldIndex++);
                 }
-                LinkedField linkedField = new LinkedField(parserField, nextStaticFieldTableSlot, index);
+                LinkedField linkedField = new LinkedField(parserField, nextStaticFieldTableSlot, offset);
                 staticFields[nextStaticFieldTableSlot++] = linkedField;
             } else {
                 if (kind.isPrimitive()) {
-                    index = instancePrimitiveFieldIndexes.getIndex(kind);
+                    offset = instancePrimitiveFieldIndexes.getOffset(kind);
                 } else {
-                    index = nextObjectFieldIndex++;
+                    offset = StaticObject.getObjectArrayOffset(nextObjectFieldIndex++);
                 }
-                LinkedField linkedField = new LinkedField(parserField, nextFieldTableSlot++, index);
+                LinkedField linkedField = new LinkedField(parserField, nextFieldTableSlot++, offset);
                 instanceFields[instanceFieldInsertionIndex++] = linkedField;
             }
         }
 
         // Add hidden fields after all instance fields
         for (Symbol<Name> hiddenFieldName : fieldCounter.hiddenFieldNames) {
-            LinkedField hiddenField = LinkedField.createHidden(hiddenFieldName, nextFieldTableSlot++, nextObjectFieldIndex++);
+            int offset = StaticObject.getObjectArrayOffset(nextObjectFieldIndex++);
+            LinkedField hiddenField = LinkedField.createHidden(hiddenFieldName, nextFieldTableSlot++, offset);
             instanceFields[instanceFieldInsertionIndex++] = hiddenField;
         }
 
@@ -388,7 +390,7 @@ final class LinkedKlassFieldLayout {
             }
         }
 
-        int getIndex(JavaKind kind) {
+        int getOffset(JavaKind kind) {
             ScheduleEntry entry = schedule.query(kind);
             if (entry != null) {
                 return entry.offset;

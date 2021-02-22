@@ -315,6 +315,14 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
+            if (SubstrateOptions.EnableWildcardExpansion.getValue() && kind == NativeImageKind.EXECUTABLE) {
+                /*
+                 * Enable wildcard expansion in command line arguments, see
+                 * https://docs.microsoft.com/en-us/cpp/c-language/expanding-wildcard-arguments.
+                 */
+                cmd.add("setargv.obj");
+            }
+
             cmd.addAll(Options.NativeLinkerOption.getValue().values());
             return cmd;
         }

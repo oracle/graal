@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -113,7 +113,7 @@ class SulongTestSuiteBase(mx.NativeProject):  # pylint: disable=too-many-ancesto
 
 class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
-                 buildSharedObject=False, **args):
+                 buildSharedObject=False, bundledLLVMOnly=False, **args):
         projectDir = args.pop('dir', None)
         if projectDir:
             d_rel = projectDir
@@ -123,6 +123,8 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
             d_rel = os.path.join(subDir, name)
         d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
         super(SulongTestSuite, self).__init__(suite, name, subDir, deps, workingSets, results, output, d, **args)
+        if bundledLLVMOnly and mx.get_env('CLANG_CC', None):
+            self.ignore = "Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'"
         self.vpath = True
         self.buildRef = buildRef
         self.buildSharedObject = buildSharedObject
