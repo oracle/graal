@@ -18,6 +18,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added `HostAccess.Builder.allowIterableAccess()` to allow the guest application to access Java `Iterables` as values with iterators (true by default for `HostAccess.ALL` and `HostAccess.Builder.allowListAccess(true)`, false otherwise).
 * Added `HostAccess.Builder.allowIteratorAccess()` to allow the guest application to access Java `Iterators` (true by default for `HostAccess.ALL`, `HostAccess.Builder.allowListAccess(true)` and `HostAccess.Builder.allowIterableAccess(true)`,  false otherwise).
 * Added `ProxyIterable` and `ProxyIterator` to proxy iterable and iterator guest values.
+* Added `Context.safepoint()` to manually poll thread local of a polyglot context while a host method is executed. For example, this allows the context to check for potential interruption or cancellation.
 
 ## Version 21.0.0
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).

@@ -347,7 +347,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         assert InteropLibrary.getUncached().hasMembers(scope) : "Scope object must have members.";
                         this.hostBindings = this.asValue(scope);
                     } finally {
-                        language.engine.leaveIfNeeded(prev, context);
+                        language.engine.leaveIfNeeded(prev, context, true);
                     }
                 }
             }
@@ -432,7 +432,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    void leaveThread(PolyglotContextImpl prev, PolyglotThread thread) {
+    void leaveThread(PolyglotContextImpl prev, PolyglotThread thread, Node node) {
         assert isInitialized();
         assert Thread.currentThread() == thread;
         synchronized (context) {
@@ -448,7 +448,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 }
             }
             lazy.activePolyglotThreads.remove(thread);
-            language.engine.leave(prev, context);
+            language.engine.leave(node, prev, context, true);
             seenThreads.remove(thread);
         }
         EngineAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.creatorTruffleContext, thread);
@@ -833,7 +833,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             try {
                 cache = lookupValueCache(guestValue);
             } finally {
-                language.engine.leaveIfNeeded(prev, this.context);
+                language.engine.leaveIfNeeded(prev, this.context, true);
             }
         }
         return getAPIAccess().newValue(receiver, cache);
@@ -850,7 +850,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             });
             return cache;
         } finally {
-            context.engine.leaveIfNeeded(prev, context);
+            context.engine.leaveIfNeeded(prev, context, true);
         }
     }
 

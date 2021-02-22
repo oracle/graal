@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -48,22 +49,21 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 
 public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
-    private static void pollSnippet() {
+    private static void pollSnippet(@ConstantParameter com.oracle.truffle.api.nodes.Node location) {
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,
                         SubstrateThreadLocalHandshake.PENDING.get() != 0)) {
-            foreignPoll(SubstrateThreadLocalHandshake.FOREIGN_POLL);
+            foreignPoll(SubstrateThreadLocalHandshake.FOREIGN_POLL, location);
         }
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+    private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor, com.oracle.truffle.api.nodes.Node location);
 
     public SubstrateThreadLocalHandshakeSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -85,9 +85,8 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
         @Override
         public void lower(TruffleSafepointNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
-                assert SubstrateOptions.MultiThreaded.getValue() : "safepoints are only inserted into the graph in MultiThreaded mode";
-
                 Arguments args = new Arguments(pollSnippet, node.graph().getGuardsStage(), tool.getLoweringStage());
+                args.addConst("location", node.location().asConstant());
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }

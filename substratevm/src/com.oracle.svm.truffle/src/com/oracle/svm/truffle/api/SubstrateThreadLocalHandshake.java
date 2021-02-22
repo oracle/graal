@@ -25,6 +25,7 @@
 package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -46,11 +48,11 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
@@ -63,9 +65,9 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     static final FastThreadLocalObject<TruffleSafepointImpl> STATE = FastThreadLocalFactory.createObject(TruffleSafepointImpl.class).setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
     @Override
-    public void poll(Node enclosingNode) {
+    public void poll(Node location) {
         if (PENDING.get() != 0) {
-            invokeProcessHandshake(enclosingNode);
+            invokeProcessHandshake(location);
         }
     }
 
@@ -73,31 +75,31 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     @Uninterruptible(reason = "Must not contain safepoint checks", calleeMustBe = false)
     @NeverInline("Reads stack pointer")
-    private static void pollStub() throws Throwable {
+    private static void pollStub(Node location) throws Throwable {
         try {
-            invokeProcessHandshake(null);
+            invokeProcessHandshake(location);
         } catch (Throwable t) {
+            /*
+             * We need to deoptimize the caller here as the caller is likely not prepared for an
+             * exception to be thrown.
+             */
+            StackOverflowCheck.singleton().makeYellowZoneAvailable();
             try {
-                deoptimize(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-            } catch (Throwable e) {
-                e.addSuppressed(t);
-                throw e;
+                Pointer sp = KnownIntrinsics.readCallerStackPointer();
+                if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
+                    Log.log().string("trace deopt enabled ").bool(Deoptimizer.Options.TraceDeoptimization.getValue()).newline().flush();
+                    CodePointer ip = KnownIntrinsics.readReturnAddress();
+                    long reason = Deoptimizer.encodeDeoptActionAndReasonToLong(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter, 0);
+                    DeoptimizationRuntime.traceDeoptimization(reason, SpeculationLog.NO_SPECULATION.getReason(), DeoptimizationAction.None, sp, ip);
+                }
+                Deoptimizer.deoptimizeFrame(sp, false, SpeculationLog.NO_SPECULATION.getReason());
+                if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
+                    Log.log().string("]").newline();
+                }
+            } finally {
+                StackOverflowCheck.singleton().protectYellowZone();
             }
             throw t;
-        }
-    }
-
-    @Uninterruptible(reason = "Used both from uninterruptable stub.", calleeMustBe = false)
-    @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
-    private static void deoptimize(Pointer sp, CodePointer ip) {
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        try {
-            Deoptimizer.deoptimizeFrame(sp, false, SpeculationLog.NO_SPECULATION.getReason());
-            if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
-                DeoptimizationRuntime.traceDeoptimization(0, SpeculationLog.NO_SPECULATION.getReason(), DeoptimizationAction.None, sp, ip);
-            }
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
@@ -108,25 +110,30 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
+    public void ensureThreadInitialized() {
+        STATE.set(getThreadState(Thread.currentThread()));
+    }
+
+    @Override
     public TruffleSafepointImpl getCurrent() {
         TruffleSafepointImpl state = STATE.get();
+        assert state != null;
         if (state == null) {
-            // TODO this should be initialized externally
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            STATE.set(state = getThreadState(Thread.currentThread()));
+            throw shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
+                            "Did you call getCurrent() outside while a polyglot context not entered?");
         }
         return state;
     }
 
     @Override
-    protected void clearPending() {
+    protected void clearFastPending() {
         setPending(CurrentIsolate.getCurrentThread(), 0);
     }
 
     @Override
-    protected void setPending(Thread t) {
-        IsolateThread isolateThread = JavaThreads.fromJavaThread(t);
-        setPending(isolateThread, 1);
+    protected void setFastPending(Thread t) {
+        assert t.isAlive() : "thread must remain alive while setting fast pending";
+        setPending(JavaThreads.fromJavaThread(t), 1);
     }
 
     private static int setPending(IsolateThread t, int value) {

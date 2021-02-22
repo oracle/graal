@@ -109,6 +109,11 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
+        public void setPolyglotEngine(RootNode rootNode, Object engine) {
+            rootNode.setEngine(engine);
+        }
+
+        @Override
         public TruffleLanguage<?> getLanguage(RootNode rootNode) {
             return rootNode.getLanguage();
         }

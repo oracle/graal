@@ -72,12 +72,12 @@ final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
-    protected void setPending(Thread t) {
+    protected void setFastPending(Thread t) {
         PENDING_COUNT.incrementAndGet();
     }
 
     @Override
-    protected void clearPending() {
+    protected void clearFastPending() {
         PENDING_COUNT.decrementAndGet();
     }
 

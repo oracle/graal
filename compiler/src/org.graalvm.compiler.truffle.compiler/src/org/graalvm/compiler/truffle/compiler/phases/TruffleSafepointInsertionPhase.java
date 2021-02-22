@@ -38,9 +38,11 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
 
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -78,6 +80,11 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         this.parentField = findField(nodeType, "parent");
     }
 
+    public static boolean allowsSafepoints(StructuredGraph graph) {
+        // only allowed in Truffle compilations.
+        return graph.compilationId() instanceof TruffleCompilationIdentifier;
+    }
+
     @Override
     public boolean checkContract() {
         return false;
@@ -85,6 +92,10 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        if (!allowsSafepoints(graph)) {
+            return;
+        }
+
         for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
             try (DebugCloseable s = returnNode.withNodeSourcePosition()) {
                 insertSafepoint(graph, returnNode);
@@ -92,12 +103,18 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         }
         for (LoopBeginNode loopBeginNode : graph.getNodes(LoopBeginNode.TYPE)) {
             for (LoopEndNode loopEndNode : loopBeginNode.loopEnds()) {
-                if (loopEndNode.canSafepoint()) {
+                // Invokes inside truffle compilations do not have a guaranteed truffle safepoint so
+                // we cannot elide them when Graal thinks it is safe to do so.
+                if (loopEndNode.canSafepoint() || loopEndNode.guaranteedSafepoint()) {
                     try (DebugCloseable s = loopEndNode.withNodeSourcePosition()) {
                         insertSafepoint(graph, loopEndNode);
                     }
                 }
             }
+        }
+
+        for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            insertSafepoint(graph, (FixedNode) callTarget.invoke());
         }
     }
 
@@ -192,10 +209,11 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
     private boolean isAdoptedTruffleNode(JavaConstant javaConstant) {
         JavaConstant current = javaConstant;
-        JavaConstant parent;
+        JavaConstant parent = current;
         do {
             // traversing the parent pointer must always be cycle free
-            parent = providers.getConstantReflection().readFieldValue(parentField, javaConstant);
+            current = parent;
+            parent = providers.getConstantReflection().readFieldValue(parentField, current);
         } while (!parent.isNull());
 
         // not a RootNode instance at the end of the parent chain -> not adopted

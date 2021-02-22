@@ -97,7 +97,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.concurrent.Future;
-import java.util.function.Consumer;
 
 import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
 
@@ -3457,26 +3456,41 @@ public abstract class TruffleLanguage<C> {
             return getLogger(forClass.getName());
         }
 
-        @TruffleBoundary
-        public Future<Void> runThreadLocalAsynchronous(Thread[] threads, Consumer<ThreadLocalAccess> action) {
-            return runThreadLocal(threads, action, true);
-        }
-
-        @TruffleBoundary
-        public Future<Void> runThreadLocalSynchronous(Thread[] threads, Consumer<ThreadLocalAccess> action) {
-            return runThreadLocal(threads, action, false);
-        }
-
-        private Future<Void> runThreadLocal(Thread[] threads, Consumer<ThreadLocalAccess> action, boolean async) {
-            Objects.requireNonNull(action);
-            if (threads != null) {
-                for (int i = 0; i < threads.length; i++) {
-                    Objects.requireNonNull(threads[i]);
-                }
-            }
+        /**
+         * Submits a thread local action to be performed at the next guest language safepoint on a
+         * provided set of threads, once for each thread. If the threads array is <code>null</code>
+         * then the thread local action will be performed on all alive threads. If a thread is no
+         * longer alive for this context then no thread local action will be submitted and the
+         * action will immediately complete The submitted actions are processed in the same order as
+         * they are submitted in. . The action can be synchronous or asynchronous, side-effecting or
+         * non-sideeffecting. Please see {@link ThreadLocalAction} for details.
+         * <p>
+         * The method returns a {@link Future} instance that allows to wait for the thread local
+         * action to complete or to cancel a currently performed event.
+         * <p>
+         * Example Usage:
+         *
+         * <pre>
+         * Env env; // supplied
+         *
+         * env.submitThreadLocal(null, new ThreadLocalAction(true, true) {
+         *     &#64;Override
+         *     protected void perform(Access access) {
+         *         // perform action
+         *     }
+         * });
+         * </pre>
+         *
+         * @param threads the threads to execute the action on. <code>null</code> for all threads
+         * @param action the action to perform on that thread.
+         * @see ThreadLocalAction
+         * @see TruffleSafepoint
+         * @since 21.1
+         */
+        public Future<Void> submitThreadLocal(Thread[] threads, ThreadLocalAction action) {
             checkDisposed();
             try {
-                return LanguageAccessor.ENGINE.runThreadLocal(polyglotLanguageContext, threads, action, async);
+                return LanguageAccessor.ENGINE.submitThreadLocal(LanguageAccessor.ENGINE.getContext(polyglotLanguageContext), threads, action);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

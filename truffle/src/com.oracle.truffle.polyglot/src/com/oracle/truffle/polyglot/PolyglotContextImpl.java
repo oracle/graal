@@ -87,6 +87,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -239,6 +240,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     private ObjectSizeCalculator objectSizeCalculator;
 
+    final PolyglotThreadLocalActions threadLocalActions;
+
     /* Constructor for testing. */
     private PolyglotContextImpl() {
         super(null);
@@ -254,6 +257,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.creatorArguments = null;
         this.weakReference = null;
         this.statementLimit = 0;
+        this.threadLocalActions = null;
         this.subProcesses = new HashSet<>();
     }
 
@@ -276,6 +280,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.statementLimit = config.limits != null && config.limits.statementLimit != 0 ? config.limits.statementLimit : Long.MAX_VALUE - 1;
         this.statementCounter = statementLimit;
         this.volatileStatementCounter.set(statementLimit);
+        this.threadLocalActions = new PolyglotThreadLocalActions(this);
 
         PolyglotEngineImpl.ensureInstrumentsCreated(config.getConfiguredInstruments());
 
@@ -314,6 +319,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.invalidMessage = this.parent.invalidMessage;
         this.cancelling = this.parent.cancelling;
         this.contextBoundLoggers = this.parent.contextBoundLoggers;
+        this.threadLocalActions = new PolyglotThreadLocalActions(this);
         if (!parent.config.logLevels.isEmpty()) {
             EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers());
         }
@@ -332,11 +338,23 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     @Override
     public void resetLimits() {
         PolyglotLanguageContext languageContext = this.getHostContext();
-        assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
             PolyglotLimits.reset(this);
             EngineAccessor.INSTRUMENT.notifyContextResetLimit(engine, creatorTruffleContext);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    @Override
+    public void safepoint() {
+        PolyglotLanguageContext languageContext = this.getHostContext();
+        Object prev = hostEnter(languageContext);
+        try {
+            TruffleSafepoint.poll(this.engine.getNoLocation());
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(languageContext, e, true);
         } finally {
@@ -518,7 +536,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (stack.isEmpty() || current.getThread() == null) {
                 throw PolyglotEngineException.illegalState("The context is not entered explicity. A context can only be left if it was previously entered.");
             }
-            engine.leave(stack.removeLast(), this);
+            engine.leave(engine.getNoLocation(), stack.removeLast(), this, true);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(engine, t);
         }
@@ -583,7 +601,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
                 throw t;
             }
-
             if (transitionToMultiThreading) {
                 // we need to verify that all languages give access
                 // to all threads in multi-threaded mode.
@@ -684,6 +701,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 LANGUAGE.initializeThread(context.env, thread);
             }
         }
+        this.threadLocalActions.notifyEnterCreatedThread();
     }
 
     long getStatementsExecuted() {
@@ -1458,7 +1476,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         PolyglotContextImpl c = this;
                         while (!threadInfo.explicitContextStack.isEmpty()) {
                             PolyglotContextImpl prev = threadInfo.explicitContextStack.removeLast();
-                            engine.leave(prev, c);
+                            engine.leave(engine.getNoLocation(), prev, c, true);
                             c = prev;
                         }
                         threadInfo.explicitContextStack.clear();
@@ -1505,7 +1523,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                      * synchronized.
                      */
                     assert !success || childContextsClosed() : "Polyglot context close marked as successful, but there are unclosed child contexts.";
-                    engine.leave(prev, this);
+                    engine.leave(engine.getNoLocation(), prev, this, true);
                     if (success) {
                         remainingThreads = threads.keySet().toArray(new Thread[0]);
                     }
@@ -1571,6 +1589,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                  * changes in language launchers (Node.js).
                  */
                 if (!isActive()) {
+                    threadLocalActions.notifyContextClosed();
+
                     if (contexts != null) {
                         for (PolyglotLanguageContext langContext : contexts) {
                             langContext.close();
@@ -1941,7 +1961,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 }
             }
         } finally {
-            engine.leave(prev, this);
+            engine.leave(engine.getNoLocation(), prev, this, true);
         }
         return true;
     }
@@ -2044,7 +2064,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                             language.clearOptionValues();
                         }
                     } finally {
-                        context.engine.leave(prev, context);
+                        context.engine.leave(context.engine.getNoLocation(), prev, context, true);
                     }
                 } finally {
                     context.inContextPreInitialization = false;

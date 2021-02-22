@@ -113,6 +113,11 @@ public abstract class ExecutableNode extends Node {
         }
     }
 
+    final void setEngine(Object engine) {
+        assert !(engineRef instanceof TruffleLanguage<?>) : "not allowed overwrite language";
+        this.engineRef = engine;
+    }
+
     /**
      * Execute this fragment at the place where it was parsed.
      *

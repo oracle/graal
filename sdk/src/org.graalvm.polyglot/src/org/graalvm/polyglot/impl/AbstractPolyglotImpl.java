@@ -431,6 +431,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void resetLimits();
 
+        public abstract void safepoint();
+
     }
 
     public abstract static class AbstractEngineImpl {

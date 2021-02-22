@@ -89,7 +89,6 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleSafepointInsertionPhase;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -274,9 +273,6 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     private CompilationResult compileTruffleCallBoundaryMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId, DebugContext debug) {
         Suites newSuites = config.lastTier().suites().copy();
         removeInliningPhase(newSuites);
-
-        // Truffle safepoints are not needed/allowed in call boundary methods
-        newSuites.getMidTier().findPhase(TruffleSafepointInsertionPhase.class).remove();
 
         OptionValues options = debug.getOptions();
         StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).useProfilingInfo(false).method(javaMethod).compilationId(compilationId).build();

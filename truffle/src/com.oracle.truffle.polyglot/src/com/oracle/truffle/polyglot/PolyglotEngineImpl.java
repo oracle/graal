@@ -103,6 +103,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -121,7 +122,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
@@ -221,15 +221,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @CompilationFinal volatile StableLocalLocations contextThreadLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
 
     /*
-     * Dummy call target used to call runtime methods associated with an engine. Graal truffle
-     * runtime currently requires a call target for initilization. Whenever initialization needs to
-     * be forced we pass this dummy call target. In the future, the runtime will no longer require a
-     * call target but directly take the runtimeData object, then this dummyCallTarget can be
-     * removed.
-     *
-     * See GR-25471.
+     * Node location to be used when no node is available. In the future this should no longer be
+     * necessary as we should have a node for any VM operation.
      */
-    private volatile CallTarget dummyCallTarget;
+    @CompilationFinal private volatile Node noLocation;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
@@ -330,6 +325,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             hostToGuestCodeCache = cache = new HostToGuestCodeCache();
         }
         return cache;
+    }
+
+    public Node getNoLocation() {
+        Node location = this.noLocation;
+        if (location == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.noLocation = location = new NoLocationNode(this);
+        }
+        return location;
     }
 
     void notifyCreated() {
@@ -677,23 +681,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @Override
     public PolyglotEngineImpl getEngine() {
         return this;
-    }
-
-    CallTarget getDummyCallTarget(PolyglotContextImpl context) {
-        if (dummyCallTarget == null) {
-            synchronized (lock) {
-                if (dummyCallTarget == null) {
-                    CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(context.getHostContext().getLanguageInstance().spi) {
-                        @Override
-                        public Object execute(VirtualFrame frame) {
-                            return 42;
-                        }
-                    });
-                    dummyCallTarget = target;
-                }
-            }
-        }
-        return dummyCallTarget;
     }
 
     PolyglotLanguage findLanguage(PolyglotLanguageContext accessingLanguage, String languageId, String mimeType, boolean failIfNotFound, boolean allowInternalAndDependent) {
@@ -1755,7 +1742,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 throw PolyglotImpl.guestToHostException(context.getHostContext(), t, true);
             } finally {
                 try {
-                    leave(prev, context);
+                    leave(getNoLocation(), prev, context, true);
                 } catch (Throwable t) {
                     throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
                 }
@@ -1883,9 +1870,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return NO_ENTER;
     }
 
-    void leaveIfNeeded(Object prev, PolyglotContextImpl context) {
+    void leaveIfNeeded(Object prev, PolyglotContextImpl context, boolean pollSafepoint) {
         if (prev != NO_ENTER) {
-            leave((PolyglotContextImpl) prev, context);
+            leave(getNoLocation(), (PolyglotContextImpl) prev, context, pollSafepoint);
         }
     }
 
@@ -1916,7 +1903,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return context == PolyglotContextImpl.currentNotEntered() || context.closed || context.invalid;
     }
 
-    void leave(PolyglotContextImpl prev, PolyglotContextImpl polyglotContext) {
+    void leave(Node node, PolyglotContextImpl prev, PolyglotContextImpl polyglotContext, boolean pollSafepoint) {
         assert polyglotContext.closed || polyglotContext.closingThread == Thread.currentThread() ||
                         PolyglotContextImpl.currentNotEntered() == polyglotContext : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
         PolyglotThreadInfo info = getCachedThreadInfo(polyglotContext);
@@ -1931,6 +1918,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         } finally {
             PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
+            if (pollSafepoint) {
+                TruffleSafepoint.poll(node);
+            }
         }
     }
 
@@ -2048,6 +2038,29 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         synchronized (PolyglotImpl.class) {
             fallbackEngine = null;
         }
+    }
+
+    private static final class NoLocationNode extends HostToGuestRootNode {
+
+        NoLocationNode(PolyglotEngineImpl engine) {
+            super(engine);
+        }
+
+        @Override
+        protected Class<?> getReceiverType() {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
+
     }
 
 }

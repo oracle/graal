@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -53,22 +54,23 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
         }
     }
 
-    static void doHandshake(Node node) {
-        INSTANCE.processHandshake(node);
+    static void doHandshake(Object node) {
+        INSTANCE.processHandshake((Node) node);
     }
 
     @Override
-    protected void setPending(Thread t) {
+    protected void setFastPending(Thread t) {
         setVolatile(t, PENDING_OFFSET, 1);
     }
 
     @Override
+    @TruffleBoundary
     public TruffleSafepointImpl getCurrent() {
         return STATE.get();
     }
 
     @Override
-    protected void clearPending() {
+    protected void clearFastPending() {
         setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
     }
 
