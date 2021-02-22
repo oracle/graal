@@ -81,6 +81,10 @@ public final class ParserField {
         return Modifier.isStatic(flags);
     }
 
+    public boolean isFinal() {
+        return Modifier.isFinal(flags);
+    }
+
     public JavaKind getKind() {
         return Types.getJavaKind(type);
     }

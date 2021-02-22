@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,9 @@
 package com.oracle.truffle.espresso.staticobject;
 
 public enum StaticPropertyKind {
+    // The ordinal values of these enum types influences field scheduling in ArrayBasedStaticShape.
+    // There, we want to schedule 'bigger' field types first (see `getBitCount()`).
+
     /**
      * The primitive long kind.
      */

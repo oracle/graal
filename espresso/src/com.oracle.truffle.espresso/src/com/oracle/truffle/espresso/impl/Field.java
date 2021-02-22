@@ -286,9 +286,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getObjectVolatile(obj.getObjectFieldStorage());
+            return linkedField.getObjectVolatile(obj);
         } else {
-            return linkedField.getObject(obj.getObjectFieldStorage());
+            return linkedField.getObject(obj);
         }
     }
 
@@ -296,9 +296,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            linkedField.setObjectVolatile(obj.getObjectFieldStorage(), value);
+            linkedField.setObjectVolatile(obj, value);
         } else {
-            linkedField.setObject(obj.getObjectFieldStorage(), value);
+            linkedField.setObject(obj, value);
         }
     }
     // endregion helper methods
@@ -326,14 +326,14 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert !isHidden() : this + " is hidden";
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return (StaticObject) linkedField.getAndSetObject(obj.getObjectFieldStorage(), value);
+        return (StaticObject) linkedField.getAndSetObject(obj, value);
     }
 
     public boolean compareAndSwapObject(StaticObject obj, Object before, Object after) {
         obj.checkNotForeign();
         assert !isHidden() : this + " is hidden";
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapObject(obj.getObjectFieldStorage(), before, after);
+        return linkedField.compareAndSwapObject(obj, before, after);
     }
 
     // region hidden Object
@@ -366,9 +366,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getBooleanVolatile(obj.getPrimitiveFieldStorage());
+            return linkedField.getBooleanVolatile(obj);
         } else {
-            return linkedField.getBoolean(obj.getPrimitiveFieldStorage());
+            return linkedField.getBoolean(obj);
         }
     }
 
@@ -380,9 +380,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            linkedField.setBooleanVolatile(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setBooleanVolatile(obj, value);
         } else {
-            linkedField.setBoolean(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setBoolean(obj, value);
         }
     }
     // endregion boolean
@@ -396,9 +396,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getByteVolatile(obj.getPrimitiveFieldStorage());
+            return linkedField.getByteVolatile(obj);
         } else {
-            return linkedField.getByte(obj.getPrimitiveFieldStorage());
+            return linkedField.getByte(obj);
         }
     }
 
@@ -410,9 +410,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            linkedField.setByteVolatile(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setByteVolatile(obj, value);
         } else {
-            linkedField.setByte(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setByte(obj, value);
         }
     }
     // endregion byte
@@ -426,9 +426,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getCharVolatile(obj.getPrimitiveFieldStorage());
+            return linkedField.getCharVolatile(obj);
         } else {
-            return linkedField.getChar(obj.getPrimitiveFieldStorage());
+            return linkedField.getChar(obj);
         }
     }
 
@@ -440,9 +440,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            linkedField.setCharVolatile(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setCharVolatile(obj, value);
         } else {
-            linkedField.setChar(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setChar(obj, value);
         }
     }
     // endregion char
@@ -456,9 +456,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getDoubleVolatile(obj.getPrimitiveFieldStorage());
+            return linkedField.getDoubleVolatile(obj);
         } else {
-            return linkedField.getDouble(obj.getPrimitiveFieldStorage());
+            return linkedField.getDouble(obj);
         }
     }
 
@@ -470,9 +470,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            linkedField.setDoubleVolatile(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setDoubleVolatile(obj, value);
         } else {
-            linkedField.setDouble(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setDouble(obj, value);
         }
     }
 
@@ -487,9 +487,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getFloatVolatile(obj.getPrimitiveFieldStorage());
+            return linkedField.getFloatVolatile(obj);
         } else {
-            return linkedField.getFloat(obj.getPrimitiveFieldStorage());
+            return linkedField.getFloat(obj);
         }
     }
 
@@ -501,9 +501,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            linkedField.setFloatVolatile(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setFloatVolatile(obj, value);
         } else {
-            linkedField.setFloat(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setFloat(obj, value);
         }
     }
     // endregion float
@@ -517,9 +517,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getIntVolatile(obj.getPrimitiveFieldStorage());
+            return linkedField.getIntVolatile(obj);
         } else {
-            return linkedField.getInt(obj.getPrimitiveFieldStorage());
+            return linkedField.getInt(obj);
         }
     }
 
@@ -531,16 +531,16 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            linkedField.setIntVolatile(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setIntVolatile(obj, value);
         } else {
-            linkedField.setInt(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setInt(obj, value);
         }
     }
 
     public boolean compareAndSwapInt(StaticObject obj, int before, int after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapInt(obj.getPrimitiveFieldStorage(), before, after);
+        return linkedField.compareAndSwapInt(obj, before, after);
     }
     // endregion int
 
@@ -554,9 +554,9 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         assert getKind().needsTwoSlots();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getLongVolatile(obj.getPrimitiveFieldStorage());
+            return linkedField.getLongVolatile(obj);
         } else {
-            return linkedField.getLong(obj.getPrimitiveFieldStorage());
+            return linkedField.getLong(obj);
         }
     }
 
@@ -569,9 +569,9 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         assert getKind().needsTwoSlots();
         if (isVolatile() || forceVolatile) {
-            linkedField.setLongVolatile(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setLongVolatile(obj, value);
         } else {
-            linkedField.setLong(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setLong(obj, value);
         }
     }
 
@@ -579,7 +579,7 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         assert getKind().needsTwoSlots();
-        return linkedField.compareAndSwapLong(obj.getPrimitiveFieldStorage(), before, after);
+        return linkedField.compareAndSwapLong(obj, before, after);
     }
     // endregion long
 
@@ -592,9 +592,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            return linkedField.getShortVolatile(obj.getPrimitiveFieldStorage());
+            return linkedField.getShortVolatile(obj);
         } else {
-            return linkedField.getShort(obj.getPrimitiveFieldStorage());
+            return linkedField.getShort(obj);
         }
     }
 
@@ -606,9 +606,9 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
-            linkedField.setShortVolatile(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setShortVolatile(obj, value);
         } else {
-            linkedField.setShort(obj.getPrimitiveFieldStorage(), value);
+            linkedField.setShort(obj, value);
         }
     }
     // endregion short

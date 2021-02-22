@@ -33,14 +33,14 @@ final class LinkedField extends StaticProperty {
     private final ParserField parserField;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot, int offset) {
-        super(parserField.getPropertyKind(), offset);
+    LinkedField(ParserField parserField, int slot) {
+        super(parserField.getPropertyKind());
         this.parserField = parserField;
         this.slot = slot;
     }
 
-    public static LinkedField createHidden(Symbol<Name> name, int slot, int offset) {
-        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, offset);
+    public static LinkedField createHidden(Symbol<Name> name, int slot) {
+        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot);
     }
 
     /**

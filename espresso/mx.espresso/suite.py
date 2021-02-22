@@ -104,6 +104,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_ASM_7.2",
             ],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
@@ -266,6 +267,9 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "truffle:TRUFFLE_NFI_LIBFFI",
                 "tools:TRUFFLE_PROFILER",
+            ],
+            "exclude": [
+                "truffle:TRUFFLE_ASM_7.2",
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
