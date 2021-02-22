@@ -67,9 +67,6 @@ public final class LLVMGlobal extends LLVMSymbol {
 
     private LLVMGlobal(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int globalIndex, int moduleId, boolean exported) {
         super(name, moduleId, globalIndex, exported);
-        if (name != null && name.contentEquals("_ZTIP1A")) {
-            System.out.println("creating global");
-        }
         this.name = name;
         this.type = type;
         this.sourceSymbol = sourceSymbol;
