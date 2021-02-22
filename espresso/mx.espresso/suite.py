@@ -269,7 +269,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
-            "license": "UPL",
             "description": "Espresso launcher using the polyglot API.",
             "allowsJavadocWarnings": True,
         },
@@ -283,7 +282,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
-            "license": "UPL",
             "description": "provides native espresso entry points",
             "allowsJavadocWarnings": True,
             "maven": False,
@@ -294,8 +292,6 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.processor",
             ],
-            "distDependencies": [],
-            "license": "UPL",
             "description": "Espresso annotation processor.",
             "maven": False,
         },
@@ -309,7 +305,7 @@ suite = {
                     "file:mx.espresso/native-image.properties",
                     "file:mx.espresso/reflectconfig.json",
                 ],
-                "LICENSE_ESPRESSO": "file:LICENSE",
+                "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
