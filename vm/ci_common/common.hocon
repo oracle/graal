@@ -168,6 +168,10 @@ gate_vm_linux: ${vm_linux} {
   targets: [gate]
 }
 
+gate_vm_linux_aarch64: ${vm_linux_aarch64} {
+  targets: [gate]
+}
+
 gate_vm_darwin: ${vm_darwin} {
   targets: [gate]
 }

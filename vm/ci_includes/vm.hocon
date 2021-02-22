@@ -141,7 +141,7 @@ builds += [
     name: deploy-vm-maven-linux-amd64
     timelimit: "45:00"
   }
-  ${deploy_vm_linux_aarch64} ${linux-deploy} ${maven_base_11_native} {
+  ${gate_vm_linux_aarch64} ${linux-deploy} ${maven_base_11_native} {
     run: [
       ${maven_base_11_native.build}
       ${maven_base_11_native.deploy} [--dry-run, "lafo-maven"]
@@ -155,7 +155,7 @@ builds += [
     ]
     name: deploy-vm-maven-linux-aarch64
   }
-  ${deploy_daily_vm_darwin} ${darwin-deploy} ${maven_base_11_native} {
+  ${gate_vm_darwin} ${darwin-deploy} ${maven_base_11_native} {
     run: [
       ${maven_base_11_native.build}
       ${maven_base_11_native.deploy} [--dry-run, "lafo-maven"]
@@ -169,7 +169,7 @@ builds += [
     ]
     name: deploy-vm-maven-darwin-amd64
   }
-  ${deploy_daily_vm_windows} ${vm_common_windows_jdk8} ${maven_base_8_native} {
+  ${gate_vm_windows} ${vm_common_windows_jdk8} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
