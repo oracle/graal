@@ -270,6 +270,7 @@ final class HostObject implements TruffleObject {
                     @Shared("readField") @Cached ReadFieldNode readField,
                     @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
                     @Cached IsMapNode isMapNode,
+                    @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                     @Cached LookupInnerClassNode lookupInnerClass,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, UnknownIdentifierException {
         if (isNull()) {
@@ -278,8 +279,9 @@ final class HostObject implements TruffleObject {
         }
 
         if (isMapNode.execute(this)) {
-            if (IsMapNode.containsKey(this.obj, name)) {
-                return HostObject.forObject(IsMapNode.get(this.obj, name), this.languageContext);
+            final Map<?, ?> mapObject = (Map<?, ?>) this.obj;
+            if (mapObject.containsKey(name)) {
+                return toGuest.execute(this.languageContext, mapObject.get(name));
             }
         }
 
@@ -2219,14 +2221,6 @@ final class HostObject implements TruffleObject {
                                  @Cached(value = "receiver.getHostClassCache().isMapAccess()", allowUncached = true) boolean isMapAccess) {
             assert receiver.getHostClassCache().isMapAccess() == isMapAccess;
             return isMapAccess && receiver.obj instanceof Map;
-        }
-
-        public static boolean containsKey(Object map, String key) {
-            return ((Map<?, ?>) map).containsKey(key);
-        }
-
-        public static Object get(Object map, String key) {
-            return ((Map<?, ?>) map).get(key);
         }
 
     }
