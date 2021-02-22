@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * Helper class that holds methods related to {@link JfrNativeEventWriterData}.
  */
 public final class JfrNativeEventWriterDataAccess {
+    @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
     public static void initialize(JfrNativeEventWriterData data, JfrBuffer buffer) {
         assert buffer.isNonNull();
 

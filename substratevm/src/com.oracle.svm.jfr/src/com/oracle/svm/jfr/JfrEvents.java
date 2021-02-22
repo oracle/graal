@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
  */
@@ -41,6 +43,7 @@ public enum JfrEvents {
         this.id = id;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getId() {
         return id;
     }

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 import java.util.concurrent.TimeUnit;
 
 public final class JfrTicks {
@@ -36,6 +38,7 @@ public final class JfrTicks {
         initialTicks = System.nanoTime();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long elapsedTicks() {
         assert initialTicks > 0;
         return System.nanoTime() - initialTicks;

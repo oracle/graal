@@ -103,7 +103,8 @@ public class JfrManager {
 
         Target_jdk_jfr_internal_dcmd_DCmdStart dcmdStart = new Target_jdk_jfr_internal_dcmd_DCmdStart();
         try {
-            String msg = dcmdStart.execute(name, settings, delay, duration, disk, path, maxAge, maxSize, dumpOnExit, pathToGcRoots);
+            String msg = dcmdStart.execute(name, settings, delay, duration, disk, path, maxAge, maxSize,
+                            dumpOnExit, pathToGcRoots);
             TTY.print(msg);
         } catch (Throwable e) {
             TTY.println(e.getMessage());

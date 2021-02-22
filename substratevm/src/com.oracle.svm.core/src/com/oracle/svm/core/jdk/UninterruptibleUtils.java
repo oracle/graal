@@ -36,8 +36,6 @@ import com.oracle.svm.core.util.VMError;
 
 // Checkstyle: stop
 import sun.misc.Unsafe;
-
-import java.util.function.IntUnaryOperator;
 // Checkstyle: resume
 
 /**

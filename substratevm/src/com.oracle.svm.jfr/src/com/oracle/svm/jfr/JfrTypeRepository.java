@@ -59,7 +59,7 @@ public class JfrTypeRepository implements JfrRepository {
         int typeId = DynamicHub.fromClass(clazz).getTypeID();
 
         if (!usedTypes[typeId]) {
-            mutex.lock();
+            mutex.lockNoTransition();
             try {
                 if (!usedTypes[typeId]) {
                     usedTypes[typeId] = true;

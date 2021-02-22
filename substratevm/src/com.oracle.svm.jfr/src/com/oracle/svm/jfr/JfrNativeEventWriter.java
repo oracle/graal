@@ -256,7 +256,7 @@ public final class JfrNativeEventWriter {
         return data.getEndPos().isNonNull();
     }
 
-    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int makePaddedInt(int v) {
         assert v <= MAX_PADDED_INT_VALUE;
         // bit 0-6 + pad => bit 24 - 31

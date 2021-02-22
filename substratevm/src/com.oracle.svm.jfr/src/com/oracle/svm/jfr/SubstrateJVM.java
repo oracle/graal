@@ -440,6 +440,7 @@ class SubstrateJVM {
         eventSettings[NumUtil.safeToInt(eventTypeId)].setEnabled(enabled);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isEnabled(JfrEvents event) {
         return eventSettings[event.getId()].isEnabled();
     }
@@ -456,6 +457,7 @@ class SubstrateJVM {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean getEpoch() {
         return epoch == 1L;
     }

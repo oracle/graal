@@ -34,5 +34,6 @@ public final class Target_jdk_jfr_internal_dcmd_DCmdStart {
     }
 
     @Alias
-    public native String execute(String name, String[] settings, Long delay, Long duration, Boolean disk, String path, Long maxAge, Long maxSize, Boolean dumpOnExit, Boolean pathToGcRoots);
+    public native String execute(String name, String[] settings, Long delay, Long duration, Boolean disk, String path, Long maxAge, Long maxSize, Boolean dumpOnExit, Boolean pathToGcRoots)
+                    throws Exception;
 }

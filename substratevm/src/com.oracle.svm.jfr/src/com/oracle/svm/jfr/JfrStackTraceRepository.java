@@ -90,7 +90,7 @@ public class JfrStackTraceRepository implements JfrRepository {
                 fillInStackTrace(stackTrace, maxFrames, skipCount);
                 return table.add(stackTrace);
             } finally {
-                UnmanagedMemory.free(stackTrace.getStackFrames());
+                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(stackTrace.getStackFrames());
             }
         }
         return 0L;
@@ -225,7 +225,7 @@ public class JfrStackTraceRepository implements JfrRepository {
                 }
 
                 // Allocation failed, so free all other memory as well.
-                UnmanagedMemory.free(stackTraceOnHeap);
+                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(stackTraceOnHeap);
             }
             return WordFactory.nullPointer();
         }

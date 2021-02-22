@@ -66,10 +66,8 @@ final class SubstrateTypeLibrary {
         try {
             jvmTypes = createTypes();
             Collections.sort(jvmTypes, (a, b) -> Long.compare(a.getId(), b.getId()));
-        } catch (IOException ex) {
-            throw new Error("JFR: Could not read metadata", ex);
-        } catch (ClassNotFoundException ex) {
-            throw new Error("JFR: Could not read metadata", ex);
+        } catch (IOException | ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere("JFR: Could not read metadata", ex);
         }
 
         Constructor<TypeLibrary> c = TypeLibrary.class.getDeclaredConstructor(List.class);

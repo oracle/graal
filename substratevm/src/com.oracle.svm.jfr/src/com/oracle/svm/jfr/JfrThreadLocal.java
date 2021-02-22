@@ -151,6 +151,7 @@ public class JfrThreadLocal implements ThreadListener {
         nativeBuffer.set(isolateThread, WordFactory.nullPointer());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getTraceId(IsolateThread isolateThread) {
         return traceId.get(isolateThread);
     }

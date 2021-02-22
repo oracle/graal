@@ -90,7 +90,7 @@ public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>
     public long add(T valueOnStack) {
         assert valueOnStack.isNonNull();
 
-        mutex.lock();
+        mutex.lockNoTransition();
         try {
             // Try to find the entry in the hashtable
             int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
