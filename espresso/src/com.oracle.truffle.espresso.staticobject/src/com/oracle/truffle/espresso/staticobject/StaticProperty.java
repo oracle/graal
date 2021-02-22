@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.staticobject;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -33,7 +33,7 @@ public class StaticProperty {
     private final byte internalKind;
     private final int offset;
 
-    StaticProperty(JavaKind kind, int offset) {
+    protected StaticProperty(JavaKind kind, int offset) {
         this.internalKind = getInternalKind(kind);
         this.offset = offset;
     }

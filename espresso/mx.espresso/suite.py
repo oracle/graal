@@ -85,9 +85,9 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
                 "com.oracle.truffle.espresso.jdwp",
+                "com.oracle.truffle.espresso.staticobject",
             ],
             "uses": [
                 "com.oracle.truffle.espresso._native.NativeAccess.Provider",
@@ -97,6 +97,16 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
             "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
+        },
+
+        "com.oracle.truffle.espresso.staticobject": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.processor": {
