@@ -1,0 +1,2 @@
+DYNAMIC_IMPORTS=/substratevm
+COMPONENTS=LibGraal

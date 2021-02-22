@@ -123,6 +123,7 @@ ce_no_native_components = ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraa
 
 mx_sdk_vm.register_vm_config('ce', ['insight', 'insightheap', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'njs', 'poly', 'bpolyglot', 'polynative', 'pro', 'rgx', 'sdk', 'svm', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
 mx_sdk_vm.register_vm_config('ce', ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-aarch64')
+mx_sdk_vm.register_vm_config('ce', ['cmp', 'lg', 'nfi', 'sdk', 'svm', 'tfl', 'tflm'], _suite, env_file='ce-16')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
 mx_sdk_vm.register_vm_config('ce', ce_ruby_components, _suite, dist_name='ce-ruby', env_file='ce-ruby')
 mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete')
