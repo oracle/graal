@@ -160,7 +160,7 @@ def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses
     _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
 
 
-_sulongTestConfigRoot = os.path.join(_suite.dir, "tests", "excludes")
+_sulongTestConfigRoot = os.path.join(_suite.dir, "tests", "configs")
 
 
 def set_sulong_test_config_root(root):
