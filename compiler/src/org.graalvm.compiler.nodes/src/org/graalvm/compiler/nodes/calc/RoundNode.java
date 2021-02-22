@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,40 +23,48 @@
  * questions.
  */
 
-package org.graalvm.compiler.replacements.aarch64;
+package org.graalvm.compiler.nodes.calc;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
+
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
-import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool.RoundingMode;
+import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Round floating-point value.
+ * <p>
+ * Can only be used if {@link CanonicalizerTool#supportsRounding()} or
+ * {@link LoweringProvider#supportsRounding()} returns {@code true}.
  */
-@NodeInfo(cycles = CYCLES_8)
-public final class AArch64RoundNode extends UnaryNode implements ArithmeticLIRLowerable {
-    public static final NodeClass<AArch64RoundNode> TYPE = NodeClass.create(AArch64RoundNode.class);
+@NodeInfo(cycles = CYCLES_1)
+public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable {
+
+    public static final NodeClass<RoundNode> TYPE = NodeClass.create(RoundNode.class);
 
     private final RoundingMode mode;
 
-    public AArch64RoundNode(ValueNode value, RoundingMode mode) {
+    public RoundNode(ValueNode value, RoundingMode mode) {
         super(TYPE, roundStamp((FloatStamp) value.stamp(NodeView.DEFAULT), mode), value);
         this.mode = mode;
+    }
+
+    public RoundingMode mode() {
+        return mode;
     }
 
     private static double round(RoundingMode mode, double input) {
@@ -68,7 +76,7 @@ public final class AArch64RoundNode extends UnaryNode implements ArithmeticLIRLo
             case UP:
                 return Math.ceil(input);
             case TRUNCATE:
-                return (long) input;
+                return input < 0.0 ? Math.ceil(input) : Math.floor(input);
             default:
                 throw GraalError.unimplemented("unimplemented RoundingMode " + mode);
         }
@@ -90,7 +98,7 @@ public final class AArch64RoundNode extends UnaryNode implements ArithmeticLIRLo
         return roundStamp((FloatStamp) newStamp, mode);
     }
 
-    private ValueNode tryFold(ValueNode input) {
+    public ValueNode tryFold(ValueNode input) {
         if (input.isConstant()) {
             JavaConstant c = input.asJavaConstant();
             if (c.getJavaKind() == JavaKind.Double) {
@@ -110,6 +118,7 @@ public final class AArch64RoundNode extends UnaryNode implements ArithmeticLIRLo
 
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
-        builder.setResult(this, ((AArch64ArithmeticLIRGeneratorTool) gen).emitRound(builder.operand(getValue()), mode));
+        builder.setResult(this, gen.emitRound(builder.operand(getValue()), mode));
     }
+
 }

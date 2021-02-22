@@ -80,4 +80,5 @@ public class SubstrateAArch64LoweringProvider extends SubstrateBasicLoweringProv
             graph.replaceFixed(node, replacement);
         }
     }
+
 }

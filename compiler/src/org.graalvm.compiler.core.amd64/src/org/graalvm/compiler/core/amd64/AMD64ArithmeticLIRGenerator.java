@@ -129,6 +129,7 @@ import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstFlo
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
+import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -1363,7 +1364,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Value emitRound(Value value, RoundingMode mode) {
+    public Value emitRound(Value value, ArithmeticLIRGeneratorTool.RoundingMode mode) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(value));
         assert ((AMD64Kind) value.getPlatformKind()).isXMM();
         if (value.getPlatformKind() == AMD64Kind.SINGLE) {

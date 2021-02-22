@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -74,8 +75,6 @@ import org.graalvm.wasm.memory.WasmMemory;
 import static org.graalvm.wasm.BinaryStreamParser.length;
 import static org.graalvm.wasm.BinaryStreamParser.value;
 import static org.graalvm.wasm.WasmMath.addExactUnsigned;
-import static org.graalvm.wasm.WasmMath.truncDouble;
-import static org.graalvm.wasm.WasmMath.truncFloat;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
 import static org.graalvm.wasm.constants.Instructions.BR_IF;
@@ -2490,7 +2489,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     private void f32_trunc(long[] stack, int stackPointer) {
         float x = popAsFloat(stack, stackPointer - 1);
-        float result = truncFloat(x);
+        float result = ExactMath.truncate(x);
         pushFloat(stack, stackPointer - 1, result);
     }
 
@@ -2581,7 +2580,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     private void f64_trunc(long[] stack, int stackPointer) {
         double x = popAsDouble(stack, stackPointer - 1);
-        double result = truncDouble(x);
+        double result = ExactMath.truncate(x);
         pushDouble(stack, stackPointer - 1, result);
     }
 

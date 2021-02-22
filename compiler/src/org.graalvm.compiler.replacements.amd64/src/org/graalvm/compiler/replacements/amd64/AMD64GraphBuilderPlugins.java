@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PauseNode;
@@ -151,11 +150,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "cos", COS);
         registerUnaryMath(r, "tan", TAN);
 
-        boolean roundEnabled = arch.getFeatures().contains(CPUFeature.SSE4_1);
-        registerRound(roundEnabled, r, "rint", RoundingMode.NEAREST);
-        registerRound(roundEnabled, r, "ceil", RoundingMode.UP);
-        registerRound(roundEnabled, r, "floor", RoundingMode.DOWN);
-
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             registerFMA(r, useFMAIntrinsics && arch.getFeatures().contains(CPUFeature.FMA));
         }
@@ -211,16 +205,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                 b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, operation)));
-                return true;
-            }
-        });
-    }
-
-    private static void registerRound(boolean isEnabled, Registration r, String name, RoundingMode mode) {
-        r.registerConditional1(isEnabled, name, Double.TYPE, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                b.push(JavaKind.Double, b.append(new AMD64RoundNode(arg, mode)));
                 return true;
             }
         });

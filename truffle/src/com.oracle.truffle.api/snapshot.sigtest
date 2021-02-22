@@ -108,6 +108,8 @@ meth public abstract {com.oracle.truffle.api.ContextThreadLocal%0} get(java.lang
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.ExactMath
+meth public static double truncate(double)
+meth public static float truncate(float)
 meth public static int multiplyHigh(int,int)
 meth public static int multiplyHighUnsigned(int,int)
 meth public static long multiplyHigh(long,long)

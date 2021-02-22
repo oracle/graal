@@ -80,4 +80,5 @@ public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
             super.lower(n, tool);
         }
     }
+
 }

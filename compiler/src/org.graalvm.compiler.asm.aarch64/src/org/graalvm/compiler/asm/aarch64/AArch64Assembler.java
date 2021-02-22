@@ -25,6 +25,20 @@
  */
 package org.graalvm.compiler.asm.aarch64;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.aarch64.AArch64.CPUFeature;
+import jdk.vm.ci.aarch64.AArch64.Flag;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Arrays;
+
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.cpuRegisters;
@@ -131,21 +145,6 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.floatFromSize;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.generalFromSize;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.simdFromSize;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Arrays;
-
-import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.GraalError;
-
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.aarch64.AArch64.CPUFeature;
-import jdk.vm.ci.aarch64.AArch64.Flag;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
 
 public abstract class AArch64Assembler extends Assembler {
 
@@ -2716,7 +2715,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param dst floating point register. May not be null.
      * @param src floating point register. May not be null.
      */
-    protected void frintz(int size, Register dst, Register src) {
+    public void frintz(int size, Register dst, Register src) {
         fpDataProcessing1Source(FRINTZ, dst, src, floatFromSize(size));
     }
 

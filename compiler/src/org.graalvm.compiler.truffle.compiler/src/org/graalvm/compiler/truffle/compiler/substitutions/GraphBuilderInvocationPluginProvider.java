@@ -30,9 +30,11 @@ import org.graalvm.compiler.phases.util.Providers;
 
 /**
  * Registers invocation plugins that are common across all Truffle compilation tiers.
- *
+ * <p>
  * These plugins are invoked when parsing graphs, that could then be cached both for first-tier and
  * for second-tier compilations.
+ * <p>
+ * Implementations are responsible for checking the architecture if needed.
  */
 public interface GraphBuilderInvocationPluginProvider {
     void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification);
