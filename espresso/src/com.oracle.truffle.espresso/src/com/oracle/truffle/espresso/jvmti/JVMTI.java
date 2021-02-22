@@ -39,14 +39,15 @@ import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
-import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
+import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification.PrependEnv;
 import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
 import com.oracle.truffle.espresso.substitutions.JVMTICollector;
 
 @GenerateIntrinsification(target = JvmtiImpl.class)
+@PrependEnv
 @SuppressWarnings("unused")
 public final class JVMTI extends IntrinsifiedNativeEnv {
 
@@ -56,6 +57,8 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
     private @Pointer TruffleObject jvmtiEnvPtr;
     @CompilationFinal //
     private int jvmtiVersion;
+
+    private TruffleObject envLocalStorage = RawPointer.nullInstance();
 
     public static final class JvmtiFactory {
         private final EspressoContext context;
@@ -89,6 +92,13 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
                 jvmti.dispose(disposeJvmtiContext);
             }
             created.clear();
+        }
+
+        private synchronized void dispose(JVMTI env) {
+            if (created.contains(env)) {
+                env.dispose(disposeJvmtiContext);
+                created.remove(env);
+            }
         }
     }
 
@@ -133,7 +143,6 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
     // Checkstyle: stop method name check
 
     @JvmtiImpl
-    @JniImpl
     public int Allocate(long byteCount, @Pointer TruffleObject memPtr) {
         if (byteCount < 0) {
             return JvmtiErrorCodes.JVMTI_ERROR_ILLEGAL_ARGUMENT;
@@ -156,6 +165,30 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
         if (!getUncached().isNull(memPtr)) {
             getNativeAccess().freeMemory(memPtr);
         }
+        return JVMTI_OK;
+    }
+
+    @JvmtiImpl
+    public int DisposeEnvironment() {
+        getContext().getVM().getJvmti().dispose(this);
+        return JVMTI_OK;
+    }
+
+    @JvmtiImpl
+    public int SetEnvironmentLocalStorage(@Pointer TruffleObject data) {
+        envLocalStorage = data;
+        return JVMTI_OK;
+    }
+
+    @JvmtiImpl
+    public int GetEnvironmentLocalStorage(@Pointer TruffleObject dataPtr) {
+        NativeUtils.writeToPointerPointer(getUncached(), dataPtr, envLocalStorage);
+        return JVMTI_OK;
+    }
+
+    @JvmtiImpl
+    public static int GetPotentialCapabilities(@Pointer TruffleObject cap) {
+        // For the time being, advertise no capability.
         return JVMTI_OK;
     }
 

@@ -35,13 +35,13 @@ public abstract class IntrinsicSubstitutor extends SubstitutionProfiler {
         private final String methodName;
         private final NativeSignature nativeSignature;
         private final int parameterCount;
-        private final boolean isJni;
+        private final boolean prependEnv;
 
-        Factory(String methodName, NativeSignature nativeSignature, int parameterCount, boolean isJni) {
+        Factory(String methodName, NativeSignature nativeSignature, int parameterCount, boolean prependEnv) {
             this.methodName = methodName;
             this.nativeSignature = nativeSignature;
             this.parameterCount = parameterCount;
-            this.isJni = isJni;
+            this.prependEnv = prependEnv;
         }
 
         public String methodName() {
@@ -60,8 +60,8 @@ public abstract class IntrinsicSubstitutor extends SubstitutionProfiler {
             return nativeSignature.getReturnType();
         }
 
-        public boolean isJni() {
-            return isJni;
+        public boolean prependEnv() {
+            return prependEnv;
         }
     }
 

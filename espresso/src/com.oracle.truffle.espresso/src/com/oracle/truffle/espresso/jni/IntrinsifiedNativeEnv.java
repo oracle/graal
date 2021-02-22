@@ -208,13 +208,13 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
     }
 
     private Callback intrinsicWrapper(IntrinsicSubstitutor.Factory factory) {
-        int extraArg = (factory.isJni()) ? 1 : 0;
+        int extraArg = (factory.prependEnv()) ? 1 : 0;
         return new Callback(factory.parameterCount() + extraArg, new Callback.Function() {
             @CompilerDirectives.CompilationFinal private IntrinsicSubstitutor subst = null;
 
             @Override
             public Object call(Object... args) {
-                boolean isJni = factory.isJni();
+                boolean isJni = factory.prependEnv();
                 try {
                     if (subst == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();

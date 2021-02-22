@@ -43,4 +43,13 @@ public @interface GenerateIntrinsification {
      *         interface.
      */
     Class<?> target();
+
+    /**
+     * Annotate a class that already has {@link GenerateIntrinsification} so that a native env
+     * pointer is artificially added to the signature.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE})
+    @interface PrependEnv {
+    }
 }

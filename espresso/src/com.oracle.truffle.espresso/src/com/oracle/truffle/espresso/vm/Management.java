@@ -50,13 +50,13 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
-import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
+import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification.PrependEnv;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
@@ -66,6 +66,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 @GenerateIntrinsification(target = ManagementImpl.class)
+@PrependEnv
 public final class Management extends IntrinsifiedNativeEnv {
     // Partial/incomplete implementation disclaimer!
     //
@@ -216,7 +217,6 @@ public final class Management extends IntrinsifiedNativeEnv {
 
     // Checkstyle: stop method name check
 
-    @JniImpl
     @ManagementImpl
     public int GetVersion() {
         if (managementVersion <= JMM_VERSION_1_2_3) {
@@ -226,7 +226,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         }
     }
 
-    @JniImpl
     @ManagementImpl
     public int GetOptionalSupport(@Pointer TruffleObject /* jmmOptionalSupport **/ supportPtr) {
         if (!getUncached().isNull(supportPtr)) {
@@ -261,7 +260,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         }
     }
 
-    @JniImpl
     @ManagementImpl
     public int GetThreadInfo(@Host(long[].class) StaticObject ids, int maxDepth, @Host(Object[].class) StaticObject infoArray, @InjectProfile SubstitutionProfiler profiler) {
         Meta meta = getMeta();
@@ -365,19 +363,16 @@ public final class Management extends IntrinsifiedNativeEnv {
         return 0; // always 0
     }
 
-    @JniImpl
     @ManagementImpl
     public @Host(String[].class) StaticObject GetInputArgumentArray() {
         return getVM().JVM_GetVmArguments();
     }
 
-    @JniImpl
     @ManagementImpl
     public @Host(String[].class) StaticObject GetInputArguments() {
         return getVM().JVM_GetVmArguments();
     }
 
-    @JniImpl
     @ManagementImpl
     public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused,
                     @GuestCall(target = "sun_management_ManagementFactory_createMemoryPool") DirectCallNode createMemoryPool) {
@@ -395,7 +390,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         });
     }
 
-    @JniImpl
     @ManagementImpl
     public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool,
                     @GuestCall(target = "sun_management_ManagementFactory_createMemoryManager") DirectCallNode createMemoryManager) {
@@ -410,7 +404,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         });
     }
 
-    @JniImpl
     @ManagementImpl
     public @Host(Object.class) StaticObject GetMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
         if (StaticObject.isNull(pool)) {
@@ -423,7 +416,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         return instance;
     }
 
-    @JniImpl
     @ManagementImpl
     public @Host(Object.class) StaticObject GetPeakMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
         if (StaticObject.isNull(pool)) {
@@ -436,7 +428,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         return instance;
     }
 
-    @JniImpl
     @ManagementImpl
     public @Host(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
         Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
@@ -446,7 +437,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         return instance;
     }
 
-    @JniImpl
     @ManagementImpl
     @TruffleBoundary // Lots of SVM + Windows blacklisted methods.
     public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj,
@@ -490,7 +480,6 @@ public final class Management extends IntrinsifiedNativeEnv {
     private boolean JMM_THREAD_CPU_TIME_state = false;
     private boolean JMM_THREAD_ALLOCATED_MEMORY_state = false;
 
-    @JniImpl
     @ManagementImpl
     public boolean GetBoolAttribute(/* jmmBoolAttribute */ int att) {
         switch (att) {
@@ -508,7 +497,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         throw EspressoError.unimplemented("GetBoolAttribute ", att);
     }
 
-    @JniImpl
     @ManagementImpl
     public boolean SetBoolAttribute(/* jmmBoolAttribute */ int att, boolean flag) {
         switch (att) {
@@ -526,7 +514,6 @@ public final class Management extends IntrinsifiedNativeEnv {
         throw EspressoError.unimplemented("SetBoolAttribute ", att);
     }
 
-    @JniImpl
     @ManagementImpl
     public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count,
                     @InjectProfile SubstitutionProfiler profiler) {
@@ -554,7 +541,6 @@ public final class Management extends IntrinsifiedNativeEnv {
     }
 
     @ManagementImpl
-    @JniImpl
     @SuppressWarnings("unused")
     public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
                     @InjectProfile SubstitutionProfiler profiler) {
@@ -575,7 +561,6 @@ public final class Management extends IntrinsifiedNativeEnv {
     }
 
     @ManagementImpl
-    @JniImpl
     public long GetOneThreadAllocatedMemory(
                     long threadId) {
         StaticObject[] activeThreads = getContext().getActiveThreads();
@@ -596,7 +581,6 @@ public final class Management extends IntrinsifiedNativeEnv {
     }
 
     @ManagementImpl
-    @JniImpl
     public void GetThreadAllocatedMemory(
                     @Host(long[].class) StaticObject ids,
                     @Host(long[].class) StaticObject sizeArray,
