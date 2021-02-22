@@ -198,6 +198,21 @@ meth public com.oracle.truffle.api.Scope$Builder rootInstance(java.lang.Object)
 supr java.lang.Object
 hfds arguments,name,node,receiver,receiverName,rootInstance,variables
 
+CLSS public abstract com.oracle.truffle.api.ThreadLocalAction
+cons protected init(boolean,boolean)
+innr public abstract static Access
+meth protected abstract void perform(com.oracle.truffle.api.ThreadLocalAction$Access)
+supr java.lang.Object
+hfds hasSideEffects,synchronous
+
+CLSS public abstract static com.oracle.truffle.api.ThreadLocalAction$Access
+ outer com.oracle.truffle.api.ThreadLocalAction
+cons protected init(org.graalvm.polyglot.impl.AbstractPolyglotImpl)
+meth public abstract boolean isContextActive()
+meth public abstract com.oracle.truffle.api.nodes.Node getLocation()
+meth public abstract java.lang.Thread getThread()
+supr java.lang.Object
+
 CLSS public final com.oracle.truffle.api.Truffle
 meth public static com.oracle.truffle.api.TruffleRuntime getRuntime()
 supr java.lang.Object
@@ -516,6 +531,7 @@ meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.Language
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.LanguageInfo> getPublicLanguages()
 meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 meth public java.util.Map<java.lang.String,java.lang.String> getEnvironment()
+meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(java.lang.Thread[],com.oracle.truffle.api.ThreadLocalAction)
 meth public org.graalvm.options.OptionValues getOptions()
 meth public void addToHostClassPath(com.oracle.truffle.api.TruffleFile)
 meth public void exportSymbol(java.lang.String,java.lang.Object)
@@ -648,6 +664,30 @@ meth public abstract void notifyTransferToInterpreter()
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntimeAccess
 meth public abstract com.oracle.truffle.api.TruffleRuntime getRuntime()
 meth public int getPriority()
+
+CLSS public abstract com.oracle.truffle.api.TruffleSafepoint
+cons protected init(com.oracle.truffle.api.impl.Accessor$EngineSupport)
+innr public abstract interface static Interrupter
+innr public abstract interface static ThreadInterruptable
+meth public abstract boolean setAllowSideEffects(boolean)
+meth public abstract com.oracle.truffle.api.TruffleSafepoint$Interrupter setBlocked(com.oracle.truffle.api.TruffleSafepoint$Interrupter)
+meth public static <%0 extends java.lang.Object> void setBlockedInterruptable(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$ThreadInterruptable<{%%0}>,{%%0})
+meth public static com.oracle.truffle.api.TruffleSafepoint getCurrent()
+meth public static void poll(com.oracle.truffle.api.nodes.Node)
+meth public static void pollHere(com.oracle.truffle.api.nodes.Node)
+supr java.lang.Object
+hfds HANDSHAKE
+
+CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$Interrupter
+ outer com.oracle.truffle.api.TruffleSafepoint
+fld public final static com.oracle.truffle.api.TruffleSafepoint$Interrupter THREAD_INTERRUPT
+meth public abstract void interrupt(java.lang.Thread)
+meth public abstract void resetInterrupted()
+
+CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$ThreadInterruptable<%0 extends java.lang.Object>
+ outer com.oracle.truffle.api.TruffleSafepoint
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract void apply({com.oracle.truffle.api.TruffleSafepoint$ThreadInterruptable%0}) throws java.lang.InterruptedException
 
 CLSS public final com.oracle.truffle.api.TruffleStackTrace
 meth public java.lang.String toString()
