@@ -160,6 +160,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         ResolvedJavaType[] head = metaAccess.lookupJavaTypes(new Class<?>[]{
                         ArithmeticException.class,
                         IllegalArgumentException.class,
+                        IllegalStateException.class,
                         VirtualMachineError.class,
                         IndexOutOfBoundsException.class,
                         ClassCastException.class,
