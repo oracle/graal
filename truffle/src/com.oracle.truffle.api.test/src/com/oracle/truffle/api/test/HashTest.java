@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.api.test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -53,22 +49,34 @@ import com.oracle.truffle.api.interop.UnknownHashKeyException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.utilities.TriState;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class HashTest extends AbstractPolyglotTest {
 
     @Test
     public void testTruffleObjectInteropMessages() throws InteropException {
         setupEnv();
-        testInteropMessages(new Hash());
+        for (KeyFactory<?> factory : KeyFactory.ALL) {
+            testInteropMessages(new Hash(), factory);
+        }
     }
 
     @Test
@@ -76,8 +84,10 @@ public class HashTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
         Accessor accessor = new Accessor();
         Value accessorValue = context.asValue(accessor);
-        accessorValue.execute(context.asValue(new HashMap<>()));
-        testInteropMessages(accessor.object);
+        for (KeyFactory<?> factory : KeyFactory.ALL) {
+            accessorValue.execute(context.asValue(new HashMap<>()));
+            testInteropMessages(accessor.object, factory);
+        }
     }
 
     @Test
@@ -86,63 +96,54 @@ public class HashTest extends AbstractPolyglotTest {
         setupEnv();
         Accessor accessor = new Accessor();
         Value accessorValue = context.asValue(accessor);
-        accessorValue.execute(context.asValue(ProxyHashMap.fromMap(new HashMap<>())));
-        testInteropMessages(accessor.object);
+        for (KeyFactory<?> factory : KeyFactory.ALL) {
+            accessorValue.execute(context.asValue(ProxyHashMap.fromMap(new HashMap<>())));
+            testInteropMessages(accessor.object, factory);
+        }
     }
 
-    private static void testInteropMessages(Object hash) throws InteropException {
+    private static void testInteropMessages(Object hash, KeyFactory<?> keyFactory) throws InteropException {
+        final int count = 100;
+        final int inc = 2;
         InteropLibrary interop = InteropLibrary.getUncached();
         assertTrue(interop.hasHashEntries(hash));
-        for (int i = 0; i < 100; i += 2) {
-            Object key = i;
-            Object value = String.valueOf(i);
-            assertNonExisting(hash, key, interop);
-            interop.writeHashEntry(hash, key, value);
-            key = String.valueOf(i);
-            value = i;
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            Object value = i;
             assertNonExisting(hash, key, interop);
             interop.writeHashEntry(hash, key, value);
         }
-        assertEquals(100, interop.getHashSize(hash));
-        for (int i = 0; i < 100; i++) {
-            Object key = i;
+        assertEquals((count / inc), interop.getHashSize(hash));
+        for (int i = 0; i < count; i++) {
+            Object key = keyFactory.create(i);
             if ((i & 1) == 0) {
-                Object expectedValue = String.valueOf(i);
-                assertExisting(hash, key, interop);
-                assertEquals(expectedValue, interop.readHashValue(hash, key));
-                key = String.valueOf(i);
-                expectedValue = i;
+                Object expectedValue = i;
                 assertExisting(hash, key, interop);
                 assertEquals(expectedValue, interop.readHashValue(hash, key));
             } else {
                 assertNonExisting(hash, key, interop);
-                key = String.valueOf(i);
-                assertNonExisting(hash, key, interop);
             }
         }
-        Map<Object, Object> expected = new HashMap<>();
-        for (int i = 0; i < 100; i += 2) {
-            Object key = i;
-            Object value = i + 1;
+        Map<Object, Integer> expected = new HashMap<>();
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            int value = -1 * i;
             interop.writeHashEntry(hash, key, value);
             assertExisting(hash, key, interop);
             assertEquals(value, interop.readHashValue(hash, key));
             expected.put(key, value);
-            key = String.valueOf(i);
-            interop.removeHashEntry(hash, key);
-            assertNonExisting(hash, key, interop);
         }
         Object iterator = interop.getHashEntriesIterator(hash);
         assertTrue(interop.isIterator(iterator));
-        Map<Object, Object> expected2 = new HashMap<>();
+        Map<Object, Integer> expected2 = new HashMap<>();
         while (interop.hasIteratorNextElement(iterator)) {
             Object entry = interop.getIteratorNextElement(iterator);
             assertTrue(interop.isHashEntry(entry));
             Object key = interop.getHashEntryKey(entry);
-            Object value = interop.getHashEntryValue(entry);
-            Object expectedValue = expected.remove(key);
+            int value = (int) interop.getHashEntryValue(entry);
+            int expectedValue = expected.remove(key);
             assertEquals(expectedValue, value);
-            Object newValue = String.valueOf(value);
+            int newValue = -1 * value;
             interop.setHashEntryValue(entry, newValue);
             expected2.put(key, newValue);
         }
@@ -151,11 +152,18 @@ public class HashTest extends AbstractPolyglotTest {
         while (interop.hasIteratorNextElement(iterator)) {
             Object entry = interop.getIteratorNextElement(iterator);
             Object key = interop.getHashEntryKey(entry);
-            Object value = interop.getHashEntryValue(entry);
-            Object expectedValue = expected2.remove(key);
+            int value = (int) interop.getHashEntryValue(entry);
+            int expectedValue = expected2.remove(key);
             assertEquals(expectedValue, value);
         }
         assertTrue(expected2.isEmpty());
+
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            interop.removeHashEntry(hash, key);
+            assertNonExisting(hash, key, interop);
+        }
+        assertEquals(0, interop.getHashSize(hash));
     }
 
     private static void assertNonExisting(Object hash, Object key, InteropLibrary interop) {
@@ -175,77 +183,151 @@ public class HashTest extends AbstractPolyglotTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testValues() {
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
-        testValueImpl(context.asValue(new Hash()));
-        testValueImpl(context.asValue(new HashMap<>()));
+        for (KeyFactory<?> factory : KeyFactory.ALL) {
+            testValueImpl(context.asValue(new Hash()), (KeyFactory<Object>) factory, context);
+            testValueImpl(context.asValue(new HashMap<>()), (KeyFactory<Object>) factory, context);
+        }
     }
 
-    private static void testValueImpl(Value hash) {
+    private static void testValueImpl(Value hash, KeyFactory<Object> keyFactory, Context context) {
+        final int count = 100;
+        final int inc = 2;
         assertTrue(hash.hasHashEntries());
-        for (int i = 0; i < 100; i += 2) {
-            Object key = i;
-            Object value = String.valueOf(i);
-            assertFalse(hash.hasHashEntry(key));
-            hash.putHashEntry(key, value);
-            key = String.valueOf(i);
-            value = i;
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            Object value = i;
             assertFalse(hash.hasHashEntry(key));
             hash.putHashEntry(key, value);
         }
-        assertEquals(100, hash.getHashSize());
-        for (int i = 0; i < 100; i++) {
-            Object key = i;
+        assertEquals((count / inc), hash.getHashSize());
+        for (int i = 0; i < count; i++) {
+            Object key = keyFactory.create(i);
             if ((i & 1) == 0) {
-                Object expectedValue = String.valueOf(i);
+                Object expectedValue = i;
                 assertTrue(hash.hasHashEntry(key));
-                assertEquals(expectedValue, hash.getHashValue(key).asString());
-                key = String.valueOf(i);
-                expectedValue = i;
-                hash.hasHashEntry(key);
                 assertEquals(expectedValue, hash.getHashValue(key).asInt());
             } else {
                 assertFalse(hash.hasHashEntry(key));
-                key = String.valueOf(i);
-                assertFalse(hash.hasHashEntry(key));
             }
         }
-        Map<Integer, Integer> expected = new HashMap<>();
-        for (int i = 0; i < 100; i += 2) {
-            Object key = i;
-            Object value = i + 1;
+        Map<Object, Integer> expected = new HashMap<>();
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            int value = -1 * i;
             hash.putHashEntry(key, value);
             assertTrue(hash.hasHashEntry(key));
             assertEquals(value, hash.getHashValue(key).asInt());
-            expected.put((Integer) key, (Integer) value);
-            key = String.valueOf(i);
-            hash.removeHashEntry(key);
-            assertFalse(hash.hasHashEntry(key));
+            expected.put(keyFactory.box(context, key), value);
         }
         Value iterator = hash.getHashEntriesIterator();
         assertTrue(iterator.isIterator());
-        Map<Integer, String> expected2 = new HashMap<>();
+        Map<Object, Integer> expected2 = new HashMap<>();
         while (iterator.hasIteratorNextElement()) {
             Value entry = iterator.getIteratorNextElement();
             assertTrue(entry.isHashEntry());
-            Value key = entry.getHashEntryKey();
-            Value value = entry.getHashEntryValue();
-            Object expectedValue = expected.remove(key.asInt());
-            assertEquals(expectedValue, value.asInt());
-            String newValue = String.valueOf(value);
+            Object key = keyFactory.unbox(entry.getHashEntryKey());
+            int value = entry.getHashEntryValue().asInt();
+            int expectedValue = expected.remove(key);
+            assertEquals(expectedValue, value);
+            int newValue = -1 * value;
             entry.setHashEntryValue(newValue);
-            expected2.put(key.asInt(), newValue);
+            expected2.put(key, newValue);
         }
         assertTrue(expected.isEmpty());
         iterator = hash.getHashEntriesIterator();
         while (iterator.hasIteratorNextElement()) {
             Value entry = iterator.getIteratorNextElement();
-            Value key = entry.getHashEntryKey();
-            Value value = entry.getHashEntryValue();
-            Object expectedValue = expected2.remove(key.asInt());
-            assertEquals(expectedValue, value.asString());
+            Object key = keyFactory.unbox(entry.getHashEntryKey());
+            int value = entry.getHashEntryValue().asInt();
+            int expectedValue = expected2.remove(key);
+            assertEquals(expectedValue, value);
         }
         assertTrue(expected2.isEmpty());
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            hash.removeHashEntry(key);
+            assertFalse(hash.hasHashEntry(key));
+        }
+        assertEquals(0, hash.getHashSize());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testPolyglotMap() {
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
+        for (KeyFactory<?> factory : KeyFactory.ALL) {
+            testPolyglotMapImpl(context.asValue(new Hash()), (KeyFactory<Object>) factory, context);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void testPolyglotMapImpl(Value hash, KeyFactory<Object> keyFactory, Context context) {
+        final int count = 100;
+        final int inc = 2;
+        assertTrue(hash.hasHashEntries());
+        Map<Object, Object> map = hash.as(Map.class);
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            Object value = i;
+            assertFalse(map.containsKey(key));
+            map.put(key, value);
+            assertTrue(hash.hasHashEntry(key));
+        }
+        assertEquals((count / inc), map.size());
+        for (int i = 0; i < count; i++) {
+            Object key = keyFactory.create(i);
+            if ((i & 1) == 0) {
+                Object expectedValue = i;
+                assertTrue(map.containsKey(key));
+                assertEquals(expectedValue, map.get(key));
+            } else {
+                assertFalse(map.containsKey(key));
+            }
+        }
+        Map<Object, Integer> expected = new HashMap<>();
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            int value = -1 * i;
+            map.put(key, value);
+            assertTrue(map.containsKey(key));
+            assertTrue(hash.hasHashEntry(key));
+            assertEquals(value, map.get(key));
+            assertEquals(value, hash.getHashValue(key).asInt());
+            expected.put(keyFactory.box(context, key), value);
+        }
+        Map<Object, Integer> expected2 = new HashMap<>();
+        Iterator<Map.Entry<Object, Object>> iterator = map.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Object, Object> entry = iterator.next();
+            Object key = entry.getKey();
+            int value = (int) entry.getValue();
+            int expectedValue = expected.remove(key);
+            assertEquals(expectedValue, value);
+            int newValue = -1 * value;
+            entry.setValue(newValue);
+            expected2.put(key, newValue);
+        }
+        assertTrue(expected.isEmpty());
+        iterator = map.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Object, Object> entry = iterator.next();
+            Object key = entry.getKey();
+            int value = (int) entry.getValue();
+            int expectedValue = expected2.remove(key);
+            assertEquals(expectedValue, value);
+        }
+        assertTrue(expected2.isEmpty());
+        for (int i = 0; i < count; i += inc) {
+            Object key = keyFactory.create(i);
+            assertTrue(hash.hasHashEntry(key));
+            assertNotNull(map.remove(key));
+            assertFalse(hash.hasHashEntry(key));
+        }
+        assertEquals(0, map.size());
+        assertEquals(0, hash.getHashSize());
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -469,6 +551,116 @@ public class HashTest extends AbstractPolyglotTest {
         Object execute(Object... arguments) {
             object = arguments[0];
             return object;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Key implements TruffleObject {
+
+        private final int value;
+
+        Key(int value) {
+            this.value = value;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Key key = (Key) o;
+            return value == key.value;
+        }
+
+        @Override
+        public int hashCode() {
+            return value;
+        }
+
+        @ExportMessage
+        TriState isIdenticalOrUndefined(Object other) {
+            if (other == this) {
+                return TriState.TRUE;
+            } else if (other != null && other.getClass() == Key.class) {
+                return value == ((Key) other).value ? TriState.TRUE : TriState.FALSE;
+            } else {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        @ExportMessage
+        int identityHashCode() {
+            return value;
+        }
+    }
+
+    interface KeyFactory<K> {
+
+        KeyFactory<Integer> INT_KEY = new KeyFactory<Integer>() {
+            @Override
+            public Integer create(int value) {
+                return value;
+            }
+
+            @Override
+            public Integer unbox(Value value) {
+                return value.asInt();
+            }
+
+            @Override
+            public String toString() {
+                return "KeyFactory<Integer>";
+            }
+        };
+
+        KeyFactory<String> STRING_KEY = new KeyFactory<String>() {
+            @Override
+            public String create(int value) {
+                return String.valueOf(value);
+            }
+
+            @Override
+            public String unbox(Value value) {
+                return value.asString();
+            }
+
+            @Override
+            public String toString() {
+                return "KeyFactory<String>";
+            }
+        };
+
+        KeyFactory<TruffleObject> TRUFFLE_OBJECT_KEY = new KeyFactory<TruffleObject>() {
+            @Override
+            public TruffleObject create(int value) {
+                return new Key(value);
+            }
+
+            @Override
+            public Object box(Context context, TruffleObject key) {
+                return context.asValue(key);
+            }
+
+            @Override
+            public String toString() {
+                return "KeyFactory<TruffleObject>";
+            }
+        };
+
+        Collection<KeyFactory<?>> ALL = Collections.unmodifiableList(
+                        Arrays.asList(INT_KEY, STRING_KEY, TRUFFLE_OBJECT_KEY));
+
+        K create(int value);
+
+        default Object box(@SuppressWarnings("unused") Context context, K key) {
+            return key;
+        }
+
+        default Object unbox(Value value) {
+            return value;
         }
     }
 }

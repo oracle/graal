@@ -341,7 +341,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
         @Override
         public int size() {
-            return (int) cache.hashSize.call(languageContext, guestObject);
+            long size = (long) cache.hashSize.call(languageContext, guestObject);
+            return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
         }
     }
 
