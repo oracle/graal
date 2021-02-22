@@ -74,13 +74,20 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
                ['--vm.' + x[1:] if x.startswith('-X') else x for x in self.debug_args] + \
                args
 
+    def home(self):
+        return mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True)
+
+    def generate_java_command(self, args):
+        return [os.path.join(self.home(), 'bin', 'java')] + args
+
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         """Run 'java' workloads."""
         self.extract_vm_info(args)
-        return mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'java')] + args, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+        return mx.run(self.generate_java_command(args), out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
     def run_lang(self, cmd, args, cwd):
         """Deprecated. Call 'run_launcher' instead."""
+        mx.warn("'run_lang' is deprecated. Use 'run_launcher' instead.")
         return self.run_launcher(cmd, args, cwd)
 
     def run_launcher(self, cmd, args, cwd):
@@ -89,7 +96,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         self.extract_vm_info(args)
         mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), " ".join(args)))
         out = mx.TeeOutputCapture(mx.OutputCapture())
-        code = mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
+        code = mx.run([os.path.join(self.home(), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
         out = out.underlying.data
         dims = self.dimensions(cwd, args, code, out)
         return code, out, dims
@@ -436,6 +443,9 @@ class NativeImageVM(GraalVm):
                 # The image size for benchmarks is tracked by printing on stdout and matching the rule.
                 image_size = os.stat(image_path).st_size
                 out('The executed image size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(image_size) + ' B')
+
+    def generate_java_command(self, args):
+        mx.abort("Generating single java command from args is not supported in Native Image")
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
 
