@@ -349,7 +349,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-java8-linux-amd64
   }
-  ${vm_java_8} ${ruby_vm_build_linux} ${linux-deploy} ${deploy_daily_vm_linux} {
+  ${vm_java_11} ${ruby_vm_build_linux} ${linux-deploy} ${deploy_daily_vm_linux} {
     run: ${collect_profiles} [
       [set-export, VM_ENV, "${VM_ENV}-ruby"]
       ${mx_vm_common} ${vm_profiles} [graalvm-show]
@@ -360,7 +360,7 @@ builds += [
     ]
     logs: ${common_vm.logs}
     timelimit: "1:30:00"
-    name: deploy-vm-ruby-java8-linux-amd64
+    name: deploy-vm-ruby-java11-linux-amd64
   }
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
@@ -406,7 +406,7 @@ builds += [
     timelimit: "1:45:00"
     name: deploy-vm-base-java8-darwin-amd64
   }
-  ${vm_java_8} ${ruby_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+  ${vm_java_11} ${ruby_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
       [set-export, VM_ENV, "${VM_ENV}-ruby"]
       ${mx_vm_common} ${vm_profiles} [graalvm-show]
@@ -416,7 +416,7 @@ builds += [
       ${notify-releaser}
     ]
     timelimit: "1:45:00"
-    name: deploy-vm-ruby-java8-darwin-amd64
+    name: deploy-vm-ruby-java11-darwin-amd64
   }
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
