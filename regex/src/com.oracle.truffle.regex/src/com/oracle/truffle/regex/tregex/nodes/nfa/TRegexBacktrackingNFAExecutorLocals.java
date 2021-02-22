@@ -42,7 +42,7 @@ package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
@@ -162,18 +162,22 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     private int offsetQuantifierCount(Quantifier q) {
-        CompilerDirectives.isPartialEvaluationConstant(q.getIndex());
+        CompilerAsserts.partialEvaluationConstant(q.getIndex());
         return offsetQuantifierCounts() + q.getIndex();
     }
 
     private int offsetZeroWidthQuantifierIndex(Quantifier q) {
-        CompilerDirectives.isPartialEvaluationConstant(q.getZeroWidthIndex());
+        CompilerAsserts.partialEvaluationConstant(q.getZeroWidthIndex());
         return offsetZeroWidthQuantifierIndices() + q.getZeroWidthIndex();
     }
 
     private int offsetZeroWidthQuantifierCG(Quantifier q) {
-        CompilerDirectives.isPartialEvaluationConstant(q.getZeroWidthIndex());
-        return offsetZeroWidthQuantifierCG() + zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex()];
+        return offsetZeroWidthQuantifierCG(q.getZeroWidthIndex());
+    }
+
+    private int offsetZeroWidthQuantifierCG(int zeroWidthIndex) {
+        CompilerAsserts.partialEvaluationConstant(zeroWidthIndex);
+        return offsetZeroWidthQuantifierCG() + zeroWidthQuantifierCGOffsets[zeroWidthIndex];
     }
 
     public void apply(PureNFATransition t, int index) {
@@ -380,30 +384,24 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         System.out.println("STACK SNAPSHOT");
         System.out.println("==============");
         for (int i = sp; i >= 0; i -= stackFrameSize) {
-            int read = i;
             System.out.print(String.format("pc: %d, i: %d,\n  cg: [", (i == sp ? curPc : stack()[i + 1]), stack()[i]));
-            read += 2;
-            for (int j = read; j < read + result.length; j++) {
+            for (int j = offsetCaptureGroups(); j < offsetQuantifierCounts(); j++) {
                 System.out.print(String.format("%d, ", stack()[j]));
             }
-            read += result.length;
             System.out.print(String.format("],\n  quant: ["));
-            for (int j = read; j < read + nQuantifierCounts; j++) {
+            for (int j = offsetQuantifierCounts(); j < offsetZeroWidthQuantifierIndices(); j++) {
                 System.out.print(String.format("%d, ", stack()[j]));
             }
-            read += nQuantifierCounts;
             System.out.print(String.format("],\n  zwq-indices: ["));
-            for (int j = read; j < read + nZeroWidthQuantifiers; j++) {
+            for (int j = offsetZeroWidthQuantifierIndices(); j < offsetZeroWidthQuantifierCG(); j++) {
                 System.out.print(String.format("%d, ", stack()[j]));
             }
-            read += nZeroWidthQuantifiers;
             System.out.print(String.format("],\n  zwq-cg: {\n"));
             for (int zwq = 0; zwq < nZeroWidthQuantifiers; zwq++) {
                 System.out.print(String.format("    %d: [", zwq));
-                for (int j = read; j < read + result.length; j++) {
+                for (int j = offsetZeroWidthQuantifierCG(zwq); j < offsetZeroWidthQuantifierCG(zwq + 1); j++) {
                     System.out.print(String.format("%d, ", stack()[j]));
                 }
-                read += result.length;
                 System.out.print("],\n");
             }
             System.out.println("}\n");
