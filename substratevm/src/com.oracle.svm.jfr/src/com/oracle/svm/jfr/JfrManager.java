@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -38,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.events.ClassLoadingStatistics;
 import com.oracle.svm.jfr.events.InitialEnvironmentVariable;
 import com.oracle.svm.jfr.events.InitialSystemProperty;
@@ -47,6 +47,9 @@ import com.oracle.svm.jfr.events.OSInformation;
 import com.oracle.svm.jfr.events.PhysicalMemory;
 
 import jdk.jfr.FlightRecorder;
+import jdk.jfr.internal.LogLevel;
+import jdk.jfr.internal.LogTag;
+import jdk.jfr.internal.Logger;
 
 /**
  * Called during VM startup and teardown. Also triggers the JFR argument parsing.
@@ -105,9 +108,9 @@ public class JfrManager {
         try {
             String msg = dcmdStart.execute(name, settings, delay, duration, disk, path, maxAge, maxSize,
                             dumpOnExit, pathToGcRoots);
-            TTY.print(msg);
+            Logger.log(LogTag.JFR_SYSTEM, LogLevel.INFO, msg);
         } catch (Throwable e) {
-            TTY.println(e.getMessage());
+            VMError.shouldNotReachHere(e);
         }
     }
 
