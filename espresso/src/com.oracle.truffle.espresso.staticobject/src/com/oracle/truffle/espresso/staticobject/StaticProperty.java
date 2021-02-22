@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.staticobject;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import sun.misc.Unsafe;
 
@@ -34,13 +33,13 @@ public class StaticProperty {
     private final byte internalKind;
     private final int offset;
 
-    protected StaticProperty(JavaKind kind, int offset) {
+    protected StaticProperty(StaticPropertyKind kind, int offset) {
         this.internalKind = getInternalKind(kind);
         this.offset = offset;
     }
 
-    private static byte getInternalKind(JavaKind javaKind) {
-        return javaKind.toByte();
+    private static byte getInternalKind(StaticPropertyKind kind) {
+        return kind.toByte();
     }
 
     /**
@@ -50,240 +49,240 @@ public class StaticProperty {
         return offset;
     }
 
-    private void checkKind(JavaKind kind) {
+    private void checkKind(StaticPropertyKind kind) {
         if (this.internalKind != getInternalKind(kind)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            String kindName = JavaKind.fromByte(internalKind).name();
+            String kindName = StaticPropertyKind.valueOf(internalKind).name();
             throw new RuntimeException("Static property of '" + kindName + "' kind cannot be accessed as '" + kind.name() + "'");
         }
     }
 
     // Object field access
     public final Object getObject(StaticObject obj) {
-        checkKind(JavaKind.Object);
+        checkKind(StaticPropertyKind.Object);
         return UNSAFE.getObject(obj.getObjectFieldStorage(), (long) offset);
     }
 
     public final Object getObjectVolatile(StaticObject obj) {
-        checkKind(JavaKind.Object);
+        checkKind(StaticPropertyKind.Object);
         return UNSAFE.getObjectVolatile(obj.getObjectFieldStorage(), offset);
     }
 
     public final void setObject(StaticObject obj, Object value) {
-        checkKind(JavaKind.Object);
+        checkKind(StaticPropertyKind.Object);
         UNSAFE.putObject(obj.getObjectFieldStorage(), (long) offset, value);
     }
 
     public final void setObjectVolatile(StaticObject obj, Object value) {
-        checkKind(JavaKind.Object);
+        checkKind(StaticPropertyKind.Object);
         UNSAFE.putObjectVolatile(obj.getObjectFieldStorage(), offset, value);
     }
 
     public final boolean compareAndSwapObject(StaticObject obj, Object before, Object after) {
-        checkKind(JavaKind.Object);
+        checkKind(StaticPropertyKind.Object);
         return UNSAFE.compareAndSwapObject(obj.getObjectFieldStorage(), offset, before, after);
     }
 
     public final Object getAndSetObject(StaticObject obj, Object value) {
-        checkKind(JavaKind.Object);
+        checkKind(StaticPropertyKind.Object);
         return UNSAFE.getAndSetObject(obj.getObjectFieldStorage(), offset, value);
     }
 
     // boolean field access
     public final boolean getBoolean(StaticObject obj) {
-        checkKind(JavaKind.Boolean);
+        checkKind(StaticPropertyKind.Boolean);
         return UNSAFE.getBoolean(obj.getPrimitiveFieldStorage(), (long) offset);
     }
 
     public final boolean getBooleanVolatile(StaticObject obj) {
-        checkKind(JavaKind.Boolean);
+        checkKind(StaticPropertyKind.Boolean);
         return UNSAFE.getBooleanVolatile(obj.getPrimitiveFieldStorage(), offset);
     }
 
     public final void setBoolean(StaticObject obj, boolean value) {
-        checkKind(JavaKind.Boolean);
+        checkKind(StaticPropertyKind.Boolean);
         UNSAFE.putBoolean(obj.getPrimitiveFieldStorage(), (long) offset, value);
     }
 
     public final void setBooleanVolatile(StaticObject obj, boolean value) {
-        checkKind(JavaKind.Boolean);
+        checkKind(StaticPropertyKind.Boolean);
         UNSAFE.putBooleanVolatile(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     // byte field access
     public final byte getByte(StaticObject obj) {
-        checkKind(JavaKind.Byte);
+        checkKind(StaticPropertyKind.Byte);
         return UNSAFE.getByte(obj.getPrimitiveFieldStorage(), (long) offset);
     }
 
     public final byte getByteVolatile(StaticObject obj) {
-        checkKind(JavaKind.Byte);
+        checkKind(StaticPropertyKind.Byte);
         return UNSAFE.getByteVolatile(obj.getPrimitiveFieldStorage(), offset);
     }
 
     public final void setByte(StaticObject obj, byte value) {
-        checkKind(JavaKind.Byte);
+        checkKind(StaticPropertyKind.Byte);
         UNSAFE.putByte(obj.getPrimitiveFieldStorage(), (long) offset, value);
     }
 
     public final void setByteVolatile(StaticObject obj, byte value) {
-        checkKind(JavaKind.Byte);
+        checkKind(StaticPropertyKind.Byte);
         UNSAFE.putByteVolatile(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     // char field access
     public final char getChar(StaticObject obj) {
-        checkKind(JavaKind.Char);
+        checkKind(StaticPropertyKind.Char);
         return UNSAFE.getChar(obj.getPrimitiveFieldStorage(), (long) offset);
     }
 
     public final char getCharVolatile(StaticObject obj) {
-        checkKind(JavaKind.Char);
+        checkKind(StaticPropertyKind.Char);
         return UNSAFE.getCharVolatile(obj.getPrimitiveFieldStorage(), offset);
     }
 
     public final void setChar(StaticObject obj, char value) {
-        checkKind(JavaKind.Char);
+        checkKind(StaticPropertyKind.Char);
         UNSAFE.putChar(obj.getPrimitiveFieldStorage(), (long) offset, value);
     }
 
     public final void setCharVolatile(StaticObject obj, char value) {
-        checkKind(JavaKind.Char);
+        checkKind(StaticPropertyKind.Char);
         UNSAFE.putCharVolatile(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     // double field access
     public final double getDouble(StaticObject obj) {
-        checkKind(JavaKind.Double);
+        checkKind(StaticPropertyKind.Double);
         return UNSAFE.getDouble(obj.getPrimitiveFieldStorage(), (long) offset);
     }
 
     public final double getDoubleVolatile(StaticObject obj) {
-        checkKind(JavaKind.Double);
+        checkKind(StaticPropertyKind.Double);
         return UNSAFE.getDoubleVolatile(obj.getPrimitiveFieldStorage(), offset);
     }
 
     public final void setDouble(StaticObject obj, double value) {
-        checkKind(JavaKind.Double);
+        checkKind(StaticPropertyKind.Double);
         UNSAFE.putDouble(obj.getPrimitiveFieldStorage(), (long) offset, value);
     }
 
     public final void setDoubleVolatile(StaticObject obj, double value) {
-        checkKind(JavaKind.Double);
+        checkKind(StaticPropertyKind.Double);
         UNSAFE.putDoubleVolatile(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     // float field access
     public final float getFloat(StaticObject obj) {
-        checkKind(JavaKind.Float);
+        checkKind(StaticPropertyKind.Float);
         return UNSAFE.getFloat(obj.getPrimitiveFieldStorage(), (long) offset);
     }
 
     public final float getFloatVolatile(StaticObject obj) {
-        checkKind(JavaKind.Float);
+        checkKind(StaticPropertyKind.Float);
         return UNSAFE.getFloatVolatile(obj.getPrimitiveFieldStorage(), offset);
     }
 
     public final void setFloat(StaticObject obj, float value) {
-        checkKind(JavaKind.Float);
+        checkKind(StaticPropertyKind.Float);
         UNSAFE.putFloat(obj.getPrimitiveFieldStorage(), (long) offset, value);
     }
 
     public final void setFloatVolatile(StaticObject obj, float value) {
-        checkKind(JavaKind.Float);
+        checkKind(StaticPropertyKind.Float);
         UNSAFE.putFloatVolatile(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     // int field access
     public final int getInt(StaticObject obj) {
-        checkKind(JavaKind.Int);
+        checkKind(StaticPropertyKind.Int);
         return UNSAFE.getInt(obj.getPrimitiveFieldStorage(), (long) offset);
     }
 
     public final int getIntVolatile(StaticObject obj) {
-        checkKind(JavaKind.Int);
+        checkKind(StaticPropertyKind.Int);
         return UNSAFE.getIntVolatile(obj.getPrimitiveFieldStorage(), offset);
     }
 
     public final void setInt(StaticObject obj, int value) {
-        checkKind(JavaKind.Int);
+        checkKind(StaticPropertyKind.Int);
         UNSAFE.putInt(obj.getPrimitiveFieldStorage(), (long) offset, value);
     }
 
     public final void setIntVolatile(StaticObject obj, int value) {
-        checkKind(JavaKind.Int);
+        checkKind(StaticPropertyKind.Int);
         UNSAFE.putIntVolatile(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     public final boolean compareAndSwapInt(StaticObject obj, int before, int after) {
-        checkKind(JavaKind.Int);
+        checkKind(StaticPropertyKind.Int);
         return UNSAFE.compareAndSwapInt(obj.getPrimitiveFieldStorage(), offset, before, after);
     }
 
     public final int getAndAddInt(StaticObject obj, int value) {
-        checkKind(JavaKind.Int);
+        checkKind(StaticPropertyKind.Int);
         return UNSAFE.getAndAddInt(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     public final int getAndSetInt(StaticObject obj, int value) {
-        checkKind(JavaKind.Int);
+        checkKind(StaticPropertyKind.Int);
         return UNSAFE.getAndSetInt(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     // long field access
     public final long getLong(StaticObject obj) {
-        checkKind(JavaKind.Long);
+        checkKind(StaticPropertyKind.Long);
         return UNSAFE.getLong(obj.getPrimitiveFieldStorage(), (long) offset);
     }
 
     public final long getLongVolatile(StaticObject obj) {
-        checkKind(JavaKind.Long);
+        checkKind(StaticPropertyKind.Long);
         return UNSAFE.getLongVolatile(obj.getPrimitiveFieldStorage(), offset);
     }
 
     public final void setLong(StaticObject obj, long value) {
-        checkKind(JavaKind.Long);
+        checkKind(StaticPropertyKind.Long);
         UNSAFE.putLong(obj.getPrimitiveFieldStorage(), (long) offset, value);
     }
 
     public final void setLongVolatile(StaticObject obj, long value) {
-        checkKind(JavaKind.Long);
+        checkKind(StaticPropertyKind.Long);
         UNSAFE.putLongVolatile(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     public final boolean compareAndSwapLong(StaticObject obj, long before, long after) {
-        checkKind(JavaKind.Long);
+        checkKind(StaticPropertyKind.Long);
         return UNSAFE.compareAndSwapLong(obj.getPrimitiveFieldStorage(), offset, before, after);
     }
 
     public final long getAndAddLong(StaticObject obj, long value) {
-        checkKind(JavaKind.Long);
+        checkKind(StaticPropertyKind.Long);
         return UNSAFE.getAndAddLong(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     public final long getAndSetLong(StaticObject obj, long value) {
-        checkKind(JavaKind.Long);
+        checkKind(StaticPropertyKind.Long);
         return UNSAFE.getAndSetLong(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
     // short field access
     public final short getShort(StaticObject obj) {
-        checkKind(JavaKind.Short);
+        checkKind(StaticPropertyKind.Short);
         return UNSAFE.getShort(obj.getPrimitiveFieldStorage(), (long) offset);
     }
 
     public final short getShortVolatile(StaticObject obj) {
-        checkKind(JavaKind.Short);
+        checkKind(StaticPropertyKind.Short);
         return UNSAFE.getShortVolatile(obj.getPrimitiveFieldStorage(), offset);
     }
 
     public final void setShort(StaticObject obj, short value) {
-        checkKind(JavaKind.Short);
+        checkKind(StaticPropertyKind.Short);
         UNSAFE.putShort(obj.getPrimitiveFieldStorage(), (long) offset, value);
     }
 
     public final void setShortVolatile(StaticObject obj, short value) {
-        checkKind(JavaKind.Short);
+        checkKind(StaticPropertyKind.Short);
         UNSAFE.putShortVolatile(obj.getPrimitiveFieldStorage(), offset, value);
     }
 
