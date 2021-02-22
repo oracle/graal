@@ -126,20 +126,20 @@ public class JfrThreadLocal implements ThreadListener {
                 JfrNativeEventWriter.putThread(data, isolateThread); // thread that exits
                 JfrNativeEventWriter.endEventWrite(data, false);
             }
+
+            // Flush all buffers.
+            JfrBuffer jb = javaBuffer.get(isolateThread);
+            if (jb.isNonNull()) {
+                flush(jb, WordFactory.unsigned(0), 0);
+            }
+
+            JfrBuffer nb = nativeBuffer.get(isolateThread);
+            if (nb.isNonNull()) {
+                flush(nb, WordFactory.unsigned(0), 0);
+            }
         }
 
-        // Flush all buffers.
-        JfrBuffer jb = javaBuffer.get(isolateThread);
-        if (jb.isNonNull()) {
-            flush(jb, WordFactory.unsigned(0), 0);
-        }
-
-        JfrBuffer nb = nativeBuffer.get(isolateThread);
-        if (nb.isNonNull()) {
-            flush(nb, WordFactory.unsigned(0), 0);
-        }
-
-        // Free all data.
+        // Free and reset all data.
         traceId.set(isolateThread, 0);
         dataLost.set(isolateThread, WordFactory.unsigned(0));
         javaEventWriter.set(isolateThread, null);

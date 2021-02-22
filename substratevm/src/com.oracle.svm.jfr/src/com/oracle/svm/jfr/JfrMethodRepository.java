@@ -25,6 +25,7 @@
 package com.oracle.svm.jfr;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -95,7 +96,7 @@ public class JfrMethodRepository implements JfrRepository {
 
     // TODO: just a dummy implementation
     private static List<MethodInfo> getMethodList() {
-        return null;
+        return Collections.emptyList();
     }
 
     // TODO: just a dummy implementation - for each method, one info object must live in the image

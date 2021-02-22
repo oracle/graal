@@ -26,12 +26,12 @@ package com.oracle.svm.jfr;
 
 public enum JfrTypes {
     // TODO: see JfrEvents, same TODOs apply here as well.
-    Class(143),
-    String(153),
-    StackTrace(154),
-    Method(172),
-    Symbol(173),
-    Frametype(192);
+    Class(20),
+    String(21),
+    StackTrace(23),
+    Method(38),
+    Symbol(39),
+    Frametype(58);
 
     private final int id;
 

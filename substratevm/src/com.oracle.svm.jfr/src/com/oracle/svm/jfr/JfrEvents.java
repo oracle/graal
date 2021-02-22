@@ -33,9 +33,9 @@ public enum JfrEvents {
     // TODO: we need to abstract the JDK version in some way.
     MetadataEvent(0),
     CheckpointEvent(1),
-    ThreadStartEvent(2),
-    ThreadEndEvent(3),
-    DataLossEvent(81);
+    ThreadStartEvent(255),
+    ThreadEndEvent(256),
+    DataLossEvent(335);
 
     private final int id;
 
@@ -51,6 +51,6 @@ public enum JfrEvents {
     public static int getEventCount() {
         // TODO: needs to return the count of all native events that are defined in the metadata.xml
         // file. The highest id must match "eventCount - 1".
-        return 0;
+        return 400;
     }
 }

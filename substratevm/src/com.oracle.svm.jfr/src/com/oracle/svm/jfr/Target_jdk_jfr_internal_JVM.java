@@ -149,7 +149,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#retransformClasses}. */
     @Substitute
     public synchronized void retransformClasses(Class<?>[] classes) {
-        throw new IllegalStateException("Class retransformation is not supported.");
+        // Not supported but this method is called during JFR startup, so we can't throw an error.
     }
 
     /** See {@link JVM#setEnabled}. */
@@ -336,14 +336,14 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK14OrEarlier.class) //
     public void emitOldObjectSamples(long cutoff, boolean emitAll) {
-        throw new IllegalStateException("Object sampling not supported");
+        // Not supported but this method is called during JFR shutdown, so we can't throw an error.
     }
 
     /** See {@link JVM#emitOldObjectSamples}. */
     @Substitute
     @TargetElement(onlyWith = JDK15OrLater.class) //
     public void emitOldObjectSamples(long cutoff, boolean emitAll, boolean skipBFS) {
-        throw new IllegalStateException("Object sampling not supported");
+        // Not supported but this method is called during JFR shutdown, so we can't throw an error.
     }
 
     /** See {@link JVM#shouldRotateDisk}. */

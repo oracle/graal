@@ -310,7 +310,7 @@ class SubstrateJVM {
 
     /** See {@link JVM#setMethodSamplingInterval}. */
     public void setMethodSamplingInterval(@SuppressWarnings("unused") long type, @SuppressWarnings("unused") long intervalMillis) {
-        throw new IllegalStateException("JFR Method sampling is currently not supported.");
+        // Not supported but this method is called during JFR startup, so we can't throw an error.
     }
 
     /** See {@link JVM#setSampleThreads}. */
@@ -332,7 +332,7 @@ class SubstrateJVM {
 
     /** See {@link JVM#setStackTraceEnabled}. */
     public void setStackTraceEnabled(@SuppressWarnings("unused") long eventTypeId, @SuppressWarnings("unused") boolean enabled) {
-        throw new IllegalStateException("JFR stack traces are not supported");
+        // Not supported but this method is called during JFR startup, so we can't throw an error.
     }
 
     /** See {@link JVM#setThreadBufferSize}. */
