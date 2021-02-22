@@ -49,7 +49,6 @@ import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nfa.PureNFA;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
@@ -112,7 +111,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Children private CharMatcher[] matchers;
     private final int[] zeroWidthTermEnclosedCGLow;
     private final int[] zeroWidthQuantifierCGOffsets;
-    private final IntArrayBuffer currentFrame;
 
     @Child InputRegionMatchesNode regionMatchesNode;
     @Child InputIndexOfStringNode indexOfNode;
@@ -128,7 +126,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.backrefWithNullTargetSucceeds = nfaMap.getAst().getOptions().getFlavor() != RubyFlavor.INSTANCE;
         this.monitorCaptureGroupsInEmptyCheck = nfaMap.getAst().getOptions().getFlavor() == RubyFlavor.INSTANCE;
         this.transitionMatchesStepByStep = nfaMap.getAst().getOptions().getFlavor() == RubyFlavor.INSTANCE;
-        this.currentFrame = this.transitionMatchesStepByStep ? new IntArrayBuffer() : null;
         this.loneSurrogates = nfaMap.getAst().getProperties().hasLoneSurrogates();
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
         this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifiables().size();
@@ -194,7 +191,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
         return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthQuantifierCGOffsets, maxNTransitions);
+                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions);
     }
 
     private static final int IP_BEGIN = -1;
@@ -379,6 +376,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
              */
             if (transitionMatchesStepByStep) {
                 // Use the tryUpdateState method instead of transitionMatches and updateState
+                int[] currentFrame = locals.getStackFrameBuffer();
                 locals.readFrame(currentFrame);
                 for (int i = 0; i < successors.length; i++) {
                     PureNFATransition transition = successors[i];
@@ -408,6 +406,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             boolean transitionToFinalStateWins = false;
             // We make a copy of the current stack frame, as we will need it to undo speculative
             // changes done by tryUpdateState and to duplicate the current stack frame on demand.
+            int[] currentFrame = locals.getStackFrameBuffer();
             locals.readFrame(currentFrame);
             for (int i = successors.length - 1; i >= 0; i--) {
                 PureNFATransition transition = successors[i];
