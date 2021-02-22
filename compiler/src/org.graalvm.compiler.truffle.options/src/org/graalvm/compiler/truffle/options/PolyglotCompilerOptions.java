@@ -386,6 +386,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
+    @Option(help = "Perform a set of optimizations on each explored call target during inlining.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> InliningTruffleTierOnExpand = new OptionKey<>(true);
+
     // Splitting
 
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
@@ -507,10 +510,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
 
     @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(30_000);
+    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(12_000);
 
     @Option(help = "The base inlining budget for language-agnostic inlining", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(30_000);
+    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(12_000);
 
     // @formatter:on
 
