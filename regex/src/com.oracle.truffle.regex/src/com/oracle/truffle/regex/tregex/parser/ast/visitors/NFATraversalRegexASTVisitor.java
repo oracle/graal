@@ -329,7 +329,7 @@ public abstract class NFATraversalRegexASTVisitor {
                                 quantifierGuardsExited.set(quantifier.getIndex());
                             }
                         }
-                        if (quantifier.hasZeroWidthIndex()) {
+                        if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
                             if (pathIsGroupEnter(element)) {
                                 quantifierGuards.add(QuantifierGuard.createEnterZeroWidth(quantifier));
                             } else if (pathIsGroupExit(element) && ((ast.getOptions().getFlavor() == RubyFlavor.INSTANCE) || !root.isCharacterClass())) {
@@ -596,7 +596,8 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                         insideEmptyGuardGroup.remove(group);
                     }
-                } else if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex()) {
+                } else if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() &&
+                                (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
                     // In Ruby, when we finish an iteration of a loop, there is an empty check.
                     // If we pass the empty check, we return to the beginning of the loop where we
                     // get to make a non-deterministic choice as to whether we want to start another
