@@ -50,6 +50,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.UnknownHashKeyException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
@@ -677,8 +678,11 @@ final class PolyglotProxy implements TruffleObject {
     Object readHashValue(Object key,
                     @CachedLibrary("this") InteropLibrary library,
                     @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
-                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException, UnknownHashKeyException {
         if (proxy instanceof ProxyHashMap) {
+            if (!isHashValueExisting(key, library, context, language)) {
+                throw UnknownHashKeyException.create(key);
+            }
             PolyglotLanguageContext languageContext = context.get().internalContext;
             Value keyValue = languageContext.asValue(key);
             Object result = guestToHostCall(library, language.getHostToGuestCache().getHashValue, languageContext, proxy, keyValue);
@@ -722,8 +726,11 @@ final class PolyglotProxy implements TruffleObject {
     void removeHashEntry(Object key,
                     @CachedLibrary("this") InteropLibrary library,
                     @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
-                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException {
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException, UnknownHashKeyException {
         if (proxy instanceof ProxyHashMap) {
+            if (!isHashValueExisting(key, library, context, language)) {
+                throw UnknownHashKeyException.create(key);
+            }
             PolyglotLanguageContext languageContext = context.get().internalContext;
             Value keyValue = languageContext.asValue(key);
             guestToHostCall(library, language.getHostToGuestCache().removeHashEntry, languageContext, proxy, keyValue);

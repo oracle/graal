@@ -53,7 +53,6 @@ import com.oracle.truffle.api.utilities.TriState;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyHashMap;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -91,7 +90,6 @@ public class HashTest extends AbstractPolyglotTest {
     }
 
     @Test
-    @Ignore
     public void testPolyglotProxyInteropMessages() throws InteropException {
         setupEnv();
         Accessor accessor = new Accessor();
@@ -189,6 +187,7 @@ public class HashTest extends AbstractPolyglotTest {
         for (KeyFactory<?> factory : KeyFactory.ALL) {
             testValueImpl(context.asValue(new Hash()), (KeyFactory<Object>) factory, context);
             testValueImpl(context.asValue(new HashMap<>()), (KeyFactory<Object>) factory, context);
+            testValueImpl(context.asValue(ProxyHashMap.fromMap(new HashMap<>())), (KeyFactory<Object>) factory, context);
         }
     }
 
@@ -260,6 +259,7 @@ public class HashTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
         for (KeyFactory<?> factory : KeyFactory.ALL) {
             testPolyglotMapImpl(context.asValue(new Hash()), (KeyFactory<Object>) factory, context);
+            testPolyglotMapImpl(context.asValue(ProxyHashMap.fromMap(new HashMap<>())), (KeyFactory<Object>) factory, context);
         }
     }
 

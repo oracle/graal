@@ -63,68 +63,95 @@ public interface ProxyHashMap extends Proxy {
     Object getEntriesIterator();
 
     static ProxyHashMap fromMap(Map<Object, Object> values) {
-        return new ProxyHashMap() {
+        return new ProxyHashMapImpl(values);
+    }
+}
 
+final class ProxyHashMapImpl implements ProxyHashMap {
+
+    private final Map<Object, Object> values;
+
+    ProxyHashMapImpl(Map<Object, Object> values) {
+        this.values = values;
+    }
+
+    @Override
+    public long getSize() {
+        return values.size();
+    }
+
+    @Override
+    public boolean hasEntry(Value key) {
+        Object unboxedKey = unboxKey(key);
+        return values.containsKey(unboxedKey);
+    }
+
+    @Override
+    public Object getValue(Value key) {
+        Object unboxedKey = unboxKey(key);
+        return values.get(unboxedKey);
+    }
+
+    @Override
+    public void putEntry(Value key, Value value) {
+        Object unboxedKey = unboxKey(key);
+        values.put(unboxedKey, value.isHostObject() ? value.asHostObject() : value);
+    }
+
+    @Override
+    public boolean removeEntry(Value key) {
+        Object unboxedKey = unboxKey(key);
+        if (values.containsKey(unboxedKey)) {
+            values.remove(unboxedKey);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public Object getEntriesIterator() {
+        Iterator<Map.Entry<Object, Object>> entryIterator = values.entrySet().iterator();
+        return new ProxyIterator() {
             @Override
-            public long getSize() {
-                return values.size();
+            public boolean hasNext() {
+                return entryIterator.hasNext();
             }
 
             @Override
-            public boolean hasEntry(Value key) {
-                if (key.isHostObject() && values.containsKey(key.asHostObject())) {
-                    return true;
-                }
-                return values.containsKey(key);
-            }
-
-            @Override
-            public Object getValue(Value key) {
-                if (key.isHostObject() && values.containsKey(key.asHostObject())) {
-                    return values.get(key.asHostObject());
-                } else {
-                    return values.get(key);
-                }
-            }
-
-            @Override
-            public void putEntry(Value key, Value value) {
-                if (key.isHostObject() && values.containsKey(key)) {
-                    values.remove(key);
-                }
-                values.put(key.isHostObject() ? key.asHostObject() : key,
-                                value.isHostObject() ? value.asHostObject() : value);
-            }
-
-            @Override
-            public boolean removeEntry(Value key) {
-                if (key.isHostObject() && values.containsKey(key.asHostObject())) {
-                    values.remove(key.asHostObject());
-                    return true;
-                } else if (values.containsKey(key)) {
-                    values.remove(key);
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-
-            @Override
-            public Object getEntriesIterator() {
-                Iterator<Map.Entry<Object, Object>> entryIterator = values.entrySet().iterator();
-                return new ProxyIterator() {
-                    @Override
-                    public boolean hasNext() {
-                        return entryIterator.hasNext();
-                    }
-
-                    @Override
-                    public Object getNext() throws NoSuchElementException, UnsupportedOperationException {
-                        Map.Entry<Object, Object> entry = entryIterator.next();
-                        return ProxyHashEntry.create(entry);
-                    }
-                };
+            public Object getNext() throws NoSuchElementException, UnsupportedOperationException {
+                Map.Entry<Object, Object> entry = entryIterator.next();
+                return ProxyHashEntry.create(entry);
             }
         };
+    }
+
+    private static Object unboxKey(Value key) {
+        // Todo: Should we unbox key is null? ConcurrentHashMap does not support null as a key
+        if (key.isHostObject()) {
+            return key.asHostObject();
+        } else if (key.isString()) {
+            return key.asString();
+        } else if (key.isBoolean()) {
+            return key.asBoolean();
+        } else if (key.fitsInByte()) {
+            return key.asInt();
+        } else if (key.fitsInLong()) {
+            return key.asLong();
+        } else if (key.fitsInDouble()) {
+            return key.asDouble();
+        } else if (key.isDate()) {
+            return key.asDate();
+        } else if (key.isDuration()) {
+            return key.asDuration();
+        } else if (key.isInstant()) {
+            return key.asInstant();
+        } else if (key.isTime()) {
+            return key.asTime();
+        } else if (key.isTimeZone()) {
+            return key.asTimeZone();
+        } else {
+            return key;
+        }
     }
 }
