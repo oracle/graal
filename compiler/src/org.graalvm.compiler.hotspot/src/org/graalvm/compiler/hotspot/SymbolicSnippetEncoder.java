@@ -1123,7 +1123,7 @@ public class SymbolicSnippetEncoder {
 
     private static final Map<Class<?>, SnippetResolvedJavaType> snippetTypes = new HashMap<>();
 
-    private static SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
+    private static synchronized SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
         SnippetResolvedJavaType type = null;
         if (isGraalClass(clazz)) {
             type = snippetTypes.get(clazz);
@@ -1134,7 +1134,7 @@ public class SymbolicSnippetEncoder {
         return type;
     }
 
-    private static SnippetResolvedJavaType createType(Class<?> clazz) {
+    private static synchronized SnippetResolvedJavaType createType(Class<?> clazz) {
         SnippetResolvedJavaType type;
         type = new SnippetResolvedJavaType(clazz);
         snippetTypes.put(clazz, type);
