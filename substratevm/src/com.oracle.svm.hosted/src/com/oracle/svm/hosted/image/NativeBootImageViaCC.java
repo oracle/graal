@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -49,6 +50,8 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.macho.MachOSymtab;
+import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
@@ -71,10 +74,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     public NativeBootImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
-    }
-
-    public NativeImageKind getOutputKind() {
-        return kind;
     }
 
     private static boolean removeUnusedSymbols() {
@@ -146,7 +145,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         @Override
         protected void setOutputKind(List<String> cmd) {
-            switch (kind) {
+            switch (imageKind) {
                 case EXECUTABLE:
                     break;
                 case STATIC_EXECUTABLE:
@@ -229,7 +228,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         @Override
         protected void setOutputKind(List<String> cmd) {
-            switch (kind) {
+            switch (imageKind) {
                 case STATIC_EXECUTABLE:
                     throw UserError.abort("%s does not support building static executable images.", OS.getCurrent().name());
                 case SHARED_LIBRARY:
@@ -245,9 +244,15 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     class WindowsCCLinkerInvocation extends CCLinkerInvocation {
 
+        private final String imageName;
+
+        WindowsCCLinkerInvocation(String imageName) {
+            this.imageName = imageName;
+        }
+
         @Override
         protected void setOutputKind(List<String> cmd) {
-            switch (kind) {
+            switch (imageKind) {
                 case EXECUTABLE:
                 case STATIC_EXECUTABLE:
                     // cmd.add("/MT");
@@ -277,22 +282,28 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             List<String> cmd = new ArrayList<>(compilerCmd);
             setOutputKind(cmd);
 
-            // Add debugging info
-            cmd.add("/Zi");
-
             for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
                 cmd.add(staticLibrary.toString());
             }
 
+            /* Add linker options. */
             cmd.add("/link");
             cmd.add("/INCREMENTAL:NO");
             cmd.add("/NODEFAULTLIB:LIBCMT");
 
-            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                String outputFileString = getOutputFile().toString();
-                String outputFileSuffix = getOutputKind().getFilenameSuffix();
-                String pdbFile = outputFileString.substring(0, outputFileString.length() - outputFileSuffix.length()) + ".stripped.pdb";
-                cmd.add("/PDBSTRIPPED:" + pdbFile);
+            /* Put .lib and .exp files in a temp dir as we don't usually need them. */
+            cmd.add("/IMPLIB:" + getTempDirectory().resolve(imageName + ".lib"));
+
+            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                cmd.add("/DEBUG");
+
+                if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                    String pdbFile = imageName + ".pdb";
+                    /* We don't need a full PDB file, so leave it in a temp dir ... */
+                    cmd.add("/PDB:" + getTempDirectory().resolve(pdbFile));
+                    /* ... and provide the stripped PDB file instead. */
+                    cmd.add("/PDBSTRIPPED:" + getOutputFile().resolveSibling(pdbFile));
+                }
             }
 
             if (removeUnusedSymbols()) {
@@ -315,7 +326,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
-            if (SubstrateOptions.EnableWildcardExpansion.getValue() && kind == NativeImageKind.EXECUTABLE) {
+            if (SubstrateOptions.EnableWildcardExpansion.getValue() && imageKind == NativeImageKind.EXECUTABLE) {
                 /*
                  * Enable wildcard expansion in command line arguments, see
                  * https://docs.microsoft.com/en-us/cpp/c-language/expanding-wildcard-arguments.
@@ -336,7 +347,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 inv = new DarwinCCLinkerInvocation();
                 break;
             case PECOFF:
-                inv = new WindowsCCLinkerInvocation();
+                inv = new WindowsCCLinkerInvocation(imageName);
                 break;
             case ELF:
             default:
@@ -348,10 +359,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.additionalPreOptions.add(SubstrateOptions.AdditionalLinkerOptions.getValue());
         }
 
-        Path outputFile = outputDirectory.resolve(imageName + getBootImageKind().getFilenameSuffix());
+        Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
-        inv.setOutputKind(getOutputKind());
         inv.setTempDirectory(tempDirectory);
 
         inv.addLibPath(tempDirectory.toString());
@@ -447,6 +457,26 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 if (status != 0) {
                     String output = String.join(System.lineSeparator(), lines);
                     throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
+                }
+
+                Path imagePath = inv.getOutputFile();
+                BuildArtifacts.singleton().add(imageKind.isExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIB, imagePath);
+
+                if (OS.getCurrent() == OS.WINDOWS && !imageKind.isExecutable) {
+                    /* Provide an import library for the built shared library. */
+                    String importLib = imageName + ".lib";
+                    Path importLibPath = imagePath.resolveSibling(importLib);
+                    Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
+                    BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIB, importLibPath);
+                }
+
+                if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
+                    if (OS.getCurrent() == OS.WINDOWS) {
+                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
+                    } else {
+                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);
+                    }
                 }
             } catch (IOException e) {
                 throw handleLinkerFailure(e.toString(), commandLine, null);

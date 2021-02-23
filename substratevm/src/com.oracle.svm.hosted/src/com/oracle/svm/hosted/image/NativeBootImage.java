@@ -74,6 +74,8 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
@@ -192,7 +194,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     private void writeHeaderFile(Path outDir, Header header, List<HostedMethod> methods, boolean dynamic) {
-        CSourceCodeWriter writer = new CSourceCodeWriter(outDir.getParent());
+        CSourceCodeWriter writer = new CSourceCodeWriter(outDir);
         String imageHeaderGuard = "__" + header.name().toUpperCase().replaceAll("[^A-Z0-9]", "_") + "_H";
         String dynamicSuffix = dynamic ? "_dynamic.h" : ".h";
 
@@ -231,13 +233,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
 
         writer.appendln("#endif");
-        Path fileNamePath = outDir.getFileName();
-        if (fileNamePath == null) {
-            throw UserError.abort("Cannot determine header file name for directory %s", outDir);
-        } else {
-            String fileName = fileNamePath.resolve(header.name() + dynamicSuffix).toString();
-            writer.writeFile(fileName);
-        }
+
+        Path headerFile = writer.writeFile(header.name() + dynamicSuffix);
+        BuildArtifacts.singleton().add(ArtifactType.HEADER, headerFile);
     }
 
     /**

@@ -51,7 +51,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     protected final List<String> libs = new ArrayList<>();
     protected Path tempDirectory;
     protected Path outputFile;
-    protected AbstractBootImage.NativeImageKind outputKind;
 
     @Override
     public List<Path> getInputFiles() {
@@ -66,14 +65,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     @Override
     public void addInputFile(int index, Path filename) {
         inputFilenames.add(index, filename);
-    }
-
-    public AbstractBootImage.NativeImageKind getOutputKind() {
-        return outputKind;
-    }
-
-    public void setOutputKind(AbstractBootImage.NativeImageKind k) {
-        outputKind = k;
     }
 
     @Override
