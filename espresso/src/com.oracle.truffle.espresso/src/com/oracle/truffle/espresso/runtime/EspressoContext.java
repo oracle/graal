@@ -439,14 +439,14 @@ public final class EspressoContext {
 
             // TODO: link libjimage
 
+            initializeAgents();
+
             try (DebugCloseable metaInit = META_INIT.scope(timers)) {
                 this.meta = new Meta(this);
             }
             this.metaInitialized = true;
 
             this.interpreterToVM = new InterpreterToVM(this);
-
-            initializeAgents();
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
                 initializeKnownClass(Type.java_lang_Object);
@@ -481,10 +481,15 @@ public final class EspressoContext {
                     if (e != 0) {
                         throw EspressoError.shouldNotReachHere();
                     }
+
+                    getVM().getJvmti().postVmStart();
+
                     modulesInitialized = true;
                     meta.java_lang_System_initPhase3.invokeDirect(null);
                 }
             }
+
+            getVM().getJvmti().postVmInit();
 
             meta.postSystemInit();
 

@@ -163,7 +163,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
 
     private final JniEnv jniEnv;
     private final Management management;
-    private final JVMTI.JvmtiFactory jvmti;
+    private final JVMTI.JvmtiHandler jvmti;
 
     private @Pointer TruffleObject mokapotEnvPtr;
 
@@ -259,7 +259,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
                 management = null;
             }
 
-            jvmti = new JVMTI.JvmtiFactory(getContext(), mokapotLibrary);
+            jvmti = new JVMTI.JvmtiHandler(getContext(), mokapotLibrary);
 
             getJavaVM = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getJavaVM",
@@ -310,7 +310,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
         }
     }
 
-    public JVMTI.JvmtiFactory getJvmti() {
+    public JVMTI.JvmtiHandler getJvmti() {
         return jvmti;
     }
 

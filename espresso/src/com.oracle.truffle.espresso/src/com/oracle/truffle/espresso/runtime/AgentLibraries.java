@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.RawBuffer;
+import com.oracle.truffle.espresso.jvmti.JvmtiPhase;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 final class AgentLibraries implements ContextAccess {
@@ -71,6 +72,9 @@ final class AgentLibraries implements ContextAccess {
 
     void initialize() {
         Object ret;
+
+        getVM().getJvmti().enterPhase(JvmtiPhase.ONLOAD);
+
         for (AgentLibrary agent : agents) {
             TruffleObject onLoad = lookupOnLoad(agent);
             if (onLoad == null) {
@@ -86,6 +90,8 @@ final class AgentLibraries implements ContextAccess {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
+
+        getVM().getJvmti().enterPhase(JvmtiPhase.PRIMORDIAL);
     }
 
     void registerAgents(OptionMap<String> map, boolean isAbsolutePath) {
