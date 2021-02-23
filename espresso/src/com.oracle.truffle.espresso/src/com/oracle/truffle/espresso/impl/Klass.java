@@ -81,7 +81,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-import com.oracle.truffle.object.DebugCounter;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef, TruffleObject {

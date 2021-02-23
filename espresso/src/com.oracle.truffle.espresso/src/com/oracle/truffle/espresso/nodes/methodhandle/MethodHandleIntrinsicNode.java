@@ -28,7 +28,7 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.object.DebugCounter;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * Top of the method handle intrinsic behavior implementation hierarchy.

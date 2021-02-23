@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <dlfcn.h>
+package com.oracle.truffle.espresso.processor;
 
-void *dlopen(const char *filename, int flags);
-int dlclose(void *handle);
-void *dlmopen (Lmid_t lmid, const char *filename, int flags);
-void *dlsym(void *handle, const char *symbol);
+/**
+ * To keep in sync with com.oracle.truffle.espresso._native.NativeType.
+ */
+public enum NativeType {
 
-// On recent glibc, the locale data is initialized on thread creation.
-// To emulate the same behavior and avoid crashes, Java threads created 
-// outside the context must call this function on start.
-void eden_ctypeInit(void);
+    VOID,
+    BOOLEAN, // 1 byte
+    BYTE,
+    CHAR, // unsigned short
+    SHORT,
+    INT,
+    LONG,
+    FLOAT,
+    DOUBLE,
 
-void* eden_RTLD_DEFAULT(void);
+    OBJECT, // word-sized handle
+    POINTER,
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <dlfcn.h>
+package com.oracle.truffle.espresso.ffi;
 
-void *dlopen(const char *filename, int flags);
-int dlclose(void *handle);
-void *dlmopen (Lmid_t lmid, const char *filename, int flags);
-void *dlsym(void *handle, const char *symbol);
+/**
+ * Encoded native types similar to j* types defined for JNI.
+ * 
+ * This enum provides an unambiguous mapping from Java to native (similar to JNI j* types), and from
+ * native to Java.
+ * 
+ * {@link #BOOLEAN} encodes a native 1-byte value, a boolean in Java.
+ * 
+ * {@link #SHORT} and {@link #CHAR} represents the same native 2-byte value, but a short and char
+ * types in Java.
+ */
+public enum NativeType {
 
-// On recent glibc, the locale data is initialized on thread creation.
-// To emulate the same behavior and avoid crashes, Java threads created 
-// outside the context must call this function on start.
-void eden_ctypeInit(void);
+    VOID,
+    BOOLEAN, // 1 byte
+    BYTE,
+    CHAR, // unsigned short
+    SHORT,
+    INT,
+    LONG,
+    FLOAT,
+    DOUBLE,
 
-void* eden_RTLD_DEFAULT(void);
+    OBJECT, // word-sized handle
+    POINTER,
+}

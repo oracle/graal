@@ -20,39 +20,47 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.ffi;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public final class EmptyKeysArray implements TruffleObject {
-    public static final EmptyKeysArray INSTANCE = new EmptyKeysArray();
+public final class RawPointer implements TruffleObject {
+    private final long rawPtr;
 
-    @ExportMessage
+    private static final RawPointer NULL = new RawPointer(0L);
+
+    public static @Pointer TruffleObject nullInstance() {
+        return NULL;
+    }
+
+    public RawPointer(long rawPtr) {
+        this.rawPtr = rawPtr;
+    }
+
+    public static @Pointer TruffleObject create(long ptr) {
+        if (ptr == 0L) {
+            return NULL;
+        }
+        return new RawPointer(ptr);
+    }
+
     @SuppressWarnings("static-method")
-    boolean hasArrayElements() {
+    @ExportMessage
+    boolean isPointer() {
         return true;
     }
 
     @ExportMessage
-    @SuppressWarnings("static-method")
-    long getArraySize() {
-        return 0;
+    long asPointer() {
+        return rawPtr;
     }
 
     @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isArrayElementReadable(@SuppressWarnings("unused") long index) {
-        return false;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object readArrayElement(long index) throws InvalidArrayIndexException {
-        throw InvalidArrayIndexException.create(index);
+    boolean isNull() {
+        return rawPtr == 0L;
     }
 }

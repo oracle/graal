@@ -20,39 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.ffi.nfi;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import java.nio.file.Path;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.Pointer;
 
-@ExportLibrary(InteropLibrary.class)
-public final class EmptyKeysArray implements TruffleObject {
-    public static final EmptyKeysArray INSTANCE = new EmptyKeysArray();
+final class NFISulongNativeAccess extends NFINativeAccess {
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasArrayElements() {
-        return true;
+    NFISulongNativeAccess(TruffleLanguage.Env env) {
+        super(env);
     }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    long getArraySize() {
-        return 0;
+    @Override
+    public @Pointer TruffleObject loadLibrary(Path libraryPath) {
+        CompilerAsserts.neverPartOfCompilation();
+        String nfiSource = String.format("with llvm load(RTLD_LAZY) '%s'", libraryPath);
+        return loadLibraryHelper(nfiSource);
     }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isArrayElementReadable(@SuppressWarnings("unused") long index) {
-        return false;
+    @Override
+    public @Pointer TruffleObject loadDefaultLibrary() {
+        return null; // not supported
     }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object readArrayElement(long index) throws InvalidArrayIndexException {
-        throw InvalidArrayIndexException.create(index);
+    public static final class Provider implements NativeAccess.Provider {
+        @Override
+        public String id() {
+            return "nfi-sulong";
+        }
+
+        @Override
+        public NativeAccess create(TruffleLanguage.Env env) {
+            return new NFISulongNativeAccess(env);
+        }
     }
 }

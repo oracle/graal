@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.io.File;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
@@ -54,7 +57,7 @@ public final class EspressoOptions {
                         @Override
                         public List<Path> apply(String paths) {
                             try {
-                                return Collections.unmodifiableList(Utils.parsePaths(paths));
+                                return Collections.unmodifiableList(parsePaths(paths));
                             } catch (InvalidPathException e) {
                                 throw new IllegalArgumentException(e);
                             }
@@ -66,7 +69,7 @@ public final class EspressoOptions {
                         @Override
                         public List<String> apply(String strings) {
                             try {
-                                return Collections.unmodifiableList(Utils.parseStrings(strings));
+                                return Collections.unmodifiableList(splitByFileSeparator(strings));
                             } catch (InvalidPathException e) {
                                 throw new IllegalArgumentException(e);
                             }
@@ -157,6 +160,18 @@ public final class EspressoOptions {
                     category = OptionCategory.USER, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
+    public static List<Path> parsePaths(String paths) {
+        List<Path> list = new ArrayList<>();
+        for (String path : splitByFileSeparator(paths)) {
+            list.add(Paths.get(path));
+        }
+        return list;
+    }
+
+    private static List<String> splitByFileSeparator(String strings) {
+        return new ArrayList<>(Arrays.asList(strings.split(File.pathSeparator)));
+    }
+
     public enum SpecCompliancyMode {
         STRICT,
         HOTSPOT
@@ -241,10 +256,6 @@ public final class EspressoOptions {
                     "\t- Compiled: performs liveness analysis, and nulls out local variables only in compiled code.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<LivenessAnalysisMode> LivenessAnalysis = new OptionKey<>(LivenessAnalysisMode.DISABLED, LIVENESS_ANALYSIS_MODE_OPTION_TYPE);
-
-    @Option(help = "Load native libraries on a per-context, isolated linking namespace; by default enabled on the JVM, disabled on SVM.", //
-                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> UseTruffleNFIIsolatedNamespace = new OptionKey<>(!RUNNING_ON_SVM);
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
@@ -426,5 +437,16 @@ public final class EspressoOptions {
                     category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> JavaAgent = new OptionKey<>("");
 
-    public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
+    @Option(help = "Native backend used by Espresso, if not specified, Espresso will pick one depending on the environment.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> NativeBackend = new OptionKey<>("");
+
+    // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
+    public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
+    public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);
+
+    private static boolean booleanProperty(String name, boolean defaultValue) {
+        String value = System.getProperty(name);
+        return value == null ? defaultValue : value.equalsIgnoreCase("true");
+    }
 }

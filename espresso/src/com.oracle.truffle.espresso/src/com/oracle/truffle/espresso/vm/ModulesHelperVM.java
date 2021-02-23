@@ -27,11 +27,11 @@ import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.PackageTable;
-import com.oracle.truffle.espresso.jni.NativeEnv;
-import com.oracle.truffle.espresso.jni.Pointer;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -80,7 +80,7 @@ public final class ModulesHelperVM {
     }
 
     static PackageTable.PackageEntry extractPackageEntry(@Pointer TruffleObject pkgName, ModuleTable.ModuleEntry fromModuleEntry, Meta meta, SubstitutionProfiler profiler) {
-        String pkg = NativeEnv.interopPointerToString(pkgName);
+        String pkg = NativeUtils.interopPointerToString(pkgName);
         PackageTable.PackageEntry packageEntry = null;
         Symbol<Symbol.Name> nameSymbol = meta.getContext().getNames().lookup(pkg);
         if (nameSymbol != null) {

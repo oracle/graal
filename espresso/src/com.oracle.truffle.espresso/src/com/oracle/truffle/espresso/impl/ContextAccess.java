@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
@@ -79,5 +80,9 @@ public interface ContextAccess {
 
     default JavaVersion getJavaVersion() {
         return getContext().getJavaVersion();
+    }
+
+    default NativeAccess getNativeAccess() {
+        return getContext().getNativeAccess();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <dlfcn.h>
+package com.oracle.truffle.espresso.ffi;
 
-void *dlopen(const char *filename, int flags);
-int dlclose(void *handle);
-void *dlmopen (Lmid_t lmid, const char *filename, int flags);
-void *dlsym(void *handle, const char *symbol);
+/**
+ * Represents a valid native signature.
+ */
+public interface NativeSignature {
+    /**
+     * Return type.
+     */
+    NativeType getReturnType();
 
-// On recent glibc, the locale data is initialized on thread creation.
-// To emulate the same behavior and avoid crashes, Java threads created 
-// outside the context must call this function on start.
-void eden_ctypeInit(void);
+    /**
+     * Number of parameters.
+     */
+    int getParameterCount();
 
-void* eden_RTLD_DEFAULT(void);
+    /**
+     * Returns the i-th (0-based) parameter type, guaranteed to be != {@link NativeType#VOID void}.
+     *
+     * @throws IndexOutOfBoundsException if the index is negative or >= {@link #getParameterCount()}
+     */
+    NativeType parameterTypeAt(int index);
+
+    static NativeSignature create(NativeType returnType, NativeType... parameterTypes) {
+        return new NativeSignatureImpl(returnType, parameterTypes);
+    }
+}

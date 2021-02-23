@@ -62,12 +62,18 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
+@Registration(id = EspressoLanguage.ID, //
+                name = EspressoLanguage.NAME, //
+                implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
+                version = EspressoLanguage.VERSION, //
+                contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
+                dependentLanguages = {"nfi", "llvm"})
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
-@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ID = "java";
     public static final String NAME = "Java";
+    public static final String IMPLEMENTATION_NAME = "Espresso";
     public static final String VERSION = "1.8|11";
 
     // Espresso VM info
@@ -235,8 +241,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected CallTarget parse(final ParsingRequest request) throws Exception {
-        final EspressoContext context = getCurrentContext();
-        assert context.isInitialized();
+        assert getCurrentContext().isInitialized();
         String contents = request.getSource().getCharacters().toString();
         if (DestroyVMNode.EVAL_NAME.equals(contents)) {
             RootNode node = new DestroyVMNode(this);
@@ -267,10 +272,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static EspressoContext getCurrentContext() {
         return getCurrentContext(EspressoLanguage.class);
-    }
-
-    public String getEspressoHome() {
-        return getLanguageHome();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.processor;
+package com.oracle.truffle.espresso.substitutions;
 
 /**
- * A copy of the NativeSimpleType enum found in com.oracle.truffle.nfi.spi.types.NativeSimpleType.
- * The two of them must be synchronized.
+ * This substitution is only needed when using the Sulong backend, since installing signal handlers
+ * is not supported. See GR-29359.
  */
-enum NativeSimpleType {
-    VOID,
-    UINT8,
-    SINT8,
-    UINT16,
-    SINT16,
-    UINT32,
-    SINT32,
-    UINT64,
-    SINT64,
-    FLOAT,
-    DOUBLE,
-    POINTER,
-    STRING,
-    OBJECT,
-    NULLABLE;
+@EspressoSubstitutions
+public final class Target_sun_nio_ch_NativeThread {
+
+    @Substitution
+    public static void init() {
+        // nop
+    }
 }

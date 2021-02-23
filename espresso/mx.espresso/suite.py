@@ -87,7 +87,10 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "com.oracle.truffle.espresso.jdwp"
+                "com.oracle.truffle.espresso.jdwp",
+            ],
+            "uses": [
+                "com.oracle.truffle.espresso._native.NativeAccess.Provider",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",

@@ -1,0 +1,3 @@
+com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess$Provider
+com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess$Provider
+com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess$Provider
