@@ -925,6 +925,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean hasNoAccess(FileSystem fs) {
+            return FileSystems.hasNoAccess(fs);
+        }
+
+        @Override
         public void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entry) {
             HostLanguage.HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
             hostContext.addToHostClasspath(entry);
