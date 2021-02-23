@@ -274,7 +274,9 @@ weekly_vm_darwin: ${vm_darwin} {
   targets: [weekly]
 }
 
-mx_vm_common: [mx, --strip-jars, "--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
+mx_vm_default_cmd_args: ["--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
+mx_vm_common: [mx, --strip-jars] ${mx_vm_default_cmd_args}
+mx_vm_not_stripped_common: [mx] ${mx_vm_default_cmd_args}
 mx_vm_installables: ${mx_vm_common}
 
 maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata]
@@ -411,9 +413,9 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-16"]
     ] ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} [graalvm-show]
-      ${mx_vm_common} ${vm_profiles} [build]
-      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
+      ${mx_vm_not_stripped_common} ${vm_profiles} [graalvm-show]
+      ${mx_vm_not_stripped_common} ${vm_profiles} [build]
+      ${mx_vm_not_stripped_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     logs: ${common_vm.logs}
@@ -442,9 +444,9 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-16"]
     ] ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} [graalvm-show]
-      ${mx_vm_common} ${vm_profiles} [build]
-      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
+      ${mx_vm_not_stripped_common} ${vm_profiles} [graalvm-show]
+      ${mx_vm_not_stripped_common} ${vm_profiles} [build]
+      ${mx_vm_not_stripped_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     logs: ${common_vm.logs}
@@ -489,8 +491,8 @@ builds += [
     run: [
       [set-export, VM_ENV, "${VM_ENV}-16"]
     ] ${collect_profiles} [
-      ${mx_vm_common} ${vm_profiles} [build]
-      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
+      ${mx_vm_not_stripped_common} ${vm_profiles} [build]
+      ${mx_vm_not_stripped_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:45:00"
@@ -523,8 +525,8 @@ builds += [
   ${vm_java_16} ${deploy_daily_vm_windows-jdk16} ${svm-common-windows-jdk16} ${js_windows_jdk16} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-16"]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk_base}
+      ${mx_vm_not_stripped_common} [build]
+      ${mx_vm_not_stripped_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -582,8 +584,8 @@ builds += [
   ${vm_java_16} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk_base}
+      ${mx_vm_not_stripped_common} [build]
+      ${mx_vm_not_stripped_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -605,8 +607,8 @@ builds += [
   ${vm_java_16} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk_base}
+      ${mx_vm_not_stripped_common} [build]
+      ${mx_vm_not_stripped_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "2:30:00"
