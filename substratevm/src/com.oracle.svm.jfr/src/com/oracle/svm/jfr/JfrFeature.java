@@ -28,8 +28,11 @@ import static com.oracle.svm.jfr.PredefinedJFCSubstitition.DEFAULT_JFC;
 import static com.oracle.svm.jfr.PredefinedJFCSubstitition.PROFILE_JFC;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import com.oracle.svm.jfr.traceid.JfrTraceId;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -83,6 +86,7 @@ public class JfrFeature implements Feature {
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM());
         ImageSingletons.add(JfrManager.class, new JfrManager());
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
+        ImageSingletons.add(JfrRuntimeAccess.class, new JfrRuntimeAccessImpl());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
@@ -110,6 +114,46 @@ public class JfrFeature implements Feature {
         JfrManager manager = JfrManager.get();
         runtime.addStartupHook(manager::setup);
         runtime.addShutdownHook(manager::teardown);
+    }
+
+    @SuppressWarnings(value = "unchecked")
+    private static void addEventClassToRuntime(JfrRuntimeAccess jfrRuntime, Class<?> cls) {
+        jfrRuntime.addEventClass((Class<? extends Event>) cls);
+    }
+
+    public void afterAnalysis(AfterAnalysisAccess access) {
+//        if (!JfrAvailability.withJfr) {
+//            return;
+//        }
+        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
+        JfrRuntimeAccess jfrRuntime = ImageSingletons.lookup(JfrRuntimeAccess.class);
+        if (eventClass != null && access.isReachable(eventClass)) {
+            Set<Class<?>> s = access.reachableSubtypes(eventClass);
+            s.forEach(c -> addEventClassToRuntime(jfrRuntime, c));
+        }
+        Set<Class<?>> reachableClasses = access.reachableSubtypes(Object.class);
+        Set<ClassLoader> classLoaders = new HashSet<>();
+        Set<Module> modules = new HashSet<>();
+        for (Class<?> clazz : reachableClasses) {
+            if (JfrTraceId.getTraceId(clazz) == -1) {
+                JfrTraceId.assign(clazz);
+            }
+            ClassLoader cl = clazz.getClassLoader();
+            if (cl != null && !classLoaders.contains(cl)) {
+                JfrTraceId.assign(cl);
+                classLoaders.add(cl);
+                if (access.isReachable(cl.getClass())) {
+                    jfrRuntime.addClassloader(cl);
+                }
+            }
+            Module module = clazz.getModule();
+            if (module != null && !modules.contains(module)) {
+                JfrTraceId.assign(module);
+                modules.add(module);
+            }
+            // Packages are assigned a TraceId at runtime when first used in a constant pool
+        }
+
     }
 
     @Override

@@ -26,6 +26,7 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
+import com.oracle.svm.jfr.traceid.JfrTraceId;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -99,14 +100,13 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getClassId}. Intrinsified on HotSpot. */
     @Substitute
     public static long getClassId(Class<?> clazz) {
-        // Is intrinsified on HotSpot.
-        return SubstrateJVM.get().getClassId(clazz);
+        return getClassIdNonIntrinsic(clazz);
     }
 
     /** See {@link JVM#getClassIdNonIntrinsic}. */
     @Substitute
     public static long getClassIdNonIntrinsic(Class<?> clazz) {
-        return getClassId(clazz);
+        return JfrTraceId.load(clazz);
     }
 
     /** See {@link JVM#getPid}. */
@@ -274,7 +274,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getTypeId}. */
     @Substitute
     public long getTypeId(Class<?> clazz) {
-        return SubstrateJVM.get().getTypeId(clazz);
+        return JfrTraceId.getTraceId(clazz);
     }
 
     /** See {@link JVM#getEventWriter}. */
