@@ -196,7 +196,7 @@ public final class Management extends IntrinsifiedNativeEnv {
     public void dispose() {
         if (managementPtr != null) {
             try {
-                getUncached().execute(disposeManagementContext, managementPtr, managementVersion);
+                getUncached().execute(disposeManagementContext, managementPtr, managementVersion, RawPointer.nullInstance());
                 this.managementPtr = null;
                 this.managementVersion = 0;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

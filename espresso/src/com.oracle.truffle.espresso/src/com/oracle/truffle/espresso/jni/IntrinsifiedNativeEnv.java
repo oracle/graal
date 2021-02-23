@@ -74,22 +74,6 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, this.getClass());
     private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
 
-    private final Callback lookupCallback = new Callback(LOOKUP_CALLBACK_ARGS_COUNT, new Callback.Function() {
-        @Override
-        public Object call(Object... args) {
-            try {
-                String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
-                return lookupIntrinsic(name);
-            } catch (ClassCastException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Throwable e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
-    });
-
     private Map<String, IntrinsicSubstitutor.Factory> methods;
 
     // region Exposed interface
@@ -151,10 +135,10 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         Object[] newArgs = new Object[extraArgs.length + 1];
         int pos;
         if (prependExtra) {
-            newArgs[newArgs.length - 1] = getLookupCallback();
+            newArgs[newArgs.length - 1] = getLookupCallbackClosure();
             pos = 0;
         } else {
-            newArgs[0] = getLookupCallback();
+            newArgs[0] = getLookupCallbackClosure();
             pos = 1;
         }
         for (Object arg : extraArgs) {
@@ -170,8 +154,23 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         methods = null;
     }
 
-    private Callback getLookupCallback() {
-        return lookupCallback;
+    private TruffleObject getLookupCallbackClosure() {
+        Callback callback = new Callback(LOOKUP_CALLBACK_ARGS_COUNT, new Callback.Function() {
+            @Override
+            public Object call(Object... args) {
+                try {
+                    String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
+                    return lookupIntrinsic(name);
+                } catch (ClassCastException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Throwable e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+        });
+        return getNativeAccess().createNativeClosure(callback, NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
     }
 
     private IntrinsicSubstitutor.Factory lookupFactory(String methodName) {
@@ -184,14 +183,15 @@ public abstract class IntrinsifiedNativeEnv extends NativeEnv implements Context
         IntrinsicSubstitutor.Factory factory = lookupFactory(methodName);
         // Dummy placeholder for unimplemented/unknown methods.
         if (factory == null) {
-            getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
+            final String envName = IntrinsifiedNativeEnv.this.getClass().getSimpleName();
+            getLogger().log(Level.FINER, "Fetching unknown/unimplemented {0} method: {1}", new Object[]{envName, methodName});
             @Pointer
             TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(0, new Callback.Function() {
                 @Override
                 public Object call(Object... args) {
                     CompilerDirectives.transferToInterpreter();
-                    getLogger().log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
-                    throw EspressoError.unimplemented("JNI method: " + methodName);
+                    getLogger().log(Level.SEVERE, "Calling unimplemented {0} method: {1}", new Object[]{envName, methodName});
+                    throw EspressoError.unimplemented(envName + " method: " + methodName);
                 }
             }), NativeSignature.create(NativeType.VOID));
             nativeClosures.add(errorClosure);

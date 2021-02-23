@@ -26,7 +26,7 @@
 #include <trufflenfi.h>
 #include <jni.h>
 
-JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *), const int version);
+JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(void* (*fetch_by_name)(const char *), const int version);
 
-JNIEXPORT void JNICALL disposeJvmtiContext(TruffleEnv *truffle_env, jvmtiEnv *env, int version);
+JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv *env, int version, void (*release_closure)(void *));
 #endif // _MANAGEMENT_H

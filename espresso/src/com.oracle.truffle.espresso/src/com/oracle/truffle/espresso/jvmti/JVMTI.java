@@ -121,7 +121,7 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
     private void dispose(TruffleObject disposeJvmtiContext) {
         if (jvmtiEnvPtr != null) {
             try {
-                getUncached().execute(disposeJvmtiContext, jvmtiEnvPtr, jvmtiVersion);
+                getUncached().execute(disposeJvmtiContext, jvmtiEnvPtr, jvmtiVersion, RawPointer.nullInstance());
                 this.jvmtiEnvPtr = null;
                 this.jvmtiVersion = 0;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

@@ -181,18 +181,15 @@
     V(SetHeapSamplingInterval)
 
 
-jvmtiEnv* initializeJvmtiContextImpl(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+jvmtiEnv* initializeJvmtiContextImpl(void* (*fetch_by_name)(const char *)) {
 
   jvmtiEnv* env = (jvmtiEnv*) malloc(sizeof(*env));
   struct jvmtiInterface_1_ *jvmti = (jvmtiInterface_1*) malloc(sizeof(struct jvmtiInterface_1_));
 
   (*env) = jvmti;
 
-  void *fn_ptr = NULL;
   #define INIT__(name) \
-      fn_ptr = fetch_by_name(#name); \
-      (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
-      jvmti->name = fn_ptr;
+      jvmti->name = fetch_by_name(#name);
 
   JVMTI_METHOD_LIST(INIT__)
   #undef INIT_
@@ -200,20 +197,22 @@ jvmtiEnv* initializeJvmtiContextImpl(TruffleEnv *truffle_env, void* (*fetch_by_n
   return env;
 }
 
-JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *), int version) {
+JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(void* (*fetch_by_name)(const char *), int version) {
 	if (version <= JVMTI_VERSION) {
-		return initializeJvmtiContextImpl(truffle_env, fetch_by_name);
+		return initializeJvmtiContextImpl(fetch_by_name);
 	} else {
 		return (void*)0;
 	}
 }
 
-void disposeJvmtiContextImpl(TruffleEnv *truffle_env, jvmtiEnv *env) {
+void disposeJvmtiContextImpl(jvmtiEnv *env, void (*release_closure)(void *)) {
   struct jvmtiInterface_1_ *jvmti = (jvmtiInterface_1*) (*env);
 
   #define DISPOSE__(name) \
-       (*truffle_env)->releaseClosureRef(truffle_env, jvmti->name); \
-       jvmti->name = NULL;
+    if (release_closure != NULL) { \
+      release_closure(jvmti->name); \
+    } \
+    jvmti->name = NULL;
 
   JVMTI_METHOD_LIST(DISPOSE__)
   #undef DISPOSE__
@@ -224,9 +223,9 @@ void disposeJvmtiContextImpl(TruffleEnv *truffle_env, jvmtiEnv *env) {
   free(env);
 }
 
-JNIEXPORT void JNICALL disposeJvmtiContext(TruffleEnv *truffle_env, jvmtiEnv* env, int version) {
+JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv* env, int version, void (*release_closure)(void *)) {
     if (version <= JVMTI_VERSION) {
-		disposeJvmtiContextImpl(truffle_env, env);
+		disposeJvmtiContextImpl(env, release_closure);
 	}
 }
 
