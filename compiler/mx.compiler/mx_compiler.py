@@ -925,7 +925,7 @@ def collate_metrics(args):
                 print(n +';' + ';'.join((str(v) for v in series)) + ';' + units[n], file=fp)
         mx.log('Collated metrics into ' + collated_filename)
 
-def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
+def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True, command_mapper_hooks=None):
     graaljdk = get_graaljdk()
     vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
@@ -938,6 +938,7 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
 
     with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
         try:
+            cmd = mx.apply_command_mapper_hooks(cmd, command_mapper_hooks)
             return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
         finally:
             # Collate AggratedMetricsFile
