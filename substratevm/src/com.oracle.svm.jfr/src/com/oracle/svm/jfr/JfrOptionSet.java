@@ -44,7 +44,7 @@ public class JfrOptionSet {
 
     private static final long MAX_ADJUSTED_GLOBAL_BUFFER_SIZE = 1 * 1024 * 1024;
     private static final long MIN_ADJUSTED_GLOBAL_BUFFER_SIZE_CUTOFF = 512 * 1024;
-    private static final long MIN_GLOBAL_BUFFER_SIZE = 64 * 1024 * 1024;
+    private static final long MIN_GLOBAL_BUFFER_SIZE = 64 * 1024;
     private static final long MIN_GLOBAL_BUFFER_COUNT = 2;
     private static final long MIN_THREAD_BUFFER_SIZE = 4 * 1024;
     private static final long MIN_MEMORY_SIZE = 1 * 1024 * 1024;
