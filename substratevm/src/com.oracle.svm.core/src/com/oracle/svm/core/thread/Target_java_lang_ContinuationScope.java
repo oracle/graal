@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,45 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.LoomJDK;
 
-@DuplicatedInNativeCode
-public enum HubType {
-    // instance hubs
-    Instance(0),
-    InstanceReference(1),
-    StoredContinuation(2),
-    // other hubs
-    Other(3),
-    // array hubs
-    TypeArray(4),
-    ObjectArray(5);
-
-    private final int value;
-
-    HubType(int value) {
-        this.value = value;
-    }
-
-    public int getValue() {
-        return value;
-    }
-
-    public static boolean isInstance(int hubType) {
-        return hubType <= StoredContinuation.getValue();
-    }
-
-    public static boolean isReferenceInstance(int hubType) {
-        return hubType == InstanceReference.getValue();
-    }
-
-    public static boolean isStoredContinuation(int hubType) {
-        return hubType == StoredContinuation.getValue();
-    }
-
-    public static boolean isArray(int hubType) {
-        return hubType >= TypeArray.getValue();
+@TargetClass(className = "java.lang.ContinuationScope", onlyWith = LoomJDK.class)
+public final class Target_java_lang_ContinuationScope {
+    @SuppressWarnings("unused")
+    @Alias
+    public Target_java_lang_ContinuationScope(String name) {
     }
 }

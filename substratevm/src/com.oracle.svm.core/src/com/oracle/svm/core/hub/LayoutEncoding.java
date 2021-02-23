@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub;
 
+import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationImpl;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -64,7 +66,8 @@ public class LayoutEncoding {
     private static final int PRIMITIVE_VALUE = NEUTRAL_VALUE + 1;
     private static final int INTERFACE_VALUE = PRIMITIVE_VALUE + 1;
     private static final int ABSTRACT_VALUE = INTERFACE_VALUE + 1;
-    private static final int LAST_SPECIAL_VALUE = ABSTRACT_VALUE;
+    private static final int STORED_CONTINUATION_VALUE = ABSTRACT_VALUE + 1;
+    private static final int LAST_SPECIAL_VALUE = STORED_CONTINUATION_VALUE;
 
     private static final int ARRAY_INDEX_SHIFT_SHIFT = 0;
     private static final int ARRAY_INDEX_SHIFT_MASK = 0xff;
@@ -87,6 +90,10 @@ public class LayoutEncoding {
         return ABSTRACT_VALUE;
     }
 
+    public static int forStoredContinuation() {
+        return STORED_CONTINUATION_VALUE;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void guaranteeEncoding(ResolvedJavaType type, boolean condition, String description) {
         if (!condition) {
@@ -103,6 +110,7 @@ public class LayoutEncoding {
         guaranteeEncoding(type, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
         int encoding = size;
         guaranteeEncoding(type, isInstance(encoding), "Instance type encoding must denote an instance");
+        guaranteeEncoding(type, !isStoredContinuation(encoding), "Instance type encoding must not denote a stored continuation");
         guaranteeEncoding(type, !isArray(encoding), "Instance type encoding must not denote an array");
         guaranteeEncoding(type, !isObjectArray(encoding), "Instance type encoding must not denote an object array");
         guaranteeEncoding(type, !isPrimitiveArray(encoding), "Instance type encoding must not denote a primitive array");
@@ -145,6 +153,11 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getInstanceSize(int encoding) {
         return WordFactory.unsigned(encoding);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isStoredContinuation(int encoding) {
+        return encoding == STORED_CONTINUATION_VALUE;
     }
 
     // May be inlined because it does not deal in Pointers.
@@ -193,6 +206,8 @@ public class LayoutEncoding {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
+        } else if (isStoredContinuation(encoding)) {
+            return WordFactory.unsigned(StoredContinuationImpl.readSize(KnownIntrinsics.convertUnknownValue(obj, StoredContinuation.class)));
         } else {
             return getInstanceSize(encoding);
         }

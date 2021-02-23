@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -64,6 +65,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.VMThreads.ActionOnExitSafepointSupport;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -235,8 +237,11 @@ public final class Safepoint {
     private static void slowPathRunJavaStateActions() {
         ThreadingSupportImpl.onSafepointCheckSlowpath();
         if (ActionOnTransitionToJavaSupport.isActionPending()) {
-            assert ActionOnTransitionToJavaSupport.isSynchronizeCode() : "Unexpected action pending.";
-            CodeSynchronizationNode.synchronizeCode();
+            if (ActionOnTransitionToJavaSupport.isSynchronizeCode()) {
+                CodeSynchronizationNode.synchronizeCode();
+            } else {
+                assert false : "Unexpected action pending.";
+            }
             ActionOnTransitionToJavaSupport.clearActions();
         }
     }
@@ -402,6 +407,23 @@ public final class Safepoint {
              * Substrate VM).
              */
             VMError.shouldNotReachHere(ex);
+        }
+
+        exitSlowPathCheck();
+    }
+
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    @Uninterruptible(reason = "Must not contain safepoint checks")
+    private static void exitSlowPathCheck() {
+        if (ActionOnExitSafepointSupport.isActionPending()) {
+            // LLVM Backend do not support `FarReturnNode`,
+            // we explicit specify Loom JDK here.
+            if (JavaContinuations.useLoom() && ActionOnExitSafepointSupport.getSwitchStack()) {
+                ActionOnExitSafepointSupport.clearActions();
+                KnownIntrinsics.farReturn(0, ActionOnExitSafepointSupport.getSwitchStackSP(), ActionOnExitSafepointSupport.getSwitchStackIP(), false);
+            } else {
+                assert false : "Unexpected action pending.";
+            }
         }
     }
 

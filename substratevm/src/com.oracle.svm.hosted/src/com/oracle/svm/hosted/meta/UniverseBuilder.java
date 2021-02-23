@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
 
+import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.core.heap.StoredContinuation;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -693,7 +695,7 @@ public class UniverseBuilder {
 
     private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
         for (HostedMethod method : type.getAllDeclaredMethods()) {
-            /* We only need to look at methods that the static analysis registred as invoked. */
+            /* We only need to look at methods that the static analysis registered as invoked. */
             if (method.wrapped.isInvoked() || method.wrapped.isImplementationInvoked()) {
                 /*
                  * Methods with 1 implementations do not need a vtable because invokes can be done
@@ -854,6 +856,8 @@ public class UniverseBuilder {
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forArray(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
+                } else if (instanceClass.getJavaClass().equals(StoredContinuation.class)) {
+                    layoutHelper = LayoutEncoding.forStoredContinuation();
                 } else {
                     layoutHelper = LayoutEncoding.forInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
@@ -887,7 +891,12 @@ public class UniverseBuilder {
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
-            long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
+            long referenceMapIndex;
+            if (referenceMap == SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP) {
+                referenceMapIndex = ReferenceMapIndex.STORED_CONTINUATION;
+            } else {
+                referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
+            }
 
             DynamicHub hub = type.getHub();
             hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
@@ -896,6 +905,10 @@ public class UniverseBuilder {
     }
 
     private static ReferenceMapEncoder.Input createReferenceMap(HostedType type) {
+        if (type.getJavaClass().equals(StoredContinuation.class)) {
+            return SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP;
+        }
+
         HostedField[] fields = type.getInstanceFields(true);
 
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();

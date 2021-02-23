@@ -160,11 +160,11 @@ public abstract class JavaThreads {
     }
 
     public static int getThreadStatus(Thread thread) {
-        return toTarget(thread).threadStatus;
+        return JavaContinuations.LoomCompatibilityUtil.getThreadStatus(toTarget(thread));
     }
 
     public static void setThreadStatus(Thread thread, int threadStatus) {
-        toTarget(thread).threadStatus = threadStatus;
+        JavaContinuations.LoomCompatibilityUtil.setThreadStatus(toTarget(thread), threadStatus);
     }
 
     protected static AtomicReference<ParkEvent> getUnsafeParkEvent(Thread thread) {
@@ -190,6 +190,13 @@ public abstract class JavaThreads {
 
     public static Thread fromVMThread(IsolateThread vmThread) {
         return currentThread.get(vmThread);
+    }
+
+    public static boolean isVirtual(Thread thread) {
+        if (!JavaContinuations.useLoom()) {
+            return false;
+        }
+        return toTarget(thread).isVirtual();
     }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
@@ -561,12 +568,7 @@ public abstract class JavaThreads {
 
         StackTraceElement[][] result = new StackTraceElement[1][0];
         JavaVMOperation.enqueueBlockingSafepoint("getStackTrace", () -> {
-            for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                if (JavaThreads.fromVMThread(cur) == thread) {
-                    result[0] = getStackTrace(cur);
-                    break;
-                }
-            }
+            result[0] = getStackTrace(VMThreads.findFromJavaThread(thread));
         });
         return result[0];
     }
@@ -649,20 +651,25 @@ public abstract class JavaThreads {
         }
         tjlt.name = name;
 
-        final Thread parent = Target_java_lang_Thread.currentThread();
+        final Thread parent = currentThread.get();
         final ThreadGroup group = ((groupArg != null) ? groupArg : parent.getThreadGroup());
 
-        JavaThreads.toTarget(group).addUnstarted();
+        int priority;
+        boolean daemon;
+        if (JavaThreads.toTarget(parent) == tjlt) {
+            priority = Thread.NORM_PRIORITY;
+            daemon = false;
+        } else {
+            priority = parent.getPriority();
+            daemon = parent.isDaemon();
+        }
+        JavaContinuations.LoomCompatibilityUtil.initThreadFields(tjlt, group, target, stackSize, priority, daemon, ThreadStatus.NEW);
 
-        tjlt.group = group;
-        tjlt.daemon = parent.isDaemon();
+        if (!JavaContinuations.useLoom()) {
+            JavaThreads.toTarget(group).addUnstarted();
+        }
+
         tjlt.contextClassLoader = parent.getContextClassLoader();
-        tjlt.priority = parent.getPriority();
-        tjlt.target = target;
-        tjlt.setPriority(tjlt.priority);
-
-        /* Stash the specified stack size in case the VM cares */
-        tjlt.stackSize = stackSize;
 
         /* Set thread ID */
         tjlt.tid = Target_java_lang_Thread.nextThreadID();
@@ -729,7 +736,17 @@ public abstract class JavaThreads {
     }
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
-    static void sleep(long delayNanos) {
+    static void sleep(long millis) throws InterruptedException {
+        if (millis < 0) {
+            throw new IllegalArgumentException("timeout value is negative");
+        }
+        JavaThreads.sleep0(TimeUtils.millisToNanos(millis));
+        if (Thread.interrupted()) { // clears the interrupted flag as required of Thread.sleep()
+            throw new InterruptedException();
+        }
+    }
+
+    static void sleep0(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.sleep(long): Should not sleep when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
         final ParkEvent sleepEvent = ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread), true);
@@ -764,6 +781,10 @@ public abstract class JavaThreads {
         if (sleepEvent != null) {
             sleepEvent.unpark();
         }
+    }
+
+    static boolean isAlive(int threadStatus) {
+        return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
     }
 
     /**

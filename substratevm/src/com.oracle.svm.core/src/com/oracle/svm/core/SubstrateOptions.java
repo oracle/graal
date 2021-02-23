@@ -88,6 +88,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Build with Loom JDK") //
+    public static final HostedOptionKey<Boolean> UseLoom = new HostedOptionKey<>(false);
+
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
     public static final int NoFallback = 0;

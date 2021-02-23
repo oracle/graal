@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,45 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.heap.StoredContinuation;
+import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 
-@DuplicatedInNativeCode
-public enum HubType {
-    // instance hubs
-    Instance(0),
-    InstanceReference(1),
-    StoredContinuation(2),
-    // other hubs
-    Other(3),
-    // array hubs
-    TypeArray(4),
-    ObjectArray(5);
+@NodeInfo
+public class NewStoredContinuationNode extends AbstractNewObjectNode implements Lowerable {
 
-    private final int value;
+    public static final NodeClass<NewStoredContinuationNode> TYPE = NodeClass.create(NewStoredContinuationNode.class);
+    @Input private ValueNode size;
 
-    HubType(int value) {
-        this.value = value;
+    public NewStoredContinuationNode(ValueNode size) {
+        super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(StoredContinuation.class)), false, null);
+        this.size = size;
     }
 
-    public int getValue() {
-        return value;
+    public ValueNode getSize() {
+        return size;
     }
 
-    public static boolean isInstance(int hubType) {
-        return hubType <= StoredContinuation.getValue();
-    }
-
-    public static boolean isReferenceInstance(int hubType) {
-        return hubType == InstanceReference.getValue();
-    }
-
-    public static boolean isStoredContinuation(int hubType) {
-        return hubType == StoredContinuation.getValue();
-    }
-
-    public static boolean isArray(int hubType) {
-        return hubType >= TypeArray.getValue();
-    }
+    @NodeIntrinsic
+    public static native StoredContinuation allocate(long size);
 }
