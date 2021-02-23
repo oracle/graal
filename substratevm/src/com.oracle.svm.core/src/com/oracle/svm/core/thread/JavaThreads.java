@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.ProfilingSampler;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -506,6 +507,8 @@ public abstract class JavaThreads {
 
         singleton().beforeThreadRun(thread);
         ManagementSupport.getSingleton().noteThreadStart(thread);
+
+        ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
 
         try {
             if (VMThreads.isTearingDown()) {
