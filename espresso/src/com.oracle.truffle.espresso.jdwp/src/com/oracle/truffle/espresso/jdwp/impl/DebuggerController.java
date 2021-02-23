@@ -68,7 +68,7 @@ public final class DebuggerController implements ContextsListener {
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
-    private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
+    private final Map<Object, SuspendedInfo> suspendedInfos = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SteppingInfo> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob<?>> threadJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
