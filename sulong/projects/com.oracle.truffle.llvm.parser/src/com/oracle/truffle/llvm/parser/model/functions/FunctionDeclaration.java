@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -82,6 +82,11 @@ public final class FunctionDeclaration extends FunctionSymbol implements Constan
     @Override
     public boolean isExternal() {
         return true;
+    }
+
+    @Override
+    public boolean isExternalWeak() {
+        return getLinkage() == Linkage.EXTERN_WEAK;
     }
 
     @Override

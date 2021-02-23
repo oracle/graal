@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,6 +42,7 @@ public abstract class LLVMSymbol {
     private final int moduleId;
     private final int symbolIndex;
     private final boolean exported;
+    private final boolean externalWeak;
 
     // Index for non-parsed symbols, such as alias, and function symbol for inline assembly.
     public static final int INVALID_INDEX = -1;
@@ -49,11 +50,12 @@ public abstract class LLVMSymbol {
     // ID for non-parsed symbols, such as alias, function symbol for inline assembly.
     public static final int INVALID_ID = -1;
 
-    public LLVMSymbol(String name, int bitcodeID, int symbolIndex, boolean exported) {
+    public LLVMSymbol(String name, int bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
         this.name = name;
         this.moduleId = bitcodeID;
         this.symbolIndex = symbolIndex;
         this.exported = exported;
+        this.externalWeak = externalWeak;
     }
 
     public final String getName() {
@@ -67,6 +69,10 @@ public abstract class LLVMSymbol {
 
     public final boolean isExported() {
         return exported;
+    }
+
+    public final boolean isExternalWeak() {
+        return externalWeak;
     }
 
     /**

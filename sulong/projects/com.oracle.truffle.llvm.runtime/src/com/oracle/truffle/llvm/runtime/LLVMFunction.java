@@ -55,12 +55,12 @@ public final class LLVMFunction extends LLVMSymbol {
     private final Assumption fixedCodeAssumption = Truffle.getRuntime().createAssumption();
     @CompilationFinal private LLVMFunctionCode fixedCode;
 
-    public static LLVMFunction create(String name, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported, String path) {
-        return new LLVMFunction(name, function, type, bitcodeID, symbolIndex, exported, path);
+    public static LLVMFunction create(String name, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported, String path, boolean externalWeak) {
+        return new LLVMFunction(name, function, type, bitcodeID, symbolIndex, exported, path, externalWeak);
     }
 
-    public LLVMFunction(String name, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported, String path) {
-        super(name, bitcodeID, symbolIndex, exported);
+    public LLVMFunction(String name, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported, String path, boolean externalWeak) {
+        super(name, bitcodeID, symbolIndex, exported, externalWeak);
         this.type = type;
         this.function = function;
         this.path = path;
