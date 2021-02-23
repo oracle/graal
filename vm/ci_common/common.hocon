@@ -588,6 +588,7 @@ builds += [
       ${mx_vm_not_stripped_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
+    targets: [on-demand]
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-java16-linux-amd64
   }
@@ -611,6 +612,7 @@ builds += [
       ${mx_vm_not_stripped_common} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
+    targets: [on-demand]
     timelimit: "2:30:00"
     name: deploy-vm-no-fastr-java16-darwin-amd64
   }
