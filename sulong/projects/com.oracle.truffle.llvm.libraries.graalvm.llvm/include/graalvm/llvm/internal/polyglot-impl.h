@@ -70,6 +70,7 @@ __POLYGLOT_DECLARE_GENERIC_ARRAY(double, double)
         return (typedecl *) ret;                                                                                                                     \
     }                                                                                                                                                \
                                                                                                                                                      \
-    __attribute__((always_inline)) static inline void *polyglot_from_##typename(typedecl * s) {                                                      \
+    __attribute__((always_inline)) static volatile void *polyglot_from_##typename(typedecl * s) {                                                    \
         return polyglot_from_typed(s, polyglot_##typename##_typeid());                                                                               \
     }
+
