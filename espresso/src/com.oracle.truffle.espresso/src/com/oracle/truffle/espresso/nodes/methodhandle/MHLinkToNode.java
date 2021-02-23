@@ -27,7 +27,6 @@ import static com.oracle.truffle.espresso.nodes.methodhandle.LinkToSpecialNode.s
 import static com.oracle.truffle.espresso.nodes.methodhandle.LinkToStaticNode.staticLinker;
 import static com.oracle.truffle.espresso.nodes.methodhandle.LinkToVirtualNode.virtualLinker;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -42,7 +41,6 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -84,35 +82,13 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         Object[] basicArgs = unbasic(args, resolutionSeed.getParsedSignature(), 0, argCount - 1, hasReceiver);
         // method might have been redefined or removed by redefinition
         if (resolutionSeed.isRemovedByRedefition()) {
-            resolutionSeed = handleRemovedMethod(hasReceiver ? (StaticObject) basicArgs[0] : null, resolutionSeed);
+            Klass receiverKlass = hasReceiver ? ((StaticObject) basicArgs[0]).getKlass() : resolutionSeed.getDeclaringKlass();
+            resolutionSeed = ClassRedefinition.handleRemovedMethod(resolutionSeed, receiverKlass);
         }
 
         Method target = linker.linkTo(resolutionSeed, args);
         Object result = executeCall(basicArgs, target.getMethodVersion());
         return rebasic(result, target.getReturnKind());
-    }
-
-    @TruffleBoundary
-    private static Method handleRemovedMethod(StaticObject receiver, Method resolutionSeed) {
-        // do not run while a redefinition is in progress
-        try {
-            ClassRedefinition.lock();
-            // first check to see if there's a compatible new method before
-            // bailing out with a NoSuchMethodError
-            Klass receiverKlass = receiver != null ? receiver.getKlass() : resolutionSeed.getDeclaringKlass();
-            Method method = receiverKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), receiverKlass);
-            Meta meta = resolutionSeed.getMeta();
-            if (method == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
-            } else if (method.isStatic() != (receiver == null)) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "expected non-static method: " + method.getName());
-            } else {
-                return method;
-            }
-        } finally {
-            ClassRedefinition.unlock();
-        }
     }
 
     protected abstract Object executeCall(Object[] args, Method.MethodVersion target);

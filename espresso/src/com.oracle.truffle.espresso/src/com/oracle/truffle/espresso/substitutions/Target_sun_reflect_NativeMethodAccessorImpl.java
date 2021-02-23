@@ -26,6 +26,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -230,9 +231,6 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                 curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
             }
         }
-        if (reflectedMethod.isRemovedByRedefition()) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, "removed by class redefinition");
-        }
         Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass();
 
         if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
@@ -246,12 +244,17 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         return result;
     }
 
-    public static @Host(Object.class) StaticObject callMethodReflectively(Meta meta, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args, Method reflectedMethod,
+    public static @Host(Object.class) StaticObject callMethodReflectively(Meta meta, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args, Method m,
                     Klass klass, @Host(Class[].class) StaticObject parameterTypes) {
         // Klass should be initialized if method is static, and could be delayed until method
         // invocation, according to specs. However, JCK tests that it is indeed always initialized
         // before doing anything, even if the method to be invoked is from another class.
         klass.safeInitialize();
+
+        Method reflectedMethod = m;
+        if (reflectedMethod.isRemovedByRedefition()) {
+            reflectedMethod = ClassRedefinition.handleRemovedMethod(reflectedMethod, reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
+        }
 
         Method method;      // actual method to invoke
         Klass targetKlass;  // target klass, receiver's klass for non-static
