@@ -32,8 +32,11 @@
 
 #ifdef __linux__
 __attribute__((weak)) int foo();
+__attribute__((weak)) extern int bar;
+#define BAR_ADDR (&bar)
 #else
 void *foo = NULL; //No weak external support for Darwin. This will pretend to be the same.
+#define BAR_ADDR NULL
 #endif
 
 int main() {
@@ -41,6 +44,12 @@ int main() {
         printf("External weak function is defined!\n");
     } else {
         printf("External weak function is NOT defined!\n");
+    }
+
+    if (BAR_ADDR) {
+        printf("External weak global is defined!\n");
+    } else {
+        printf("External weak global is NOT defined!\n");
     }
     return 0;
 }
