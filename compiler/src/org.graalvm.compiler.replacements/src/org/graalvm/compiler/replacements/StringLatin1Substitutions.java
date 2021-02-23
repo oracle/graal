@@ -25,13 +25,20 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
+import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
+import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayIndexScale;
 
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -44,6 +51,14 @@ public class StringLatin1Substitutions {
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */
     public static final MetaAccessProvider INJECTED = null;
+
+    private static Word pointer(byte[] target) {
+        return Word.objectToTrackedPointer(target).add(byteArrayBaseOffset(INJECTED));
+    }
+
+    private static Word byteOffsetPointer(byte[] source, int offset) {
+        return pointer(source).add(offset * byteArrayIndexScale(INJECTED));
+    }
 
     @MethodSubstitution
     public static int indexOf(byte[] value, int ch, int origFromIndex) {
@@ -60,5 +75,48 @@ public class StringLatin1Substitutions {
             return -1;
         }
         return ArrayIndexOf.indexOf1Byte(value, length, fromIndex, (byte) ch);
+    }
+
+    @MethodSubstitution
+    public static int indexOf(byte[] source, int sourceCount, byte[] target, int targetCount, int origFromIndex) {
+        int fromIndex = origFromIndex;
+        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex >= sourceCount)) {
+            return (targetCount == 0 ? sourceCount : -1);
+        }
+        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex < 0)) {
+            fromIndex = 0;
+        }
+        if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 0)) {
+            // The empty string is in every string.
+            return fromIndex;
+        }
+        if (injectBranchProbability(UNLIKELY_PROBABILITY, sourceCount - fromIndex < targetCount)) {
+            // The empty string contains nothing except the empty string.
+            return -1;
+        }
+        if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {
+            return ArrayIndexOf.indexOf1Byte(source, sourceCount, fromIndex, target[0]);
+        } else {
+            int haystackLength = sourceCount - (targetCount - 2);
+            int offset = fromIndex;
+            while (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength)) {
+                int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveBytes(source, haystackLength, offset, target[0], target[1]);
+                if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
+                    return -1;
+                }
+                offset = indexOfResult;
+                if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 2)) {
+                    return offset;
+                } else {
+                    Pointer cmpSourcePointer = byteOffsetPointer(source, offset);
+                    Pointer targetPointer = pointer(target);
+                    if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Byte))) {
+                        return offset;
+                    }
+                }
+                offset++;
+            }
+            return -1;
+        }
     }
 }

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, Arm Limited. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,5 +46,70 @@ public class ArrayIndexOfStub extends SnippetStub {
     @Snippet
     private static int indexOf1CharCompact(byte[] array, int arrayLength, int fromIndex, char ch) {
         return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, ch);
+    }
+
+    @Snippet
+    private static int indexOfTwoConsecutiveBytes(byte[] array, int arrayLength, int fromIndex, int searchValue) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, true, array, arrayLength, fromIndex, searchValue);
+    }
+
+    @Snippet
+    private static int indexOfTwoConsecutiveChars(char[] array, int arrayLength, int fromIndex, int searchValue) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, true, array, arrayLength, fromIndex, searchValue);
+    }
+
+    @Snippet
+    private static int indexOfTwoConsecutiveCharsCompact(byte[] array, int arrayLength, int fromIndex, int searchValue) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, true, array, arrayLength, fromIndex, searchValue);
+    }
+
+    @Snippet
+    private static int indexOf2Bytes(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2);
+    }
+
+    @Snippet
+    private static int indexOf3Bytes(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2, v3);
+    }
+
+    @Snippet
+    private static int indexOf4Bytes(byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
+    }
+
+    @Snippet
+    private static int indexOf1Char(char[] array, int arrayLength, int fromIndex, char v1) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1);
+    }
+
+    @Snippet
+    private static int indexOf2Chars(char[] array, int arrayLength, int fromIndex, char v1, char v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2);
+    }
+
+    @Snippet
+    private static int indexOf3Chars(char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3);
+    }
+
+    @Snippet
+    private static int indexOf4Chars(char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
+    }
+
+    @Snippet
+    private static int indexOf2CharsCompact(byte[] array, int arrayLength, int fromIndex, char v1, char v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2);
+    }
+
+    @Snippet
+    private static int indexOf3CharsCompact(byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3);
+    }
+
+    @Snippet
+    private static int indexOf4CharsCompact(byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
     }
 }

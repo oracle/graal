@@ -174,7 +174,6 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOfDispatchNode;
 import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.replacements.IsArraySnippets;
@@ -527,8 +526,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             }
         } else if (n instanceof RegisterFinalizerNode) {
             lowerRegisterFinalizer((RegisterFinalizerNode) n, tool);
-        } else if (n instanceof ArrayIndexOfDispatchNode) {
-            lowerArrayIndexOf((ArrayIndexOfDispatchNode) n);
         } else {
             return false;
         }
@@ -555,12 +552,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 }
             }
         }
-    }
-
-    private void lowerArrayIndexOf(ArrayIndexOfDispatchNode dispatchNode) {
-        StructuredGraph graph = dispatchNode.graph();
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
-        graph.replaceFixed(dispatchNode, call);
     }
 
     protected void loadHubForMonitorEnterNode(MonitorEnterNode monitor, LoweringTool tool, StructuredGraph graph) {

@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.truffle.compiler.substitutions.ArrayUtilsSubstitutions;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -51,12 +52,12 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
     private static void registerArrayUtilsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, Replacements replacements) {
         final ResolvedJavaType arrayUtilsType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.ArrayUtils");
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, new InvocationPlugins.ResolvedJavaSymbol(arrayUtilsType), replacements);
-        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", String.class, int.class, int.class, char[].class);
-        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", char[].class, int.class, int.class, char[].class);
-        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", byte[].class, int.class, int.class, byte[].class);
-        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", byte[].class, int.class, byte[].class, int.class, int.class);
-        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", char[].class, int.class, char[].class, int.class, int.class);
-        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", String.class, int.class, String.class, int.class, int.class);
+        r.registerMethodSubstitution(ArrayUtilsSubstitutions.class, "runIndexOf", String.class, int.class, int.class, char[].class);
+        r.registerMethodSubstitution(ArrayUtilsSubstitutions.class, "runIndexOf", char[].class, int.class, int.class, char[].class);
+        r.registerMethodSubstitution(ArrayUtilsSubstitutions.class, "runIndexOf", byte[].class, int.class, int.class, byte[].class);
+        r.registerMethodSubstitution(ArrayUtilsSubstitutions.class, "runRegionEquals", byte[].class, int.class, byte[].class, int.class, int.class);
+        r.registerMethodSubstitution(ArrayUtilsSubstitutions.class, "runRegionEquals", char[].class, int.class, char[].class, int.class, int.class);
+        r.registerMethodSubstitution(ArrayUtilsSubstitutions.class, "runRegionEquals", String.class, int.class, String.class, int.class, int.class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", byte[].class, int.class, int.class, byte.class, byte.class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", char[].class, int.class, int.class, char.class, char.class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOfWithOrMask", String.class, int.class, int.class, char.class, char.class);

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, Arm Limited. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -125,4 +124,53 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements LIRLowerable,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, char v1);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    Object array, int arrayLength, int fromIndex, byte v1, byte v2);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    Object array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    Object array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    Object array, int arrayLength, int fromIndex, char v1, char v2);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    Object array, int arrayLength, int fromIndex, char v1, char v2, char v3);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    Object array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    Object array, int arrayLength, int fromIndex, int searchValue);
 }

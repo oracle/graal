@@ -24,9 +24,7 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
-import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.SLOWPATH_PROBABILITY;
-import static org.graalvm.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayIndexScale;
@@ -34,21 +32,15 @@ import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayBaseOf
 import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayIndexScale;
 
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.extended.JavaReadNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.StringUTF16Substitutions;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 // JaCoCo Exclude
 
@@ -59,93 +51,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 @ClassSubstitution(className = "java.lang.StringUTF16", optional = true)
 public class AMD64StringUTF16Substitutions extends StringUTF16Substitutions {
-    /**
-     * Marker value for the {@link InjectedParameter} injected parameter.
-     */
-    static final MetaAccessProvider INJECTED = null;
-
-    private static int length(byte[] value) {
-        return value.length >> 1;
-    }
-
-    private static Word pointer(byte[] target) {
-        return Word.objectToTrackedPointer(target).add(byteArrayBaseOffset(INJECTED));
-    }
-
-    private static Word charOffsetPointer(byte[] value, int offset) {
-        return pointer(value).add(offset * charArrayIndexScale(INJECTED));
-    }
-
-    /**
-     * Will be intrinsified with an {@link InvocationPlugin} to a {@link JavaReadNode}.
-     */
-    private static native char getChar(byte[] value, int i);
-
-    @MethodSubstitution
-    public static int indexOfUnsafe(byte[] source, int sourceCount, byte[] target, int targetCount, int fromIndex) {
-        ReplacementsUtil.dynamicAssert(fromIndex >= 0, "StringUTF16.indexOfUnsafe invalid args: fromIndex negative");
-        ReplacementsUtil.dynamicAssert(targetCount > 0, "StringUTF16.indexOfUnsafe invalid args: targetCount <= 0");
-        ReplacementsUtil.dynamicAssert(targetCount <= length(target), "StringUTF16.indexOfUnsafe invalid args: targetCount > length(target)");
-        ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfUnsafe invalid args: sourceCount < targetCount");
-        if (targetCount == 1) {
-            return AMD64ArrayIndexOf.indexOf1CharCompact(source, sourceCount, fromIndex, getChar(target, 0));
-        } else {
-            int haystackLength = sourceCount - (targetCount - 2);
-            int offset = fromIndex;
-            while (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength)) {
-                int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, offset, getChar(target, 0),
-                                getChar(target, 1));
-                if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
-                    return -1;
-                }
-                offset = indexOfResult;
-                if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 2)) {
-                    return offset;
-                } else {
-                    Pointer cmpSourcePointer = charOffsetPointer(source, offset);
-                    Pointer targetPointer = pointer(target);
-                    if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char))) {
-                        return offset;
-                    }
-                }
-                offset++;
-            }
-            return -1;
-        }
-    }
-
-    @MethodSubstitution
-    public static int indexOfLatin1Unsafe(byte[] source, int sourceCount, byte[] target, int targetCount, int fromIndex) {
-        ReplacementsUtil.dynamicAssert(fromIndex >= 0, "StringUTF16.indexOfLatin1Unsafe invalid args: fromIndex negative");
-        ReplacementsUtil.dynamicAssert(targetCount > 0, "StringUTF16.indexOfLatin1Unsafe invalid args: targetCount <= 0");
-        ReplacementsUtil.dynamicAssert(targetCount <= target.length, "StringUTF16.indexOfLatin1Unsafe invalid args: targetCount > length(target)");
-        ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfLatin1Unsafe invalid args: sourceCount < targetCount");
-        if (targetCount == 1) {
-            return AMD64ArrayIndexOf.indexOf1CharCompact(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(target[0]));
-        } else {
-            int haystackLength = sourceCount - (targetCount - 2);
-            int offset = fromIndex;
-            while (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength)) {
-                int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, offset, (char) Byte.toUnsignedInt(target[0]), (char) Byte.toUnsignedInt(target[1]));
-                if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
-                    return -1;
-                }
-                offset = indexOfResult;
-                if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 2)) {
-                    return offset;
-                } else {
-                    Pointer cmpSourcePointer = charOffsetPointer(source, offset);
-                    Pointer targetPointer = pointer(target);
-                    if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char, JavaKind.Byte))) {
-                        return offset;
-                    }
-                }
-                offset++;
-            }
-            return -1;
-        }
-    }
-
     /**
      * Intrinsic for {@code java.lang.StringUTF16.compress([CI[BII)I}.
      *
@@ -193,5 +98,4 @@ public class AMD64StringUTF16Substitutions extends StringUTF16Substitutions {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
     }
-
 }

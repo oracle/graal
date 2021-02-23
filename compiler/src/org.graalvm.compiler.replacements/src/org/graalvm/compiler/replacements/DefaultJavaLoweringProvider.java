@@ -294,6 +294,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerLatin1IndexOf((StringLatin1IndexOfNode) n);
             } else if (n instanceof StringUTF16IndexOfNode) {
                 lowerUTF16IndexOf((StringUTF16IndexOfNode) n);
+            } else if (n instanceof ArrayIndexOfDispatchNode) {
+                lowerArrayIndexOf((ArrayIndexOfDispatchNode) n, tool);
             } else if (n instanceof UnpackEndianHalfNode) {
                 lowerSecondHalf((UnpackEndianHalfNode) n);
             } else if (n instanceof VolatileReadNode || n instanceof VolatileWriteNode) {
@@ -365,6 +367,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             n.graph().add(snippetLower);
             n.graph().replaceFixedWithFixed(n, snippetLower);
         }
+    }
+
+    private static void lowerArrayIndexOf(ArrayIndexOfDispatchNode dispatchNode, LoweringTool tool) {
+        StructuredGraph graph = dispatchNode.graph();
+        ForeignCallNode call = graph.add(new ForeignCallNode(tool.getProviders().getForeignCalls(), dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
+        graph.replaceFixed(dispatchNode, call);
     }
 
     private void lowerBinaryMath(BinaryMathIntrinsicNode math, LoweringTool tool) {

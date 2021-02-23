@@ -31,7 +31,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.gc.WriteBarrier;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
@@ -41,7 +40,6 @@ import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfDispatchNode;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfWithMaskNode;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
 import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
@@ -63,13 +61,6 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
      * lowered, {@code false} otherwise.
      */
     default boolean lowerAMD64(Node n, LoweringTool tool) {
-        if (n instanceof AMD64ArrayIndexOfDispatchNode) {
-            AMD64ArrayIndexOfDispatchNode dispatchNode = (AMD64ArrayIndexOfDispatchNode) n;
-            StructuredGraph graph = dispatchNode.graph();
-            ForeignCallNode call = graph.add(new ForeignCallNode(tool.getProviders().getForeignCalls(), dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
-            graph.replaceFixed(dispatchNode, call);
-            return true;
-        }
         if (n instanceof AMD64ArrayIndexOfWithMaskNode) {
             tool.getReplacements().getSnippetTemplateCache(AMD64TruffleArrayUtilsWithMaskSnippets.Templates.class).lower((AMD64ArrayIndexOfWithMaskNode) n);
             return true;
