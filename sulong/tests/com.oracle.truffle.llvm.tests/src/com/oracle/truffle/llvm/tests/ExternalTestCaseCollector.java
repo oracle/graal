@@ -52,35 +52,32 @@ public abstract class ExternalTestCaseCollector {
     /**
      * @return see {@link TestCaseCollector#collectTestCases}
      */
-    public static Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
-        return collectTestCases(configPath, suiteDir, sourceDir, TestOptions.FILE_EXTENSION_FILTER);
-    }
-
-    /**
-     * @return see {@link TestCaseCollector#collectTestCases}
-     */
-    public static Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir, String[] fileExtensionFilter) {
+    public static Collection<Object[]> collectTestCases(Class<?> testSuiteClass, String testDistribution, String source) {
+        Path configPath = TestCaseCollector.getConfigDirectory(testSuiteClass);
+        Path suiteDir = Paths.get(TestOptions.getTestDistribution(testDistribution));
+        String[] fileExtensionFilter = TestOptions.getFileExtensions(testDistribution);
         String testDiscoveryPath = TestOptions.TEST_DISCOVERY_PATH;
         if (testDiscoveryPath == null) {
-            return collectRegularRun(configPath, suiteDir, fileExtensionFilter);
+            return collectRegularRun(testSuiteClass, configPath, suiteDir, fileExtensionFilter);
         } else {
             System.err.println("Running in discovery mode...");
-            return collectDiscoverRun(configPath, suiteDir, sourceDir, testDiscoveryPath, fileExtensionFilter);
+            return collectDiscoverRun(configPath, suiteDir, Paths.get(TestOptions.getSourcePath(source)), testDiscoveryPath, fileExtensionFilter);
         }
     }
 
-    private static Collection<Object[]> collectRegularRun(Path configPath, Path suiteDir, String[] fileExtensionFilter) throws AssertionError {
+    private static Collection<Object[]> collectRegularRun(Class<?> testSuiteClass, Path configPath, Path suiteDir, String[] fileExtensionFilter) throws AssertionError {
+        Map<String, String> excludedTests = TestCaseCollector.getExcludedTests(testSuiteClass);
         Map<Path, Path> tests = getWhiteListTestFolders(configPath, suiteDir, fileExtensionFilter);
 
         // assert that all files on the whitelist exist
-        List<Path> missingTests = tests.keySet().stream().filter(p -> !tests.get(p).toFile().exists()).collect(Collectors.toList());
+        List<Path> missingTests = tests.keySet().stream().filter(p -> !excludedTests.containsKey(p.toString()) && !tests.get(p).toFile().exists()).collect(Collectors.toList());
         if (!missingTests.isEmpty()) {
             throw new AssertionError("The following tests are on the white list but not found:\n" + missingTests.stream().map(p -> p.toString()).collect(Collectors.joining("\n")));
         } else {
             System.err.println(String.format("Collected %d test folders.", tests.size()));
         }
 
-        return tests.keySet().stream().sorted().map(f -> new Object[]{tests.get(f), f.toString(), null}).collect(Collectors.toList());
+        return tests.keySet().stream().sorted().map(f -> new Object[]{tests.get(f), f.toString(), excludedTests.get(f.toString())}).collect(Collectors.toList());
     }
 
     private static Collection<Object[]> collectDiscoverRun(Path configPath, Path suiteDir, Path sourceDir, String testDiscoveryPath, String[] fileExtensionFilter) throws AssertionError {
