@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,6 @@ import java.util.stream.Stream;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -49,26 +48,13 @@ public final class InlineAssemblyTest extends BaseSuiteHarness {
 
     private static final Path ASSEMBLY_SUITE_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "..", "tests", "inlineassemblytests");
 
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
-
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         try (Stream<Path> files = Files.walk(ASSEMBLY_SUITE_DIR)) {
-            return files.filter(isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f, f.toString().substring(ASSEMBLY_SUITE_DIR.toString().length() + 1)}).collect(
+            return files.filter(CommonTestUtils.isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f, f.toString().substring(ASSEMBLY_SUITE_DIR.toString().length() + 1), null}).collect(
                             Collectors.toList());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
-    }
-
-    @Override
-    protected Path getTestDirectory() {
-        return path;
-    }
-
-    @Override
-    protected String getTestName() {
-        return testName;
     }
 }

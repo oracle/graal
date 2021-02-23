@@ -39,7 +39,6 @@ import java.util.Set;
 import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -51,13 +50,10 @@ public final class LLVMSuite extends BaseSuiteHarness {
     private static final Path LLVM_SOURCE_DIR = new File(TestOptions.TEST_SOURCE_PATH).toPath();
     private static final Path LLVM_CONFIG_DIR = new File(TestOptions.TEST_CONFIG_PATH).toPath();
 
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
-
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         Set<String> blacklist = getBlacklist();
-        Collection<Object[]> testlist = collectTestCases(LLVM_CONFIG_DIR, LLVM_SUITE_DIR, LLVM_SOURCE_DIR);
+        Collection<Object[]> testlist = ExternalTestCaseCollector.collectTestCases(LLVM_CONFIG_DIR, LLVM_SUITE_DIR, LLVM_SOURCE_DIR);
         testlist.removeIf(t -> blacklist.contains(t[1]));
         return testlist;
     }
@@ -99,18 +95,8 @@ public final class LLVMSuite extends BaseSuiteHarness {
         return filenameBlacklist;
     }
 
-    @Override
-    protected Path getTestDirectory() {
-        return path;
-    }
-
     @AfterClass
     public static void printStatistics() {
         printStatistics("LLVM", LLVM_SOURCE_DIR, LLVM_CONFIG_DIR, f -> true);
-    }
-
-    @Override
-    protected String getTestName() {
-        return testName;
     }
 }

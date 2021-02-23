@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -50,20 +50,22 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 public final class ParserTortureSuite {
 
     private static final Path GCC_SUITE_DIR = new File(TestOptions.EXTERNAL_TEST_SUITE_PATH).toPath();
+    private static final Path GCC_SOURCE_DIR = new File(TestOptions.TEST_SOURCE_PATH).toPath();
     private static final Path GCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/compileConfigs").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
+    @Parameter(value = 2) public String excludeReason;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return BaseTestHarness.collectRegularRun(GCC_CONFIG_DIR, GCC_SUITE_DIR);
+        return ExternalTestCaseCollector.collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR, GCC_SOURCE_DIR);
     }
 
     @Test
     public void test() throws IOException {
         try (Stream<Path> files = Files.walk(path)) {
-            for (Path candidate : (Iterable<Path>) files.filter(BaseTestHarness.isFile).filter(BaseTestHarness.isSulong)::iterator) {
+            for (Path candidate : (Iterable<Path>) files.filter(CommonTestUtils.isFile).filter(CommonTestUtils.isSulong)::iterator) {
 
                 if (!candidate.toAbsolutePath().toFile().exists()) {
                     throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");

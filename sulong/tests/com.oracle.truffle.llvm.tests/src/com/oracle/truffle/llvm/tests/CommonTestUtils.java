@@ -29,42 +29,37 @@
  */
 package com.oracle.truffle.llvm.tests;
 
-import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+public abstract class CommonTestUtils {
 
-import com.oracle.truffle.llvm.tests.options.TestOptions;
+    public static final String TEST_DIR_EXT = ".dir";
 
-@RunWith(Parameterized.class)
-public class SulongSuite extends BaseSuiteHarness {
+    public static final Set<String> supportedFiles = new HashSet<>(Arrays.asList("f90", "f", "f03", "c", "cpp", "cc", "C", "m"));
 
-    @Parameters(name = "{1}")
-    public static Collection<Object[]> data() {
-        Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
-        return TestCaseCollector.collectTestCases(SulongSuite.class, suitesPath, SulongSuite::isReference);
+    public static final Predicate<? super Path> isExecutable = f -> f.getFileName().toString().endsWith(".out");
+    public static final Predicate<? super Path> isIncludeFile = f -> f.getFileName().toString().endsWith(".include");
+    public static final Predicate<? super Path> isExcludeFile = f -> f.getFileName().toString().endsWith(".exclude");
+    public static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
+    public static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
+
+    public static Set<Path> getFiles(Path source) {
+        try (Stream<Path> files = Files.walk(source)) {
+            return files.filter(f -> supportedFiles.contains(getFileEnding(f.getFileName().toString()))).collect(Collectors.toSet());
+        } catch (IOException e) {
+            throw new AssertionError("Error getting files.", e);
+        }
     }
 
-    private static boolean isReference(Path path) {
-        return path.endsWith("ref.out") && (!Platform.isDarwin() || pathStream(path).noneMatch(p -> p.endsWith("ref.out.dSYM")));
-    }
-
-    private static Stream<Path> pathStream(Path path) {
-        return StreamSupport.stream(path.spliterator(), false);
-    }
-
-    @Override
-    protected Predicate<? super Path> getIsSulongFilter() {
-        return f -> {
-            boolean isBC = f.getFileName().toString().endsWith(".bc");
-            boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isBC || (isOut && !Platform.isDarwin());
-        };
+    public static String getFileEnding(String s) {
+        return s.substring(s.lastIndexOf('.') + 1);
     }
 }

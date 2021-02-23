@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,17 +49,52 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.AssumptionViolatedException;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runners.Parameterized.Parameter;
 
+import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
-import org.junit.Assume;
 
-public abstract class BaseSuiteHarness extends BaseTestHarness {
+/**
+ * Base class for parameterized tests that run a {@link #getIsExecutableFilter() reference
+ * executable} and compare the result against one or multiple {@link #getIsSulongFilter() bitcode
+ * files}.
+ */
+public abstract class BaseSuiteHarness {
+
+    /**
+     * The absolute path to the test case. The test case is always a directory containing
+     * {@link #getIsExecutableFilter() a reference executable} and {@link #getIsSulongFilter()
+     * bitcode files}.
+     */
+    @Parameter(value = 0) public Path path;
+    /**
+     * The test case name. Usually {@link #path} relative to the test suite base directory.
+     */
+    @Parameter(value = 1) public String testName;
+    /**
+     * The reason why a test case should be excluded or {@code null} if the test case should not be
+     * excluded.
+     */
+    @Parameter(value = 2) public String exclusionReason;
+
+    protected Path getTestDirectory() {
+        return path;
+    }
+
+    protected String getTestName() {
+        return testName;
+    }
+
+    protected String getExclusionReason() {
+        return exclusionReason;
+    }
 
     private static final List<Path> passingTests = new ArrayList<>();
     private static final List<Path> failingTests = new ArrayList<>();
@@ -97,11 +133,29 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
      */
     protected void validateResults(Path referenceBinary, ProcessUtil.ProcessResult referenceResult,
                     Path candidateBinary, ProcessUtil.ProcessResult candidateResult) {
-        String testName = candidateBinary.getFileName().toString() + " in " + getTestDirectory().toAbsolutePath().toString();
+        String testCaseDescription = candidateBinary.getFileName().toString() + " in " + getTestDirectory().toAbsolutePath().toString();
         try {
-            Assert.assertEquals(testName, referenceResult, candidateResult);
+            Assert.assertEquals(testCaseDescription, referenceResult, candidateResult);
         } catch (AssertionError e) {
             throw fail(getTestName(), e);
+        }
+    }
+
+    protected Map<String, String> getContextOptions() {
+        return Collections.emptyMap();
+    }
+
+    /**
+     * This function can be overwritten to specify a filter on test file names. E.g. if one wants to
+     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.bc") </code>
+     *
+     * @return a filter predicate
+     */
+    protected Predicate<String> filterFileName() {
+        if (TestOptions.TEST_FILTER != null && !TestOptions.TEST_FILTER.isEmpty()) {
+            return s -> s.endsWith(TestOptions.TEST_FILTER);
+        } else {
+            return s -> true;
         }
     }
 
@@ -160,23 +214,23 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         }
     }
 
-    @Override
     @Test
     public void test() throws IOException {
+        assumeNotExcluded();
         Path referenceBinary;
         ProcessResult referenceResult;
         try (Stream<Path> walk = Files.list(getTestDirectory())) {
             List<Path> files = walk.filter(getIsExecutableFilter()).collect(Collectors.toList());
 
             // some tests do not compile with certain versions of clang
-            Assume.assumeFalse("reference binary missing", files.isEmpty());
+            assumeFalse("reference binary missing", files.isEmpty());
 
             referenceBinary = files.get(0);
             referenceResult = runReference(referenceBinary);
         }
 
         try (Stream<Path> walk = Files.list(getTestDirectory())) {
-            List<Path> testCandidates = walk.filter(isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
+            List<Path> testCandidates = walk.filter(CommonTestUtils.isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
             Assert.assertFalse("candidate list empty", testCandidates.isEmpty());
             for (Path candidate : testCandidates) {
                 runCandidate(referenceBinary, referenceResult, candidate);
@@ -185,12 +239,22 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         }
     }
 
+    protected void assumeNotExcluded() {
+        if (getExclusionReason() != null) {
+            throw new AssumptionViolatedException("Test excluded: " + getExclusionReason());
+        }
+    }
+
+    protected void assumeFalse(String message, boolean b) {
+        Assume.assumeFalse(message, b);
+    }
+
     protected Predicate<? super Path> getIsSulongFilter() {
-        return isSulong;
+        return CommonTestUtils.isSulong;
     }
 
     protected Predicate<? super Path> getIsExecutableFilter() {
-        return isExecutable;
+        return CommonTestUtils.isExecutable;
     }
 
     protected static AssertionError fail(String testName, AssertionError error) {
@@ -227,18 +291,18 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
     private static final int PERCENT = 100;
 
     protected static void printStatistics(String name, Path source, Path config, Predicate<Path> filter) {
-        Set<Path> whiteList = getListEntries(source, config, isIncludeFile);
-        Set<Path> blackList = getListEntries(source, config, isExcludeFile);
-        Set<Path> files = getFiles(source);
-        Map<String, Integer> statisticTotalFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
-        Map<String, Integer> statisticTotalNoExcludeFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
-        Map<String, Integer> statisticSupportedFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+        Set<Path> whiteList = getListEntries(source, config, CommonTestUtils.isIncludeFile);
+        Set<Path> blackList = getListEntries(source, config, CommonTestUtils.isExcludeFile);
+        Set<Path> files = CommonTestUtils.getFiles(source);
+        Map<String, Integer> statisticTotalFiles = CommonTestUtils.supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+        Map<String, Integer> statisticTotalNoExcludeFiles = CommonTestUtils.supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+        Map<String, Integer> statisticSupportedFiles = CommonTestUtils.supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
 
         // count available test files
         for (Path f : files) {
             if (filter.test(f)) {
-                String fileEnding = getFileEnding(f.toString());
-                if (supportedFiles.contains(fileEnding)) {
+                String fileEnding = CommonTestUtils.getFileEnding(f.toString());
+                if (CommonTestUtils.supportedFiles.contains(fileEnding)) {
                     statisticTotalFiles.put(fileEnding, statisticTotalFiles.get(fileEnding) + 1);
                 }
             }
@@ -247,8 +311,8 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         // count available test files minus blackList
         for (Path f : files) {
             if (filter.test(f) && !blackList.contains(f)) {
-                String fileEnding = getFileEnding(f.toString());
-                if (supportedFiles.contains(fileEnding)) {
+                String fileEnding = CommonTestUtils.getFileEnding(f.toString());
+                if (CommonTestUtils.supportedFiles.contains(fileEnding)) {
                     statisticTotalNoExcludeFiles.put(fileEnding, statisticTotalNoExcludeFiles.get(fileEnding) + 1);
                 }
             }
@@ -257,8 +321,8 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         // count running test files
         for (Path f : whiteList) {
             if (filter.test(f)) {
-                String fileEnding = getFileEnding(f.toString());
-                if (supportedFiles.contains(fileEnding)) {
+                String fileEnding = CommonTestUtils.getFileEnding(f.toString());
+                if (CommonTestUtils.supportedFiles.contains(fileEnding)) {
                     statisticSupportedFiles.put(fileEnding, statisticSupportedFiles.get(fileEnding) + 1);
                 }
             }
@@ -268,7 +332,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         System.out.println(String.format("================================= Statistics for %s suite ======================================", name));
         System.out.println("\tFILE\t|\tALL\t|\tRUNABLE\t|\tOK\t|\tOK/ALL\t|\tOK/RUNABLE\t");
         System.out.println("===================================================================================================");
-        for (String kind : supportedFiles) {
+        for (String kind : CommonTestUtils.supportedFiles) {
             double total = statisticTotalFiles.get(kind);
             double totalNoExclude = statisticTotalNoExcludeFiles.get(kind);
             double supported = statisticSupportedFiles.get(kind);
