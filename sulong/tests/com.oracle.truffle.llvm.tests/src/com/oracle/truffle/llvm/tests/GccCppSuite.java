@@ -44,7 +44,7 @@ public final class GccCppSuite extends GccSuiteBase {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return ExternalTestCaseCollector.collectTestCases(GccCppSuite.class, TEST_DISTRIBUTION, SOURCE);
+        return ExternalTestCaseCollector.collectTestCases(GccCppSuite.class, TEST_DISTRIBUTION);
     }
 
     @AfterClass

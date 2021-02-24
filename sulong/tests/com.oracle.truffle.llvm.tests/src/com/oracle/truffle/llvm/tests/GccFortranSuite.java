@@ -44,7 +44,7 @@ public final class GccFortranSuite extends GccSuiteBase {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return ExternalTestCaseCollector.collectTestCases(GccFortranSuite.class, TEST_DISTRIBUTION, SOURCE);
+        return ExternalTestCaseCollector.collectTestCases(GccFortranSuite.class, TEST_DISTRIBUTION);
     }
 
     @AfterClass

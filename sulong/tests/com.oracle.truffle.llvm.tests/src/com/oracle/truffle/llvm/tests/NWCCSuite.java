@@ -47,7 +47,7 @@ public final class NWCCSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return ExternalTestCaseCollector.collectTestCases(NWCCSuite.class, TEST_DISTRIBUTION, SOURCE);
+        return ExternalTestCaseCollector.collectTestCases(NWCCSuite.class, TEST_DISTRIBUTION);
     }
 
     @AfterClass

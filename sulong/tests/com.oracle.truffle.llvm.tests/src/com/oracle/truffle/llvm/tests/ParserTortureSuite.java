@@ -57,7 +57,7 @@ public final class ParserTortureSuite {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return ExternalTestCaseCollector.collectTestCases(ParserTortureSuite.class, TEST_DISTRIBUTION, SOURCE);
+        return ExternalTestCaseCollector.collectTestCases(ParserTortureSuite.class, TEST_DISTRIBUTION);
     }
 
     @Test

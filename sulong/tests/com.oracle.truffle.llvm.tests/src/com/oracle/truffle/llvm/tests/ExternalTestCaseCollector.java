@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.tests;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -52,7 +51,7 @@ public abstract class ExternalTestCaseCollector {
     /**
      * @return see {@link TestCaseCollector#collectTestCases}
      */
-    public static Collection<Object[]> collectTestCases(Class<?> testSuiteClass, String testDistribution, String source) {
+    public static Collection<Object[]> collectTestCases(Class<?> testSuiteClass, String testDistribution) {
         Path configPath = TestCaseCollector.getConfigDirectory(testSuiteClass);
         Path suiteDir = Paths.get(TestOptions.getTestDistribution(testDistribution));
         String[] fileExtensionFilter = TestOptions.getFileExtensions(testDistribution);
@@ -61,7 +60,7 @@ public abstract class ExternalTestCaseCollector {
             return collectRegularRun(testSuiteClass, configPath, suiteDir, fileExtensionFilter);
         } else {
             System.err.println("Running in discovery mode...");
-            return collectDiscoverRun(configPath, suiteDir, Paths.get(TestOptions.getSourcePath(source)), testDiscoveryPath, fileExtensionFilter);
+            return collectDiscoverRun(configPath, suiteDir, testDiscoveryPath, fileExtensionFilter);
         }
     }
 
@@ -80,29 +79,14 @@ public abstract class ExternalTestCaseCollector {
         return tests.keySet().stream().sorted().map(f -> new Object[]{tests.get(f), f.toString(), excludedTests.get(f.toString())}).collect(Collectors.toList());
     }
 
-    private static Collection<Object[]> collectDiscoverRun(Path configPath, Path suiteDir, Path sourceDir, String testDiscoveryPath, String[] fileExtensionFilter) throws AssertionError {
+    private static Collection<Object[]> collectDiscoverRun(Path configPath, Path suiteDir, String testDiscoveryPath, String[] fileExtensionFilter) throws AssertionError {
         // rel --> abs
         Map<Path, Path> tests = getWhiteListTestFolders(configPath, suiteDir, fileExtensionFilter);
         // abs
-        Set<Path> availableSourceFiles = CommonTestUtils.getFiles(sourceDir);
-        // abs
         Set<Path> compiledTests = collectTestCases(testDiscoveryPath);
-
         // abs
         Set<Path> greyList = compiledTests.stream().filter(t -> !tests.values().contains(t)).collect(Collectors.toSet());
-
-        // rel
-        Set<Path> availableSourceFilesRelative = availableSourceFiles.stream().map(e -> getRelative(sourceDir.getParent().toUri(), e.toUri())).collect(Collectors.toSet());
-
-        return greyList.stream().sorted().map(
-                        t -> new Object[]{t, availableSourceFilesRelative.stream().filter(s -> {
-                            return s.toString().startsWith(getRelative(suiteDir.toUri(), t.toUri()).toString());
-                        }).findAny().get().toString(), null}).collect(
-                                        Collectors.toList());
-    }
-
-    private static Path getRelative(URI base, URI abs) {
-        return Paths.get(base.relativize(abs).toString());
+        return greyList.stream().sorted().map(t -> new Object[]{t, suiteDir.relativize(t).toString(), null}).collect(Collectors.toList());
     }
 
     private static Set<Path> collectTestCases(String testDiscoveryPath) throws AssertionError {
