@@ -42,7 +42,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.hotspot.nodes.StubStartNode;
-import org.graalvm.compiler.hotspot.stubs.StubUtil;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
@@ -74,16 +73,6 @@ public class AssertionSnippets implements Snippets {
         }
     }
 
-    /**
-     * Snippet that only prints the {@linkplain AssertionNode} without failing the vm.
-     */
-    @Snippet
-    public static void printC(boolean condition, @ConstantParameter Word message, long l1, long l2) {
-        if (injectBranchProbability(SLOWPATH_PROBABILITY, !condition)) {
-            vmMessageC(StubUtil.VM_MESSAGE_C, false, message, l1, l2, 0L);
-        }
-    }
-
     @Snippet
     public static void stubAssertion(boolean condition, @ConstantParameter Word message, long l1, long l2) {
         if (injectBranchProbability(SLOWPATH_PROBABILITY, !condition)) {
@@ -100,7 +89,6 @@ public class AssertionSnippets implements Snippets {
     public static class Templates extends AbstractTemplates {
 
         private final SnippetInfo assertion = snippet(AssertionSnippets.class, "assertion");
-        private final SnippetInfo printC = snippet(AssertionSnippets.class, "printC");
         private final SnippetInfo stubAssertion = snippet(AssertionSnippets.class, "stubAssertion");
 
         public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
@@ -109,16 +97,11 @@ public class AssertionSnippets implements Snippets {
 
         public void lower(AssertionNode assertionNode, LoweringTool tool) {
             StructuredGraph graph = assertionNode.graph();
-            SnippetInfo info = graph.start() instanceof StubStartNode ? stubAssertion : assertion;
-            String messagePrefix = "";
-            if (assertionNode.isPrintOnly()) {
-                info = printC;
-            } else {
-                messagePrefix = "failed runtime assertion in snippet/stub: ";
-            }
-            Arguments args = new Arguments(info, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(graph.start() instanceof StubStartNode ? stubAssertion : assertion, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("condition", assertionNode.condition());
-            args.addConst("message", graph.unique(new ConstantNode(new CStringConstant(messagePrefix + assertionNode.message() + " (" + graph.method() + ")"), StampFactory.pointer())));
+            args.addConst("message",
+                            graph.unique(new ConstantNode(new CStringConstant("failed runtime assertion in snippet/stub: " + assertionNode.message() + " (" + graph.method() + ")"),
+                                            StampFactory.pointer())));
             args.add("l1", assertionNode.getL1());
             args.add("l2", assertionNode.getL2());
             template(assertionNode, args).instantiate(providers.getMetaAccess(), assertionNode, DEFAULT_REPLACER, args);
