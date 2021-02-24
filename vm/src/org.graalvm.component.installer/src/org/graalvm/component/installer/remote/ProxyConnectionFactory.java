@@ -42,6 +42,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.URLConnectionFactory;
 
@@ -249,17 +250,77 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         }
     }
 
+    /**
+     * Regexp to detect a scheme-like part. See https://tools.ietf.org/html/rfc3986#section-3.1.
+     */
+    private static final Pattern SCHEME_REGEXP = Pattern.compile("^\\p{Alpha}[\\p{Alnum}+-.]*:", Pattern.CASE_INSENSITIVE); // NOI18N
+
+    public static InetSocketAddress proxyAddress(String proxySpec) throws URISyntaxException {
+        if (proxySpec == null) {
+            return null;
+        }
+        String trimmed = proxySpec.trim();
+        if ("".equals(trimmed)) {
+            return null;
+        }
+        // the URI is created just to parse the proxy specification. It won't be
+        // actually used as a whole to form URL or open connection
+        URI uri;
+
+        try {
+            uri = new URI(trimmed);
+        } catch (URISyntaxException ex) {
+            // maybe the user did not include the http:// in the address spec.
+            if (SCHEME_REGEXP.matcher(trimmed).find()) {
+                // something that could be a scheme is already in, but still won't parse
+                throw ex;
+            }
+            try {
+                trimmed = PROXY_SCHEME_PREFIX + trimmed;
+                uri = new URI(trimmed);
+            } catch (URISyntaxException ex2) {
+                // no luck, throw the original exception:
+                throw ex;
+            }
+            if (uri.getHost() == null || uri.getPort() < 1) {
+                throw ex;
+            }
+        }
+
+        // if the user forgets the scheme (http://) the string is misparsed and hostname
+        // becomes the scheme while the host part will be empty. Adding the "http://" in
+        // front
+        // fixes parsing at least for the host/port part.
+        if (uri.getScheme() == null || uri.getHost() == null) {
+            URI checkURI = null;
+            try {
+                checkURI = new URI(PROXY_SCHEME_PREFIX + trimmed);
+                if (!(checkURI.getHost() == null || checkURI.getPort() < 1)) {
+                    uri = checkURI;
+                }
+            } catch (URISyntaxException ex) {
+                // better leave the specified value without the scheme.
+            }
+        }
+        InetSocketAddress address = InetSocketAddress.createUnresolved(uri.getHost(), uri.getPort());
+        return address;
+    }
+
     final class Connector implements Runnable {
-        private final String proxySpec;
+        private final InetSocketAddress proxyAddress;
         private URL url;
         private ConnectionContext context;
 
-        Connector(String proxySpec) {
-            this.proxySpec = proxySpec;
+        Connector(InetSocketAddress address) {
+            this.proxyAddress = address;
+        }
+
+        InetSocketAddress getProxyAddress() {
+            return proxyAddress;
         }
 
         boolean isDirect() {
-            return proxySpec == null;
+            return proxyAddress == null;
         }
 
         boolean accepts(URL u) {
@@ -292,30 +353,7 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
             if (isDirect()) {
                 proxy = null;
             } else {
-                if (proxySpec == null || proxySpec.isEmpty()) {
-                    return;
-                }
-                try {
-                    // the URI is created just to parse the proxy specification. It won't be
-                    // actually used as a whole to form URL or open connection
-                    URI uri = new URI(proxySpec);
-                    // if the user forgets the scheme (http://) the string is misparsed and hostname
-                    // becomes the scheme while the host part will be empty. Adding the "http://" in
-                    // front
-                    // fixes parsing at least for the host/port part.
-                    if (uri.getScheme() == null || uri.getHost() == null) {
-                        try {
-                            uri = new URI(PROXY_SCHEME_PREFIX + proxySpec);
-                        } catch (URISyntaxException ex) {
-                            // better leave the specified value without the scheme.
-                        }
-                    }
-                    InetSocketAddress address = InetSocketAddress.createUnresolved(uri.getHost(), uri.getPort());
-                    proxy = new Proxy(Proxy.Type.HTTP, address);
-                } catch (URISyntaxException ex) {
-                    ctx.setOutcome(false, new IOException(ex.getLocalizedMessage(), ex));
-                    return;
-                }
+                proxy = new Proxy(Proxy.Type.HTTP, proxyAddress);
             }
             Consumer<URLConnection> configCallback;
             configCallback = ctx.configCallback;
@@ -365,6 +403,54 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         }
     }
 
+    List<Connector> makeConnectors(String httpProxy, String httpsProxy) {
+        InetSocketAddress httpProxyAddress = null;
+        InetSocketAddress httpsProxyAddress = null;
+
+        URISyntaxException httpError = null;
+        URISyntaxException httpsError = null;
+
+        if (httpProxy != null) {
+            try {
+                httpProxyAddress = proxyAddress(httpProxy);
+            } catch (URISyntaxException ex) {
+                httpError = ex;
+            }
+        }
+        if (httpsProxy != null) {
+            if (!Objects.equals(httpProxy, httpsProxy)) {
+                try {
+                    httpsProxyAddress = proxyAddress(httpsProxy);
+                } catch (URISyntaxException ex) {
+                    httpsError = ex;
+                }
+            }
+        }
+        List<Connector> tryConnectors = new ArrayList<>();
+
+        if (httpProxyAddress != null) {
+            tryConnectors.add(new Connector(httpProxyAddress));
+        }
+        // do not attempt 2nd probe try if http+https are set to the same value.
+        if (httpsProxyAddress != null) {
+            tryConnectors.add(new Connector(httpsProxyAddress));
+        }
+
+        // something is there, but an error happened
+        if (httpError != null) {
+            feedback.error("WARN_HttpProxyGarbage", httpError, httpProxy);
+        }
+        if (httpsError != null) {
+            feedback.error("WARN_HttpsProxyGarbage", httpError, httpProxy);
+        }
+        if (tryConnectors.isEmpty()) {
+            // let the native support do its magic:
+            System.setProperty("java.net.useSystemProxies", "true");
+        }
+        tryConnectors.add(new Connector(null));
+        return tryConnectors;
+    }
+
     private URLConnection openConnectionWithProxies(URL url, Consumer<URLConnection> configCallback) throws IOException {
         final CountDownLatch connected = new CountDownLatch(1);
         String httpProxy;
@@ -389,14 +475,9 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
             // note: the winner will benefit from larger timeout as it is just one
             // connection
         } else {
-            if (httpProxy != null) {
-                ctx.submit(new Connector(httpProxy).bind(ctx));
-            }
-            // do not attempt 2nd probe try if http+https are set to the same value.
-            if (httpsProxy != null && !Objects.equals(httpProxy, httpsProxy)) {
-                ctx.submit(new Connector(httpsProxy).bind(ctx));
-            }
-            ctx.submit(new Connector(null).bind(ctx));
+            List<Connector> newConnectors = makeConnectors(httpProxy, httpsProxy);
+            haveProxy = newConnectors.size() > 1;
+            newConnectors.forEach(c -> ctx.submit(c.bind(ctx)));
         }
 
         ctx.start();
