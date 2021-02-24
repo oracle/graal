@@ -62,6 +62,7 @@ __POLYGLOT_DECLARE_GENERIC_ARRAY(int64_t, i64)
 __POLYGLOT_DECLARE_GENERIC_ARRAY(float, float)
 __POLYGLOT_DECLARE_GENERIC_ARRAY(double, double)
 
+#if defined(__cplusplus)
 #define __POLYGLOT_DECLARE_GENERIC_TYPE(typedecl, typename)                                                                                          \
     __POLYGLOT_DECLARE_GENERIC_ARRAY(typedecl, typename)                                                                                             \
                                                                                                                                                      \
@@ -79,4 +80,17 @@ __POLYGLOT_DECLARE_GENERIC_ARRAY(double, double)
     		throw s;                                                                                                                                 \
     	}                                                                                                                                            \
     }
+#else
+#define __POLYGLOT_DECLARE_GENERIC_TYPE(typedecl, typename)                                                                                          \
+    __POLYGLOT_DECLARE_GENERIC_ARRAY(typedecl, typename)                                                                                             \
+                                                                                                                                                     \
+    __attribute__((always_inline)) static inline typedecl *polyglot_as_##typename(void *p) {                                                         \
+        void *ret = polyglot_as_typed(p, polyglot_##typename##_typeid());                                                                            \
+        return (typedecl *) ret;                                                                                                                     \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    __attribute__((always_inline)) static inline void *polyglot_from_##typename(typedecl * s) {                                                    \
+        return polyglot_from_typed(s, polyglot_##typename##_typeid());                                                                               \
+    }
+#endif
 
