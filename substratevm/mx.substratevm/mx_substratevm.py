@@ -1507,6 +1507,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
                 'java.base/sun.util.calendar',
                 'jdk.jdeps/com.sun.tools.classfile',
                 'jdk.jfr/jdk.jfr.events',
+                'java.base/sun.security.jca', # to set initialization-at-runtime for Loom
             ]
             graal_compiler_flags_map[17] = graal_compiler_flags_map[16] + ['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages_jdk17]
 

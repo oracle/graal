@@ -108,8 +108,14 @@ final class Target_java_lang_Object {
     }
 
     @Substitute
-    @TargetElement(name = "wait")
+    @TargetElement(name = "wait", onlyWith = NotLoomJDK.class)
     private void waitSubst(long timeoutMillis) throws InterruptedException {
+        MonitorSupport.singleton().wait(this, timeoutMillis);
+    }
+
+    @Substitute
+    @TargetElement(name = "wait0", onlyWith = LoomJDK.class)
+    private void waitSubstLoom(long timeoutMillis) throws InterruptedException {
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 

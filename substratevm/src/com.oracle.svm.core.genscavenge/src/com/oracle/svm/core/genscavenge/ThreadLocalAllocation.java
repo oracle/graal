@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -141,10 +141,15 @@ public final class ThreadLocalAllocation {
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object slowPathNewInstance(Word objectHeader) {
+    private static Object slowPathNewInstance(Word objectHeader, UnsignedWord size) {
         DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
-        Object result = slowPathNewInstanceWithoutAllocating(hub);
+
+        // the instance either is a frame instance or the size can be read from the hub
+        if (!hub.isStoredContinuationClass()) {
+            assert size.equal(hub.getLayoutEncoding());
+        }
+        Object result = slowPathNewInstanceWithoutAllocating(hub, size);
         /* If a collection happened, do follow-up tasks now that allocation, etc., is allowed. */
         HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
         runSlowPathHooks();
@@ -157,14 +162,14 @@ public final class ThreadLocalAllocation {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
+    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub, UnsignedWord size) {
         DeoptTester.disableDeoptTesting();
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.allocateNewInstance", DynamicHub.toClass(hub).getName());
             HeapPolicy.maybeCollectOnAllocation();
 
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
-            return allocateInstanceInNewTlab(hub, newTlab);
+            return allocateInstanceInNewTlab(hub, size, newTlab);
         } finally {
             DeoptTester.enableDeoptTesting();
         }
@@ -217,8 +222,7 @@ public final class ThreadLocalAllocation {
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateInstanceInNewTlab(DynamicHub hub, AlignedHeader newTlabChunk) {
-        UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
+    private static Object allocateInstanceInNewTlab(DynamicHub hub, UnsignedWord size, AlignedHeader newTlabChunk) {
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
         return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, true, true);
     }

@@ -46,6 +46,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.heap.StoredContinuation;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.graph.Node;
@@ -453,6 +454,8 @@ public final class SVMHost implements HostVM {
         } else if (type.isInstanceClass()) {
             if (Reference.class.isAssignableFrom(type.getJavaClass())) {
                 return HubType.InstanceReference;
+            } else if (type.getJavaClass().equals(StoredContinuation.class)) {
+                return HubType.StoredContinuation;
             }
             assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
             return HubType.Instance;
