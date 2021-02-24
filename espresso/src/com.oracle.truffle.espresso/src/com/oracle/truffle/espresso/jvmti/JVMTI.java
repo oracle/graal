@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
+import com.oracle.truffle.espresso.jvmti.structs.Structs;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
@@ -69,7 +70,7 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
         private final @Pointer TruffleObject initializeJvmtiContext;
         private final @Pointer TruffleObject disposeJvmtiContext;
 
-        private Structs structs;
+        private volatile Structs structs;
 
         private final ArrayList<JVMTI> created = new ArrayList<>();
 
