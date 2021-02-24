@@ -36,17 +36,15 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.llvm.tests.options.TestOptions;
 import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
-import org.junit.AssumptionViolatedException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
 public final class ParserTortureSuite extends GccSuiteBase {
