@@ -30,6 +30,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -38,6 +39,7 @@ import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -65,19 +67,50 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
         private final @Pointer TruffleObject initializeJvmtiContext;
         private final @Pointer TruffleObject disposeJvmtiContext;
 
+        private final Structs structs;
+
         private final ArrayList<JVMTI> created = new ArrayList<>();
 
         private JvmtiPhase phase;
 
         public JvmtiHandler(EspressoContext context, TruffleObject mokapotLibrary) {
             this.context = context;
+
+            structs = initializeStructs(mokapotLibrary);
+
             this.initializeJvmtiContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "initializeJvmtiContext",
                             NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
-
             this.disposeJvmtiContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "disposeJvmtiContext",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
+        }
+
+        private Structs initializeStructs(TruffleObject mokapotLibrary) {
+            TruffleObject initializeJvmtiHandlerContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "initializeJvmtiHandlerContext",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+            TruffleObject lookupMemberOffset = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "lookupMemberOffset",
+                            NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.POINTER));
+
+            Structs[] box = new Structs[1];
+            Callback doInitStructs = new Callback(1, new Callback.Function() {
+                @Override
+                public Object call(Object... args) {
+                    TruffleObject memberInfoPtr = (TruffleObject) args[0];
+                    box[0] = new Structs(memberInfoPtr, lookupMemberOffset);
+                    return null;
+                }
+            });
+            @Pointer
+            TruffleObject closure = context.getNativeAccess().createNativeClosure(doInitStructs, NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+            try {
+                InteropLibrary.getUncached().execute(initializeJvmtiHandlerContext, closure);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere();
+            }
+            return box[0];
         }
 
         public synchronized TruffleObject create(int version) {
@@ -122,6 +155,7 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
         public synchronized void postVmDeath() {
             enterPhase(JvmtiPhase.DEAD);
         }
+
     }
 
     private JVMTI(EspressoContext context, TruffleObject initializeJvmtiContext, int version) {

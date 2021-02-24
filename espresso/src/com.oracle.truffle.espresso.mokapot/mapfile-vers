@@ -41,6 +41,8 @@ SUNWprivate_1.1 {
                 # Espresso jvmti native API
                 initializeJvmtiContext;
                 disposeJvmtiContext;
+                initializeJvmtiHandlerContext;
+                lookupMemberOffset;
 
                 # JNI
                 JNI_CreateJavaVM;

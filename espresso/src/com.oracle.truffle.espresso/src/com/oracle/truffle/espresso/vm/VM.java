@@ -761,6 +761,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
         TruffleObject interopPtr = null;
         if (JVMTI.isJvmtiVersion(version)) {
             // JVMTI is requested before the main thread is created.
+            // Also note that every request of a JVMTI env returns a freshly created structure.
             interopPtr = jvmti.create(version);
             if (interopPtr == null) {
                 return JNI_EVERSION;
