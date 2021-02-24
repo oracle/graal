@@ -64,10 +64,12 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
 
     public static final class JvmtiHandler {
         private final EspressoContext context;
+        private @Pointer TruffleObject initializeJvmtiHandlerContext;
+        private @Pointer TruffleObject lookupMemberOffset;
         private final @Pointer TruffleObject initializeJvmtiContext;
         private final @Pointer TruffleObject disposeJvmtiContext;
 
-        private final Structs structs;
+        private Structs structs;
 
         private final ArrayList<JVMTI> created = new ArrayList<>();
 
@@ -76,7 +78,14 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
         public JvmtiHandler(EspressoContext context, TruffleObject mokapotLibrary) {
             this.context = context;
 
-            structs = initializeStructs(mokapotLibrary);
+            this.initializeJvmtiHandlerContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "initializeJvmtiHandlerContext",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+            this.lookupMemberOffset = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "lookupMemberOffset",
+                            NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.POINTER));
+
+            getStructs();
 
             this.initializeJvmtiContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "initializeJvmtiContext",
@@ -86,14 +95,7 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
         }
 
-        private Structs initializeStructs(TruffleObject mokapotLibrary) {
-            TruffleObject initializeJvmtiHandlerContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
-                            "initializeJvmtiHandlerContext",
-                            NativeSignature.create(NativeType.VOID, NativeType.POINTER));
-            TruffleObject lookupMemberOffset = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
-                            "lookupMemberOffset",
-                            NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.POINTER));
-
+        private Structs initializeStructs() {
             Structs[] box = new Structs[1];
             Callback doInitStructs = new Callback(1, new Callback.Function() {
                 @Override
@@ -110,6 +112,9 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere();
             }
+            // Remove references to symbols so they can be collected.
+            initializeJvmtiHandlerContext = null;
+            lookupMemberOffset = null;
             return box[0];
         }
 
@@ -134,6 +139,18 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
                 env.dispose(disposeJvmtiContext);
                 created.remove(env);
             }
+        }
+
+        public Structs getStructs() {
+            if (structs == null) {
+                synchronized (this) {
+                    // All fields in structs are final. Can double-check lock without volatile.
+                    if (structs == null) {
+                        structs = initializeStructs();
+                    }
+                }
+            }
+            return structs;
         }
 
         public synchronized int getPhase() {

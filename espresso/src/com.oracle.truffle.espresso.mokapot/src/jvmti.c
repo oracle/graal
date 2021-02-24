@@ -277,6 +277,29 @@
     V(_jvmtiAddrLocationMap, start_address) \
     V(_jvmtiAddrLocationMap, location)
 
+#define JVMTI_STRUCT_LIST(V) \
+    V(_jvmtiThreadInfo) \
+    V(_jvmtiMonitorStackDepthInfo) \
+    V(_jvmtiThreadGroupInfo) \
+    V(_jvmtiFrameInfo) \
+    V(_jvmtiStackInfo) \
+    V(_jvmtiHeapReferenceInfoField) \
+    V(_jvmtiHeapReferenceInfoArray) \
+    V(_jvmtiHeapReferenceInfoConstantPool) \
+    V(_jvmtiHeapReferenceInfoStackLocal) \
+    V(_jvmtiHeapReferenceInfoJniLocal) \
+    V(_jvmtiHeapReferenceInfoReserved) \
+    V(_jvmtiHeapCallbacks) \
+    V(_jvmtiClassDefinition) \
+    V(_jvmtiMonitorUsage) \
+    V(_jvmtiLineNumberEntry) \
+    V(_jvmtiLocalVariableEntry) \
+    V(_jvmtiParamInfo) \
+    V(_jvmtiExtensionFunctionInfo) \
+    V(_jvmtiExtensionEventInfo) \
+    V(_jvmtiTimerInfo) \
+    V(_jvmtiAddrLocationMap)
+
 
 typedef struct member_info {
 	char* id;
@@ -363,10 +386,16 @@ JNIEXPORT void JNICALL initializeJvmtiHandlerContext(void (*notify_member_offset
   member_info** info = malloc(sizeof(struct member_info*));
 	
   #define MEMBER_INFO__(STRUCT_NAME, MEMBER_NAME) \
-  add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME, offsetof(struct STRUCT_NAME, MEMBER_NAME));
+    add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME, offsetof(struct STRUCT_NAME, MEMBER_NAME));
 	
   JVMTI_STRUCT_MEMBER_LIST(MEMBER_INFO__)
   #undef MEMBER_INFO__
+
+  #define STRUCT_INFO__(STRUCT_NAME) \
+    add_member_info(info, #STRUCT_NAME, sizeof(struct STRUCT_NAME));
+
+  JVMTI_STRUCT_LIST(STRUCT_INFO__)
+  #undef STRUCT_INFO__
   
   notify_member_offset_init(info);
   
