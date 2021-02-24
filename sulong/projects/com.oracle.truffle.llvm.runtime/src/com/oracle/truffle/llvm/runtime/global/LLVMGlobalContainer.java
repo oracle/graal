@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -77,11 +77,19 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
     private long address;
 
+    // Only constant-propagate a globals' state when reading. See {@link get()} and {@link set()}
+    // below. This essentially means we need two copies of {@link contents}, one for reading from
+    // (which is effectively final, i.e. @CompilationFinal) and one for using when updating ({@link
+    // contentsNotFinal}).
     @CompilationFinal private State contents;
+    private State contentsNotFinal;
+
     private Object fallbackContents;
 
     public LLVMGlobalContainer() {
-        contents = new State(0L, 0);
+        State state = new State(0L, 0);
+        contents = state;
+        contentsNotFinal = state;
     }
 
     public Object get() {
@@ -103,10 +111,12 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
     }
 
     public void set(Object value, BranchProfile needsInitialize, BranchProfile needsInvalidation) {
-        State c = contents;
+        State c = contentsNotFinal;
         if (c.writeCount < MAX_CACHED_WRITES) {
             needsInitialize.enter();
-            contents = new State(value, c.writeCount + 1);
+            State state = new State(value, c.writeCount + 1);
+            contents = state;
+            contentsNotFinal = state;
             c.assumption.invalidate();
         } else {
             if (c.assumption.isValid()) {
