@@ -44,7 +44,6 @@ import mx_sdk_vm
 import re
 import mx_benchmark
 import mx_sulong_benchmarks
-import mx_buildtools
 import mx_sulong_fuzz #pylint: disable=unused-import
 import mx_sulong_llvm_config
 import mx_unittest
@@ -93,13 +92,6 @@ supportedLLVMVersions = [
 ]
 
 toolchainLLVMVersion = mx_sulong_llvm_config.VERSION
-
-# the basic LLVM dependencies for running the test cases and executing the mx commands
-basicLLVMDependencies = [
-    mx_buildtools.ClangCompiler.CLANG,
-    mx_buildtools.ClangCompiler.CLANGXX,
-    mx_buildtools.Opt.OPT
-]
 
 
 def _lib_versioned(arg):

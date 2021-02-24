@@ -35,7 +35,6 @@ import mx
 import mx_unittest
 import mx_subst
 import os
-import mx_buildtools
 
 import mx_sulong
 
@@ -225,6 +224,32 @@ class GeneratedTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ances
         env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
         return env
 
+
+def collectExcludes(path):
+    def _collect(path, skip=None):
+        for root, _, files in os.walk(path):
+            if skip and skip(os.path.relpath(root, path)):
+                continue
+            for f in files:
+                if f.endswith('.exclude'):
+                    for line in open(os.path.join(root, f)):
+                        yield line.strip()
+    # use `yield from` in python 3.3
+    for x in _collect(path, lambda p: p.startswith('os_arch')):
+        yield x
+
+    os_arch_root = os.path.join(path, 'os_arch')
+    if os.path.exists(os_arch_root):
+        try:
+            os_path = next(x for x in (os.path.join(os_arch_root, os_dir) for os_dir in [mx.get_os(), 'others']) if os.path.exists(x))
+            os_arch_path = next(x for x in (os.path.join(os_path, arch_dir) for arch_dir in [mx.get_arch(), 'others']) if os.path.exists(x))
+            # use `yield from` in python 3.3
+            for x in _collect(os_arch_path):
+                yield x
+        except StopIteration:
+            pass
+
+
 class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
     def __init__(self, *args, **kwargs):
         super(ExternalTestSuite, self).__init__(*args, **kwargs)
@@ -265,7 +290,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         exclude_files = []
 
         # full name check is cheaper than pattern matching
-        for exclude in mx_buildtools.collectExcludes(os.path.join(self.dir, "..", self.configDir)):
+        for exclude in collectExcludes(os.path.join(self.dir, "..", self.configDir)):
             if _maybe_pattern(exclude):
                 exclude_patterns.append(exclude)
             else:
