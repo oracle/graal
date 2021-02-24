@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,16 +73,16 @@ public abstract class LookupVirtualMethodNode extends AbstractLookupNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {
-                    "klass.equals(cachedKlass)",
+                    "klass.equals(cachedKlass.getKlass())",
                     "methodName.equals(cachedMethodName)",
-                    "arity == cachedArity"}, limit = "LIMIT")
+                    "arity == cachedArity"}, limit = "LIMIT", assumptions = "cachedKlass.getAssumption()")
     Method doCached(ObjectKlass klass,
                     String methodName,
                     int arity,
-                    @Cached("klass") Klass cachedKlass,
+                    @Cached("klass.getKlassVersion()") ObjectKlass.KlassVersion cachedKlass,
                     @Cached("methodName") String cachedMethodName,
                     @Cached("arity") int cachedArity,
-                    @Cached("doGeneric(klass, methodName, arity)") Method method) {
+                    @Cached("doGeneric(cachedKlass.getKlass(), methodName, arity)") Method method) {
         return method;
     }
 

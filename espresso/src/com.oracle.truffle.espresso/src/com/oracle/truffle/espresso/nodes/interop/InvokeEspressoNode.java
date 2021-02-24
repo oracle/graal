@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -44,7 +45,11 @@ public abstract class InvokeEspressoNode extends Node {
     static final int LIMIT = 4;
 
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
-        Object result = executeMethod(method, receiver, arguments);
+        Method resolutionSeed = method;
+        if (resolutionSeed.isRemovedByRedefition()) {
+            resolutionSeed = ClassRedefinition.handleRemovedMethod(method, method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass());
+        }
+        Object result = executeMethod(resolutionSeed.getMethodVersion(), receiver, arguments);
         /*
          * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
          * Espresso and unwrapped when going out)
@@ -67,40 +72,40 @@ public abstract class InvokeEspressoNode extends Node {
         return DirectCallNode.create(callTarget);
     }
 
-    abstract Object executeMethod(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException;
+    abstract Object executeMethod(Method.MethodVersion method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException;
 
     @ExplodeLoop
-    @Specialization(guards = "method == cachedMethod", limit = "LIMIT")
-    Object doCached(Method method, Object receiver, Object[] arguments,
-                    @Cached("method") Method cachedMethod,
-                    @Cached("createToEspresso(method.getParameterCount())") ToEspressoNode[] toEspressoNodes,
+    @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getAssumption()")
+    Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments,
+                    @Cached("method") Method.MethodVersion cachedMethod,
+                    @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,
                     @Cached(value = "createDirectCallNode(method.getCallTargetNoInit())") DirectCallNode directCallNode,
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
 
-        checkValidInvoke(method, receiver);
+        checkValidInvoke(method.getMethod(), receiver);
         // explicitly ensure declaring class is initialized, since we use the
         // NoInit variant of getCallTarget, because obtaining the cached direct
         // call node is run under AST locking
-        if (!cachedMethod.getDeclaringKlass().isInitialized()) {
+        if (!cachedMethod.getMethod().getDeclaringKlass().isInitialized()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            cachedMethod.getDeclaringKlass().safeInitialize();
+            cachedMethod.getMethod().getDeclaringKlass().safeInitialize();
         }
 
-        int expectedArity = cachedMethod.getParameterCount();
+        int expectedArity = cachedMethod.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
             badArityProfile.enter();
             throw ArityException.create(expectedArity, arguments.length);
         }
 
-        Klass[] parameterKlasses = method.resolveParameterKlasses();
+        Klass[] parameterKlasses = method.getMethod().resolveParameterKlasses();
 
         Object[] convertedArguments = new Object[expectedArity];
         for (int i = 0; i < expectedArity; i++) {
             convertedArguments[i] = toEspressoNodes[i].execute(arguments[i], parameterKlasses[i]);
         }
 
-        if (!method.isStatic()) {
+        if (!method.getMethod().isStatic()) {
             Object[] argumentsWithReceiver = new Object[convertedArguments.length + 1];
             argumentsWithReceiver[0] = receiver;
             System.arraycopy(convertedArguments, 0, argumentsWithReceiver, 1, convertedArguments.length);
@@ -111,26 +116,26 @@ public abstract class InvokeEspressoNode extends Node {
     }
 
     @Specialization(replaces = "doCached")
-    Object doGeneric(Method method, Object receiver, Object[] arguments,
+    Object doGeneric(Method.MethodVersion method, Object receiver, Object[] arguments,
                     @Cached ToEspressoNode toEspressoNode,
                     @Cached IndirectCallNode indirectCallNode)
                     throws ArityException, UnsupportedTypeException {
 
-        checkValidInvoke(method, receiver);
+        checkValidInvoke(method.getMethod(), receiver);
 
-        int expectedArity = method.getParameterCount();
+        int expectedArity = method.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
             throw ArityException.create(expectedArity, arguments.length);
         }
 
-        Klass[] parameterKlasses = method.resolveParameterKlasses();
+        Klass[] parameterKlasses = method.getMethod().resolveParameterKlasses();
 
         Object[] convertedArguments = new Object[expectedArity];
         for (int i = 0; i < expectedArity; i++) {
             convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
         }
 
-        if (!method.isStatic()) {
+        if (!method.getMethod().isStatic()) {
             Object[] argumentsWithReceiver = new Object[convertedArguments.length + 1];
             argumentsWithReceiver[0] = receiver;
             System.arraycopy(convertedArguments, 0, argumentsWithReceiver, 1, convertedArguments.length);
