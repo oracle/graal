@@ -39,8 +39,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.CompilationWrapper;
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -299,6 +297,7 @@ public class SubstrateOptionsParser {
         return null;
     }
 
+    @SuppressWarnings("unchecked")
     static Object parseValue(Class<?> optionType, LocatableOption option, String valueString) throws NumberFormatException {
         Object value;
         if (optionType == Integer.class) {
@@ -321,10 +320,8 @@ public class SubstrateOptionsParser {
             } else {
                 return OptionParseResult.error("Boolean option " + option + " must have value 'true' or 'false'");
             }
-        } else if (optionType == CompilationWrapper.ExceptionAction.class) {
-            value = CompilationWrapper.ExceptionAction.valueOf(valueString);
-        } else if (optionType == DebugOptions.PrintGraphTarget.class) {
-            value = DebugOptions.PrintGraphTarget.valueOf(valueString);
+        } else if (optionType.isEnum()) {
+            value = Enum.valueOf(optionType.asSubclass(Enum.class), valueString);
         } else {
             throw VMError.shouldNotReachHere(option + " uses unsupported option value class: " + optionType.getSimpleName());
         }
