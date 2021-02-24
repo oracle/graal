@@ -23,12 +23,8 @@
 
 package com.oracle.truffle.espresso.jvmti;
 
-import static com.oracle.truffle.espresso.jvmti.JvmtiErrorCodes.JVMTI_OK;
-
 import java.util.ArrayList;
-import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -37,151 +33,44 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
-import com.oracle.truffle.espresso.ffi.RawPointer;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.Callback;
-import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
 import com.oracle.truffle.espresso.jvmti.structs.Structs;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
-import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification.PrependEnv;
-import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
-import com.oracle.truffle.espresso.substitutions.JVMTICollector;
 
-@GenerateIntrinsification(target = JvmtiImpl.class)
-@PrependEnv
-@SuppressWarnings("unused")
-public final class JVMTI extends IntrinsifiedNativeEnv {
-
+public final class JVMTI {
     private final EspressoContext context;
+    private @Pointer TruffleObject initializeJvmtiHandlerContext;
+    private @Pointer TruffleObject lookupMemberOffset;
+    private final @Pointer TruffleObject initializeJvmtiContext;
+    private final @Pointer TruffleObject disposeJvmtiContext;
 
-    @CompilationFinal //
-    private @Pointer TruffleObject jvmtiEnvPtr;
-    @CompilationFinal //
-    private int jvmtiVersion;
+    private volatile Structs structs;
 
-    private TruffleObject envLocalStorage = RawPointer.nullInstance();
+    private final ArrayList<JVMTIEnv> created = new ArrayList<>();
 
-    public static final class JvmtiHandler {
-        private final EspressoContext context;
-        private @Pointer TruffleObject initializeJvmtiHandlerContext;
-        private @Pointer TruffleObject lookupMemberOffset;
-        private final @Pointer TruffleObject initializeJvmtiContext;
-        private final @Pointer TruffleObject disposeJvmtiContext;
+    private JvmtiPhase phase;
 
-        private volatile Structs structs;
-
-        private final ArrayList<JVMTI> created = new ArrayList<>();
-
-        private JvmtiPhase phase;
-
-        public JvmtiHandler(EspressoContext context, TruffleObject mokapotLibrary) {
-            this.context = context;
-
-            this.initializeJvmtiHandlerContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
-                            "initializeJvmtiHandlerContext",
-                            NativeSignature.create(NativeType.VOID, NativeType.POINTER));
-            this.lookupMemberOffset = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
-                            "lookupMemberOffset",
-                            NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.POINTER));
-
-            getStructs();
-
-            this.initializeJvmtiContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
-                            "initializeJvmtiContext",
-                            NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
-            this.disposeJvmtiContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
-                            "disposeJvmtiContext",
-                            NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
-        }
-
-        private Structs initializeStructs() {
-            Structs[] box = new Structs[1];
-            Callback doInitStructs = new Callback(1, new Callback.Function() {
-                @Override
-                public Object call(Object... args) {
-                    TruffleObject memberInfoPtr = (TruffleObject) args[0];
-                    box[0] = new Structs(memberInfoPtr, lookupMemberOffset);
-                    return null;
-                }
-            });
-            @Pointer
-            TruffleObject closure = context.getNativeAccess().createNativeClosure(doInitStructs, NativeSignature.create(NativeType.VOID, NativeType.POINTER));
-            try {
-                InteropLibrary.getUncached().execute(initializeJvmtiHandlerContext, closure);
-            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere();
-            }
-            // Remove references to symbols so they can be collected.
-            initializeJvmtiHandlerContext = null;
-            lookupMemberOffset = null;
-            return box[0];
-        }
-
-        public synchronized TruffleObject create(int version) {
-            if (!isSupportedJvmtiVersion(version)) {
-                return null;
-            }
-            JVMTI jvmti = new JVMTI(context, initializeJvmtiContext, version);
-            created.add(jvmti);
-            return jvmti.jvmtiEnvPtr;
-        }
-
-        public synchronized void dispose() {
-            for (JVMTI jvmti : created) {
-                jvmti.dispose(disposeJvmtiContext);
-            }
-            created.clear();
-        }
-
-        private synchronized void dispose(JVMTI env) {
-            if (created.contains(env)) {
-                env.dispose(disposeJvmtiContext);
-                created.remove(env);
-            }
-        }
-
-        public Structs getStructs() {
-            if (structs == null) {
-                synchronized (this) {
-                    // All fields in structs are final. Can double-check lock without volatile.
-                    if (structs == null) {
-                        structs = initializeStructs();
-                    }
-                }
-            }
-            return structs;
-        }
-
-        public synchronized int getPhase() {
-            return phase.value();
-        }
-
-        public synchronized void enterPhase(JvmtiPhase jvmtiPhase) {
-            this.phase = jvmtiPhase;
-        }
-
-        public synchronized void postVmStart() {
-            enterPhase(JvmtiPhase.START);
-        }
-
-        public synchronized void postVmInit() {
-            enterPhase(JvmtiPhase.LIVE);
-        }
-
-        public synchronized void postVmDeath() {
-            enterPhase(JvmtiPhase.DEAD);
-        }
-
-    }
-
-    private JVMTI(EspressoContext context, TruffleObject initializeJvmtiContext, int version) {
+    public JVMTI(EspressoContext context, TruffleObject mokapotLibrary) {
         this.context = context;
-        jvmtiEnvPtr = initializeAndGetEnv(initializeJvmtiContext, version);
-        jvmtiVersion = version;
-        assert getUncached().isPointer(jvmtiEnvPtr);
-        assert jvmtiEnvPtr != null && !getUncached().isNull(jvmtiEnvPtr);
+
+        this.initializeJvmtiHandlerContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                        "initializeJvmtiHandlerContext",
+                        NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+        this.lookupMemberOffset = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                        "lookupMemberOffset",
+                        NativeSignature.create(NativeType.LONG, NativeType.POINTER, NativeType.POINTER));
+
+        // Pre-emptively initializes the structs until actually used, to make sure everything keeps
+        // working.
+        getStructs();
+
+        this.initializeJvmtiContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                        "initializeJvmtiContext",
+                        NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
+        this.disposeJvmtiContext = context.getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                        "disposeJvmtiContext",
+                        NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
     }
 
     public static boolean isJvmtiVersion(int version) {
@@ -192,91 +81,89 @@ public final class JVMTI extends IntrinsifiedNativeEnv {
         return JvmtiVersion.isSupportedJvmtiVersion(version);
     }
 
-    private void dispose(TruffleObject disposeJvmtiContext) {
-        if (jvmtiEnvPtr != null) {
-            try {
-                getUncached().execute(disposeJvmtiContext, jvmtiEnvPtr, jvmtiVersion, RawPointer.nullInstance());
-                this.jvmtiEnvPtr = null;
-                this.jvmtiVersion = 0;
-            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere("Cannot dispose Espresso jvmti (mokapot).");
+    private Structs initializeStructs() {
+        Structs[] box = new Structs[1];
+        Callback doInitStructs = new Callback(1, new Callback.Function() {
+            @Override
+            public Object call(Object... args) {
+                TruffleObject memberInfoPtr = (TruffleObject) args[0];
+                box[0] = new Structs(memberInfoPtr, lookupMemberOffset);
+                return null;
+            }
+        });
+        /*
+         * Go down to native to initialize the data structure storing the offsets of used structs
+         * (The memberInfoPtr seen in the callback). This will get back to java code once the data
+         * structure is created. Once we get out of the native call, the structure is freed and
+         * cannot be used anymore.
+         */
+        @Pointer
+        TruffleObject closure = context.getNativeAccess().createNativeClosure(doInitStructs, NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+        try {
+            InteropLibrary.getUncached().execute(initializeJvmtiHandlerContext, closure);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        // Remove references to symbols so they can be collected.
+        initializeJvmtiHandlerContext = null;
+        lookupMemberOffset = null;
+        return box[0];
+    }
+
+    public synchronized TruffleObject create(int version) {
+        if (!isSupportedJvmtiVersion(version)) {
+            return null;
+        }
+        JVMTIEnv jvmtiEnv = new JVMTIEnv(context, initializeJvmtiContext, version);
+        created.add(jvmtiEnv);
+        return jvmtiEnv.getEnv();
+    }
+
+    public synchronized void dispose() {
+        for (JVMTIEnv jvmtiEnv : created) {
+            jvmtiEnv.dispose(disposeJvmtiContext);
+        }
+        created.clear();
+    }
+
+    synchronized void dispose(JVMTIEnv env) {
+        if (created.contains(env)) {
+            env.dispose(disposeJvmtiContext);
+            created.remove(env);
+        }
+    }
+
+    public Structs getStructs() {
+        if (structs == null) {
+            synchronized (this) {
+                // All fields in structs are final. Can double-check lock without volatile.
+                if (structs == null) {
+                    structs = initializeStructs();
+                }
             }
         }
+        return structs;
     }
 
-    @Override
-    protected List<IntrinsicSubstitutor.Factory> getCollector() {
-        return JVMTICollector.getCollector();
+    public synchronized int getPhase() {
+        return phase.value();
     }
 
-    @Override
-    public EspressoContext getContext() {
-        return context;
+    public synchronized void enterPhase(JvmtiPhase jvmtiPhase) {
+        this.phase = jvmtiPhase;
     }
 
-    // Checkstyle: stop method name check
-
-    @JvmtiImpl
-    public int Allocate(long byteCount, @Pointer TruffleObject memPtr) {
-        if (byteCount < 0) {
-            return JvmtiErrorCodes.JVMTI_ERROR_ILLEGAL_ARGUMENT;
-        }
-        TruffleObject alloc;
-        if (byteCount == 0) {
-            alloc = RawPointer.nullInstance();
-        } else {
-            alloc = getNativeAccess().allocateMemory(byteCount);
-            if (getUncached().isNull(alloc)) {
-                return JvmtiErrorCodes.JVMTI_ERROR_OUT_OF_MEMORY;
-            }
-        }
-        NativeUtils.writeToPointerPointer(getUncached(), memPtr, alloc);
-        return JVMTI_OK;
+    public synchronized void postVmStart() {
+        enterPhase(JvmtiPhase.START);
     }
 
-    @JvmtiImpl
-    public int Deallocate(@Pointer TruffleObject memPtr) {
-        if (!getUncached().isNull(memPtr)) {
-            getNativeAccess().freeMemory(memPtr);
-        }
-        return JVMTI_OK;
+    public synchronized void postVmInit() {
+        enterPhase(JvmtiPhase.LIVE);
     }
 
-    @JvmtiImpl
-    public int DisposeEnvironment() {
-        getContext().getVM().getJvmti().dispose(this);
-        return JVMTI_OK;
+    public synchronized void postVmDeath() {
+        enterPhase(JvmtiPhase.DEAD);
     }
 
-    @JvmtiImpl
-    public int SetEnvironmentLocalStorage(@Pointer TruffleObject data) {
-        envLocalStorage = data;
-        return JVMTI_OK;
-    }
-
-    @JvmtiImpl
-    public int GetEnvironmentLocalStorage(@Pointer TruffleObject dataPtr) {
-        NativeUtils.writeToPointerPointer(getUncached(), dataPtr, envLocalStorage);
-        return JVMTI_OK;
-    }
-
-    @JvmtiImpl
-    public int GetPhase(@Pointer TruffleObject phasePtr) {
-        NativeUtils.writeToIntPointer(getUncached(), phasePtr, getVM().getJvmti().getPhase());
-        return JVMTI_OK;
-    }
-
-    @JvmtiImpl
-    public static int GetPotentialCapabilities(@Pointer TruffleObject cap) {
-        // For the time being, advertise no capability.
-        return JVMTI_OK;
-    }
-
-    @JvmtiImpl
-    public int GetVersionNumber(@Pointer TruffleObject versionPtr) {
-        NativeUtils.writeToIntPointer(getUncached(), versionPtr, jvmtiVersion);
-        return JVMTI_OK;
-    }
-
-    // Checkstyle: resume method name check
 }

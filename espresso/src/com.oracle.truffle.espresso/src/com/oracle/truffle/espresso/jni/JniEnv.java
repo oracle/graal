@@ -34,7 +34,6 @@ import java.nio.ShortBuffer;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,7 +72,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
+import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectMeta;
@@ -85,8 +84,8 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
-@GenerateIntrinsification(target = JniImpl.class)
-public final class JniEnv extends IntrinsifiedNativeEnv {
+@GenerateNativeEnv(target = JniImpl.class)
+public final class JniEnv extends NativeEnv {
 
     public static final int JNI_OK = 0; /* success */
     public static final int JNI_ERR = -1; /* unknown error */
@@ -133,8 +132,6 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
 
     private final @Pointer TruffleObject getSizeMax;
 
-    private static final Map<String, IntrinsicSubstitutor.Factory> jniMethods = buildJniMethods();
-
     @Override
     protected List<IntrinsicSubstitutor.Factory> getCollector() {
         return JniEnvCollector.getCollector();
@@ -178,10 +175,6 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
     public void setPendingException(StaticObject ex) {
         assert StaticObject.notNull(ex) && getMeta().java_lang_Throwable.isAssignableFrom(ex.getKlass());
         threadLocalPendingException.set(ex);
-    }
-
-    public static boolean containsMethod(String methodName) {
-        return jniMethods.containsKey(methodName);
     }
 
     private class VarArgsImpl implements VarArgs {
@@ -364,15 +357,6 @@ public final class JniEnv extends IntrinsifiedNativeEnv {
         long address = NativeUtils.byteBufferAddress(bb);
         nativeBuffers.put(address, bb);
         return bb;
-    }
-
-    private static Map<String, IntrinsicSubstitutor.Factory> buildJniMethods() {
-        Map<String, IntrinsicSubstitutor.Factory> map = new HashMap<>();
-        for (IntrinsicSubstitutor.Factory method : JniEnvCollector.getCollector()) {
-            assert !map.containsKey(method.methodName()) : "JniImpl for " + method.methodName() + " already exists";
-            map.put(method.methodName(), method);
-        }
-        return Collections.unmodifiableMap(map);
     }
 
     public static JniEnv create(EspressoContext context) {

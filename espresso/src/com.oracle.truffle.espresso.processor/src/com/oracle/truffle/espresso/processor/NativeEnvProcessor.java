@@ -44,7 +44,7 @@ import javax.tools.Diagnostic;
 /**
  * Handles the generation of boilerplate code for native interface implementations.
  */
-public final class IntrinsicsProcessor extends EspressoProcessor {
+public final class NativeEnvProcessor extends EspressoProcessor {
     private static final String JNI_PACKAGE = "com.oracle.truffle.espresso.jni";
     protected static final String FFI_PACKAGE = "com.oracle.truffle.espresso.ffi";
     private static final String POINTER = FFI_PACKAGE + "." + "Pointer";
@@ -57,8 +57,8 @@ public final class IntrinsicsProcessor extends EspressoProcessor {
     private static final String ENV_ARG_NAME = "env";
     private static final String INVOKE = "invoke(Object " + ENV_ARG_NAME + ", Object[] " + ARGS_NAME + ") {\n";
 
-    private static final String GENERATE_INTRISIFICATION = "com.oracle.truffle.espresso.substitutions.GenerateIntrinsification";
-    private static final String PREPEND_ENV = "com.oracle.truffle.espresso.substitutions.GenerateIntrinsification.PrependEnv";
+    private static final String GENERATE_INTRISIFICATION = "com.oracle.truffle.espresso.substitutions.GenerateNativeEnv";
+    private static final String PREPEND_ENV = "com.oracle.truffle.espresso.substitutions.GenerateNativeEnv.PrependEnv";
 
     protected static final String IMPORT_NATIVE_SIGNATURE = "import " + FFI_PACKAGE + "." + "NativeSignature" + ";\n";
     protected static final String IMPORT_NATIVE_TYPE = "import " + FFI_PACKAGE + "." + "NativeType" + ";\n";
@@ -75,11 +75,11 @@ public final class IntrinsicsProcessor extends EspressoProcessor {
     private String envName;
     private String imports;
 
-    // @GenerateIntrinsification
+    // @GenerateNativeEnv
     private TypeElement generateIntrinsification;
-    // @GenerateIntrinsification.target()
+    // @GenerateNativeEnv.target()
     private ExecutableElement targetAttribute;
-    // @GenerateIntrinsification.PrependEnv()
+    // @GenerateNativeEnv.PrependEnv()
     private TypeElement prependEnvAnnotation;
     // @JniImpl
     private TypeElement jniImpl;
@@ -124,7 +124,7 @@ public final class IntrinsicsProcessor extends EspressoProcessor {
         }
     }
 
-    public IntrinsicsProcessor() {
+    public NativeEnvProcessor() {
         super(SUBSTITUTIONS_PACKAGE, SUBSTITUTOR);
     }
 

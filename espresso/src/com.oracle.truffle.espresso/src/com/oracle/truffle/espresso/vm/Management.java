@@ -49,14 +49,14 @@ import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
-import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification.PrependEnv;
+import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
+import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv.PrependEnv;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
@@ -65,9 +65,9 @@ import com.oracle.truffle.espresso.substitutions.ManagementCollector;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
-@GenerateIntrinsification(target = ManagementImpl.class)
+@GenerateNativeEnv(target = ManagementImpl.class)
 @PrependEnv
-public final class Management extends IntrinsifiedNativeEnv {
+public final class Management extends NativeEnv {
     // Partial/incomplete implementation disclaimer!
     //
     // This is a partial implementation of the {@link java.lang.management} APIs. Some APIs go

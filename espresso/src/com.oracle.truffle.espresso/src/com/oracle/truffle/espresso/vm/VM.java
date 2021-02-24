@@ -103,10 +103,10 @@ import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
-import com.oracle.truffle.espresso.jni.IntrinsifiedNativeEnv;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.JniVersion;
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jvmti.JVMTI;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -122,7 +122,7 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.GenerateIntrinsification;
+import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectMeta;
@@ -150,8 +150,8 @@ import com.oracle.truffle.espresso.substitutions.VMCollector;
  * <p>
  * - for new VM methods (/ex: upgrading from java 8 to 11), updating include/jvm.h
  */
-@GenerateIntrinsification(target = VmImpl.class)
-public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
+@GenerateNativeEnv(target = VmImpl.class)
+public final class VM extends NativeEnv implements ContextAccess {
 
     private final @Pointer TruffleObject disposeMokapotContext;
 
@@ -163,7 +163,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
 
     private final JniEnv jniEnv;
     private final Management management;
-    private final JVMTI.JvmtiHandler jvmti;
+    private final JVMTI jvmti;
 
     private @Pointer TruffleObject mokapotEnvPtr;
 
@@ -259,7 +259,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
                 management = null;
             }
 
-            jvmti = new JVMTI.JvmtiHandler(getContext(), mokapotLibrary);
+            jvmti = new JVMTI(getContext(), mokapotLibrary);
 
             getJavaVM = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getJavaVM",
@@ -310,7 +310,7 @@ public final class VM extends IntrinsifiedNativeEnv implements ContextAccess {
         }
     }
 
-    public JVMTI.JvmtiHandler getJvmti() {
+    public JVMTI getJvmti() {
         return jvmti;
     }
 

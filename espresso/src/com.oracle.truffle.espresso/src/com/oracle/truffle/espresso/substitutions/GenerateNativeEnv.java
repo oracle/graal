@@ -29,7 +29,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotate a class implementing a native interface with this annotation to have the intrisification
+ * Annotate a class implementing a native interface with this annotation to have the native env
  * processor generate boilerplate code.
  * 
  * @see com.oracle.truffle.espresso.vm.VM
@@ -37,7 +37,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
-public @interface GenerateIntrinsification {
+public @interface GenerateNativeEnv {
     /**
      * @return The annotation used to mark methods that are part of the implemented native
      *         interface.
@@ -45,8 +45,8 @@ public @interface GenerateIntrinsification {
     Class<?> target();
 
     /**
-     * Annotate a class that already has {@link GenerateIntrinsification} so that a native env
-     * pointer is artificially added to the signature.
+     * Annotate a class that already has {@link GenerateNativeEnv} so that a native env pointer is
+     * artificially added to the signature.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
