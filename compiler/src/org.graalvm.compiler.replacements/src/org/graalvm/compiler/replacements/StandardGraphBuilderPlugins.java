@@ -115,6 +115,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
+import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
@@ -186,6 +188,8 @@ public class StandardGraphBuilderPlugins {
         }
         registerArrayPlugins(plugins, replacements);
         registerUnsafePlugins(plugins, replacements, explicitUnsafeNullChecks);
+        registerPlatformSpecificUnsafePlugins(plugins, replacements, explicitUnsafeNullChecks,
+                        new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object});
         registerEdgesPlugins(metaAccess, plugins);
         registerGraalDirectivesPlugins(plugins);
         registerBoxingPlugins(plugins);
@@ -387,7 +391,8 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    public static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, String[] memoryOrders, JavaKind[] supportedJavaKinds) {
+    private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, String[] memoryOrders,
+                    JavaKind[] supportedJavaKinds) {
         for (JavaKind kind : supportedJavaKinds) {
             Class<?> javaClass = getJavaClass(kind);
             String kindName = getKindName(isSunMiscUnsafe, kind);
@@ -407,8 +412,54 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
         registerUnsafePlugins(new Registration(plugins, Unsafe.class), true, explicitUnsafeNullChecks);
+        registerUnsafeGetAndOpPlugins(new Registration(plugins, Unsafe.class), explicitUnsafeNullChecks, new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}, "Object");
+
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacements), false, explicitUnsafeNullChecks);
+            Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
+            JavaKind[] supportedJavaKinds = {JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
+
+            registerUnsafePlugins(r, false, explicitUnsafeNullChecks);
+            registerUnsafeUnalignedPlugins(r, explicitUnsafeNullChecks);
+            registerUnsafeGetAndOpPlugins(r, explicitUnsafeNullChecks, supportedJavaKinds, JavaVersionUtil.JAVA_SPEC > 11 ? "Reference" : "Object");
+            registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "weakCompareAndSet", new String[]{"", "Acquire", "Release", "Plain"}, supportedJavaKinds);
+            registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{"Acquire", "Release"}, supportedJavaKinds);
+        }
+    }
+
+    private static void registerUnsafeUnalignedPlugins(Registration r, boolean explicitUnsafeNullChecks) {
+        for (JavaKind kind : new JavaKind[]{JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long}) {
+            Class<?> javaClass = kind.toJavaClass();
+            r.registerOptional3("get" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, explicitUnsafeNullChecks));
+            r.registerOptional4("put" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, explicitUnsafeNullChecks));
+        }
+    }
+
+    private static void registerUnsafeGetAndOpPlugins(Registration r, boolean explicitUnsafeNullChecks, JavaKind[] unsafeJavaKinds, String objectKindName) {
+
+        for (JavaKind kind : unsafeJavaKinds) {
+            Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
+            String kindName = kind == JavaKind.Object ? objectKindName : kind.name();
+            r.register4("getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
+                    // Emits a null-check for the otherwise unused receiver
+                    unsafe.get();
+                    createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndWriteNode(obj, offset, value, kind, loc));
+                    return true;
+                }
+            });
+
+            if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
+                r.register4("getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
+                        // Emits a null-check for the otherwise unused receiver
+                        unsafe.get();
+                        createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndAddNode(obj, offset, delta, kind, loc));
+                        return true;
+                    }
+                });
+            }
         }
     }
 
