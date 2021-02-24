@@ -33,8 +33,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.LocalizationSupport;
+import com.oracle.svm.core.jdk.SingleLocaleOnly;
 
 //Checkstyle: stop
 import sun.util.resources.Bundles.Strategy;
@@ -47,6 +49,7 @@ final class Target_sun_util_resources_Bundles {
     @Delete //
     private static ConcurrentMap<?, ?> cacheList;
 
+    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static ResourceBundle loadBundleOf(String baseName, Locale targetLocale, Strategy strategy) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);

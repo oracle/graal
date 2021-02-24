@@ -35,7 +35,9 @@ import java.text.spi.DateFormatProvider;
 import java.text.spi.DateFormatSymbolsProvider;
 import java.text.spi.DecimalFormatSymbolsProvider;
 import java.text.spi.NumberFormatProvider;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -83,7 +85,9 @@ public abstract class LocalizationFeature implements Feature {
      * not supported because the resource bundles are only included for one Locale. We use the
      * Locale that is set for the image generator.
      */
-    protected final Locale imageLocale = Locale.getDefault();
+    protected Locale defaultLocale = Locale.getDefault();
+
+    protected List<Locale> locales;
 
     protected LocalizationSupport support;
 
@@ -93,6 +97,41 @@ public abstract class LocalizationFeature implements Feature {
 
         @Option(help = "Make all hosted charsets available at run time")//
         public static final HostedOptionKey<Boolean> AddAllCharsets = new HostedOptionKey<>(false);
+
+        @Option(help = "Default locale of the image, by the default it is the same as the default locale of the image builder.", type = OptionType.User)//
+        public static final HostedOptionKey<String> DefaultLocale = new HostedOptionKey<>(Locale.getDefault().toLanguageTag());
+
+        @Option(help = "Comma separated list of locales to be included into the image. The default locale is included in the list automatically if not present.", type = OptionType.User)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeLocales = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+        @Option(help = "Make all hosted locales available at run time.", type = OptionType.User)//
+        public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
+    }
+
+    protected final boolean singleLocale = isSingleLocale();
+
+    /**
+     * Support for multiple locales is enabled iff all locales should be included or more than one
+     * locale is requested or a single locale is requested but different from the default one.
+     */
+    public static boolean isMultiLocale() {
+        if (Options.IncludeAllLocales.getValue()) {
+            return true;
+        }
+        List<String> locales = Options.IncludeLocales.getValue().values();
+        if (locales.isEmpty()) {
+            return false;
+        }
+        if (locales.size() > 1) {
+            return true;
+        }
+        final String singleSelectedLocale = locales.get(0);
+        boolean selectedIsDefault = singleSelectedLocale.equals(Options.DefaultLocale.getValue());
+        return !selectedIsDefault;
+    }
+
+    public static boolean isSingleLocale() {
+        return !isMultiLocale();
     }
 
     /**
@@ -147,13 +186,50 @@ public abstract class LocalizationFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess arg0) {
-        support = new LocalizationSupport();
+        locales = processLocalesOption();
+        defaultLocale = parseLocaleFromTag(Options.DefaultLocale.getDefaultValue());
+        UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
+        if (!locales.contains(defaultLocale)) {
+            locales.add(defaultLocale);
+        }
+        support = new LocalizationSupport(defaultLocale, locales);
         ImageSingletons.add(LocalizationSupport.class, support);
         ImageSingletons.add(LocalizationFeature.class, this);
 
         addCharsets();
         addProviders();
         addResourceBundles();
+    }
+
+    /**
+     * @return locale for given tag or null for invalid ones
+     */
+    private static Locale parseLocaleFromTag(String tag) {
+        try {
+            return new Locale.Builder().setLanguageTag(tag).build();
+        } catch (IllformedLocaleException ex) {
+            return null;
+        }
+    }
+
+    private static List<Locale> processLocalesOption() {
+        if (Options.IncludeAllLocales.getValue()) {
+            return Arrays.asList(Locale.getAvailableLocales());
+        }
+        List<Locale> locales = new ArrayList<>();
+        List<String> invalid = new ArrayList<>();
+        for (String tag : Options.IncludeLocales.getValue().values()) {
+            Locale locale = parseLocaleFromTag(tag);
+            if (locale != null) {
+                locales.add(locale);
+            } else {
+                invalid.add(tag);
+            }
+        }
+        if (!invalid.isEmpty()) {
+            throw UserError.abort("Invalid locales specified: %s", invalid);
+        }
+        return locales;
     }
 
     /**
@@ -215,7 +291,7 @@ public abstract class LocalizationFeature implements Feature {
 
     private void addProviders() {
         for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
-            LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, imageLocale));
+            LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
 
             support.adaptersByClass.put(providerClass, adapter);
             LocaleProviderAdapter existing = support.adaptersByType.put(adapter.getAdapterType(), adapter);
@@ -227,14 +303,14 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     protected void addResourceBundles() {
-        addBundleToCache(localeData(java.util.spi.CalendarDataProvider.class).getCalendarData(imageLocale));
-        addBundleToCache(localeData(java.util.spi.CurrencyNameProvider.class).getCurrencyNames(imageLocale));
-        addBundleToCache(localeData(java.util.spi.LocaleNameProvider.class).getLocaleNames(imageLocale));
-        addBundleToCache(localeData(java.util.spi.TimeZoneNameProvider.class).getTimeZoneNames(imageLocale));
-        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorInfo(imageLocale));
-        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getCollationData(imageLocale));
-        addBundleToCache(localeData(java.text.spi.DateFormatProvider.class).getDateFormatData(imageLocale));
-        addBundleToCache(localeData(java.text.spi.NumberFormatProvider.class).getNumberFormatData(imageLocale));
+        addBundleToCache(localeData(java.util.spi.CalendarDataProvider.class).getCalendarData(defaultLocale));
+        addBundleToCache(localeData(java.util.spi.CurrencyNameProvider.class).getCurrencyNames(defaultLocale));
+        addBundleToCache(localeData(java.util.spi.LocaleNameProvider.class).getLocaleNames(defaultLocale));
+        addBundleToCache(localeData(java.util.spi.TimeZoneNameProvider.class).getTimeZoneNames(defaultLocale));
+        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorInfo(defaultLocale));
+        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getCollationData(defaultLocale));
+        addBundleToCache(localeData(java.text.spi.DateFormatProvider.class).getDateFormatData(defaultLocale));
+        addBundleToCache(localeData(java.text.spi.NumberFormatProvider.class).getNumberFormatData(defaultLocale));
         /* Note that JDK 11 support overrides this method to register more bundles. */
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
@@ -251,7 +327,7 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     protected LocaleData localeData(Class<? extends LocaleServiceProvider> providerClass) {
-        return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, imageLocale)).getLocaleData();
+        return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, defaultLocale)).getLocaleData();
     }
 
     protected void addBundleToCache(ResourceBundle bundle) {
@@ -265,7 +341,7 @@ public abstract class LocalizationFeature implements Feature {
 
         ResourceBundle resourceBundle;
         try {
-            resourceBundle = ModuleSupport.getResourceBundle(bundleName, imageLocale, Thread.currentThread().getContextClassLoader());
+            resourceBundle = ModuleSupport.getResourceBundle(bundleName, defaultLocale, Thread.currentThread().getContextClassLoader());
         } catch (MissingResourceException mre) {
             if (!bundleName.contains("/")) {
                 throw mre;
@@ -275,7 +351,7 @@ public abstract class LocalizationFeature implements Feature {
             // converted to fully qualified class names before loading can succeed.
             // see GR-24211
             String dotBundleName = bundleName.replace("/", ".");
-            resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, imageLocale, Thread.currentThread().getContextClassLoader());
+            resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, defaultLocale, Thread.currentThread().getContextClassLoader());
         }
         UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " +
                         "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +

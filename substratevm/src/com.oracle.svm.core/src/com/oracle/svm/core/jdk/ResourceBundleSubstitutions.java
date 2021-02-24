@@ -51,31 +51,37 @@ final class Target_java_util_ResourceBundle {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
     private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
 
+    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, Locale.getDefault());
     }
 
+    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Control control) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, Locale.getDefault());
     }
 
+    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale locale) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, locale);
     }
 
+    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, Control control) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);
     }
 
+    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale locale, ClassLoader loader) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, locale);
     }
 
+    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, ClassLoader loader, Control control) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);
@@ -86,20 +92,20 @@ final class Target_java_util_ResourceBundle {
      * therefore ignored.
      */
 
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, SingleLocaleOnly.class})
     @Substitute
     private static ResourceBundle getBundle(String baseName, Target_java_lang_Module module) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, Locale.getDefault());
     }
 
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, SingleLocaleOnly.class})
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, Target_java_lang_Module module) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);
     }
 }
 
-@TargetClass(java.util.ListResourceBundle.class)
+@TargetClass(value = java.util.ListResourceBundle.class, onlyWith = SingleLocaleOnly.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_util_ListResourceBundle {
 
@@ -109,7 +115,7 @@ final class Target_java_util_ListResourceBundle {
     }
 }
 
-@TargetClass(sun.util.resources.OpenListResourceBundle.class)
+@TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = SingleLocaleOnly.class)
 @SuppressWarnings({"static-method"})
 final class Target_sun_util_resources_OpenListResourceBundle {
 
@@ -119,7 +125,7 @@ final class Target_sun_util_resources_OpenListResourceBundle {
     }
 }
 
-@TargetClass(sun.util.resources.ParallelListResourceBundle.class)
+@TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = SingleLocaleOnly.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_util_resources_ParallelListResourceBundle {
 

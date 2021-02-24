@@ -82,7 +82,7 @@ final class Target_java_util_Locale {
 final class DefaultLocaleComputer implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return ImageSingletons.lookup(LocalizationFeature.class).imageLocale;
+        return ImageSingletons.lookup(LocalizationSupport.class).defaultLocale;
     }
 }
 
@@ -168,12 +168,12 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
      */
     @Substitute
     private static Locale[] getAllAvailableLocales() {
-        return new Locale[]{ImageSingletons.lookup(LocalizationFeature.class).imageLocale};
+        return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
     }
 
     @Substitute
     private Locale[] getAvailableLocales() {
-        return new Locale[]{ImageSingletons.lookup(LocalizationFeature.class).imageLocale};
+        return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
     }
 }
 

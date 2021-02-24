@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
@@ -52,6 +53,17 @@ public final class LocalizationSupport {
     final Map<String, ResourceBundle> resourceBundles = new HashMap<>();
 
     private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");
+
+    final Locale defaultLocale;
+    /**
+     * All available locales configured during image build time.
+     */
+    final Locale[] allLocales;
+
+    public LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
+        this.defaultLocale = defaultLocale;
+        this.allLocales = locales.toArray(new Locale[0]);
+    }
 
     /**
      * Get cached resource bundle.
