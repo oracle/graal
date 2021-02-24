@@ -461,12 +461,6 @@ def getCommonOptions(withAssertion, lib_args=None):
 
     return options
 
-def pullsuite(suiteDir, urls):
-    name = os.path.basename(urls[0])
-    localPath = join(suiteDir, name)
-    mx.download(localPath, urls)
-    return localPath
-
 def isSupportedLLVMVersion(llvmProgram, supportedVersions=None):
     """returns if the LLVM program bases on a supported LLVM version"""
     assert llvmProgram is not None
@@ -652,12 +646,6 @@ def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
     return mx.get_runtime_jvm_args(['SULONG_CORE', 'SULONG_NATIVE', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
 
-def ensureLLVMBinariesExist():
-    """downloads the LLVM binaries if they have not been downloaded yet"""
-    for llvmBinary in basicLLVMDependencies:
-        if findLLVMProgram(llvmBinary) is None:
-            raise Exception(llvmBinary + ' not found')
-
 
 def _get_sulong_home():
     return mx_subst.path_substitutions.substitute('<path:SULONG_HOME>')
@@ -755,13 +743,6 @@ def llvm_dis(args=None, out=None):
 _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
-
-
-# used by mx_sulong_benchmarks:
-
-def opt(args=None, version=None, out=None, err=None):
-    """runs opt"""
-    return mx.run([findLLVMProgram('opt', version)] + args, out=out, err=err)
 
 
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
