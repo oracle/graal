@@ -22,9 +22,18 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -40,19 +49,12 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
 
 public final class ClassRedefinition {
 
@@ -628,5 +630,27 @@ public final class ClassRedefinition {
         }
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
         return 0;
+    }
+
+    @TruffleBoundary
+    public static Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass) {
+        try {
+            lock();
+            Method replacementMethod = resolutionSeed.getDeclaringKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
+            Meta meta = resolutionSeed.getMeta();
+            if (replacementMethod == null) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
+                                meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()) +
+                                                " was removed by class redefinition");
+            } else if (resolutionSeed.isStatic() != replacementMethod.isStatic()) {
+                String message = resolutionSeed.isStatic() ? "expected static method: " : "expected non-static method:" + replacementMethod.getName();
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, message);
+            } else {
+                // Update to the latest version of the replacement method
+                return replacementMethod;
+            }
+        } finally {
+            unlock();
+        }
     }
 }

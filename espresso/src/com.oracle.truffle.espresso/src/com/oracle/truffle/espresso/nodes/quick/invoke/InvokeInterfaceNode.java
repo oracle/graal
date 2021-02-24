@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -85,7 +84,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         if (resolutionSeed.isRemovedByRedefition()) {
             // accept a slow path once the method has been removed
             // put method behind a boundary to avoid a deopt loop
-            return handleRemovedMethod(receiver, resolutionSeed);
+            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass()).getMethodVersion();
         }
 
         int iTableIndex = resolutionSeed.getITableIndex();
@@ -96,31 +95,6 @@ public abstract class InvokeInterfaceNode extends QuickNode {
             throw Meta.throwException(meta.java_lang_IllegalAccessError);
         }
         return method.getMethodVersion();
-    }
-
-    @TruffleBoundary
-    private static MethodVersion handleRemovedMethod(StaticObject receiver, Method resolutionSeed) {
-        // do not run while a redefinition is in progress
-        try {
-            ClassRedefinition.lock();
-            // first check to see if there's a compatible new method before
-            // bailing out with a NoSuchMethodError
-            Klass receiverKlass = receiver.getKlass();
-            Method method = receiverKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), receiverKlass);
-            Meta meta = resolutionSeed.getMeta();
-            if (method == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
-            } else if (method.isStatic()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "expected non-static method: " + method.getName());
-            } else if (!method.isPublic()) {
-                throw Meta.throwException(meta.java_lang_IllegalAccessError);
-            } else {
-                return method.getMethodVersion();
-            }
-        } finally {
-            ClassRedefinition.unlock();
-        }
     }
 
     @Override
