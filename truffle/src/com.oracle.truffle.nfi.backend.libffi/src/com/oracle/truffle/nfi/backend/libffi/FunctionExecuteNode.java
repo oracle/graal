@@ -58,7 +58,7 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFISignature.CachedSignatureInfo
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
 @GenerateUncached
-@ImportStatic(NFILanguageImpl.class)
+@ImportStatic(LibFFILanguage.class)
 abstract class FunctionExecuteNode extends Node {
 
     public abstract Object execute(long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
@@ -95,9 +95,9 @@ abstract class FunctionExecuteNode extends Node {
         final CachedSignatureInfo signatureInfo;
         @Children NativeArgumentLibrary[] argLibs;
 
-        final ContextReference<NFIContext> ctxRef;
+        final ContextReference<LibFFIContext> ctxRef;
 
-        SignatureExecuteNode(NFILanguageImpl language, CachedSignatureInfo signatureInfo) {
+        SignatureExecuteNode(LibFFILanguage language, CachedSignatureInfo signatureInfo) {
             super(language);
             this.signatureInfo = signatureInfo;
 
@@ -107,7 +107,7 @@ abstract class FunctionExecuteNode extends Node {
                 argLibs[i] = NativeArgumentLibrary.getFactory().create(argTypes[i]);
             }
 
-            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
+            this.ctxRef = lookupContextReference(LibFFILanguage.class);
         }
 
         @Override

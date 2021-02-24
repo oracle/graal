@@ -49,7 +49,7 @@
 #define __TRUFFLE_NATIVE_H
 
 #include "com_oracle_truffle_nfi_backend_libffi_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_backend_libffi_NFIContext.h"
+#include "com_oracle_truffle_nfi_backend_libffi_LibFFIContext.h"
 #include "com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer.h"
 #include "com_oracle_truffle_nfi_backend_libffi_NativeString.h"
 

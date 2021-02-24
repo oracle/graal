@@ -79,7 +79,7 @@ import com.oracle.truffle.nfi.backend.libffi.NativeArgumentBuffer.TypeTag;
  */
 final class LibFFIType {
 
-    static CachedTypeInfo createSimpleTypeInfo(NFILanguageImpl language, NativeSimpleType simpleType, int size, int alignment) {
+    static CachedTypeInfo createSimpleTypeInfo(LibFFILanguage language, NativeSimpleType simpleType, int size, int alignment) {
         switch (simpleType) {
             case VOID:
                 return new VoidType(language, size, alignment);
@@ -175,7 +175,7 @@ final class LibFFIType {
 
         public abstract ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg);
 
-        public abstract Object deserializeRet(NativeArgumentBuffer buffer, NFILanguageImpl language);
+        public abstract Object deserializeRet(NativeArgumentBuffer buffer, LibFFILanguage language);
 
         public CachedTypeInfo overrideClosureRetType() {
             return this;
@@ -185,16 +185,16 @@ final class LibFFIType {
     @ExportLibrary(NativeArgumentLibrary.class)
     abstract static class BasicType extends CachedTypeInfo {
 
-        final NFILanguageImpl nfiLanguage;
+        final LibFFILanguage nfiLanguage;
         final NativeSimpleType simpleType;
 
-        BasicType(NFILanguageImpl language, NativeSimpleType simpleType, int size, int alignment, int objectCount, Direction direction) {
+        BasicType(LibFFILanguage language, NativeSimpleType simpleType, int size, int alignment, int objectCount, Direction direction) {
             super(size, alignment, objectCount, direction, false);
             this.nfiLanguage = language;
             this.simpleType = simpleType;
         }
 
-        BasicType(NFILanguageImpl language, NativeSimpleType simpleType, int size, int alignment, int objectCount) {
+        BasicType(LibFFILanguage language, NativeSimpleType simpleType, int size, int alignment, int objectCount) {
             this(language, simpleType, size, alignment, objectCount, Direction.BOTH);
         }
 
@@ -266,7 +266,7 @@ final class LibFFIType {
         @ExportMessage
         Object deserialize(NativeArgumentBuffer buffer,
                         @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType,
-                        @CachedLanguage NFILanguageImpl language) {
+                        @CachedLanguage LibFFILanguage language) {
             buffer.align(alignment);
             switch (cachedType) {
                 case VOID:
@@ -310,14 +310,14 @@ final class LibFFIType {
         }
 
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer, NFILanguageImpl language) {
+        public Object deserializeRet(NativeArgumentBuffer buffer, LibFFILanguage language) {
             return deserialize(buffer, simpleType, language);
         }
     }
 
     static final class SimpleType extends BasicType {
 
-        SimpleType(NFILanguageImpl language, NativeSimpleType simpleType, int size, int alignment) {
+        SimpleType(LibFFILanguage language, NativeSimpleType simpleType, int size, int alignment) {
             super(language, simpleType, size, alignment, simpleType == NativeSimpleType.POINTER ? 1 : 0);
         }
 
@@ -394,7 +394,7 @@ final class LibFFIType {
 
     static final class VoidType extends BasicType {
 
-        private VoidType(NFILanguageImpl language, int size, int alignment) {
+        private VoidType(LibFFILanguage language, int size, int alignment) {
             super(language, NativeSimpleType.VOID, size, alignment, 0);
         }
 
@@ -404,14 +404,14 @@ final class LibFFIType {
         }
 
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer, NFILanguageImpl language) {
+        public Object deserializeRet(NativeArgumentBuffer buffer, LibFFILanguage language) {
             return NativePointer.create(language, 0);
         }
     }
 
     static final class StringType extends BasicType {
 
-        private StringType(NFILanguageImpl language, int size, int alignment) {
+        private StringType(LibFFILanguage language, int size, int alignment) {
             super(language, NativeSimpleType.STRING, size, alignment, 1);
         }
 
@@ -423,7 +423,7 @@ final class LibFFIType {
 
     static final class ObjectType extends BasicType {
 
-        ObjectType(NFILanguageImpl language, int size, int alignment) {
+        ObjectType(LibFFILanguage language, int size, int alignment) {
             super(language, NativeSimpleType.OBJECT, size, alignment, 1);
         }
 
@@ -435,7 +435,7 @@ final class LibFFIType {
 
     static final class NullableType extends BasicType {
 
-        NullableType(NFILanguageImpl language, int size, int alignment) {
+        NullableType(LibFFILanguage language, int size, int alignment) {
             super(language, NativeSimpleType.NULLABLE, size, alignment, 1, Direction.JAVA_TO_NATIVE_ONLY);
         }
 
@@ -491,20 +491,20 @@ final class LibFFIType {
             serializeHelper.execute(this, buffer, value);
         }
 
-        @ImportStatic(NFILanguageImpl.class)
+        @ImportStatic(LibFFILanguage.class)
         @GenerateUncached
         @SuppressWarnings("unused")
         abstract static class SerializeHelperNode extends Node {
 
             abstract void execute(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
 
-            static boolean isHostObject(NFIContext ctx, Object value) {
+            static boolean isHostObject(LibFFIContext ctx, Object value) {
                 return ctx.env.isHostObject(value) && ctx.env.asHostObject(value) != null;
             }
 
             @Specialization(guards = "isHostObject(ctx, value)", rewriteOn = WrongTypeException.class)
             static void doHostObject(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                            @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                             @Cached(parameters = "type") HostObjectHelperNode helper) throws UnsupportedTypeException, WrongTypeException {
                 Object hostObject = ctx.env.asHostObject(value);
                 helper.execute(buffer, hostObject);
@@ -512,14 +512,14 @@ final class LibFFIType {
 
             @Specialization(guards = "!isHostObject(ctx, value)", limit = "3")
             static void doInteropObject(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                            @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                             @CachedLibrary("value") SerializeArgumentLibrary serialize) throws UnsupportedTypeException {
                 serialize.putPointer(value, buffer, type.size);
             }
 
             @Specialization(limit = "3", replaces = {"doHostObject", "doInteropObject"})
             static void doGeneric(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                            @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                             @CachedLibrary("value") SerializeArgumentLibrary serialize,
                             @Cached(parameters = "type") HostObjectHelperNode helper) throws UnsupportedTypeException {
                 if (isHostObject(ctx, value)) {
@@ -654,7 +654,7 @@ final class LibFFIType {
         @Override
         @ExportMessage(name = "deserialize")
         public Object deserializeRet(NativeArgumentBuffer buffer,
-                        @CachedLanguage NFILanguageImpl language) {
+                        @CachedLanguage LibFFILanguage language) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
@@ -681,7 +681,7 @@ final class LibFFIType {
         @ExportMessage(name = "deserialize")
         @Override
         public Object deserializeRet(NativeArgumentBuffer buffer,
-                        @CachedLanguage NFILanguageImpl language) {
+                        @CachedLanguage LibFFILanguage language) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("environment pointer can not be used as return type");
         }

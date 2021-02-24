@@ -106,8 +106,8 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
      */
     private static PointerBase loadLibraryInNamespace(long nativeContext, String name, int mode) {
         assert (mode & isolatedNamespaceFlag) == 0;
-        Target_com_oracle_truffle_nfi_backend_libffi_NFIContextLinux context = //
-                        KnownIntrinsics.convertUnknownValue(getContext(nativeContext), Target_com_oracle_truffle_nfi_backend_libffi_NFIContextLinux.class);
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux context = //
+                        KnownIntrinsics.convertUnknownValue(getContext(nativeContext), Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux.class);
 
         // Double-checked locking on the NFI context instance.
         long namespaceId = context.isolatedNamespaceId;

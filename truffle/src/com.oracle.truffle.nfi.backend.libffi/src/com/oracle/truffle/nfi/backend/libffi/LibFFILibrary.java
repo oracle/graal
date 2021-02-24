@@ -95,7 +95,7 @@ final class LibFFILibrary implements TruffleObject {
     @ExportMessage
     Object readMember(String symbol,
                     @Cached BranchProfile exception,
-                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws UnknownIdentifierException {
+                    @CachedContext(LibFFILanguage.class) LibFFIContext ctx) throws UnknownIdentifierException {
         try {
             return ctx.lookupSymbol(this, symbol);
         } catch (NFIUnsatisfiedLinkError ex) {
@@ -113,7 +113,7 @@ final class LibFFILibrary implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     Class<? extends TruffleLanguage<?>> getLanguage() {
-        return NFILanguageImpl.class;
+        return LibFFILanguage.class;
     }
 
     @ExportMessage
@@ -132,7 +132,7 @@ final class LibFFILibrary implements TruffleObject {
 
         @Override
         protected void destroy() {
-            NFIContext.freeLibrary(handle);
+            LibFFIContext.freeLibrary(handle);
         }
     }
 

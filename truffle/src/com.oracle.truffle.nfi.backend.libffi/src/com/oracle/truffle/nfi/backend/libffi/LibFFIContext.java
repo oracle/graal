@@ -51,9 +51,9 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFIType.EnvType;
 import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
-class NFIContext {
+class LibFFIContext {
 
-    final NFILanguageImpl language;
+    final LibFFILanguage language;
     Env env;
 
     private long nativeContext;
@@ -96,7 +96,7 @@ class NFIContext {
         }
     }
 
-    NFIContext(NFILanguageImpl language, Env env) {
+    LibFFIContext(LibFFILanguage language, Env env) {
         this.language = language;
         this.env = env;
     }

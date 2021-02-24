@@ -127,9 +127,9 @@ final class LibFFIClosure implements TruffleObject {
             super(rootNode);
         }
 
-        abstract ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature);
+        abstract ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature);
 
-        static MonomorphicClosureInfo create(NFILanguageImpl lang, CachedSignatureInfo signatureInfo, Object executable) {
+        static MonomorphicClosureInfo create(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object executable) {
             CompilerAsserts.neverPartOfCompilation();
             CachedTypeInfo retType = signatureInfo.getRetType();
             if (retType instanceof LibFFIType.ObjectType) {
@@ -158,9 +158,9 @@ final class LibFFIClosure implements TruffleObject {
             super(rootNode);
         }
 
-        abstract ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature, Object receiver);
+        abstract ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver);
 
-        static PolymorphicClosureInfo create(NFILanguageImpl lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo create(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
             CompilerAsserts.neverPartOfCompilation();
             CachedTypeInfo retType = signatureInfo.getRetType();
             if (retType instanceof LibFFIType.ObjectType) {
@@ -256,14 +256,14 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n, ret_buffer
         // return: RetPatches or null
-        static MonomorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo, Object receiver) {
+        static MonomorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object receiver) {
             ClosureArgumentNode recvNode = new ConstArgumentNode(receiver);
             ClosureArgumentNode retBuffer = new GetArgumentNode(signatureInfo.argTypes.length);
             BufferRetClosureRootNode rootNode = BufferRetClosureRootNodeGen.create(lang, signatureInfo, recvNode, retBuffer);
             return new MonomorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature) {
                     return ctx.allocateClosureBufferRet(signature, closureCallTarget, null);
                 }
             };
@@ -271,20 +271,20 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n, receiver, ret_buffer
         // return: RetPatches or null
-        static PolymorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
             ClosureArgumentNode recvNode = new GetArgumentNode(signatureInfo.argTypes.length);
             ClosureArgumentNode retBuffer = new GetArgumentNode(signatureInfo.argTypes.length + 1);
             BufferRetClosureRootNode rootNode = BufferRetClosureRootNodeGen.create(lang, signatureInfo, recvNode, retBuffer);
             return new PolymorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature, Object receiver) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver) {
                     return ctx.allocateClosureBufferRet(signature, closureCallTarget, receiver);
                 }
             };
         }
 
-        BufferRetClosureRootNode(NFILanguageImpl lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
+        BufferRetClosureRootNode(LibFFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
             encodeRet = new EncodeRetNode(signature.getRetType());
@@ -303,13 +303,13 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n
         // return: null
-        static MonomorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo, Object receiver) {
+        static MonomorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object receiver) {
             ClosureArgumentNode recvNode = new ConstArgumentNode(receiver);
             VoidRetClosureRootNode rootNode = new VoidRetClosureRootNode(lang, signatureInfo, recvNode);
             return new MonomorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature) {
                     return ctx.allocateClosureVoidRet(signature, closureCallTarget, null);
                 }
             };
@@ -317,19 +317,19 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n, receiver
         // return: null
-        static PolymorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
             ClosureArgumentNode recvNode = new GetArgumentNode(signatureInfo.argTypes.length);
             VoidRetClosureRootNode rootNode = new VoidRetClosureRootNode(lang, signatureInfo, recvNode);
             return new PolymorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature, Object receiver) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver) {
                     return ctx.allocateClosureVoidRet(signature, closureCallTarget, receiver);
                 }
             };
         }
 
-        private VoidRetClosureRootNode(NFILanguageImpl lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
+        private VoidRetClosureRootNode(LibFFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
         }
@@ -347,13 +347,13 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n
         // return: a Java object
-        static MonomorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo, Object receiver) {
+        static MonomorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object receiver) {
             ClosureArgumentNode recvNode = new ConstArgumentNode(receiver);
             ObjectRetClosureRootNode rootNode = new ObjectRetClosureRootNode(lang, signatureInfo, recvNode);
             return new MonomorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature) {
                     return ctx.allocateClosureObjectRet(signature, closureCallTarget, null);
                 }
             };
@@ -361,19 +361,19 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n, receiver
         // return: a Java object (or null if nullable==true)
-        static PolymorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
             ClosureArgumentNode recvNode = new GetArgumentNode(signatureInfo.argTypes.length);
             ObjectRetClosureRootNode rootNode = new ObjectRetClosureRootNode(lang, signatureInfo, recvNode);
             return new PolymorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature, Object receiver) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver) {
                     return ctx.allocateClosureObjectRet(signature, closureCallTarget, receiver);
                 }
             };
         }
 
-        private ObjectRetClosureRootNode(NFILanguageImpl lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
+        private ObjectRetClosureRootNode(LibFFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
         }
@@ -391,13 +391,13 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n
         // return: a Java object or null
-        static MonomorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo, Object receiver) {
+        static MonomorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object receiver) {
             ClosureArgumentNode recvNode = new ConstArgumentNode(receiver);
             NullableRetClosureRootNode rootNode = new NullableRetClosureRootNode(lang, signatureInfo, recvNode);
             return new MonomorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature) {
                     return ctx.allocateClosureObjectRet(signature, closureCallTarget, null);
                 }
             };
@@ -405,19 +405,19 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n, receiver
         // return: a Java object (or null if nullable==true)
-        static PolymorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
             ClosureArgumentNode recvNode = new GetArgumentNode(signatureInfo.argTypes.length);
             NullableRetClosureRootNode rootNode = new NullableRetClosureRootNode(lang, signatureInfo, recvNode);
             return new PolymorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature, Object receiver) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver) {
                     return ctx.allocateClosureObjectRet(signature, closureCallTarget, receiver);
                 }
             };
         }
 
-        private NullableRetClosureRootNode(NFILanguageImpl lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
+        private NullableRetClosureRootNode(LibFFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
             interopLibrary = InteropLibrary.getFactory().createDispatched(4);
@@ -558,13 +558,13 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n
         // return: a Java String
-        static MonomorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo, Object receiver) {
+        static MonomorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object receiver) {
             ClosureArgumentNode recvNode = new ConstArgumentNode(receiver);
             StringRetClosureRootNode rootNode = new StringRetClosureRootNode(lang, signatureInfo, recvNode);
             return new MonomorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature) {
                     return ctx.allocateClosureStringRet(signature, closureCallTarget, null);
                 }
             };
@@ -572,19 +572,19 @@ final class LibFFIClosure implements TruffleObject {
 
         // args of CallTarget: arg_0, arg_1, ..., arg_n, receiver
         // return: a Java String
-        static PolymorphicClosureInfo createInfo(NFILanguageImpl lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo createInfo(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
             ClosureArgumentNode recvNode = new GetArgumentNode(signatureInfo.argTypes.length);
             StringRetClosureRootNode rootNode = new StringRetClosureRootNode(lang, signatureInfo, recvNode);
             return new PolymorphicClosureInfo(rootNode) {
 
                 @Override
-                ClosureNativePointer allocateClosure(NFIContext ctx, LibFFISignature signature, Object receiver) {
+                ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver) {
                     return ctx.allocateClosureStringRet(signature, closureCallTarget, receiver);
                 }
             };
         }
 
-        private StringRetClosureRootNode(NFILanguageImpl lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
+        private StringRetClosureRootNode(LibFFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
             unboxString = UnboxStringNodeGen.create();

@@ -54,7 +54,7 @@ class NativePointer implements TruffleObject {
 
     final long nativePointer;
 
-    static Object create(NFILanguageImpl language, long nativePointer) {
+    static Object create(LibFFILanguage language, long nativePointer) {
         return language.getTools().createBindableSymbol(new NativePointer(nativePointer));
     }
 
@@ -94,7 +94,7 @@ class NativePointer implements TruffleObject {
 
     @ExportMessage
     Class<? extends TruffleLanguage<?>> getLanguage() {
-        return NFILanguageImpl.class;
+        return LibFFILanguage.class;
     }
 
     @ExportMessage

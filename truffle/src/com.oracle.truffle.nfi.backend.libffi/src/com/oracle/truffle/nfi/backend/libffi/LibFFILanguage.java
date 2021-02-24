@@ -55,15 +55,15 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
-@TruffleLanguage.Registration(id = "internal/nfi-native", name = "nfi-native", version = "0.1", characterMimeTypes = NFILanguageImpl.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
-public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
+@TruffleLanguage.Registration(id = "internal/nfi-native", name = "nfi-native", version = "0.1", characterMimeTypes = LibFFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
+public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/native";
 
     private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("libffi backend single context");
 
-    static NFILanguageImpl getCurrentLanguage() {
-        return getCurrentLanguage(NFILanguageImpl.class);
+    static LibFFILanguage getCurrentLanguage() {
+        return getCurrentLanguage(LibFFILanguage.class);
     }
 
     static Assumption getSingleContextAssumption() {
@@ -76,7 +76,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         singleContextAssumption.invalidate();
     }
 
-    @CompilationFinal private NFIBackendImpl backend;
+    @CompilationFinal private LibFFINFIBackend backend;
 
     @CompilationFinal(dimensions = 1) final CachedTypeInfo[] simpleTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
     @CompilationFinal(dimensions = 1) final CachedTypeInfo[] arrayTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
@@ -91,7 +91,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
     }
 
     @Override
-    protected NFIContext createContext(Env env) {
+    protected LibFFIContext createContext(Env env) {
         env.registerService(new NFIBackendFactory() {
 
             @Override
@@ -106,28 +106,28 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
                      * Make sure there is exactly one backend instance per engine. That way we can
                      * use identity equality on the backend object for caching decisions.
                      */
-                    backend = new NFIBackendImpl(com.oracle.truffle.nfi.backend.libffi.NFILanguageImpl.this, tools);
+                    backend = new LibFFINFIBackend(com.oracle.truffle.nfi.backend.libffi.LibFFILanguage.this, tools);
                 }
                 return backend;
             }
         });
-        return new NFIContext(this, env);
+        return new LibFFIContext(this, env);
     }
 
     @Override
-    protected void initializeContext(NFIContext context) throws Exception {
+    protected void initializeContext(LibFFIContext context) throws Exception {
         context.initialize();
     }
 
     @Override
-    protected boolean patchContext(NFIContext context, Env newEnv) {
+    protected boolean patchContext(LibFFIContext context, Env newEnv) {
         context.patchEnv(newEnv);
         context.initialize();
         return true;
     }
 
     @Override
-    protected void disposeContext(NFIContext context) {
+    protected void disposeContext(LibFFIContext context) {
         context.dispose();
     }
 
@@ -149,7 +149,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         });
     }
 
-    protected static NFIContext getCurrentContext() {
-        return getCurrentContext(NFILanguageImpl.class);
+    protected static LibFFIContext getCurrentContext() {
+        return getCurrentContext(LibFFILanguage.class);
     }
 }

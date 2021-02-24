@@ -84,7 +84,7 @@ import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
 final class LibFFISignature {
 
     @TruffleBoundary
-    public static LibFFISignature create(NFIContext context, CachedSignatureInfo info, LibFFIType retType, int argCount, int fixedArgCount, LibFFIType[] argTypes) {
+    public static LibFFISignature create(LibFFIContext context, CachedSignatureInfo info, LibFFIType retType, int argCount, int fixedArgCount, LibFFIType[] argTypes) {
         LibFFIType realRetType = retType;
         if (retType == null) {
             realRetType = context.lookupSimpleType(NativeSimpleType.VOID);
@@ -126,14 +126,14 @@ final class LibFFISignature {
     }
 
     @ExportMessage
-    @ImportStatic(NFILanguageImpl.class)
+    @ImportStatic(LibFFILanguage.class)
     static class CreateClosure {
 
         @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
         static LibFFIClosure doCachedExecutable(LibFFISignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("executable") Object cachedExecutable,
-                        @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                        @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                         @Cached("create(ctx.language, cachedSignatureInfo, cachedExecutable)") MonomorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo && executable == cachedExecutable;
             // no need to cache duplicated allocation in the single-context case
@@ -145,7 +145,7 @@ final class LibFFISignature {
         @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
         static LibFFIClosure doCachedSignature(LibFFISignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
-                        @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                        @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                         @Cached("create(ctx.language, cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
             ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(ctx, signature, executable);
@@ -155,7 +155,7 @@ final class LibFFISignature {
         @TruffleBoundary
         @Specialization(replaces = "doCachedSignature")
         static LibFFIClosure createClosure(LibFFISignature signature, Object executable,
-                        @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+                        @CachedContext(LibFFILanguage.class) LibFFIContext ctx) {
             PolymorphicClosureInfo cachedClosureInfo = signature.signatureInfo.getCachedClosureInfo();
             ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(ctx, signature, executable);
             return LibFFIClosure.newClosureWrapper(nativePointer);
@@ -163,7 +163,7 @@ final class LibFFISignature {
     }
 
     @TruffleBoundary
-    public static CachedSignatureInfo prepareSignatureInfo(NFILanguageImpl language, CachedTypeInfo retTypeInfo, ArgsState state) {
+    public static CachedSignatureInfo prepareSignatureInfo(LibFFILanguage language, CachedTypeInfo retTypeInfo, ArgsState state) {
         if (retTypeInfo instanceof ArrayType) {
             throw new IllegalArgumentException("array type as return value is not supported");
         }
@@ -236,7 +236,7 @@ final class LibFFISignature {
 
         PolymorphicClosureInfo cachedClosureInfo;
 
-        CachedSignatureInfo(NFILanguageImpl language, CachedTypeInfo retType, CachedTypeInfo[] argTypes, int primitiveSize, int objectCount, Direction allowedCallDirection) {
+        CachedSignatureInfo(LibFFILanguage language, CachedTypeInfo retType, CachedTypeInfo[] argTypes, int primitiveSize, int objectCount, Direction allowedCallDirection) {
             this.retType = retType;
             this.argTypes = argTypes;
             this.primitiveSize = primitiveSize;
@@ -262,7 +262,7 @@ final class LibFFISignature {
             return allowedCallDirection;
         }
 
-        Object execute(LibFFISignature signature, NFIContext ctx, long functionPointer, NativeArgumentBuffer.Array argBuffer) {
+        Object execute(LibFFISignature signature, LibFFIContext ctx, long functionPointer, NativeArgumentBuffer.Array argBuffer) {
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
             if (retType instanceof LibFFIType.ObjectType) {
@@ -286,7 +286,7 @@ final class LibFFISignature {
         @TruffleBoundary
         private synchronized void initCachedClosureInfo() {
             if (cachedClosureInfo == null) {
-                cachedClosureInfo = PolymorphicClosureInfo.create(NFILanguageImpl.getCurrentLanguage(), this);
+                cachedClosureInfo = PolymorphicClosureInfo.create(LibFFILanguage.getCurrentLanguage(), this);
             }
         }
 
@@ -428,14 +428,14 @@ final class LibFFISignature {
             static Object doCached(SignatureBuilder builder,
                             @Cached("builder.state") ArgsState cachedState,
                             @SuppressWarnings("unused") @Cached("builder.retType.typeInfo") CachedTypeInfo cachedRetType,
-                            @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                            @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                             @Cached("prepareSignatureInfo(ctx.language, cachedRetType, cachedState)") CachedSignatureInfo cachedSigInfo) {
                 return create(ctx, cachedSigInfo, builder.retType, cachedState.argCount, builder.fixedArgCount, builder.argTypes.getFinalArray());
             }
 
             @Specialization(replaces = "doCached")
             static Object doGeneric(SignatureBuilder builder,
-                            @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+                            @CachedContext(LibFFILanguage.class) LibFFIContext ctx) {
                 CachedSignatureInfo sigInfo = prepareSignatureInfo(ctx.language, builder.retType.typeInfo, builder.state);
                 return create(ctx, sigInfo, builder.retType, builder.state.argCount, builder.fixedArgCount, builder.argTypes.getFinalArray());
             }

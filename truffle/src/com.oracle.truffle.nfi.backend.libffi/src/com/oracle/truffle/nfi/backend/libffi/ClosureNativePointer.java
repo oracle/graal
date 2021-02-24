@@ -48,7 +48,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * There can be multiple references to a native closure object, both from the managed heap and from
  * native code. This class manages these references using a {@link #refCount reference count}.
  * <p>
- * If the {@link NFIContext} dies, all native references to the closure will be implicitly released.
+ * If the {@link LibFFIContext} dies, all native references to the closure will be implicitly
+ * released.
  * <p>
  * This diagram shows the references between the {@link ClosureNativePointer} object, the closure on
  * the native side, and its users:
@@ -71,7 +72,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@link LibFFIClosure} object dies.
  * <p>
  * As long as the {@link #refCount} is greater than zero, there is one additional reference from a
- * map in the {@link NFIContext}. This map is used to lookup the {@link ClosureNativePointer}
+ * map in the {@link LibFFIContext}. This map is used to lookup the {@link ClosureNativePointer}
  * reference from managed code. This reference also keeps the {@link ClosureNativePointer} object
  * alive if there are only native references, but no other managed references.
  * <p>
@@ -91,19 +92,19 @@ import java.util.concurrent.atomic.AtomicInteger;
  * is cached in the AST, this may produce a reference cycle from the {@link ReleaseRef} destructor
  * back to the {@link LibFFIClosure}, preventing the {@link LibFFIClosure} from being collected,
  * which in turn prevents the {@link ReleaseRef} destructor from triggering. Since the
- * {@link LibFFIClosure} object is cached in the AST, it can only die if the {@link NFIContext} is
- * disposed. Because of that, the {@link ReleaseRef} destructor can not be registered in the
+ * {@link LibFFIClosure} object is cached in the AST, it can only die if the {@link LibFFIContext}
+ * is disposed. Because of that, the {@link ReleaseRef} destructor can not be registered in the
  * {@link NativeAllocation#getGlobalQueue global} queue, otherwise the reference from the destructor
  * would keep everything alive. Therefore, the {@link ReleaseRef} destructor is enqueued in a local
  * queue that can die at the same time as the {@link ClosureNativePointer}. Now, if the whole
- * {@link NFIContext} dies, the GC can collect all objects involved in the reference cycle at once,
- * including the {@link ReleaseRef} destructor. In that case, the reference count is not decremented
- * for the {@link LibFFIClosure} objects, but that doesn't matter since the {@link NFIContext} is
- * dead anyway.
+ * {@link LibFFIContext} dies, the GC can collect all objects involved in the reference cycle at
+ * once, including the {@link ReleaseRef} destructor. In that case, the reference count is not
+ * decremented for the {@link LibFFIClosure} objects, but that doesn't matter since the
+ * {@link LibFFIContext} is dead anyway.
  */
 final class ClosureNativePointer {
 
-    private final NFIContext context;
+    private final LibFFIContext context;
 
     private final long codePointer;
 
@@ -145,13 +146,13 @@ final class ClosureNativePointer {
      */
     private final NativeAllocation.Queue releaseRefQueue;
 
-    static ClosureNativePointer create(NFIContext context, long nativeClosure, long codePointer, CallTarget callTarget, LibFFISignature signature, Object receiver) {
+    static ClosureNativePointer create(LibFFIContext context, long nativeClosure, long codePointer, CallTarget callTarget, LibFFISignature signature, Object receiver) {
         ClosureNativePointer ret = new ClosureNativePointer(context, codePointer, callTarget, signature, receiver);
         NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new NativeDestructor(nativeClosure));
         return ret;
     }
 
-    private ClosureNativePointer(NFIContext context, long codePointer, CallTarget callTarget, LibFFISignature signature, Object receiver) {
+    private ClosureNativePointer(LibFFIContext context, long codePointer, CallTarget callTarget, LibFFISignature signature, Object receiver) {
         this.context = context;
         this.codePointer = codePointer;
         this.callTarget = callTarget;

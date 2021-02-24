@@ -59,7 +59,7 @@ static void throwError(JNIEnv *env, jlong context) {
     LocalFree(msg);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
     jsize nameLen = (*env)->GetStringLength(env, name);
     const jchar *nameChars = (*env)->GetStringChars(env, name, NULL);
 
@@ -78,11 +78,11 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_lo
     return (jlong) ret;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
     FreeLibrary((HMODULE) handle);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     HMODULE module;

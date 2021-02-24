@@ -26,11 +26,11 @@ package com.oracle.svm.truffle.nfi;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.truffle.nfi.backend.libffi.NFILanguageImpl;
+import com.oracle.truffle.nfi.backend.libffi.LibFFILanguage;
 
 @TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFISymbol", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol {
 
     @Alias
-    static native Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol create(NFILanguageImpl language, Target_com_oracle_truffle_nfi_backend_libffi_LibFFILibrary library, String name, long address);
+    static native Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol create(LibFFILanguage language, Target_com_oracle_truffle_nfi_backend_libffi_LibFFILibrary library, String name, long address);
 }

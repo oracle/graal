@@ -213,7 +213,7 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
     }
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_executeNative(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeNative(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs, jbyteArray retArray) {
     jbyte *ret = retArray ? (*env)->GetByteArrayElements(env, retArray, NULL) : NULL;
     executeHelper(env, (TruffleContext*) truffleContext, ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
@@ -222,14 +222,14 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_exe
     }
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_executePrimitive(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executePrimitive(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
     ffi_arg ret;
     executeHelper(env, (TruffleContext*) truffleContext, &ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
     return (jlong) ret;
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_executeObject(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeObject(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
     jobject ret;
     executeHelper(env, (TruffleContext*) truffleContext, &ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
@@ -247,7 +247,7 @@ static struct cif_data *prepareArgs(JNIEnv *env, struct __TruffleContextInternal
     return data;
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_prepareSignature(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nargs, jobjectArray argTypes) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_prepareSignature(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nargs, jobjectArray argTypes) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) nativeContext;
 
     struct cif_data *data = prepareArgs(env, ctx, nargs, argTypes);
@@ -263,7 +263,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_pr
     }
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NFIContext_prepareSignatureVarargs(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nargs, jint nFixedArgs, jobjectArray argTypes) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_prepareSignatureVarargs(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nargs, jint nFixedArgs, jobjectArray argTypes) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) nativeContext;
 
     struct cif_data *data = prepareArgs(env, ctx, nargs, argTypes);

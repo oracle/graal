@@ -55,13 +55,13 @@ public final class NFIInitialization {
     interface InitializeNativeSimpleTypeCallback extends CFunctionPointer {
     }
 
-    private static void initializeNativeSimpleType(Target_com_oracle_truffle_nfi_backend_libffi_NFIContext context, NativeSimpleType simpleType, ffi_type ffiType) {
+    private static void initializeNativeSimpleType(Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context, NativeSimpleType simpleType, ffi_type ffiType) {
         int size = (int) ffiType.size().rawValue();
         int alignment = ffiType.alignment();
         context.initializeSimpleType(simpleType, size, alignment, ffiType.rawValue());
     }
 
-    static void initializeSimpleTypes(Target_com_oracle_truffle_nfi_backend_libffi_NFIContext context) {
+    static void initializeSimpleTypes(Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context) {
         // it's important to initialize POINTER first, since the primitive array types depend on it
         initializeNativeSimpleType(context, NativeSimpleType.POINTER, ffi_type_pointer.get());
 

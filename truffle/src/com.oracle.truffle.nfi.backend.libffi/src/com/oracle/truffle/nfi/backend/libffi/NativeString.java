@@ -103,7 +103,7 @@ class NativeString implements TruffleObject {
 
     @ExportMessage
     Class<? extends TruffleLanguage<?>> getLanguage() {
-        return NFILanguageImpl.class;
+        return LibFFILanguage.class;
     }
 
     @ExportMessage

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,36 +30,21 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 
-@TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_com_oracle_truffle_nfi_backend_libffi_NFIContextPosix {
+@Platforms(Platform.LINUX.class)
+@TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux {
 
     // Checkstyle: stop
-    static class RTLDAccessor {
+    @Alias volatile long isolatedNamespaceId;
 
-        static int getRTLD_GLOBAL(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_NFIContextPosix ctx) {
-            return Dlfcn.RTLD_GLOBAL();
-        }
+    @Alias @InjectAccessors(IsolatedAccessor.class) int ISOLATED_NAMESPACE;
 
-        static int getRTLD_LOCAL(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_NFIContextPosix ctx) {
-            return Dlfcn.RTLD_LOCAL();
-        }
-
-        static int getRTLD_LAZY(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_NFIContextPosix ctx) {
-            return Dlfcn.RTLD_LAZY();
-        }
-
-        static int getRTLD_NOW(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_NFIContextPosix ctx) {
-            return Dlfcn.RTLD_NOW();
+    static class IsolatedAccessor {
+        static int getISOLATED_NAMESPACE(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux ctx) {
+            return PosixTruffleNFISupport.isolatedNamespaceFlag;
         }
     }
-
-    @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_GLOBAL;
-    @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_LOCAL;
-    @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_LAZY;
-    @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_NOW;
     // Checkstyle: resume
 }

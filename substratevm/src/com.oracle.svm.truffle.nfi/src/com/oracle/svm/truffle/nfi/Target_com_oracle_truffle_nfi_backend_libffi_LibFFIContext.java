@@ -50,16 +50,16 @@ import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.nfi.backend.libffi.NFILanguageImpl;
+import com.oracle.truffle.nfi.backend.libffi.LibFFILanguage;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-@TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_backend_libffi_NFIContext {
+@TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
 
-    @Alias private NFILanguageImpl language;
+    @Alias private LibFFILanguage language;
 
     // clear these fields, they will be re-filled by patchContext
     @Alias @RecomputeFieldValue(kind = Kind.Reset) private long nativeContext;

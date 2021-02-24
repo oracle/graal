@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,12 +61,12 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilder
 
 @ExportLibrary(NFIBackendLibrary.class)
 @SuppressWarnings("static-method")
-final class NFIBackendImpl implements NFIBackend {
+final class LibFFINFIBackend implements NFIBackend {
 
-    private final NFILanguageImpl language;
+    private final LibFFILanguage language;
     final NFIBackendTools tools;
 
-    NFIBackendImpl(NFILanguageImpl language, NFIBackendTools tools) {
+    LibFFINFIBackend(LibFFILanguage language, NFIBackendTools tools) {
         this.language = language;
         this.tools = tools;
     }
@@ -74,7 +74,7 @@ final class NFIBackendImpl implements NFIBackend {
     @Override
     public CallTarget parse(NativeLibraryDescriptor descriptor) {
         RootNode root;
-        NFIContext ctx = NFILanguageImpl.getCurrentContext();
+        LibFFIContext ctx = LibFFILanguage.getCurrentContext();
         if (descriptor.isDefaultLibrary()) {
             root = new GetDefaultLibraryNode(language);
         } else {
@@ -121,13 +121,13 @@ final class NFIBackendImpl implements NFIBackend {
         private final String name;
         private final int flags;
 
-        private final ContextReference<NFIContext> ctxRef;
+        private final ContextReference<LibFFIContext> ctxRef;
 
-        LoadLibraryNode(NFILanguageImpl language, String name, int flags) {
+        LoadLibraryNode(LibFFILanguage language, String name, int flags) {
             super(language);
             this.name = name;
             this.flags = flags;
-            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
+            this.ctxRef = lookupContextReference(LibFFILanguage.class);
         }
 
         @Override
@@ -147,11 +147,11 @@ final class NFIBackendImpl implements NFIBackend {
 
     private static class GetDefaultLibraryNode extends RootNode {
 
-        private final ContextReference<NFIContext> ctxRef;
+        private final ContextReference<LibFFIContext> ctxRef;
 
-        GetDefaultLibraryNode(NFILanguageImpl language) {
+        GetDefaultLibraryNode(LibFFILanguage language) {
             super(language);
-            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
+            this.ctxRef = lookupContextReference(LibFFILanguage.class);
         }
 
         @Override
@@ -171,25 +171,25 @@ final class NFIBackendImpl implements NFIBackend {
 
     @ExportMessage
     Object getSimpleType(NativeSimpleType type,
-                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+                    @CachedContext(LibFFILanguage.class) LibFFIContext ctx) {
         return ctx.lookupSimpleType(type);
     }
 
     @ExportMessage
     Object getArrayType(NativeSimpleType type,
-                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+                    @CachedContext(LibFFILanguage.class) LibFFIContext ctx) {
         return ctx.lookupArrayType(type);
     }
 
     @ExportMessage
-    Object getEnvType(@CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+    Object getEnvType(@CachedContext(LibFFILanguage.class) LibFFIContext ctx) {
         return ctx.lookupEnvType();
     }
 
     @ExportMessage
     Object createSignatureBuilder(
                     @CachedLibrary("this") NFIBackendLibrary self,
-                    @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                    @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                     @Cached ArrayBuilderFactory builderFactory) {
         if (!ctx.env.isNativeAccessAllowed()) {
             CompilerDirectives.transferToInterpreter();

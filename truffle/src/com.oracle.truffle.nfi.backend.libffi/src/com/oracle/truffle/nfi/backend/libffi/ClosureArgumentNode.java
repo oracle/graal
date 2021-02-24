@@ -104,7 +104,7 @@ abstract class ClosureArgumentNode extends Node {
 
         @Specialization(guards = "arg == null")
         Object doNull(@SuppressWarnings("unused") Object arg,
-                        @CachedLanguage NFILanguageImpl language) {
+                        @CachedLanguage LibFFILanguage language) {
             return NativePointer.create(language, 0);
         }
 
