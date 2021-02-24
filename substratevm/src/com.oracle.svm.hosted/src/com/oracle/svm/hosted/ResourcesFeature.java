@@ -99,7 +99,7 @@ public final class ResourcesFeature implements Feature {
 
         @Override
         public void addResourceBundles(String name) {
-            ImageSingletons.lookup(LocalizationFeature.class).addBundleToCache(name);
+            ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name);
         }
     }
 

@@ -54,7 +54,7 @@ final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
     protected void addResourceBundles() {
         super.addResourceBundles();
 
-        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorResources(defaultLocale));
+        prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorResources(defaultLocale));
     }
 
     @Override

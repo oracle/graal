@@ -108,7 +108,7 @@ public abstract class LocalizationFeature implements Feature {
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
     }
 
-    protected final boolean singleLocale = isSingleLocale();
+    protected final boolean singleLocaleMode = isSingleLocale();
 
     /**
      * Support for multiple locales is enabled iff all locales should be included or more than one
@@ -197,7 +197,9 @@ public abstract class LocalizationFeature implements Feature {
         ImageSingletons.add(LocalizationFeature.class, this);
 
         addCharsets();
-        addProviders();
+        if (singleLocaleMode) {
+            addProviders();
+        }
         addResourceBundles();
     }
 
@@ -303,14 +305,14 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     protected void addResourceBundles() {
-        addBundleToCache(localeData(java.util.spi.CalendarDataProvider.class).getCalendarData(defaultLocale));
-        addBundleToCache(localeData(java.util.spi.CurrencyNameProvider.class).getCurrencyNames(defaultLocale));
-        addBundleToCache(localeData(java.util.spi.LocaleNameProvider.class).getLocaleNames(defaultLocale));
-        addBundleToCache(localeData(java.util.spi.TimeZoneNameProvider.class).getTimeZoneNames(defaultLocale));
-        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorInfo(defaultLocale));
-        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getCollationData(defaultLocale));
-        addBundleToCache(localeData(java.text.spi.DateFormatProvider.class).getDateFormatData(defaultLocale));
-        addBundleToCache(localeData(java.text.spi.NumberFormatProvider.class).getNumberFormatData(defaultLocale));
+        prepareBundle(localeData(java.util.spi.CalendarDataProvider.class).getCalendarData(defaultLocale));
+        prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class).getCurrencyNames(defaultLocale));
+        prepareBundle(localeData(java.util.spi.LocaleNameProvider.class).getLocaleNames(defaultLocale));
+        prepareBundle(localeData(java.util.spi.TimeZoneNameProvider.class).getTimeZoneNames(defaultLocale));
+        prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorInfo(defaultLocale));
+        prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class).getCollationData(defaultLocale));
+        prepareBundle(localeData(java.text.spi.DateFormatProvider.class).getDateFormatData(defaultLocale));
+        prepareBundle(localeData(java.text.spi.NumberFormatProvider.class).getNumberFormatData(defaultLocale));
         /* Note that JDK 11 support overrides this method to register more bundles. */
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
@@ -318,11 +320,11 @@ public abstract class LocalizationFeature implements Feature {
                         "sun.util.resources.TimeZoneNames"
         };
         for (String bundleName : alwaysRegisteredResourceBundles) {
-            addBundleToCache(bundleName);
+            prepareBundle(bundleName);
         }
 
         for (String bundleName : OptionUtils.flatten(",", Options.IncludeResourceBundles.getValue())) {
-            addBundleToCache(bundleName);
+            prepareBundle(bundleName);
         }
     }
 
@@ -330,11 +332,11 @@ public abstract class LocalizationFeature implements Feature {
         return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, defaultLocale)).getLocaleData();
     }
 
-    protected void addBundleToCache(ResourceBundle bundle) {
-        addBundleToCache(bundle.getBaseBundleName(), bundle);
+    protected void prepareBundle(ResourceBundle bundle) {
+        prepareBundle(bundle.getBaseBundleName(), bundle);
     }
 
-    public void addBundleToCache(String bundleName) {
+    public void prepareBundle(String bundleName) {
         if (bundleName.isEmpty()) {
             return;
         }
@@ -356,10 +358,10 @@ public abstract class LocalizationFeature implements Feature {
         UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " +
                         "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                         "verify the bundle path is accessible in the classpath.", bundleName);
-        addBundleToCache(bundleName, resourceBundle);
+        prepareBundle(bundleName, resourceBundle);
     }
 
-    private void addBundleToCache(String bundleName, ResourceBundle bundle) {
+    private void prepareBundle(String bundleName, ResourceBundle bundle) {
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
          * down to the root.
