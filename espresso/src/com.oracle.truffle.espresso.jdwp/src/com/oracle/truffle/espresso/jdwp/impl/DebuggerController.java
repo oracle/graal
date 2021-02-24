@@ -68,7 +68,7 @@ public final class DebuggerController implements ContextsListener {
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
-    private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
+    private final Map<Object, SuspendedInfo> suspendedInfos = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SteppingInfo> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob<?>> threadJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
@@ -363,9 +363,9 @@ public final class DebuggerController implements ContextsListener {
                 suspendedInfos.put(thread, null);
 
                 JDWPLogger.log("Waking up thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
+                threadSuspension.removeHardSuspendedThread(thread);
                 lock.release();
                 lock.notifyAll();
-                threadSuspension.removeHardSuspendedThread(thread);
                 return true;
             } else {
                 JDWPLogger.log("Not resuming thread: %s with suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
@@ -423,8 +423,7 @@ public final class DebuggerController implements ContextsListener {
 
                 // quite often the Debug API will not call back the onSuspend method in time,
                 // even if the guestThread is executing. If the guestThread is blocked or waiting we
-                // still need
-                // to suspend it, thus we manage this with a hard suspend mechanism
+                // still need to suspend it, thus we manage this with a hard suspend mechanism
                 threadSuspension.addHardSuspendedThread(guestThread);
                 if (suspendedInfos.get(guestThread) == null) {
                     // if already set, we have captured a blocking suspendedInfo already
