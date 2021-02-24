@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.meta.MetaUtil;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -69,11 +68,13 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -81,7 +82,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-import com.oracle.truffle.espresso.perf.DebugCounter;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef, TruffleObject {
@@ -195,8 +195,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        Method method = lookupMethod.execute(this, member, true, true, arguments.length);
-        if (method != null) {
+        Method.MethodVersion methodVersion = lookupMethod.execute(this, member, true, true, arguments.length);
+        if (methodVersion != null) {
+            Method method = methodVersion.getMethod();
             assert method.isStatic() && method.isPublic();
             assert member.startsWith(method.getNameAsString());
             assert method.getParameterCount() == arguments.length;
@@ -358,11 +359,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                         @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                         @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             ObjectKlass objectKlass = (ObjectKlass) receiver;
-            Method init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
+            Method.MethodVersion init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
             if (init != null) {
-                assert !init.isStatic() && init.isPublic() && init.getName().toString().equals(INIT_NAME) && init.getParameterCount() == arguments.length;
+                Method initMethod = init.getMethod();
+                assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
                 StaticObject newObject = StaticObject.createNew(objectKlass);
-                invoke.execute(init, newObject, arguments);
+                invoke.execute(initMethod, newObject, arguments);
                 return newObject;
             }
             // TODO(goltsova): throw ArityException whenever possible

@@ -1300,7 +1300,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    static final class KlassVersion {
+    public final class KlassVersion {
         final Assumption assumption;
         final RuntimeConstantPool pool;
         final LinkedKlass linkedKlass;
@@ -1323,8 +1323,16 @@ public final class ObjectKlass extends Klass {
             this.iKlassTable = iKlassTable;
         }
 
-        Object getAttribute(Symbol<Name> name) {
-            return linkedKlass.getAttribute(name);
+        public Assumption getAssumption() {
+            return assumption;
+        }
+
+        public ObjectKlass getKlass() {
+            return ObjectKlass.this;
+        }
+
+        Object getAttribute(Symbol<Name> attrName) {
+            return linkedKlass.getAttribute(attrName);
         }
 
         ConstantPool getConstantPool() {
