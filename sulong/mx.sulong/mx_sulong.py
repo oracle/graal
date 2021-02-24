@@ -28,7 +28,6 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import sys
-import tarfile
 import os
 import pipes
 import tempfile
@@ -70,9 +69,6 @@ _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong")
 _root = join(_suite.dir, "projects")
 _testDir = join(_suite.dir, "tests")
-_toolDir = join(_suite.dir, "cache", "tools")
-_clangPath = join(_toolDir, "llvm", "bin", "clang")
-
 
 
 # the supported GCC versions (see dragonegg.llvm.org)
@@ -342,30 +338,6 @@ def checkCFile(targetFile):
         return False
     return True
 
-# platform dependent
-def pullLLVMBinaries(args=None):
-    """downloads the LLVM binaries"""
-    toolDir = join(_toolDir, "llvm")
-    mx.ensure_dir_exists(toolDir)
-    osStr = mx.get_os()
-    arch = mx.get_arch()
-    if osStr == 'windows':
-        mx.log_error('windows currently only supported with cygwin!')
-        return
-    elif osStr == 'linux':
-        if arch == 'amd64':
-            urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86_64-linux-ubuntu-12.04.tar.gz']
-        else:
-            urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz']
-    elif osStr == 'darwin':
-        urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86_64-apple-darwin11.tar.gz']
-    elif osStr == 'cygwin':
-        urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86-mingw32-EXPERIMENTAL.tar.gz']
-    else:
-        mx.log_error("{0} {1} not supported!".format(osStr, arch))
-    localPath = pullsuite(toolDir, urls)
-    tar(localPath, toolDir, stripLevels=1)
-    os.remove(localPath)
 
 def dragonEggPath():
     if 'DRAGONEGG' in os.environ:
@@ -445,74 +417,13 @@ def findLLVMProgramForDragonegg(program):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
     installedProgram = findInstalledLLVMProgram(program, ['3.2', '3.3'])
 
-    if installedProgram is None:
-        if 'DRAGONEGG_LLVM' in os.environ:
-            path = os.environ['DRAGONEGG_LLVM']
-        else:
-            if not os.path.exists(_clangPath):
-                pullLLVMBinaries()
-            path = os.path.join(_toolDir, 'llvm')
-        return os.path.join(path, 'bin', program)
-    else:
+    if installedProgram is not None:
         return installedProgram
+    if 'DRAGONEGG_LLVM' in os.environ:
+        path = os.environ['DRAGONEGG_LLVM']
+        return os.path.join(path, 'bin', program)
+    mx.abort("Cannot find LLVM program for dragonegg: " + program)
 
-def tar(tarFile, currentDir, subDirInsideTar=None, stripLevels=None):
-    with tarfile.open(tarFile) as tar:
-        if subDirInsideTar is None:
-            files = tar.getmembers()
-        else:
-            files = []
-            for tarinfo in tar.getmembers():
-                for curDir in subDirInsideTar:
-                    if tarinfo.name.startswith(curDir):
-                        files.append(tarinfo)
-        tar.extractall(members=files, path=currentDir)
-    if not stripLevels is None:
-        if subDirInsideTar is None:
-            implicitPathComponents = files[0].name.split(os.sep)[:stripLevels]
-            implicitPath = ""
-            for comp in implicitPathComponents:
-                implicitPath += comp + os.sep
-            implicitPath = implicitPath.rstrip('/')
-            stripDirectoryList = [implicitPath]
-        else:
-            stripDirectoryList = subDirInsideTar
-        for currentSubDir in stripDirectoryList:
-            stripDir(currentDir, currentSubDir, stripLevels)
-        toDelete = os.path.join(currentDir, files[0].name.split(os.sep)[0])
-        shutil.rmtree(toDelete)
-
-def stripDir(dirPath, dirToStrip, nrLevels):
-    cleanedDirPath = dirToStrip.rstrip('/')
-    pathComponents = cleanedDirPath.split(os.sep)[nrLevels:]
-    strippedPath = ""
-    for component in pathComponents:
-        strippedPath += component + os.sep
-    srcPath = os.path.join(dirPath, dirToStrip)
-    destPath = os.path.join(dirPath, strippedPath)
-    copytree(srcPath, destPath)
-
-def copytree(src, dst, symlinks=False, ignore=None):
-    if not os.path.exists(dst):
-        os.makedirs(dst)
-    for item in os.listdir(src):
-        s = os.path.join(src, item)
-        d = os.path.join(dst, item)
-        if os.path.isdir(s):
-            copytree(s, d, symlinks, ignore)
-        else:
-            if not os.path.exists(d) or os.stat(s).st_mtime - os.stat(d).st_mtime > 1:
-                shutil.copy2(s, d)
-
-def pullTestSuite(library, destDir, **kwargs):
-    """downloads and unpacks a test suite"""
-    mx.ensure_dir_exists(destDir)
-    localPath = mx.library(library).get_path(True)
-    tar(localPath, destDir, **kwargs)
-    os.remove(localPath)
-    sha1Path = localPath + '.sha1'
-    if os.path.exists(sha1Path):
-        os.remove(sha1Path)
 
 def truffle_extract_VM_args(args, useDoubleDash=False):
     vmArgs, remainder = [], []
