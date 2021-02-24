@@ -1497,6 +1497,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
                 'java.base/sun.security.util',
                 'java.base/sun.util.calendar',
                 'java.base/sun.security.provider',
+                'java.base/sun.security.jca',
                 'java.base/sun.reflect.generics.repository',
                 'java.base/sun.reflect.annotation',
                 'java.base/sun.invoke.util',

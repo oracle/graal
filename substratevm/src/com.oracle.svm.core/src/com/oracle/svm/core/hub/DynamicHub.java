@@ -77,6 +77,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
@@ -1014,6 +1015,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Method[] declaredPublicMethods;
         final Class<?>[] declaredClasses;
         final Class<?>[] publicClasses;
+        final Object[] recordComponents;
 
         /**
          * The result of {@link Class#getEnclosingMethod()} or
@@ -1023,7 +1025,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
         public ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
                         Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Class<?>[] declaredClasses,
-                        Class<?>[] publicClasses, Executable enclosingMethodOrConstructor) {
+                        Class<?>[] publicClasses, Executable enclosingMethodOrConstructor,
+                        Object[] recordComponents) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
             this.publicUnhiddenFields = publicUnhiddenFields;
@@ -1037,6 +1040,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             this.declaredClasses = declaredClasses;
             this.publicClasses = publicClasses;
             this.enclosingMethodOrConstructor = enclosingMethodOrConstructor;
+            this.recordComponents = recordComponents;
         }
     }
 
@@ -1045,7 +1049,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     private static final ReflectionData NO_REFLECTION_DATA = new ReflectionData(new Field[0], new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0],
-                    null, new Field[0], new Method[0], new Class<?>[0], new Class<?>[0], null);
+                    null, new Field[0], new Method[0], new Class<?>[0], new Class<?>[0], null, null);
 
     private ReflectionData rd = NO_REFLECTION_DATA;
 
@@ -1161,6 +1165,22 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     private Method[] privateGetPublicMethods() {
         return rd.publicMethods;
+    }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    private native Target_java_lang_reflect_RecordComponent[] getRecordComponents();
+
+    @Substitute
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    private Target_java_lang_reflect_RecordComponent[] getRecordComponents0() {
+        Object[] result = rd.recordComponents;
+        if (result == null) {
+            /* See ReflectionDataBuilder.buildRecordComponents() for details. */
+            throw VMError.unsupportedFeature("Record components not available for record class " + getTypeName() + ". " +
+                            "All record component accessor methods of this record class must be included in the reflection configuration at image build time, then this method can be called.");
+        }
+        return (Target_java_lang_reflect_RecordComponent[]) result;
     }
 
     @Substitute
@@ -1577,4 +1597,8 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool")
 final class Target_jdk_internal_reflect_ConstantPool {
+}
+
+@TargetClass(className = "java.lang.reflect.RecordComponent", onlyWith = JDK16OrLater.class)
+final class Target_java_lang_reflect_RecordComponent {
 }

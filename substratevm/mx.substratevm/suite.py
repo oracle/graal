@@ -248,6 +248,24 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.core.jdk16": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.loader",
+                    "jdk.internal.misc",
+                    "sun.invoke.util",
+                ],
+            },
+            "javaCompliance": "16+",
+            "overlayTarget" : "com.oracle.svm.core",
+            "multiReleaseJarVersion": "16",
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
             "sourceDirs": [

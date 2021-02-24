@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -113,6 +114,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                         EMPTY_METHODS,
                         EMPTY_CLASSES,
                         EMPTY_CLASSES,
+                        null,
                         null);
     }
 
@@ -301,9 +303,37 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                             filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access),
                             catchLinkingErrors(clazz, reflectionClasses, access, Class::getDeclaredClasses),
                             catchLinkingErrors(clazz, reflectionClasses, access, Class::getClasses),
-                            enclosingMethodOrConstructor(clazz));
+                            enclosingMethodOrConstructor(clazz),
+                            buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
+    }
+
+    private Object[] buildRecordComponents(Class<?> clazz, DuringAnalysisAccessImpl access) {
+        RecordSupport support = RecordSupport.singleton();
+        if (!support.isRecord(clazz)) {
+            return null;
+        }
+
+        /*
+         * RecordComponent objects expose the "accessor method" as a java.lang.reflect.Method
+         * object. We leverage this tight coupling of RecordComponent and its accessor method to
+         * avoid a separate reflection configuration for record components: When all accessor
+         * methods of the record class are registered for reflection, then the record components are
+         * available. We do not want to expose a partial list of record components, that would be
+         * confusing and error-prone. So as soon as a single accessor method is missing from the
+         * reflection configuration, we provide no record components. Accessing the record
+         * components in that case will throw an exception at image run time, see
+         * DynamicHub.getRecordComponents0().
+         */
+        Method[] allMethods = support.getRecordComponentAccessorMethods(clazz);
+        Method[] filteredMethods = filterMethods(allMethods, reflectionMethods, access);
+
+        if (allMethods.length == filteredMethods.length) {
+            return support.getRecordComponents(clazz);
+        } else {
+            return null;
+        }
     }
 
     /**
