@@ -234,9 +234,10 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     /**
      * Insert deopt entries after all state splits.
+     *
+     * @return the new DeoptEntryNode (if added) or the original instruction.
      */
-    @Override
-    protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, FrameStateBuilder stateBuilder) {
+    private FixedWithNextNode appendDeoptEntry(FixedWithNextNode instr, FrameStateBuilder stateBuilder) {
         if (getMethod().compilationInfo.isDeoptTarget() && !parsingIntrinsic()) {
             FrameState stateAfter = null;
             if (instr instanceof StateSplit && !(instr instanceof DeoptEntryNode)) {
@@ -335,7 +336,45 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
                 }
             }
         }
-        return super.finishInstruction(instr, stateBuilder);
+        return instr;
+    }
+
+    @Override
+    public void processInstruction(FixedWithNextNode instr) {
+        /*
+         * Call processInstruction with frameState to add a deoptimization entry point, if needed.
+         */
+        processInstruction(instr, frameState);
+    }
+
+    @Override
+    protected FixedWithNextNode processInstruction(FixedWithNextNode instr, FrameStateBuilder state) {
+        /*
+         * If the instruction has a successor, remove and re-append it after all modifications have
+         * been performed.
+         */
+        FixedNode originalNext = instr.next();
+        if (originalNext != null) {
+            instr.setNext(null);
+        }
+
+        /*
+         * Call appendDeoptEntry to guarantee all needed deoptimization entrypoints have been added.
+         */
+        FixedWithNextNode endInstr = appendDeoptEntry(instr, state);
+        if (originalNext != null) {
+            endInstr.setNext(originalNext);
+        }
+
+        if (instr.equals(lastInstr) && !instr.equals(endInstr)) {
+            assert originalNext == null;
+            /*
+             * Need to update last instruction if it changed.
+             */
+            lastInstr = endInstr;
+        }
+
+        return super.processInstruction(endInstr, state);
     }
 
     private DeoptProxyAnchorNode createDeoptEntry(FrameStateBuilder stateBuilder, FrameState stateAfter, boolean anchorOnly) {
