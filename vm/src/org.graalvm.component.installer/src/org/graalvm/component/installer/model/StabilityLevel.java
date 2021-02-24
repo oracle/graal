@@ -33,10 +33,17 @@ import org.graalvm.component.installer.Feedback;
  * @author sdedic
  */
 public enum StabilityLevel {
-    Undefined,
-    Supported,
-    EarlyAdopter,
-    Experimental;
+    Undefined("undefined"),
+    Supported("supported"),
+    EarlyAdopter("earlyadopter"),
+    Experimental("experimental"),
+    Experimental_Earlyadopter("experimental-earlyadopter");
+
+    private final String val;
+
+    StabilityLevel(String aVal) {
+        val = aVal;
+    }
 
     public String displayName(Feedback fb) {
         return fb.withBundle(StabilityLevel.class).l10n("ComponentStabilityLevel_" + name().toLowerCase());
@@ -47,7 +54,7 @@ public enum StabilityLevel {
         if (this == Undefined) {
             return "";
         } else {
-            return name();
+            return val;
         }
     }
 
@@ -55,11 +62,12 @@ public enum StabilityLevel {
         if (mcs.isEmpty()) {
             return Undefined;
         }
+        String s = mcs.replaceAll("[^\\p{Alnum}]", "_").toLowerCase(Locale.ENGLISH);
         for (StabilityLevel l : StabilityLevel.values()) {
-            if (l.name().toLowerCase(Locale.ENGLISH).equalsIgnoreCase(mcs)) {
+            if (l.name().toLowerCase(Locale.ENGLISH).equalsIgnoreCase(s)) {
                 return l;
             }
         }
-        throw new IllegalArgumentException(mcs);
+        return Undefined;
     }
 }

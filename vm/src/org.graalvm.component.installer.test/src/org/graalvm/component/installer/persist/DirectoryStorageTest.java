@@ -56,6 +56,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.StabilityLevel;
 import org.junit.After;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertNotNull;
@@ -661,5 +662,52 @@ public class DirectoryStorageTest extends CommandTestBase {
         assertEquals(1, infos.size());
         ComponentInfo ci = infos.iterator().next();
         assertFalse(ci.isNativeComponent());
+    }
+
+    /**
+     * Checks that the 'stability level' is saved to the registry.
+     */
+    @Test
+    public void testStabilityLevelSaved() throws Exception {
+        ComponentInfo info = new ComponentInfo("x", "y", "2.0");
+        info.setStability(StabilityLevel.Experimental_Earlyadopter);
+        storage.saveComponent(info);
+
+        Properties props = new Properties();
+        try (InputStream is = Files.newInputStream(registryPath.resolve("x.component"))) {
+            props.load(is);
+        }
+        // check the -Level was saved, and corresponds to the enum's text
+        String p = props.getProperty(BundleConstants.BUNDLE_STABILITY2);
+        assertEquals(StabilityLevel.Experimental_Earlyadopter.toString(), p);
+        assertNull(props.getProperty(BundleConstants.BUNDLE_STABILITY));
+
+        // recreate the storage:
+        storage = new DirectoryStorage(this, registryPath, graalVMPath);
+        // the default assumed by most test data.
+        storage.setJavaVersion("8");
+
+        Set<ComponentInfo> loaded = storage.loadComponentMetadata("x");
+        assertEquals(1, loaded.size());
+        ComponentInfo compare = loaded.iterator().next();
+
+        assertEquals(info.getStability(), compare.getStability());
+    }
+
+    /**
+     * Checks that stability level is loaded from the old property as well. Not strictly necessary,
+     * but may improve compatibility for older bundled stuff.
+     */
+    @Test
+    public void testStabilityLevelLoadsOld() throws Exception {
+        Files.write(registryPath.resolve("x.component"), Arrays.asList(
+                        "Bundle-Name=y",
+                        "Bundle-Symbolic-Name=x",
+                        "Bundle-Version=2.0",
+                        "x-GraalVM-Stability=experimental-earlyadopter"));
+        Set<ComponentInfo> loaded = storage.loadComponentMetadata("x");
+        assertEquals(1, loaded.size());
+        ComponentInfo compare = loaded.iterator().next();
+        assertEquals(StabilityLevel.Experimental_Earlyadopter, compare.getStability());
     }
 }

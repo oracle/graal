@@ -309,7 +309,7 @@ public class DirectoryStorage implements ManagementStorage {
     }
 
     public static ComponentInfo propertiesToMeta(Properties loaded, ComponentInfo ci, Feedback fb) {
-        String stability = loaded.getProperty(BundleConstants.BUNDLE_STABILITY);
+        String stability = loaded.getProperty(BundleConstants.BUNDLE_STABILITY2, loaded.getProperty(BundleConstants.BUNDLE_STABILITY));
         if (stability != null) {
             ci.setStability(StabilityLevel.valueOfMixedCase(stability));
         }
@@ -572,7 +572,7 @@ public class DirectoryStorage implements ManagementStorage {
             p.setProperty(BundleConstants.BUNDLE_LICENSE_TYPE, info.getLicenseType());
         }
         if (info.getStability() != StabilityLevel.Undefined) {
-            p.setProperty(BundleConstants.BUNDLE_STABILITY, info.getStability().toString());
+            p.setProperty(BundleConstants.BUNDLE_STABILITY2, info.getStability().toString());
         }
         for (String k : info.getRequiredGraalValues().keySet()) {
             String v = info.getRequiredGraalValues().get(k);
