@@ -24,22 +24,24 @@
  */
 package com.oracle.svm.methodhandles;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 // Checkstyle: stop
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 // Checkstyle: resume
 
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -54,6 +56,10 @@ import com.oracle.svm.core.jdk.JDK15OrEarlier;
 import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
+
+// Checkstyle: stop
+import sun.invoke.util.VerifyAccess;
+// Checkstyle: resume
 
 /**
  * Native Image implementation of the parts of the JDK method handles engine implemented in C++. We
@@ -211,12 +217,13 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @TargetElement(onlyWith = JDK16OrLater.class)
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException {
-        if (lookupMode != Target_java_lang_invoke_MethodHandles_Lookup.ORIGINAL) {
-            // GR-29019: check the member can be accessed based on lookupMode.
-            throw VMError.unsupportedFeature(
-                            "JDK16OrLater: MethodHandleNatives.resolve(MemberName _, java.lang.Class<?> _, int lookupMode, boolean _) where lookupMode != Lookup.Original");
+        Class<?> declaringClass = self.getDeclaringClass();
+        Target_java_lang_invoke_MemberName resolved = Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
+        if (resolved != null && !Util_java_lang_invoke_MethodHandleNatives.verifyAccess(declaringClass, resolved.reflectAccess.getDeclaringClass(), resolved.reflectAccess.getModifiers(), caller,
+                        lookupMode)) {
+            throw new IllegalAccessError(resolved + " is not accessible from " + caller);
         }
-        return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
+        return resolved;
     }
 }
 
@@ -320,6 +327,24 @@ final class Util_java_lang_invoke_MethodHandleNatives {
             } else {
                 throw new NoSuchFieldError(e.getMessage());
             }
+        }
+    }
+
+    private static Method verifyAccess;
+
+    static boolean verifyAccess(Class<?> refc, Class<?> defc, int mods, Class<?> lookupClass, int allowedModes) {
+        assert JavaVersionUtil.JAVA_SPEC >= 16;
+        if (verifyAccess == null) {
+            try {
+                verifyAccess = VerifyAccess.class.getDeclaredMethod("isMemberAccessible", Class.class, Class.class, int.class, Class.class, Class.class, int.class);
+            } catch (NoSuchMethodException e) {
+                throw shouldNotReachHere();
+            }
+        }
+        try {
+            return (boolean) verifyAccess.invoke(null, refc, defc, mods, lookupClass, null, allowedModes);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new GraalError(e);
         }
     }
 }
