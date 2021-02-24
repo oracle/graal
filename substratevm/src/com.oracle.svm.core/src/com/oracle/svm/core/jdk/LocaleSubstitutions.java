@@ -86,7 +86,7 @@ final class DefaultLocaleComputer implements RecomputeFieldValue.CustomFieldValu
     }
 }
 
-@TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class)
+@TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = SingleLocaleOnly.class)
 final class Target_sun_util_locale_provider_LocaleProviderAdapter {
 
     @Substitute
@@ -120,6 +120,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
         this.cachedProvider = cachedProvider;
     }
 
+    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static LocaleServiceProviderPool getPool(Class<? extends LocaleServiceProvider> providerClass) {
         LocaleServiceProviderPool result = (LocaleServiceProviderPool) ImageSingletons.lookup(LocalizationSupport.class).providerPools.get(providerClass);
