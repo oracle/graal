@@ -58,7 +58,8 @@ public final class ShootoutsSuite extends BaseSulongOnlyHarness {
     public static Collection<Object[]> data() {
 
         final Map<Path, RunConfiguration> runs = new HashMap<>();
-        String dir = Paths.get(TestOptions.getTestDistribution("SULONG_SHOOTOUT"), SHOOTOUTS_SUITE_SUBDIR).toString();
+        Path dirPath = Paths.get(TestOptions.getTestDistribution("SULONG_SHOOTOUT"), SHOOTOUTS_SUITE_SUBDIR);
+        String dir = dirPath.toString();
         runs.put(new File(dir + "/binarytrees/binarytrees.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"12"}));
         runs.put(new File(dir + "/binarytrees/binarytrees.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"12"}));
         runs.put(new File(dir + "/fannkuchredux/fannkuchredux.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"9"}));
@@ -78,7 +79,7 @@ public final class ShootoutsSuite extends BaseSulongOnlyHarness {
         runs.put(new File(dir + "/pidigits/pidigits.cint-4.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"10000"}));
         runs.put(new File(dir + "/pidigits/pidigits.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"10000"}));
 
-        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.toString().substring(dir.length())}).collect(Collectors.toList());
+        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), dirPath.relativize(k).getParent().toString()}).collect(Collectors.toList());
 
     }
 
