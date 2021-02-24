@@ -72,6 +72,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
@@ -106,9 +107,14 @@ public abstract class LocalizationFeature implements Feature {
 
         @Option(help = "Make all hosted locales available at run time.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
+
+        @Option(help = "When enabled, localization feature details are printed.", type = OptionType.Debug) //
+        public static final HostedOptionKey<Boolean> TraceLocalizationFeature = new HostedOptionKey<>(true);
     }
 
     protected final boolean singleLocaleMode = isSingleLocale();
+
+    protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
     /**
      * Support for multiple locales is enabled iff all locales should be included or more than one
@@ -200,6 +206,10 @@ public abstract class LocalizationFeature implements Feature {
         if (singleLocaleMode) {
             addProviders();
         }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         addResourceBundles();
     }
 
@@ -305,15 +315,17 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     protected void addResourceBundles() {
-        prepareBundle(localeData(java.util.spi.CalendarDataProvider.class).getCalendarData(defaultLocale));
-        prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class).getCurrencyNames(defaultLocale));
-        prepareBundle(localeData(java.util.spi.LocaleNameProvider.class).getLocaleNames(defaultLocale));
-        prepareBundle(localeData(java.util.spi.TimeZoneNameProvider.class).getTimeZoneNames(defaultLocale));
-        prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorInfo(defaultLocale));
-        prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class).getCollationData(defaultLocale));
-        prepareBundle(localeData(java.text.spi.DateFormatProvider.class).getDateFormatData(defaultLocale));
-        prepareBundle(localeData(java.text.spi.NumberFormatProvider.class).getNumberFormatData(defaultLocale));
-        /* Note that JDK 11 support overrides this method to register more bundles. */
+        for (Locale locale : locales) {
+            prepareBundle(localeData(java.util.spi.CalendarDataProvider.class, locale).getCalendarData(locale));
+            prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class, locale).getCurrencyNames(locale));
+            prepareBundle(localeData(java.util.spi.LocaleNameProvider.class, locale).getLocaleNames(locale));
+            prepareBundle(localeData(java.util.spi.TimeZoneNameProvider.class, locale).getTimeZoneNames(locale));
+            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorInfo(locale));
+            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getCollationData(locale));
+            prepareBundle(localeData(java.text.spi.DateFormatProvider.class, locale).getDateFormatData(locale));
+            prepareBundle(localeData(java.text.spi.NumberFormatProvider.class, locale).getNumberFormatData(locale));
+            /* Note that JDK 11 support overrides this method to register more bundles. */
+        }
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
                         "sun.util.logging.resources.logging",
@@ -328,7 +340,7 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
-    protected LocaleData localeData(Class<? extends LocaleServiceProvider> providerClass) {
+    protected LocaleData localeData(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
         return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, defaultLocale)).getLocaleData();
     }
 
@@ -341,24 +353,27 @@ public abstract class LocalizationFeature implements Feature {
             return;
         }
 
-        ResourceBundle resourceBundle;
-        try {
-            resourceBundle = ModuleSupport.getResourceBundle(bundleName, defaultLocale, Thread.currentThread().getContextClassLoader());
-        } catch (MissingResourceException mre) {
-            if (!bundleName.contains("/")) {
-                throw mre;
+        for (Locale locale : locales) {
+            ResourceBundle resourceBundle;
+            try {
+                resourceBundle = ModuleSupport.getResourceBundle(bundleName, locale, Thread.currentThread().getContextClassLoader());
+            } catch (MissingResourceException mre) {
+                if (!bundleName.contains("/")) {
+                    throw mre;
+                }
+                // Due to a possible bug in the JDK, bundle names not following proper naming
+                // convention
+                // need to be
+                // converted to fully qualified class names before loading can succeed.
+                // see GR-24211
+                String dotBundleName = bundleName.replace("/", ".");
+                resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, locale, Thread.currentThread().getContextClassLoader());
             }
-            // Due to a possible bug in the JDK, bundle names not following proper naming convention
-            // need to be
-            // converted to fully qualified class names before loading can succeed.
-            // see GR-24211
-            String dotBundleName = bundleName.replace("/", ".");
-            resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, defaultLocale, Thread.currentThread().getContextClassLoader());
+            UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " +
+                            "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
+                            "verify the bundle path is accessible in the classpath.", bundleName);
+            prepareBundle(bundleName, resourceBundle);
         }
-        UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " +
-                        "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
-                        "verify the bundle path is accessible in the classpath.", bundleName);
-        prepareBundle(bundleName, resourceBundle);
     }
 
     private void prepareBundle(String bundleName, ResourceBundle bundle) {
@@ -367,11 +382,20 @@ public abstract class LocalizationFeature implements Feature {
          * down to the root.
          */
         for (ResourceBundle cur = bundle; cur != null; cur = getParent(cur)) {
-            RuntimeClassInitialization.initializeAtBuildTime(cur.getClass());
-            cur.keySet();
+            if (singleLocaleMode) {
+                RuntimeClassInitialization.initializeAtBuildTime(cur.getClass());
+                cur.keySet();
+            } else {
+                RuntimeReflection.register(cur.getClass());
+                RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
+            }
         }
 
-        support.resourceBundles.put(bundleName, bundle);
+        trace("Adding bundle " + bundleName);
+
+        if (singleLocaleMode) {
+            support.resourceBundles.put(bundleName, bundle);
+        }
     }
 
     /*
@@ -386,6 +410,14 @@ public abstract class LocalizationFeature implements Feature {
             return (ResourceBundle) PARENT_FIELD.get(bundle);
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    protected void trace(String msg) {
+        if (trace) {
+            // Checkstyle: stop
+            System.out.println(msg);
+            // Checkstyle: resume
         }
     }
 }

@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk11;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.spi.LocaleServiceProvider;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -54,7 +55,9 @@ final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
     protected void addResourceBundles() {
         super.addResourceBundles();
 
-        prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorResources(defaultLocale));
+        for (Locale locale : locales) {
+            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorResources(locale));
+        }
     }
 
     @Override

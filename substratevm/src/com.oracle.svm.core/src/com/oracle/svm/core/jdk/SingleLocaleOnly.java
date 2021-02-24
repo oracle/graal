@@ -32,3 +32,10 @@ public class SingleLocaleOnly implements BooleanSupplier {
         return LocalizationFeature.isSingleLocale();
     }
 }
+
+class MultiLocale implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return LocalizationFeature.isMultiLocale();
+    }
+}

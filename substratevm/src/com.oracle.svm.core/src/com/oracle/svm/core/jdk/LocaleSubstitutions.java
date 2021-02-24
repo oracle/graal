@@ -109,8 +109,23 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
     }
 }
 
+class Wrapper {
+    @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = MultiLocale.class)
+    static final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
+        @Substitute
+        private static Locale[] getAllAvailableLocales() {
+            return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
+        }
+
+        @Substitute
+        private Locale[] getAvailableLocales() {
+            return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
+        }
+    }
+}
+
 @Substitute
-@TargetClass(sun.util.locale.provider.LocaleServiceProviderPool.class)
+@TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = SingleLocaleOnly.class)
 @SuppressWarnings({"static-method"})
 final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 
@@ -120,7 +135,6 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
         this.cachedProvider = cachedProvider;
     }
 
-    @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
     private static LocaleServiceProviderPool getPool(Class<? extends LocaleServiceProvider> providerClass) {
         LocaleServiceProviderPool result = (LocaleServiceProviderPool) ImageSingletons.lookup(LocalizationSupport.class).providerPools.get(providerClass);
@@ -163,10 +177,6 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     @TargetElement(onlyWith = JDK11To14.class) //
     static native void config(Class<? extends Object> caller, String message);
 
-    /**
-     * Since we only put the pre-initialized resource bundles for one locale into the image, it does
-     * not make sense to return more than a single Locale here.
-     */
     @Substitute
     private static Locale[] getAllAvailableLocales() {
         return ImageSingletons.lookup(LocalizationSupport.class).allLocales;

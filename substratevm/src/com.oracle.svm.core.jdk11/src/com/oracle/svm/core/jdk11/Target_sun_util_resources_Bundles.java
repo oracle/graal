@@ -26,11 +26,13 @@ package com.oracle.svm.core.jdk11;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -46,8 +48,8 @@ import sun.util.resources.Bundles.Strategy;
 @SuppressWarnings({"unused"})
 final class Target_sun_util_resources_Bundles {
 
-    @Delete //
-    private static ConcurrentMap<?, ?> cacheList;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
 
     @TargetElement(onlyWith = SingleLocaleOnly.class)
     @Substitute
