@@ -340,20 +340,6 @@ def dragonEggPath():
             return path
     return None
 
-def dragonEgg(args=None):
-    """executes GCC with dragonegg"""
-    executeCommand = [getGCC(), "-fplugin=" + dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir']
-    return mx.run(executeCommand + args)
-
-def dragonEggGFortran(args=None):
-    """executes GCC Fortran with dragonegg"""
-    executeCommand = [getGFortran(), "-fplugin=" + dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir']
-    return mx.run(executeCommand + args)
-
-def dragonEggGPP(args=None):
-    """executes G++ with dragonegg"""
-    executeCommand = [getGPP(), "-fplugin=" + dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir']
-    return mx.run(executeCommand + args)
 
 def which(program, searchPath=None):
     def is_exe(fpath):
@@ -397,13 +383,6 @@ def getGFortran(optional=False):
     if specifiedGFortran is not None:
         return specifiedGFortran
     return findGCCProgram('gfortran', optional=optional)
-
-def getGPP(optional=False):
-    """tries to locate a g++ version suitable to execute Dragonegg"""
-    specifiedCPP = getCommand('SULONG_GPP')
-    if specifiedCPP is not None:
-        return specifiedCPP
-    return findGCCProgram('g++', optional=optional)
 
 def findLLVMProgramForDragonegg(program):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
