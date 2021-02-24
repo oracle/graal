@@ -67,19 +67,6 @@ public final class TestOptions {
     }
 
     /**
-     * Gets the file extension filter defined by the projects of of an mx test distribution.
-     *
-     * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
-     */
-    public static String[] getFileExtensions(String distribution) {
-        String property = System.getProperty("sulongtest.fileExts." + distribution);
-        if (property == null) {
-            return new String[0];
-        }
-        return property.split(",");
-    }
-
-    /**
      * Gets the path of a test source.
      *
      * The properties are manually set in {@code suite.py}.
