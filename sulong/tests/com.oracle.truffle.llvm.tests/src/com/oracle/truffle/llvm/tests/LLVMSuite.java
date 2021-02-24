@@ -47,7 +47,7 @@ public final class LLVMSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        Collection<Object[]> testlist = ExternalTestCaseCollector.collectTestCases(LLVMSuite.class, TEST_DISTRIBUTION);
+        Collection<Object[]> testlist = TestCaseCollector.collectTestCases(LLVMSuite.class, Paths.get(TestOptions.getTestDistribution(TEST_DISTRIBUTION)), CommonTestUtils.isSulong);
         return testlist;
     }
 
