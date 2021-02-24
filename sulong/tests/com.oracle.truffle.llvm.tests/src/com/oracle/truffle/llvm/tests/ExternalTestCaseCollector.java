@@ -60,7 +60,12 @@ public abstract class ExternalTestCaseCollector {
             return collectRegularRun(testSuiteClass, configPath, suiteDir, fileExtensionFilter);
         } else {
             System.err.println("Running in discovery mode...");
-            return collectDiscoverRun(configPath, suiteDir, testDiscoveryPath, fileExtensionFilter);
+            Collection<Object[]> objects = collectDiscoverRun(configPath, suiteDir, testDiscoveryPath, fileExtensionFilter);
+            for (Object[] o : objects) {
+               System.err.println(o[TestCaseCollector.TEST_NAME_IDX]);
+            }
+            System.err.println("executing...");
+            return objects;
         }
     }
 
