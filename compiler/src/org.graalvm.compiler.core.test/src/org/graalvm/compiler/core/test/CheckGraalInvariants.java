@@ -145,7 +145,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             }
             if (classpathEntry.endsWith(".jar")) {
                 String name = new File(classpathEntry).getName();
-                return name.contains("jvmci") || name.contains("graal") || name.contains("jdk.internal.vm.compiler");
+                return name.contains("graal") || name.contains("jdk.internal.vm.compiler");
             }
             return false;
         }
@@ -345,7 +345,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.Op.class));
 
         verifiers.add(new VerifyDebugUsage());
-        verifiers.add(new VerifyCallerSensitiveMethods());
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
         verifiers.add(new VerifyBailoutUsage());
