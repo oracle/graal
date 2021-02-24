@@ -1982,7 +1982,7 @@ def _gen_gu_manifest(components, formatter, bundled=False):
                                               and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
 
     if main_component.stability:
-        manifest["x-GraalVM-Stability"] = main_component.stability
+        manifest["x-GraalVM-Stability-Level"] = main_component.stability
 
     dependencies = set()
     for comp in components:
