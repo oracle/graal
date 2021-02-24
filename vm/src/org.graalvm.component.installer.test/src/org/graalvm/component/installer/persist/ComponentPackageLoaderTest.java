@@ -331,8 +331,31 @@ public class ComponentPackageLoaderTest extends TestBase {
         assertEquals(DistributionType.OPTIONAL, info.getDistributionType());
     }
 
+    /**
+     * Checks the old attribute is still read/honoured.
+     * 
+     * @throws Exception
+     */
     @Test
     public void testStabilityOld() throws Exception {
+        info = info();
+        assertEquals(StabilityLevel.Experimental, info.getStability());
+    }
+
+    /**
+     * Checks the new attribute is read.
+     */
+    @Test
+    public void testStabilityNew() throws Exception {
+        info = info();
+        assertEquals(StabilityLevel.Experimental_Earlyadopter, info.getStability());
+    }
+
+    /**
+     * Checks the if new AND old attributes are present, the new one gets precedence.
+     */
+    @Test
+    public void testStabilityPrecedence() throws Exception {
         info = info();
         assertEquals(StabilityLevel.Experimental, info.getStability());
     }
