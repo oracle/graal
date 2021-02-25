@@ -33,12 +33,17 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jvmti.structs.Structs;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.perf.DebugCloseable;
+import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class JVMTI {
+    private static final DebugTimer STRUCTS_TIMER = DebugTimer.create("native struct creation");
+
     private final EspressoContext context;
     private @Pointer TruffleObject initializeJvmtiHandlerContext;
     private @Pointer TruffleObject lookupMemberOffset;
@@ -87,8 +92,8 @@ public final class JVMTI {
             @Override
             public Object call(Object... args) {
                 TruffleObject memberInfoPtr = (TruffleObject) args[0];
-                box[0] = new Structs(memberInfoPtr, lookupMemberOffset);
-                return null;
+                box[0] = new Structs(context.getJNI(), memberInfoPtr, lookupMemberOffset);
+                return RawPointer.nullInstance();
             }
         });
         /*
@@ -139,7 +144,9 @@ public final class JVMTI {
             synchronized (this) {
                 // All fields in structs are final. Can double-check lock without volatile.
                 if (structs == null) {
-                    structs = initializeStructs();
+                    try (DebugCloseable timer = STRUCTS_TIMER.scope(context.getTimers())) {
+                        structs = initializeStructs();
+                    }
                 }
             }
         }

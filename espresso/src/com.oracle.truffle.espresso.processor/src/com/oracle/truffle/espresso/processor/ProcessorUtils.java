@@ -78,4 +78,22 @@ public class ProcessorUtils {
         }
         return str.toString();
     }
+
+    public static String capitalize(String str) {
+        if (str.length() > 0) {
+            char[] c = str.toCharArray();
+            c[0] = Character.toUpperCase(c[0]);
+            return new String(c);
+        }
+        return "";
+    }
+
+    public static String decapitalize(String str) {
+        if (str.length() > 0) {
+            char[] c = str.toCharArray();
+            c[0] = Character.toLowerCase(c[0]);
+            return new String(c);
+        }
+        return "";
+    }
 }

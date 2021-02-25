@@ -23,12 +23,24 @@
 
 package com.oracle.truffle.espresso.processor;
 
+import static com.oracle.truffle.espresso.processor.EspressoProcessor.COPYRIGHT;
+import static com.oracle.truffle.espresso.processor.EspressoProcessor.IMPORT_INTEROP_LIBRARY;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.IMPORT_STATIC_OBJECT;
+import static com.oracle.truffle.espresso.processor.EspressoProcessor.IMPORT_TRUFFLE_OBJECT;
+import static com.oracle.truffle.espresso.processor.EspressoProcessor.PUBLIC_FINAL;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.PUBLIC_FINAL_CLASS;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.SUPPRESS_UNUSED;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.TAB_1;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.TAB_2;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.TAB_3;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.argument;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.assignment;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.call;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.capitalize;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.decapitalize;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.fieldDeclaration;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.methodDeclaration;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.stringify;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -53,6 +65,9 @@ import javax.tools.JavaFileObject;
 
 public class StructsProcessor extends AbstractProcessor {
 
+    private static final String[] EMPTY_ARGS = new String[0];
+    private static final String WRAPPER = "Wrapper";
+
     private static final String STRUCTS_PACKAGE = "com.oracle.truffle.espresso.jvmti.structs";
 
     // Annotations
@@ -66,28 +81,39 @@ public class StructsProcessor extends AbstractProcessor {
 
     // Classes
     private static final String TRUFFLE_OBJECT = "TruffleObject";
+    private static final String INTEROP_LIBRARY = "InteropLibrary";
     private static final String JNI_ENV_CLASS = "JniEnv";
     private static final String MEMBER_OFFSET_GETTER_CLASS = "MemberOffsetGetter";
+    private static final String NATIVE_MEMBER_OFFSET_GETTER_CLASS = "NativeMemberOffsetGetter";
+    private static final String JAVA_MEMBER_OFFSET_GETTER_CLASS = "JavaMemberOffsetGetter";
     private static final String STRUCT_WRAPPER_CLASS = "StructWrapper";
+    private static final String STRUCTS_CLASS = "Structs";
 
     // Methods
     private static final String GET_INFO = "getInfo";
     private static final String GET_OFFSET = "getOffset";
     private static final String GET = "get";
     private static final String PUT = "put";
+    private static final String GET_UNCACHED = "getUncached";
 
     // Members
-    private static final String MEMBER_OFFSET_GETTER_ARG = "offset";
     private static final String STRUCT_SIZE = "structSize";
 
     // Arguments
     private static final String VALUE = "valueToPut";
     private static final String JNI_ENV_ARG = "jni";
     private static final String PTR = "pointer";
+    private static final String MEMBER_OFFSET_GETTER_ARG = "offsetGetter";
+    private static final String MEMBER_INFO_PTR = "memberInfoPtr";
+    private static final String LOOKUP_MEMBER_OFFSET = "lookupMemberOffset";
+    private static final String LIBRARY = "library";
 
     // Modifiers
     private static final String PUBLIC = "public";
     private static final String FINAL = "final";
+
+    // Known structs
+    private static final String MEMBER_INFO = "MemberInfo";
 
     // @GenerateStructs
     TypeElement generateStructs;
@@ -156,6 +182,8 @@ public class StructsProcessor extends AbstractProcessor {
         memberNames = findAttribute("memberNames", knownStruct);
         types = findAttribute("types", knownStruct);
 
+        List<String> structs = new ArrayList<>();
+
         // Look at the @GenerateStructs annotation
         for (Element e : roundEnv.getElementsAnnotatedWith(generateStructs)) {
             assert e.getKind() == ElementKind.CLASS;
@@ -177,13 +205,19 @@ public class StructsProcessor extends AbstractProcessor {
                 List<?> memberNamesList = (List<?>) getAttribute(knownStr, memberNames).getValue();
                 // native to java types.
                 List<?> typesList = (List<?>) getAttribute(knownStr, types).getValue();
-                processStruct(strName, memberNamesList, typesList);
+                String className = processStruct(strName, memberNamesList, typesList);
+                structs.add(className);
             }
         }
+        String source = generateStructCollector(structs);
+        commit(null, STRUCTS_CLASS, source);
+
+        done = true;
+
         return false;
     }
 
-    private void processStruct(String strName, List<?> memberNamesList, List<?> typesList) {
+    private String processStruct(String strName, List<?> memberNamesList, List<?> typesList) {
         assert memberNamesList.size() == typesList.size();
         List<String> members = new ArrayList<>();
         List<NativeType> nativeTypes = new ArrayList<>();
@@ -196,11 +230,28 @@ public class StructsProcessor extends AbstractProcessor {
             nativeTypes.add(NativeType.valueOf(type.getSimpleName().toString()));
         }
 
-        String className = "J" + strName.substring(2); // Replace '_j' with 'J'
+        String className = getClassName(strName); // Replace '_j' with 'J'
         // Generate code
         String source = generateStruct(strName, members, nativeTypes, length, className);
         // Commit and write to files.
         commit(null, className, source);
+        return className;
+    }
+
+    private static String getClassName(String strName) {
+        StringBuilder builder = new StringBuilder();
+        int current = 0;
+        int index;
+        while ((current < strName.length()) && ((index = strName.indexOf("_", current)) >= 0)) {
+            if (index > current) {
+                String substring = strName.substring(current, index);
+                builder.append(capitalize(substring));
+            }
+            current = index + 1;
+        }
+        String substring = strName.substring(current);
+        builder.append(capitalize(substring));
+        return builder.toString();
     }
 
     void commit(Element method, String className, String classFile) {
@@ -218,7 +269,7 @@ public class StructsProcessor extends AbstractProcessor {
     private static String generateStruct(String strName, List<String> members, List<NativeType> typesList, int length, String className) {
         StringBuilder builder = new StringBuilder();
         // Copyright + package + imports
-        generateHeader(builder);
+        generateStructHeader(builder);
 
         // Java struct declaration
         builder.append(SUPPRESS_UNUSED).append("\n");
@@ -236,17 +287,25 @@ public class StructsProcessor extends AbstractProcessor {
         // Generate the wrapper structure that will access the native struct java-like.
         // It simply wraps a byte buffer around the pointer, and uses offsets in parent class to
         // perform accesses.
-        generateWrapper(members, typesList, length, className, builder);
+        String wrapperName = generateWrapper(members, typesList, length, className, builder);
+        builder.append("\n");
 
-        builder.append(TAB_1).append("}\n");
+        generateWrapMethod(builder, wrapperName);
 
         builder.append("}\n");
 
         return builder.toString();
     }
 
-    private static void generateWrapper(List<String> members, List<NativeType> typesList, int length, String className, StringBuilder builder) {
-        String wrapperName = className + "Wrapper";
+    private static void generateWrapMethod(StringBuilder builder, String wrapperClass) {
+        builder.append(TAB_1).append(methodDeclaration(PUBLIC, wrapperClass, "wrap",
+                        new String[]{argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, PTR)})).append(" {\n");
+        builder.append(TAB_2).append("return ").append("new ").append(call(null, wrapperClass, new String[]{JNI_ENV_ARG, PTR})).append(";\n");
+        builder.append(TAB_1).append("}\n");
+    }
+
+    private static String generateWrapper(List<String> members, List<NativeType> typesList, int length, String className, StringBuilder builder) {
+        String wrapperName = className + WRAPPER;
         builder.append(TAB_1).append(PUBLIC_FINAL_CLASS).append(wrapperName).append(" extends ").append(STRUCT_WRAPPER_CLASS).append(" {\n");
         generateWrapperConstructor(builder, wrapperName);
         for (int i = 0; i < length; i++) {
@@ -254,34 +313,36 @@ public class StructsProcessor extends AbstractProcessor {
             NativeType type = typesList.get(i);
             generateGetterSetter(builder, member, type);
         }
+        builder.append(TAB_1).append("}\n");
+        return wrapperName;
     }
 
     private static void generateWrapperConstructor(StringBuilder builder, String wrapperName) {
-        builder.append(TAB_2).append(ProcessorUtils.methodDeclaration(null, null, wrapperName,
-                        new String[]{ProcessorUtils.argument(JNI_ENV_CLASS, JNI_ENV_ARG), ProcessorUtils.argument(TRUFFLE_OBJECT, PTR)})).append("{\n");
-        builder.append(TAB_3).append(ProcessorUtils.call(null, "super", new String[]{JNI_ENV_ARG, PTR, STRUCT_SIZE})).append(";\n");
+        builder.append(TAB_2).append(methodDeclaration(null, null, wrapperName,
+                        new String[]{argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, PTR)})).append("{\n");
+        builder.append(TAB_3).append(call(null, "super", new String[]{JNI_ENV_ARG, PTR, STRUCT_SIZE})).append(";\n");
         builder.append(TAB_2).append("}\n\n");
     }
 
     private static void generateGetterSetter(StringBuilder builder, String member, NativeType type) {
         String callSuffix = nativeTypeToMethodSuffix(type);
         String argType = nativeTypeToArgType(type);
-        builder.append(TAB_2).append(ProcessorUtils.methodDeclaration(PUBLIC, argType, member, new String[]{})).append(" {\n");
-        builder.append(TAB_3).append("return ").append(ProcessorUtils.call(null, GET + callSuffix, new String[]{member})).append(";\n");
+        builder.append(TAB_2).append(methodDeclaration(PUBLIC, argType, member, new String[]{})).append(" {\n");
+        builder.append(TAB_3).append("return ").append(call(null, GET + callSuffix, new String[]{member})).append(";\n");
         builder.append(TAB_2).append("}\n\n");
 
-        builder.append(TAB_2).append(ProcessorUtils.methodDeclaration(PUBLIC, "void", member, new String[]{ProcessorUtils.argument(argType, VALUE)})).append(" {\n");
-        builder.append(TAB_3).append(ProcessorUtils.call(null, PUT + callSuffix, new String[]{member, VALUE})).append(";\n");
+        builder.append(TAB_2).append(methodDeclaration(PUBLIC, "void", member, new String[]{argument(argType, VALUE)})).append(" {\n");
+        builder.append(TAB_3).append(call(null, PUT + callSuffix, new String[]{member, VALUE})).append(";\n");
         builder.append(TAB_2).append("}\n\n");
     }
 
-    private static void generateHeader(StringBuilder builder) {
-        builder.append(EspressoProcessor.COPYRIGHT);
+    private static void generateStructHeader(StringBuilder builder) {
+        builder.append(COPYRIGHT);
         builder.append("package ").append(STRUCTS_PACKAGE).append(";\n\n");
         builder.append('\n');
         builder.append(IMPORT_BYTEBUFFER);
         builder.append('\n');
-        builder.append(EspressoProcessor.IMPORT_TRUFFLE_OBJECT);
+        builder.append(IMPORT_TRUFFLE_OBJECT);
         builder.append('\n');
         builder.append(IMPORT_STATIC_OBJECT);
         builder.append(IMPORT_JNI_ENV);
@@ -290,24 +351,81 @@ public class StructsProcessor extends AbstractProcessor {
     }
 
     private static void generateFields(List<String> members, StringBuilder builder) {
-        builder.append(TAB_1).append(ProcessorUtils.fieldDeclaration(FINAL, "long", STRUCT_SIZE, null)).append("\n\n");
+        builder.append(TAB_1).append(fieldDeclaration(FINAL, "long", STRUCT_SIZE, null)).append("\n\n");
         for (String member : members) {
-            builder.append(TAB_1).append(ProcessorUtils.fieldDeclaration(FINAL, "int", member, null)).append("\n");
+            builder.append(TAB_1).append(fieldDeclaration(FINAL, "int", member, null)).append("\n");
         }
         builder.append('\n');
     }
 
     private static void generateConstructor(String strName, List<String> members, StringBuilder builder, String className) {
-        builder.append(TAB_1).append(ProcessorUtils.methodDeclaration(null, null, className, new String[]{ProcessorUtils.argument(MEMBER_OFFSET_GETTER_CLASS, MEMBER_OFFSET_GETTER_ARG)}));
+        builder.append(TAB_1).append(methodDeclaration(null, null, className, new String[]{argument(MEMBER_OFFSET_GETTER_CLASS, MEMBER_OFFSET_GETTER_ARG)}));
         builder.append(" {\n");
 
-        builder.append(TAB_2).append(ProcessorUtils.assignment(STRUCT_SIZE, ProcessorUtils.call(MEMBER_OFFSET_GETTER_ARG, GET_INFO, new String[]{ProcessorUtils.stringify(strName)}))).append("\n");
+        builder.append(TAB_2).append(assignment(STRUCT_SIZE, call(MEMBER_OFFSET_GETTER_ARG, GET_INFO, new String[]{stringify(strName)}))).append("\n");
         for (String member : members) {
-            builder.append(TAB_2).append(ProcessorUtils.assignment(member,
-                            " (int) " + ProcessorUtils.call(MEMBER_OFFSET_GETTER_ARG, GET_OFFSET, new String[]{ProcessorUtils.stringify(strName), ProcessorUtils.stringify(member)}))).append("\n");
+            builder.append(TAB_2).append(assignment(member,
+                            "(int) " + call(MEMBER_OFFSET_GETTER_ARG, GET_OFFSET, new String[]{stringify(strName), stringify(member)}))).append("\n");
         }
 
         builder.append(TAB_1).append("}\n\n");
+    }
+
+    private static String generateStructCollector(List<String> structs) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(generateCollectorHeader());
+        builder.append(PUBLIC_FINAL_CLASS).append(STRUCTS_CLASS).append(" {\n");
+        generateCollectorFieldDeclaration(structs, builder);
+        builder.append("\n");
+        generateColectorConstructor(structs, builder);
+        builder.append("}\n");
+        return builder.toString();
+    }
+
+    private static String generateCollectorHeader() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(COPYRIGHT);
+        builder.append("package ").append(STRUCTS_PACKAGE).append(";\n\n");
+        builder.append('\n');
+        builder.append(IMPORT_INTEROP_LIBRARY);
+        builder.append(IMPORT_TRUFFLE_OBJECT);
+        builder.append('\n');
+        builder.append(IMPORT_JNI_ENV);
+        builder.append('\n');
+        return builder.toString();
+    }
+
+    private static void generateCollectorFieldDeclaration(List<String> structs, StringBuilder builder) {
+        for (String struct : structs) {
+            builder.append(TAB_1).append(fieldDeclaration(PUBLIC_FINAL, struct, decapitalize(struct), null));
+            builder.append("\n");
+        }
+    }
+
+    private static void generateColectorConstructor(List<String> structs, StringBuilder builder) {
+        builder.append(TAB_1).append(methodDeclaration(PUBLIC, null, STRUCTS_CLASS,
+                        new String[]{argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, MEMBER_INFO_PTR), argument(TRUFFLE_OBJECT, LOOKUP_MEMBER_OFFSET)})).append(" {\n");
+        builder.append(TAB_2).append(INTEROP_LIBRARY).append(" ").append(assignment(LIBRARY, call(INTEROP_LIBRARY, GET_UNCACHED, EMPTY_ARGS))).append("\n");
+        builder.append(TAB_2).append(MEMBER_OFFSET_GETTER_CLASS).append(" ").append(assignment(MEMBER_OFFSET_GETTER_ARG,
+                        "new " + call(null, NATIVE_MEMBER_OFFSET_GETTER_CLASS, new String[]{LIBRARY, MEMBER_INFO_PTR, LOOKUP_MEMBER_OFFSET}))).append("\n");
+
+        optionalMemberInfo(structs, builder);
+
+        for (String struct : structs) {
+            builder.append(TAB_2).append(assignment(decapitalize(struct), "new " + call(null, struct, new String[]{MEMBER_OFFSET_GETTER_ARG})));
+            builder.append("\n");
+        }
+        builder.append(TAB_1).append("}\n");
+    }
+
+    private static void optionalMemberInfo(List<String> structs, StringBuilder builder) {
+        if (structs.contains(MEMBER_INFO)) {
+            builder.append(TAB_2).append(assignment(decapitalize(MEMBER_INFO), "new " + call(null, MEMBER_INFO, new String[]{MEMBER_OFFSET_GETTER_ARG})));
+            builder.append("\n");
+            structs.remove(MEMBER_INFO);
+            builder.append(TAB_2).append(assignment(MEMBER_OFFSET_GETTER_ARG, "new " + call(null, JAVA_MEMBER_OFFSET_GETTER_CLASS,
+                            new String[]{JNI_ENV_ARG, MEMBER_INFO_PTR, "this"}))).append("\n");
+        }
     }
 
     private static String nativeTypeToMethodSuffix(NativeType type) {

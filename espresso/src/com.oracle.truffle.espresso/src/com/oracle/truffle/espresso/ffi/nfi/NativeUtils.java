@@ -135,6 +135,18 @@ public final class NativeUtils {
         writeToLongPointer(library, pointer, NativeUtils.interopAsPointer(value));
     }
 
+    public static TruffleObject dereferencePointerPointer(TruffleObject pointer) {
+        return dereferencePointerPointer(InteropLibrary.getUncached(), pointer);
+    }
+
+    public static TruffleObject dereferencePointerPointer(InteropLibrary library, TruffleObject pointer) {
+        if (library.isNull(pointer)) {
+            return RawPointer.nullInstance();
+        }
+        LongBuffer buffer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Long).asLongBuffer();
+        return RawPointer.create(buffer.get());
+    }
+
     @TruffleBoundary
     public static long byteBufferAddress(ByteBuffer byteBuffer) {
         try {

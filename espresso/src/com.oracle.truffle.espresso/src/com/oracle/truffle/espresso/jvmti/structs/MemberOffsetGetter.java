@@ -23,39 +23,10 @@
 
 package com.oracle.truffle.espresso.jvmti.structs;
 
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.espresso.jni.RawBuffer;
-import com.oracle.truffle.espresso.meta.EspressoError;
+public interface MemberOffsetGetter {
+    long getInfo(String structName);
 
-public final class MemberOffsetGetter {
-    private final InteropLibrary library;
-    private final TruffleObject memberInfoPtr;
-    private final TruffleObject lookupMemberOffset;
-
-    public MemberOffsetGetter(InteropLibrary library, TruffleObject memberInfoPtr, TruffleObject lookupMemberOffset) {
-        this.library = library;
-        this.memberInfoPtr = memberInfoPtr;
-        this.lookupMemberOffset = lookupMemberOffset;
-    }
-
-    public long getOffset(String structName, String memberName) {
+    default long getOffset(String structName, String memberName) {
         return getInfo(structName + "." + memberName);
-    }
-
-    public long getInfo(String str) {
-        long result;
-        try (RawBuffer memberBuffer = RawBuffer.getNativeString(str)) {
-            result = (long) library.execute(lookupMemberOffset, memberInfoPtr, memberBuffer.pointer());
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere();
-        }
-        if (result == -1) {
-            throw EspressoError.shouldNotReachHere("Struct offset lookup for " + str + " failed.");
-        }
-        return result;
     }
 }

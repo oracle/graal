@@ -30,6 +30,12 @@
 #include <stdio.h>
 #include <string.h>
 
+typedef struct member_info {
+	char* id;
+	size_t offset;
+	struct member_info *next;
+} member_info;
+
 #define JVMTI_METHOD_LIST(V) \
     V(SetEventNotificationMode) \
     V(GetAllModules) \
@@ -275,7 +281,10 @@
     V(_jvmtiTimerInfo, reserved1) \
     V(_jvmtiTimerInfo, reserved2) \
     V(_jvmtiAddrLocationMap, start_address) \
-    V(_jvmtiAddrLocationMap, location)
+    V(_jvmtiAddrLocationMap, location) \
+    V(member_info, id) \
+    V(member_info, offset) \
+    V(member_info, next)
 
 #define JVMTI_STRUCT_LIST(V) \
     V(_jvmtiThreadInfo) \
@@ -298,14 +307,9 @@
     V(_jvmtiExtensionFunctionInfo) \
     V(_jvmtiExtensionEventInfo) \
     V(_jvmtiTimerInfo) \
-    V(_jvmtiAddrLocationMap)
+    V(_jvmtiAddrLocationMap) \
+    V(member_info)
 
-
-typedef struct member_info {
-	char* id;
-	size_t offset;
-	struct member_info *next;
-} member_info;
 
 void add_member_info(member_info** info, char* id, size_t offset) {
 	member_info* current = malloc(sizeof(struct member_info));
@@ -325,13 +329,15 @@ size_t lookup_member_info(member_info** info, char* id) {
 }
 
 void free_member_info(member_info** info) {
-  member_info* current = (*info);
-  while (current != NULL) {
-    member_info* next = current->next;
-    free(current);
-    current = next;
+  if (info != NULL) {
+    member_info* current = (*info);
+    while (current != NULL) {
+      member_info* next = current->next;
+      free(current);
+      current = next;
+    }
+    free(info);
   }
-  free(info);
 }
 
 jvmtiEnv* initializeJvmtiContextImpl(void* (*fetch_by_name)(const char *)) {

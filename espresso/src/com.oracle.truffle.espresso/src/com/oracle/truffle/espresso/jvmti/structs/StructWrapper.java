@@ -23,6 +23,12 @@
 
 package com.oracle.truffle.espresso.jvmti.structs;
 
+import static com.oracle.truffle.espresso.ffi.NativeType.BOOLEAN;
+import static com.oracle.truffle.espresso.ffi.NativeType.INT;
+import static com.oracle.truffle.espresso.ffi.NativeType.LONG;
+import static com.oracle.truffle.espresso.ffi.NativeType.OBJECT;
+import static com.oracle.truffle.espresso.ffi.NativeType.POINTER;
+
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -32,6 +38,491 @@ import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+@GenerateStructs(//
+{
+                /*-
+                 * struct member_info {
+                 *     char* id;
+                 *     size_t offset;
+                 *     struct member_info *next;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "member_info", //
+                                memberNames = {
+                                                "id",
+                                                "offset",
+                                                "next",
+                                }, //
+                                types = {
+                                                POINTER,
+                                                LONG,
+                                                POINTER,
+                                }),
+                /*-
+                 * struct _jvmtiThreadInfo {
+                 *     char* name;
+                 *     jint priority;
+                 *     jboolean is_daemon;
+                 *     jthreadGroup thread_group;
+                 *     jobject context_class_loader;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiThreadInfo", //
+                                memberNames = {
+                                                "name",
+                                                "priority",
+                                                "is_daemon",
+                                                "thread_group",
+                                                "context_class_loader"
+                                }, //
+                                types = {
+                                                POINTER,
+                                                INT,
+                                                BOOLEAN,
+                                                POINTER,
+                                                OBJECT
+                                }),
+                /*-
+                 * struct _jvmtiMonitorStackDepthInfo {
+                 *     jobject monitor;
+                 *     jint stack_depth;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiMonitorStackDepthInfo", //
+                                memberNames = {
+                                                "monitor",
+                                                "stack_depth",
+                                }, //
+                                types = {
+                                                OBJECT,
+                                                INT,
+                                }),
+                /*-
+                 * struct _jvmtiThreadGroupInfo {
+                 *     jthreadGroup parent;
+                 *     char* name;
+                 *     jint max_priority;
+                 *     jboolean is_daemon;
+                 * };
+                 *
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiThreadGroupInfo", //
+                                memberNames = {
+                                                "parent",
+                                                "name",
+                                                "max_priority",
+                                                "is_daemon",
+                                }, //
+                                types = {
+                                                POINTER,
+                                                POINTER,
+                                                INT,
+                                                BOOLEAN,
+                                }),
+                /*-
+                 * struct _jvmtiFrameInfo {
+                 *     jmethodID method;
+                 *     jlocation location;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiFrameInfo", //
+                                memberNames = {
+                                                "method",
+                                                "location",
+                                }, //
+                                types = {
+                                                LONG,
+                                                LONG,
+                                }),
+                /*-
+                 * struct _jvmtiStackInfo {
+                 *     jthread thread;
+                 *     jint state;
+                 *     jvmtiFrameInfo* frame_buffer;
+                 *     jint frame_count;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiStackInfo", //
+                                memberNames = {
+                                                "thread",
+                                                "state",
+                                                "frame_buffer",
+                                                "frame_count",
+                                }, //
+                                types = {
+                                                OBJECT,
+                                                INT,
+                                                POINTER,
+                                                INT,
+                                }),
+                /*-
+                 * struct _jvmtiHeapReferenceInfoField {
+                 *     jint index;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoField", //
+                                memberNames = {"index"}, //
+                                types = {INT}),
+                /*-
+                 * struct _jvmtiHeapReferenceInfoArray {
+                 *     jint index;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoArray", //
+                                memberNames = {"index"}, //
+                                types = {INT}),
+                /*-
+                 * struct _jvmtiHeapReferenceInfoConstantPool {
+                 *     jint index;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoConstantPool", //
+                                memberNames = {"index"}, //
+                                types = {INT}),
+                /*-
+                 * struct _jvmtiHeapReferenceInfoStackLocal {
+                 *     jlong thread_tag;
+                 *     jlong thread_id;
+                 *     jint depth;
+                 *     jmethodID method;
+                 *     jlocation location;
+                 *     jint slot;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoStackLocal", //
+                                memberNames = {
+                                                "thread_tag",
+                                                "thread_id",
+                                                "depth",
+                                                "method",
+                                                "location",
+                                                "slot",
+                                }, //
+                                types = {
+                                                LONG,
+                                                LONG,
+                                                INT,
+                                                LONG,
+                                                LONG,
+                                                INT,
+                                }),
+                /*-
+                 * struct _jvmtiHeapReferenceInfoJniLocal {
+                 *     jlong thread_tag;
+                 *     jlong thread_id;
+                 *     jint depth;
+                 *     jmethodID method;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoJniLocal", //
+                                memberNames = {
+                                                "thread_tag",
+                                                "thread_id",
+                                                "depth",
+                                                "method",
+                                }, //
+                                types = {
+                                                LONG,
+                                                LONG,
+                                                INT,
+                                                LONG,
+                                }),
+                /*-
+                 * struct _jvmtiHeapReferenceInfoReserved {
+                 *     jlong reserved1;
+                 *     jlong reserved2;
+                 *     jlong reserved3;
+                 *     jlong reserved4;
+                 *     jlong reserved5;
+                 *     jlong reserved6;
+                 *     jlong reserved7;
+                 *     jlong reserved8;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoReserved", //
+                                memberNames = {
+                                                "reserved1",
+                                                "reserved2",
+                                                "reserved3",
+                                                "reserved4",
+                                                "reserved5",
+                                                "reserved6",
+                                                "reserved7",
+                                                "reserved8",
+                                }, //
+                                types = {
+                                                LONG,
+                                                LONG,
+                                                LONG,
+                                                LONG,
+                                                LONG,
+                                                LONG,
+                                                LONG,
+                                                LONG,
+                                }),
+                /*-
+                 * struct _jvmtiHeapCallbacks {
+                 *     jvmtiHeapIterationCallback heap_iteration_callback;
+                 *     jvmtiHeapReferenceCallback heap_reference_callback;
+                 *     jvmtiPrimitiveFieldCallback primitive_field_callback;
+                 *     jvmtiArrayPrimitiveValueCallback array_primitive_value_callback;
+                 *     jvmtiStringPrimitiveValueCallback string_primitive_value_callback;
+                 *     jvmtiReservedCallback reserved5;
+                 *     jvmtiReservedCallback reserved6;
+                 *     jvmtiReservedCallback reserved7;
+                 *     jvmtiReservedCallback reserved8;
+                 *     jvmtiReservedCallback reserved9;
+                 *     jvmtiReservedCallback reserved10;
+                 *     jvmtiReservedCallback reserved11;
+                 *     jvmtiReservedCallback reserved12;
+                 *     jvmtiReservedCallback reserved13;
+                 *     jvmtiReservedCallback reserved14;
+                 *     jvmtiReservedCallback reserved15;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapCallbacks", //
+                                memberNames = {
+                                                "heap_iteration_callback",
+                                                "heap_reference_callback",
+                                                "primitive_field_callback",
+                                                "array_primitive_value_callback",
+                                                "string_primitive_value_callback",
+                                                "reserved5",
+                                                "reserved6",
+                                                "reserved7",
+                                                "reserved8",
+                                                "reserved9",
+                                                "reserved10",
+                                                "reserved11",
+                                                "reserved12",
+                                                "reserved13",
+                                                "reserved14",
+                                                "reserved15",
+                                }, //
+                                types = {
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                }),
+                /*-
+                 * struct _jvmtiClassDefinition {
+                 *     jclass klass;
+                 *     jint class_byte_count;
+                 *     const unsigned char* class_bytes;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiClassDefinition", //
+                                memberNames = {
+                                                "klass",
+                                                "class_byte_count",
+                                                "class_bytes",
+                                }, //
+                                types = {
+                                                OBJECT,
+                                                INT,
+                                                POINTER,
+                                }),
+                /*-
+                 * struct _jvmtiMonitorUsage {
+                 *     jthread owner;
+                 *     jint entry_count;
+                 *     jint waiter_count;
+                 *     jthread* waiters;
+                 *     jint notify_waiter_count;
+                 *     jthread* notify_waiters;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiMonitorUsage", //
+                                memberNames = {
+                                                "owner",
+                                                "entry_count",
+                                                "waiter_count",
+                                                "waiters",
+                                                "notify_waiter_count",
+                                                "notify_waiters",
+                                }, //
+                                types = {
+                                                OBJECT,
+                                                INT,
+                                                INT,
+                                                POINTER,
+                                                INT,
+                                                POINTER,
+                                }),
+                /*-
+                 * struct _jvmtiLineNumberEntry {
+                 *     jlocation start_location;
+                 *     jint line_number;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiLineNumberEntry", //
+                                memberNames = {
+                                                "start_location",
+                                                "line_number",
+                                }, //
+                                types = {
+                                                LONG,
+                                                INT,
+                                }),
+                /*-
+                 * struct _jvmtiLocalVariableEntry {
+                 *     jlocation start_location;
+                 *     jint length;
+                 *     char* name;
+                 *     char* signature;
+                 *     char* generic_signature;
+                 *     jint slot;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiLocalVariableEntry", //
+                                memberNames = {
+                                                "start_location",
+                                                "length",
+                                                "name",
+                                                "signature",
+                                                "generic_signature",
+                                                "slot",
+                                }, //
+                                types = {
+                                                LONG,
+                                                INT,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                INT,
+                                }),
+                /*-
+                 * struct _jvmtiParamInfo {
+                 *     char* name;
+                 *     jvmtiParamKind kind;
+                 *     jvmtiParamTypes base_type;
+                 *     jboolean null_ok;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiParamInfo", //
+                                memberNames = {
+                                                "name",
+                                                "kind",
+                                                "base_type",
+                                                "null_ok",
+                                }, //
+                                types = {
+                                                POINTER,
+                                                INT,
+                                                INT,
+                                                BOOLEAN,
+                                }),
+                /*-
+                 * struct _jvmtiExtensionFunctionInfo {
+                 *     jvmtiExtensionFunction func;
+                 *     char* id;
+                 *     char* short_description;
+                 *     jint param_count;
+                 *     jvmtiParamInfo* params;
+                 *     jint error_count;
+                 *     jvmtiError* errors;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiExtensionFunctionInfo", //
+                                memberNames = {
+                                                "func",
+                                                "id",
+                                                "short_description",
+                                                "param_count",
+                                                "params",
+                                                "error_count",
+                                                "errors",
+                                }, //
+                                types = {
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                INT,
+                                                POINTER,
+                                                INT,
+                                                POINTER,
+                                }),
+                /*-
+                 * struct _jvmtiExtensionEventInfo {
+                 *     jint extension_event_index;
+                 *     char* id;
+                 *     char* short_description;
+                 *     jint param_count;
+                 *     jvmtiParamInfo* params;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiExtensionEventInfo", //
+                                memberNames = {
+                                                "extension_event_index",
+                                                "id",
+                                                "short_description",
+                                                "param_count",
+                                                "params",
+                                }, //
+                                types = {
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                INT,
+                                                POINTER,
+                                }),
+                /*-
+                 * struct _jvmtiTimerInfo {
+                 *     jlong max_value;
+                 *     jboolean may_skip_forward;
+                 *     jboolean may_skip_backward;
+                 *     jvmtiTimerKind kind;
+                 *     jlong reserved1;
+                 *     jlong reserved2;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiTimerInfo", //
+                                memberNames = {
+                                                "max_value",
+                                                "may_skip_forward",
+                                                "may_skip_backward",
+                                                "kind",
+                                                "reserved1",
+                                                "reserved2",
+                                }, //
+                                types = {
+                                                LONG,
+                                                BOOLEAN,
+                                                BOOLEAN,
+                                                INT,
+                                                LONG,
+                                                LONG,
+                                }),
+                /*-
+                 * struct _jvmtiAddrLocationMap {
+                 *     const void* start_address;
+                 *     jlocation location;
+                 * };
+                 */
+                @GenerateStructs.KnownStruct(structName = "_jvmtiAddrLocationMap", //
+                                memberNames = {
+                                                "start_address",
+                                                "location",
+                                }, //
+                                types = {
+                                                POINTER,
+                                                LONG,
+                                }),
+
+})
 public abstract class StructWrapper {
     private final JNIHandles handles;
 
