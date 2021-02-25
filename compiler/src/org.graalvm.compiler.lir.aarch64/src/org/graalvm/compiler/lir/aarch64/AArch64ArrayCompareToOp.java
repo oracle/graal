@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -168,7 +168,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         }
 
         masm.cmp(64, length1, length2);
-        masm.cmov(64, length, length1, length2, ConditionFlag.LT);
+        masm.csel(64, length, length1, length2, ConditionFlag.LT);
 
         // One of strings is empty
         masm.cbz(64, length, LENGTH_DIFFER_LABEL);
