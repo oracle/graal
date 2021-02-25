@@ -90,7 +90,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             // Assign a location to all methods.
             assert codeCacheSize == 0;
             HostedMethod firstMethod = null;
-            AOTSamplingData aotSamplingData = ImageSingletons.lookup(AOTSamplingData.class);
+            // AOTSamplingData aotSamplingData = ImageSingletons.lookup(AOTSamplingData.class);
             for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
 
                 HostedMethod method = entry.getKey();
@@ -102,7 +102,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 compilationsByStart.put(codeCacheSize, compilation);
                 method.setCodeAddressOffset(codeCacheSize);
                 // map the method address to the method analysis id
-                aotSamplingData.addEntry(codeCacheSize, method.wrapped.getId());
+                // aotSamplingData.addEntry(codeCacheSize, method.wrapped.getId());
                 codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), SubstrateOptions.codeAlignment());
             }
 
