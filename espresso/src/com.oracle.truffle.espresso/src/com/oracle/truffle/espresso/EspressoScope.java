@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -94,10 +95,34 @@ public class EspressoScope {
             this.frame = frame;
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasMembers() {
             return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isScope() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return EspressoLanguage.class;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return null;
         }
 
         @ExportMessage

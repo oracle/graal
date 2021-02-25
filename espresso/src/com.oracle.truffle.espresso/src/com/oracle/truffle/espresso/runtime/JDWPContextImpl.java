@@ -36,6 +36,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -66,7 +67,9 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 public final class JDWPContextImpl implements JDWPContext {
@@ -592,7 +595,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null);
     }
 
     @Override
@@ -657,6 +660,28 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public Class<? extends TruffleLanguage<?>> getLanguageClass() {
         return EspressoLanguage.class;
+    }
+
+    @Override
+    public Node getInstrumentableNode(Node node) {
+        Node currentNode = node;
+
+        while (currentNode != null) {
+            if (currentNode instanceof EspressoInstrumentableNode) {
+                return currentNode;
+            } else if (currentNode instanceof QuickNode) {
+                QuickNode quickNode = (QuickNode) currentNode;
+                return quickNode.getBytecodesNode();
+            } else if (currentNode instanceof EspressoRootNode) {
+                EspressoRootNode rootNode = (EspressoRootNode) currentNode;
+                if (rootNode.isBytecodeNode()) {
+                    return rootNode.getBytecodeNode();
+                }
+            } else {
+                currentNode = currentNode.getParent();
+            }
+        }
+        return null;
     }
 
     @Override
