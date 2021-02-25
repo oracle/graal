@@ -48,9 +48,9 @@ import mx_sulong_gate
 import mx_sulong_llvm_config
 
 # re-export SulongTestSuite class so it can be used from suite.py
-from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
-from mx_testsuites import GeneratedTestSuite #pylint: disable=unused-import
-from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
+from mx_sulong_suite_constituents import SulongTestSuite #pylint: disable=unused-import
+from mx_sulong_suite_constituents import GeneratedTestSuite #pylint: disable=unused-import
+from mx_sulong_suite_constituents import ExternalTestSuite #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):

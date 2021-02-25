@@ -38,7 +38,7 @@ import mx_unittest
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
-import mx_testsuites
+import mx_sulong_suite_constituents
 
 _suite = mx.suite('sulong')
 
@@ -53,9 +53,9 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
         unittestArgs = ['--very-verbose', '--enable-timing']
     unittestArgs += args.extra_llvm_arguments
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
+        if t: mx_sulong_suite_constituents.compileTestSuite(test_suite, args.extra_build_args)
     with Task('Test' + title, tasks, tags=tags + run_tags) as t:
-        if t: mx_testsuites.run(unittestArgs, testClasses)
+        if t: mx_sulong_suite_constituents.run(unittestArgs, testClasses)
 
 
 def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses=None):
@@ -157,8 +157,8 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     if unittestArgs is None:
         unittestArgs = []
     test_suite = 'SULONG_TEST_SUITES'
-    mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
-    mx_testsuites.run(args + unittestArgs, testName)
+    mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
+    mx_sulong_suite_constituents.run(args + unittestArgs, testName)
 
 
 @mx.command(_suite.name, "test-llvm-image")
@@ -187,7 +187,7 @@ def runLLVMUnittests(unittest_runner):
     java_run_props += get_test_distribution_path_properties(_suite)
 
     test_suite = 'SULONG_TEST_SUITES'
-    mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
+    mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
 
     run_args = [libpath, libs] + java_run_props
     build_args = ['--language:llvm'] + java_run_props
