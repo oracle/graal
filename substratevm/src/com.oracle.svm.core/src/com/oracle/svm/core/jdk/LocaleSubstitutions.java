@@ -110,6 +110,7 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
 }
 
 class Wrapper {
+    @SuppressWarnings({"static-method"})
     @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = MultiLocale.class)
     static final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
         @Substitute
