@@ -59,20 +59,4 @@ public final class TruffleNFIFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         access.registerObjectReplacer(new NativeObjectReplacer(access));
     }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Class<?> closureNativePointer = access.findClassByName("com.oracle.truffle.nfi.backend.libffi.ClosureNativePointer");
-        try {
-            /*
-             * These two fields are never read, only written. It's still important to keep those
-             * fields because they prevent GC of objects that might otherwise be only reachable via
-             * weak references. See the comment in the ClosureNativePointer class.
-             */
-            access.registerAsAccessed(closureNativePointer.getDeclaredField("callTarget"));
-            access.registerAsAccessed(closureNativePointer.getDeclaredField("receiver"));
-        } catch (NoSuchFieldException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
 }
