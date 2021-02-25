@@ -67,6 +67,51 @@ def compileTestSuite(testsuiteproject, extra_build_args):
     mx.command_function('build')(defaultBuildArgs + extra_build_args)
 
 
+class DragonEggSupport:
+    """Helpers for DragonEgg
+
+    DragonEgg support is controlled by two environment variables:
+      * `DRAGONEGG_GCC`: path to a GCC installation with dragonegg support
+      * `DRAGONEGG_LLVM`: path to an LLVM installation that can deal with bitcode produced by DragonEgg
+      * `DRAGONEGG`: (optional) path to folder that contains the `libdragonegg.so`
+    """
+
+    @staticmethod
+    def haveDragonegg():
+        if not hasattr(DragonEggSupport, '_haveDragonegg'):
+            DragonEggSupport._haveDragonegg = DragonEggSupport.pluginPath() is not None and os.path.exists(
+                DragonEggSupport.pluginPath()) and DragonEggSupport.findGCCProgram('gcc', optional=True) is not None
+        return DragonEggSupport._haveDragonegg
+
+    @staticmethod
+    def pluginPath():
+        if 'DRAGONEGG' in os.environ:
+            return os.path.join(os.environ['DRAGONEGG'], mx.add_lib_suffix('dragonegg'))
+        if 'DRAGONEGG_GCC' in os.environ:
+            path = os.path.join(os.environ['DRAGONEGG_GCC'], 'lib', mx.add_lib_suffix('dragonegg'))
+            if os.path.exists(path):
+                return path
+        return None
+
+    @staticmethod
+    def findLLVMProgram(program, optional=False):
+        if 'DRAGONEGG_LLVM' in os.environ:
+            path = os.environ['DRAGONEGG_LLVM']
+            return os.path.join(path, 'bin', program)
+        if optional:
+            return None
+        mx.abort("Cannot find LLVM program for dragonegg: {}\nDRAGONEGG_LLVM environment variable not set".format(program))
+
+    @staticmethod
+    def findGCCProgram(gccProgram, optional=False):
+        if 'DRAGONEGG_GCC' in os.environ:
+            path = os.environ['DRAGONEGG_GCC']
+            return os.path.join(path, 'bin', gccProgram)
+        if optional:
+            return None
+        mx.abort("Cannot find GCC program for dragonegg: {}\nDRAGONEGG_GCC environment variable not set".format(gccProgram))
+
+
 class SulongTestSuiteBuildTask(mx.NativeBuildTask):
     """Track whether we are checking if a build is required or actually building."""
     def needsBuild(self, newestInput):
@@ -85,7 +130,7 @@ class SulongTestSuiteBase(mx.NativeProject):  # pylint: disable=too-many-ancesto
         if not hasattr(self, '_variants'):
             self._variants = []
             for v in self.variants:
-                if 'gcc' in v and not SulongTestSuite.haveDragonegg():
+                if 'gcc' in v and not DragonEggSupport.haveDragonegg():
                     mx.warn('Could not find dragonegg, not building test variant "%s"' % v)
                     continue
                 self._variants.append(v)
@@ -130,12 +175,6 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
     def defaultTestClasses(self):
         return ["SulongSuite"]
 
-    @staticmethod
-    def haveDragonegg():
-        if not hasattr(SulongTestSuite, '_haveDragonegg'):
-            SulongTestSuite._haveDragonegg = mx_sulong.dragonEggPath() is not None and os.path.exists(mx_sulong.dragonEggPath()) and mx_sulong.findGCCProgramForDragonegg('gcc', optional=True) is not None
-        return SulongTestSuite._haveDragonegg
-
     def getTests(self):
         if not hasattr(self, '_tests'):
             self._tests = []
@@ -172,12 +211,12 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
         env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
         if 'OS' not in env:
             env['OS'] = mx_subst.path_substitutions.substitute("<os>")
-        if SulongTestSuite.haveDragonegg():
-            env['DRAGONEGG'] = mx_sulong.dragonEggPath()
-            env['DRAGONEGG_GCC'] = mx_sulong.findGCCProgramForDragonegg('gcc')
-            env['DRAGONEGG_LLVMAS'] = mx_sulong.findLLVMProgramForDragonegg("llvm-as")
-            env['DRAGONEGG_FC'] = mx_sulong.findGCCProgramForDragonegg('gfortran')
-            env['FC'] = mx_sulong.findGCCProgramForDragonegg('gfortran')
+        if DragonEggSupport.haveDragonegg():
+            env['DRAGONEGG'] = DragonEggSupport.pluginPath()
+            env['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)
+            env['DRAGONEGG_LLVMAS'] = DragonEggSupport.findLLVMProgram("llvm-as")
+            env['DRAGONEGG_FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
+            env['FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
         elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
             mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
         return env

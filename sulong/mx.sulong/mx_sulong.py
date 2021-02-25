@@ -309,31 +309,6 @@ def checkCFile(targetFile):
     return True
 
 
-def dragonEggPath():
-    if 'DRAGONEGG' in os.environ:
-        return join(os.environ['DRAGONEGG'], mx.add_lib_suffix('dragonegg'))
-    if 'DRAGONEGG_GCC' in os.environ:
-        path = join(os.environ['DRAGONEGG_GCC'], 'lib', mx.add_lib_suffix('dragonegg'))
-        if os.path.exists(path):
-            return path
-    return None
-
-
-def findLLVMProgramForDragonegg(program):
-    if 'DRAGONEGG_LLVM' in os.environ:
-        path = os.environ['DRAGONEGG_LLVM']
-        return os.path.join(path, 'bin', program)
-    mx.abort("Cannot find LLVM program for dragonegg: {}\nDRAGONEGG_LLVM environment variable not set".format(program))
-
-
-def findGCCProgramForDragonegg(gccProgram, optional=False):
-    if 'DRAGONEGG_GCC' in os.environ:
-        return os.path.join(os.environ['DRAGONEGG_GCC'], 'bin', gccProgram)
-    if optional:
-        return None
-    mx.abort("Cannot find GCC program for dragonegg: {}\nDRAGONEGG_GCC environment variable not set".format(gccProgram))
-
-
 def findBundledLLVMProgram(llvm_program):
     llvm_dist = 'LLVM_TOOLCHAIN'
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
