@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,34 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.METHOD;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+@FunctionalInterface
+public interface VersionFilter {
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {METHOD})
-public @interface Substitution {
-    String methodName() default "";
+    boolean isValidFor(JavaVersion version);
 
-    boolean hasReceiver() default false;
+    final class NoFilter implements VersionFilter {
+        public static final NoFilter INSTANCE = new NoFilter();
 
-    Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
+        private NoFilter() {
+        }
 
-    Class<? extends VersionFilter> versionFilter() default VersionFilter.NoFilter.class;
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return false;
+        }
+    }
+
+    final class Java8OrEarlier implements VersionFilter {
+        public static final Java8OrEarlier INSTANCE = new Java8OrEarlier();
+
+        private Java8OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java8OrEarlier();
+        }
+    }
 }

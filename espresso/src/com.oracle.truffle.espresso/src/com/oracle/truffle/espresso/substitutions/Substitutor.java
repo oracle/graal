@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 public abstract class Substitutor extends SubstitutionProfiler {
 
@@ -63,6 +64,10 @@ public abstract class Substitutor extends SubstitutionProfiler {
 
         public boolean hasReceiver() {
             return hasReceiver;
+        }
+
+        public boolean isValidFor(JavaVersion version) {
+            return true;
         }
     }
 

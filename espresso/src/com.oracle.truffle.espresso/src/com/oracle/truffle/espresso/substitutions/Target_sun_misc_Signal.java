@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -44,7 +43,7 @@ public final class Target_sun_misc_Signal {
 
     // Avoid going through JVM_FindSignal which has a char* argument
     @SuppressWarnings("unused")
-    @Substitution
+    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
     public static int findSignal(@Host(String.class) StaticObject name,
                     @InjectMeta Meta meta) {
@@ -59,7 +58,7 @@ public final class Target_sun_misc_Signal {
     }
 
     @SuppressWarnings("unused")
-    @Substitution
+    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
     public static void raise(@Host(Signal.class) StaticObject signal,
                     @InjectMeta Meta meta) {
@@ -88,7 +87,7 @@ public final class Target_sun_misc_Signal {
     }
 
     @SuppressWarnings("unused")
-    @Substitution
+    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
     public static @Host(SignalHandler.class) StaticObject handle(@Host(Signal.class) StaticObject signal, @Host(SignalHandler.class) StaticObject handler,
                     @InjectMeta Meta meta) {
