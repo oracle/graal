@@ -139,4 +139,55 @@ public class PrefixTreeTest {
             }
         }
     }
+
+    private void verifyValue(PrefixTree.Node node, int depth, int parallelism) {
+        if (depth == 0) {
+            Assert.assertEquals(parallelism, node.value());
+        } else {
+            for (long i = 1L; i < 14L; i++) {
+                final PrefixTree.Node child = node.at(i);
+                verifyValue(child, depth - 1, parallelism);
+            }
+        }
+    }
+
+    @Test
+    public void storeDeepMultiThreaded() {
+        final PrefixTree tree = new PrefixTree();
+        final int depth = 6;
+
+        int parallelism = 8;
+        Thread[] threads = new Thread[parallelism];
+        for (int t = 0; t < parallelism; t++) {
+            threads[t] = new Thread() {
+                @Override
+                public void run() {
+                    insert(tree.root(), depth);
+                }
+
+                private void insert(PrefixTree.Node node, int depth) {
+                    if (depth == 0) {
+                        node.incValue();
+                    } else {
+                        for (long i = 1L; i < 14L; i++) {
+                            final PrefixTree.Node child = node.at(i);
+                            insert(child, depth - 1);
+                        }
+                    }
+                }
+            };
+        }
+        for (int t = 0; t < parallelism; t++) {
+            threads[t].start();
+        }
+        for (int t = 0; t < parallelism; t++) {
+            try {
+                threads[t].join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        verifyValue(tree.root(), depth, parallelism);
+    }
 }

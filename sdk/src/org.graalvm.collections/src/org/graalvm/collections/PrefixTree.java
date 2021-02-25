@@ -45,6 +45,40 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Thread-safe prefix-tree implementation in which keys are sequences of 64-bit values, and the
  * values are 64-bit values.
+ *
+ * The prefix tree supports a single operation {@code root}, which returns the root node. The nodes
+ * support the following operations: {@code at} to obtain a child node, {@code value} to obtain the
+ * value at the current node, {@code setValue} to atomically set the value and {@code incValue} to
+ * atomically increment the value.
+ * 
+ * The prefix tree is implemented as follows. The tree points to the root node. Each node points to
+ * a set of child nodes, where each child is associated with a key. Each node additionally holds an
+ * arity, which is the number of children, and the 64-bit value of that node.
+ * 
+ * The set of child nodes can be represented as {@code null} if the set is empty, an array-list if
+ * the the set is small, or a hash table if the set is large. In all cases, the keys and the child
+ * nodes are kept in separate arrays.
+ * 
+ * The {@code at} operation, which takes a node and a key, and returns the corresponding child node,
+ * deserves an additional explanation. This operation creates an existing child associated with the
+ * key, or atomically creates a new child, if there was no child for that key.
+ *
+ * The {@code at} operation is implemented as follows. There is a fast-path, which executes when the
+ * child node already exists, and there are no concurrent modifications at that node, and the
+ * slow-path, which executes when the child does not exist or when there is a concurrent
+ * modification. To ensure that the slow path does not obtain a monitor, the fast-path relies on a
+ * <i>seqlock</i>. This is a lightweight read-write lock that consists of a single 64-bit counter,
+ * whose value is even when the lock is in the read mode, and odd when the lock is in the write
+ * mode. The lock can be held by any number of readers, but at most 1 writer at any time.
+ * 
+ * In the read-mode, the reader must verify that the value of the lock is even and that it did not
+ * change from the point when the read started until the point when the read ended, and additionally
+ * takes care that reading an invalid state does not crash the execution. If the read fails for
+ * either of these reasons, the reader proceeds to the write-mode. In the write-mode, the reader or
+ * the writer enters a heavy lock (i.e. monitor) and then increments the seqlock's value by one,
+ * does the modification, and then increments the seqlock's value by one to make it even again. The
+ * volatile access semantics of the seqlock's value, along with the fact that the node's data only
+ * "grows" over time, are the properties that ensure the correctness of this implementation.
  */
 public class PrefixTree {
     private static final int INITIAL_LINEAR_NODE_SIZE = 3;
