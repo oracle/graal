@@ -92,7 +92,7 @@ public class PrefixTreeTest {
             PrefixTree.Node first = tree.root().at(i);
             for (long j = 1L; j < 64L; j++) {
                 PrefixTree.Node second = first.at(j);
-                // Assert.assertEquals(i * j, second.value());
+                Assert.assertEquals(i * j, second.value());
             }
         }
     }

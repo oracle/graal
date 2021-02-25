@@ -92,8 +92,22 @@ public class PrefixTree {
                 // No child was found, so insert a new child.
                 return addChild(key);
             } else {
-                // TODO
-                throw new UnsupportedOperationException();
+                int index = hash(key) % keys.length;
+                Node child = null;
+                while (true) {
+                    long curkey = keys[index];
+                    if (curkey == EMPTY_KEY) {
+                        break;
+                    } else if (curkey == key) {
+                        child = children[index];
+                        break;
+                    }
+                    index = (index + 1) % keys.length;
+                }
+                if (child == null) {
+                    child = addChild(key);
+                }
+                return child;
             }
         }
 
@@ -155,6 +169,7 @@ public class PrefixTree {
             }
             keys[index] = key;
             children[index] = child;
+            arity++;
         }
 
         private boolean mustGrowHash() {
