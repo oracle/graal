@@ -499,10 +499,10 @@ public final class Meta implements ContextAccess {
         sun_misc_VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
 
         sun_misc_Signal = knownKlassDiffVersion(Type.sun_misc_Signal, Type.jdk_internal_misc_Signal);
-        sun_misc_Signal_name = sun_misc_Signal.lookupDeclaredField(Name.name, Type.java_lang_String);
+        sun_misc_Signal_name = sun_misc_Signal.requireDeclaredField(Name.name, Type.java_lang_String);
         sun_misc_Signal_init_String = sun_misc_Signal.lookupDeclaredMethod(Name._init_, Signature._void_String);
         sun_misc_NativeSignalHandler = knownKlassDiffVersion(Type.sun_misc_NativeSignalHandler, Type.jdk_internal_misc_Signal$NativeHandler);
-        sun_misc_NativeSignalHandler_handler = sun_misc_Signal.lookupDeclaredField(Name.handler, Type._long);
+        sun_misc_NativeSignalHandler_handler = sun_misc_NativeSignalHandler.requireDeclaredField(Name.handler, Type._long);
         sun_misc_SignalHandler = knownKlassDiffVersion(Type.sun_misc_SignalHandler, Type.jdk_internal_misc_Signal$Handler);
         sun_misc_SignalHandler_handle = lookupMethodDiffVersion(sun_misc_SignalHandler, Name.handle, Signature._void_sun_misc_Signal, Name.handle, Signature._void_jdk_internal_misc_Signal);
         sun_misc_SignalHandler_SIG_DFL = lookupFieldDiffVersion(sun_misc_SignalHandler, Name.SIG_DFL, Type.sun_misc_SignalHandler, Name.SIG_DFL, Type.jdk_internal_misc_Signal$Handler);

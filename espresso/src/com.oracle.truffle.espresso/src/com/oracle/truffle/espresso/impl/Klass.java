@@ -1039,6 +1039,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // region Lookup
 
+    public final Field requireDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
+        Field obj = lookupDeclaredField(fieldName, fieldType);
+        if (obj == null) {
+            throw EspressoError.shouldNotReachHere("Missing field: ", this, fieldName, fieldType);
+        }
+        return obj;
+    }
+
     @ExplodeLoop
     public final Field lookupDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         KLASS_LOOKUP_DECLARED_FIELD_COUNT.inc();
