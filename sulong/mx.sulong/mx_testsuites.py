@@ -222,6 +222,10 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
         return env
 
 
+def llirtestgen(args=None, out=None):
+    return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
+
+
 class GeneratedTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, **args):
@@ -241,7 +245,7 @@ class GeneratedTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ances
                 if not line.endswith(".ignore"):
                     self._tests += [line + ".dir"]
 
-            mx_sulong.llirtestgen(["gen", "--print-filenames"], out=enlist)
+            llirtestgen(["gen", "--print-filenames"], out=enlist)
         return self._tests
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):

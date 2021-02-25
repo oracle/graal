@@ -935,7 +935,3 @@ def generate_llvm_config(args=None, **kwargs):
 def create_generated_sources(args=None, out=None):
     create_parsers(args, out=out)
     generate_llvm_config(args, out=out)
-
-
-def llirtestgen(args=None, out=None):
-    return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
