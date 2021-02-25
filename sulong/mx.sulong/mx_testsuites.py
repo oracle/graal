@@ -133,7 +133,7 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
     @staticmethod
     def haveDragonegg():
         if not hasattr(SulongTestSuite, '_haveDragonegg'):
-            SulongTestSuite._haveDragonegg = mx_sulong.dragonEggPath() is not None and os.path.exists(mx_sulong.dragonEggPath()) and mx_sulong.getGCC(optional=True) is not None
+            SulongTestSuite._haveDragonegg = mx_sulong.dragonEggPath() is not None and os.path.exists(mx_sulong.dragonEggPath()) and mx_sulong.findGCCProgramForDragonegg('gcc', optional=True) is not None
         return SulongTestSuite._haveDragonegg
 
     def getTests(self):
@@ -174,10 +174,10 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
             env['OS'] = mx_subst.path_substitutions.substitute("<os>")
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
-            env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
+            env['DRAGONEGG_GCC'] = mx_sulong.findGCCProgramForDragonegg('gcc')
             env['DRAGONEGG_LLVMAS'] = mx_sulong.findLLVMProgramForDragonegg("llvm-as")
-            env['DRAGONEGG_FC'] = mx_sulong.getGFortran()
-            env['FC'] = mx_sulong.getGFortran()
+            env['DRAGONEGG_FC'] = mx_sulong.findGCCProgramForDragonegg('gfortran')
+            env['FC'] = mx_sulong.findGCCProgramForDragonegg('gfortran')
         elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
             mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
         return env

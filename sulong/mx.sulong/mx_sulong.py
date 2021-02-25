@@ -319,14 +319,6 @@ def dragonEggPath():
     return None
 
 
-def getGCC(optional=False):
-    return findGCCProgram('gcc', optional=optional)
-
-
-def getGFortran(optional=False):
-    return findGCCProgram('gfortran', optional=optional)
-
-
 def findLLVMProgramForDragonegg(program):
     if 'DRAGONEGG_LLVM' in os.environ:
         path = os.environ['DRAGONEGG_LLVM']
@@ -334,7 +326,7 @@ def findLLVMProgramForDragonegg(program):
     mx.abort("Cannot find LLVM program for dragonegg: {}\nDRAGONEGG_LLVM environment variable not set".format(program))
 
 
-def findGCCProgram(gccProgram, optional=False):
+def findGCCProgramForDragonegg(gccProgram, optional=False):
     if 'DRAGONEGG_GCC' in os.environ:
         return os.path.join(os.environ['DRAGONEGG_GCC'], 'bin', gccProgram)
     if optional:
