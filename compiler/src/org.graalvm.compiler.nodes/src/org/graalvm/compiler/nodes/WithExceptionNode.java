@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -42,10 +43,11 @@ public abstract class WithExceptionNode extends ControlSplitNode {
     public static final NodeClass<WithExceptionNode> TYPE = NodeClass.create(WithExceptionNode.class);
 
     protected WithExceptionNode(NodeClass<? extends WithExceptionNode> c, Stamp stamp) {
-        super(c, stamp, ProfileSource.INJECTED);
+        super(c, stamp);
     }
 
     private static final double EXCEPTION_PROBABILITY = 1e-5;
+    private static final BranchProbabilityData NORMAL_EXECUTION_PROFILE = BranchProbabilityData.injected(1 - EXCEPTION_PROBABILITY);
 
     @Successor protected AbstractBeginNode next;
     @Successor protected AbstractBeginNode exceptionEdge;
@@ -81,13 +83,18 @@ public abstract class WithExceptionNode extends ControlSplitNode {
 
     @Override
     public double probability(AbstractBeginNode successor) {
-        return successor == next ? 1 - EXCEPTION_PROBABILITY : EXCEPTION_PROBABILITY;
+        return successor == next ? getProfileData().getDesignatedSuccessorProbability() : getProfileData().getNegatedProbability();
     }
 
     @Override
-    public boolean setProbability(AbstractBeginNode successor, double value, ProfileSource profileSource) {
+    public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData profileData) {
         // Cannot set probability for nodes with exceptions.
         return false;
+    }
+
+    @Override
+    public BranchProbabilityData getProfileData() {
+        return NORMAL_EXECUTION_PROFILE;
     }
 
     @Override

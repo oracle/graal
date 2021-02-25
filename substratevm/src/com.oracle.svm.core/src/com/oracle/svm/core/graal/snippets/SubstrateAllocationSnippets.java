@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.snippets;
 
 import static org.graalvm.compiler.nodes.PiArrayNode.piArrayCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
@@ -184,10 +184,10 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     private static DynamicHub validateNewInstanceClass(DynamicHub hub) {
-        if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, hub != null)) {
+        if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, LayoutEncoding.isInstance(nonNullHub.getLayoutEncoding())) &&
-                            probability(LUDICROUSLY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, LayoutEncoding.isInstance(nonNullHub.getLayoutEncoding())) &&
+                            probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
                 return nonNullHub;
             }
         }
@@ -233,9 +233,9 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     public static DynamicHub checkHub(DynamicHub hub) {
-        if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, hub != null)) {
+        if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
                 return nonNullHub;
             }
         }
@@ -266,12 +266,12 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     private static DynamicHub getCheckedArrayHub(DynamicHub elementType) {
-        if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, elementType != null) && probability(LUDICROUSLY_FAST_PATH_PROBABILITY, elementType != DynamicHub.fromClass(void.class))) {
+        if (probability(EXTREMELY_FAST_PATH_PROBABILITY, elementType != null) && probability(EXTREMELY_FAST_PATH_PROBABILITY, elementType != DynamicHub.fromClass(void.class))) {
             DynamicHub nonNullElementType = (DynamicHub) PiNode.piCastNonNull(elementType, SnippetAnchorNode.anchor());
             DynamicHub arrayHub = nonNullElementType.getArrayHub();
-            if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, arrayHub != null)) {
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null)) {
                 DynamicHub nonNullArrayHub = (DynamicHub) PiNode.piCastNonNull(arrayHub, SnippetAnchorNode.anchor());
-                if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, nonNullArrayHub.isInstantiated())) {
+                if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullArrayHub.isInstantiated())) {
                     return nonNullArrayHub;
                 }
             }

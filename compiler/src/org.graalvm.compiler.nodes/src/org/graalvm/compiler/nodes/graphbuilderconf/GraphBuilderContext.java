@@ -43,7 +43,6 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -53,6 +52,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PluginReplacementNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -329,8 +329,9 @@ public interface GraphBuilderContext extends GraphBuilderTool {
 
         AbstractBeginNode trueSuccessor = passingOnTrue ? null : exceptionPath;
         AbstractBeginNode falseSuccessor = passingOnTrue ? exceptionPath : null;
-        double probability = passingOnTrue ? BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY : BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
-        IfNode ifNode = append(new IfNode(condition, trueSuccessor, falseSuccessor, probability, ProfileSource.INJECTED));
+        boolean negate = !passingOnTrue;
+        BranchProbabilityData probability = BranchProbabilityData.injected(BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY, negate);
+        IfNode ifNode = append(new IfNode(condition, trueSuccessor, falseSuccessor, probability));
 
         BeginNode passingSuccessor = append(new BeginNode());
         if (passingOnTrue) {

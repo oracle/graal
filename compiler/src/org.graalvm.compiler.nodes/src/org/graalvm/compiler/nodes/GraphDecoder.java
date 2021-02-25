@@ -63,9 +63,9 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.GraphDecoder.MethodScope;
 import org.graalvm.compiler.nodes.GraphDecoder.ProxyPlaceholder;
+import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
@@ -2353,7 +2353,7 @@ class LoopDetector implements Runnable {
         switchKeyProbabilities[idx] = 0;
         switchKeySuccessors[idx] = idx;
 
-        return new IntegerSwitchNode(switchedValue, switchSuccessors, switchKeys, switchKeyProbabilities, switchKeySuccessors, ProfileSource.UNKNOWN);
+        return new IntegerSwitchNode(switchedValue, switchSuccessors, switchKeys, switchKeySuccessors, SwitchProbabilityData.unknown(switchKeyProbabilities));
     }
 
     /**

@@ -33,6 +33,8 @@ import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -50,7 +52,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
 
     protected IntegerExactArithmeticSplitNode(NodeClass<? extends IntegerExactArithmeticSplitNode> c, Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next,
                     AbstractBeginNode overflowSuccessor) {
-        super(c, stamp, ProfileSource.INJECTED);
+        super(c, stamp);
         this.x = x;
         this.y = y;
         this.overflowSuccessor = overflowSuccessor;
@@ -64,13 +66,18 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
 
     @Override
     public double probability(AbstractBeginNode successor) {
-        return successor == next ? 1 : 0;
+        return successor == next ? getProfileData().getDesignatedSuccessorProbability() : getProfileData().getNegatedProbability();
     }
 
     @Override
-    public boolean setProbability(AbstractBeginNode successor, double value, ProfileSource profileSource) {
+    public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData profileData) {
         // Successor probabilities for arithmetic split nodes are fixed.
         return false;
+    }
+
+    @Override
+    public BranchProbabilityData getProfileData() {
+        return BranchProbabilityNode.ALWAYS_TAKEN_PROFILE;
     }
 
     public AbstractBeginNode getNext() {

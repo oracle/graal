@@ -27,8 +27,7 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-
-import jdk.vm.ci.meta.ProfilingInfo;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 
 /**
  * The {@code ControlSplitNode} is a base class for all instructions that split the control flow
@@ -38,55 +37,8 @@ import jdk.vm.ci.meta.ProfilingInfo;
 public abstract class ControlSplitNode extends FixedNode {
     public static final NodeClass<ControlSplitNode> TYPE = NodeClass.create(ControlSplitNode.class);
 
-    protected ProfileSource profileSource;
-
-    protected ControlSplitNode(NodeClass<? extends ControlSplitNode> c, Stamp stamp, ProfileSource profileSource) {
+    protected ControlSplitNode(NodeClass<? extends ControlSplitNode> c, Stamp stamp) {
         super(c, stamp);
-        this.profileSource = profileSource;
-    }
-
-    /**
-     * The source of this node's knowledge about its branch probabilities (also used for loop
-     * frequencies), in decreasing order of trust. Information injected via annotations is most
-     * trusted, followed by information from {@link ProfilingInfo#isMature()} profiling info. All
-     * other sources of probabilities/frequencies are unknown.
-     */
-    public enum ProfileSource {
-        /**
-         * The profiling information was injected via annotations, or in some other way during
-         * compilation based on domain knowledge (e.g., exception paths are very improbable).
-         */
-        INJECTED,
-        /**
-         * The profiling information comes from mature profiling information.
-         */
-        PROFILED,
-        /**
-         * The profiling information comes from immature profiling information or some unknown
-         * source.
-         */
-        UNKNOWN;
-
-        /**
-         * Combine the sources of knowledge about profiles. This returns the most trusted source of
-         * the two, e.g., it treats a combination of profiled and unknown information as profiled
-         * overall.
-         *
-         * For example, when deriving a loop's frequency from a trusted exit probability, we want to
-         * treat the derived frequency as trusted as well, even if the loop contains some other
-         * control flow with unknown branch probabilities.
-         */
-        public ProfileSource combine(ProfileSource other) {
-            if (this.ordinal() < other.ordinal()) {
-                return this;
-            } else {
-                return other;
-            }
-        }
-
-        public static boolean isTrusted(ProfileSource source) {
-            return source == INJECTED || source == PROFILED;
-        }
     }
 
     public abstract double probability(AbstractBeginNode successor);
@@ -94,9 +46,10 @@ public abstract class ControlSplitNode extends FixedNode {
     /**
      * Attempts to set the probability for the given successor to the passed value (which has to be
      * in the range of 0.0 and 1.0). Returns whether setting the probability was successful. When
-     * successful, sets the source of the knowledge about probabilities to {@code profileSource}.
+     * successful, sets the source of the knowledge about probabilities according to the
+     * {@code profileData}'s profile source.
      */
-    public abstract boolean setProbability(AbstractBeginNode successor, double value, ProfileSource profileSource);
+    public abstract boolean setProbability(AbstractBeginNode successor, BranchProbabilityData profileData);
 
     /**
      * Primary successor of the control split. Data dependencies on the node have to be scheduled in
@@ -112,16 +65,7 @@ public abstract class ControlSplitNode extends FixedNode {
     public abstract int getSuccessorCount();
 
     /**
-     * Returns the source of this node's knowledge about its branch probabilities.
+     * Returns the source of this node's knowledge about its successor probabilities.
      */
-    public ProfileSource getProfileSource() {
-        return profileSource;
-    }
-
-    /**
-     * Sets the source of this node's knowledge about its branch probabilities.
-     */
-    public void setProfileSource(ProfileSource profileSource) {
-        this.profileSource = profileSource;
-    }
+    public abstract ProfileData getProfileData();
 }

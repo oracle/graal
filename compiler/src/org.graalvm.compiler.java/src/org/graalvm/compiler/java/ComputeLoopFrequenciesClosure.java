@@ -32,89 +32,81 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure.State;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 
-public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<State> {
+public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<BranchProbabilityData> {
 
     private static final ComputeLoopFrequenciesClosure INSTANCE = new ComputeLoopFrequenciesClosure();
+
+    private static final BranchProbabilityData ZERO = BranchProbabilityData.create(0.0, ProfileSource.UNKNOWN);
+    private static final BranchProbabilityData ONE = BranchProbabilityData.create(1.0, ProfileSource.UNKNOWN);
 
     private ComputeLoopFrequenciesClosure() {
         // nothing to do
     }
 
-    protected static class State {
-        protected final double probability;
-        protected final ProfileSource profileSource;
+    private static BranchProbabilityData add(BranchProbabilityData x, BranchProbabilityData y) {
+        double p = x.getDesignatedSuccessorProbability() + y.getDesignatedSuccessorProbability();
+        return BranchProbabilityData.create(p, x.getProfileSource().combine(y.getProfileSource()));
+    }
 
-        static State ZERO = new State(0.0, ProfileSource.UNKNOWN);
-        static State ONE = new State(1.0, ProfileSource.UNKNOWN);
+    private static BranchProbabilityData scale(BranchProbabilityData x, double scaleFactor) {
+        return scaleAndCombine(x, scaleFactor, x.getProfileSource());
+    }
 
-        State(double probability, ProfileSource profileSource) {
-            this.probability = probability;
-            this.profileSource = profileSource;
-        }
-
-        State add(State other) {
-            return new State(this.probability + other.probability, this.profileSource.combine(other.profileSource));
-        }
-
-        State scale(double otherProbability, ProfileSource otherprofileSource) {
-            return new State(this.probability * otherProbability, this.profileSource.combine(otherprofileSource));
-        }
-
-        @Override
-        public String toString() {
-            return "[" + probability + ", " + profileSource + "]";
-        }
+    private static BranchProbabilityData scaleAndCombine(BranchProbabilityData x, double scaleFactor, ProfileSource otherSource) {
+        double p = multiplyRelativeFrequencies(x.getDesignatedSuccessorProbability(), scaleFactor);
+        return BranchProbabilityData.create(p, x.getProfileSource().combine(otherSource));
     }
 
     @Override
-    protected State processNode(FixedNode node, State currentState) {
+    protected BranchProbabilityData processNode(FixedNode node, BranchProbabilityData currentState) {
         // normal nodes never change the probability of a path
         return currentState;
     }
 
     @Override
-    protected State merge(AbstractMergeNode merge, List<State> states) {
+    protected BranchProbabilityData merge(AbstractMergeNode merge, List<BranchProbabilityData> states) {
         // a merge has the sum of all predecessor probabilities
-        State result = State.ZERO;
-        for (State s : states) {
-            result = result.add(s);
+        BranchProbabilityData result = ZERO;
+        for (BranchProbabilityData s : states) {
+            result = add(result, s);
         }
         return result;
     }
 
     @Override
-    protected State afterSplit(AbstractBeginNode node, State oldState) {
+    protected BranchProbabilityData afterSplit(AbstractBeginNode node, BranchProbabilityData oldState) {
         // a control split splits up the probability
         ControlSplitNode split = (ControlSplitNode) node.predecessor();
-        return oldState.scale(split.probability(node), split.getProfileSource());
+        return scaleAndCombine(oldState, split.probability(node), split.getProfileData().getProfileSource());
     }
 
     @Override
-    protected EconomicMap<LoopExitNode, State> processLoop(LoopBeginNode loop, State initialState) {
-        EconomicMap<LoopExitNode, State> exitStates = ReentrantNodeIterator.processLoop(this, loop, State.ONE).exitStates;
+    protected EconomicMap<LoopExitNode, BranchProbabilityData> processLoop(LoopBeginNode loop, BranchProbabilityData initialState) {
+        EconomicMap<LoopExitNode, BranchProbabilityData> exitStates = ReentrantNodeIterator.processLoop(this, loop, ONE).exitStates;
 
-        State exitState = State.ZERO;
-        for (State e : exitStates.getValues()) {
-            exitState = exitState.add(e);
+        BranchProbabilityData exitState = ZERO;
+        for (BranchProbabilityData e : exitStates.getValues()) {
+            exitState = add(exitState, e);
         }
-        double exitRelativeFrequency = exitState.probability;
+        double exitRelativeFrequency = exitState.getDesignatedSuccessorProbability();
         exitRelativeFrequency = Math.min(1.0, exitRelativeFrequency);
         exitRelativeFrequency = Math.max(ControlFlowGraph.MIN_RELATIVE_FREQUENCY, exitRelativeFrequency);
         double loopFrequency = 1.0 / exitRelativeFrequency;
-        loop.setLoopFrequency(loopFrequency, exitState.profileSource);
+        loop.setLoopFrequency(LoopFrequencyData.create(loopFrequency, exitState.getProfileSource()));
 
-        double adjustmentFactor = initialState.probability * loopFrequency;
-        exitStates.replaceAll((exitNode, state) -> new State(multiplyRelativeFrequencies(state.probability, adjustmentFactor), state.profileSource));
+        double adjustmentFactor = initialState.getDesignatedSuccessorProbability() * loopFrequency;
+        exitStates.replaceAll((exitNode, state) -> scale(state, adjustmentFactor));
 
         return exitStates;
     }
@@ -126,7 +118,7 @@ public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.N
      */
     public static void compute(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            ReentrantNodeIterator.apply(INSTANCE, graph.start(), State.ONE);
+            ReentrantNodeIterator.apply(INSTANCE, graph.start(), ONE);
         }
     }
 

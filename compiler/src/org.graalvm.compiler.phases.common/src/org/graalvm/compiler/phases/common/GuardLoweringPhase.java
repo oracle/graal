@@ -34,10 +34,10 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
@@ -98,7 +98,8 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
                     trueSuccessor = fastPath;
                     falseSuccessor = deoptBranch;
                 }
-                IfNode ifNode = graph.add(new IfNode(guard.getCondition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0, ProfileSource.INJECTED));
+                IfNode ifNode = graph.add(new IfNode(guard.getCondition(), trueSuccessor, falseSuccessor,
+                                (trueSuccessor == fastPath ? BranchProbabilityNode.ALWAYS_TAKEN_PROFILE : BranchProbabilityNode.NEVER_TAKEN_PROFILE)));
                 guard.replaceAndDelete(fastPath);
                 insert(ifNode, fastPath);
             }

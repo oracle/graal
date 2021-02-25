@@ -70,7 +70,7 @@ import jdk.vm.ci.meta.Signature;
 /**
  * Generated method for operations on an array with a primitive element type via JNI. An accessor is
  * specific to the {@link JavaKind element kind} of the array, and to an {@link Operation}.
- * 
+ *
  * The generated method implements one of the following JNI Functions:
  *
  * <ul>
@@ -115,7 +115,7 @@ import jdk.vm.ci.meta.Signature;
  * <li>{@code SetFloatArrayRegion}</li>
  * <li>{@code SetDoubleArrayRegion}</li>
  * </ul>
- * 
+ *
  * @see <a href=
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
  *      Functions</a>
@@ -267,7 +267,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         ResolvedJavaType elementType = providers.getMetaAccess().lookupJavaType(elementKind.toJavaClass());
         ValueNode length = arguments.get(1);
         ConstantNode zero = kit.createInt(0);
-        kit.startIf(new IntegerLessThanNode(length, zero), BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY);
+        kit.startIf(new IntegerLessThanNode(length, zero), BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
         kit.thenPart();
         ValueNode nullHandle = kit.createConstant(JavaConstant.INT_0, providers.getWordTypes().getWordKind());
         kit.elsePart();

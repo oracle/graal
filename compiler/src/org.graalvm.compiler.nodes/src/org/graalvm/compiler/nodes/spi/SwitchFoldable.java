@@ -39,10 +39,11 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
+import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeInterface;
@@ -470,7 +471,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
         }
 
         // Spawn the switch node
-        IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keyProbabilities, keySuccessors, profileSource);
+        IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keySuccessors, SwitchProbabilityData.create(keyProbabilities, profileSource));
         graph.add(toInsert);
 
         // Detach the cascade from the graph

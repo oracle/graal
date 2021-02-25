@@ -37,7 +37,7 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
+import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -53,8 +53,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
 
     public static final NodeClass<LoopBeginNode> TYPE = NodeClass.create(LoopBeginNode.class);
-    private double loopFrequency;
-    private ProfileSource loopFrequencySource;
+    private LoopFrequencyData profileData;
     protected double loopOrigFrequency;
     protected int nextEndIndex;
     protected int unswitches;
@@ -96,8 +95,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public LoopBeginNode() {
         super(TYPE);
-        loopFrequency = 1;
-        loopFrequencySource = ProfileSource.UNKNOWN;
+        profileData = LoopFrequencyData.DEFAULT;
         loopOrigFrequency = 1;
         unswitches = 0;
         splits = 0;
@@ -200,18 +198,16 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.loopOrigFrequency = loopOrigFrequency;
     }
 
+    public LoopFrequencyData profileData() {
+        return profileData;
+    }
+
     public double loopFrequency() {
-        return loopFrequency;
+        return profileData.getLoopFrequency();
     }
 
-    public ProfileSource loopFrequencySource() {
-        return loopFrequencySource;
-    }
-
-    public void setLoopFrequency(double loopFrequency, ProfileSource frequencySource) {
-        assert loopFrequency >= 1.0;
-        this.loopFrequency = loopFrequency;
-        this.loopFrequencySource = frequencySource;
+    public void setLoopFrequency(LoopFrequencyData newProfileData) {
+        this.profileData = newProfileData;
     }
 
     /**

@@ -47,6 +47,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -266,7 +267,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             condition = graphKit.append(InstanceOfNode.createAllowNull(typeRef, value, null, null));
         }
 
-        graphKit.startIf(condition, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        graphKit.startIf(condition, BranchProbabilityNode.FAST_PATH_PROFILE);
         graphKit.thenPart();
 
         PiNode ret = graphKit.createPiNode(value, StampFactory.object(typeRef, nonNull));
@@ -287,7 +288,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
          * time too.
          */
         LogicNode argsNullCondition = graphKit.append(IsNullNode.create(argumentArray));
-        graphKit.startIf(argsNullCondition, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+        graphKit.startIf(argsNullCondition, BranchProbabilityNode.SLOW_PATH_PROFILE);
         graphKit.thenPart();
         if (argTypes.length == 0) {
             /* No arguments, so null is an allowed value. */
@@ -299,7 +300,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
         ValueNode argsLength = graphKit.append(ArrayLengthNode.create(argumentArrayNonNull, graphKit.getConstantReflection()));
         LogicNode argsLengthCondition = graphKit.append(IntegerEqualsNode.create(argsLength, ConstantNode.forInt(argTypes.length), NodeView.DEFAULT));
-        graphKit.startIf(argsLengthCondition, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        graphKit.startIf(argsLengthCondition, BranchProbabilityNode.FAST_PATH_PROFILE);
         graphKit.thenPart();
 
         for (int i = 0; i < argTypes.length; i++) {
@@ -518,7 +519,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
                                 TypeReference typeRef = TypeReference.createTrusted(graphKit.getAssumptions(), type);
                                 LogicNode condition = graphKit.append(InstanceOfNode.create(typeRef, value));
 
-                                graphKit.startIf(condition, 0.5);
+                                graphKit.startIf(condition, BranchProbabilityData.unknown());
 
                                 graphKit.thenPart();
                                 PiNode boxed = graphKit.createPiNode(value, StampFactory.object(typeRef, true));
@@ -741,7 +742,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
             LogicNode otherIsNull = graphKit.append(IsNullNode.create(other));
 
-            graphKit.startIf(otherIsNull, BranchProbabilityNode.NOT_LIKELY_PROBABILITY);
+            graphKit.startIf(otherIsNull, BranchProbabilityNode.NOT_LIKELY_PROFILE);
 
             graphKit.thenPart();
 
@@ -756,7 +757,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
             LogicNode equals = graphKit.unique(PointerEqualsNode.create(selfHub, otherHub, NodeView.DEFAULT));
 
-            graphKit.startIf(equals, BranchProbabilityNode.NOT_LIKELY_PROBABILITY);
+            graphKit.startIf(equals, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             graphKit.thenPart();
 
             graphKit.createReturn(trueValue, JavaKind.Boolean);

@@ -557,7 +557,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
             IsNullNode isNull = kit.unique(new IsNullNode(returnValue));
-            kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY);
+            kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
             kit.thenPart();
             ResolvedJavaType enumExceptionType = metaAccess.lookupJavaType(RuntimeException.class);
             NewInstanceNode enumException = kit.append(new NewInstanceNode(enumExceptionType, true));

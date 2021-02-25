@@ -65,11 +65,11 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.calc.AbsNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -1095,7 +1095,7 @@ public class StandardGraphBuilderPlugins {
                 FixedWithNextNode[] accessNodes = new FixedWithNextNode[]{objectAccess, memoryAccess};
 
                 LogicNode condition = graph.addOrUniqueWithInputs(IsNullNode.create(value));
-                b.add(new IfNode(condition, memoryAccess, objectAccess, 0.5, ProfileSource.UNKNOWN));
+                b.add(new IfNode(condition, memoryAccess, objectAccess, BranchProbabilityData.unknown()));
 
                 MergeNode merge = b.append(new MergeNode());
                 for (FixedWithNextNode node : accessNodes) {

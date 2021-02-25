@@ -53,7 +53,6 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -383,7 +382,7 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
 
         EndNode uninitializedEndNode = b.getGraph().add(new EndNode());
         EndNode initializedEndNode = b.getGraph().add(new EndNode());
-        b.add(new IfNode(isUninitializedNode, uninitializedEndNode, initializedEndNode, BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY, ProfileSource.INJECTED));
+        b.add(new IfNode(isUninitializedNode, uninitializedEndNode, initializedEndNode, BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROFILE));
 
         MergeNode merge = b.append(new MergeNode());
         merge.addForwardEnd(uninitializedEndNode);
