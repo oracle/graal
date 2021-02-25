@@ -5,9 +5,9 @@ suite = {
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "SHOPCART_0.2": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.2.zip"],
-      "sha1": "a216a44f7a52b9e5d09a1cd1e4f4ffd3d86c7bd1",
+    "SHOPCART_0.3": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.zip"],
+      "sha1": "e99ed0d4f4ffa9317939bf895840e7a3f17542d0",
       "packedResource": True,
     },
 
