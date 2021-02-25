@@ -30,6 +30,7 @@
 from __future__ import print_function
 
 import fnmatch
+import pipes
 
 import mx
 import mx_unittest
@@ -376,3 +377,252 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         env['VPATH'] = ':'.join(roots)
         env['TESTFILE'] = self.getTestFile()
         return env
+
+
+class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
+        super(BootstrapToolchainLauncherProject, self).__init__(suite, name, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kwArgs)
+
+    def launchers(self):
+        for tool in self.suite.toolchain._supported_tools():
+            for exe in self.suite.toolchain._tool_to_aliases(tool):
+                if mx.is_windows() and exe.endswith('.exe'):
+                    exe = exe[:-4] + ".cmd"
+                result = os.path.join(self.get_output_root(), exe)
+                yield result, tool, exe
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        for result, _, exe in self.launchers():
+            yield result, os.path.join('bin', exe)
+
+    def getBuildTask(self, args):
+        return BootstrapToolchainLauncherBuildTask(self, args, 1)
+
+    def isPlatformDependent(self):
+        return True
+
+
+def _quote_windows(arg):
+    return '"{}"'.format(arg)
+
+
+class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
+    def __str__(self):
+        return "Generating " + self.subject.name
+
+    def newestOutput(self):
+        return mx.TimeStampFile.newest([result for result, _, _ in self.subject.launchers()])
+
+    def needsBuild(self, newestInput):
+        sup = super(BootstrapToolchainLauncherBuildTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+
+        for result, tool, exe in self.subject.launchers():
+            if not os.path.exists(result):
+                return True, result + ' does not exist'
+            with open(result, "r") as f:
+                on_disk = f.read()
+            if on_disk != self.contents(tool, exe):
+                return True, 'command line changed for ' + os.path.basename(result)
+
+        return False, 'up to date'
+
+    def build(self):
+        mx.ensure_dir_exists(self.subject.get_output_root())
+        for result, tool, exe in self.subject.launchers():
+            with open(result, "w") as f:
+                f.write(self.contents(tool, exe))
+            os.chmod(result, 0o755)
+
+    def clean(self, forBuild=False):
+        if os.path.exists(self.subject.get_output_root()):
+            mx.rmtree(self.subject.get_output_root())
+
+    def contents(self, tool, exe):
+        # platform support
+        all_params = '"%*"' if mx.is_windows() else '"$@"'
+        _quote = _quote_windows if mx.is_windows() else pipes.quote
+        # build command line
+        java = mx.get_jdk().java
+        classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
+        extra_props = ['-Dorg.graalvm.launcher.executablename="{}"'.format(exe)]
+        main_class = self.subject.suite.toolchain._tool_to_main(tool)
+        jvm_args = [_quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        command = [java] + jvm_args + extra_props + [main_class, all_params]
+        # create script
+        if mx.is_windows():
+            return "@echo off\n" + " ".join(command) + "\n"
+        else:
+            return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
+
+
+class CMakeBuildTask(mx.NativeBuildTask):
+
+    def __str__(self):
+        return 'Building {} with CMake'.format(self.subject.name)
+
+    def _build_run_args(self):
+        cmdline, cwd, env = super(CMakeBuildTask, self)._build_run_args()
+
+        def _flatten(lst):
+            for e in lst:
+                if isinstance(e, list):
+                    for sub in _flatten(e):
+                        yield sub
+                else:
+                    yield e
+
+        # flatten cmdline to support for multiple make targets
+        return list(_flatten(cmdline)), cwd, env
+
+    def build(self):
+        # get cwd and env
+        self._configure()
+        # This is copied from the super call because we want to make it
+        # less verbose but calling super does not allow us to do that.
+        # super(CMakeBuildTask, self).build()
+        cmdline, cwd, env = self._build_run_args()
+        if mx._opts.verbose:
+            mx.run(cmdline, cwd=cwd, env=env)
+        else:
+            with open(os.devnull, 'w') as fnull:
+                mx.run(cmdline, cwd=cwd, env=env, out=fnull)
+        self._newestOutput = None
+        # END super(CMakeBuildTask, self).build()
+        source_dir = self.subject.source_dirs()[0]
+        self._write_guard(self.guard_file(), source_dir, self.subject.cmake_config())
+
+    def needsBuild(self, newestInput):
+        mx.logv('Checking whether to build {} with CMake'.format(self.subject.name))
+        need_configure, reason = self._need_configure()
+        return need_configure, "rebuild needed by CMake ({})".format(reason)
+
+    def _write_guard(self, guard_file, source_dir, cmake_config):
+        with open(guard_file, 'w') as fp:
+            fp.write(self._guard_data(source_dir, cmake_config))
+
+    def _guard_data(self, source_dir, cmake_config):
+        return source_dir + '\n' + '\n'.join(cmake_config)
+
+    def _check_cmake(self):
+        try:
+            self.run_cmake(["--version"], silent=False, nonZeroIsFatal=False)
+        except OSError as e:
+            mx.abort(str(e) + "\nError executing 'cmake --version'. Are you sure 'cmake' is installed? ")
+
+    def _need_configure(self):
+        source_dir = self.subject.source_dirs()[0]
+        guard_file = self.guard_file()
+        if not os.path.exists(os.path.join(self.subject.dir, 'Makefile')):
+            return True, "No existing Makefile - reconfigure"
+        cmake_config = self.subject.cmake_config()
+        if not os.path.exists(guard_file):
+            return True, "No guard file - reconfigure"
+        with open(guard_file, 'r') as fp:
+            if fp.read() != self._guard_data(source_dir, cmake_config):
+                return True, "Guard file changed - reconfigure"
+            return False, None
+
+    def _configure(self, silent=False):
+        need_configure, _ = self._need_configure()
+        if not need_configure:
+            return
+        _, cwd, env = self._build_run_args()
+        source_dir = self.subject.source_dirs()[0]
+        cmakefile = os.path.join(self.subject.dir, 'CMakeCache.txt')
+        if os.path.exists(cmakefile):
+            # remove cache file if it exist
+            os.remove(cmakefile)
+        cmdline = ["-G", "Unix Makefiles", source_dir] + self.subject.cmake_config()
+        self._check_cmake()
+        self.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
+        return True
+
+    def run_cmake(self, cmdline, silent, *args, **kwargs):
+        if mx._opts.verbose:
+            mx.run(["cmake"] + cmdline, *args, **kwargs)
+        else:
+            with open(os.devnull, 'w') as fnull:
+                err = fnull if silent else None
+                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
+
+    def guard_file(self):
+        return os.path.join(self.subject.dir, 'mx.cmake.rebuild.guard')
+
+
+class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d_rel = projectDir
+        elif subDir is None:
+            d_rel = name
+        else:
+            d_rel = os.path.join(subDir, name)
+        d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
+        srcDir = args.pop('sourceDir', d)
+        if not srcDir:
+            mx.abort("Exactly one 'sourceDir' is required")
+        srcDir = mx_subst.path_substitutions.substitute(srcDir)
+        super(AbstractSulongNativeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
+
+
+class CMakeProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        super(CMakeProject, self).__init__(suite, name, deps, workingSets, subDir, results=results, output=output, **args)
+        cmake_config = args.pop('cmakeConfig', {})
+        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
+        self.dir = self.getOutput()
+
+    def getBuildTask(self, args):
+        return CMakeBuildTask(args, self)
+
+
+class DocumentationBuildTask(mx.AbstractNativeBuildTask):
+    def __str__(self):
+        return 'Building {} with Documentation Build Task'.format(self.subject.name)
+
+    def build(self):
+        pass
+
+    def needsBuild(self, newestInput):
+        return False, None
+
+    def clean(self, forBuild=False):
+        pass
+
+
+class DocumentationProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        super(DocumentationProject, self).__init__(suite, name, deps, workingSets, subDir, results, output, **args)
+        self.dir = self.source_dirs()[0]
+
+    def getBuildTask(self, args):
+        return DocumentationBuildTask(args, self)
+
+
+class HeaderBuildTask(mx.NativeBuildTask):
+    def __str__(self):
+        return 'Building {} with Header Build Task'.format(self.subject.name)
+
+    def build(self):
+        self._newestOutput = None
+
+    def needsBuild(self, newestInput):
+        return (False, "up to date according to GNU Make")
+
+    def clean(self, forBuild=False):
+        pass
+
+
+class HeaderProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        super(HeaderProject, self).__init__(suite, name, deps, workingSets, subDir, results, output, **args)
+        self.dir = self.source_dirs()[0]
+
+    def getBuildTask(self, args):
+        return HeaderBuildTask(args, self)
+
+    def isPlatformDependent(self):
+        return False
