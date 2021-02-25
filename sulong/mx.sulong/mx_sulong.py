@@ -218,8 +218,9 @@ def update_sulong_home(new_home):
 mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
 
 
+@mx.command(_suite.name, "lli-legacy")
 def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, get_classpath_options=getClasspathOptions):
-    """uses Sulong to execute a LLVM IR file"""
+    """run lli via the legacy mx java launcher (instead of via the current GraalVM)"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     dists = []
     if "tools" in (s.name for s in mx.suites()):
@@ -243,11 +244,15 @@ def lli(args=None, out=None):
     mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'lli')] + args, out=out)
 
 
+@mx.command(_suite.name, "extract-bitcode")
 def extract_bitcode(args=None, out=None):
+    """Extract embedded LLVM bitcode from object files"""
     return mx.run_java(mx.get_runtime_jvm_args(["com.oracle.truffle.llvm.tools"]) + ["com.oracle.truffle.llvm.tools.ExtractBitcode"] + args, out=out)
 
 
+@mx.command(_suite.name, "lli-dis")
 def llvm_dis(args=None, out=None):
+    """Disassemble (embedded) LLVM bitcode to LLVM assembly"""
     parser = ArgumentParser(prog='mx llvm-dis', description='Disassemble (embedded) LLVM bitcode to LLVM assembly.')
     parser.add_argument('input', help='The input file.', metavar='<input>')
     parser.add_argument('output', help='The output file. If omitted, <input>.ll is used. If <input> ends with ".bc", the ".bc" part is replaced with ".ll".', metavar='<output>', default=None, nargs='?')
@@ -832,10 +837,13 @@ COPYRIGHT_HEADER_BSD_HASH = """\
 """
 
 
+@mx.command(_suite.name, 'create-asm-parser')
 def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
 
+
+@mx.command(_suite.name, 'create-debugexpr-parser')
 def create_debugexpr_parser(args=None, out=None):
     """create the debug expression parser using antlr"""
     mx.suite("truffle").extensions.create_parser(grammar_project="com.oracle.truffle.llvm.runtime",
@@ -843,7 +851,10 @@ def create_debugexpr_parser(args=None, out=None):
                                                  grammar_name="DebugExpression",
                                                  copyright_template=COPYRIGHT_HEADER_BSD, args=args, out=out)
 
+
+@mx.command(_suite.name, 'create-parsers')
 def create_parsers(args=None, out=None):
+    """create the debug expression and the inline assembly parser using antlr"""
     create_asm_parser(args, out)
     create_debugexpr_parser(args, out)
 
@@ -928,12 +939,3 @@ def create_generated_sources(args=None, out=None):
 
 def llirtestgen(args=None, out=None):
     return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
-
-mx.update_commands(_suite, {
-    'lli-legacy' : [runLLVM, 'run lli via the legacy mx java launcher (instead of via the current GraalVM)'],
-    'create-asm-parser' : [create_asm_parser, 'create the inline assembly parser using antlr'],
-    'create-debugexpr-parser' : [create_debugexpr_parser, 'create the debug expression parser using antlr'],
-    'create-parsers' : [create_parsers, 'create the debug expression and the inline assembly parser using antlr'],
-    'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
-    'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],
-})
