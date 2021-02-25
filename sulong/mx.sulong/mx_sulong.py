@@ -341,8 +341,10 @@ def which(program, searchPath=None):
 def getGCC(optional=False):
     return findGCCProgram('gcc', optional=optional)
 
+
 def getGFortran(optional=False):
     return findGCCProgram('gfortran', optional=optional)
+
 
 def findLLVMProgramForDragonegg(program):
     if 'DRAGONEGG_LLVM' in os.environ:
@@ -350,12 +352,14 @@ def findLLVMProgramForDragonegg(program):
         return os.path.join(path, 'bin', program)
     mx.abort("Cannot find LLVM program for dragonegg: {}\nDRAGONEGG_LLVM environment variable not set".format(program))
 
+
 def findGCCProgram(gccProgram, optional=False):
     if 'DRAGONEGG_GCC' in os.environ:
         return os.path.join(os.environ['DRAGONEGG_GCC'], 'bin', gccProgram)
     if optional:
         return None
     mx.abort("Cannot find GCC program for dragonegg: {}\nDRAGONEGG_GCC environment variable not set".format(gccProgram))
+
 
 def findBundledLLVMProgram(llvm_program):
     llvm_dist = 'LLVM_TOOLCHAIN'
@@ -386,6 +390,7 @@ def extract_compiler_args(args, useDoubleDash=False):
             else:
                 remainder += [arg]
     return compilerArgs, remainder
+
 
 def getCommonOptions(withAssertion, lib_args=None):
     options = []
