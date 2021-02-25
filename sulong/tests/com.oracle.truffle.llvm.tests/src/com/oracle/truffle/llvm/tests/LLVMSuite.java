@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class LLVMSuite extends BaseSuiteHarness {
 
-    public static final String TEST_DISTRIBUTION = "SULONG_LLVM";
+    public static final String TEST_DISTRIBUTION = "SULONG_LLVM_TEST_SUITE";
     public static final String SOURCE = "LLVM_TEST_SUITE";
 
     @Parameters(name = "{1}")

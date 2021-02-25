@@ -195,7 +195,7 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_unittest('Benchmarks', 'SULONG_SHOOTOUT', tasks, args, testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
     _sulong_gate_unittest('Types', 'SULONG_TEST', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.types.floating'])
     _sulong_gate_unittest('Pipe', 'SULONG_TEST', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
-    _sulong_gate_unittest('LLVM', 'SULONG_LLVM', tasks, args, testClasses=['LLVMSuite'], tags=['llvm', 'sulongCoverage'])
+    _sulong_gate_unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', tasks, args, testClasses=['LLVMSuite'], tags=['llvm', 'sulongCoverage'])
     _sulong_gate_unittest('NWCC', 'SULONG_NWCC', tasks, args, testClasses=['NWCCSuite'], tags=['nwcc', 'sulongCoverage'])
     _sulong_gate_unittest('GCCParserTorture', 'SULONG_PARSER_TORTURE', tasks, args, testClasses=['ParserTortureSuite'], tags=['parser', 'sulongCoverage'])
     _sulong_gate_unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', tasks, args, testClasses=['GccCSuite'], tags=['gcc_c', 'sulongCoverage'])

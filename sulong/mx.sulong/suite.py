@@ -1600,7 +1600,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_LLVM" : {
+    "SULONG_LLVM_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
