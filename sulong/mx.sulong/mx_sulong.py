@@ -371,29 +371,28 @@ def getCommand(envVariable):
             return command
 
 def getGCC(optional=False):
-    """tries to locate a gcc version suitable to execute Dragonegg"""
-    specifiedGCC = getCommand('SULONG_GCC')
-    if specifiedGCC is not None:
-        return specifiedGCC
     return findGCCProgram('gcc', optional=optional)
 
 def getGFortran(optional=False):
-    """tries to locate a gfortran version suitable to execute Dragonegg"""
-    specifiedGFortran = getCommand('SULONG_GFORTRAN')
-    if specifiedGFortran is not None:
-        return specifiedGFortran
     return findGCCProgram('gfortran', optional=optional)
 
 def findLLVMProgramForDragonegg(program):
-    """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
-    installedProgram = findInstalledLLVMProgram(program, ['3.2', '3.3'])
-
-    if installedProgram is not None:
-        return installedProgram
     if 'DRAGONEGG_LLVM' in os.environ:
         path = os.environ['DRAGONEGG_LLVM']
         return os.path.join(path, 'bin', program)
-    mx.abort("Cannot find LLVM program for dragonegg: " + program)
+    mx.abort("Cannot find LLVM program for dragonegg: {}\nDRAGONEGG_LLVM environment variable not set".format(program))
+
+def findGCCProgram(gccProgram, optional=False):
+    if 'DRAGONEGG_GCC' in os.environ:
+        return os.path.join(os.environ['DRAGONEGG_GCC'], 'bin', gccProgram)
+    if optional:
+        return None
+    mx.abort("Cannot find GCC program for dragonegg: {}\nDRAGONEGG_GCC environment variable not set".format(gccProgram))
+
+def findBundledLLVMProgram(llvm_program):
+    llvm_dist = 'LLVM_TOOLCHAIN'
+    dep = mx.dependency(llvm_dist, fatalIfMissing=True)
+    return os.path.join(dep.get_output(), 'bin', llvm_program)
 
 
 def truffle_extract_VM_args(args, useDoubleDash=False):
@@ -521,73 +520,6 @@ def getGCCVersion(gccProgram):
     else:
         return gccVersion.group(2)
 
-def findInstalledLLVMProgram(llvmProgram, supportedVersions=None):
-    """tries to find a supported version of a program by checking for the argument string (e.g., clang) and appending version numbers (e.g., clang-3.4) as specified by the postfixes (or supportedLLVMVersions by default)"""
-    if supportedVersions is None:
-        appends = supportedLLVMVersions
-    else:
-        appends = supportedVersions
-    return findInstalledProgram(llvmProgram, appends, isSupportedLLVMVersion)
-
-def findInstalledGCCProgram(gccProgram):
-    """tries to find a supported version of a GCC program by checking for the argument string (e.g., gfortran) and appending version numbers (e.g., gfortran-4.9)"""
-    path = None
-    if 'DRAGONEGG_GCC' in os.environ:
-        path = [os.path.join(os.environ['DRAGONEGG_GCC'], 'bin')]
-    return findInstalledProgram(gccProgram, supportedGCCVersions, isSupportedGCCVersion, searchPath=path)
-
-def findInstalledProgram(program, supportedVersions, testSupportedVersion, searchPath=None):
-    """tries to find a supported version of a program
-
-    The function takes program argument, and checks if it has the supported version.
-    If not, it prepends a supported version to the version string to check if it is an executable program with a supported version.
-    The function checks both for programs by appending "-" and the unmodified version string, as well as by directly adding all the digits of the version string (stripping all other characters).
-
-    For example, for a program gcc with supportedVersions 4.6 the function produces gcc-4.6 and gcc46.
-
-    Arguments:
-    program -- the program to find, e.g., clang or gcc
-    supportedVersions -- the supported versions, e.g., 3.4 or 4.9
-    testSupportedVersion(path, supportedVersions) -- the test function to be called to ensure that the found program is supported
-    searchPath -- search path to find binaries (defaults to PATH environment variable)
-    """
-    assert program is not None
-    programPath = which(program, searchPath=searchPath)
-    if programPath is not None and testSupportedVersion(programPath, supportedVersions):
-        return programPath
-    else:
-        for version in supportedVersions:
-            alternativeProgram1 = program + '-' + version
-            alternativeProgram2 = program + re.sub(r"\D", "", version)
-            alternativePrograms = [alternativeProgram1, alternativeProgram2]
-            for alternativeProgram in alternativePrograms:
-                alternativeProgramPath = which(alternativeProgram, searchPath=searchPath)
-                if alternativeProgramPath is not None:
-                    assert testSupportedVersion(alternativeProgramPath, supportedVersions)
-                    return alternativeProgramPath
-    return None
-
-def findLLVMProgram(llvmProgram, version=None):
-    """tries to find a supported version of the given LLVM program; exits if none can be found"""
-    installedProgram = findInstalledLLVMProgram(llvmProgram, version)
-
-    if installedProgram is None:
-        exit('found no supported version of ' + llvmProgram)
-    else:
-        return installedProgram
-
-def findGCCProgram(gccProgram, optional=False):
-    """tries to find a supported version of an installed GCC program"""
-    installedProgram = findInstalledGCCProgram(gccProgram)
-    if installedProgram is None and not optional:
-        exit('found no supported version ' + str(supportedGCCVersions) + ' of ' + gccProgram)
-    else:
-        return installedProgram
-
-def findBundledLLVMProgram(llvm_program):
-    llvm_dist = 'LLVM_TOOLCHAIN'
-    dep = mx.dependency(llvm_dist, fatalIfMissing=True)
-    return os.path.join(dep.get_output(), 'bin', llvm_program)
 
 @mx.command(_suite.name, 'llvm-tool', 'Run a tool from the LLVM_TOOLCHAIN distribution')
 def llvm_tool(args=None, out=None, **kwargs):
