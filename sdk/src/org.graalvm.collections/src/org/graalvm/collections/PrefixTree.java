@@ -40,9 +40,11 @@
  */
 package org.graalvm.collections;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
- * Prefix tree implementation in which keys are sequences of 64-bit values,
- * and the values are 64-bit values.
+ * Thread-safe prefix-tree implementation in which keys are sequences of 64-bit values, and the
+ * values are 64-bit values.
  */
 public class PrefixTree {
     private static final int INITIAL_LINEAR_NODE_SIZE = 3;
@@ -51,73 +53,116 @@ public class PrefixTree {
     private static final long EMPTY_KEY = 0L;
     private static final double HASH_NODE_LOAD_FACTOR = 0.5;
 
-    public static class Node {
-        private long[] keys;
-        private Node[] children;
-        private int arity;
-        private long value;
+    public static class Node extends AtomicLong {
+        private volatile long seqlock;
+        private volatile long[] keys;
+        private volatile Node[] children;
+        private volatile int arity;
 
         private Node() {
-            this.keys = new long[INITIAL_LINEAR_NODE_SIZE];
-            this.children = new Node[INITIAL_LINEAR_NODE_SIZE];
+            this.seqlock = 0L;
+            this.keys = null;
+            this.children = null;
             this.arity = 0;
-            this.value = 0L;
         }
 
         public long value() {
-            return value;
+            return get();
         }
 
-        public void incValue() {
-            this.value++;
+        public long incValue() {
+            return incrementAndGet();
         }
 
         public void setValue(long value) {
-            this.value = value;
+            set(value);
         }
 
         public Node at(long key) {
             if (key == EMPTY_KEY) {
                 throw new IllegalArgumentException("Key in the prefix tree cannot be 0.");
             }
-            if (keys.length <= MAX_LINEAR_NODE_SIZE) {
-                // Do a linear search to find a matching child.
-                for (int i = 0; i < arity; i++) {
-                    final long curkey = keys[i];
-                    if (curkey == key) {
-                        return children[i];
-                    }
-                }
-
-                // No child was found, so insert a new child.
-                return addChild(key);
-            } else {
-                int index = hash(key) % keys.length;
-                Node child = null;
-                while (true) {
-                    long curkey = keys[index];
-                    if (curkey == EMPTY_KEY) {
-                        break;
-                    } else if (curkey == key) {
-                        child = children[index];
-                        break;
-                    }
-                    index = (index + 1) % keys.length;
-                }
-                if (child == null) {
-                    child = addChild(key);
-                }
-                return child;
-            }
+            Node child = findChildLockFree(key);
+            return child != null ? child : tryAddChild(key);
         }
 
-        private Node addChild(long key) {
-            Node child = new Node();
+        private Node findChildLockFree(long key) {
+            final long seqlockStart = seqlock;
+            if ((seqlockStart & 1) == 1) {
+                // A modification is in progress.
+                return null;
+            }
+            final long[] keysSnapshot = keys;
+            final Node[] childrenSnapshot = children;
+            Node child = findChild(keysSnapshot, childrenSnapshot, key);
+            final long seqlockEnd = seqlock;
+            if (seqlockStart != seqlockEnd) {
+                // The search was interleaved with a modification.
+                return null;
+            }
+            return child;
+        }
+
+        private Node findChild(long[] keysSnapshot, Node[] childrenSnapshot, long key) {
+            if (keysSnapshot == null || childrenSnapshot == null) {
+                // No children were fully added yet.
+                return null;
+            }
+            if (keysSnapshot.length != childrenSnapshot.length) {
+                // Snapshot is invalid. There must be a modification in progress.
+                return null;
+            }
+            if (keysSnapshot.length <= MAX_LINEAR_NODE_SIZE) {
+                // Do a linear search to find a matching child.
+                for (int i = 0; i < keysSnapshot.length; i++) {
+                    final long curkey = keysSnapshot[i];
+                    if (curkey == key) {
+                        return childrenSnapshot[i];
+                    } else if (curkey == EMPTY_KEY) {
+                        break;
+                    }
+                }
+            } else {
+                int index = hash(key) % keysSnapshot.length;
+                while (true) {
+                    long curkey = keysSnapshot[index];
+                    if (curkey == key) {
+                        return childrenSnapshot[index];
+                    } else if (curkey == EMPTY_KEY) {
+                        break;
+                    }
+                    index = (index + 1) % keysSnapshot.length;
+                }
+            }
+            return null;
+        }
+
+        private synchronized Node tryAddChild(long key) {
+            // Grab seqlock.
+            seqlock = seqlock + 1;
+
+            if (keys == null) {
+                keys = new long[INITIAL_LINEAR_NODE_SIZE];
+                children = new Node[INITIAL_LINEAR_NODE_SIZE];
+            }
+
+            // Child addition must start by re-checking if the key is present,
+            // to avoid a race condition.
+            Node child = findChild(keys, children, key);
+            if (child != null) {
+                return child;
+            }
+
+            // If the child still does not exist, enter a new one.
+            child = new Node();
             if (keys.length <= MAX_LINEAR_NODE_SIZE) {
                 addChildToLinearNode(key, child);
             } else {
                 addChildToHashNode(key, child);
             }
+
+            // Release seqlock.
+            seqlock = seqlock + 1;
             return child;
         }
 
@@ -179,8 +224,8 @@ public class PrefixTree {
         private void growHash() {
             long[] oldKeys = keys;
             Node[] oldChildren = children;
-            keys = new long[2 * keys.length];
-            children = new Node[2 * children.length];
+            keys = new long[2 * oldKeys.length];
+            children = new Node[2 * oldChildren.length];
             arity = 0;
             for (int i = 0; i < oldKeys.length; i++) {
                 long key = oldKeys[i];
@@ -199,7 +244,7 @@ public class PrefixTree {
         }
     }
 
-    private Node root;
+    private final Node root;
 
     public PrefixTree() {
         this.root = new Node();

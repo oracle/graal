@@ -96,4 +96,47 @@ public class PrefixTreeTest {
             }
         }
     }
+
+    @Test
+    public void storeLargeMultithreaded() {
+        PrefixTree tree = new PrefixTree();
+
+        int parallelism = 8;
+        Thread[] threads = new Thread[parallelism];
+        for (int t = 0; t < parallelism; t++) {
+            final int threadIndex = t;
+            threads[t] = new Thread() {
+                @Override
+                public void run() {
+                    for (long i = 1L; i < 2048L; i++) {
+                        PrefixTree.Node first = tree.root().at(threadIndex * 2048L + i);
+                        for (long j = 1L; j < 2048L; j++) {
+                            PrefixTree.Node second = first.at(j);
+                            second.setValue(i * j);
+                        }
+                    }
+                }
+            };
+        }
+        for (int t = 0; t < parallelism; t++) {
+            threads[t].start();
+        }
+        for (int t = 0; t < parallelism; t++) {
+            try {
+                threads[t].join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        for (int t = 0; t < parallelism; t++) {
+            for (long i = 1L; i < 2048L; i++) {
+                PrefixTree.Node first = tree.root().at(t * 2048L + i);
+                for (long j = 1L; j < 2048L; j++) {
+                    PrefixTree.Node second = first.at(j);
+                    Assert.assertEquals(i * j, second.value());
+                }
+            }
+        }
+    }
 }
