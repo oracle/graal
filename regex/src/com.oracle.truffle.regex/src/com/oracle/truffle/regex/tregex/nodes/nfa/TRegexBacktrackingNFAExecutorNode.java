@@ -62,9 +62,14 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputRegionMatchesNode;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
+
+import java.util.List;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -82,11 +87,30 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private final boolean forward;
     private final boolean ignoreCase;
     private final boolean unicode;
+    /**
+     * Should a backreference to an unmatched capture group succeed?
+     */
+    private final boolean backrefWithNullTargetSucceeds;
+    /**
+     * Should the empty check in {@code exitZeroWidth} quantifier guards also check the contents of
+     * capture groups? If the capture groups were modified, the empty check passes, even if only the
+     * empty string was matched.
+     */
+    private final boolean monitorCaptureGroupsInEmptyCheck;
+    /**
+     * When generating NFAs for Ruby regular expressions, the sequence of quantifier guards on a
+     * single transition can become quite complex. This necessitates evaluating the effects of each
+     * guard one by one in order to arrive at the correct answer. This flag controls whether such
+     * detailed handling of the quantifiers is to be used or not.
+     */
+    private final boolean transitionMatchesStepByStep;
     private final boolean loneSurrogates;
     private final boolean loopbackInitialState;
     private final InnerLiteral innerLiteral;
     @CompilationFinal(dimensions = 1) private final TRegexExecutorNode[] lookAroundExecutors;
     @Children private CharMatcher[] matchers;
+    private final int[] zeroWidthTermEnclosedCGLow;
+    private final int[] zeroWidthQuantifierCGOffsets;
 
     @Child InputRegionMatchesNode regionMatchesNode;
     @Child InputIndexOfStringNode indexOfNode;
@@ -99,9 +123,25 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.forward = !(subtree instanceof LookBehindAssertion);
         this.ignoreCase = nfaMap.getAst().getFlags().isIgnoreCase();
         this.unicode = nfaMap.getAst().getFlags().isUnicode();
+        this.backrefWithNullTargetSucceeds = nfaMap.getAst().getOptions().getFlavor() != RubyFlavor.INSTANCE;
+        this.monitorCaptureGroupsInEmptyCheck = nfaMap.getAst().getOptions().getFlavor() == RubyFlavor.INSTANCE;
+        this.transitionMatchesStepByStep = nfaMap.getAst().getOptions().getFlavor() == RubyFlavor.INSTANCE;
         this.loneSurrogates = nfaMap.getAst().getProperties().hasLoneSurrogates();
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
-        this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifierCount().getCount();
+        this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifiables().size();
+        List<QuantifiableTerm> zeroWidthQuantifiables = nfaMap.getAst().getZeroWidthQuantifiables();
+        this.zeroWidthTermEnclosedCGLow = new int[nZeroWidthQuantifiers];
+        this.zeroWidthQuantifierCGOffsets = new int[zeroWidthTermEnclosedCGLow.length + 1];
+        int offset = 0;
+        for (int i = 0; i < nZeroWidthQuantifiers; i++) {
+            QuantifiableTerm quantifiable = zeroWidthQuantifiables.get(i);
+            if (quantifiable.isGroup()) {
+                Group group = quantifiable.asGroup();
+                this.zeroWidthTermEnclosedCGLow[i] = group.getEnclosedCaptureGroupsLow();
+                offset += 2 * (group.getEnclosedCaptureGroupsHigh() - group.getEnclosedCaptureGroupsLow());
+            }
+            this.zeroWidthQuantifierCGOffsets[i + 1] = offset;
+        }
         this.lookAroundExecutors = lookAroundExecutors;
         this.loopbackInitialState = nfa == nfaMap.getRoot() && !nfaMap.getAst().getFlags().isSticky() && !nfaMap.getAst().getRoot().startsWithCaret();
         if (nfa == nfaMap.getRoot() && nfaMap.getAst().getProperties().hasInnerLiteral()) {
@@ -150,7 +190,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, maxNTransitions);
+        return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
+                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions);
     }
 
     private static final int IP_BEGIN = -1;
@@ -295,7 +336,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
      */
     @ExplodeLoop
     private int runState(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFAState curState) {
-        CompilerDirectives.isPartialEvaluationConstant(curState);
+        CompilerAsserts.partialEvaluationConstant(curState);
         if (curState.isFinalState(isForward())) {
             locals.setResult();
             locals.pushResult();
@@ -323,8 +364,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             }
         }
         PureNFATransition[] successors = curState.getSuccessors(isForward());
-        CompilerDirectives.isPartialEvaluationConstant(successors);
-        CompilerDirectives.isPartialEvaluationConstant(successors.length);
+        CompilerAsserts.partialEvaluationConstant(successors);
+        CompilerAsserts.partialEvaluationConstant(successors.length);
         boolean atEnd = inputAtEnd(locals);
         int c = atEnd ? 0 : inputReadAndDecode(locals);
         final int index = locals.getIndex();
@@ -333,16 +374,82 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
              * We know that in this state only one transition can match at a time, so we can always
              * break after the first match.
              */
-            for (int i = 0; i < successors.length; i++) {
+            if (transitionMatchesStepByStep) {
+                // Use the tryUpdateState method instead of transitionMatches and updateState
+                int[] currentFrame = locals.getStackFrameBuffer();
+                locals.readFrame(currentFrame);
+                for (int i = 0; i < successors.length; i++) {
+                    PureNFATransition transition = successors[i];
+                    CompilerAsserts.partialEvaluationConstant(transition);
+                    if (tryUpdateState(locals, compactString, transition, index, atEnd, c)) {
+                        locals.restoreIndex();
+                        return transition.getTarget(isForward()).getId();
+                    } else {
+                        locals.writeFrame(currentFrame);
+                    }
+                }
+                return IP_BACKTRACK;
+            } else {
+                for (int i = 0; i < successors.length; i++) {
+                    PureNFATransition transition = successors[i];
+                    CompilerAsserts.partialEvaluationConstant(transition);
+                    if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
+                        updateState(locals, transition, index);
+                        locals.restoreIndex();
+                        return transition.getTarget(isForward()).getId();
+                    }
+                }
+                return IP_BACKTRACK;
+            }
+        } else if (transitionMatchesStepByStep) {
+            boolean hasMatchingTransition = false;
+            boolean transitionToFinalStateWins = false;
+            // We make a copy of the current stack frame, as we will need it to undo speculative
+            // changes done by tryUpdateState and to duplicate the current stack frame on demand.
+            int[] currentFrame = locals.getStackFrameBuffer();
+            locals.readFrame(currentFrame);
+            for (int i = successors.length - 1; i >= 0; i--) {
                 PureNFATransition transition = successors[i];
-                CompilerDirectives.isPartialEvaluationConstant(transition);
-                if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
-                    updateState(locals, transition, index);
-                    locals.restoreIndex();
-                    return transition.getTarget(isForward()).getId();
+                CompilerAsserts.partialEvaluationConstant(transition);
+                if (tryUpdateState(locals, compactString, transition, index, atEnd, c)) {
+                    hasMatchingTransition = true;
+                    PureNFAState target = transition.getTarget(isForward());
+                    CompilerAsserts.partialEvaluationConstant(target);
+                    if (target.isFinalState(isForward())) {
+                        locals.setResult();
+                        locals.pushResult();
+                        transitionToFinalStateWins = true;
+                        // Prepare a fresh frame by resetting the current one, as the current
+                        // frame is no longer needed.
+                        locals.writeFrame(currentFrame);
+                    } else {
+                        locals.setPc(target.getId());
+                        transitionToFinalStateWins = false;
+                        // Prepare a fresh frame by pushing a new one.
+                        locals.pushFrame(currentFrame);
+                    }
+                } else {
+                    // Prepare a fresh frame by undoing any changes done by tryUpdateState.
+                    locals.writeFrame(currentFrame);
                 }
             }
-            return IP_BACKTRACK;
+            // The stack always one leftover stack frame that is to be discarded
+            // (that frame is a copy of the current frame that would have been used by the next
+            // transition, if there was any).
+            if (transitionToFinalStateWins) {
+                // We are successfully terminating the search, hence we can leave the leftover
+                // frame be.
+                return IP_END;
+            } else if (hasMatchingTransition) {
+                // We erase the leftover frame from the stack and set the index and stateId to the
+                // values stored in the top frame (index is set to locals, the stateId is returned).
+                locals.pop();
+                locals.restoreIndex();
+                return locals.getPc();
+            } else {
+                // We will backtrack, which will remove the leftover frame from the stack.
+                return IP_BACKTRACK;
+            }
         } else {
             /*
              * Multiple transitions may match, and we may have to push states to the stack. We avoid
@@ -358,24 +465,27 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
              * accordingly. The highest-priority match becomes this state's successor.
              */
             long[] transitionBitSet = locals.getTransitionBitSet();
-            CompilerDirectives.isPartialEvaluationConstant(transitionBitSet);
+            CompilerAsserts.partialEvaluationConstant(transitionBitSet);
             CompilerDirectives.ensureVirtualized(transitionBitSet);
             final int bitSetWords = ((successors.length - 1) >> 6) + 1;
-            CompilerDirectives.isPartialEvaluationConstant(bitSetWords);
+            CompilerAsserts.partialEvaluationConstant(bitSetWords);
             int lastMatch = 0;
+            int lastFinal = 0;
             // Fill the bit set.
             // We check the transitions in reverse order, so the last match will be the highest
             // priority one.
             int nMatched = -1;
             for (int iBS = 0; iBS < bitSetWords; iBS++) {
-                CompilerDirectives.isPartialEvaluationConstant(iBS);
+                CompilerAsserts.partialEvaluationConstant(iBS);
                 long bs = 0;
                 long bit = 1;
                 final int iStart = successors.length - (iBS << 6) - 1;
-                CompilerDirectives.isPartialEvaluationConstant(iStart);
-                for (int i = iStart; i >= 0; i--) {
+                final int iEnd = Math.max(-1, iStart - (1 << 6));
+                CompilerAsserts.partialEvaluationConstant(iStart);
+                CompilerAsserts.partialEvaluationConstant(iEnd);
+                for (int i = iStart; i > iEnd; i--) {
                     PureNFATransition transition = successors[i];
-                    CompilerDirectives.isPartialEvaluationConstant(transition);
+                    CompilerAsserts.partialEvaluationConstant(transition);
                     if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
                         bs |= bit;
                         lastMatch = i;
@@ -386,6 +496,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                          */
                         if (transition.getTarget(isForward()).isFinalState(isForward())) {
                             locals.setResult();
+                            lastFinal = i;
                             nMatched--;
                         }
                     }
@@ -402,18 +513,22 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             }
             // Update the new stack frames.
             for (int iBS = 0; iBS < bitSetWords; iBS++) {
-                CompilerDirectives.isPartialEvaluationConstant(iBS);
+                CompilerAsserts.partialEvaluationConstant(iBS);
                 long bs = transitionBitSet[iBS];
                 final int iStart = successors.length - (iBS << 6) - 1;
-                CompilerDirectives.isPartialEvaluationConstant(iStart);
-                for (int i = iStart; i >= 0; i--) {
+                final int iEnd = Math.max(-1, iStart - (1 << 6));
+                CompilerAsserts.partialEvaluationConstant(iStart);
+                CompilerAsserts.partialEvaluationConstant(iEnd);
+                for (int i = iStart; i > iEnd; i--) {
                     PureNFATransition transition = successors[i];
-                    CompilerDirectives.isPartialEvaluationConstant(transition);
+                    CompilerAsserts.partialEvaluationConstant(transition);
                     PureNFAState target = transition.getTarget(isForward());
-                    CompilerDirectives.isPartialEvaluationConstant(target);
+                    CompilerAsserts.partialEvaluationConstant(target);
                     if ((bs & 1) != 0) {
                         if (target.isFinalState(isForward())) {
-                            locals.pushResult(transition, index);
+                            if (i == lastFinal) {
+                                locals.pushResult(transition, index);
+                            }
                             if (i == lastMatch) {
                                 return IP_END;
                             }
@@ -472,7 +587,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @ExplodeLoop
     protected boolean transitionMatches(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFATransition transition, int index, boolean atEnd, int c) {
         PureNFAState target = transition.getTarget(isForward());
-        CompilerDirectives.isPartialEvaluationConstant(target);
+        CompilerAsserts.partialEvaluationConstant(target);
         if (transition.hasCaretGuard() && index != 0) {
             return false;
         }
@@ -482,9 +597,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         int nGuards = transition.getQuantifierGuards().length;
         for (int i = isForward() ? 0 : nGuards - 1; isForward() ? i < nGuards : i >= 0; i = inputIncRaw(i)) {
             QuantifierGuard guard = transition.getQuantifierGuards()[i];
-            CompilerDirectives.isPartialEvaluationConstant(guard);
+            CompilerAsserts.partialEvaluationConstant(guard);
             Quantifier q = guard.getQuantifier();
-            CompilerDirectives.isPartialEvaluationConstant(q);
+            CompilerAsserts.partialEvaluationConstant(q);
             switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
                 case loop:
                     // retreat if quantifier count is at maximum
@@ -499,7 +614,15 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     }
                     break;
                 case exitZeroWidth:
-                    if (locals.getZeroWidthQuantifierGuardIndex(q) == index && (!q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
+                    if (locals.getZeroWidthQuantifierGuardIndex(q) == index &&
+                                    (!monitorCaptureGroupsInEmptyCheck || locals.isResultUnmodifiedByZeroWidthQuantifier(q)) &&
+                                    (!q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
+                        return false;
+                    }
+                    break;
+                case escapeZeroWidth:
+                    if (locals.getZeroWidthQuantifierGuardIndex(q) != index ||
+                                    (monitorCaptureGroupsInEmptyCheck && !locals.isResultUnmodifiedByZeroWidthQuantifier(q))) {
                         return false;
                     }
                     break;
@@ -530,7 +653,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     int start = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2, index);
                     int end = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2 + 1, index);
                     if (start < 0 || end < 0) {
-                        return true;
+                        return backrefWithNullTargetSucceeds;
                     }
                     return matchBackReferenceSimple(locals, start, end, index);
                 } else {
@@ -550,14 +673,14 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
 
     @ExplodeLoop
     protected void updateState(TRegexBacktrackingNFAExecutorLocals locals, PureNFATransition transition, int index) {
-        CompilerDirectives.isPartialEvaluationConstant(transition);
+        CompilerAsserts.partialEvaluationConstant(transition);
         locals.apply(transition, index);
         int nGuards = transition.getQuantifierGuards().length;
         for (int i = isForward() ? 0 : nGuards - 1; isForward() ? i < nGuards : i >= 0; i += (isForward() ? 1 : -1)) {
             QuantifierGuard guard = transition.getQuantifierGuards()[i];
-            CompilerDirectives.isPartialEvaluationConstant(guard);
+            CompilerAsserts.partialEvaluationConstant(guard);
             Quantifier q = guard.getQuantifier();
-            CompilerDirectives.isPartialEvaluationConstant(q);
+            CompilerAsserts.partialEvaluationConstant(q);
             switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
                 case enter:
                 case loop:
@@ -570,6 +693,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     break;
                 case enterZeroWidth:
                     locals.setZeroWidthQuantifierGuardIndex(q);
+                    locals.setZeroWidthQuantifierResults(q);
                     break;
                 case enterEmptyMatch:
                     if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
@@ -585,8 +709,142 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         locals.saveIndex(getNewIndex(locals, transition.getTarget(isForward()), index));
     }
 
+    /**
+     * This method composes {@link #transitionMatches} with {@link #updateState}. It is somewhat
+     * equivalent to the following:
+     * 
+     * <pre>
+     * if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
+     *     updateState(locals, transition, index);
+     *     return true;
+     * } else {
+     *     return false;
+     * }
+     * </pre>
+     *
+     * The key difference is that in this method, the {@link #updateState} effects of quantifier
+     * guards are evaluated in parallel with their {@link #transitionMatches} assertions. This more
+     * detailed behavior is necessary when working with NFA transitions that have complex chains of
+     * quantifier guards, such as the ones used in Ruby.
+     *
+     * <p>
+     * NB: This method writes to {@code locals} even if it returns {@code false}.
+     * </p>
+     */
+    @ExplodeLoop
+    protected boolean tryUpdateState(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFATransition transition, int index, boolean atEnd, int c) {
+        CompilerAsserts.partialEvaluationConstant(transition);
+        PureNFAState target = transition.getTarget(isForward());
+        CompilerAsserts.partialEvaluationConstant(target);
+        if (transition.hasCaretGuard() && index != 0) {
+            return false;
+        }
+        if (transition.hasDollarGuard() && index < locals.getMaxIndex()) {
+            return false;
+        }
+        switch (target.getKind()) {
+            case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
+                assert !target.isInitialState(isForward());
+                if (target.isAnchoredFinalState(isForward()) && !atEnd) {
+                    return false;
+                }
+                break;
+            case PureNFAState.KIND_CHARACTER_CLASS:
+                if (atEnd || !matchers[target.getId()].execute(c)) {
+                    return false;
+                }
+                break;
+            case PureNFAState.KIND_LOOK_AROUND:
+                if (canInlineLookAroundIntoTransition(target) && !checkSubMatcherInline(locals, compactString, transition, target)) {
+                    return false;
+                }
+                break;
+            case PureNFAState.KIND_BACK_REFERENCE:
+                if (canInlineBackReferenceIntoTransition()) {
+                    int start = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2, index);
+                    int end = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2 + 1, index);
+                    if ((start < 0 || end < 0) && !backrefWithNullTargetSucceeds) {
+                        return false;
+                    }
+                    if (!matchBackReferenceSimple(locals, start, end, index)) {
+                        return false;
+                    }
+                }
+                break;
+            case PureNFAState.KIND_EMPTY_MATCH:
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        int nGuards = transition.getQuantifierGuards().length;
+        for (int i = isForward() ? 0 : nGuards - 1; isForward() ? i < nGuards : i >= 0; i = inputIncRaw(i)) {
+            QuantifierGuard guard = transition.getQuantifierGuards()[i];
+            CompilerAsserts.partialEvaluationConstant(guard);
+            Quantifier q = guard.getQuantifier();
+            CompilerAsserts.partialEvaluationConstant(q);
+            switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
+                case enter:
+                case loopInc:
+                    locals.incQuantifierCount(q);
+                    break;
+                case loop:
+                    // retreat if quantifier count is at maximum
+                    if (locals.getQuantifierCount(q) == q.getMax()) {
+                        return false;
+                    }
+                    locals.incQuantifierCount(q);
+                    break;
+                case exit:
+                    // retreat if quantifier count is less than minimum
+                    if (locals.getQuantifierCount(q) < q.getMin()) {
+                        return false;
+                    }
+                    locals.resetQuantifierCount(q);
+                    break;
+                case exitReset:
+                    locals.resetQuantifierCount(q);
+                    break;
+                case updateCG:
+                    locals.setCaptureGroupBoundary(guard.getIndex(), index);
+                    break;
+                case enterZeroWidth:
+                    locals.setZeroWidthQuantifierGuardIndex(q);
+                    locals.setZeroWidthQuantifierResults(q);
+                    break;
+                case exitZeroWidth:
+                    if (locals.getZeroWidthQuantifierGuardIndex(q) == index &&
+                                    (!monitorCaptureGroupsInEmptyCheck || locals.isResultUnmodifiedByZeroWidthQuantifier(q)) &&
+                                    (!q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
+                        return false;
+                    }
+                    break;
+                case escapeZeroWidth:
+                    if (locals.getZeroWidthQuantifierGuardIndex(q) != index ||
+                                    (monitorCaptureGroupsInEmptyCheck && !locals.isResultUnmodifiedByZeroWidthQuantifier(q))) {
+                        return false;
+                    }
+                    break;
+                case enterEmptyMatch:
+                    // retreat if quantifier count is greater or equal to minimum
+                    if (locals.getQuantifierCount(q) >= q.getMin()) {
+                        return false;
+                    }
+                    if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
+                        locals.setQuantifierCount(q, q.getMin());
+                    } else {
+                        locals.incQuantifierCount(q);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        locals.saveIndex(getNewIndex(locals, target, index));
+        return true;
+    }
+
     private int getNewIndex(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState target, int index) {
-        CompilerDirectives.isPartialEvaluationConstant(target.getKind());
+        CompilerAsserts.partialEvaluationConstant(target.getKind());
         switch (target.getKind()) {
             case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
                 return index;
@@ -599,6 +857,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     int end = locals.getCaptureGroupEnd(target.getBackRefNumber());
                     int start = locals.getCaptureGroupStart(target.getBackRefNumber());
                     if (start < 0 || end < 0) {
+                        // only can happen when backrefWithNullTargetSucceeds == true
                         return index;
                     }
                     int length = end - start;

@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 
 /**
  * This visitor computes various properties of {@link RegexAST} and its {@link RegexASTNode}s, in
@@ -227,7 +228,12 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
                 }
             }
-            if ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0) {
+            // In Ruby mode, we cannot disable zero-width guards on quantified expressions without
+            // backreferences or lookarounds, because it is not possible to get rid of these guards
+            // statically (we do not know in advance if the empty check will pass or not, since that
+            // depends on the state of capture groups).
+            if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE ||
+                            ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0)) {
                 /*
                  * If a quantifier can produce a zero-width match, we have to check this in
                  * back-tracking mode.
@@ -396,7 +402,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private void setZeroWidthQuantifierIndex(QuantifiableTerm term) {
         if (isForward() && term.getQuantifier().getZeroWidthIndex() < 0) {
-            term.getQuantifier().setZeroWidthIndex(ast.getZeroWidthQuantifierCount().inc());
+            ast.registerZeroWidthQuantifiable(term);
         }
     }
 }

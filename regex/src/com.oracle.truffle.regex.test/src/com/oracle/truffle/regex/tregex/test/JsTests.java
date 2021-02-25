@@ -89,4 +89,14 @@ public class JsTests extends RegexTestBase {
         test("\\0", "u", "\u0000", 0, true, 0, 1);
     }
 
+    @Test
+    public void gr29379() {
+        test("(?=^)|(?=$)", "", "", 0, true, 0, 0);
+        test("(?=^)|(?=$)(?=^)|(?=$)", "", "", 0, true, 0, 0);
+    }
+
+    @Test
+    public void gr29388() {
+        test(".+(?=bar)|.+", "", "foobar", 0, true, 0, 3);
+    }
 }

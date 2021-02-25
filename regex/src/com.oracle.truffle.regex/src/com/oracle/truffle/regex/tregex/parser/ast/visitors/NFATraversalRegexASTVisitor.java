@@ -127,18 +127,23 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private final LongArrayBuffer curPath = new LongArrayBuffer(8);
     /**
-     * insideLoops is the set of looping groups that we are currently inside of. We need to maintain
-     * this in order to detect infinite loops in the NFA traversal. If we enter a looping group,
-     * traverse it without encountering a CharacterClass node or a MatchFound node and arrive back
-     * at the same group, then we are bound to loop like this forever. Using insideLoops, we can
-     * detect this situation and proceed with the search using another alternative. For example, in
-     * the RegexAST {@code ((|[a])*|)*}, which corresponds to the regex {@code /(a*?)* /}, we can
+     * insideLoops is the multiset of looping groups that we are currently inside of. We need to
+     * maintain this in order to detect infinite loops in the NFA traversal. If we enter a looping
+     * group, traverse it without encountering a CharacterClass node or a MatchFound node and arrive
+     * back at the same group, then we are bound to loop like this forever. Using insideLoops, we
+     * can detect this situation and proceed with the search using another alternative. For example,
+     * in the RegexAST {@code ((|[a])*|)*}, which corresponds to the regex {@code /(a*?)* /}, we can
      * traverse the inner loop, {@code (|[a])*}, without hitting any CharacterClass node by choosing
      * the first alternative and we will then arrive back at the outer loop. There, we detect an
      * infinite loop, which causes us to backtrack and choose the second alternative in the inner
-     * loop, leading us to the CharacterClass node [a].
+     * loop, leading us to the CharacterClass node {@code [a]}. <br>
+     * This is a multiset, because in some cases, we want to admit one empty traversal through a
+     * loop, but still disallow any further iterations to prevent infinite loops. The value stored
+     * in this map tells us how many times we have entered the current search. <br>
+     * NB: For every looping group, this map tells us how many {@code enter} nodes there are on the
+     * current path.
      */
-    private final StateSet<RegexAST, Group> insideLoops;
+    private final EconomicMap<RegexASTNode, Integer> insideLoops;
     /**
      * This set is needed to make sure that a quantified term cannot match the empty string, as is
      * specified in step 2a of RepeatMatcher from ECMAScript draft 2018, chapter 21.2.2.5.1.
@@ -173,7 +178,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
-        this.insideLoops = StateSet.create(ast);
+        this.insideLoops = EconomicMap.create();
         this.insideEmptyGuardGroup = StateSet.create(ast);
         this.targetsVisited = StateSet.create(ast);
         this.lookAroundsOnPath = StateSet.create(ast);
@@ -317,17 +322,32 @@ public abstract class NFATraversalRegexASTVisitor {
                                 } else {
                                     quantifierGuards.add(QuantifierGuard.createClear(quantifier));
                                 }
-                            } else {
-                                assert pathIsGroupExit(element);
+                            } else if (pathIsGroupExit(element)) {
                                 quantifierGuardsLoop.set(quantifier.getIndex());
+                            } else {
+                                assert pathIsGroupRubyEscape(element);
+                                quantifierGuardsExited.set(quantifier.getIndex());
                             }
                         }
-                        if (quantifier.hasZeroWidthIndex()) {
+                        if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
                             if (pathIsGroupEnter(element)) {
                                 quantifierGuards.add(QuantifierGuard.createEnterZeroWidth(quantifier));
-                            } else if (pathIsGroupExit(element) && !root.isCharacterClass()) {
+                            } else if (pathIsGroupExit(element) && ((ast.getOptions().getFlavor() == RubyFlavor.INSTANCE) || !root.isCharacterClass())) {
                                 quantifierGuards.add(QuantifierGuard.createExitZeroWidth(quantifier));
+                            } else if (pathIsGroupRubyEscape(element)) {
+                                quantifierGuards.add(QuantifierGuard.createEscapeZeroWidth(quantifier));
                             }
+                        }
+                    }
+                    if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && group.isCapturing()) {
+                        if (pathIsGroupEnter(element)) {
+                            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
+                        } else if (pathIsGroupPassThrough(element)) {
+                            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
+                            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
+                        } else {
+                            assert pathIsGroupExit(element) || pathIsGroupRubyEscape(element);
+                            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
                         }
                     }
                 }
@@ -381,7 +401,11 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private boolean doAdvance() {
-        if (cur.isDead() || insideLoops.contains(cur)) {
+        // emptyLoopIterations tells us how many extra empty iterations of a loop do we admit.
+        // In Ruby, we admit 1, while in other dialects, we admit 0. This extra iteration
+        // will not match any characters, but it might store an empty string in a capture group.
+        int extraEmptyLoopIterations = ast.getOptions().getFlavor() == RubyFlavor.INSTANCE ? 1 : 0;
+        if (cur.isDead() || insideLoops.get(cur, 0) > extraEmptyLoopIterations) {
             return retreat();
         }
         if (cur.isSequence()) {
@@ -402,10 +426,10 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                     }
                     curPath.add(pathSwitchEnterAndPassThrough(lastElement));
+                    unregisterInsideLoop(parent);
                 } else {
                     pushGroupExit(parent);
                 }
-                insideLoops.remove(parent);
                 return advanceTerm(parent);
             } else {
                 cur = forward ? sequence.getFirstTerm() : sequence.getLastTerm();
@@ -418,7 +442,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 insideEmptyGuardGroup.add(group);
             }
             if (group.isLoop()) {
-                insideLoops.add(group);
+                registerInsideLoop(group);
             }
             // This path will only be hit when visiting a group for the first time. All groups
             // must have at least one child sequence, so no check is needed here.
@@ -468,6 +492,19 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private boolean isGroupExitOnPath(Group group) {
         return !curPath.isEmpty() && pathIsGroupExit(curPath.peek()) && pathGetNode(curPath.peek()) == group;
+    }
+
+    private void registerInsideLoop(Group group) {
+        insideLoops.put(group, insideLoops.get(group, 0) + 1);
+    }
+
+    private void unregisterInsideLoop(Group group) {
+        int depth = insideLoops.get(group, 0);
+        if (depth == 1) {
+            insideLoops.removeKey(group);
+        } else if (depth > 1) {
+            insideLoops.put(group, depth - 1);
+        }
     }
 
     private void addToVisitedSet(StateSet<RegexAST, RegexASTNode> visitedSet) {
@@ -539,15 +576,44 @@ public abstract class NFATraversalRegexASTVisitor {
             RegexASTNode node = pathGetNode(lastVisited);
             if (pathIsGroup(lastVisited)) {
                 Group group = (Group) node;
-                if (!pathIsGroupExit(lastVisited)) {
+                if (pathIsGroupEnter(lastVisited) || pathIsGroupPassThrough(lastVisited)) {
                     if (pathGroupHasNext(lastVisited)) {
                         cur = pathGroupGetNext(lastVisited);
                         curPath.add(pathToGroupEnter(pathIncGroupAltIndex(lastVisited)));
+                        if (pathIsGroupPassThrough(lastVisited)) {
+                            // a passthrough node was changed to an enter node,
+                            // so we register the loop in insideLoops
+                            registerInsideLoop(group);
+                        }
                         return true;
                     } else {
                         assert noEmptyGuardGroupEnterOnPath(group);
-                        insideLoops.remove(group);
+                        if (pathIsGroupEnter(lastVisited)) {
+                            // we only deregister the node from insideLoops if this was an enter
+                            // node, if it was a passthrough node, it was already deregistered when
+                            // it was transformed from an enter node in doAdvance
+                            unregisterInsideLoop(group);
+                        }
                         insideEmptyGuardGroup.remove(group);
+                    }
+                } else if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() &&
+                                (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
+                    // In Ruby, when we finish an iteration of a loop, there is an empty check.
+                    // If we pass the empty check, we return to the beginning of the loop where we
+                    // get to make a non-deterministic choice as to whether we want to start another
+                    // iteration of the loop (so far the same as ECMAScript). However, if we fail
+                    // the empty check, we continue to the expression that follows the loop. We
+                    // implement this by introducing two transitions, one leading to the start of
+                    // the loop (empty check passes) and one escaping past the loop (empty check
+                    // fails). The two transitions are then annotated with complementary guards
+                    // (exitZeroWidth and escapeZeroWidth, respectively), so that at runtime, only
+                    // one of the two transitions will be admissible. The clause below lets us
+                    // generate the second transition by replacing the loop exit with a loop escape.
+                    curPath.add(pathToGroupRubyEscape(lastVisited));
+                    if (advanceTerm(group)) {
+                        return true;
+                    } else {
+                        retreat();
                     }
                 }
             } else {
@@ -629,8 +695,9 @@ public abstract class NFATraversalRegexASTVisitor {
     private static final long PATH_GROUP_ACTION_ENTER = 1L << PATH_GROUP_ACTION_OFFSET;
     private static final long PATH_GROUP_ACTION_EXIT = 1L << PATH_GROUP_ACTION_OFFSET + 1;
     private static final long PATH_GROUP_ACTION_PASS_THROUGH = 1L << PATH_GROUP_ACTION_OFFSET + 2;
+    private static final long PATH_GROUP_ACTION_RUBY_ESCAPE = 1L << PATH_GROUP_ACTION_OFFSET + 3;
     private static final long PATH_GROUP_ACTION_ENTER_OR_PASS_THROUGH = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_PASS_THROUGH;
-    private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH;
+    private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH | PATH_GROUP_ACTION_RUBY_ESCAPE;
 
     /**
      * Create a new path element containing the given node.
@@ -673,6 +740,13 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     /**
+     * Convert the given path element to a group-Ruby-escape.
+     */
+    private static long pathToGroupRubyEscape(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_CLEAR_MASK) | PATH_GROUP_ACTION_RUBY_ESCAPE;
+    }
+
+    /**
      * Returns {@code true} if the given path element has any group action set. Every path element
      * containing a group must have one group action.
      */
@@ -690,6 +764,10 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private static boolean pathIsGroupPassThrough(long pathElement) {
         return (pathElement & PATH_GROUP_ACTION_PASS_THROUGH) != 0;
+    }
+
+    private static boolean pathIsGroupRubyEscape(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_RUBY_ESCAPE) != 0;
     }
 
     /**
@@ -746,6 +824,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     @SuppressWarnings("unused")
     private void dumpPath() {
+        System.out.println("NEW PATH");
         for (int i = 0; i < curPath.length(); i++) {
             long element = curPath.get(i);
             if (pathIsGroup(element)) {
@@ -754,8 +833,10 @@ public abstract class NFATraversalRegexASTVisitor {
                     System.out.println(String.format("ENTER (%d)   %s", pathGetGroupAltIndex(element), group));
                 } else if (pathIsGroupExit(element)) {
                     System.out.println(String.format("EXIT        %s", group));
-                } else {
+                } else if (pathIsGroupPassThrough(element)) {
                     System.out.println(String.format("PASSTHROUGH %s", group));
+                } else {
+                    System.out.println(String.format("RUBY ESCAPE %s", group));
                 }
             } else {
                 System.out.println(String.format("NODE        %s", pathGetNode(element)));
