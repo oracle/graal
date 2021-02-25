@@ -2994,7 +2994,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 assert pkgEntry != null; // should have been checked before
             }
             // Link guest module to its host representation
-            getMeta().HIDDEN_MODULE_ENTRY.setObject(module, moduleEntry);
+            getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(module, moduleEntry);
         }
         if (StaticObject.isNull(loader) && getContext().getVmProperties().bootClassPathType().isExplodedModule()) {
             profiler.profile(11);
