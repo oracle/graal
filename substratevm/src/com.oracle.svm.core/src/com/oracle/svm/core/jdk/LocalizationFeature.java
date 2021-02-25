@@ -341,7 +341,7 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     protected LocaleData localeData(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
-        return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, defaultLocale)).getLocaleData();
+        return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, locale)).getLocaleData();
     }
 
     protected void prepareBundle(ResourceBundle bundle) {
