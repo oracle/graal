@@ -295,12 +295,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerUTF16IndexOf((StringUTF16IndexOfNode) n);
             } else if (n instanceof UnpackEndianHalfNode) {
                 lowerSecondHalf((UnpackEndianHalfNode) n);
-            } else if (n instanceof VolatileReadNode) {
-                lowerVolatileRead(((VolatileReadNode) n), tool);
-            } else if (n instanceof VolatileWriteNode) {
-                lowerVolatileWrite(((VolatileWriteNode) n), tool);
-            } else if (n instanceof VolatileReadNode) {
-                lowerVolatileRead(((VolatileReadNode) n), tool);
+            } else if (n instanceof VolatileReadNode || n instanceof VolatileWriteNode) {
+                // These may be lowered as nodes but don't have to be so provide at least a default
+                // empty handling.
             } else if (n instanceof RegisterFinalizerNode) {
                 return;
             } else if (n instanceof IdentityHashCodeNode) {
@@ -1275,16 +1272,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         int shift = CodeUtil.log2(metaAccess.getArrayIndexScale(elementKind));
         ValueNode ret = graph.unique(new RightShiftNode(scaledIndex, ConstantNode.forInt(shift, graph)));
         return IntegerConvertNode.convert(ret, StampFactory.forKind(JavaKind.Int), graph, NodeView.DEFAULT);
-    }
-
-    @SuppressWarnings("unused")
-    protected void lowerVolatileRead(VolatileReadNode n, LoweringTool tool) {
-        // This may be lowered as nodes but don't have to be so provide an empty implementation
-    }
-
-    @SuppressWarnings("unused")
-    protected void lowerVolatileWrite(VolatileWriteNode n, LoweringTool tool) {
-        // This may be lowered as nodes but don't have to be so provide an empty implementation
     }
 
     @Override
