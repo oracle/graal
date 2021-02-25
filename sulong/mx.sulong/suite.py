@@ -1576,7 +1576,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_GCC_FORTRAN" : {
+    "SULONG_GCC_FORTRAN_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,

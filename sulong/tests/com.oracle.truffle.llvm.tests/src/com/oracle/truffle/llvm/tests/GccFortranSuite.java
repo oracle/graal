@@ -39,7 +39,7 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public final class GccFortranSuite extends GccSuiteBase {
 
-    public static final String TEST_DISTRIBUTION = "SULONG_GCC_FORTRAN";
+    public static final String TEST_DISTRIBUTION = "SULONG_GCC_FORTRAN_TEST_SUITE";
     public static final String SOURCE = "GCC_SOURCE";
 
     @Parameters(name = "{1}")
