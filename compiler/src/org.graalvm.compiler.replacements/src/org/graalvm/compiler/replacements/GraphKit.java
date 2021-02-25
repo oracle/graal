@@ -200,6 +200,9 @@ public class GraphKit implements GraphBuilderTool {
 
     @Override
     public <T extends ValueNode> T append(T node) {
+        if (node.graph() != null) {
+            return node;
+        }
         T result = graph.addOrUniqueWithInputs(changeToWord(node));
         if (result instanceof FixedNode) {
             updateLastFixed((FixedNode) result);
