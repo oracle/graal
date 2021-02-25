@@ -33,7 +33,7 @@ import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -140,10 +140,10 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
             IfNode ifNode;
             AbstractBeginNode noDeoptSuccessor;
             if (negated) {
-                ifNode = graph().add(new IfNode(condition, deopt, currentNext, 0, ProfileSource.INJECTED));
+                ifNode = graph().add(new IfNode(condition, deopt, currentNext, BranchProbabilityNode.NEVER_TAKEN_PROFILE));
                 noDeoptSuccessor = ifNode.falseSuccessor();
             } else {
-                ifNode = graph().add(new IfNode(condition, currentNext, deopt, 1, ProfileSource.INJECTED));
+                ifNode = graph().add(new IfNode(condition, currentNext, deopt, BranchProbabilityNode.ALWAYS_TAKEN_PROFILE));
                 noDeoptSuccessor = ifNode.trueSuccessor();
             }
             noDeoptSuccessor.setNodeSourcePosition(getNoDeoptSuccessorPosition());

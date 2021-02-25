@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
@@ -54,9 +55,9 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
     @Input(Condition) LogicNode y;
     protected boolean xNegated;
     protected boolean yNegated;
-    protected double shortCircuitProbability;
+    protected BranchProbabilityData shortCircuitProbability;
 
-    public ShortCircuitOrNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
+    public ShortCircuitOrNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, BranchProbabilityData shortCircuitProbability) {
         super(TYPE);
         this.x = x;
         this.xNegated = xNegated;
@@ -65,7 +66,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         this.shortCircuitProbability = shortCircuitProbability;
     }
 
-    public static LogicNode create(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
+    public static LogicNode create(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, BranchProbabilityData shortCircuitProbability) {
         return new ShortCircuitOrNode(x, xNegated, y, yNegated, shortCircuitProbability);
     }
 
@@ -91,7 +92,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
      * Gets the probability that the {@link #getY() y} part of this binary node is <b>not</b>
      * evaluated. This is the probability that this operator will short-circuit its execution.
      */
-    public double getShortCircuitProbability() {
+    public BranchProbabilityData getShortCircuitProbability() {
         return shortCircuitProbability;
     }
 
@@ -232,9 +233,8 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
             if (!yNode.isXNegated()) {
                 LogicNode sym = simplifyComparison(forX, yNode.getX());
                 if (sym != null) {
-                    double p1 = getShortCircuitProbability();
-                    double p2 = yNode.getShortCircuitProbability();
-                    return new ShortCircuitOrNode(sym, isXNegated(), yNode.getY(), yNode.isYNegated(), p1 + (1 - p1) * p2);
+                    BranchProbabilityData combinedProfile = BranchProbabilityData.combineShortCircuitOr(getShortCircuitProbability(), yNode.getShortCircuitProbability());
+                    return new ShortCircuitOrNode(sym, isXNegated(), yNode.getY(), yNode.isYNegated(), combinedProfile);
                 }
             }
         }
@@ -402,12 +402,12 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                 // (!( a || b) || a) => 1101 ( a ||!b)
                 boolean newInnerXNegated = inner.isXNegated();
                 boolean newInnerYNegated = inner.isYNegated();
-                double newProbability = inner.getShortCircuitProbability();
+                BranchProbabilityData newProbability = inner.getShortCircuitProbability();
                 if (matchIsInnerX) {
                     newInnerYNegated = !newInnerYNegated;
                 } else {
                     newInnerXNegated = !newInnerXNegated;
-                    newProbability = 1.0 - newProbability;
+                    newProbability = newProbability.negated();
                 }
                 // The expression can be transformed into a single or.
                 return new ShortCircuitOrNode(inner.getX(), newInnerXNegated, inner.getY(), newInnerYNegated, newProbability);

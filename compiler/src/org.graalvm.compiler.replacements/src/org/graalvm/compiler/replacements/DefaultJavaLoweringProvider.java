@@ -38,7 +38,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -55,7 +54,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
@@ -88,6 +87,7 @@ import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ClassIsArrayNode;
 import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
@@ -573,7 +573,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (!elementType.isJavaLangObject()) {
                     TypeReference typeReference = TypeReference.createTrusted(storeIndexed.graph().getAssumptions(), elementType);
                     LogicNode typeTest = graph.addOrUniqueWithInputs(InstanceOfNode.create(typeReference, value));
-                    condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
+                    condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
                 }
             } else {
                 /*
@@ -583,7 +583,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 ValueNode arrayClass = createReadHub(graph, array, tool);
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
-                condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
+                condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             }
         }
         BarrierType barrierType = barrierSet.arrayStoreBarrierType(storageKind);
@@ -645,7 +645,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         final LogicNode isNull = graph.addOrUniqueWithInputs(IsNullNode.create(value));
         final EndNode trueEnd = graph.add(new EndNode());
         final EndNode falseEnd = graph.add(new EndNode());
-        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, 0.5, ProfileSource.UNKNOWN));
+        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, BranchProbabilityData.unknown()));
         final MergeNode merge = graph.add(new MergeNode());
         merge.addForwardEnd(trueEnd);
         merge.addForwardEnd(falseEnd);

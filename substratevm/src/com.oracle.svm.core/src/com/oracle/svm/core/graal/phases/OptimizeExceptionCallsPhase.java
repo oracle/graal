@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.graal.phases;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROFILE;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROFILE;
+
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.ControlSplitNode.ProfileSource;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -65,7 +67,7 @@ public class OptimizeExceptionCallsPhase extends Phase {
             if (predecessor instanceof IfNode && node instanceof BeginNode) {
                 // We found an IfNode which branches to our runtime exception call
                 IfNode ifNode = (IfNode) predecessor;
-                ifNode.setTrueSuccessorProbability(node == ifNode.trueSuccessor() ? 0.00001 : 0.99999, ProfileSource.INJECTED);
+                ifNode.setTrueSuccessorProbability(node == ifNode.trueSuccessor() ? EXTREMELY_SLOW_PATH_PROFILE : EXTREMELY_FAST_PATH_PROFILE);
                 return;
             }
             if (predecessor instanceof MergeNode || predecessor instanceof ControlSplitNode) {

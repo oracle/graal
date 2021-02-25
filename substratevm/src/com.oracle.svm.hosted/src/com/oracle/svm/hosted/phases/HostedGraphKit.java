@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -140,7 +141,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
     }
 
     public GuardingNode createCheckThrowingBytecodeException(LogicNode condition, boolean failOnTrue, BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
-        double trueProbability = failOnTrue ? BranchProbabilityNode.SLOW_PATH_PROBABILITY : BranchProbabilityNode.FAST_PATH_PROBABILITY;
+        BranchProbabilityData trueProbability = failOnTrue ? BranchProbabilityNode.SLOW_PATH_PROFILE : BranchProbabilityNode.FAST_PATH_PROFILE;
         IfNode ifNode = startIf(condition, trueProbability);
         if (failOnTrue) {
             thenPart();
