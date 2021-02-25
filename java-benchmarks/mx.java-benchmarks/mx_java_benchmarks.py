@@ -171,12 +171,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
-class ShopCartBenchmarkSuite(mx_sdk_benchmark.JMeterBenchmarkSuite):
-    """Benchmark suite for the ShopCart benchmark."""
-
-    def name(self):
-        return "shopcart"
-
+class BaseShopCartBenchmarkSuite(object):
     def group(self):
         return "Graal"
 
@@ -184,13 +179,10 @@ class ShopCartBenchmarkSuite(mx_sdk_benchmark.JMeterBenchmarkSuite):
         return "graal-compiler"
 
     def version(self):
-        return "0.2"
+        return "0.3"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["tiny", "small", "large"]
 
     def applicationDist(self):
         shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
@@ -199,28 +191,103 @@ class ShopCartBenchmarkSuite(mx_sdk_benchmark.JMeterBenchmarkSuite):
     def applicationPath(self):
         return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
 
-    def workloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
+    def applicationStartupRule(self, benchSuiteName, benchmark):
         # Example of Micronaut startup log:
         # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
         return [
             mx_benchmark.StdOutRule(
                 r"^\[main\] INFO io.micronaut.runtime.Micronaut - Startup completed in (?P<startup>\d+)ms.",
                 {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
+                    "benchmark": benchmark,
+                    "bench-suite": benchSuiteName,
                     "metric.name": "app-startup",
                     "metric.value": ("<startup>", float),
                     "metric.unit": "ms",
                     "metric.better": "lower",
                 }
             )
-        ] + super(ShopCartBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+        ]
+
+    def skip_agent_assertions(self, benchmark, args):
+        # This method overrides NativeImageMixin.skip_agent_assertions
+        user_args = super(BaseShopCartBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def stages(self, args):
+        # This method overrides NativeImageMixin.stages
+        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.stages=', args)
+        if len(parsed_args) > 1:
+            mx.abort('Native Image benchmark stages should only be specified once.')
+        return parsed_args[0].split(',') if parsed_args else ['instrument-image', 'instrument-run', 'image', 'run']
 
 
-mx_benchmark.add_bm_suite(ShopCartBenchmarkSuite())
+class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
+    """Benchmark suite for the ShopCart benchmark using JMeter."""
+
+    def name(self):
+        return "shopcart-jmeter"
+
+    def benchSuiteName(self):
+        return self.name()
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny", "small", "large"]
+
+    def jmeterWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+
+mx_benchmark.add_bm_suite(ShopCartJMeterBenchmarkSuite())
+
+
+class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
+    """Benchmark suite for the ShopCart benchmark using Wrk2."""
+
+    def name(self):
+        return "shopcart-wrk2"
+
+    def benchSuiteName(self):
+        return self.name()
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["read", "write"]
+
+    def targetHost(self):
+        return "localhost"
+
+    def wrk2WorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+    def loadConfiguration(self, benchmarkName):
+        def postRequest(url, data):
+            req = urllib2.Request(url)
+            req.add_header('Content-Type', 'application/json')
+            mx.log(urllib2.urlopen(req, json.dumps(data)).read())
+        try:
+            import urllib2
+        except ImportError:
+            mx.abort("Failed to import {0} dependency module: urllib2".format(ShopCartWrk2BenchmarkSuite.__name__))
+        with open(self.wrk2WorkloadPath(benchmarkName)) as configFile:
+            config = json.load(configFile)
+            mx.log("Loading configuration file for {0}: {1}".format(ShopCartWrk2BenchmarkSuite.__name__, configFile.name))
+            for request in config["setup"]:
+                postRequest(config["target-url"] + request["path"], request["msg"])
+            return config
+
+
+mx_benchmark.add_bm_suite(ShopCartWrk2BenchmarkSuite())
 
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):

@@ -78,6 +78,18 @@ suite = {
   "defaultLicense" : "UPL",
   "imports": {},
   "libraries" : {
+    "WRK2": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2.tar.gz"],
+      "sha1": "a5c417b414f72951de4eb95641808a0a5aa31445",
+      "packedResource": True,
+      "license": "Apache-2.0",
+    },
+    "APACHE_JMETER_5.3": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/apache-jmeter-5.3.zip"],
+      "sha1": "17480a0905d9d485bc8ce8e7be9daec2de98c251",
+      "packedResource": True,
+      "license": "Apache-2.0",
+    },
     "JLINE" : {
       "sha1" : "c3aeac59c022bdc497c8c48ed86fa50450e4896a",
       "maven" : {

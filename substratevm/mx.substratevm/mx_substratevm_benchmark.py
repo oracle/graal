@@ -31,7 +31,6 @@ from __future__ import print_function
 import os
 import re
 from glob import glob
-import threading
 
 import zipfile
 import mx
@@ -134,40 +133,6 @@ def benchmark_group(benchmark):
 
 def benchmark_scalaversion(benchmark):
     return _renaissance_config[benchmark][1]
-
-
-class ShopCartNativeImageBenchmarkSuite(mx_java_benchmarks.ShopCartBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin):
-
-    def name(self):
-        return 'shopcart-native-image'
-
-    def benchSuiteName(self):
-        return 'shopcart'
-
-    def run_stage(self, stage, server_command, out, err, cwd, nonZeroIsFatal):
-        if 'image' in stage:
-            # For image stages, we just run the given command
-            return super(ShopCartNativeImageBenchmarkSuite, self).run_stage(stage, server_command, out, err, cwd, nonZeroIsFatal)
-        else:
-            # For run stages, we need to run the server and the loader
-            threading.Thread(target=ShopCartNativeImageBenchmarkSuite.runJMeterInBackground, args=[self, self.benchmarkName()]).start()
-            return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
-
-    def skip_agent_assertions(self, benchmark, args):
-        user_args = super(ShopCartNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
-        if user_args is not None:
-            return user_args
-        else:
-            return []
-
-    def stages(self, args):
-        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.stages=', args)
-        if len(parsed_args) > 1:
-            mx.abort('Native Image benchmark stages should only be specified once.')
-        return parsed_args[0].split(',') if parsed_args else ['instrument-image', 'instrument-run', 'image', 'run']
-
-
-mx_benchmark.add_bm_suite(ShopCartNativeImageBenchmarkSuite())
 
 
 class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
