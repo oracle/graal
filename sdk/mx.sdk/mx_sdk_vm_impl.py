@@ -51,6 +51,7 @@ import os
 from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir, islink, isabs
 import pprint
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -2621,6 +2622,67 @@ def print_standalone_home(args):
     print(standalone_home(args.comp_dir_name))
 
 
+def graalvm_enter(args):
+    """enter a subshell for developing with a particular GraalVM config"""
+    env = os.environ.copy()
+
+    parser = ArgumentParser(prog='mx [graalvm args...] graalvm-enter',
+                            description="""Enter a subshell for developing with a particular GraalVM configuration.
+                                           This sets up environment variables to configure mx so that all mx invocations
+                                           from the subshell will default to the same configuration as selected by the
+                                           'graalvm args' provided to the graalvm-enter command. It also sets
+                                           GRAALVM_HOME to the root of the built GraalVM. Note that manual options and
+                                           env files still apply in the subshell, and might lead to a different GraalVM
+                                           configuration.""")
+    parser.add_argument('cmd', action='store', nargs='*',
+                        default=shlex.split(env['MX_SHELL_CMD']) if 'MX_SHELL_CMD' in env else [env['SHELL'], '-i'],
+                        help="""The subshell command to execute. Can also be set with the environment variable
+                                MX_SHELL_CMD. Defaults to '$SHELL -i'.""")
+    args = parser.parse_args(args)
+
+    graalvm_dist = get_final_graalvm_distribution()
+
+    components = []
+    dynamicImports = set()
+    foundLibpoly = False
+    for component in registered_graalvm_components():
+        if component.short_name == 'libpoly':
+            foundLibpoly = True  # 'libpoly' is special, we need to exclude it instead of including
+        else:
+            components.append(component.short_name)
+        suite = component.suite
+        if suite.dir == suite.vc_dir:
+            dynamicImports.add(os.path.basename(suite.dir))
+        else:
+            dynamicImports.add("/" + os.path.basename(suite.dir))
+
+    nativeImages = []
+    for p in _suite.projects:
+        if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist:
+            if p.is_native():
+                nativeImages.append(p.native_image_name)
+        elif isinstance(p, GraalVmLibrary):
+            if not p.is_skipped():
+                library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
+                nativeImages.append('lib:' + library_name)
+
+    env['GRAALVM_HOME'] = graalvm_home()
+
+    env['DYNAMIC_IMPORTS'] = ','.join(dynamicImports)
+    env['COMPONENTS'] = ','.join(components)
+    env['NATIVE_IMAGES'] = ','.join(nativeImages)
+    if not foundLibpoly:
+        env['EXCLUDE_COMPONENTS'] = 'libpoly'
+
+    # Disable loading of the global ~/.mx/env file in the subshell. The contents of this file are already in the current
+    # environment. Parsing the ~/.mx/env file again would lead to confusing results, especially if it contains settings
+    # for any of the variables we are modifying here.
+    env['MX_GLOBAL_ENV'] = ''
+
+    mx.log("Entering {}... (close shell to leave, e.g. ``exit``)".format(graalvm_dist))
+    mx.run(args.cmd, env=env)
+
+
 def graalvm_show(args):
     """print the GraalVM config"""
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
@@ -3024,6 +3086,7 @@ mx.update_commands(_suite, {
     'graalvm-dist-name': [print_graalvm_dist_name, ''],
     'graalvm-version': [print_graalvm_version, ''],
     'graalvm-home': [print_graalvm_home, ''],
+    'graalvm-enter': [graalvm_enter, ''],
     'graalvm-show': [graalvm_show, ''],
     'graalvm-vm-name': [print_graalvm_vm_name, ''],
     'standalone-home': [print_standalone_home, 'comp-dir-name'],
