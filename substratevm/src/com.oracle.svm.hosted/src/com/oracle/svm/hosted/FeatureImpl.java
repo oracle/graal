@@ -72,8 +72,8 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
-import com.oracle.svm.hosted.image.AbstractBootImage;
-import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
+import com.oracle.svm.hosted.image.AbstractImage;
+import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -629,14 +629,14 @@ public class FeatureImpl {
         private List<Function<LinkerInvocation, LinkerInvocation>> linkerInvocationTransformers = null;
 
         protected final String imageName;
-        protected final AbstractBootImage image;
+        protected final AbstractImage image;
         protected final RuntimeConfiguration runtimeConfig;
         protected final AnalysisUniverse aUniverse;
         protected final HostedUniverse hUniverse;
         protected final HostedOptionProvider optionProvider;
         protected final HostedMetaAccess hMetaAccess;
 
-        BeforeImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, String imageName, AbstractBootImage image, RuntimeConfiguration runtimeConfig,
+        BeforeImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, String imageName, AbstractImage image, RuntimeConfiguration runtimeConfig,
                         AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedOptionProvider optionProvider, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.imageName = imageName;
@@ -652,7 +652,7 @@ public class FeatureImpl {
             return imageName;
         }
 
-        public AbstractBootImage getImage() {
+        public AbstractImage getImage() {
             return image;
         }
 

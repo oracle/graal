@@ -38,7 +38,7 @@ public class AnalysisReportsOptions {
     @Option(help = "Print analysis call tree, a breadth-first tree reduction of the call graph.")//
     public static final OptionKey<Boolean> PrintAnalysisCallTree = new OptionKey<>(false);
 
-    @Option(help = "Print boot image object hierarchy.")//
+    @Option(help = "Print image object hierarchy.")//
     public static final OptionKey<Boolean> PrintImageObjectTree = new OptionKey<>(false);
 
     @Option(help = "Override the default suppression of specified roots. See: Reports.md.")//

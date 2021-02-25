@@ -37,7 +37,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
-public abstract class AbstractBootImage {
+public abstract class AbstractImage {
 
     protected final HostedMetaAccess metaAccess;
     protected final HostedUniverse universe;
@@ -95,7 +95,7 @@ public abstract class AbstractBootImage {
 
     protected final NativeImageKind imageKind;
 
-    protected AbstractBootImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
+    protected AbstractImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         this.imageKind = k;
         this.universe = universe;
@@ -139,17 +139,17 @@ public abstract class AbstractBootImage {
     public abstract ObjectFile.Section getTextSection();
 
     // factory method
-    public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
+    public static AbstractImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
                     NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader classLoader) {
         switch (k) {
             case SHARED_LIBRARY:
-                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+                return new SharedLibraryImageViaCC(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
             default:
-                return new ExecutableViaCCBootImage(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+                return new ExecutableImageViaCC(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
         }
     }
 
-    public abstract String[] makeLaunchCommand(AbstractBootImage.NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
+    public abstract String[] makeLaunchCommand(AbstractImage.NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
 
     public NativeImageCodeCache getCodeCache() {
         return codeCache;
