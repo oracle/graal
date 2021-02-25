@@ -1612,7 +1612,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_SHOOTOUT" : {
+    "SULONG_SHOOTOUT_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,

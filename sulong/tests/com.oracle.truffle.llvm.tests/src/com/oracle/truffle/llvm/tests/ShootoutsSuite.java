@@ -58,7 +58,7 @@ public final class ShootoutsSuite extends BaseSulongOnlyHarness {
     public static Collection<Object[]> data() {
 
         final Map<Path, RunConfiguration> runs = new HashMap<>();
-        Path dirPath = Paths.get(TestOptions.getTestDistribution("SULONG_SHOOTOUT"), SHOOTOUTS_SUITE_SUBDIR);
+        Path dirPath = Paths.get(TestOptions.getTestDistribution("SULONG_SHOOTOUT_TEST_SUITE"), SHOOTOUTS_SUITE_SUBDIR);
         String dir = dirPath.toString();
         runs.put(new File(dir + "/binarytrees/binarytrees.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"12"}));
         runs.put(new File(dir + "/binarytrees/binarytrees.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"12"}));
