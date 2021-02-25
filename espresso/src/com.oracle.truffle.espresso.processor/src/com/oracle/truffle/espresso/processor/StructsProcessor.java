@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.processor;
 
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.IMPORT_STATIC_OBJECT;
-import static com.oracle.truffle.espresso.processor.EspressoProcessor.PUBLIC_FINAL;
+import static com.oracle.truffle.espresso.processor.EspressoProcessor.PUBLIC_FINAL_CLASS;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.SUPPRESS_UNUSED;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.TAB_1;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.TAB_2;
@@ -55,33 +55,39 @@ public class StructsProcessor extends AbstractProcessor {
 
     private static final String STRUCTS_PACKAGE = "com.oracle.truffle.espresso.jvmti.structs";
 
+    // Annotations
     private static final String GENERATE_STRUCTS = STRUCTS_PACKAGE + ".GenerateStructs";
     private static final String KNOWN_STRUCT = GENERATE_STRUCTS + ".KnownStruct";
 
+    // Imports
     private static final String IMPORT_BYTEBUFFER = "import java.nio.ByteBuffer;\n";
-    private static final String IMPORT_DIRECTBYTEBUFFER = "import static com.oracle.truffle.espresso.ffi.nfi.NativeUtils.directByteBuffer;\n";
-    private static final String IMPORT_INTEROP_AS_POINTER = "import static com.oracle.truffle.espresso.ffi.nfi.NativeUtils.interopAsPointer;\n";
-    private static final String IMPORT_JNI_HANDLES = "import com.oracle.truffle.espresso.jni.JNIHandles;\n";
+    private static final String IMPORT_JNI_ENV = "import com.oracle.truffle.espresso.jni.JniEnv;\n";
     private static final String IMPORT_RAW_POINTER = "import com.oracle.truffle.espresso.ffi.RawPointer;\n";
 
-    private static final String DIRECTBYTEBUFFER = "directByteBuffer";
-    private static final String INTEROP_AS_POINTER = "interopAsPointer";
-
+    // Classes
     private static final String TRUFFLE_OBJECT = "TruffleObject";
-    private static final String BYTE_BUFFER = "ByteBuffer";
-    private static final String JNI_HANDLES = "JNIHandles";
-    private static final String HANDLES_ARG = "handles";
-    private static final String VALUE = "valueToPut";
+    private static final String JNI_ENV_CLASS = "JniEnv";
     private static final String MEMBER_OFFSET_GETTER_CLASS = "MemberOffsetGetter";
-    private static final String MEMBER_OFFSET_GETTER_ARG = "off";
+    private static final String STRUCT_WRAPPER_CLASS = "StructWrapper";
+
+    // Methods
     private static final String GET_INFO = "getInfo";
     private static final String GET_OFFSET = "getOffset";
+    private static final String GET = "get";
+    private static final String PUT = "put";
 
+    // Members
+    private static final String MEMBER_OFFSET_GETTER_ARG = "offset";
     private static final String STRUCT_SIZE = "structSize";
-    private static final String PTR = "ptr";
-    private static final String BUF = "buf";
 
-    private static final String PRIVATE_FINAL = "private final ";
+    // Arguments
+    private static final String VALUE = "valueToPut";
+    private static final String JNI_ENV_ARG = "jni";
+    private static final String PTR = "pointer";
+
+    // Modifiers
+    private static final String PUBLIC = "public";
+    private static final String FINAL = "final";
 
     // @GenerateStructs
     TypeElement generateStructs;
@@ -216,7 +222,7 @@ public class StructsProcessor extends AbstractProcessor {
 
         // Java struct declaration
         builder.append(SUPPRESS_UNUSED).append("\n");
-        builder.append(EspressoProcessor.PUBLIC_FINAL_CLASS).append(className).append(" {\n");
+        builder.append(PUBLIC_FINAL_CLASS).append(className).append(" {\n");
 
         // Generate the fields:
         // - One to store the struct size
@@ -241,8 +247,7 @@ public class StructsProcessor extends AbstractProcessor {
 
     private static void generateWrapper(List<String> members, List<NativeType> typesList, int length, String className, StringBuilder builder) {
         String wrapperName = className + "Wrapper";
-        builder.append(TAB_1).append(EspressoProcessor.PUBLIC_FINAL_CLASS).append(wrapperName).append(" {\n");
-        generateWrapperFields(builder);
+        builder.append(TAB_1).append(PUBLIC_FINAL_CLASS).append(wrapperName).append(" extends ").append(STRUCT_WRAPPER_CLASS).append(" {\n");
         generateWrapperConstructor(builder, wrapperName);
         for (int i = 0; i < length; i++) {
             String member = members.get(i);
@@ -251,77 +256,66 @@ public class StructsProcessor extends AbstractProcessor {
         }
     }
 
-    private static void generateWrapperFields(StringBuilder builder) {
-        builder.append(TAB_2).append(PRIVATE_FINAL).append(TRUFFLE_OBJECT).append(" ").append(PTR).append(";\n");
-        builder.append(TAB_2).append(PRIVATE_FINAL).append(BYTE_BUFFER).append(" ").append(BUF).append(";\n");
-        builder.append('\n');
-    }
-
     private static void generateWrapperConstructor(StringBuilder builder, String wrapperName) {
-        builder.append(TAB_2).append(wrapperName).append("(").append(TRUFFLE_OBJECT).append(" " + PTR + ") {\n");
-        builder.append(TAB_3).append("this." + PTR).append(" = ").append(PTR).append(";\n");
-        builder.append(TAB_3).append("this." + BUF).append(" = ").append(DIRECTBYTEBUFFER).append("(").append(PTR).append(", ").append(STRUCT_SIZE).append(")").append(";\n");
+        builder.append(TAB_2).append(ProcessorUtils.methodDeclaration(null, null, wrapperName,
+                        new String[]{ProcessorUtils.argument(JNI_ENV_CLASS, JNI_ENV_ARG), ProcessorUtils.argument(TRUFFLE_OBJECT, PTR)})).append("{\n");
+        builder.append(TAB_3).append(ProcessorUtils.call(null, "super", new String[]{JNI_ENV_ARG, PTR, STRUCT_SIZE})).append(";\n");
         builder.append(TAB_2).append("}\n\n");
     }
 
     private static void generateGetterSetter(StringBuilder builder, String member, NativeType type) {
-        String bufType = nativeTypeToBufferType(type);
+        String callSuffix = nativeTypeToMethodSuffix(type);
         String argType = nativeTypeToArgType(type);
-        builder.append(TAB_2).append("public ").append(argType).append(" ").append(member).append("(").append(JNI_HANDLES).append(" ").append(HANDLES_ARG).append(")").append(" {\n");
-        builder.append(TAB_3).append("return ").append(getGetterFixup(type, BUF + ".get" + bufType + "(" + member + ")")).append(";\n");
+        builder.append(TAB_2).append(ProcessorUtils.methodDeclaration(PUBLIC, argType, member, new String[]{})).append(" {\n");
+        builder.append(TAB_3).append("return ").append(ProcessorUtils.call(null, GET + callSuffix, new String[]{member})).append(";\n");
         builder.append(TAB_2).append("}\n\n");
 
-        builder.append(TAB_2).append("public ").append("void").append(" ").append(member).append("(") //
-                        .append(JNI_HANDLES).append(" ").append(HANDLES_ARG).append(", ").append(argType).append(" ").append(VALUE) //
-                        .append(")").append(" {\n");
-        builder.append(TAB_3).append(BUF).append(".put").append(bufType).append("(").append(member).append(", ").append(getSetterFixup(type, VALUE)).append(");\n");
+        builder.append(TAB_2).append(ProcessorUtils.methodDeclaration(PUBLIC, "void", member, new String[]{ProcessorUtils.argument(argType, VALUE)})).append(" {\n");
+        builder.append(TAB_3).append(ProcessorUtils.call(null, PUT + callSuffix, new String[]{member, VALUE})).append(";\n");
         builder.append(TAB_2).append("}\n\n");
     }
 
     private static void generateHeader(StringBuilder builder) {
         builder.append(EspressoProcessor.COPYRIGHT);
         builder.append("package ").append(STRUCTS_PACKAGE).append(";\n\n");
-        builder.append(IMPORT_DIRECTBYTEBUFFER);
-        builder.append(IMPORT_INTEROP_AS_POINTER);
         builder.append('\n');
         builder.append(IMPORT_BYTEBUFFER);
         builder.append('\n');
         builder.append(EspressoProcessor.IMPORT_TRUFFLE_OBJECT);
         builder.append('\n');
         builder.append(IMPORT_STATIC_OBJECT);
-        builder.append(IMPORT_JNI_HANDLES);
+        builder.append(IMPORT_JNI_ENV);
         builder.append(IMPORT_RAW_POINTER);
         builder.append('\n');
     }
 
-    private static void generateConstructor(String strName, List<String> members, StringBuilder builder, String className) {
-        builder.append(TAB_1).append(className).append("(").append(MEMBER_OFFSET_GETTER_CLASS).append(" ").append(MEMBER_OFFSET_GETTER_ARG).append(") {\n");
-        builder.append(TAB_2).append(STRUCT_SIZE).append(" = ").append(MEMBER_OFFSET_GETTER_ARG).append(".").append(GET_INFO) //
-                        .append("(").append(stringify(strName)).append(");\n");
-        for (String member : members) {
-            builder.append(TAB_2).append(member).append(" = (int) ").append(MEMBER_OFFSET_GETTER_ARG).append(".").append(GET_OFFSET) //
-                            .append("(").append(stringify(strName)).append(", ").append(stringify(member)).append(");\n");
-        }
-        builder.append(TAB_1).append("}\n\n");
-    }
-
     private static void generateFields(List<String> members, StringBuilder builder) {
-        builder.append(TAB_1).append(PUBLIC_FINAL).append(" long ").append(STRUCT_SIZE).append(";\n\n");
+        builder.append(TAB_1).append(ProcessorUtils.fieldDeclaration(FINAL, "long", STRUCT_SIZE, null)).append("\n\n");
         for (String member : members) {
-            builder.append(TAB_1).append(PUBLIC_FINAL).append(" int ").append(member).append(";\n");
+            builder.append(TAB_1).append(ProcessorUtils.fieldDeclaration(FINAL, "int", member, null)).append("\n");
         }
         builder.append('\n');
     }
 
-    private static String stringify(String str) {
-        return '\"' + str + '\"';
+    private static void generateConstructor(String strName, List<String> members, StringBuilder builder, String className) {
+        builder.append(TAB_1).append(ProcessorUtils.methodDeclaration(null, null, className, new String[]{ProcessorUtils.argument(MEMBER_OFFSET_GETTER_CLASS, MEMBER_OFFSET_GETTER_ARG)}));
+        builder.append(" {\n");
+
+        builder.append(TAB_2).append(ProcessorUtils.assignment(STRUCT_SIZE, ProcessorUtils.call(MEMBER_OFFSET_GETTER_ARG, GET_INFO, new String[]{ProcessorUtils.stringify(strName)}))).append("\n");
+        for (String member : members) {
+            builder.append(TAB_2).append(ProcessorUtils.assignment(member,
+                            " (int) " + ProcessorUtils.call(MEMBER_OFFSET_GETTER_ARG, GET_OFFSET, new String[]{ProcessorUtils.stringify(strName), ProcessorUtils.stringify(member)}))).append("\n");
+        }
+
+        builder.append(TAB_1).append("}\n\n");
     }
 
-    private static String nativeTypeToBufferType(NativeType type) {
+    private static String nativeTypeToMethodSuffix(NativeType type) {
         switch (type) {
             case BOOLEAN:
+                return "Boolean";
             case BYTE:
-                return "";
+                return "Byte";
             case CHAR:
                 return "Char";
             case SHORT:
@@ -335,9 +329,9 @@ public class StructsProcessor extends AbstractProcessor {
             case DOUBLE:
                 return "Double";
             case OBJECT:
-                return "Long";
+                return "Object";
             case POINTER:
-                return "Long";
+                return "Pointer";
             default:
                 return "";
         }
@@ -370,25 +364,4 @@ public class StructsProcessor extends AbstractProcessor {
         }
     }
 
-    private static String getGetterFixup(NativeType type, String value) {
-        if (type == NativeType.OBJECT) {
-            return HANDLES_ARG + ".get(Math.toIntExact(" + value + "))";
-        } else if (type == NativeType.POINTER) {
-            return "RawPointer.create(" + value + ")";
-        } else if (type == NativeType.BOOLEAN) {
-            return "(" + value + ") != 0";
-        }
-        return value;
-    }
-
-    private static String getSetterFixup(NativeType type, String value) {
-        if (type == NativeType.OBJECT) {
-            return HANDLES_ARG + ".createLocal(" + value + ")";
-        } else if (type == NativeType.POINTER) {
-            return INTEROP_AS_POINTER + "(" + value + ")";
-        } else if (type == NativeType.BOOLEAN) {
-            return "(byte) ((" + value + ") ? 1 : 0)";
-        }
-        return value;
-    }
 }

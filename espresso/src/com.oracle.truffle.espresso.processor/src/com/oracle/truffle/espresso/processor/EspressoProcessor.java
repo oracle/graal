@@ -569,7 +569,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         collector.append(IMPORTS_COLLECTOR).append("\n");
         collector.append("// ").append(GENERATED_BY).append(SUBSTITUTOR).append("\n");
         collector.append(PUBLIC_FINAL_CLASS).append(collectorClassName).append(" {\n");
-        collector.append(generateInstance("ArrayList<>", COLLECTOR_INSTANCE_NAME, "List<" + SUBSTITUTOR + "." + FACTORY + ">"));
+        collector.append(generateInstance("List<" + SUBSTITUTOR + "." + FACTORY + ">", COLLECTOR_INSTANCE_NAME, "ArrayList<>"));
         collector.append(TAB_1).append("private ").append(collectorClassName).append("() {\n").append(TAB_1).append("}\n");
         collector.append(generateGetter(COLLECTOR_INSTANCE_NAME, "List<" + SUBSTITUTOR + "." + FACTORY + ">", COLLECTOR_GETTER)).append("\n");
         collector.append(TAB_1).append("static {\n");
@@ -600,10 +600,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return str.toString();
     }
 
-    static String generateString(String str) {
-        return "\"" + str + "\"";
-    }
-
     static String generateNativeSignature(NativeType[] signature) {
         StringBuilder sb = new StringBuilder();
         sb.append("NativeSignature.create(NativeType.").append(signature[0]);
@@ -620,16 +616,13 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * creates the following code snippet:
      * 
      * <pre>{@code
-     * private static final substitutorName instanceName = new instanceClass();
+     * private static final instanceClass instanceName = new constructor();
      * }</pre>
      */
     // Checkstyle: resume
     // @formatter:on
-    private static String generateInstance(String substitutorName, String instanceName, String instanceClass) {
-        StringBuilder str = new StringBuilder();
-        str.append(TAB_1).append(PRIVATE_STATIC_FINAL).append(" ").append(instanceClass).append(" ").append(instanceName);
-        str.append(" = new ").append(substitutorName).append("();\n");
-        return str.toString();
+    private static String generateInstance(String instanceClass, String instanceName, String constructor) {
+        return TAB_1 + ProcessorUtils.fieldDeclaration(PRIVATE_STATIC_FINAL, instanceClass, instanceName, " new " + constructor + "()") + "\n";
     }
 
     // @formatter:off

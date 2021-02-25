@@ -356,7 +356,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         StringBuilder str = new StringBuilder();
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
         str.append(TAB_3).append("super(\n");
-        str.append(TAB_4).append(generateString(targetMethodName)).append(",\n");
+        str.append(TAB_4).append(ProcessorUtils.stringify(targetMethodName)).append(",\n");
         str.append(TAB_4).append(generateNativeSignature(h.jniNativeSignature)).append(",\n");
         str.append(TAB_4).append(parameterTypeName.size()).append(",\n");
         str.append(TAB_4).append(h.prependEnv).append("\n");

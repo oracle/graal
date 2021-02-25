@@ -407,9 +407,9 @@ public class SubstitutionProcessor extends EspressoProcessor {
         StringBuilder str = new StringBuilder();
         SubstitutorHelper h = (SubstitutorHelper) helper;
         str.append(TAB_3).append("super(\n");
-        str.append(TAB_4).append(generateString(h.guestMethodName)).append(",\n");
-        str.append(TAB_4).append(generateString(h.targetClassName)).append(",\n");
-        str.append(TAB_4).append(generateString(h.returnType)).append(",\n");
+        str.append(TAB_4).append(ProcessorUtils.stringify(h.guestMethodName)).append(",\n");
+        str.append(TAB_4).append(ProcessorUtils.stringify(h.targetClassName)).append(",\n");
+        str.append(TAB_4).append(ProcessorUtils.stringify(h.returnType)).append(",\n");
         str.append(TAB_4).append(generateParameterTypes(h.guestTypeNames, TAB_4)).append(",\n");
         str.append(TAB_4).append(h.hasReceiver).append("\n");
         str.append(TAB_3).append(");\n");
@@ -430,7 +430,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
         str.append(TAB_2).append(OVERRIDE).append("\n");
         str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("String[] ").append(GET_METHOD_NAME).append("() {\n");
         str.append(TAB_3).append("return ").append(nameProvider);
-        str.append(".").append(INSTANCE).append(".").append(GET_METHOD_NAME).append("(").append(generateString(targetMethodName)).append(");\n");
+        str.append(".").append(INSTANCE).append(".").append(GET_METHOD_NAME).append("(").append(ProcessorUtils.stringify(targetMethodName)).append(");\n");
         str.append(TAB_2).append("}\n\n");
         str.append(TAB_2).append(OVERRIDE).append("\n");
         str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("String[] ").append(SUBSTITUTION_CLASS_NAMES).append("() {\n");

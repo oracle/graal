@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv.PrependEnv;
 import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
-import com.oracle.truffle.espresso.substitutions.JVMTICollector;
+import com.oracle.truffle.espresso.substitutions.JVMTIEnvCollector;
 
 @GenerateNativeEnv(target = JvmtiImpl.class)
 @PrependEnv
@@ -82,7 +82,7 @@ public final class JVMTIEnv extends NativeEnv {
 
     @Override
     protected List<IntrinsicSubstitutor.Factory> getCollector() {
-        return JVMTICollector.getCollector();
+        return JVMTIEnvCollector.getCollector();
     }
 
     @Override
