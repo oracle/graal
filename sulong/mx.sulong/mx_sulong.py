@@ -41,7 +41,6 @@ import mx_gate
 import mx_sdk_vm_impl
 import mx_subst
 import mx_sdk_vm
-import re
 import mx_benchmark
 import mx_sulong_benchmarks
 import mx_sulong_fuzz #pylint: disable=unused-import
@@ -69,27 +68,6 @@ _mx = join(_suite.dir, "mx.sulong")
 _root = join(_suite.dir, "projects")
 _testDir = join(_suite.dir, "tests")
 
-
-# the supported GCC versions (see dragonegg.llvm.org)
-supportedGCCVersions = [
-    '4.6',
-    '4.5',
-    '4.7'
-]
-
-# the LLVM versions supported by the current bitcode parser that bases on the textual format
-# sorted by priority in descending order (highest priority on top)
-supportedLLVMVersions = [
-    '10.0',
-    '9.0',
-    '8.0',
-    '7.0',
-    '6.0',
-    '5.0',
-    '4.0',
-    '3.9',
-    '3.8',
-]
 
 toolchainLLVMVersion = mx_sulong_llvm_config.VERSION
 
@@ -359,16 +337,6 @@ def which(program, searchPath=None):
                 return exe_file
     return None
 
-def getCommand(envVariable):
-    """gets an environment variable and checks that it is an executable program"""
-    command = os.getenv(envVariable)
-    if command is None:
-        return None
-    else:
-        if which(command) is None:
-            mx.abort(envVariable + '=' + command +' specifies an invalid command!')
-        else:
-            return command
 
 def getGCC(optional=False):
     return findGCCProgram('gcc', optional=optional)
@@ -431,52 +399,6 @@ def getCommonOptions(withAssertion, lib_args=None):
 
     return options
 
-def isSupportedLLVMVersion(llvmProgram, supportedVersions=None):
-    """returns if the LLVM program bases on a supported LLVM version"""
-    assert llvmProgram is not None
-    llvmVersion = getLLVMMajorVersion(llvmProgram)
-    if supportedVersions is None:
-        return llvmVersion in supportedLLVMVersions
-    else:
-        return llvmVersion in supportedVersions
-
-def isSupportedGCCVersion(gccProgram, supportedVersions=None):
-    """returns if the LLVM program bases on a supported LLVM version"""
-    assert gccProgram is not None
-    gccVersion = getGCCVersion(gccProgram)
-    if supportedVersions is None:
-        return gccVersion in supportedGCCVersions
-    else:
-        return gccVersion in supportedVersions
-
-def getVersion(program):
-    """executes --version on the supplied program and returns the version string"""
-    assert program is not None
-    try:
-        versionString = _decode(subprocess.check_output([program, '--version']))
-    except subprocess.CalledProcessError as e:
-        # on my machine, e.g., opt returns a non-zero opcode even on success
-        versionString = _decode(e.output)
-    return versionString
-
-def getLLVMMajorVersion(llvmProgram):
-    """executes the program with --version and extracts the LLVM version string"""
-    try:
-        versionString = getVersion(llvmProgram)
-        printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((\d)\.\d)(\.\d)?', versionString, re.IGNORECASE)
-        if printLLVMVersion is None:
-            return None
-        else:
-            return printLLVMVersion.group(3)
-    except OSError:
-        # clang/llvm not found -> assume we will be using the toolchain
-        return toolchainLLVMVersion.split('.')[0]
-
-
-def getLLVMExplicitArgs(mainLLVMVersion):
-    no_optnone = mx.get_env("CLANG_NO_OPTNONE", False)
-    return [] if no_optnone else ["-Xclang", "-disable-O0-optnone"]
-
 
 def get_mx_exe():
     mxpy = join(mx._mx_home, 'mx.py')
@@ -509,16 +431,6 @@ mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo',
 
 def mx_post_parse_cmd_line(opts):
     mx_gate.JACOCO_EXEC = opts.jacoco_exec_file
-
-
-def getGCCVersion(gccProgram):
-    """executes the program with --version and extracts the GCC version string"""
-    versionString = getVersion(gccProgram)
-    gccVersion = re.search(r'((\d\.\d).\d)', versionString, re.IGNORECASE)
-    if gccVersion is None:
-        exit("could not find the GCC version string in " + str(versionString))
-    else:
-        return gccVersion.group(2)
 
 
 @mx.command(_suite.name, 'llvm-tool', 'Run a tool from the LLVM_TOOLCHAIN distribution')
