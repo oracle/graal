@@ -1,0 +1,5 @@
+gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/slash_edit.f90
+gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_trailz.f90
+gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_leadz.f90
+gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/direct_io.f90
+gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/pr40021.f

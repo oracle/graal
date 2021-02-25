@@ -1,0 +1,5 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/h8300-bit-insn-ice2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/ssp-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/ssp-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/stackprotectexplicit1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/h8300-bit-insn-ice.c

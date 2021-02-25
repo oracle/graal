@@ -120,26 +120,6 @@ def _lib_versioned(arg):
 mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
 
 
-def _sulong_gate_testdist(title, test_dist, tasks, args, tags=None, testClasses=None, vmArgs=None):
-    if tags is None:
-        tags = [test_dist]
-    build_tags = ['build_' + t for t in tags]
-    run_tags = ['run_' + t for t in tags]
-    with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_testsuites.compileTestSuite(test_dist, args.extra_build_args)
-    with Task('Test' + title, tasks, tags=tags + run_tags) as t:
-        if t: mx_testsuites.runTestSuite(test_dist, args, testClasses, vmArgs)
-
-def _sulong_gate_testsuite(title, test_suite, tasks, args, tags=None, testClasses=None, vmArgs=None):
-    if tags is None:
-        tags = [test_suite]
-    build_tags = ['build_' + t for t in tags]
-    run_tags = ['run_' + t for t in tags]
-    with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
-    with Task('Test' + title, tasks, tags=tags + run_tags) as t:
-        if t: mx_testsuites.runTestSuite(test_suite, args, testClasses, (vmArgs or []) + args.extra_llvm_arguments)
-
 def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
     if tags is None:
         tags = [test_suite]
@@ -176,8 +156,17 @@ def _unittest_config_participant(config):
 
 
 def get_test_distribution_path_properties(suite):
-    return ['-Dsulongtest.path.{}={}'.format(d.name, d.get_output()) for d in suite.dists if
-            d.is_test_distribution() and not d.isClasspathDependency()]
+    def _generate():
+        for d in suite.dists:
+            if d.is_test_distribution() and not d.isClasspathDependency():
+                yield '-Dsulongtest.path.{}={}'.format(d.name, d.get_output())
+                fileExts = set()
+                for buildDep in d.buildDependencies:
+                    if hasattr(buildDep, 'fileExts'):
+                        fileExts = fileExts.union(set(buildDep.fileExts))
+                if fileExts:
+                    yield '-Dsulongtest.fileExts.{}={}'.format(d.name, ','.join(fileExts))
+    return list(_generate())
 
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -203,15 +192,15 @@ def _sulong_gate_runner(args, tasks):
         if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: clangformat([])
-    _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
+    _sulong_gate_unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', tasks, args, testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
     _sulong_gate_unittest('Types', 'SULONG_TEST', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.types.floating'])
     _sulong_gate_unittest('Pipe', 'SULONG_TEST', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
-    _sulong_gate_testsuite('LLVM', 'llvm', tasks, args, tags=['llvm', 'sulongCoverage'])
-    _sulong_gate_testsuite('NWCC', 'nwcc', tasks, args, tags=['nwcc', 'sulongCoverage'])
-    _sulong_gate_testsuite('GCCParserTorture', 'parserTorture', tasks, args, tags=['parser', 'sulongCoverage'], vmArgs=['-Dpolyglot.llvm.parseOnly=true'])
-    _sulong_gate_testsuite('GCC_C', 'gcc_c', tasks, args, tags=['gcc_c', 'sulongCoverage'])
-    _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args, tags=['gcc_cpp', 'sulongCoverage'])
-    _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args, tags=['gcc_fortran', 'sulongCoverage'])
+    _sulong_gate_unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', tasks, args, testClasses=['LLVMSuite'], tags=['llvm', 'sulongCoverage'])
+    _sulong_gate_unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', tasks, args, testClasses=['NWCCSuite'], tags=['nwcc', 'sulongCoverage'])
+    _sulong_gate_unittest('GCCParserTorture', 'SULONG_PARSER_TORTURE', tasks, args, testClasses=['ParserTortureSuite'], tags=['parser', 'sulongCoverage'])
+    _sulong_gate_unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', tasks, args, testClasses=['GccCSuite'], tags=['gcc_c', 'sulongCoverage'])
+    _sulong_gate_unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', tasks, args, testClasses=['GccCppSuite'], tags=['gcc_cpp', 'sulongCoverage'])
+    _sulong_gate_unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', tasks, args, testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Linker', tasks, args, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
@@ -220,10 +209,9 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_sulongsuite_unittest('BitcodeFormat', tasks, args, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('DebugExpr', tasks, args, testClasses='LLVMDebugExprParserTest', tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('OtherTests', tasks, args, testClasses=['com.oracle.truffle.llvm.tests.other', 'com.oracle.truffle.llvm.tests.bitcode.'], tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_testsuite('Assembly', 'inlineassemblytests', tasks, args, testClasses='InlineAssemblyTest', tags=['assembly', 'sulongMisc', 'sulongCoverage'])
-    _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'])
-    _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'])
-    _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'])
+    _sulong_gate_unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'])
+    _sulong_gate_unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'])
+    _sulong_gate_unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'])
     with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
         if t:
             with SulongGateEnv():

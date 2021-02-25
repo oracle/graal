@@ -68,13 +68,6 @@ def compileTestSuite(testsuiteproject, extra_build_args):
     mx.command_function('build')(defaultBuildArgs + extra_build_args)
 
 
-def runTestSuite(testsuiteproject, args, testClasses=None, vmArgs=None):
-    """compile and run external testsuite projects"""
-    project = mx.project(testsuiteproject)
-    assert isinstance(project, SulongTestSuite)
-    project.runTestSuite(testClasses, vmArgs)
-
-
 class SulongTestSuiteBuildTask(mx.NativeBuildTask):
     """Track whether we are checking if a build is required or actually building."""
     def needsBuild(self, newestInput):
@@ -137,17 +130,6 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
 
     def defaultTestClasses(self):
         return ["SulongSuite"]
-
-    def runTestSuite(self, testClasses=None, vmArgs=None):
-        if vmArgs is None:
-            vmArgs = []
-        if hasattr(self, 'extraLibs'):
-            vmArgs.append('-Dpolyglot.llvm.libraries=' + ':'.join(self.extraLibs))
-        if hasattr(self, 'fileExts'):
-            vmArgs += ['-Dsulongtest.fileExtensionFilter=' + ':'.join(self.fileExts)]
-        if testClasses is None:
-            testClasses = self.testClasses
-        return run(vmArgs, testClasses)
 
     @staticmethod
     def haveDragonegg():
@@ -257,21 +239,6 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         if not hasattr(self, 'configDir'):
             self.configDir = 'configs'
 
-    def runTestSuite(self, testClasses=None, vmArgs=None):
-        if vmArgs is None:
-            vmArgs = []
-        vmArgs += [
-            "-Dsulongtest.externalTestSuitePath=" + self.getOutput(),
-            "-Dsulongtest.testSourcePath=" + self.get_test_source(),
-            "-Dsulongtest.testConfigPath=" + os.path.join(self.dir, "..", self.configDir),
-            ]
-        if hasattr(self, 'extraLibs'):
-            vmArgs.append('-Dpolyglot.llvm.libraries=' + ':'.join(self.extraLibs))
-        if hasattr(self, 'fileExts'):
-            vmArgs += ['-Dsulongtest.fileExtensionFilter=' + ':'.join(self.fileExts)]
-        if testClasses is None:
-            testClasses = self.testClasses
-        return run(vmArgs, testClasses)
 
     def defaultTestClasses(self):
         return ["com.oracle.truffle.llvm.tests.GCCSuite"]
@@ -279,13 +246,11 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
     def getTestFile(self):
         if not hasattr(self, '_testfile'):
             self._testfile = os.path.join(self.getOutput(), 'test.include')
-            _tests = self._get_test_intern()
-            targets = ["ref.out"] if self.buildRef else []
-            targets += [var + ".bc" for var in self.getVariants()]
             with open(self._testfile, 'w') as f:
                 mx.logv("Writing test file: " + self._testfile)
-                for test in _tests:
-                    f.write("default: {}\n".format(" ".join([os.path.join(test + ".dir", t) for t in targets])))
+                # call getResults() ensure self.results is populated
+                _ = self.getResults()
+                f.write("\n".join(("default: " + r for r in self.results)))
         return self._testfile
 
     def _get_test_intern(self):
@@ -321,7 +286,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
                 relPath = os.path.relpath(absPath, root)
                 _, ext = os.path.splitext(relPath)
                 if ext in self.fileExts and relPath not in exclude_files and not _match_pattern(relPath):
-                    _tests.append(relPath)
+                    _tests.append(relPath + ".dir")
 
         return _tests
 
@@ -331,12 +296,15 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         return roots[0]
 
     def getTests(self):
-        # tests are in a test file
-        return ""
+        if not hasattr(self, '_tests'):
+            self._tests = self._get_test_intern()
+        return self._tests
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(ExternalTestSuite, self).getBuildEnv(replaceVar=replaceVar)
         roots = [d.get_path(resolve=True) for d in self.buildDependencies if d.isPackedResourceLibrary()]
+        # we pass tests via TESTFILE to avoid "argument list too long" issue
+        env['TESTS'] = ''
         env['VPATH'] = ':'.join(roots)
         env['TESTFILE'] = self.getTestFile()
         return env
