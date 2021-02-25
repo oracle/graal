@@ -1624,7 +1624,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_NWCC" : {
+    "SULONG_NWCC_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
