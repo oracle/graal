@@ -40,6 +40,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -89,15 +90,19 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             // Assign a location to all methods.
             assert codeCacheSize == 0;
             HostedMethod firstMethod = null;
+            AOTSamplingData aotSamplingData = ImageSingletons.lookup(AOTSamplingData.class);
             for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
 
                 HostedMethod method = entry.getKey();
                 if (firstMethod == null) {
                     firstMethod = method;
                 }
+
                 CompilationResult compilation = entry.getValue();
                 compilationsByStart.put(codeCacheSize, compilation);
                 method.setCodeAddressOffset(codeCacheSize);
+                // map the method address to the method analysis id
+                aotSamplingData.addEntry(codeCacheSize, method.wrapped.getId());
                 codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), SubstrateOptions.codeAlignment());
             }
 
