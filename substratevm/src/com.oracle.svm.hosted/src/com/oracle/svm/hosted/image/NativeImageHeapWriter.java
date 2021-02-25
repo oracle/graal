@@ -82,7 +82,7 @@ public final class NativeImageHeapWriter {
      */
     @SuppressWarnings("try")
     public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
-        try (Indent perHeapIndent = debug.logAndIndent("BootImageHeap.writeHeap:")) {
+        try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject());
                 writeObject(info, buffer);
