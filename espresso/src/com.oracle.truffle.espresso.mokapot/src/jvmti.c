@@ -360,7 +360,7 @@ JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(void* (*fetch_by_name)(const 
 	if (version <= JVMTI_VERSION) {
 		return initializeJvmtiContextImpl(fetch_by_name);
 	} else {
-		return (void*)0;
+		return NULL;
 	}
 }
 

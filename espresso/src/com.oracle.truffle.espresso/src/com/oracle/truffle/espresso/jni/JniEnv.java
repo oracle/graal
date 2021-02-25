@@ -2698,6 +2698,10 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public int GetJavaVM(@Pointer TruffleObject vmPtr) {
+        if (getUncached().isNull(vmPtr)) {
+            // Pointer should have been pre-null-checked.
+            return JNI_ERR;
+        }
         NativeUtils.writeToPointerPointer(getUncached(), vmPtr, getVM().getJavaVM());
         return JNI_OK;
     }

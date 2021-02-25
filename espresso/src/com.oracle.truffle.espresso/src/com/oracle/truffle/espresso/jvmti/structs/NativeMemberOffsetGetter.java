@@ -42,10 +42,7 @@ public final class NativeMemberOffsetGetter implements MemberOffsetGetter {
         this.lookupMemberOffset = lookupMemberOffset;
     }
 
-    public long getOffset(String structName, String memberName) {
-        return getInfo(structName + "." + memberName);
-    }
-
+    @Override
     public long getInfo(String str) {
         long result;
         try (RawBuffer memberBuffer = RawBuffer.getNativeString(str)) {

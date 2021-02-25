@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.jvmti;
 
+import static com.oracle.truffle.espresso.jvmti.JvmtiErrorCodes.JVMTI_ERROR_ILLEGAL_ARGUMENT;
 import static com.oracle.truffle.espresso.jvmti.JvmtiErrorCodes.JVMTI_OK;
 
 import java.util.List;
@@ -97,6 +98,10 @@ public final class JVMTIEnv extends NativeEnv {
         if (byteCount < 0) {
             return JvmtiErrorCodes.JVMTI_ERROR_ILLEGAL_ARGUMENT;
         }
+        if (getUncached().isNull(memPtr)) {
+            // Pointer should have been pre-null-checked
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT;
+        }
         TruffleObject alloc;
         if (byteCount == 0) {
             alloc = RawPointer.nullInstance();
@@ -112,6 +117,7 @@ public final class JVMTIEnv extends NativeEnv {
 
     @JvmtiImpl
     public int Deallocate(@Pointer TruffleObject memPtr) {
+        // Null is valid. Do nothing if that is the case
         if (!getUncached().isNull(memPtr)) {
             getNativeAccess().freeMemory(memPtr);
         }
@@ -132,12 +138,20 @@ public final class JVMTIEnv extends NativeEnv {
 
     @JvmtiImpl
     public int GetEnvironmentLocalStorage(@Pointer TruffleObject dataPtr) {
+        if (getUncached().isNull(dataPtr)) {
+            // Pointer should have been pre-null-checked
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT;
+        }
         NativeUtils.writeToPointerPointer(getUncached(), dataPtr, envLocalStorage);
         return JVMTI_OK;
     }
 
     @JvmtiImpl
     public int GetPhase(@Pointer TruffleObject phasePtr) {
+        if (getUncached().isNull(phasePtr)) {
+            // Pointer should have been pre-null-checked
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT;
+        }
         NativeUtils.writeToIntPointer(getUncached(), phasePtr, getVM().getJvmti().getPhase());
         return JVMTI_OK;
     }
@@ -151,6 +165,10 @@ public final class JVMTIEnv extends NativeEnv {
 
     @JvmtiImpl
     public int GetVersionNumber(@Pointer TruffleObject versionPtr) {
+        if (getUncached().isNull(versionPtr)) {
+            // Pointer should have been pre-null-checked
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT;
+        }
         NativeUtils.writeToIntPointer(getUncached(), versionPtr, jvmtiVersion);
         return JVMTI_OK;
     }

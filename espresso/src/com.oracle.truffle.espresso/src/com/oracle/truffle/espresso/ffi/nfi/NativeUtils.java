@@ -108,7 +108,7 @@ public final class NativeUtils {
     @TruffleBoundary
     public static void writeToIntPointer(InteropLibrary library, TruffleObject pointer, int value) {
         if (library.isNull(pointer)) {
-            return;
+            throw new NullPointerException();
         }
         IntBuffer resultPointer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Int).asIntBuffer();
         resultPointer.put(value);
@@ -121,7 +121,7 @@ public final class NativeUtils {
     @TruffleBoundary
     public static void writeToLongPointer(InteropLibrary library, TruffleObject pointer, long value) {
         if (library.isNull(pointer)) {
-            return;
+            throw new NullPointerException();
         }
         LongBuffer resultPointer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Long).asLongBuffer();
         resultPointer.put(value);
@@ -139,9 +139,10 @@ public final class NativeUtils {
         return dereferencePointerPointer(InteropLibrary.getUncached(), pointer);
     }
 
+    @TruffleBoundary
     public static TruffleObject dereferencePointerPointer(InteropLibrary library, TruffleObject pointer) {
         if (library.isNull(pointer)) {
-            return RawPointer.nullInstance();
+            throw new NullPointerException();
         }
         LongBuffer buffer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Long).asLongBuffer();
         return RawPointer.create(buffer.get());

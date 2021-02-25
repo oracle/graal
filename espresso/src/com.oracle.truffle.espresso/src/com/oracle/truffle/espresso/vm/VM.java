@@ -758,6 +758,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public int GetEnv(@Pointer TruffleObject vmPtr_, @Pointer TruffleObject envPtr, int version) {
         assert NativeUtils.interopAsPointer(getJavaVM()) == NativeUtils.interopAsPointer(vmPtr_);
+        if (getUncached().isNull(envPtr)) {
+            // Pointer should have been pre-null-checked.
+            return JNI_ERR;
+        }
         TruffleObject interopPtr = null;
         if (JVMTI.isJvmtiVersion(version)) {
             // JVMTI is requested before the main thread is created.
@@ -2104,13 +2108,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @TruffleBoundary
     public int JNI_GetCreatedJavaVMs(@Pointer TruffleObject vmBufPtr, int bufLen, @Pointer TruffleObject numVMsPtr) {
+        int err = JNI_OK;
         if (bufLen > 0) {
-            getContext().getJNI().GetJavaVM(vmBufPtr);
+            err = getContext().getJNI().GetJavaVM(vmBufPtr);
             if (!getUncached().isNull(numVMsPtr)) {
                 NativeUtils.writeToIntPointer(getUncached(), numVMsPtr, 1);
             }
         }
-        return JNI_OK;
+        return err;
     }
 
     // endregion Invocation API

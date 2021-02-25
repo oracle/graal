@@ -79,7 +79,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                                                 POINTER,
                                                 INT,
                                                 BOOLEAN,
-                                                POINTER,
+                                                OBJECT,
                                                 OBJECT
                                 }),
                 /*-
@@ -114,7 +114,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                                                 "is_daemon",
                                 }, //
                                 types = {
-                                                POINTER,
+                                                OBJECT,
                                                 POINTER,
                                                 INT,
                                                 BOOLEAN,
