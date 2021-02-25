@@ -39,7 +39,7 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public final class GccCppSuite extends GccSuiteBase {
 
-    public static final String TEST_DISTRIBUTION = "SULONG_GCC_CPP";
+    public static final String TEST_DISTRIBUTION = "SULONG_GCC_CPP_TEST_SUITE";
     public static final String SOURCE = "GCC_SOURCE";
 
     @Parameters(name = "{1}")

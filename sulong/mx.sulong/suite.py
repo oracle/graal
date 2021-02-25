@@ -1564,7 +1564,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_GCC_CPP" : {
+    "SULONG_GCC_CPP_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
