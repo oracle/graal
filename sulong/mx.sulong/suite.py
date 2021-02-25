@@ -1552,7 +1552,7 @@ suite = {
       "defaultBuild" : False,
     },
     # <editor-fold desc="External Test Suites">
-    "SULONG_GCC_C" : {
+    "SULONG_GCC_C_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,

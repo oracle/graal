@@ -198,7 +198,7 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_unittest('LLVM', 'SULONG_LLVM', tasks, args, testClasses=['LLVMSuite'], tags=['llvm', 'sulongCoverage'])
     _sulong_gate_unittest('NWCC', 'SULONG_NWCC', tasks, args, testClasses=['NWCCSuite'], tags=['nwcc', 'sulongCoverage'])
     _sulong_gate_unittest('GCCParserTorture', 'SULONG_PARSER_TORTURE', tasks, args, testClasses=['ParserTortureSuite'], tags=['parser', 'sulongCoverage'])
-    _sulong_gate_unittest('GCC_C', 'SULONG_GCC_C', tasks, args, testClasses=['GccCSuite'], tags=['gcc_c', 'sulongCoverage'])
+    _sulong_gate_unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', tasks, args, testClasses=['GccCSuite'], tags=['gcc_c', 'sulongCoverage'])
     _sulong_gate_unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', tasks, args, testClasses=['GccCppSuite'], tags=['gcc_cpp', 'sulongCoverage'])
     _sulong_gate_unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN', tasks, args, testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
