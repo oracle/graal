@@ -714,8 +714,7 @@ final class HostObject implements TruffleObject {
     private static boolean isPEFriendlyBuffer(ByteBuffer buffer) {
         final Class<? extends ByteBuffer> clazz = buffer.getClass();
         final boolean result = CompilerDirectives.isPartialEvaluationConstant(clazz) &&
-                        clazz == HEAP_BYTE_BUFFER_CLASS || clazz == HEAP_BYTE_BUFFER_R_CLASS ||
-                        clazz == DIRECT_BYTE_BUFFER_CLASS || clazz == DIRECT_BYTE_BUFFER_R_CLASS;
+                        (clazz == HEAP_BYTE_BUFFER_CLASS || clazz == HEAP_BYTE_BUFFER_R_CLASS || clazz == DIRECT_BYTE_BUFFER_CLASS || clazz == DIRECT_BYTE_BUFFER_R_CLASS);
         assert result : "Unexpected Buffer subclass";
         return result;
     }
