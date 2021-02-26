@@ -48,6 +48,7 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import com.oracle.svm.core.configure.SerializationConfigurationParser.SerializationParserFunction;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -130,6 +131,18 @@ public class SerializationFeature implements Feature {
 
         if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
             RuntimeReflection.register(ReflectionUtil.lookupConstructor(serializationTargetClass, (Class<?>[]) null));
+        }
+
+        RecordSupport recordSupport = RecordSupport.singleton();
+        if (recordSupport.isRecord(serializationTargetClass)) {
+            /* Serialization for records uses the canonical record constructor directly. */
+            RuntimeReflection.register(recordSupport.getCanonicalRecordConstructor(serializationTargetClass));
+            /*
+             * Serialization for records invokes Class.getRecordComponents(). Registering all record
+             * component accessor methods for reflection ensures that the record components are
+             * available at run time.
+             */
+            RuntimeReflection.register(recordSupport.getRecordComponentAccessorMethods(serializationTargetClass));
         }
 
         RuntimeReflection.register(serializationTargetClass);

@@ -88,6 +88,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -134,7 +135,6 @@ public final class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
-    private static final Method isRecordMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isRecord") : null;
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ForkJoinPool executor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
@@ -357,11 +357,9 @@ public final class SVMHost implements HostVM {
          * JDK 15 added support for Hidden Classes. Record if this javaClass is hidden.
          */
         boolean isHidden = false;
-        boolean isRecord = false;
         if (JavaVersionUtil.JAVA_SPEC >= 15) {
             try {
                 isHidden = (boolean) isHiddenMethod.invoke(javaClass);
-                isRecord = (boolean) isRecordMethod.invoke(javaClass);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -376,6 +374,7 @@ public final class SVMHost implements HostVM {
             }
         }
 
+        boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
 
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub,
