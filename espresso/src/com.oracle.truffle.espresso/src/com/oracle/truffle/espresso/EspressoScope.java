@@ -43,16 +43,16 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
 
-public class EspressoScope {
+public final class EspressoScope {
 
-    public static Object createVariables(Local[] liveLocals, Frame frame, @Host(String.class) Object scopeName) {
+    public static Object createVariables(Local[] liveLocals, Frame frame, Symbol<Symbol.Name> scopeName) {
         int slotCount = liveLocals.length;
         Map<String, FrameSlotInfo> slotsMap;
         Map<String, FrameSlotInfo> identifiersMap;
@@ -89,9 +89,9 @@ public class EspressoScope {
         final Map<String, FrameSlotInfo> slots;
         final Map<String, FrameSlotInfo> identifiers;
         final Frame frame;
-        final @Host(String.class) Object scopeName;
+        final Symbol<Symbol.Name> scopeName;
 
-        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Map<String, FrameSlotInfo> identifiers, Frame frame, @Host(String.class) Object scopeName) {
+        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Map<String, FrameSlotInfo> identifiers, Frame frame, Symbol<Symbol.Name> scopeName) {
             this.slots = slots;
             this.identifiers = identifiers;
             this.frame = frame;
@@ -125,7 +125,7 @@ public class EspressoScope {
         @ExportMessage
         @SuppressWarnings("static-method")
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-            return scopeName;
+            return scopeName.toString();
         }
 
         @ExportMessage
