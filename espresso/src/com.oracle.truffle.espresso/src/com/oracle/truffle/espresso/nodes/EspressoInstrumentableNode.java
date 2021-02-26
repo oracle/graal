@@ -70,7 +70,7 @@ public abstract class EspressoInstrumentableNode extends Node implements Instrum
     public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
         // construct the current scope with valid local variables information
         Method method = getMethod();
-        Local[] liveLocals = getMethod().getLocalVariableTable().getLocalsAt(getCurrentBCI(frame));
+        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(getCurrentBCI(frame));
         if (liveLocals.length == 0) {
             // class was compiled without a local variable table
             // include "this" in method arguments throughout the method
