@@ -46,8 +46,8 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class VAArgsTest extends BaseSulongOnlyHarness {
 
-    private static final String OTHER_ROOT = TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES");
-    private static final String OTHER_DIR = Paths.get(OTHER_ROOT, "vaargs").toString();
+    private static final String TEST_DIST_ROOT = TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES");
+    private static final String TEST_DIR = Paths.get(TEST_DIST_ROOT, "vaargs").toString();
     private static final String testSuffix = "O1.bc";
 
     @Parameter(value = 0) public Path path;
@@ -58,15 +58,15 @@ public final class VAArgsTest extends BaseSulongOnlyHarness {
     public static Collection<Object[]> data() {
 
         final Map<Path, RunConfiguration> runs = new HashMap<>();
-        runs.put(Paths.get(OTHER_DIR, "vaargs00.c.dir", testSuffix), new RunConfiguration(2, null));
-        runs.put(Paths.get(OTHER_DIR, "vaargs01.c.dir", testSuffix), new RunConfiguration(2, null));
-        runs.put(Paths.get(OTHER_DIR, "vaargs02.c.dir", testSuffix), new RunConfiguration(0, "1\n2.000000\na\n4\n5.000000\n"));
-        runs.put(Paths.get(OTHER_DIR, "vaargs03.c.dir", testSuffix), new RunConfiguration(0, "1\n2.000000\na\n4\n5.000000\n4\n5.000000\n"));
-        runs.put(Paths.get(OTHER_DIR, "vaargs04.c.dir", testSuffix), new RunConfiguration(0, "1.000000\n2.000000\n3.000000\n4.000000\n5.000000\n"));
-        runs.put(Paths.get(OTHER_DIR, "vaargs05.c.dir", testSuffix), new RunConfiguration(0,
+        runs.put(Paths.get(TEST_DIR, "vaargs00.c.dir", testSuffix), new RunConfiguration(2, null));
+        runs.put(Paths.get(TEST_DIR, "vaargs01.c.dir", testSuffix), new RunConfiguration(2, null));
+        runs.put(Paths.get(TEST_DIR, "vaargs02.c.dir", testSuffix), new RunConfiguration(0, "1\n2.000000\na\n4\n5.000000\n"));
+        runs.put(Paths.get(TEST_DIR, "vaargs03.c.dir", testSuffix), new RunConfiguration(0, "1\n2.000000\na\n4\n5.000000\n4\n5.000000\n"));
+        runs.put(Paths.get(TEST_DIR, "vaargs04.c.dir", testSuffix), new RunConfiguration(0, "1.000000\n2.000000\n3.000000\n4.000000\n5.000000\n"));
+        runs.put(Paths.get(TEST_DIR, "vaargs05.c.dir", testSuffix), new RunConfiguration(0,
                         "1.000000\n2\n3\n4\n5.000000\n1.000000\n2\n3\n4\n5.000000\n1.000000\n2\n3\n4\n5.000000\n1.000000\n2\n3\n4\n5.000000\n1.000000\n2\n3\n4\n5.000000\n1.000000\n2\n3\n4\n5.000000\n"));
 
-        Path other = Paths.get(OTHER_ROOT);
+        Path other = Paths.get(TEST_DIST_ROOT);
         return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), other.relativize(k.getParent()).toString()}).collect(Collectors.toList());
     }
 

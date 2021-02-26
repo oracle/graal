@@ -42,12 +42,12 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class LLVMSuite extends BaseSuiteHarness {
 
-    public static final String TEST_DISTRIBUTION = "SULONG_LLVM";
+    public static final String TEST_DISTRIBUTION = "SULONG_LLVM_TEST_SUITE";
     public static final String SOURCE = "LLVM_TEST_SUITE";
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        Collection<Object[]> testlist = ExternalTestCaseCollector.collectTestCases(LLVMSuite.class, TEST_DISTRIBUTION, SOURCE);
+        Collection<Object[]> testlist = TestCaseCollector.collectTestCases(LLVMSuite.class, Paths.get(TestOptions.getTestDistribution(TEST_DISTRIBUTION)), CommonTestUtils.isSulong);
         return testlist;
     }
 

@@ -42,12 +42,12 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class NWCCSuite extends BaseSuiteHarness {
 
-    public static final String TEST_DISTRIBUTION = "SULONG_NWCC";
+    public static final String TEST_DISTRIBUTION = "SULONG_NWCC_TEST_SUITE";
     public static final String SOURCE = "NWCC_SUITE";
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return ExternalTestCaseCollector.collectTestCases(NWCCSuite.class, TEST_DISTRIBUTION, SOURCE);
+        return TestCaseCollector.collectTestCases(NWCCSuite.class, Paths.get(TestOptions.getTestDistribution(TEST_DISTRIBUTION)), CommonTestUtils.isSulong);
     }
 
     @AfterClass

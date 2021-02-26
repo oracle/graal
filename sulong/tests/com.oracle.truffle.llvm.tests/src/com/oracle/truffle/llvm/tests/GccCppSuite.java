@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests;
 
+import java.nio.file.Paths;
 import java.util.Collection;
 
 import org.junit.AfterClass;
@@ -36,15 +37,17 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+
 @RunWith(Parameterized.class)
 public final class GccCppSuite extends GccSuiteBase {
 
-    public static final String TEST_DISTRIBUTION = "SULONG_GCC_CPP";
+    public static final String TEST_DISTRIBUTION = "SULONG_GCC_CPP_TEST_SUITE";
     public static final String SOURCE = "GCC_SOURCE";
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return ExternalTestCaseCollector.collectTestCases(GccCppSuite.class, TEST_DISTRIBUTION, SOURCE);
+        return TestCaseCollector.collectTestCases(GccCppSuite.class, Paths.get(TestOptions.getTestDistribution(TEST_DISTRIBUTION)), CommonTestUtils.isSulong);
     }
 
     @AfterClass

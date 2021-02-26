@@ -1552,7 +1552,7 @@ suite = {
       "defaultBuild" : False,
     },
     # <editor-fold desc="External Test Suites">
-    "SULONG_GCC_C" : {
+    "SULONG_GCC_C_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
@@ -1564,7 +1564,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_GCC_CPP" : {
+    "SULONG_GCC_CPP_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
@@ -1576,7 +1576,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_GCC_FORTRAN" : {
+    "SULONG_GCC_FORTRAN_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
@@ -1600,7 +1600,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_LLVM" : {
+    "SULONG_LLVM_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
@@ -1612,7 +1612,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_SHOOTOUT" : {
+    "SULONG_SHOOTOUT_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
@@ -1624,7 +1624,7 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
-    "SULONG_NWCC" : {
+    "SULONG_NWCC_TEST_SUITE" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
