@@ -44,9 +44,11 @@ import org.graalvm.collections.PrefixTree;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.function.Consumer;
+
 public class PrefixTreeTest {
     @Test
-    public void storeSmallAlphabet() {
+    public void smallAlphabet() {
         PrefixTree tree = new PrefixTree();
         tree.root().at(2L).at(12L).at(18L).setValue(42);
         tree.root().at(2L).at(12L).at(19L).setValue(43);
@@ -79,7 +81,7 @@ public class PrefixTreeTest {
     }
 
     @Test
-    public void storeLargeAlphabet() {
+    public void largeAlphabet() {
         PrefixTree tree = new PrefixTree();
         for (long i = 1L; i < 128L; i++) {
             PrefixTree.Node first = tree.root().at(i);
@@ -97,24 +99,14 @@ public class PrefixTreeTest {
         }
     }
 
-    @Test
-    public void storeLargeMultithreaded() {
-        PrefixTree tree = new PrefixTree();
-
-        int parallelism = 8;
+    private void inParallel(int parallelism, Consumer<Integer> body) {
         Thread[] threads = new Thread[parallelism];
         for (int t = 0; t < parallelism; t++) {
             final int threadIndex = t;
             threads[t] = new Thread() {
                 @Override
                 public void run() {
-                    for (long i = 1L; i < 2048L; i++) {
-                        PrefixTree.Node first = tree.root().at(threadIndex * 2048L + i);
-                        for (long j = 1L; j < 2048L; j++) {
-                            PrefixTree.Node second = first.at(j);
-                            second.setValue(i * j);
-                        }
-                    }
+                    body.accept(threadIndex);
                 }
             };
         }
@@ -128,6 +120,22 @@ public class PrefixTreeTest {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    @Test
+    public void largeMultithreaded() {
+        final PrefixTree tree = new PrefixTree();
+
+        final int parallelism = 8;
+        inParallel(parallelism, threadIndex -> {
+            for (long i = 1L; i < 2048L; i++) {
+                PrefixTree.Node first = tree.root().at(threadIndex * 2048L + i);
+                for (long j = 1L; j < 2048L; j++) {
+                    PrefixTree.Node second = first.at(j);
+                    second.setValue(i * j);
+                }
+            }
+        });
 
         for (int t = 0; t < parallelism; t++) {
             for (long i = 1L; i < 2048L; i++) {
@@ -152,42 +160,62 @@ public class PrefixTreeTest {
     }
 
     @Test
-    public void storeDeepMultiThreaded() {
+    public void deepMultiThreaded() {
         final PrefixTree tree = new PrefixTree();
         final int depth = 6;
 
-        int parallelism = 8;
-        Thread[] threads = new Thread[parallelism];
-        for (int t = 0; t < parallelism; t++) {
-            threads[t] = new Thread() {
-                @Override
-                public void run() {
-                    insert(tree.root(), depth);
-                }
+        final int parallelism = 8;
+        inParallel(parallelism, new Consumer<Integer>() {
+            @Override
+            public void accept(Integer threadIndex) {
+                insert(tree.root(), depth);
+            }
 
-                private void insert(PrefixTree.Node node, int depth) {
-                    if (depth == 0) {
-                        node.incValue();
-                    } else {
-                        for (long i = 1L; i < 14L; i++) {
-                            final PrefixTree.Node child = node.at(i);
-                            insert(child, depth - 1);
-                        }
+            private void insert(PrefixTree.Node node, int depth) {
+                if (depth == 0) {
+                    node.incValue();
+                } else {
+                    for (long i = 1L; i < 14L; i++) {
+                        final PrefixTree.Node child = node.at(i);
+                        insert(child, depth - 1);
                     }
                 }
-            };
-        }
-        for (int t = 0; t < parallelism; t++) {
-            threads[t].start();
-        }
-        for (int t = 0; t < parallelism; t++) {
-            try {
-                threads[t].join();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
             }
-        }
+        });
 
         verifyValue(tree.root(), depth, parallelism);
+        Assert.assertEquals("The root node has 13 children.", 26, tree.root().seqlockValue());
+    }
+
+    @Test
+    public void manyMultiThreaded() {
+        final PrefixTree tree = new PrefixTree();
+
+        int parallelism = 8;
+        int multiplier = 1024;
+        long batch = 2000L;
+        inParallel(parallelism, new Consumer<Integer>() {
+            @Override
+            public void accept(Integer threadIndex) {
+                if (threadIndex % 2 == 0) {
+                    // Mostly read.
+                    for (int j = 0; j < multiplier; j++) {
+                        for (long i = 1L; i < batch; i++) {
+                            tree.root().at(i).incValue();
+                        }
+                    }
+                } else {
+                    // Mostly add new nodes.
+                    for (long i = batch + 1L; i < multiplier * batch; i++) {
+                        tree.root().at(threadIndex * multiplier * batch + i).incValue();
+                    }
+                }
+            }
+        });
+        for (long i = 1L; i < batch; i++) {
+            Assert.assertEquals(parallelism * multiplier / 2, tree.root().at(i).value());
+        }
+        final long expectedSeqlock = 2 * ((batch - 1) + parallelism / 2 * (multiplier * batch - (batch + 1)));
+        Assert.assertEquals(expectedSeqlock, tree.root().seqlockValue());
     }
 }

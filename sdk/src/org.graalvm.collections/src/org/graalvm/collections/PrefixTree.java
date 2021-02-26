@@ -120,6 +120,10 @@ public class PrefixTree {
             return child != null ? child : tryAddChild(key);
         }
 
+        public long seqlockValue() {
+            return seqlock;
+        }
+
         private Node findChildLockFree(long key) {
             final long seqlockStart = seqlock;
             if ((seqlockStart & 1) == 1) {
@@ -172,34 +176,39 @@ public class PrefixTree {
         }
 
         private synchronized Node tryAddChild(long key) {
-            // Grab seqlock.
-            seqlock = seqlock + 1;
-
-            if (keys == null) {
-                keys = new long[INITIAL_LINEAR_NODE_SIZE];
-                children = new Node[INITIAL_LINEAR_NODE_SIZE];
-            }
-
             // Child addition must start by re-checking if the key is present,
             // to avoid a race condition.
-            Node child = findChild(keys, children, key);
-            if (child != null) {
+            Node child;
+            if (keys != null) {
+                child = findChild(keys, children, key);
+                if (child != null) {
+                    return child;
+                }
+            }
+
+            // Grab seqlock.
+            // Note: we do not need to grab the seqlock earlier,
+            // because modifications can happen only after this point.
+            seqlock = seqlock + 1;
+            try {
+                if (keys == null) {
+                    keys = new long[INITIAL_LINEAR_NODE_SIZE];
+                    children = new Node[INITIAL_LINEAR_NODE_SIZE];
+                }
+
+                // If the child still does not exist, enter a new one.
+                child = new Node();
+                if (keys.length <= MAX_LINEAR_NODE_SIZE) {
+                    addChildToLinearNode(key, child);
+                } else {
+                    addChildToHashNode(key, child);
+                }
+
+                return child;
+            } finally {
                 // Release seqlock.
                 seqlock = seqlock + 1;
-                return child;
             }
-
-            // If the child still does not exist, enter a new one.
-            child = new Node();
-            if (keys.length <= MAX_LINEAR_NODE_SIZE) {
-                addChildToLinearNode(key, child);
-            } else {
-                addChildToHashNode(key, child);
-            }
-
-            // Release seqlock.
-            seqlock = seqlock + 1;
-            return child;
         }
 
         private void addChildToLinearNode(long key, Node child) {
@@ -272,7 +281,7 @@ public class PrefixTree {
             }
         }
 
-        private int hash(long key) {
+        private static int hash(long key) {
             long v = key * 0x9e3775cd9e3775cdL;
             v = Long.reverseBytes(v);
             v = v * 0x9e3775cd9e3775cdL;
