@@ -184,6 +184,8 @@ public class PrefixTree {
             // to avoid a race condition.
             Node child = findChild(keys, children, key);
             if (child != null) {
+                // Release seqlock.
+                seqlock = seqlock + 1;
                 return child;
             }
 
