@@ -768,7 +768,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.truffle",
-                "truffle:TRUFFLE_NFI_LIBFFI",
             ],
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "8+",
@@ -1000,7 +999,6 @@ suite = {
                 "OBJECTFILE",
                 "POINTSTO",
                 "mx:JUNIT_TOOL",
-                "truffle:TRUFFLE_NFI_LIBFFI",
                 "compiler:GRAAL",
             ],
         },

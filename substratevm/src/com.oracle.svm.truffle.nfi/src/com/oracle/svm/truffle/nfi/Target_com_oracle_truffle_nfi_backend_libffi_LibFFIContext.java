@@ -50,8 +50,6 @@ import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.nfi.backend.libffi.LibFFILanguage;
-import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -59,7 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
 
-    @Alias private LibFFILanguage language;
+    @Alias private Target_com_oracle_truffle_nfi_backend_libffi_LibFFILanguage language;
 
     // clear these fields, they will be re-filled by patchContext
     @Alias @RecomputeFieldValue(kind = Kind.Reset) private long nativeContext;
@@ -70,7 +68,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            return new Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[NativeSimpleType.values().length];
+            return new Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.values().length];
         }
     }
 
@@ -91,7 +89,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     native TruffleObject getClosureObject(long codePointer);
 
     @Alias
-    protected native void initializeSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType);
+    protected native void initializeSimpleType(Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType simpleType, int size, int alignment, long ffiType);
 
     @Substitute
     private long initializeNativeContext() {
@@ -123,22 +121,26 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     }
 
     @Substitute
-    Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer allocateClosureObjectRet(Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget, Object receiver) {
+    Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer allocateClosureObjectRet(Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget,
+                    Object receiver) {
         return NativeClosure.prepareClosure(this, signature, callTarget, receiver, NativeClosure.INVOKE_CLOSURE_OBJECT_RET.getFunctionPointer());
     }
 
     @Substitute
-    Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer allocateClosureStringRet(Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget, Object receiver) {
+    Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer allocateClosureStringRet(Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget,
+                    Object receiver) {
         return NativeClosure.prepareClosure(this, signature, callTarget, receiver, NativeClosure.INVOKE_CLOSURE_STRING_RET.getFunctionPointer());
     }
 
     @Substitute
-    Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer allocateClosureBufferRet(Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget, Object receiver) {
+    Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer allocateClosureBufferRet(Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget,
+                    Object receiver) {
         return NativeClosure.prepareClosure(this, signature, callTarget, receiver, NativeClosure.INVOKE_CLOSURE_BUFFER_RET.getFunctionPointer());
     }
 
     @Substitute
-    Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer allocateClosureVoidRet(Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget, Object receiver) {
+    Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer allocateClosureVoidRet(Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget,
+                    Object receiver) {
         return NativeClosure.prepareClosure(this, signature, callTarget, receiver, NativeClosure.INVOKE_CLOSURE_VOID_RET.getFunctionPointer());
     }
 
@@ -216,7 +218,8 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
         if (ImageSingletons.lookup(TruffleNFISupport.class).errnoGetterFunctionName.equals(name)) {
             return new ErrnoMirror();
         } else {
-            Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol ret = Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
+            Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol ret = Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol.create(language, library, name,
+                            lookup(nativeContext, library.handle, name));
             return KnownIntrinsics.convertUnknownValue(ret, TruffleObject.class);
         }
     }

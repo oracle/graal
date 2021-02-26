@@ -32,14 +32,13 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.truffle.TruffleFeature;
-import com.oracle.truffle.nfi.NFILanguage;
 
 /**
- * Support for the default (trufflenfi/native) backend of the {@link NFILanguage} on SVM. This is
- * re-using most of the code of the default (libffi based) implementation from the Truffle
- * repository. All substitutions in this package (unless noted otherwise in a separate comment) are
- * direct re-implementations of the original NFI functions with the C interface of Substrate VM. If
- * this feature is enabled, the image is statically linked with libffi.
+ * Support for the default (trufflenfi/native) backend of the Truffle NFI on SVM. This is re-using
+ * most of the code of the default (libffi based) implementation from the Truffle repository. All
+ * substitutions in this package (unless noted otherwise in a separate comment) are direct
+ * re-implementations of the original NFI functions with the C interface of Substrate VM. If this
+ * feature is enabled, the image is statically linked with libffi.
  */
 public final class TruffleNFIFeature implements Feature {
 
