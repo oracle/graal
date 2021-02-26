@@ -38,8 +38,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
-import org.graalvm.compiler.nodes.memory.VolatileReadNode;
-import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.options.OptionValues;
@@ -73,9 +71,6 @@ public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
         } else if (n instanceof FloatConvertNode) {
             // AMD64 has custom lowerings for ConvertNodes, HotSpotLoweringProvider does not expect
             // to see a ConvertNode and throws an error, just do nothing here.
-        } else if (n instanceof VolatileReadNode || n instanceof VolatileWriteNode) {
-            // AArch64 emits its own code sequence for volatile accesses. We don't want it lowered
-            // to memory barriers + a regular access.
         } else {
             super.lower(n, tool);
         }

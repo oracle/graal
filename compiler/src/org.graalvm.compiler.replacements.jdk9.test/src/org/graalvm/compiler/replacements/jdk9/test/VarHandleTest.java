@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements.jdk9.test;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-import jdk.vm.ci.aarch64.AArch64;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -116,18 +115,6 @@ public class VarHandleTest extends GraalCompilerTest {
         Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
     }
 
-    private boolean volatileAccessLowered() {
-        return !(getTarget().arch instanceof AArch64);
-    }
-
-    private int numberOfExpectedMembars() {
-        return volatileAccessLowered() ? 2 : 0;
-    }
-
-    private int numberOfExpectedKills() {
-        return volatileAccessLowered() ? 2 : 1;
-    }
-
     @Test
     public void testRead1() {
         testAccess("testRead1Snippet", 1, 0, 0, 0);
@@ -135,7 +122,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testRead2() {
-        testAccess("testRead2Snippet", 1, 0, numberOfExpectedMembars(), numberOfExpectedKills());
+        testAccess("testRead2Snippet", 1, 0, 0, 1);
     }
 
     @Test
@@ -145,7 +132,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testRead4() {
-        testAccess("testRead4Snippet", 1, 0, numberOfExpectedMembars(), numberOfExpectedKills());
+        testAccess("testRead4Snippet", 1, 0, 0, 1);
     }
 
     @Test
@@ -155,7 +142,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testWrite2() {
-        testAccess("testWrite2Snippet", 0, 1, numberOfExpectedMembars(), numberOfExpectedKills());
+        testAccess("testWrite2Snippet", 0, 1, 0, 1);
     }
 
     @Test
@@ -165,7 +152,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testWrite4() {
-        testAccess("testWrite4Snippet", 0, 1, numberOfExpectedMembars(), numberOfExpectedKills());
+        testAccess("testWrite4Snippet", 0, 1, 0, 1);
     }
 
     private static int countAnyKill(StructuredGraph graph) {

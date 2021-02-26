@@ -29,6 +29,10 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getType;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getVal;
+import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
+import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
+import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
+import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
@@ -55,7 +59,6 @@ import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.RawPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
@@ -175,7 +178,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.providers = providers;
         this.compilationResult = result;
         this.builder = new LLVMIRBuilder(method.format("%H.%n"));
-        this.arithmetic = new ArithmeticLLVMGenerator(builder);
+        this.arithmetic = new ArithmeticLLVMGenerator();
         this.lirKindTool = new LLVMUtils.LLVMKindTool(builder);
         this.debugInfoPrinter = new DebugInfoPrinter(this, debugLevel);
 
@@ -1377,11 +1380,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     /* Arithmetic */
 
-    public static class ArithmeticLLVMGenerator implements ArithmeticLIRGeneratorTool, LLVMIntrinsicGenerator {
-        private final LLVMIRBuilder builder;
-
-        ArithmeticLLVMGenerator(LLVMIRBuilder builder) {
-            this.builder = builder;
+    public class ArithmeticLLVMGenerator implements ArithmeticLIRGeneratorTool, LLVMIntrinsicGenerator {
+        ArithmeticLLVMGenerator() {
         }
 
         @Override
@@ -1758,12 +1758,17 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         @Override
         public Variable emitVolatileLoad(LIRKind kind, Value address, LIRFrameState state) {
-            throw GraalError.shouldNotReachHere();
+            emitMembar(JMM_PRE_VOLATILE_READ);
+            Variable var = emitLoad(kind, address, state);
+            emitMembar(JMM_POST_VOLATILE_READ);
+            return var;
         }
 
         @Override
         public void emitVolatileStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state) {
-            throw GraalError.shouldNotReachHere();
+            emitMembar(JMM_PRE_VOLATILE_WRITE);
+            emitStore(kind, address, input, state);
+            emitMembar(JMM_POST_VOLATILE_WRITE);
         }
     }
 

@@ -45,12 +45,15 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
 
+    private final LocationIdentity killedLocationIdentity;
+
     public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
-        super(TYPE, address, location, value, barrierType);
+        this(TYPE, address, location, location, value, barrierType);
     }
 
-    protected WriteNode(NodeClass<? extends WriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+    protected WriteNode(NodeClass<? extends WriteNode> c, AddressNode address, LocationIdentity location, LocationIdentity killedLocationIdentity, ValueNode value, BarrierType barrierType) {
         super(c, address, location, value, barrierType);
+        this.killedLocationIdentity = killedLocationIdentity;
     }
 
     @Override
@@ -93,8 +96,8 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     }
 
     @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return getLocationIdentity();
+    public final LocationIdentity getKilledLocationIdentity() {
+        return killedLocationIdentity;
     }
 
 }
