@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -66,6 +67,7 @@ public abstract class EspressoInstrumentableNode extends Node implements Instrum
     }
 
     @ExportMessage
+    @TruffleBoundary
     @SuppressWarnings("static-method")
     public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
         // construct the current scope with valid local variables information
