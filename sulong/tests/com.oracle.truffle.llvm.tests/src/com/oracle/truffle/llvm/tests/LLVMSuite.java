@@ -40,6 +40,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
 public final class LLVMSuite extends BaseSuiteHarness {
 
     public static final String TEST_DISTRIBUTION = "SULONG_LLVM_TEST_SUITE";
