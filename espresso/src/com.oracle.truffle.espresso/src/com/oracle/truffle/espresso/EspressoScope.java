@@ -48,10 +48,11 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 public class EspressoScope {
 
-    public static Object createVariables(Local[] liveLocals, Frame frame) {
+    public static Object createVariables(Local[] liveLocals, Frame frame, @Host(String.class) Object scopeName) {
         int slotCount = liveLocals.length;
         Map<String, FrameSlotInfo> slotsMap;
         Map<String, FrameSlotInfo> identifiersMap;
@@ -76,7 +77,7 @@ public class EspressoScope {
                 identifiersMap.put(localName, frameSlotInfo);
             }
         }
-        return new VariablesMapObject(slotsMap, identifiersMap, frame);
+        return new VariablesMapObject(slotsMap, identifiersMap, frame, scopeName);
     }
 
     // We map both variable names and their slot number to members. However we only expose the
@@ -88,11 +89,13 @@ public class EspressoScope {
         final Map<String, FrameSlotInfo> slots;
         final Map<String, FrameSlotInfo> identifiers;
         final Frame frame;
+        final @Host(String.class) Object scopeName;
 
-        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Map<String, FrameSlotInfo> identifiers, Frame frame) {
+        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Map<String, FrameSlotInfo> identifiers, Frame frame, @Host(String.class) Object scopeName) {
             this.slots = slots;
             this.identifiers = identifiers;
             this.frame = frame;
+            this.scopeName = scopeName;
         }
 
         @ExportMessage
@@ -122,7 +125,7 @@ public class EspressoScope {
         @ExportMessage
         @SuppressWarnings("static-method")
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-            return null;
+            return scopeName;
         }
 
         @ExportMessage
