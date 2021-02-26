@@ -51,7 +51,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownHashKeyException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -3757,7 +3757,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     } else {
                         throw getHashValueUnsupported(context, receiver, key);
                     }
-                } catch (UnknownHashKeyException e) {
+                } catch (UnknownKeyException e) {
                     invalidKey.enter();
                     throw invalidHashKey(context, receiver, key);
                 }
@@ -3798,7 +3798,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     throw putHashEntryUnsupported(context, receiver, key, value);
-                } catch (UnknownHashKeyException e) {
+                } catch (UnknownKeyException e) {
                     invalidKey.enter();
                     throw invalidHashKey(context, receiver, key);
                 } catch (UnsupportedTypeException e) {
@@ -3844,7 +3844,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     } else {
                         result = Boolean.FALSE;
                     }
-                } catch (UnknownHashKeyException e) {
+                } catch (UnknownKeyException e) {
                     invalidKey.enter();
                     result = Boolean.FALSE;
                 }

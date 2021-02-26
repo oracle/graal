@@ -45,10 +45,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -1098,5 +1104,468 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         iteratorTest.hasNext = () -> true;
         iteratorTest.next = Object::new;
         assertFails(() -> iteratorLib.getIteratorNextElement(iteratorTest), AssertionError.class);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class HashEntryTest implements TruffleObject {
+
+        interface EntryValue<T> {
+            T get();
+
+            void set(T newValue) throws UnsupportedTypeException;
+
+            static <T> EntryValue<T> create(T value) {
+                return new EntryValue<T>() {
+                    T v = value;
+
+                    @Override
+                    public T get() {
+                        return v;
+                    }
+
+                    @Override
+                    public void set(T newValue) {
+                        v = newValue;
+                    }
+                };
+            }
+        }
+
+        boolean isHashEntry;
+        Supplier<Object> key;
+        EntryValue<Object> value;
+
+        HashEntryTest(Object key, Object value) {
+            this.isHashEntry = true;
+            this.key = () -> key;
+            this.value = EntryValue.create(value);
+        }
+
+        @ExportMessage
+        boolean isHashEntry() {
+            return isHashEntry;
+        }
+
+        @ExportMessage
+        Object getHashEntryKey() throws UnsupportedMessageException {
+            if (key == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return key.get();
+        }
+
+        @ExportMessage
+        Object getHashEntryValue() throws UnsupportedMessageException {
+            if (value == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return value.get();
+        }
+
+        @ExportMessage
+        public void setHashEntryValue(Object newValue) throws UnsupportedMessageException, UnsupportedTypeException {
+            if (value == null) {
+                throw UnsupportedMessageException.create();
+            }
+            value.set(newValue);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class HashTest implements TruffleObject {
+
+        boolean hasHashEntries;
+        Predicate<Object> readable;
+        Predicate<Object> modifiable;
+        Predicate<Object> insertable;
+        Predicate<Object> removeable;
+        Supplier<Long> size;
+        Map<Object, Object> data;
+        Supplier<Object> iterator;
+
+        HashTest() {
+            this.hasHashEntries = true;
+            this.size = () -> 0L;
+            this.data = new HashMap<>();
+            this.iterator = () -> {
+                IteratorTest it = new IteratorTest(null);
+                it.hasNext = () -> false;
+                it.next = () -> null;
+                return it;
+            };
+        }
+
+        @ExportMessage
+        boolean hasHashEntries() {
+            return hasHashEntries;
+        }
+
+        @ExportMessage
+        long getHashSize() throws UnsupportedMessageException {
+            if (size == null) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return size.get();
+            }
+        }
+
+        @ExportMessage
+        boolean isHashValueReadable(Object key) {
+            if (readable != null) {
+                return readable.test(key);
+            } else if (data != null) {
+                return data.containsKey(key);
+            } else {
+                return false;
+            }
+        }
+
+        @ExportMessage
+        Object readHashValue(Object key) throws UnsupportedMessageException, UnknownKeyException {
+            if (data == null) {
+                throw UnsupportedMessageException.create();
+            } else if (!data.containsKey(key)) {
+                throw UnknownKeyException.create(key);
+            } else {
+                return data.get(key);
+            }
+        }
+
+        @ExportMessage
+        boolean isHashEntryModifiable(Object key) {
+            if (modifiable != null) {
+                return modifiable.test(key);
+            } else if (data != null) {
+                return data.containsKey(key);
+            } else {
+                return false;
+            }
+        }
+
+        @ExportMessage
+        boolean isHashEntryInsertable(Object key) {
+            if (insertable != null) {
+                return insertable.test(key);
+            } else if (data != null) {
+                return !data.containsKey(key);
+            } else {
+                return false;
+            }
+        }
+
+        @ExportMessage
+        void writeHashEntry(Object key, Object value) throws UnsupportedMessageException {
+            if (data == null) {
+                throw UnsupportedMessageException.create();
+            } else {
+                data.put(key, value);
+            }
+            size = () -> (long) data.size();
+        }
+
+        @ExportMessage
+        boolean isHashEntryRemovable(Object key) {
+            if (removeable != null) {
+                return removeable.test(key);
+            } else if (data != null) {
+                return data.containsKey(key);
+            } else {
+                return false;
+            }
+        }
+
+        @ExportMessage
+        void removeHashEntry(Object key) throws UnsupportedMessageException, UnknownKeyException {
+            if (data == null) {
+                throw UnsupportedMessageException.create();
+            } else if (!data.containsKey(key)) {
+                throw UnknownKeyException.create(key);
+            } else {
+                data.remove(key);
+                size = () -> (long) data.size();
+            }
+        }
+
+        @ExportMessage
+        public Object getHashEntriesIterator() throws UnsupportedMessageException {
+            if (iterator == null) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return iterator.get();
+            }
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("unused")
+        String toDisplayString(boolean allowSideEffects) {
+            return getClass().getName();
+        }
+
+    }
+
+    @Test
+    public void testGetHashSize() throws UnsupportedMessageException {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        assertEquals(hashTest.data.size(), hashLib.getHashSize(hashTest));
+        hashTest.hasHashEntries = false;
+        assertFails(() -> hashLib.getHashSize(hashTest), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.size = null;
+        assertFails(() -> hashLib.getHashSize(hashTest), AssertionError.class);
+    }
+
+    @Test
+    public void testIsHashValueReadable() {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        assertFalse(hashLib.isHashValueReadable(hashTest, 1));
+        hashTest.hasHashEntries = false;
+        hashTest.readable = (k) -> true;
+        assertFails(() -> hashLib.isHashValueReadable(hashTest, 1), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.readable = (k) -> true;
+        hashTest.insertable = (k) -> true;
+        assertFails(() -> hashLib.isHashValueReadable(hashTest, 1), AssertionError.class);
+    }
+
+    @Test
+    public void testReadHashValue() throws UnsupportedMessageException, UnknownKeyException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        hashTest.writeHashEntry(1, -1);
+        assertEquals(-1, hashLib.readHashValue(hashTest, 1));
+        assertFails(() -> hashLib.readHashValue(hashTest, null), NullPointerException.class);
+        hashTest.hasHashEntries = false;
+        assertFails(() -> hashLib.readHashValue(hashTest, 1), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.readable = (k) -> false;
+        assertFails(() -> hashLib.readHashValue(hashTest, 1), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.readable = null;
+        hashTest.data.put(1, new Object());
+        assertFails(() -> hashLib.readHashValue(hashTest, 1), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.readable = (k) -> true;
+        hashTest.data = null;
+        assertFails(() -> hashLib.readHashValue(hashTest, 1), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.readable = null;
+        hashTest.data = Collections.singletonMap(1, -1);
+        assertFails(() -> hashLib.readHashValue(hashTest, 2), UnknownKeyException.class);
+    }
+
+    @Test
+    public void testIsHashEntryModifiable() {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        assertFalse(hashLib.isHashEntryModifiable(hashTest, 1));
+        hashTest.hasHashEntries = false;
+        hashTest.modifiable = (k) -> true;
+        assertFails(() -> hashLib.isHashEntryModifiable(hashTest, 1), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.modifiable = (k) -> true;
+        hashTest.insertable = (k) -> true;
+        assertFails(() -> hashLib.isHashEntryModifiable(hashTest, 1), AssertionError.class);
+    }
+
+    @Test
+    public void testIsHashEntryInsertable() {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        assertTrue(hashLib.isHashEntryInsertable(hashTest, 1));
+        hashTest.hasHashEntries = false;
+        hashTest.insertable = (k) -> true;
+        assertFails(() -> hashLib.isHashEntryInsertable(hashTest, 1), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.insertable = (k) -> true;
+        hashTest.readable = (k) -> true;
+        assertFails(() -> hashLib.isHashEntryInsertable(hashTest, 1), AssertionError.class);
+    }
+
+    @Test
+    public void testWriteHashEntry() throws UnsupportedMessageException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        hashTest.writeHashEntry(1, -1);
+        assertFails(() -> {
+            hashLib.writeHashEntry(hashTest, null, 1);
+            return null;
+        }, NullPointerException.class);
+        assertFails(() -> {
+            hashLib.writeHashEntry(hashTest, 1, null);
+            return null;
+        }, NullPointerException.class);
+        hashTest.hasHashEntries = false;
+        assertFails(() -> {
+            hashLib.writeHashEntry(hashTest, 1, -1);
+            return null;
+        }, AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.insertable = (k) -> false;
+        assertFails(() -> {
+            hashLib.writeHashEntry(hashTest, 2, -1);
+            return null;
+        }, AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.insertable = null;
+        hashTest.modifiable = (k) -> false;
+        assertFails(() -> {
+            hashLib.writeHashEntry(hashTest, 1, -1);
+            return null;
+        }, AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.insertable = (k) -> true;
+        hashTest.data = null;
+        assertFails(() -> {
+            hashLib.writeHashEntry(hashTest, 1, -1);
+            return null;
+        }, AssertionError.class);
+    }
+
+    @Test
+    public void testIsHashEntryRemovable() {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        assertFalse(hashLib.isHashEntryRemovable(hashTest, 1));
+        hashTest.hasHashEntries = false;
+        hashTest.removeable = (k) -> true;
+        assertFails(() -> hashLib.isHashEntryRemovable(hashTest, 1), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.removeable = (k) -> true;
+        hashTest.insertable = (k) -> true;
+        assertFails(() -> hashLib.isHashEntryRemovable(hashTest, 1), AssertionError.class);
+    }
+
+    @Test
+    public void testRemoveHashEntry() throws UnsupportedMessageException, UnknownKeyException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        hashTest.writeHashEntry(1, -1);
+        hashLib.removeHashEntry(hashTest, 1);
+        assertFails(() -> {
+            hashLib.removeHashEntry(hashTest, null);
+            return null;
+        }, NullPointerException.class);
+        hashTest.writeHashEntry(1, -1);
+        hashTest.hasHashEntries = false;
+        assertFails(() -> {
+            hashLib.removeHashEntry(hashTest, 1);
+            return null;
+        }, AssertionError.class);
+        hashTest.writeHashEntry(1, -1);
+        hashTest.hasHashEntries = true;
+        hashTest.removeable = (k) -> false;
+        assertFails(() -> {
+            hashLib.removeHashEntry(hashTest, 1);
+            return null;
+        }, AssertionError.class);
+        hashTest.writeHashEntry(1, -1);
+        hashTest.hasHashEntries = true;
+        hashTest.removeable = (k) -> true;
+        hashTest.data = null;
+        assertFails(() -> {
+            hashLib.removeHashEntry(hashTest, 1);
+            return null;
+        }, AssertionError.class);
+    }
+
+    @Test
+    public void testGetHashEntriesIterator() throws UnsupportedMessageException {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        hashLib.getHashEntriesIterator(hashTest);
+        hashTest.hasHashEntries = false;
+        assertFails(() -> hashLib.getHashEntriesIterator(hashTest), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.iterator = null;
+        assertFails(() -> hashLib.getHashEntriesIterator(hashTest), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.iterator = () -> null;
+        assertFails(() -> hashLib.getHashEntriesIterator(hashTest), AssertionError.class);
+        hashTest.iterator = () -> new TruffleObject() {
+        };
+        assertFails(() -> hashLib.getHashEntriesIterator(hashTest), AssertionError.class);
+    }
+
+    @Test
+    public void testGetHashEntryKey() throws UnsupportedMessageException {
+        HashEntryTest hashEntryTest = new HashEntryTest(1, -1);
+        InteropLibrary hashEntryLib = createLibrary(InteropLibrary.class, hashEntryTest);
+        assertEquals(hashEntryTest.key.get(), hashEntryLib.getHashEntryKey(hashEntryTest));
+        hashEntryTest.isHashEntry = false;
+        assertFails(() -> hashEntryLib.getHashEntryKey(hashEntryTest), AssertionError.class);
+        hashEntryTest.isHashEntry = true;
+        hashEntryTest.key = null;
+        assertFails(() -> hashEntryLib.getHashEntryKey(hashEntryTest), AssertionError.class);
+        hashEntryTest.key = () -> null;
+        assertFails(() -> hashEntryLib.getHashEntryKey(hashEntryTest), AssertionError.class);
+    }
+
+    @Test
+    public void testGetHashEntryValue() throws UnsupportedMessageException {
+        HashEntryTest hashEntryTest = new HashEntryTest(1, -1);
+        InteropLibrary hashEntryLib = createLibrary(InteropLibrary.class, hashEntryTest);
+        assertEquals(hashEntryTest.value.get(), hashEntryLib.getHashEntryValue(hashEntryTest));
+        hashEntryTest.isHashEntry = false;
+        assertFails(() -> hashEntryLib.getHashEntryValue(hashEntryTest), AssertionError.class);
+        hashEntryTest.isHashEntry = true;
+        hashEntryTest.value = null;
+        assertFails(() -> hashEntryLib.getHashEntryValue(hashEntryTest), AssertionError.class);
+        hashEntryTest.value = HashEntryTest.EntryValue.create(null);
+        assertFails(() -> hashEntryLib.getHashEntryValue(hashEntryTest), AssertionError.class);
+    }
+
+    @Test
+    public void testSetHashEntryValue() throws UnsupportedTypeException, UnsupportedMessageException {
+        HashEntryTest hashEntryTest = new HashEntryTest(1, -1);
+        InteropLibrary hashEntryLib = createLibrary(InteropLibrary.class, hashEntryTest);
+        hashEntryLib.setHashEntryValue(hashEntryTest, 0);
+        assertEquals(0, hashEntryLib.getHashEntryValue(hashEntryTest));
+        assertFails(() -> {
+            hashEntryLib.setHashEntryValue(hashEntryTest, null);
+            return null;
+        }, NullPointerException.class);
+        hashEntryTest.isHashEntry = false;
+        assertFails(() -> {
+            hashEntryLib.setHashEntryValue(hashEntryTest, 2);
+            return null;
+        }, AssertionError.class);
+        hashEntryTest.isHashEntry = true;
+        hashEntryTest.value = null;
+        assertFails(() -> {
+            hashEntryLib.setHashEntryValue(hashEntryTest, 2);
+            return null;
+        }, UnsupportedMessageException.class);
+        hashEntryTest.value = new HashEntryTest.EntryValue<Object>() {
+            @Override
+            public Object get() {
+                return 1;
+            }
+
+            @Override
+            public void set(Object value) throws UnsupportedTypeException {
+                throw UnsupportedTypeException.create(new Object[]{value});
+            }
+        };
+        assertFails(() -> {
+            hashEntryLib.setHashEntryValue(hashEntryTest, 2);
+            return null;
+        }, UnsupportedTypeException.class);
     }
 }

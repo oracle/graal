@@ -61,7 +61,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownHashKeyException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -616,7 +616,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     } else {
                         return null;
                     }
-                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownHashKeyException | UnsupportedMessageException e) {
+                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException | UnsupportedMessageException e) {
                     error.enter();
                     return null;
                 }
@@ -667,7 +667,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     } else {
                         throw HostInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
                     }
-                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownHashKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
+                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     error.enter();
                     throw error(languageContext, receiver, e, cache, key, guestValue);
                 }
@@ -730,7 +730,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     } else {
                         return null;
                     }
-                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownHashKeyException e) {
+                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException e) {
                     error.enter();
                     return null;
                 } catch (UnsupportedMessageException e) {
@@ -804,7 +804,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     } else {
                         return false;
                     }
-                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownHashKeyException e) {
+                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException e) {
                     error.enter();
                     return false;
                 } catch (UnsupportedMessageException e) {

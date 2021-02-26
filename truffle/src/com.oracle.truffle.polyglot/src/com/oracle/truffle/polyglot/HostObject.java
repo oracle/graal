@@ -58,7 +58,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownHashKeyException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -1801,18 +1801,18 @@ final class HostObject implements TruffleObject {
                         @Shared("isMap") @Cached IsMapNode isMap,
                         @Shared("toHost") @Cached ToHostNode toHost,
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest,
-                        @Shared("error") @Cached BranchProfile error) throws UnknownHashKeyException {
+                        @Shared("error") @Cached BranchProfile error) throws UnknownKeyException {
             Object hostKey;
             try {
                 hostKey = toHost.execute(key, Object.class, null, receiver.languageContext, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
-                throw UnknownHashKeyException.create(key);
+                throw UnknownKeyException.create(key);
             }
             Object hostResult = getImpl((Map<Object, Object>) receiver.obj, hostKey, UNDEFINED);
             if (hostResult == UNDEFINED) {
                 error.enter();
-                throw UnknownHashKeyException.create(key);
+                throw UnknownKeyException.create(key);
             }
             return toGuest.execute(receiver.languageContext, hostResult);
         }
@@ -1891,18 +1891,18 @@ final class HostObject implements TruffleObject {
         protected static void doMap(HostObject receiver, Object key,
                         @Shared("isMap") @Cached IsMapNode isMap,
                         @Shared("toHost") @Cached ToHostNode toHost,
-                        @Shared("error") @Cached BranchProfile error) throws UnknownHashKeyException {
+                        @Shared("error") @Cached BranchProfile error) throws UnknownKeyException {
             Object hostKey;
             try {
                 hostKey = toHost.execute(key, Object.class, null, receiver.languageContext, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
-                throw UnknownHashKeyException.create(key);
+                throw UnknownKeyException.create(key);
             }
             boolean removed = removeImpl((Map<Object, Object>) receiver.obj, hostKey);
             if (!removed) {
                 error.enter();
-                throw UnknownHashKeyException.create(key);
+                throw UnknownKeyException.create(key);
             }
         }
 

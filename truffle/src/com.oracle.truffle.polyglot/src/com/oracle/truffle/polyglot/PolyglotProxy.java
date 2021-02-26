@@ -50,7 +50,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.UnknownHashKeyException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
@@ -678,10 +678,10 @@ final class PolyglotProxy implements TruffleObject {
     Object readHashValue(Object key,
                     @CachedLibrary("this") InteropLibrary library,
                     @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
-                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException, UnknownHashKeyException {
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException, UnknownKeyException {
         if (proxy instanceof ProxyHashMap) {
             if (!isHashValueExisting(key, library, context, language)) {
-                throw UnknownHashKeyException.create(key);
+                throw UnknownKeyException.create(key);
             }
             PolyglotLanguageContext languageContext = context.get().internalContext;
             Value keyValue = languageContext.asValue(key);
@@ -726,10 +726,10 @@ final class PolyglotProxy implements TruffleObject {
     void removeHashEntry(Object key,
                     @CachedLibrary("this") InteropLibrary library,
                     @CachedContext(HostLanguage.class) ContextReference<HostContext> context,
-                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException, UnknownHashKeyException {
+                    @CachedLanguage HostLanguage language) throws UnsupportedMessageException, UnknownKeyException {
         if (proxy instanceof ProxyHashMap) {
             if (!isHashValueExisting(key, library, context, language)) {
-                throw UnknownHashKeyException.create(key);
+                throw UnknownKeyException.create(key);
             }
             PolyglotLanguageContext languageContext = context.get().internalContext;
             Value keyValue = languageContext.asValue(key);

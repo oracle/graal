@@ -45,7 +45,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownHashKeyException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
@@ -442,10 +442,10 @@ public class HashTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        Object readHashValue(Object key) throws UnknownHashKeyException {
+        Object readHashValue(Object key) throws UnknownKeyException {
             int addr = get(key);
             if (addr == -1) {
-                throw UnknownHashKeyException.create(key);
+                throw UnknownKeyException.create(key);
             } else {
                 return store[addr].value;
             }
@@ -467,10 +467,10 @@ public class HashTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        void removeHashEntry(Object key) throws UnknownHashKeyException {
+        void removeHashEntry(Object key) throws UnknownKeyException {
             int addr = get(key);
             if (addr == -1) {
-                throw UnknownHashKeyException.create(key);
+                throw UnknownKeyException.create(key);
             } else {
                 store[addr] = null;
                 size--;

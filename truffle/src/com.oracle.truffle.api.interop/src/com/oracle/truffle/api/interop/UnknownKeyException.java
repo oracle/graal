@@ -52,18 +52,18 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * @see InteropLibrary
  * @since 21.1.0
  */
-public final class UnknownHashKeyException extends InteropException {
+public final class UnknownKeyException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
 
     private final Object unknownKey;
 
-    private UnknownHashKeyException(Object unknownKey) {
+    private UnknownKeyException(Object unknownKey) {
         super(null); // GR-23961 - after language adoption we should initialize the cause with null.
         this.unknownKey = unknownKey;
     }
 
-    private UnknownHashKeyException(Object unknownKey, Throwable cause) {
+    private UnknownKeyException(Object unknownKey, Throwable cause) {
         super(null, cause);
         this.unknownKey = unknownKey;
     }
@@ -94,8 +94,7 @@ public final class UnknownHashKeyException extends InteropException {
     }
 
     /**
-     * Creates an {@link UnknownHashKeyException} to indicate that a key is missing in the hash
-     * object.
+     * Creates an {@link UnknownKeyException} to indicate that a key is missing in the hash object.
      * <p>
      * This method is designed to be used in {@link CompilerDirectives#inCompiledCode() compiled}
      * code paths.
@@ -103,13 +102,12 @@ public final class UnknownHashKeyException extends InteropException {
      * @param unknownKey the key that could not be accessed
      * @since 21.1.0
      */
-    public static UnknownHashKeyException create(Object unknownKey) {
-        return new UnknownHashKeyException(unknownKey);
+    public static UnknownKeyException create(Object unknownKey) {
+        return new UnknownKeyException(unknownKey);
     }
 
     /**
-     * Creates an {@link UnknownHashKeyException} to indicate that a key is missing in the hash
-     * object.
+     * Creates an {@link UnknownKeyException} to indicate that a key is missing in the hash object.
      * <p>
      * In addition a cause may be provided. The cause should only be set if the guest language code
      * caused this problem. An example for this is a language specific proxy mechanism that invokes
@@ -130,8 +128,8 @@ public final class UnknownHashKeyException extends InteropException {
      * @since 21.1.0
      */
     @SuppressWarnings("deprecation")
-    public static UnknownHashKeyException create(Object unknownKey, Throwable cause) {
-        return new UnknownHashKeyException(unknownKey, cause);
+    public static UnknownKeyException create(Object unknownKey, Throwable cause) {
+        return new UnknownKeyException(unknownKey, cause);
     }
 
 }
