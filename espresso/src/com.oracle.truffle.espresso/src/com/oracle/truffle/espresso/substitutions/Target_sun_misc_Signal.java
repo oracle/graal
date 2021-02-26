@@ -95,7 +95,7 @@ public final class Target_sun_misc_Signal {
             throw meta.throwNullPointerException();
         }
         if (!meta.getContext().EnableSignals) {
-            logger.info(() -> "failed to setup handler for " + asHostSignal(signal, meta) + ": signal handling is disabled ");
+            logger.fine(() -> "failed to setup handler for " + asHostSignal(signal, meta) + ": signal handling is disabled ");
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Signal API is disabled");
         }
         Signal hostSignal = asHostSignal(signal, meta);
