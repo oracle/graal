@@ -36,8 +36,30 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.jvmti.structs.GenerateStructs.KnownStruct;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+/**
+ * Commodity class that wraps around native pointers to provide an easy and concise way of accessing
+ * native structs entirely from the Java world. Apart from the {@link StructWrapper#pointer()}
+ * method, methods in this class are not intended to be used by users.
+ * <p>
+ * The {@link GenerateStructs} annotation below will generate wrappers with accessors for each
+ * struct declared in the annotation. For each struct, the processor will generate two classes:
+ * <ul>
+ * <li>A {@link StructStorage storage class} to store the size of the struct, and the offsets of
+ * each struct member. It also provides a {@link StructStorage#wrap(JniEnv, TruffleObject) wrap}
+ * method, that returns an instance of {@link StructWrapper this class}. These classes are intended
+ * to be per-context singletons.</li>
+ * <li>A {@link StructWrapper wrapper class}, as described above. This generated class will also
+ * have public getters and setters for each member of the struct.</li>
+ * </ul>
+ * <p>
+ * Furthermore, the processor will additionally generate another class that stores the singleton
+ * instances for the {@link StructStorage storage class}, the {@link Structs Structs class}.
+ * <p>
+ * See the {@link JavaMemberOffsetGetter} class for an example of how to use the wrappers.
+ */
 @GenerateStructs(//
 {
                 /*-
@@ -47,7 +69,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     struct member_info *next;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "member_info", //
+                @KnownStruct(structName = "member_info", //
                                 memberNames = {
                                                 "id",
                                                 "offset",
@@ -67,7 +89,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jobject context_class_loader;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiThreadInfo", //
+                @KnownStruct(structName = "_jvmtiThreadInfo", //
                                 memberNames = {
                                                 "name",
                                                 "priority",
@@ -88,7 +110,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jint stack_depth;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiMonitorStackDepthInfo", //
+                @KnownStruct(structName = "_jvmtiMonitorStackDepthInfo", //
                                 memberNames = {
                                                 "monitor",
                                                 "stack_depth",
@@ -106,7 +128,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  * };
                  *
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiThreadGroupInfo", //
+                @KnownStruct(structName = "_jvmtiThreadGroupInfo", //
                                 memberNames = {
                                                 "parent",
                                                 "name",
@@ -125,7 +147,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jlocation location;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiFrameInfo", //
+                @KnownStruct(structName = "_jvmtiFrameInfo", //
                                 memberNames = {
                                                 "method",
                                                 "location",
@@ -142,7 +164,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jint frame_count;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiStackInfo", //
+                @KnownStruct(structName = "_jvmtiStackInfo", //
                                 memberNames = {
                                                 "thread",
                                                 "state",
@@ -160,7 +182,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jint index;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoField", //
+                @KnownStruct(structName = "_jvmtiHeapReferenceInfoField", //
                                 memberNames = {"index"}, //
                                 types = {INT}),
                 /*-
@@ -168,7 +190,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jint index;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoArray", //
+                @KnownStruct(structName = "_jvmtiHeapReferenceInfoArray", //
                                 memberNames = {"index"}, //
                                 types = {INT}),
                 /*-
@@ -176,7 +198,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jint index;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoConstantPool", //
+                @KnownStruct(structName = "_jvmtiHeapReferenceInfoConstantPool", //
                                 memberNames = {"index"}, //
                                 types = {INT}),
                 /*-
@@ -189,7 +211,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jint slot;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoStackLocal", //
+                @KnownStruct(structName = "_jvmtiHeapReferenceInfoStackLocal", //
                                 memberNames = {
                                                 "thread_tag",
                                                 "thread_id",
@@ -214,7 +236,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jmethodID method;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoJniLocal", //
+                @KnownStruct(structName = "_jvmtiHeapReferenceInfoJniLocal", //
                                 memberNames = {
                                                 "thread_tag",
                                                 "thread_id",
@@ -239,7 +261,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jlong reserved8;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapReferenceInfoReserved", //
+                @KnownStruct(structName = "_jvmtiHeapReferenceInfoReserved", //
                                 memberNames = {
                                                 "reserved1",
                                                 "reserved2",
@@ -280,7 +302,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jvmtiReservedCallback reserved15;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiHeapCallbacks", //
+                @KnownStruct(structName = "_jvmtiHeapCallbacks", //
                                 memberNames = {
                                                 "heap_iteration_callback",
                                                 "heap_reference_callback",
@@ -324,7 +346,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     const unsigned char* class_bytes;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiClassDefinition", //
+                @KnownStruct(structName = "_jvmtiClassDefinition", //
                                 memberNames = {
                                                 "klass",
                                                 "class_byte_count",
@@ -345,7 +367,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jthread* notify_waiters;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiMonitorUsage", //
+                @KnownStruct(structName = "_jvmtiMonitorUsage", //
                                 memberNames = {
                                                 "owner",
                                                 "entry_count",
@@ -368,7 +390,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jint line_number;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiLineNumberEntry", //
+                @KnownStruct(structName = "_jvmtiLineNumberEntry", //
                                 memberNames = {
                                                 "start_location",
                                                 "line_number",
@@ -387,7 +409,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jint slot;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiLocalVariableEntry", //
+                @KnownStruct(structName = "_jvmtiLocalVariableEntry", //
                                 memberNames = {
                                                 "start_location",
                                                 "length",
@@ -412,7 +434,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jboolean null_ok;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiParamInfo", //
+                @KnownStruct(structName = "_jvmtiParamInfo", //
                                 memberNames = {
                                                 "name",
                                                 "kind",
@@ -436,7 +458,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jvmtiError* errors;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiExtensionFunctionInfo", //
+                @KnownStruct(structName = "_jvmtiExtensionFunctionInfo", //
                                 memberNames = {
                                                 "func",
                                                 "id",
@@ -464,7 +486,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jvmtiParamInfo* params;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiExtensionEventInfo", //
+                @KnownStruct(structName = "_jvmtiExtensionEventInfo", //
                                 memberNames = {
                                                 "extension_event_index",
                                                 "id",
@@ -489,7 +511,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jlong reserved2;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiTimerInfo", //
+                @KnownStruct(structName = "_jvmtiTimerInfo", //
                                 memberNames = {
                                                 "max_value",
                                                 "may_skip_forward",
@@ -512,7 +534,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                  *     jlocation location;
                  * };
                  */
-                @GenerateStructs.KnownStruct(structName = "_jvmtiAddrLocationMap", //
+                @KnownStruct(structName = "_jvmtiAddrLocationMap", //
                                 memberNames = {
                                                 "start_address",
                                                 "location",
