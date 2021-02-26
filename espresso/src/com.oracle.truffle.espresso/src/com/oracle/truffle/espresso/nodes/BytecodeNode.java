@@ -629,6 +629,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         frame.setObject(primitivesSlot, primitives);
         frame.setObject(refsSlot, refs);
         initArguments(frame.getArguments(), primitives, refs);
+        // initialize the bci slot
+        setBCI(frame, 0);
     }
 
     @Override
