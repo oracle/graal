@@ -25,6 +25,10 @@ package com.oracle.truffle.espresso.jvmti;
 
 import java.util.ArrayList;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -50,6 +54,7 @@ public final class JVMTI {
     private final @Pointer TruffleObject initializeJvmtiContext;
     private final @Pointer TruffleObject disposeJvmtiContext;
 
+    @CompilationFinal //
     private volatile Structs structs;
 
     private final ArrayList<JVMTIEnv> created = new ArrayList<>();
@@ -90,6 +95,7 @@ public final class JVMTI {
         Structs[] box = new Structs[1];
         Callback doInitStructs = new Callback(1, new Callback.Function() {
             @Override
+            @TruffleBoundary
             public Object call(Object... args) {
                 TruffleObject memberInfoPtr = (TruffleObject) args[0];
                 box[0] = new Structs(context.getJNI(), memberInfoPtr, lookupMemberOffset);
@@ -116,6 +122,7 @@ public final class JVMTI {
         return box[0];
     }
 
+    @TruffleBoundary
     public synchronized TruffleObject create(int version) {
         if (!isSupportedJvmtiVersion(version)) {
             return null;
@@ -132,15 +139,19 @@ public final class JVMTI {
         created.clear();
     }
 
+    @TruffleBoundary
     synchronized void dispose(JVMTIEnv env) {
+        CompilerAsserts.neverPartOfCompilation();
         if (created.contains(env)) {
             env.dispose(disposeJvmtiContext);
             created.remove(env);
         }
     }
 
+    @SuppressWarnings("try")
     public Structs getStructs() {
         if (structs == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 // All fields in structs are final. Can double-check lock without volatile.
                 if (structs == null) {

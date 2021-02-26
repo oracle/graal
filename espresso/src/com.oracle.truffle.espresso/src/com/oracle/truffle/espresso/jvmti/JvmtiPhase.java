@@ -23,6 +23,17 @@
 
 package com.oracle.truffle.espresso.jvmti;
 
+/*-
+ * From jvmti header:
+ * 
+ * typedef enum {
+ *     JVMTI_PHASE_ONLOAD = 1,
+ *     JVMTI_PHASE_PRIMORDIAL = 2,
+ *     JVMTI_PHASE_START = 6,
+ *     JVMTI_PHASE_LIVE = 4,
+ *     JVMTI_PHASE_DEAD = 8
+ * } jvmtiPhase;
+ */
 public enum JvmtiPhase {
     ONLOAD(1),
     PRIMORDIAL(2),
