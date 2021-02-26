@@ -146,6 +146,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         super(TemporaryWorkdirMixin, self).before(otherArgs)
 
     def _create_tmp_workdir(self):
+        mx.log_deprecation("mx_java_benchmarks.mx_benchmark.TemporaryWorkdirMixin is deprecated. Use mx_benchmark.mx_benchmark.TemporaryWorkdirMixin instead.")
         self.workdir = mkdtemp(prefix=self.name() + '-work.', dir='.')
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
@@ -290,7 +291,7 @@ class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Ba
 mx_benchmark.add_bm_suite(ShopCartWrk2BenchmarkSuite())
 
 
-class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Base benchmark suite for DaCapo-based benchmarks.
 
     This suite can only run a single benchmark in one VM invocation.
@@ -1365,7 +1366,7 @@ _renaissanceConfig = {
 }
 
 
-class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1479,7 +1480,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
 
 
-class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Legacy renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1582,7 +1583,7 @@ class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchm
 mx_benchmark.add_bm_suite(RenaissanceLegacyBenchmarkSuite())
 
 
-class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Benchmark suite for the spark-sql-perf benchmarks.
     """
     def name(self):
