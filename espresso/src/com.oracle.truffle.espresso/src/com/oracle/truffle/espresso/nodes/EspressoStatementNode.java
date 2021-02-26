@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,15 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -65,8 +68,8 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
     }
 
     public BytecodeNode getBytecodesNode() {
-        // parent is normally the BytecodesNode.InstrumentationSupport
-        // parents parent is normally the BytecodesNode
+        // parent is normally the BytecodeNode.InstrumentationSupport
+        // parents parent is normally the BytecodeNode
         Node parent = getParent();
 
         while (parent instanceof WrapperNode || parent instanceof BytecodeNode.InstrumentationSupport) {
@@ -76,7 +79,18 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
         return (BytecodeNode) parent;
     }
 
-    public int getBci() {
+    @Override
+    public int getCurrentBCI(@SuppressWarnings("unused") Frame frame) {
         return startBci;
+    }
+
+    @Override
+    public Method getMethod() {
+        return getBytecodesNode().getMethod();
+    }
+
+    @Override
+    public EspressoContext getContext() {
+        return getBytecodesNode().getContext();
     }
 }
