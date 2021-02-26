@@ -282,9 +282,47 @@ typedef struct member_info {
     V(_jvmtiTimerInfo, reserved2) \
     V(_jvmtiAddrLocationMap, start_address) \
     V(_jvmtiAddrLocationMap, location) \
+    V(_jvmtiEventCallbacks, VMInit) \
+    V(_jvmtiEventCallbacks, VMDeath) \
+    V(_jvmtiEventCallbacks, ThreadStart) \
+    V(_jvmtiEventCallbacks, ThreadEnd) \
+    V(_jvmtiEventCallbacks, ClassFileLoadHook) \
+    V(_jvmtiEventCallbacks, ClassLoad) \
+    V(_jvmtiEventCallbacks, ClassPrepare) \
+    V(_jvmtiEventCallbacks, VMStart) \
+    V(_jvmtiEventCallbacks, Exception) \
+    V(_jvmtiEventCallbacks, ExceptionCatch) \
+    V(_jvmtiEventCallbacks, SingleStep) \
+    V(_jvmtiEventCallbacks, FramePop) \
+    V(_jvmtiEventCallbacks, Breakpoint) \
+    V(_jvmtiEventCallbacks, FieldAccess) \
+    V(_jvmtiEventCallbacks, FieldModification) \
+    V(_jvmtiEventCallbacks, MethodEntry) \
+    V(_jvmtiEventCallbacks, MethodExit) \
+    V(_jvmtiEventCallbacks, NativeMethodBind) \
+    V(_jvmtiEventCallbacks, CompiledMethodLoad) \
+    V(_jvmtiEventCallbacks, CompiledMethodUnload) \
+    V(_jvmtiEventCallbacks, DynamicCodeGenerated) \
+    V(_jvmtiEventCallbacks, DataDumpRequest) \
+    V(_jvmtiEventCallbacks, reserved72) \
+    V(_jvmtiEventCallbacks, MonitorWait) \
+    V(_jvmtiEventCallbacks, MonitorWaited) \
+    V(_jvmtiEventCallbacks, MonitorContendedEnter) \
+    V(_jvmtiEventCallbacks, MonitorContendedEntered) \
+    V(_jvmtiEventCallbacks, reserved77) \
+    V(_jvmtiEventCallbacks, reserved78) \
+    V(_jvmtiEventCallbacks, reserved79) \
+    V(_jvmtiEventCallbacks, ResourceExhausted) \
+    V(_jvmtiEventCallbacks, GarbageCollectionStart) \
+    V(_jvmtiEventCallbacks, GarbageCollectionFinish) \
+    V(_jvmtiEventCallbacks, ObjectFree) \
+    V(_jvmtiEventCallbacks, VMObjectAlloc) \
+    V(_jvmtiEventCallbacks, reserved85) \
+    V(_jvmtiEventCallbacks, SampledObjectAlloc) \
     V(member_info, id) \
     V(member_info, offset) \
     V(member_info, next)
+
 
 #define JVMTI_STRUCT_LIST(V) \
     V(_jvmtiThreadInfo) \
@@ -308,6 +346,7 @@ typedef struct member_info {
     V(_jvmtiExtensionEventInfo) \
     V(_jvmtiTimerInfo) \
     V(_jvmtiAddrLocationMap) \
+    V(_jvmtiEventCallbacks) \
     V(member_info)
 
 

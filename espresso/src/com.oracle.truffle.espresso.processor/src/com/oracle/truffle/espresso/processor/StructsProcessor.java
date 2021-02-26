@@ -42,6 +42,7 @@ import static com.oracle.truffle.espresso.processor.ProcessorUtils.fieldDeclarat
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.methodDeclaration;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.removeUnderscores;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.stringify;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.toMemberName;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -314,7 +315,7 @@ public class StructsProcessor extends AbstractProcessor {
     private static void generateGetterSetter(StringBuilder builder, String member, NativeType type) {
         String callSuffix = nativeTypeToMethodSuffix(type);
         String argType = nativeTypeToArgType(type);
-        String methodName = decapitalize(removeUnderscores(member));
+        String methodName = toMemberName(removeUnderscores(member));
         builder.append(TAB_2).append(methodDeclaration(PUBLIC, argType, methodName, new String[]{})).append(" {\n");
         builder.append(TAB_3).append("return ").append(call(null, GET + callSuffix, new String[]{member})).append(";\n");
         builder.append(TAB_2).append("}\n\n");

@@ -26,6 +26,10 @@ package com.oracle.truffle.espresso.jvmti.structs;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.jni.JniEnv;
 
+/**
+ * Commodity class that stores native structs sizes, along with member offsets. See documentation
+ * for {@link StructWrapper}.
+ */
 public abstract class StructStorage {
     protected final long structSize;
 

@@ -42,10 +42,12 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 /**
  * Commodity class that wraps around native pointers to provide an easy and concise way of accessing
  * native structs entirely from the Java world. Apart from the {@link StructWrapper#pointer()}
- * method, methods in this class are not intended to be used by users.
+ * method, methods in this class are not intended to be used by users, only from generated code.
  * <p>
- * The {@link GenerateStructs} annotation below will generate wrappers with accessors for each
- * struct declared in the annotation. For each struct, the processor will generate two classes:
+ * The {@link GenerateStructs} annotation below will generate wrappers with member accessors for
+ * each struct declared in the annotation.
+ * <p>
+ * the processor will generate two classes for each of them:
  * <ul>
  * <li>A {@link StructStorage storage class} to store the size of the struct, and the offsets of
  * each struct member. It also provides a {@link StructStorage#wrap(JniEnv, TruffleObject) wrap}
@@ -543,7 +545,163 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
                                                 POINTER,
                                                 LONG,
                                 }),
-
+                /*-
+                * typedef struct {
+                //   50 : VM Initialization Event
+                jvmtiEventVMInit VMInit;
+                //   51 : VM Death Event
+                jvmtiEventVMDeath VMDeath;
+                //   52 : Thread Start
+                jvmtiEventThreadStart ThreadStart;
+                //   53 : Thread End
+                jvmtiEventThreadEnd ThreadEnd;
+                //   54 : Class File Load Hook
+                jvmtiEventClassFileLoadHook ClassFileLoadHook;
+                //   55 : Class Load
+                jvmtiEventClassLoad ClassLoad;
+                //   56 : Class Prepare
+                jvmtiEventClassPrepare ClassPrepare;
+                //   57 : VM Start Event
+                jvmtiEventVMStart VMStart;
+                //   58 : Exception
+                jvmtiEventException Exception;
+                //   59 : Exception Catch
+                jvmtiEventExceptionCatch ExceptionCatch;
+                //   60 : Single Step
+                jvmtiEventSingleStep SingleStep;
+                //   61 : Frame Pop
+                jvmtiEventFramePop FramePop;
+                //   62 : Breakpoint
+                jvmtiEventBreakpoint Breakpoint;
+                //   63 : Field Access
+                jvmtiEventFieldAccess FieldAccess;
+                //   64 : Field Modification
+                jvmtiEventFieldModification FieldModification;
+                //   65 : Method Entry
+                jvmtiEventMethodEntry MethodEntry;
+                //   66 : Method Exit
+                jvmtiEventMethodExit MethodExit;
+                //   67 : Native Method Bind
+                jvmtiEventNativeMethodBind NativeMethodBind;
+                //   68 : Compiled Method Load
+                jvmtiEventCompiledMethodLoad CompiledMethodLoad;
+                //   69 : Compiled Method Unload
+                jvmtiEventCompiledMethodUnload CompiledMethodUnload;
+                //   70 : Dynamic Code Generated
+                jvmtiEventDynamicCodeGenerated DynamicCodeGenerated;
+                //   71 : Data Dump Request
+                jvmtiEventDataDumpRequest DataDumpRequest;
+                //   72
+                jvmtiEventReserved reserved72;
+                //   73 : Monitor Wait
+                jvmtiEventMonitorWait MonitorWait;
+                //   74 : Monitor Waited
+                jvmtiEventMonitorWaited MonitorWaited;
+                //   75 : Monitor Contended Enter
+                jvmtiEventMonitorContendedEnter MonitorContendedEnter;
+                //   76 : Monitor Contended Entered
+                jvmtiEventMonitorContendedEntered MonitorContendedEntered;
+                //   77
+                jvmtiEventReserved reserved77;
+                //   78
+                jvmtiEventReserved reserved78;
+                //   79
+                jvmtiEventReserved reserved79;
+                //   80 : Resource Exhausted
+                jvmtiEventResourceExhausted ResourceExhausted;
+                //   81 : Garbage Collection Start
+                jvmtiEventGarbageCollectionStart GarbageCollectionStart;
+                //   82 : Garbage Collection Finish
+                jvmtiEventGarbageCollectionFinish GarbageCollectionFinish;
+                //   83 : Object Free
+                jvmtiEventObjectFree ObjectFree;
+                //   84 : VM Object Allocation
+                jvmtiEventVMObjectAlloc VMObjectAlloc;
+                //   85
+                jvmtiEventReserved reserved85;
+                //   86 : Sampled Object Allocation
+                jvmtiEventSampledObjectAlloc SampledObjectAlloc;
+                } jvmtiEventCallbacks;
+                */
+                @KnownStruct(structName = "_jvmtiEventCallbacks", //
+                                memberNames = {
+                                                "VMInit",
+                                                "VMDeath",
+                                                "ThreadStart",
+                                                "ThreadEnd",
+                                                "ClassFileLoadHook",
+                                                "ClassLoad",
+                                                "ClassPrepare",
+                                                "VMStart",
+                                                "Exception",
+                                                "ExceptionCatch",
+                                                "SingleStep",
+                                                "FramePop",
+                                                "Breakpoint",
+                                                "FieldAccess",
+                                                "FieldModification",
+                                                "MethodEntry",
+                                                "MethodExit",
+                                                "NativeMethodBind",
+                                                "CompiledMethodLoad",
+                                                "CompiledMethodUnload",
+                                                "DynamicCodeGenerated",
+                                                "DataDumpRequest",
+                                                "reserved72",
+                                                "MonitorWait",
+                                                "MonitorWaited",
+                                                "MonitorContendedEnter",
+                                                "MonitorContendedEntered",
+                                                "reserved77",
+                                                "reserved78",
+                                                "reserved79",
+                                                "ResourceExhausted",
+                                                "GarbageCollectionStart",
+                                                "GarbageCollectionFinish",
+                                                "ObjectFree",
+                                                "VMObjectAlloc",
+                                                "reserved85",
+                                                "SampledObjectAlloc",
+                                }, //
+                                types = {
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                                POINTER,
+                                }),
 })
 public abstract class StructWrapper {
     private final JNIHandles handles;

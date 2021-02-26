@@ -939,7 +939,7 @@ typedef void (JNICALL *jvmtiEventVMStart)
 
     /* Event Callback Structure */
 
-typedef struct {
+typedef struct _jvmtiEventCallbacks {
                               /*   50 : VM Initialization Event */
     jvmtiEventVMInit VMInit;
                               /*   51 : VM Death Event */
