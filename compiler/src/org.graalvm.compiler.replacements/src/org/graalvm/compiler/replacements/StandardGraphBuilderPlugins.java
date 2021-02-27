@@ -1068,12 +1068,13 @@ public class StandardGraphBuilderPlugins {
             return node.getStackKind() != JavaKind.Void;
         }
 
-        private void setResult(ValueNode node, GraphBuilderContext b) {
+        private void setAccessNodeResult(FixedWithNextNode node, GraphBuilderContext b) {
             if (isLoad(node)) {
                 b.addPush(unsafeAccessKind, node);
             } else {
                 b.add(node);
             }
+            b.processInstruction(node);
         }
 
         protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor) {
@@ -1081,11 +1082,11 @@ public class StandardGraphBuilderPlugins {
             graph.markUnsafeAccess();
             /* For unsafe access object pointers can only be stored in the heap */
             if (unsafeAccessKind == JavaKind.Object) {
-                setResult(createObjectAccessNode(value, nodeConstructor), b);
+                setAccessNodeResult(createObjectAccessNode(value, nodeConstructor), b);
             } else if (StampTool.isPointerAlwaysNull(value)) {
-                setResult(createMemoryAccessNode(graph, nodeConstructor), b);
+                setAccessNodeResult(createMemoryAccessNode(graph, nodeConstructor), b);
             } else if (!explicitUnsafeNullChecks || StampTool.isPointerNonNull(value)) {
-                setResult(createObjectAccessNode(value, nodeConstructor), b);
+                setAccessNodeResult(createObjectAccessNode(value, nodeConstructor), b);
             } else {
                 FixedWithNextNode objectAccess = graph.add(createObjectAccessNode(value, nodeConstructor));
                 FixedWithNextNode memoryAccess = graph.add(createMemoryAccessNode(graph, nodeConstructor));
@@ -1120,6 +1121,7 @@ public class StandardGraphBuilderPlugins {
                     b.push(unsafeAccessKind, graph.addOrUnique(phi));
                 }
                 b.setStateAfter(merge);
+                b.processInstruction(merge);
             }
         }
     }
