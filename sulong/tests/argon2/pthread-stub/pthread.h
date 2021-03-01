@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,5 +49,8 @@ typedef void pthread_attr_t;
 extern int pthread_create (pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 extern void pthread_exit (void *retval);
 extern int pthread_join (pthread_t thread, void **retval);
+extern pthread_t pthread_self(void);
+extern int pthread_setname_np(pthread_t thread, const char *name);
+extern int pthread_getname_np(pthread_t thread, char *name, size_t len);
 
 #endif

@@ -30,7 +30,7 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
-#include <pthread.h>
+#include "pthread.h"
 
 void *set_named_thread(void *data) {
 
