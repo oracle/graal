@@ -54,6 +54,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -62,8 +63,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.ffi.RawPointer;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -84,9 +84,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.ffi.NativeSignature;
-import com.oracle.truffle.espresso.ffi.NativeType;
-import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -98,6 +95,11 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Validation;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -2263,6 +2265,33 @@ public final class VM extends NativeEnv implements ContextAccess {
         });
     }
 
+    @JniImpl
+    @VmImpl
+    public @Host(String[].class) StaticObject JVM_GetVmArguments() {
+        OptionMap<String> argsMap = getContext().getEnv().getOptions().get(EspressoOptions.VMArguments);
+        if (argsMap == null) {
+            return getMeta().java_lang_String.allocateReferenceArray(0);
+        }
+        Set<Map.Entry<String, String>> set = argsMap.entrySet();
+        int length = set.size();
+        StaticObject array = getMeta().java_lang_String.allocateReferenceArray(length);
+        for (Map.Entry<String, String> entry : set) {
+            String key = entry.getKey();
+            int idx = Integer.parseInt(key.substring(key.lastIndexOf('.') + 1));
+            StaticObject str = getMeta().toGuestString(entry.getValue());
+            getInterpreterToVM().setArrayObject(str, idx, array);
+        }
+        assert noNullEntry(array);
+        return array;
+    }
+
+    private static boolean noNullEntry(StaticObject array) {
+        for (Object entry : (Object[]) array.unwrap()) {
+            assert entry != null;
+        }
+        return true;
+    }
+
     // region Management
 
     // Partial/incomplete implementation disclaimer!
@@ -2536,10 +2565,14 @@ public final class VM extends NativeEnv implements ContextAccess {
         return 0; // always 0
     }
 
+    /**
+     * Returns known.
+     */
     @JniImpl
     @VmImpl
+    @TruffleBoundary
     public @Host(String[].class) StaticObject GetInputArgumentArray() {
-        return getMeta().java_lang_String.allocateReferenceArray(0);
+        return JVM_GetVmArguments();
     }
 
     @JniImpl
