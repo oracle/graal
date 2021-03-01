@@ -946,6 +946,21 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.pthread.native" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O0"],
+      "buildEnv" : {
+        "SUITE_CFLAGS" : "-pthread",
+        "SUITE_LDFLAGS" : "-pthread",
+        "OS" : "<os>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.sulongcpp.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",

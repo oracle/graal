@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,8 @@ typedef int __sulong_key_t;
 int __sulong_thread_create(__sulong_thread_t *thread, void *(*start_routine)(void *), void *arg);
 void *__sulong_thread_join(long thread);
 __sulong_thread_t __sulong_thread_self();
+int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name);
+int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, size_t len);
 
 __sulong_key_t __sulong_thread_key_create(void (*destructor)(void *));
 void __sulong_thread_key_delete(__sulong_key_t key);
@@ -76,6 +78,14 @@ int pthread_join(pthread_t thread, void **retval) {
 
 pthread_t pthread_self() {
     return (pthread_t) __sulong_thread_self();
+}
+
+int pthread_setname_np(pthread_t thread, const char *name) {
+    return __sulong_thread_setname_np((__sulong_thread_t) thread, name);
+}
+
+int pthread_getname_np(__sulong_thread_t thread, char *name, size_t len) {
+    return __sulong_thread_getname_np((__sulong_thread_t) thread, name, len);
 }
 
 int pthread_key_create(pthread_key_t *key, void (*destructor)(void *)) {

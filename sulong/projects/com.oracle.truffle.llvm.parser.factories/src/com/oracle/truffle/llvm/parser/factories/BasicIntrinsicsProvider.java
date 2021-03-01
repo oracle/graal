@@ -359,8 +359,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     private static void registerPThreadIntrinsics() {
         add("__sulong_thread_create", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3)));
         add("pthread_exit", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadExitNodeGen.create(args.get(1)));
-        add("pthread_setname_np", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadSetNameNodeGen.create(args.get(1), args.get(2)));
-        add("pthread_getname_np", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadGetNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("__sulong_thread_setname_np", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadSetNameNodeGen.create(args.get(1), args.get(2)));
+        add("__sulong_thread_getname_np", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadGetNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
         add("__sulong_thread_join", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1)));
         add("__sulong_thread_self", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadSelfNodeGen.create());
         add("__sulong_thread_key_create", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadKeyCreateNodeGen.create(args.get(1)));

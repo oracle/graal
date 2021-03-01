@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMThreadException;
@@ -112,8 +111,8 @@ public final class LLVMPThreadThreadIntrinsics {
     public abstract static class LLVMPThreadSelf extends LLVMBuiltin {
 
         @Specialization
-        protected LLVMManagedPointer doIntrinsic(@CachedContext(LLVMLanguage.class) LLVMContext context) {
-            return LLVMManagedPointer.create(getThreadId(context));
+        protected long doIntrinsic(@CachedContext(LLVMLanguage.class) LLVMContext context) {
+            return getThreadId(context);
         }
 
         @TruffleBoundary
@@ -137,23 +136,6 @@ public final class LLVMPThreadThreadIntrinsics {
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
 
             String name = readString.executeWithTarget(namePointer);
-            return setName(context, id, name);
-        }
-
-        @Specialization(guards = "containsID(id)")
-        protected int doIntrinsicPointer(LLVMManagedPointer id, LLVMPointer namePointer,
-                        @Cached LLVMReadStringNode readString,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            long threadID = (long) id.getObject();
-            String name = readString.executeWithTarget(namePointer);
-            return setName(context, threadID, name);
-        }
-
-        protected boolean containsID(LLVMManagedPointer threadID) {
-            return threadID.getObject() instanceof Long;
-        }
-
-        protected int setName(LLVMContext context, long id, String name) {
             final LLVMPThreadContext threadContext = context.getpThreadContext();
             Thread thread = threadContext.getThread(id);
             if (thread == null) {
@@ -177,19 +159,6 @@ public final class LLVMPThreadThreadIntrinsics {
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
             Thread thread = context.getpThreadContext().getThread(threadID);
             byte[] byteString = thread.getName().getBytes();
-            return getName(byteString, targetLen, buffer);
-        }
-
-        @Specialization
-        protected int doIntrinsicPointer(LLVMManagedPointer id, LLVMPointer buffer, long targetLen,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            long threadID = (long) id.getObject();
-            Thread thread = context.getpThreadContext().getThread(threadID);
-            byte[] byteString = thread.getName().getBytes();
-            return getName(byteString, targetLen, buffer);
-        }
-
-        protected int getName(byte[] byteString, long targetLen, LLVMPointer buffer) {
             long bytesWritten = 0;
             for (int i = 0; i < byteString.length && i < targetLen - 1; i++) {
                 write.executeWithTarget(buffer, bytesWritten, byteString[i]);
