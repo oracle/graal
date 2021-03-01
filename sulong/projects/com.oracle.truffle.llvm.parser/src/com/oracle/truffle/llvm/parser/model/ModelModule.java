@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -152,5 +152,14 @@ public final class ModelModule {
 
     public ArrayList<LLVMSourceFileReference> getSourceFileReferences() {
         return sourceFiles;
+    }
+
+    public <TI extends TargetInformation> TI getTargetInformation(Class<TI> targetInfoClazz) {
+        for (TargetInformation info : targetInfo) {
+            if (targetInfoClazz.isInstance(info)) {
+                return targetInfoClazz.cast(info);
+            }
+        }
+        return null;
     }
 }
