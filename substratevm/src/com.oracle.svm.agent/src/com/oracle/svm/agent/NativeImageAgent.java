@@ -211,8 +211,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
             try {
                 configOutputDirPath = Paths.get(configOutputDir);
-                if (!Files.isDirectory(configOutputDirPath)) {
-                    Files.createDirectory(configOutputDirPath);
+                if (!Files.exists(configOutputDirPath)) {
+                    Files.createDirectories(configOutputDirPath);
                 }
                 Function<IOException, Exception> handler = e -> {
                     if (e instanceof NoSuchFileException) {
