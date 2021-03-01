@@ -110,7 +110,7 @@ class UnittestTaskFactory(object):
             with Task('Test' + title, tasks, tags=tags + run_tags, description=description) as t:
                 if t: mx_sulong_suite_constituents.run(unittestArgs, testClasses)
 
-        build_task = TestSuiteBuildTask(test_suite, tags + build_tags, args.extra_llvm_arguments)
+        build_task = TestSuiteBuildTask(test_suite, tags + build_tags, args.extra_build_args)
         if build_task in self.build_tasks:
             self.build_tasks[self.build_tasks.index(build_task)].merge(build_task)
         else:
