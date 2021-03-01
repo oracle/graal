@@ -759,7 +759,7 @@ final class EngineAccessor extends Accessor {
 
         private static PolyglotEngineImpl resolveEngine(Node node, PolyglotContextImpl context) {
             PolyglotEngineImpl engine;
-            if (node != null) {
+            if (CompilerDirectives.inCompiledCode() && node != null) {
                 RootNode root = node.getRootNode();
                 if (root == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
