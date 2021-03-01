@@ -50,10 +50,6 @@ public final class SafepointNode extends DeoptimizingFixedWithNextNode implement
         super(TYPE, StampFactory.forVoid());
     }
 
-    protected SafepointNode(NodeClass<? extends SafepointNode> nodeClass) {
-        super(nodeClass, StampFactory.forVoid());
-    }
-
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.visitSafepointNode(this);

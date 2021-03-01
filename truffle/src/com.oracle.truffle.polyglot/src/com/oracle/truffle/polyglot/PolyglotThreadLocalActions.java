@@ -338,8 +338,8 @@ final class PolyglotThreadLocalActions {
                 return;
             }
             Object prev = context.engine.enterIfNeeded(context);
-            notifyStart();
             try {
+                notifyStart();
                 PolyglotTLAccess access = new PolyglotTLAccess(Thread.currentThread(), location, isActive);
                 try {
                     acceptImpl(access);
