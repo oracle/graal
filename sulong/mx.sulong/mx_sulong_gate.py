@@ -30,7 +30,6 @@
 import os
 import subprocess
 from argparse import ArgumentParser
-from collections import OrderedDict
 
 import mx
 import mx_subst
@@ -50,14 +49,13 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
 
 
 class TestSuiteBuildTask(object):
-    def __init__(self, title, test_suite, tags, extra_build_args=None):
-        self.title = title
+    def __init__(self, test_suite, tags, extra_build_args=None):
         self.test_suite = test_suite
         self.tags = tags
         self.extra_build_args = extra_build_args
 
     def execute(self, tasks):
-        with Task('Build' + self.title, tasks, tags=self.tags) as t:
+        with Task('Build_' + self.test_suite, tasks, tags=self.tags) as t:
             if t:
                 mx_sulong_suite_constituents.compileTestSuite(self.test_suite, self.extra_build_args or [])
 
@@ -66,7 +64,7 @@ class TestSuiteBuildTask(object):
         self.tags.extend([x for x in other.tags if x not in self.tags])
 
     def __eq__(self, other):
-        return isinstance(other, TestSuiteBuildTask) and self.title == other.title and self.test_suite == other.test_suite and self.extra_build_args == other.extra_build_args
+        return isinstance(other, TestSuiteBuildTask) and self.test_suite == other.test_suite and self.extra_build_args == other.extra_build_args
 
 
 class UnittestTaskFactory(object):
@@ -90,9 +88,9 @@ class UnittestTaskFactory(object):
             with Task('Test' + title, tasks, tags=tags + run_tags) as t:
                 if t: mx_sulong_suite_constituents.run(unittestArgs, testClasses)
 
-        build_task = TestSuiteBuildTask(title, test_suite, tags + build_tags, args.extra_llvm_arguments)
+        build_task = TestSuiteBuildTask(test_suite, tags + build_tags, args.extra_llvm_arguments)
         if build_task in self.build_tasks:
-            self.build_tasks.index(build_task).merge(build_task)
+            self.build_tasks[self.build_tasks.index(build_task)].merge(build_task)
         else:
             self.build_tasks.append(build_task)
         self.test_tasks.append(_run_test_task)
