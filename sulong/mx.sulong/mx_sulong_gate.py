@@ -45,17 +45,37 @@ _suite = mx.suite('sulong')
 
 def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
     f = UnittestTaskFactory()
-    f.add(title, test_suite, tasks, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs)
-    f.execute()
+    f.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs)
+    f.execute(tasks)
+
+
+class TestSuiteBuildTask(object):
+    def __init__(self, title, test_suite, tags, extra_build_args=None):
+        self.title = title
+        self.test_suite = test_suite
+        self.tags = tags
+        self.extra_build_args = extra_build_args
+
+    def execute(self, tasks):
+        with Task('Build' + self.title, tasks, tags=self.tags) as t:
+            if t:
+                mx_sulong_suite_constituents.compileTestSuite(self.test_suite, self.extra_build_args or [])
+
+    def merge(self, other):
+        assert self == other
+        self.tags.extend([x for x in other.tags if x not in self.tags])
+
+    def __eq__(self, other):
+        return isinstance(other, TestSuiteBuildTask) and self.title == other.title and self.test_suite == other.test_suite and self.extra_build_args == other.extra_build_args
 
 
 class UnittestTaskFactory(object):
 
     def __init__(self):
-        self.build_tasks = OrderedDict()
+        self.build_tasks = []
         self.test_tasks = []
 
-    def add(self, title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
+    def add(self, title, test_suite, args, tags=None, testClasses=None, unittestArgs=None):
         if tags is None:
             tags = [test_suite]
         if testClasses is None:
@@ -66,22 +86,22 @@ class UnittestTaskFactory(object):
             unittestArgs = ['--very-verbose', '--enable-timing']
         unittestArgs += args.extra_llvm_arguments
 
-        def _run_build_task():
-            with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-                if t: mx_sulong_suite_constituents.compileTestSuite(test_suite, args.extra_build_args)
-
-        def _run_test_task():
+        def _run_test_task(tasks):
             with Task('Test' + title, tasks, tags=tags + run_tags) as t:
                 if t: mx_sulong_suite_constituents.run(unittestArgs, testClasses)
 
-        self.build_tasks[title] = _run_build_task
+        build_task = TestSuiteBuildTask(title, test_suite, tags + build_tags, args.extra_llvm_arguments)
+        if build_task in self.build_tasks:
+            self.build_tasks.index(build_task).merge(build_task)
+        else:
+            self.build_tasks.append(build_task)
         self.test_tasks.append(_run_test_task)
 
-    def execute(self):
-        for build_task in self.build_tasks.values():
-            build_task()
+    def execute(self, tasks):
+        for build_task in self.build_tasks:
+            build_task.execute(tasks)
         for test_task in self.test_tasks:
-            test_task()
+            test_task(tasks)
 
 
 _sulongTestConfigRoot = os.path.join(_suite.dir, "tests", "configs")
