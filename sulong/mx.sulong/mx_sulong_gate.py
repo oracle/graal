@@ -73,19 +73,41 @@ class UnittestTaskFactory(object):
         self.build_tasks = []
         self.test_tasks = []
 
-    def add(self, title, test_suite, args, tags=None, testClasses=None, unittestArgs=None):
+    def add(self, title, test_suite, args, tags=None, testClasses=None, unittestArgs=None, description=None):
         if tags is None:
             tags = [test_suite]
         if testClasses is None:
             testClasses = [test_suite]
+        elif not isinstance(testClasses, list):
+            testClasses = [testClasses]
         build_tags = ['build_' + t for t in tags]
         run_tags = ['run_' + t for t in tags]
         if not unittestArgs:
             unittestArgs = ['--very-verbose', '--enable-timing']
         unittestArgs += args.extra_llvm_arguments
 
+        def _sulong_gate_format_description(testClasses, description=None):
+            if description:
+                description += '  '
+            else:
+                description = ''
+            def _reduce_package_prefix(cls):
+                prefix = "com.oracle.truffle.llvm"
+                reduced_prefix = ".".join((x[0] for x in prefix.split(".")))
+                if cls and cls.startswith(prefix):
+                    return cls.replace(prefix, reduced_prefix, 1)
+                return cls
+            # add a "junit" prefix if the test class does not use a full package name (no '.') to make it obvious that it is a
+            # Java class
+            junit_prefix = "JUnit " if not any("." in x for x in testClasses) else ""
+            return '{description}({junit_prefix}{testClasses})'.format(description=description,
+                                                                       junit_prefix=junit_prefix,
+                                                                       testClasses=', '.join((_reduce_package_prefix(cls) for cls in testClasses)))
+
+        description = _sulong_gate_format_description(testClasses, description=description)
+
         def _run_test_task(tasks):
-            with Task('Test' + title, tasks, tags=tags + run_tags) as t:
+            with Task('Test' + title, tasks, tags=tags + run_tags, description=description) as t:
                 if t: mx_sulong_suite_constituents.run(unittestArgs, testClasses)
 
         build_task = TestSuiteBuildTask(test_suite, tags + build_tags, args.extra_llvm_arguments)
