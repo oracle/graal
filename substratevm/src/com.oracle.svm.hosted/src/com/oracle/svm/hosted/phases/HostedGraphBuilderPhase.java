@@ -366,7 +366,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
             endInstr.setNext(originalNext);
         }
 
-        if (instr.equals(lastInstr) && !instr.equals(endInstr)) {
+        if (instr == lastInstr && instr != endInstr) {
             assert originalNext == null;
             /*
              * Need to update last instruction if it changed.
