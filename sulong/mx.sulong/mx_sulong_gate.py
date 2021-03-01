@@ -55,7 +55,7 @@ class TestSuiteBuildTask(object):
         self.extra_build_args = extra_build_args
 
     def execute(self, tasks):
-        with Task('Build_' + self.test_suite, tasks, tags=self.tags) as t:
+        with Task('Build_' + self.test_suite, tasks, tags=self.tags, description='Build ' + self.test_suite) as t:
             if t:
                 mx_sulong_suite_constituents.compileTestSuite(self.test_suite, self.extra_build_args or [])
 
