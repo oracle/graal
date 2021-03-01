@@ -179,6 +179,18 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
+    public boolean insertThread(Thread thread) {
+        synchronized (threadLock) {
+            if (isCreateThreadAllowed) {
+                threadStorage.put(thread.getId(), thread);
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    @TruffleBoundary
     public Thread getThread(long threadID) {
         return threadStorage.get(threadID);
     }
