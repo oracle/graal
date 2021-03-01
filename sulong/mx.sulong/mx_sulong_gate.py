@@ -193,7 +193,7 @@ def _sulong_gate_runner(args, tasks):
     _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc', 'sulongCoverage'])
     _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc', 'sulongCoverage'])
     _unittest_task_factory.execute(tasks)
-    with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
+    with Task('TestToolchain', description="build toolchain-launchers-tests project", tags=['toolchain', 'sulongMisc', 'sulongCoverage'], tasks=tasks) as t:
         if t:
             with SulongGateEnv():
                 mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
