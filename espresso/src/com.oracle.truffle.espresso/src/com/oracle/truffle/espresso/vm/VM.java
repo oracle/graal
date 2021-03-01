@@ -2267,6 +2267,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
+    @TruffleBoundary
     public @Host(String[].class) StaticObject JVM_GetVmArguments() {
         OptionMap<String> argsMap = getContext().getEnv().getOptions().get(EspressoOptions.VMArguments);
         if (argsMap == null) {
