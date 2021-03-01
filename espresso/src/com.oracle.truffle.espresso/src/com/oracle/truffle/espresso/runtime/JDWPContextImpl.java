@@ -667,16 +667,13 @@ public final class JDWPContextImpl implements JDWPContext {
         Node currentNode = node;
 
         while (currentNode != null) {
-            if (currentNode instanceof EspressoInstrumentableNode) {
+            if (currentNode instanceof EspressoRootNode) {
+                return ((EspressoRootNode) currentNode).getMethodNode();
+            } else if (currentNode instanceof EspressoInstrumentableNode) {
                 return currentNode;
             } else if (currentNode instanceof QuickNode) {
                 QuickNode quickNode = (QuickNode) currentNode;
                 return quickNode.getBytecodesNode();
-            } else if (currentNode instanceof EspressoRootNode) {
-                EspressoRootNode rootNode = (EspressoRootNode) currentNode;
-                if (rootNode.isBytecodeNode()) {
-                    return rootNode.getBytecodeNode();
-                }
             } else {
                 currentNode = currentNode.getParent();
             }

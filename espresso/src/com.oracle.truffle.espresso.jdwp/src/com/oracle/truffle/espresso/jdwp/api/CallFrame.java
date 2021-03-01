@@ -26,7 +26,6 @@ import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -143,18 +142,15 @@ public final class CallFrame {
         if (scope != null) {
             return scope;
         }
-        Node rawNode = debugStackFrame.getRawNode(context.getLanguageClass());
+        Node instrumentableNode = context.getInstrumentableNode(rootNode);
 
-        if (rawNode == null) {
-            JDWPLogger.log("Unable to get raw node for root %s", JDWPLogger.LogLevel.ALL, rootNode);
+        if (instrumentableNode == null) {
+            JDWPLogger.log("Unable to get instrumentable node for root %s", JDWPLogger.LogLevel.ALL, rootNode);
         } else {
-            if (!(rawNode instanceof InstrumentableNode)) {
-                rawNode = context.getInstrumentableNode(rawNode);
-            }
             try {
-                scope = NodeLibrary.getUncached().getScope(rawNode, frame, true);
+                scope = NodeLibrary.getUncached().getScope(instrumentableNode, frame, true);
             } catch (UnsupportedMessageException e) {
-                JDWPLogger.log("Unable to get scope for %s", JDWPLogger.LogLevel.ALL, rawNode.getClass());
+                JDWPLogger.log("Unable to get scope for %s", JDWPLogger.LogLevel.ALL, instrumentableNode.getClass());
             }
         }
         return scope;
