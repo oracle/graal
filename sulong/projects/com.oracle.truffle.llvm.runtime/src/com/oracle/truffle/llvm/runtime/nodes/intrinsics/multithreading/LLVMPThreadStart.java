@@ -52,16 +52,14 @@ public final class LLVMPThreadStart {
 
     static final class LLVMPThreadRunnable implements Runnable {
 
-        private final boolean isThread;
         private final Object startRoutine;
         private final Object arg;
         private final LLVMContext context;
 
-        LLVMPThreadRunnable(Object startRoutine, Object arg, LLVMContext context, boolean isThread) {
+        LLVMPThreadRunnable(Object startRoutine, Object arg, LLVMContext context) {
             this.startRoutine = startRoutine;
             this.arg = arg;
             this.context = context;
-            this.isThread = isThread;
         }
 
         @Override
@@ -86,19 +84,17 @@ public final class LLVMPThreadStart {
                 throw t;
             } finally {
                 // call destructors from key create
-                if (this.isThread) {
-                    for (int key = 1; key <= pThreadContext.getNumberOfPthreadKeys(); key++) {
-                        final LLVMPointer destructor = pThreadContext.getDestructor(key);
-                        if (destructor != null && !destructor.isNull()) {
-                            final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
-                            if (keyMapping != null) {
-                                assert !keyMapping.isNull();
-                                new LLVMPThreadRunnable(destructor, keyMapping, this.context, false).run();
-                            }
+                for (int key = 1; key <= pThreadContext.getNumberOfPthreadKeys(); key++) {
+                    final LLVMPointer destructor = pThreadContext.getDestructor(key);
+                    if (destructor != null && !destructor.isNull()) {
+                        final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
+                        if (keyMapping != null) {
+                            assert !keyMapping.isNull();
+                            pThreadContext.getPthreadCallTarget().call(destructor, keyMapping);
                         }
                     }
-                    pThreadContext.clearThreadId();
                 }
+                pThreadContext.clearThreadId();
             }
         }
     }
