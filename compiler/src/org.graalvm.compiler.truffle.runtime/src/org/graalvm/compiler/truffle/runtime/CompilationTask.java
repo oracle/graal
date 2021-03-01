@@ -215,7 +215,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         if (target == null) {
             return false;
         }
-        return target.getHighestCompiledTier() > 0;
+        return target.getHighestCompiledTier() >= tier();
     }
 
     public long getId() {

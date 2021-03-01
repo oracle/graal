@@ -55,9 +55,9 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     @SuppressWarnings("unchecked")
     public E poll() {
         if (firstTierEntries.isEmpty()) {
-            return lastTierEntries.poll();
+            return maxFirstTier(lastTierEntries);
         }
-        return maxFirstTier();
+        return maxFirstTier(firstTierEntries);
     }
 
     @Override
@@ -66,22 +66,24 @@ public class TraversingQueue<E> implements SerialQueue<E> {
         throw new UnsupportedOperationException("Peek not supported!");
     }
 
-    private E maxFirstTier() {
-        assert !firstTierEntries.isEmpty() : "Must not be called if firstTierEntries is empty";
+    private E maxFirstTier(List<E> entries) {
+        if (entries.isEmpty()) {
+           return null;
+        }
         List<E> toRemove = new ArrayList<>();
         StringBuilder builder = new StringBuilder("Queue:[ ");
         long time = System.nanoTime();
-        Iterator<E> it = firstTierEntries.iterator();
+        Iterator<E> it = entries.iterator();
         E max = it.next();
         double maxWeight = task(max).weight(time);
         if (task(max).targetPreviouslyCompiled()) {
-            return remove(max);
+            return remove(max, entries);
         }
         append(builder, task(max), maxWeight);
         while (it.hasNext()) {
             E entry = it.next();
             if (task(entry).targetPreviouslyCompiled()) {
-                return remove(entry);
+                return remove(entry, entries);
             }
             CompilationTask task = task(entry);
             double weight = task.weight(time);
@@ -103,14 +105,14 @@ public class TraversingQueue<E> implements SerialQueue<E> {
         if (trace) {
             System.out.println(builder);
         }
-        remove(toRemove);
-        return remove(max);
+        remove(toRemove, entries);
+        return remove(max, entries);
     }
 
-    private void remove(List<E> toRemove) {
+    private void remove(List<E> toRemove, List<E> entries) {
         if (!toRemove.isEmpty()) {
             for (E e : toRemove) {
-                firstTierEntries.remove(e);
+                entries.remove(e);
             }
         }
     }
@@ -119,8 +121,8 @@ public class TraversingQueue<E> implements SerialQueue<E> {
         return builder.append(task.getId()).append(":").append(maxWeight).append(" ");
     }
 
-    private E remove(E max) {
-        firstTierEntries.remove(max);
+    private E remove(E max, List<E> entries) {
+        entries.remove(max);
         return max;
     }
 
@@ -131,6 +133,7 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     @Override
     public void clear() {
         firstTierEntries.clear();
+        lastTierEntries.clear();
     }
 
     @Override
