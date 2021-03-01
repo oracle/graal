@@ -137,6 +137,11 @@ class SulongGateEnv(object):
 
 
 def _sulong_gate_runner(args, tasks):
+    _unittest_task_factory = UnittestTaskFactory()
+
+    def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
+        _unittest_task_factory.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs)
+
     with Task('CheckCopyright', tasks, tags=['style']) as t:
         if t:
             if mx.checkcopyrights(['--primary']) != 0:
@@ -167,6 +172,7 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'])
     _sulong_gate_unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'])
     _sulong_gate_unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'])
+    _unittest_task_factory.execute(tasks)
     with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
         if t:
             with SulongGateEnv():
