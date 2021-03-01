@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler.phases;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -126,7 +127,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
             node = graph.maybeAddOrUnique(node);
         } else {
             // we always must find a node location for truffle safepoints
-            throw new AssertionError("No Truffle node found in frame state of " + returnNode);
+            throw GraalError.shouldNotReachHere("No Truffle node found in frame state of " + returnNode);
         }
         graph.addBeforeFixed(returnNode, graph.add(new TruffleSafepointNode(node)));
     }
@@ -144,7 +145,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
                     if (state.getMethod().equals(executeRootMethod)) {
                         // we should not need to cross a call boundary to find a constant node
                         // it must be guaranteed that we find this earlier.
-                        throw new AssertionError("Found a frame state of executeRootNode but not a constant node.");
+                        throw GraalError.shouldNotReachHere("Found a frame state of executeRootNode but not a constant node.");
                     }
                     state = state.outerFrameState();
                 }
@@ -227,7 +228,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
                 return m;
             }
         }
-        throw new AssertionError("Required method " + name + " not found in " + type);
+        throw GraalError.shouldNotReachHere("Required method " + name + " not found in " + type);
     }
 
     private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
@@ -237,6 +238,6 @@ public final class TruffleSafepointInsertionPhase extends Phase {
                 return field;
             }
         }
-        throw new AssertionError("Required field " + name + " not found in " + type);
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
     }
 }
