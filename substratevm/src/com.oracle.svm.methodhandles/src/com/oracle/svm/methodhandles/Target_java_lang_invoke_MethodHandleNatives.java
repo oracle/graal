@@ -144,7 +144,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         }
         int offset = SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).offset;
         if (offset == -1) {
-            throw new GraalError("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
+            throw unsupportedFeature("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
         }
         return offset;
     }
@@ -163,7 +163,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         }
         int offset = SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).offset;
         if (offset == -1) {
-            throw new GraalError("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
+            throw unsupportedFeature("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
         }
         return offset;
     }

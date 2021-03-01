@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.invoke;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+
 import java.lang.invoke.MethodHandle;
 import java.util.function.BooleanSupplier;
-
-import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
@@ -63,7 +63,7 @@ public class MethodHandleUtils {
             case LONG:
                 return (long) retVal;
             default:
-                throw new GraalError("Unexpected type for unbox function: " + returnType);
+                throw shouldNotReachHere("Unexpected type for unbox function");
         }
     }
 
@@ -91,7 +91,7 @@ public class MethodHandleUtils {
             case INT:
                 return (int) retVal;
             default:
-                throw new GraalError("Unexpected type for unbox function: " + returnType);
+                throw shouldNotReachHere("Unexpected type for unbox function");
         }
     }
 
@@ -115,7 +115,7 @@ public class MethodHandleUtils {
             case SHORT:
                 return (short) retVal;
             default:
-                throw new GraalError("Unexpected type for unbox function: " + returnType);
+                throw shouldNotReachHere("Unexpected type for unbox function");
         }
     }
 
