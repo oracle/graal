@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -135,22 +136,30 @@ public final class TruffleSafepointInsertionPhase extends Phase {
     private ConstantNode findTruffleNode(Node node) {
         Node n = node;
         while (n != null) {
-            if (n instanceof StateSplit) {
-                FrameState state = ((StateSplit) n).stateAfter();
-                while (state != null) {
-                    ConstantNode foundTruffleConstant = findTruffleNode(state);
-                    if (foundTruffleConstant != null) {
-                        return foundTruffleConstant;
+            if (n instanceof NodeWithState) {
+                for (FrameState innerMostState : ((NodeWithState) n).states()) {
+                    FrameState state = innerMostState;
+                    while (state != null) {
+                        ConstantNode foundTruffleConstant = findTruffleNode(state);
+                        if (foundTruffleConstant != null) {
+                            return foundTruffleConstant;
+                        }
+                        if (state.getMethod().equals(executeRootMethod)) {
+                            // we should not need to cross a call boundary to find a constant node
+                            // it must be guaranteed that we find this earlier.
+                            throw GraalError.shouldNotReachHere("Found a frame state of executeRootNode but not a constant node.");
+                        }
+                        state = state.outerFrameState();
                     }
-                    if (state.getMethod().equals(executeRootMethod)) {
-                        // we should not need to cross a call boundary to find a constant node
-                        // it must be guaranteed that we find this earlier.
-                        throw GraalError.shouldNotReachHere("Found a frame state of executeRootNode but not a constant node.");
-                    }
-                    state = state.outerFrameState();
+                    break;
                 }
-                break;
             }
+
+            /*
+             * This makes the location a guess. In the future we want to require the location
+             * available from the TruffleSafepoint.poll(Node) call. We need languages to adopt the
+             * TruffleSafepoint.poll(Node) call.
+             */
             n = n.predecessor();
         }
         return null;
