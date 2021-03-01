@@ -40,29 +40,33 @@
  */
 package org.graalvm.collections;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Thread-safe prefix-tree implementation in which keys are sequences of 64-bit values, and the
  * values are 64-bit values.
- *
+ * <p>
  * The prefix tree supports a single operation {@code root}, which returns the root node. The nodes
  * support the following operations: {@code at} to obtain a child node, {@code value} to obtain the
  * value at the current node, {@code setValue} to atomically set the value and {@code incValue} to
  * atomically increment the value.
- * 
+ * <p>
  * The prefix tree is implemented as follows. The tree points to the root node. Each node points to
  * a set of child nodes, where each child is associated with a key. Each node additionally holds an
  * arity, which is the number of children, and the 64-bit value of that node.
- * 
+ * <p>
  * The set of child nodes can be represented as {@code null} if the set is empty, an array-list if
  * the the set is small, or a hash table if the set is large. In all cases, the keys and the child
  * nodes are kept in separate arrays.
- * 
+ * <p>
  * The {@code at} operation, which takes a node and a key, and returns the corresponding child node,
  * deserves an additional explanation. This operation creates an existing child associated with the
  * key, or atomically creates a new child, if there was no child for that key.
- *
+ * <p>
  * The {@code at} operation is implemented as follows. There is a fast-path, which executes when the
  * child node already exists, and there are no concurrent modifications at that node, and the
  * slow-path, which executes when the child does not exist or when there is a concurrent
@@ -70,7 +74,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <i>seqlock</i>. This is a lightweight read-write lock that consists of a single 64-bit counter,
  * whose value is even when the lock is in the read mode, and odd when the lock is in the write
  * mode. The lock can be held by any number of readers, but at most 1 writer at any time.
- * 
+ * <p>
  * In the read-mode, the reader must verify that the value of the lock is even and that it did not
  * change from the point when the read started until the point when the read ended, and additionally
  * takes care that reading an invalid state does not crash the execution. If the read fails for
@@ -86,6 +90,10 @@ public class PrefixTree {
     private static final int MAX_LINEAR_NODE_SIZE = 6;
     private static final long EMPTY_KEY = 0L;
     private static final double HASH_NODE_LOAD_FACTOR = 0.5;
+
+    public interface Visitor<R> {
+        R visit(Node n, List<R> childResults);
+    }
 
     public static class Node extends AtomicLong {
         private volatile long seqlock;
@@ -116,8 +124,29 @@ public class PrefixTree {
             if (key == EMPTY_KEY) {
                 throw new IllegalArgumentException("Key in the prefix tree cannot be 0.");
             }
+            System.out.println("key " + key);
+            System.out.println("arity " + arity);
             Node child = findChildLockFree(key);
-            return child != null ? child : tryAddChild(key);
+            child = child != null ? child : tryAddChild(key);
+            System.out.println(child);
+            return child;
+        }
+
+        public String toStringa() {
+            System.out.println("arity " + arity);
+            StringBuilder res = new StringBuilder();
+            long[] keysSnapshot = keys;
+            if (keysSnapshot == null) {
+                System.out.println("null");
+                return "null";
+            }
+            System.out.println(keysSnapshot.length);
+
+            for (long key : keysSnapshot
+            ) {
+                res.append(key).append(",");
+            }
+            return res.toString();
         }
 
         public long seqlockValue() {
@@ -287,6 +316,43 @@ public class PrefixTree {
             v = v * 0x9e3775cd9e3775cdL;
             return 0x7fff_ffff & (int) (v ^ (v >> 32));
         }
+
+        private synchronized <R> R bottomUp(Visitor<R> visitor) {
+            List<R> results = new ArrayList<>();
+            Node[] childrenSnapshot = children;
+            for (int i = 0; i < childrenSnapshot.length; i++) {
+                if (childrenSnapshot[i] != null) {
+                    results.add(childrenSnapshot[i].bottomUp(visitor));
+                }
+            }
+            return visitor.visit(this, results);
+        }
+
+        private synchronized void topDown(String context, BufferedWriter writer) throws IOException {
+            Node[] childrenSnapshot = children;
+            long[] keysSnapshot = keys;
+            if (childrenSnapshot.length == 0) {
+                return;
+            }
+            writer.write(context + " " + get());
+            for (int i = 0; i < childrenSnapshot.length; i++) {
+                if (childrenSnapshot[i] != null) {
+                    String childContext = context + ';' + keysSnapshot[i];
+                    childrenSnapshot[i].topDown(childContext, writer);
+                }
+            }
+        }
+
+        private synchronized void topDown(BufferedWriter writer) throws IOException {
+            Node[] childrenSnapshot = children;
+            long[] keysSnapshot = keys;
+            for (int i = 0; i < childrenSnapshot.length; i++) {
+                if (childrenSnapshot[i] != null) {
+                    String childContext = String.valueOf(keysSnapshot[i]);
+                    childrenSnapshot[i].topDown(childContext, writer);
+                }
+            }
+        }
     }
 
     private final Node root;
@@ -297,5 +363,14 @@ public class PrefixTree {
 
     public Node root() {
         return root;
+    }
+
+    public <R> R bottomUp(Visitor<R> visitor) {
+        return root.bottomUp(visitor);
+    }
+
+    public void topDown(BufferedWriter writer) throws IOException {
+        root.topDown(writer);
+        writer.flush();
     }
 }

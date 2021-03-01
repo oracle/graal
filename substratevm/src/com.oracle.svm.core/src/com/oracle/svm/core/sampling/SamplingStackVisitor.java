@@ -1,5 +1,6 @@
 package com.oracle.svm.core.sampling;
 
+import org.graalvm.collections.PrefixTree;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -12,11 +13,14 @@ import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 public class SamplingStackVisitor extends ParameterizedStackFrameVisitor<SamplingStackVisitor.SamplingStackTrace> {
 
     @Override
-    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, SamplingStackTrace data) {
-        CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
-        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), result);
-        data.frameAddress[data.frameNum] = CodeInfoAccess.getCodeStart(codeInfo).rawValue();
-        data.frameBCI[data.frameNum++] = result.getFrameInfo().getBci();
+    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, SamplingStackVisitor.SamplingStackTrace data) {
+// CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
+// CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), result);
+// CodeInfoAccess.getCodeStart(codeInfo).rawValue();
+// data.frameAddress[data.frameNum] =
+// data.frameBCI[data.frameNum++] = result.getFrameInfo().getBci();
+        System.out.println("da li ");
+        data.node = data.node.at(ip.rawValue());
         return true;
     }
 
@@ -26,10 +30,11 @@ public class SamplingStackVisitor extends ParameterizedStackFrameVisitor<Samplin
     }
 
     public static class SamplingStackTrace {
-        static final int MAX_FRAME_NUM = 40;
-        long[] frameAddress = new long[MAX_FRAME_NUM];
-        int[] frameBCI = new int[MAX_FRAME_NUM];
-        int frameNum = 0;
+        PrefixTree.Node node;
+
+        SamplingStackTrace(PrefixTree.Node node) {
+            this.node = node;
+        }
     }
 }
 

@@ -116,6 +116,7 @@ public class JavaMainWrapper {
         }
     }
 
+
     /**
      * Used by JavaMainWrapper and any user supplied main entry point (from
      * {@link org.graalvm.nativeimage.hosted.Feature.AfterRegistrationAccess}).
