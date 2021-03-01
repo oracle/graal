@@ -465,7 +465,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
              * accordingly. The highest-priority match becomes this state's successor.
              */
             long[] transitionBitSet = locals.getTransitionBitSet();
-            CompilerAsserts.partialEvaluationConstant(transitionBitSet);
             CompilerDirectives.ensureVirtualized(transitionBitSet);
             final int bitSetWords = ((successors.length - 1) >> 6) + 1;
             CompilerAsserts.partialEvaluationConstant(bitSetWords);
