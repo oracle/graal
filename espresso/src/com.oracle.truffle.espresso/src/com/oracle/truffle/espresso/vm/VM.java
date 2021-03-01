@@ -2265,6 +2265,21 @@ public final class VM extends NativeEnv implements ContextAccess {
         });
     }
 
+    /**
+     * Returns all values declared to the {@link EspressoOptions#VMArguments} option during context
+     * creation.
+     * <p>
+     * In practice, this should be the list of arguments passed to the context, but depending on who
+     * built it, it may be any arbitrary list of Strings.
+     * <p>
+     * Note that even if that's the case, it may differs slightly from the expected list of
+     * arguments. The Java world expects this to be the arguments passed to the VM creation, which
+     * is expected to have passed through the regular java launcher, and have been de-sugarified
+     * (/ex: '-m [module]' -> '-Djdk.module.main=[module]').
+     * <p>
+     * In the Java-on-Truffle case, the VM arguments and the context builder options are equivalent,
+     * but that is not true in the regular Espresso launcher case, or in an embedding scenario.
+     */
     @JniImpl
     @VmImpl
     @TruffleBoundary
@@ -2277,12 +2292,26 @@ public final class VM extends NativeEnv implements ContextAccess {
         int length = set.size();
         StaticObject array = getMeta().java_lang_String.allocateReferenceArray(length);
         for (Map.Entry<String, String> entry : set) {
-            String key = entry.getKey();
-            int idx = Integer.parseInt(key.substring(key.lastIndexOf('.') + 1));
-            StaticObject str = getMeta().toGuestString(entry.getValue());
-            getInterpreterToVM().setArrayObject(str, idx, array);
+            try {
+                String key = entry.getKey();
+                int idx = Integer.parseInt(key.substring(key.lastIndexOf('.') + 1));
+                StaticObject str = getMeta().toGuestString(entry.getValue());
+                if (idx < 0 || idx >= length) {
+                    getLogger().warning("Unsupported use of the 'java.VMArguments' option: " +
+                                    "Declared index: " + idx + ", actual number of arguments: " + length + ".\n" +
+                                    "Please only declare positive index starting from 0, and growing by 1 each.");
+                    return getMeta().java_lang_String.allocateReferenceArray(0);
+                }
+                getInterpreterToVM().setArrayObject(str, idx, array);
+            } catch (NumberFormatException e) {
+                getLogger().warning("Unsupported use of the 'java.VMArguments' option: java.VMArguments." + entry.getKey() + "=" + entry.getValue() + "\n" +
+                                "Should be of the form: java.VMArguments.<int>=<value>");
+                return getMeta().java_lang_String.allocateReferenceArray(0);
+            }
         }
+        // Invariant enforced by the checks in the loop above.
         assert noNullEntry(array);
+
         return array;
     }
 
@@ -2566,12 +2595,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         return 0; // always 0
     }
 
-    /**
-     * Returns known.
-     */
     @JniImpl
     @VmImpl
-    @TruffleBoundary
     public @Host(String[].class) StaticObject GetInputArgumentArray() {
         return JVM_GetVmArguments();
     }
@@ -2579,7 +2604,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public @Host(String[].class) StaticObject GetInputArguments() {
-        return GetInputArgumentArray();
+        return JVM_GetVmArguments();
     }
 
     @JniImpl
