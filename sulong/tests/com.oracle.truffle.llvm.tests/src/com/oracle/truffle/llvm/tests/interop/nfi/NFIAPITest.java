@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,7 +55,7 @@ public class NFIAPITest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(InteropTestBase.getContextBuilder());
 
-    private static final Path TEST_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "nfi");
+    private static final Path TEST_DIR = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "nfi");
     private static final String SULONG_FILENAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     public static Object sulongObject;

@@ -61,7 +61,7 @@ public class InteropTestBase {
         return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option(SulongEngineOption.LIBRARY_PATH_NAME, lib).option(SulongEngineOption.CXX_INTEROP_NAME, "true");
     }
 
-    protected static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
+    protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
     public static final String TEST_FILE_NAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     protected static Object loadTestBitcodeInternal(String name) {

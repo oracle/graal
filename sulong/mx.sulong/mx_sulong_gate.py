@@ -182,7 +182,7 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp', 'sulongCoverage'])
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
     _unittest('Sulong', 'SULONG_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Interop', 'SULONG_TEST_SUITES', description="Truffle Language interoperability tests", testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
     _unittest('Linker', 'SULONG_TEST_SUITES', description=None, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
     _unittest('Debug', 'SULONG_TEST_SUITES', description="Debug support test suite", testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
     _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
