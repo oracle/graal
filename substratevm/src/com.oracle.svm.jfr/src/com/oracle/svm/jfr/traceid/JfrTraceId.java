@@ -196,18 +196,12 @@ public class JfrTraceId {
     }
 
     public static void assign(Thread thread) {
-//        if (!JfrAvailability.withJfr) {
-//            return;
-//        }
         assert thread != null;
         long nextId = threadCounter.incrementAndGet();
         getTraceIdMap().setId(thread, nextId << TRACE_ID_SHIFT);
     }
 
     public static void unassign(Thread thread) {
-//        if (!JfrAvailability.withJfr) {
-//            return;
-//        }
         assert thread != null;
         getTraceIdMap().clearId(thread);
     }

@@ -122,9 +122,6 @@ public class JfrFeature implements Feature {
     }
 
     public void afterAnalysis(AfterAnalysisAccess access) {
-//        if (!JfrAvailability.withJfr) {
-//            return;
-//        }
         Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
         JfrRuntimeAccess jfrRuntime = ImageSingletons.lookup(JfrRuntimeAccess.class);
         if (eventClass != null && access.isReachable(eventClass)) {
