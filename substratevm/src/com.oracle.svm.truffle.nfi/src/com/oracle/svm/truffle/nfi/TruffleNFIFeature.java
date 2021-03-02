@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -40,6 +41,7 @@ import com.oracle.svm.truffle.TruffleFeature;
  * re-implementations of the original NFI functions with the C interface of Substrate VM. If this
  * feature is enabled, the image is statically linked with libffi.
  */
+@AutomaticFeature
 public final class TruffleNFIFeature implements Feature {
 
     public static class IsEnabled implements BooleanSupplier {

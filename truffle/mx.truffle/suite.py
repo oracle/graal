@@ -1169,7 +1169,7 @@ suite = {
       "native" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
       "layout" : {
-        "native-image.properties" : "file:mx.truffle/language-nfi.properties",
+        "./include/" : ["dependency:com.oracle.truffle.nfi.native/include/*.h"],
       },
       "maven" : False,
     },
@@ -1180,16 +1180,6 @@ suite = {
       "description" : "Truffle NFI support distribution for the GraalVM",
       "layout" : {
         "./" : ["dependency:com.oracle.truffle.nfi.native"],
-      },
-      "maven" : False,
-    },
-
-    "TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT" : {
-      "native" : True,
-      "platformDependent" : True,
-      "description" : "Truffle NFI support distribution for the GraalVM",
-      "layout" : {
-        "./" : ["dependency:com.oracle.truffle.nfi.native/include/*.h"],
       },
       "maven" : False,
     },

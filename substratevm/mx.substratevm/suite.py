@@ -974,9 +974,6 @@ suite = {
                 "com.oracle.svm.graal",  # necessary until Truffle is fully supported on Windows (GR-7941)
                 "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
                 "com.oracle.svm.hosted",
-                "com.oracle.svm.truffle.nfi",
-                "com.oracle.svm.truffle.nfi.posix",
-                "com.oracle.svm.truffle.nfi.windows",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
@@ -1000,6 +997,19 @@ suite = {
                 "POINTSTO",
                 "mx:JUNIT_TOOL",
                 "compiler:GRAAL",
+            ],
+        },
+
+        "SVM_LIBFFI": {
+            "subDir": "src",
+            "description" : "SubstrateVM support for Truffle NFI LibFFI backend",
+            "dependencies": [
+                "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.truffle.nfi.posix",
+                "com.oracle.svm.truffle.nfi.windows",
+            ],
+            "distDependencies": [
+                "SVM",
             ],
         },
 
@@ -1112,12 +1122,7 @@ suite = {
                     "dependency:com.oracle.svm.native.darwin/*",
                     "dependency:com.oracle.svm.native.jvm.posix/*",
                     "dependency:com.oracle.svm.native.jvm.windows/*",
-                    "extracted-dependency:truffle:LIBFFI_DIST",
                 ],
-                "<os>-<arch>/include/": [
-                    "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
-                    "file:src/com.oracle.svm.libffi/include/svm_libffi.h",
-                ]
             },
             "description" : "SubstrateVM image builder native components",
             "maven": True
@@ -1243,6 +1248,27 @@ suite = {
             "layout" : {
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
+            },
+        },
+
+        "SVM_NFI_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "Native libraries and headers for SubstrateVM NFI support",
+            "layout" : {
+                "native-image.properties": "file:mx.substratevm/language-nfi.properties",
+                "builder/clibraries-libffi/" : [
+                    "extracted-dependency:truffle:LIBFFI_DIST"
+                ],
+                "builder/clibraries-libffi/include/" : [
+                    "file:src/com.oracle.svm.libffi/include/svm_libffi.h",
+                    "extracted-dependency:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT/include/trufflenfi.h",
+                ],
+                # The following files are intentionally left empty. The "none" backend is actually nothing, but we still
+                # need some files so native-image doesn't complain about missing files on the classpath.
+                "truffle-nfi-none.jar" : "string:",
+                "builder/svm-none.jar" : "string:",
+                "builder/clibraries-none/.empty.h" : "file:src/com.oracle.svm.libffi/include/empty.h",
             },
         },
 
