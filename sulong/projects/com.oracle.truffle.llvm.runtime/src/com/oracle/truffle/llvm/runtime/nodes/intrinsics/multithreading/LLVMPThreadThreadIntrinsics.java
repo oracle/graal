@@ -141,8 +141,14 @@ public final class LLVMPThreadThreadIntrinsics {
             if (thread == null) {
                 return 34; // 34 is ERANGE.
             }
-            thread.setName(name);
+            setName(thread, name);
             return 0;
+        }
+
+        @TruffleBoundary
+        protected void setName(Thread thread, String name) {
+            thread.setName(name);
+
         }
 
     }
@@ -158,7 +164,7 @@ public final class LLVMPThreadThreadIntrinsics {
         protected int doIntrinsic(long threadID, LLVMPointer buffer, long targetLen,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
             Thread thread = context.getpThreadContext().getThread(threadID);
-            byte[] byteString = thread.getName().getBytes();
+            byte[] byteString = getBytes(thread);
             long bytesWritten = 0;
             for (int i = 0; i < byteString.length && i < targetLen - 1; i++) {
                 write.executeWithTarget(buffer, bytesWritten, byteString[i]);
@@ -169,6 +175,11 @@ public final class LLVMPThreadThreadIntrinsics {
                 return 34; // 34 is ERANGE.
             }
             return 0;
+        }
+
+        @TruffleBoundary
+        protected byte[] getBytes(Thread thread) {
+            return thread.getName().getBytes();
         }
     }
 }
