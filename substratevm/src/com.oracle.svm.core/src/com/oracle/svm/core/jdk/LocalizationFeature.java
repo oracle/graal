@@ -193,7 +193,7 @@ public abstract class LocalizationFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess arg0) {
         locales = processLocalesOption();
-        defaultLocale = parseLocaleFromTag(Options.DefaultLocale.getDefaultValue());
+        defaultLocale = parseLocaleFromTag(Options.DefaultLocale.getValue());
         UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
         if (!locales.contains(defaultLocale)) {
             locales.add(defaultLocale);
