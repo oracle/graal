@@ -399,6 +399,8 @@ final class HeapUtils {
                                 n = 0;
                             }
                             heap.writeByte(n);
+                        } else if (entry.getValue() == Integer.TYPE) {
+                            heap.writeInt(ref == null ? 0 : ((Number) ref).intValue());
                         } else if (entry.getValue() == Short.TYPE) {
                             heap.writeShort(ref == null ? 0 : ((Number) ref).shortValue());
                         } else if (entry.getValue() == Long.TYPE) {
@@ -410,7 +412,7 @@ final class HeapUtils {
                         } else if (entry.getValue() == Character.TYPE) {
                             heap.writeChar(ref == null ? 0 : ((Character) ref));
                         } else {
-                            heap.writeInt(ref == null ? 0 : ((Number) ref).intValue());
+                            ids.writeID(heap, ref == null ? 0 : ((Number) ref).intValue());
                         }
                     }
                 }
