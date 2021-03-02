@@ -51,7 +51,7 @@ public final class OptimizedLoopNode extends LoopNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object status;
-        int loopCount = 0;
+        long loopCount = 0;
         try {
             while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame))) {
                 if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.inFirstTier()) {
@@ -60,7 +60,7 @@ public final class OptimizedLoopNode extends LoopNode {
             }
             return status;
         } finally {
-            reportLoopCount(this, loopCount);
+            reportLoopCount(this, OptimizedOSRLoopNode.toIntOrMaxInt(loopCount));
         }
     }
 
