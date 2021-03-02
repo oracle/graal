@@ -40,6 +40,9 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -52,7 +55,7 @@ import jdk.vm.ci.meta.JavaKind;
  * (see
  * {@link Target_java_lang_invoke_MethodHandleNatives#resolve(Target_java_lang_invoke_MemberName, Class, boolean)}).
  */
-final class MethodHandleIntrinsic {
+final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
     enum Variant {
         /* Method handle invocation */
 
@@ -106,7 +109,7 @@ final class MethodHandleIntrinsic {
         }
     }
 
-    static Map<Variant, Map<String, Map<JavaKind, Map<Integer, MethodHandleIntrinsic>>>> cache = new HashMap<>();
+    static Map<Variant, Map<String, Map<JavaKind, Map<Integer, MethodHandleIntrinsicImpl>>>> cache = new HashMap<>();
     static final String NO_SPECIES = "";
     static final Set<String> unsafeFieldAccessMethodNames = new HashSet<>();
 
@@ -125,33 +128,33 @@ final class MethodHandleIntrinsic {
     final JavaKind kind;
     final int index; /* For BoundMethodHandle parameters */
 
-    private MethodHandleIntrinsic(Variant variant, String species, JavaKind kind, int index) {
+    private MethodHandleIntrinsicImpl(Variant variant, String species, JavaKind kind, int index) {
         this.variant = variant;
         this.species = species;
         this.kind = kind;
         this.index = index;
     }
 
-    private static MethodHandleIntrinsic intrinsic(Variant variant, String species, JavaKind kind, int index) {
+    private static MethodHandleIntrinsicImpl intrinsic(Variant variant, String species, JavaKind kind, int index) {
         return cache.computeIfAbsent(variant, (v) -> new HashMap<>())
                         .computeIfAbsent(species, (s) -> new HashMap<>())
                         .computeIfAbsent(kind, (t) -> new HashMap<>())
-                        .computeIfAbsent(index, (i) -> new MethodHandleIntrinsic(variant, species, kind, index));
+                        .computeIfAbsent(index, (i) -> new MethodHandleIntrinsicImpl(variant, species, kind, index));
     }
 
-    static MethodHandleIntrinsic intrinsic(Variant variant) {
+    static MethodHandleIntrinsicImpl intrinsic(Variant variant) {
         return intrinsic(variant, NO_SPECIES, JavaKind.Illegal, -1);
     }
 
-    static MethodHandleIntrinsic intrinsic(Variant variant, JavaKind kind) {
+    static MethodHandleIntrinsicImpl intrinsic(Variant variant, JavaKind kind) {
         return intrinsic(variant, NO_SPECIES, kind, -1);
     }
 
-    static MethodHandleIntrinsic intrinsic(Variant variant, String species) {
+    static MethodHandleIntrinsicImpl intrinsic(Variant variant, String species) {
         return intrinsic(variant, species, JavaKind.Illegal, -1);
     }
 
-    static MethodHandleIntrinsic intrinsic(Variant variant, JavaKind kind, int index) {
+    static MethodHandleIntrinsicImpl intrinsic(Variant variant, JavaKind kind, int index) {
         return intrinsic(variant, NO_SPECIES, kind, index);
     }
 
@@ -162,7 +165,8 @@ final class MethodHandleIntrinsic {
         return JavaKind.fromPrimitiveOrVoidTypeChar(key);
     }
 
-    Object execute(Object... args) throws Throwable {
+    @Override
+    public Object execute(Object... args) throws Throwable {
         switch (variant) {
             /*
              * Recursive call to invokeBasic. We don't invoke it through reflection to avoid
@@ -406,23 +410,23 @@ final class MethodHandleIntrinsic {
      * We use string comparison to perform the lookup to avoid pulling in the methods we want to
      * intrinsify through reflection.
      */
-    static MethodHandleIntrinsic resolve(Target_java_lang_invoke_MemberName memberName) {
+    static MethodHandleIntrinsicImpl resolve(Target_java_lang_invoke_MemberName memberName) {
         Class<?> declaringClass = memberName.getDeclaringClass();
         String name = memberName.name;
 
         if (declaringClass == Target_java_lang_invoke_MethodHandle.class) {
             switch (name) {
                 case "invokeBasic":
-                    return MethodHandleIntrinsic.intrinsic(Variant.InvokeBasic);
+                    return intrinsic(Variant.InvokeBasic);
                 case "linkToVirtual":
                 case "linkToStatic":
                 case "linkToSpecial":
                 case "linkToInterface":
-                    return MethodHandleIntrinsic.intrinsic(Variant.Link);
+                    return intrinsic(Variant.Link);
             }
         } else if ("jdk.internal.misc.Unsafe".equals(declaringClass.getTypeName()) &&
                         unsafeFieldAccessMethodNames.contains(name)) {
-            return MethodHandleIntrinsic.intrinsic(Variant.UnsafeFieldAccess);
+            return intrinsic(Variant.UnsafeFieldAccess);
         } else if (declaringClass == Target_java_lang_invoke_BoundMethodHandle.class ||
                         /*
                          * The L species is directly accessed in some places and needs a special
@@ -438,7 +442,7 @@ final class MethodHandleIntrinsic {
             if (name.startsWith("arg")) {
                 JavaKind kind = kindForKey(name.charAt("arg".length()));
                 int index = Integer.parseInt(name.substring("arg".length() + 1));
-                return MethodHandleIntrinsic.intrinsic(Variant.Arg, kind, index);
+                return intrinsic(Variant.Arg, kind, index);
             }
 
             switch (name) {
@@ -449,19 +453,19 @@ final class MethodHandleIntrinsic {
                         JavaKind kind = JavaKind.fromJavaClass(paramTypes[i]);
                         species.append(kind == JavaKind.Object ? 'L' : kind.getTypeChar());
                     }
-                    return MethodHandleIntrinsic.intrinsic(Variant.Make, species.toString());
+                    return intrinsic(Variant.Make, species.toString());
                 }
                 case "BMH_SPECIES":
-                    return MethodHandleIntrinsic.intrinsic(Variant.BMHSpecies);
+                    return intrinsic(Variant.BMHSpecies);
                 case "copyWithExtendL":
                 case "copyWithExtendI":
                 case "copyWithExtendJ":
                 case "copyWithExtendF":
                 case "copyWithExtendD":
                     JavaKind kind = kindForKey(name.charAt("copyWithExtend".length()));
-                    return MethodHandleIntrinsic.intrinsic(Variant.CopyExtend, kind);
+                    return intrinsic(Variant.CopyExtend, kind);
                 case "copyWith":
-                    return MethodHandleIntrinsic.intrinsic(Variant.CopyExtend);
+                    return intrinsic(Variant.CopyExtend);
             }
         } else if (declaringClass == Target_java_lang_invoke_LambdaForm.class) {
             switch (name) {
@@ -472,7 +476,7 @@ final class MethodHandleIntrinsic {
                 case "identity_D":
                 case "identity_V": {
                     JavaKind kind = kindForKey(name.charAt("identity_".length()));
-                    return MethodHandleIntrinsic.intrinsic(Variant.Identity, kind);
+                    return intrinsic(Variant.Identity, kind);
                 }
                 case "zero_L":
                 case "zero_I":
@@ -480,19 +484,19 @@ final class MethodHandleIntrinsic {
                 case "zero_F":
                 case "zero_D": {
                     JavaKind kind = kindForKey(name.charAt("zero_".length()));
-                    return MethodHandleIntrinsic.intrinsic(Variant.Zero, kind);
+                    return intrinsic(Variant.Zero, kind);
                 }
             }
         } else if (declaringClass == DynamicHub.class) {
             if ("cast".equals(name)) {
-                return MethodHandleIntrinsic.intrinsic(Variant.Cast);
+                return intrinsic(Variant.Cast);
             }
         } else if (declaringClass == Target_java_lang_invoke_MethodHandleImpl.class) {
             switch (name) {
                 case "array":
-                    return MethodHandleIntrinsic.intrinsic(Variant.Array);
+                    return intrinsic(Variant.Array);
                 case "fillArray":
-                    return MethodHandleIntrinsic.intrinsic(Variant.FillArray);
+                    return intrinsic(Variant.FillArray);
             }
         } else if (declaringClass == Target_java_lang_invoke_MethodHandleImpl_ArrayAccessor.class) {
             switch (name) {
@@ -506,7 +510,7 @@ final class MethodHandleIntrinsic {
                 case "getElementF":
                 case "getElementD": {
                     JavaKind kind = kindForKey(name.charAt("getElement".length()));
-                    return MethodHandleIntrinsic.intrinsic(Variant.GetElement, kind);
+                    return intrinsic(Variant.GetElement, kind);
                 }
                 case "setElementL":
                 case "setElementZ":
@@ -518,7 +522,7 @@ final class MethodHandleIntrinsic {
                 case "setElementF":
                 case "setElementD": {
                     JavaKind kind = kindForKey(name.charAt("setElement".length()));
-                    return MethodHandleIntrinsic.intrinsic(Variant.SetElement, kind);
+                    return intrinsic(Variant.SetElement, kind);
                 }
                 case "lengthL":
                 case "lengthZ":
@@ -530,7 +534,7 @@ final class MethodHandleIntrinsic {
                 case "lengthF":
                 case "lengthD": {
                     JavaKind kind = kindForKey(name.charAt("length".length()));
-                    return MethodHandleIntrinsic.intrinsic(Variant.Length, kind);
+                    return intrinsic(Variant.Length, kind);
                 }
             }
         }

@@ -22,27 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.methodhandles;
-
-// Checkstyle: stop
-import java.lang.invoke.MethodType;
-import java.lang.reflect.Member;
-// Checkstyle: resume
+package com.oracle.svm.core.invoke;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
+
+import java.lang.invoke.MethodType;
+// Checkstyle: stop
+import java.lang.reflect.Member;
+// Checkstyle: resume
 
 @TargetClass(className = "java.lang.invoke.MemberName", onlyWith = MethodHandlesSupported.class)
 public final class Target_java_lang_invoke_MemberName {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Member reflectAccess;
+    public Member reflectAccess;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    MethodHandleIntrinsic intrinsic;
+    public MethodHandleIntrinsic intrinsic;
 
     @Alias public String name;
     @Alias public int flags;
@@ -50,7 +50,7 @@ public final class Target_java_lang_invoke_MemberName {
 
     @Alias
     @SuppressWarnings("hiding")
-    native void init(Class<?> defClass, String name, Object type, int flags);
+    public native void init(Class<?> defClass, String name, Object type, int flags);
 
     @Alias
     public native boolean isStatic();
@@ -81,9 +81,4 @@ public final class Target_java_lang_invoke_MemberName {
     private boolean vminfoIsConsistent() {
         return true; /* The substitution class doesn't use the same internals as the JDK */
     }
-}
-
-@TargetClass(className = "java.lang.invoke.MemberName", onlyWith = MethodHandlesNotSupported.class)
-@Delete("All methods from java.lang.invoke should have been replaced during image building.")
-final class Target_java_lang_invoke_MemberName_NotSupported {
 }

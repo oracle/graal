@@ -531,4 +531,8 @@ public class SubstrateOptions {
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(false);
+
+    public static boolean areMethodHandlesSupported() {
+        return JavaVersionUtil.JAVA_SPEC >= 11;
+    }
 }

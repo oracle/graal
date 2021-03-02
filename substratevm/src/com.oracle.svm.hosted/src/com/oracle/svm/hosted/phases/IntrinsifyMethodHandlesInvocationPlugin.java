@@ -104,6 +104,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
@@ -209,7 +210,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         methodHandleType = universeProviders.getMetaAccess().lookupJavaType(java.lang.invoke.MethodHandle.class);
         methodHandleInvokeMethodNames = new HashSet<>();
-        if (!NativeImageOptions.areMethodHandlesSupported()) {
+        if (!SubstrateOptions.areMethodHandlesSupported()) {
             methodHandleInvokeMethodNames.addAll(Arrays.asList("invokeExact", "invoke", "invokeBasic", "linkToVirtual", "linkToStatic", "linkToSpecial", "linkToInterface"));
         }
 
@@ -835,7 +836,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                         "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
                         "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
 
-        if (NativeImageOptions.areMethodHandlesSupported()) {
+        if (SubstrateOptions.areMethodHandlesSupported()) {
             /* Do nothing, the method will be compiled elsewhere */
             return false;
 
