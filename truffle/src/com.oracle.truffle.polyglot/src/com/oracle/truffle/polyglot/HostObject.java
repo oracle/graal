@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -662,16 +662,27 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    long getArraySize(@Shared("isArray") @Cached IsArrayNode isArray,
-                    @Shared("isList") @Cached IsListNode isList,
-                    @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        if (isArray.execute(this)) {
-            return Array.getLength(obj);
-        } else if (isList.execute(this)) {
-            return getListSize();
+    abstract static class GetArraySize {
+
+        @Specialization(guards = {"isArray.execute(receiver)"}, limit = "1")
+        protected static long doArray(HostObject receiver,
+                        @Shared("isArray") @Cached IsArrayNode isArray) {
+            return Array.getLength(receiver.obj);
         }
-        error.enter();
-        throw UnsupportedMessageException.create();
+
+        @Specialization(guards = {"isList.execute(receiver)"}, limit = "1")
+        protected static long doList(HostObject receiver,
+                        @Shared("isList") @Cached IsListNode isList) {
+            return receiver.getListSize();
+        }
+
+        @Specialization(guards = {"!isArray.execute(receiver)", "!isList.execute(receiver)"}, limit = "1")
+        protected static long doNotArrayOrList(HostObject receiver,
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Shared("isList") @Cached IsListNode isList) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
     }
 
     // region Buffer Messages
