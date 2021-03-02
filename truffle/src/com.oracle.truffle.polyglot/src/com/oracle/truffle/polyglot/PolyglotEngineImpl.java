@@ -244,6 +244,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         Map<String, InstrumentInfo> instrumentInfos = new LinkedHashMap<>();
         this.idToInstrument = Collections.unmodifiableMap(initializeInstruments(instrumentInfos));
         this.idToInternalInstrumentInfo = Collections.unmodifiableMap(instrumentInfos);
+        engineLogger.setEngine(this);
         this.runtimeData = RUNTIME.createRuntimeData(engineOptions, engineLogger);
 
         this.classToLanguage = new HashMap<>();
@@ -453,7 +454,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     InputStream newIn,
                     OptionValuesImpl engineOptions,
                     LogConfig newLogConfig,
-                    Function<String, TruffleLogger> logSupplier,
+                    EngineLoggerProvider logSupplier,
                     Map<String, String> newOptions,
                     boolean newAllowExperimentalOptions,
                     ClassLoader newContextClassLoader, boolean newBoundEngine, Handler newLogHandler) {
@@ -471,6 +472,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
         this.engineLoggerSupplier = logSupplier;
         this.engineLogger = null;
+        logSupplier.setEngine(this);
 
         intitializeStore(wasStore, storeEngine);
 

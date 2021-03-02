@@ -269,7 +269,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 messageInterceptor,
                                 logHandler);
             }
-            loggerProvider.setEngine(impl);
 
             Engine engine = getAPIAccess().newEngine(impl);
             impl.creatorApi = engine;
@@ -327,8 +326,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(), true, true, null, logHandler);
-        // ready for use -> allowed to escape instance
-        loggerProvider.setEngine(engine);
         return engine;
     }
 
