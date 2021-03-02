@@ -482,7 +482,7 @@ final class HeapUtils {
             int id = ++objectCounter;
 
             int rootNameId = writeString(rootName);
-            int signatureId = 0;
+            int signatureId = writeString("");
             int sourceFileId = writeString(sourceFile);
 
             whole.writeByte(TAG_STACK_FRAME);
