@@ -80,11 +80,17 @@ pthread_t pthread_self() {
     return (pthread_t) __sulong_thread_self();
 }
 
+#ifdef __linux__
 int pthread_setname_np(pthread_t thread, const char *name) {
     return __sulong_thread_setname_np((__sulong_thread_t) thread, name);
 }
+#else
+int pthread_setname_np(const char *name) {
+    return __sulong_thread_setname_np(__sulong_thread_self(), name);
+}
+#endif
 
-int pthread_getname_np(__sulong_thread_t thread, char *name, size_t len) {
+int pthread_getname_np(pthread_t thread, char *name, size_t len) {
     return __sulong_thread_getname_np((__sulong_thread_t) thread, name, len);
 }
 

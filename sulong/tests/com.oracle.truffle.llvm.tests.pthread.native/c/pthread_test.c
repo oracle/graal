@@ -35,7 +35,12 @@
 void *set_named_thread(void *data) {
 
     pthread_t *thread_info = (pthread_t *) data;
+
+#ifdef __linux__
     const int setname_rv = pthread_setname_np(*thread_info, "sulong pthread");
+#else
+    const int setname_rv = pthread_setname_np("sulong pthread");
+#endif
 
     if (setname_rv) {
         printf("Could not set pthread name\n");
@@ -51,7 +56,12 @@ void *set_named_thread(void *data) {
     fprintf(stdout, "My name is '%s'\n", thread_name);
 
     const pthread_t self = pthread_self();
+
+#ifdef __linux__
     const int setname_rv_self = pthread_setname_np(self, "self pthread");
+#else
+    const int setname_rv_self = pthread_setname_np("self pthread");
+#endif
 
     if (setname_rv_self) {
         printf("Could not set pthread name\n");
