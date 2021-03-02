@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -344,15 +344,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
-    private static final Charset UTF8 = Charset.forName("UTF-8");
-
     public void writeString(String str) throws IOException {
         // TODO: Implement writing strings in the other encodings
         if (str.isEmpty()) {
             file.writeByte(StringEncoding.EMPTY_STRING.byteValue);
         } else {
             file.writeByte(StringEncoding.UTF8_BYTE_ARRAY.byteValue);
-            ByteBuffer bytes = UTF8.encode(str);
+            ByteBuffer bytes = StandardCharsets.UTF_8.encode(str);
             writeCompressedInt(bytes.limit() - bytes.position());
             file.write(bytes.array(), bytes.position(), bytes.limit());
         }
