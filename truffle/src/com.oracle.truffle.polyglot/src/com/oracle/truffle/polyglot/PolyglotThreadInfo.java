@@ -103,7 +103,7 @@ final class PolyglotThreadInfo {
 
     /**
      * Not to be used directly. Use
-     * {@link PolyglotEngineImpl#enter(PolyglotContextImpl, Node, boolean)} instead.
+     * {@link PolyglotEngineImpl#enter(PolyglotContextImpl, boolean, Node, boolean)} instead.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
     PolyglotContextImpl enterInternal() {
@@ -119,7 +119,7 @@ final class PolyglotThreadInfo {
 
     /**
      * Not to be used directly. Use
-     * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl)} instead.
+     * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl, boolean)} instead.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
     void leaveInternal(PolyglotContextImpl prev) {

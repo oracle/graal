@@ -599,10 +599,13 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Performs language context finalization actions that are necessary before language contexts
-     * are {@link #disposeContext(Object) disposed}. All installed languages must remain usable
-     * after finalization. The finalization order can be influenced by specifying
-     * {@link Registration#dependentLanguages() language dependencies}. By default internal
-     * languages are finalized last, otherwise the default order is unspecified but deterministic.
+     * are {@link #disposeContext(Object) disposed}. However, in case the underlying polyglot
+     * context is being cancelled, {@link #disposeContext(Object)} is called even if
+     * {@link #finalizeContext(Object)} throws a {@link TruffleException} or a {@link ThreadDeath}
+     * exception. All installed languages must remain usable after finalization. The finalization
+     * order can be influenced by specifying {@link Registration#dependentLanguages() language
+     * dependencies}. By default internal languages are finalized last, otherwise the default order
+     * is unspecified but deterministic.
      * <p>
      * While finalization code is run, other language contexts may become initialized. In such a
      * case, the finalization order may be non-deterministic and/or not respect the order specified
@@ -670,7 +673,10 @@ public abstract class TruffleLanguage<C> {
      * resources associated with a context. The context may become unusable after it was disposed.
      * It is not allowed to run guest language code while disposing a context. Finalization code
      * should be run in {@link #finalizeContext(Object)} instead. Finalization will be performed
-     * prior to context {@link #disposeContext(Object) disposal}.
+     * prior to context {@link #disposeContext(Object) disposal}. However, in case the underlying
+     * polyglot context is being cancelled, {@link #disposeContext(Object)} is called even if
+     * {@link #finalizeContext(Object)} throws {@link TruffleException} or {@link ThreadDeath}
+     * exception..
      * <p>
      * The disposal order can be influenced by specifying {@link Registration#dependentLanguages()
      * language dependencies}. By default internal languages are disposed last, otherwise the

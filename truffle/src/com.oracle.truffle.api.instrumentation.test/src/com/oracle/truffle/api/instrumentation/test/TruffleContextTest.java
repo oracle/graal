@@ -217,6 +217,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             assertSame(getCancelExecutionLocation(e), node);
             assertEquals("testreason", ((Throwable) e).getMessage());
         });
+
         tc.leave(null, prev);
     }
 

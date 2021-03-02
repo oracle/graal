@@ -115,15 +115,7 @@ final class PolyglotThread extends Thread {
         @TruffleBoundary
         private static Object executeImpl(PolyglotLanguageContext languageContext, PolyglotThread thread, PolyglotThreadRunnable run) {
             PolyglotContextImpl prev;
-            try {
-                prev = languageContext.enterThread(thread);
-            } catch (PolyglotEngineException polyglotException) {
-                if (polyglotException.closingContext) {
-                    return null;
-                } else {
-                    throw polyglotException;
-                }
-            }
+            prev = languageContext.enterThread(thread);
             assert prev == null; // is this assertion correct?
             try {
                 run.execute();

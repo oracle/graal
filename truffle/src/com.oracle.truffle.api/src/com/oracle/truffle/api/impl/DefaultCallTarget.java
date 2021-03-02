@@ -82,16 +82,14 @@ public final class DefaultCallTarget implements RootCallTarget {
         final DefaultVirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), args);
         DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, callNode);
         try {
-            return rootNode.execute(frame);
+            Object toRet = rootNode.execute(frame);
+            TruffleSafepoint.poll(rootNode);
+            return toRet;
         } catch (Throwable t) {
             DefaultRuntimeAccessor.LANGUAGE.onThrowable(callNode, this, t, frame);
             throw t;
         } finally {
-            try {
-                TruffleSafepoint.poll(rootNode);
-            } finally {
-                getRuntime().popFrame(callerFrame);
-            }
+            getRuntime().popFrame(callerFrame);
         }
     }
 

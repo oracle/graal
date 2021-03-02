@@ -64,7 +64,7 @@ final class PolyglotStackFramesRetriever {
         Future<Void> future;
         synchronized (context) {
             threads = context.getSeenThreads().keySet().toArray(new Thread[0]);
-            if (!context.closed) {
+            if (!context.state.isClosed()) {
                 future = context.threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, new ThreadLocalAction(false, false) {
                     @Override
                     protected void perform(Access access) {

@@ -93,6 +93,7 @@ import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -726,7 +727,7 @@ final class EngineAccessor extends Accessor {
                 useLocation = engine.getUncachedLocation();
             }
             if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
-                return engine.enter(context, useLocation, true);
+                return engine.enter(context, true, useLocation, true, false);
             } else {
                 return enterInternalContextBoundary(context, useLocation, engine);
             }
@@ -734,7 +735,7 @@ final class EngineAccessor extends Accessor {
 
         @TruffleBoundary
         private static Object enterInternalContextBoundary(PolyglotContextImpl context, Node location, PolyglotEngineImpl engine) {
-            return engine.enter(context, location, true);
+            return engine.enter(context, true, location, true, false);
         }
 
         @Override
@@ -743,7 +744,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl context = ((PolyglotContextImpl) impl);
             PolyglotEngineImpl engine = resolveEngine(node, context);
             if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
-                engine.leave((PolyglotContextImpl) prev, context);
+                engine.leave((PolyglotContextImpl) prev, context, true);
             } else {
                 leaveInternalContextBoundary(prev, context, engine);
             }
@@ -751,7 +752,7 @@ final class EngineAccessor extends Accessor {
 
         @TruffleBoundary
         private static void leaveInternalContextBoundary(Object prev, PolyglotContextImpl context, PolyglotEngineImpl engine) {
-            engine.leave((PolyglotContextImpl) prev, context);
+            engine.leave((PolyglotContextImpl) prev, context, true);
         }
 
         private static PolyglotEngineImpl resolveEngine(Node node, PolyglotContextImpl context) {
@@ -783,6 +784,9 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl impl;
             synchronized (creator.context) {
                 impl = new PolyglotContextImpl(creator, config);
+                creator.context.engine.noInnerContexts.invalidate();
+                creator.context.addChildContext(impl);
+                PolyglotContextImpl.initializeStaticContext(impl);
                 impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().contextDispatch, impl, creator.context.engine.api);
             }
             synchronized (impl) {
@@ -1308,16 +1312,15 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isContextClosed(Object polyglotContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
-            if (context.invalid && context.closingThread != Thread.currentThread()) {
-                return true;
-            }
-            return context.closed;
+            PolyglotContextImpl.State localContextState = context.state;
+            return localContextState.isInvalidOrClosed();
         }
 
         @Override
         public boolean isContextCancelling(Object polyglotContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
-            return context.cancelling;
+            PolyglotContextImpl.State localContextState = context.state;
+            return localContextState.isCancelling();
         }
 
         @Override
@@ -1350,9 +1353,9 @@ final class EngineAccessor extends Accessor {
                     throw PolyglotEngineException.illegalState(String.format("The context is currently active on the current thread but another different context is entered as top-most context. " +
                                     "Leave or close the top-most context first or close the context on a separate thread to resolve this problem."));
                 }
-                context.cancel(resourceExhaused, resourceExhausedReason, !entered);
+                context.cancel(resourceExhaused, resourceExhausedReason);
                 if (entered) {
-                    throw context.createCancelException(closeLocation);
+                    TruffleSafepoint.pollHere(closeLocation != null ? closeLocation : context.engine.getUncachedLocation());
                 }
             } else {
                 synchronized (context) {
@@ -1361,7 +1364,8 @@ final class EngineAccessor extends Accessor {
                      * context which could lead to the following IllegalStateException if the
                      * cancelling flag was not checked.
                      */
-                    if (context.isActiveNotCancelled(false) && !context.cancelling) {
+                    PolyglotContextImpl.State localContextState = context.state;
+                    if (context.isActiveNotCancelled(false) && !localContextState.isCancelling()) {
                         /*
                          * Polyglot threads are still allowed to run at this point. They are
                          * required to be finished after finalizeContext.
@@ -1369,7 +1373,8 @@ final class EngineAccessor extends Accessor {
                         throw new IllegalStateException("The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
                     }
                 }
-                context.closeImpl(false, false, true);
+                context.closeImpl(true);
+                context.finishCleanup();
             }
         }
 
