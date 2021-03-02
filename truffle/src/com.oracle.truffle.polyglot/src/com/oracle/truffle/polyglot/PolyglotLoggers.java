@@ -51,7 +51,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -313,7 +312,7 @@ final class PolyglotLoggers {
      */
     private static final class ContextLogHandler extends Handler {
 
-        private final Reference<PolyglotContextImpl> contextRef;
+        private final WeakReference<PolyglotContextImpl> contextRef;
 
         ContextLogHandler(PolyglotContextImpl context) {
             this.contextRef = new WeakReference<>(context);

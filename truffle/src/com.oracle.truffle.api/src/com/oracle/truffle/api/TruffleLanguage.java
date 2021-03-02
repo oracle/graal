@@ -3399,8 +3399,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Find or create a context-bound logger. The returned TruffleLogger always uses a logging
-         * handler and options from this execution environment context.
+         * Find or create a context-bound logger. The returned {@link TruffleLogger} always uses a
+         * logging handler and options from this execution environment context and does not depend
+         * on being entered on any thread.
          * <p>
          * If a logger with a given name already exists it's returned. Otherwise, a new logger is
          * created.
@@ -3411,8 +3412,8 @@ public abstract class TruffleLanguage<C> {
          * There may be more logger instances having the same name but each bound to a different
          * context. Languages should never store the returned logger into a static field. If the
          * context policy is more permissive than {@link ContextPolicy#EXCLUSIVE} the returned
-         * logger must not be stored in a TruffleLanguage subclass. A new logger must be always
-         * created in the {@link TruffleLanguage#initializeContext(Object)} method.
+         * logger must not be stored in a TruffleLanguage subclass. It is recommended to create all
+         * language loggers in {@link TruffleLanguage#createContext(Env)}.
          *
          * @param loggerName the the name of a {@link TruffleLogger}, if a {@code loggerName} is
          *            null or empty a root logger for language or instrument is returned
@@ -3428,8 +3429,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Find or create a context-bound logger. The returned TruffleLogger always uses a logging
-         * handler and options from this execution environment context.
+         * Find or create a context-bound logger. The returned {@link TruffleLogger} always uses a
+         * logging handler and options from this execution environment context and does not depend
+         * on being entered on any thread.
          * <p>
          * If a logger with a given name already exists it's returned. Otherwise, a new logger is
          * created.
@@ -3440,8 +3442,8 @@ public abstract class TruffleLanguage<C> {
          * There may be more logger instances having the same name but each bound to a different
          * context. Languages should never store the returned logger into a static field. If the
          * context policy is more permissive than {@link ContextPolicy#EXCLUSIVE} the returned
-         * logger must not be stored in a TruffleLanguage subclass. A new logger must be always
-         * created in the {@link TruffleLanguage#initializeContext(Object)} method.
+         * logger must not be stored in a TruffleLanguage subclass. It is recommended to create all
+         * language loggers in {@link TruffleLanguage#createContext(Env)}.
          *
          * @param forClass the {@link Class} to create a logger for
          * @return a {@link TruffleLogger}

@@ -108,6 +108,8 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.graalvm.collections.Pair;
 
 public class ContextPreInitializationTest {
@@ -1047,9 +1049,9 @@ public class ContextPreInitializationTest {
         try (Context ctx = Context.newBuilder().option(loggerLevelOptionName, "FINEST").logHandler(testHandler).build()) {
             Value res = ctx.eval(Source.create(FIRST, "test"));
             assertEquals("test", res.asString());
-            assertEquals(2, testHandler.logs.size());
-            assertEquals("patch:info", testHandler.logs.get(0).getMessage());
-            assertEquals("patch:finest", testHandler.logs.get(1).getMessage());
+            Set<String> messages = testHandler.logs.stream().map(LogRecord::getMessage).collect(Collectors.toSet());
+            assertTrue(messages.contains("patch:info"));
+            assertTrue(messages.contains("patch:finest"));
         }
     }
 
