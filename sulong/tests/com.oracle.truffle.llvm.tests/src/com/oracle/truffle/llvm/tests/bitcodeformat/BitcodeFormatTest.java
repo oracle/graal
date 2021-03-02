@@ -29,42 +29,37 @@
  */
 package com.oracle.truffle.llvm.tests.bitcodeformat;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.llvm.tests.Platform;
-import com.oracle.truffle.llvm.tests.TestCaseCollector;
-import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
-import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import org.graalvm.polyglot.Context;
-
-import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.tck.TruffleRunner;
-import org.junit.Assume;
-import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runners.Parameterized;
-
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
+import com.oracle.truffle.llvm.tests.TestCaseCollector;
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
+import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.tests.util.ProcessUtil;
+import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
 public class BitcodeFormatTest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
@@ -94,33 +89,13 @@ public class BitcodeFormatTest {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() throws IOException {
-        Set<String> blacklist = getBlacklist();
         Map<String, String> excluded = TestCaseCollector.getExcludedTests(BitcodeFormatTest.class);
-        Collection<Object[]> testlist = Files.list(testBase).map(f -> new Object[]{f, f.getFileName().toString(), excluded.get(f.getFileName().toString())}).collect(Collectors.toList());
-        testlist.removeIf(t -> blacklist.contains(t[0].toString()));
-        return testlist;
-    }
-
-    protected static Set<String> getBlacklist() {
-        Set<String> blacklist = new HashSet<>();
-
-        if (Platform.isAArch64()) {
-            blacklist.addAll(Arrays.asList(
-                            "hello-linux-link-fembed-bitcode", "hello-linux-link-fembed-bitcode.so"));
-        }
-
-        return blacklist;
+        return Files.list(testBase).map(f -> new Object[]{f, f.getFileName().toString(), excluded.get(f.getFileName().toString())}).collect(Collectors.toList());
     }
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
     @Parameter(value = 2) public String exclusionReason;
-
-    @Before
-    public void checkOS() {
-        Assume.assumeTrue("Linux only test", !Platform.isDarwin() || !testName.contains("linux-link"));
-        Assume.assumeTrue("Darwin only test", Platform.isDarwin() || !testName.contains("darwin-link"));
-    }
 
     @Test
     public void test() throws IOException {
