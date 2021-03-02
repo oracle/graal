@@ -3501,7 +3501,8 @@ public abstract class TruffleLanguage<C> {
          * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
-         * {@link Interruptible}.
+         * {@link Interruptible}. If the underlying polyglot context is already closed, the method
+         * returns a completed {@link Future}.
          *
          * @param threads the threads to execute the action on. <code>null</code> for all threads
          * @param action the action to perform on that thread.

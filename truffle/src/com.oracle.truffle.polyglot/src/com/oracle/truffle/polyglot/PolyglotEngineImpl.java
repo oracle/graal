@@ -69,6 +69,11 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -102,18 +107,13 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -197,7 +197,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
 
-    private volatile CancelHandler cancelHandler;
     // field used by the TruffleRuntime implementation to persist state per Engine
     final Object runtimeData;
     Map<String, Level> logLevels;    // effectively final
@@ -1064,7 +1063,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                         context.checkSubProcessFinished();
                     }
                     if (cancelIfExecuting) {
-                        getCancelHandler().cancel(localContexts);
+                        cancel(localContexts);
                     }
                 }
 
@@ -1356,111 +1355,75 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    CancelHandler getCancelHandler() {
-        if (cancelHandler == null) {
-            synchronized (this.lock) {
-                if (cancelHandler == null) {
-                    cancelHandler = new CancelHandler();
-                }
-            }
-        }
-        return cancelHandler;
-
+    void cancel(List<PolyglotContextImpl> localContexts) {
+        cancelOrInterrupt(localContexts, 0, null);
     }
 
-    final class CancelHandler {
-        private final Instrumenter instrumenter;
-        private volatile EventBinding<?> cancellationBinding;
-        private int cancellationUsers;
-
-        CancelHandler() {
-            this.instrumenter = (Instrumenter) INSTRUMENT.getEngineInstrumenter(instrumentationHandler);
-        }
-
-        void cancel(List<PolyglotContextImpl> localContexts) {
-            cancel(localContexts, 0, null);
-        }
-
-        boolean cancel(List<PolyglotContextImpl> localContexts, long startMillis, Duration timeout) {
-            boolean cancelling = false;
-            for (PolyglotContextImpl context : localContexts) {
-                if (context.cancelling || context.interrupting) {
-                    cancelling = true;
-                    break;
-                }
+    boolean cancelOrInterrupt(List<PolyglotContextImpl> localContexts, long startMillis, Duration timeout) {
+        boolean cancelling = false;
+        for (PolyglotContextImpl context : localContexts) {
+            if (context.cancelling || context.interrupting) {
+                cancelling = true;
+                break;
             }
-            if (cancelling) {
-                enableCancel();
-                try {
+        }
+        if (cancelling) {
+            List<Future<Void>> futures = new ArrayList<>();
+            try {
+                for (PolyglotContextImpl context : localContexts) {
+                    futures.addAll(context.submitCancellationThreadLocals());
+                }
+                for (PolyglotContextImpl context : localContexts) {
+                    context.sendInterrupt();
+                }
+                if (timeout == null) {
                     for (PolyglotContextImpl context : localContexts) {
-                        context.sendInterrupt();
+                        context.waitForClose();
                     }
-                    if (timeout == null) {
-                        for (PolyglotContextImpl context : localContexts) {
-                            context.waitForClose();
+                } else {
+                    long cancelTimeoutMillis = timeout != Duration.ZERO ? timeout.toMillis() : 0;
+                    boolean success = true;
+                    for (PolyglotContextImpl context : localContexts) {
+                        if (!context.waitForThreads(startMillis, cancelTimeoutMillis)) {
+                            success = false;
                         }
-                    } else {
-                        long cancelTimeoutMillis = timeout != Duration.ZERO ? timeout.toMillis() : 0;
-                        boolean success = true;
-                        for (PolyglotContextImpl context : localContexts) {
-                            if (!context.waitForThreads(startMillis, cancelTimeoutMillis)) {
-                                success = false;
-                            }
-                        }
-                        return success;
                     }
-                } finally {
-                    disableCancel();
+                    return success;
                 }
-            }
-            return true;
-        }
-
-        void enableCancel() {
-            synchronized (PolyglotEngineImpl.this.lock) {
-                if (cancellationBinding == null) {
-                    cancellationBinding = instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
-                        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                            cancelExecution(context);
-                        }
-
-                        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                            if (!(exception instanceof CancelExecution)) {
-                                cancelExecution(context);
+            } finally {
+                for (Future<Void> future : futures) {
+                    AtomicBoolean timedOut = new AtomicBoolean();
+                    TruffleSafepoint.setBlockedThreadInterruptible(getUncachedLocation(), new TruffleSafepoint.Interruptible<Future<Void>>() {
+                        @Override
+                        public void apply(Future<Void> cancelationFuture) throws InterruptedException {
+                            try {
+                                if (timeout != null) {
+                                    long timeElapsed = System.currentTimeMillis() - startMillis;
+                                    long timeoutMillis = timeout.toMillis();
+                                    if (timeElapsed < timeoutMillis) {
+                                        try {
+                                            cancelationFuture.get(timeoutMillis - timeElapsed, TimeUnit.MILLISECONDS);
+                                        } catch (TimeoutException te) {
+                                            timedOut.set(true);
+                                        }
+                                    } else {
+                                        timedOut.set(true);
+                                    }
+                                } else {
+                                    cancelationFuture.get();
+                                }
+                            } catch (ExecutionException e) {
+                                throw CompilerDirectives.shouldNotReachHere(e);
                             }
                         }
-
-                        public void onEnter(EventContext context, VirtualFrame frame) {
-                            cancelExecution(context);
-                        }
-
-                        @TruffleBoundary
-                        private void cancelExecution(EventContext eventContext) {
-                            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-                            if (context.invalid || context.cancelling) {
-                                throw context.createCancelException(eventContext.getInstrumentedNode());
-                            } else if (context.interrupting) {
-                                throw new InterruptExecution(eventContext.getInstrumentedNode());
-                            }
-                        }
-                    });
-                }
-                cancellationUsers++;
-            }
-        }
-
-        private void disableCancel() {
-            synchronized (PolyglotEngineImpl.this.lock) {
-                int usersLeft = --cancellationUsers;
-                if (usersLeft <= 0) {
-                    EventBinding<?> b = cancellationBinding;
-                    if (b != null) {
-                        b.dispose();
+                    }, future);
+                    if (timedOut.get()) {
+                        return false;
                     }
-                    cancellationBinding = null;
                 }
             }
         }
+        return true;
     }
 
     @SuppressWarnings("serial")
@@ -1868,6 +1831,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
                 return prev;
             } else {
+                /*
+                 * If we go this path and enteredCount drops to 0, the subsequent slowpath enter
+                 * must call deactivateThread.
+                 */
                 info.leaveInternal(prev);
                 enterReverted = true;
             }

@@ -64,9 +64,20 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.Source;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 public class ResourceLimitsTest {
+
+    @Rule public TestName testNameRule = new TestName();
+
+    @After
+    public void checkInterrupted() {
+        Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());
+    }
 
     @Test
     public void testStatementLimit() {

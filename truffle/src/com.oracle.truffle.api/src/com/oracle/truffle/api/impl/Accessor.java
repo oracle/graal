@@ -531,6 +531,10 @@ public abstract class Accessor {
 
         public abstract boolean isContextCancelling(Object polyglotContext);
 
+        public abstract Future<Void> pause(Object polyglotContext);
+
+        public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
+
         public abstract <T, G> Iterator<T> mergeHostGuestFrames(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor);
 
