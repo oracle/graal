@@ -576,6 +576,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public Object getLoggersSPI(Object loggerCache) {
+            return ((TruffleLogger.LoggerCache) loggerCache).getSPI();
+        }
+
+        @Override
         public void closeEngineLoggers(Object loggers) {
             ((TruffleLogger.LoggerCache) loggers).close();
         }

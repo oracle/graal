@@ -1786,7 +1786,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             synchronized (this.lock) {
                 res = engineLoggers;
                 if (res == null) {
-                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.createEngineSPI(this), logLevels);
+                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.LoggerCache.newEngineLoggerCache(this), logLevels);
                     for (ContextWeakReference contextRef : contexts) {
                         PolyglotContextImpl context = contextRef.get();
                         if (context != null && !context.config.logLevels.isEmpty()) {

@@ -1080,7 +1080,7 @@ public final class TruffleLogger {
             return result;
         }
 
-        private Object getSPI() {
+        Object getSPI() {
             return this.loggerCache;
         }
 

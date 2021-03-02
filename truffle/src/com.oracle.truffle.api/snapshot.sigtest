@@ -485,6 +485,8 @@ meth public com.oracle.truffle.api.TruffleFile getPublicTruffleFile(java.lang.St
 meth public com.oracle.truffle.api.TruffleFile getPublicTruffleFile(java.net.URI)
 meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.lang.String,java.util.function.Predicate<com.oracle.truffle.api.TruffleFile>)
 meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.net.URI,java.util.function.Predicate<com.oracle.truffle.api.TruffleFile>)
+meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)
+meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()

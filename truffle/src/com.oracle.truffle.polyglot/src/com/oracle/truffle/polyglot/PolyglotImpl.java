@@ -234,7 +234,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, useAllowExperimentalOptions);
 
             logHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(logConfig, dispatchErr);
-            EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels, logConfig.logFile);
+            EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
 
             impl = (PolyglotEngineImpl) EngineAccessor.RUNTIME.tryLoadCachedEngine(engineOptions, loggerProvider);
             if (impl == null && boundEngine && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
@@ -324,7 +324,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream out = INSTRUMENT.createDispatchOutput(System.out);
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
-        EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels, logConfig.logFile);
+        EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(), true, true, null, logHandler);
         // ready for use -> allowed to escape instance
