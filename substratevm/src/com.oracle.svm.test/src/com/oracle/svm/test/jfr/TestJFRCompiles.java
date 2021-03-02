@@ -24,10 +24,7 @@ package com.oracle.svm.test.jfr;
 
 import jdk.jfr.Recording;
 
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
-
-import java.io.RandomAccessFile;
 
 public class TestJFRCompiles {
 

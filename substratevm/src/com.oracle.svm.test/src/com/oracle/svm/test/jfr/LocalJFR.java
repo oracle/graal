@@ -43,7 +43,7 @@ public class LocalJFR implements JFR {
         return startRecording(new Recording(c), recordingName);
     }
 
-    private Recording startRecording(Recording recording, String name) throws Exception {
+    private static Recording startRecording(Recording recording, String name) throws Exception {
         long id = recording.getId();
 
         Path destination = File.createTempFile(name + "-" + id, ".jfr").toPath();
