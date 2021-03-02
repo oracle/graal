@@ -54,7 +54,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -63,7 +62,6 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -2284,42 +2282,12 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @TruffleBoundary
     public @Host(String[].class) StaticObject JVM_GetVmArguments() {
-        OptionMap<String> argsMap = getContext().getEnv().getOptions().get(EspressoOptions.VMArguments);
-        if (argsMap == null) {
-            return getMeta().java_lang_String.allocateReferenceArray(0);
+        String[] vmArgs = getContext().getVmArguments();
+        StaticObject array = getMeta().java_lang_String.allocateReferenceArray(vmArgs.length);
+        for (int i = 0; i < vmArgs.length; i++) {
+            getInterpreterToVM().setArrayObject(getMeta().toGuestString(vmArgs[i]), i, array);
         }
-        Set<Map.Entry<String, String>> set = argsMap.entrySet();
-        int length = set.size();
-        StaticObject array = getMeta().java_lang_String.allocateReferenceArray(length);
-        for (Map.Entry<String, String> entry : set) {
-            try {
-                String key = entry.getKey();
-                int idx = Integer.parseInt(key.substring(key.lastIndexOf('.') + 1));
-                StaticObject str = getMeta().toGuestString(entry.getValue());
-                if (idx < 0 || idx >= length) {
-                    getLogger().warning("Unsupported use of the 'java.VMArguments' option: " +
-                                    "Declared index: " + idx + ", actual number of arguments: " + length + ".\n" +
-                                    "Please only declare positive index starting from 0, and growing by 1 each.");
-                    return getMeta().java_lang_String.allocateReferenceArray(0);
-                }
-                getInterpreterToVM().setArrayObject(str, idx, array);
-            } catch (NumberFormatException e) {
-                getLogger().warning("Unsupported use of the 'java.VMArguments' option: java.VMArguments." + entry.getKey() + "=" + entry.getValue() + "\n" +
-                                "Should be of the form: java.VMArguments.<int>=<value>");
-                return getMeta().java_lang_String.allocateReferenceArray(0);
-            }
-        }
-        // Invariant enforced by the checks in the loop above.
-        assert noNullEntry(array);
-
         return array;
-    }
-
-    private static boolean noNullEntry(StaticObject array) {
-        for (Object entry : (Object[]) array.unwrap()) {
-            assert entry != null;
-        }
-        return true;
     }
 
     // region Management
