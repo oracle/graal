@@ -32,19 +32,17 @@ import java.util.List;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 
 public class TraversingQueue<E> implements SerialQueue<E> {
-    private final boolean priority;
-    private final boolean trace;
+    private final boolean firstTierPriority;
     List<E> firstTierEntries = new LinkedList<>();
-    LinkedList<E> lastTierEntries = new LinkedList<>();
+    List<E> lastTierEntries = new LinkedList<>();
 
-    public TraversingQueue(boolean priority, boolean trace) {
-        this.priority = priority;
-        this.trace = trace;
+    public TraversingQueue(boolean priority) {
+        this.firstTierPriority = priority;
     }
 
     @Override
     public void add(E x) {
-        if (!priority || task(x).isFirstTier()) {
+        if (task(x).isFirstTier() || !firstTierPriority) {
             firstTierEntries.add(x);
         } else {
             lastTierEntries.add(x);
@@ -52,26 +50,18 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public E poll() {
         if (firstTierEntries.isEmpty()) {
-            return maxFirstTier(lastTierEntries);
+            return poll(lastTierEntries);
         }
-        return maxFirstTier(firstTierEntries);
+        return poll(firstTierEntries);
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public E peek() {
-        throw new UnsupportedOperationException("Peek not supported!");
-    }
-
-    private E maxFirstTier(List<E> entries) {
+    private E poll(List<E> entries) {
         if (entries.isEmpty()) {
            return null;
         }
         List<E> toRemove = new ArrayList<>();
-        StringBuilder builder = new StringBuilder("Queue:[ ");
         long time = System.nanoTime();
         Iterator<E> it = entries.iterator();
         E max = it.next();
@@ -79,31 +69,21 @@ public class TraversingQueue<E> implements SerialQueue<E> {
         if (task(max).targetPreviouslyCompiled()) {
             return remove(max, entries);
         }
-        append(builder, task(max), maxWeight);
         while (it.hasNext()) {
             E entry = it.next();
-            if (task(entry).targetPreviouslyCompiled()) {
+            CompilationTask task = task(entry);
+            if (task.targetPreviouslyCompiled()) {
                 return remove(entry, entries);
             }
-            CompilationTask task = task(entry);
             double weight = task.weight(time);
-            if (task(entry).isCancelled() || weight < 0) {
+            if (task.isCancelled() || weight < 0) {
                 toRemove.add(entry);
                 continue;
             }
-            append(builder, task, weight);
             if (weight > maxWeight) {
                 maxWeight = weight;
                 max = entry;
             }
-        }
-        builder.append("]");
-        builder.append(System.lineSeparator());
-        builder.append("Picked: ");
-        append(builder, task(max), maxWeight);
-        builder.append(" ").append(task(max).name());
-        if (trace) {
-            System.out.println(builder);
         }
         remove(toRemove, entries);
         return remove(max, entries);
@@ -117,15 +97,12 @@ public class TraversingQueue<E> implements SerialQueue<E> {
         }
     }
 
-    private StringBuilder append(StringBuilder builder, CompilationTask task, double maxWeight) {
-        return builder.append(task.getId()).append(":").append(maxWeight).append(" ");
-    }
-
     private E remove(E max, List<E> entries) {
         entries.remove(max);
         return max;
     }
 
+    @SuppressWarnings("unchecked")
     private CompilationTask task(E entry) {
         return ((CompilationTask.ExecutorServiceWrapper) entry).getCompileTask();
     }
@@ -154,5 +131,10 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     @Override
     public int internalCapacity() {
         return 0;
+    }
+
+    @Override
+    public E peek() {
+        throw new UnsupportedOperationException("Peek not supported!");
     }
 }

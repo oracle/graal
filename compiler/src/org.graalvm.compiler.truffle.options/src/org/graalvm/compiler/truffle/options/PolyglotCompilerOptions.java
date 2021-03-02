@@ -509,8 +509,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Use a configurable compilation queue.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> ConfigurableCompilationQueue = new OptionKey<>(false);
 
-    @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraceCompilationQueue = new OptionKey<>(false);
+    @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
+
     // Language agnostic inlining
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL)

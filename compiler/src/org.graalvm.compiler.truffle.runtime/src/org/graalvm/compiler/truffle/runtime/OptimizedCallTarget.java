@@ -154,7 +154,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         highestCompiledTier = Math.max(highestCompiledTier, tier);
     }
 
-    public int getHighestCompiledTier() {
+    public int highestCompiledTier() {
         return highestCompiledTier;
     }
 
