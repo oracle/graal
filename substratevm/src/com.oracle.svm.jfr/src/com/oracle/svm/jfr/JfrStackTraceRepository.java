@@ -110,6 +110,11 @@ public class JfrStackTraceRepository implements JfrRepository {
         // TODO: write the stack traces to the file
     }
 
+    @Override
+    public boolean hasItems() {
+        return table.getSize() > 0;
+    }
+
     /**
      * Stateless stack visitor that can be used to collect a JFR stack trace.
      */

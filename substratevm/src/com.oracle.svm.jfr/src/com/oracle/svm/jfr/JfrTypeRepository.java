@@ -66,4 +66,9 @@ public class JfrTypeRepository implements JfrRepository {
             throw new RuntimeException(ex);
         }
     }
+
+    @Override
+    public boolean hasItems() {
+        return count > 0;
+    }
 }

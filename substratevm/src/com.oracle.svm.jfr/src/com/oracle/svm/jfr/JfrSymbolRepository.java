@@ -95,6 +95,11 @@ public class JfrSymbolRepository implements JfrRepository {
         // symbol.getReplaceDotWithSlash() when writing the data.
     }
 
+    @Override
+    public boolean hasItems() {
+        return table.getSize() > 0;
+    }
+
     @RawStructure
     private interface JfrSymbol extends UninterruptibleEntry<JfrSymbol> {
         @PinnedObjectField

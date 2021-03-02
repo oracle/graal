@@ -31,4 +31,5 @@ import java.io.IOException;
  */
 public interface JfrSerializer {
     void write(JfrChunkWriter writer) throws IOException;
+    boolean hasItems();
 }

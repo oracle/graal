@@ -40,4 +40,6 @@ public interface JfrRepository {
      * changed.
      */
     void write(JfrChunkWriter writer) throws IOException;
+
+    boolean hasItems();
 }

@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -193,7 +194,20 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         writeCompressedLong(0); // duration
         writeCompressedLong(0); // deltaToNext
         file.writeBoolean(true); // flush
-        writeCompressedInt(serializers.length + repositories.length); // pools size
+        int count = 0;
+        // TODO: This should be simplified, serializers and repositories can probably go under the same
+        // structure.
+        for (JfrSerializer serializer : serializers) {
+            if (serializer.hasItems()) {
+                count++;
+            }
+        }
+        for (JfrRepository repository : repositories) {
+            if (repository.hasItems()) {
+                count++;
+            }
+        }
+        writeCompressedInt(count); // pools size
         writeSerializers(serializers);
         writeRepositories(repositories);
         endEvent(start);
@@ -202,14 +216,18 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private void writeSerializers(JfrSerializer[] serializers) throws IOException {
-        for (int i = 0; i < serializers.length; i++) {
-            serializers[i].write(this);
+        for (JfrSerializer serializer : serializers) {
+            if (serializer.hasItems()) {
+                serializer.write(this);
+            }
         }
     }
 
     private void writeRepositories(JfrRepository[] constantPools) throws IOException {
-        for (int i = 0; i < constantPools.length; i++) {
-            constantPools[i].write(this);
+        for (JfrRepository constantPool : constantPools) {
+            if (constantPool.hasItems()) {
+                constantPool.write(this);
+            }
         }
     }
 
@@ -311,6 +329,33 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
         file.write((byte) (v | 0x80L)); // 49-55
         file.write((byte) (v >>> 7)); // 56-63, last byte as is.
+    }
+
+    public enum StringEncoding {
+        NULL(0),
+        EMPTY_STRING(1),
+        CONSTANT_POOL(2),
+        UTF8_BYTE_ARRAY(3),
+        CHAR_ARRAY(4),
+        LATIN1_BYTE_ARRAY(5);
+        private byte byteValue;
+        StringEncoding(int byteValue) {
+            this.byteValue = (byte) byteValue;
+        }
+    }
+
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+
+    public void writeString(String str) throws IOException {
+        // TODO: Implement writing strings in the other encodings
+        if (str.isEmpty()) {
+            file.writeByte(StringEncoding.EMPTY_STRING.byteValue);
+        } else {
+            file.writeByte(StringEncoding.UTF8_BYTE_ARRAY.byteValue);
+            ByteBuffer bytes = UTF8.encode(str);
+            writeCompressedInt(bytes.limit() - bytes.position());
+            file.write(bytes.array(), bytes.position(), bytes.limit());
+        }
     }
 
     private static int makePaddedInt(long sizeWritten) {

@@ -40,8 +40,14 @@ public class JfrFrameTypeSerializer implements JfrSerializer {
 
         JfrFrameType[] values = JfrFrameType.values();
         writer.writeCompressedLong(values.length);
-        for (JfrFrameType value : values) {
-            // TODO: write value.getText() in the correct encoding.
+        for (int i = 0; i < values.length; i++) {
+            writer.writeCompressedInt(i);
+            writer.writeString(values[i].getText());
         }
+    }
+
+    @Override
+    public boolean hasItems() {
+        return JfrFrameType.values().length > 0;
     }
 }

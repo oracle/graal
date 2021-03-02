@@ -78,6 +78,9 @@ public class JfrMethodRepository implements JfrRepository {
     @Override
     public void write(JfrChunkWriter writer) throws IOException {
         assert VMOperation.isInProgressAtSafepoint();
+        if (count == 0) {
+            return;
+        }
         writer.writeCompressedLong(JfrTypes.Method.getId());
         writer.writeCompressedLong(count);
 
@@ -92,6 +95,11 @@ public class JfrMethodRepository implements JfrRepository {
                 writer.writeBoolean(false); // hidden
             }
         }
+    }
+
+    @Override
+    public boolean hasItems() {
+        return count > 0;
     }
 
     // TODO: just a dummy implementation
