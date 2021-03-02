@@ -1,6 +1,6 @@
 ; ModuleID = 'fptosi1.bc'
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @.str.i1_46 = private unnamed_addr constant [23 x i8] c"i1 -4.0 = %2d (%0.8x)\0A\00", align 1
 @.str.i1_47 = private unnamed_addr constant [23 x i8] c"i1 -3.0 = %2d (%0.8x)\0A\00", align 1
