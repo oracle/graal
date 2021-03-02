@@ -106,7 +106,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getClassIdNonIntrinsic}. */
     @Substitute
     public static long getClassIdNonIntrinsic(Class<?> clazz) {
-        return JfrTraceId.load(clazz);
+        return SubstrateJVM.get().getClassId(clazz);
     }
 
     /** See {@link JVM#getPid}. */

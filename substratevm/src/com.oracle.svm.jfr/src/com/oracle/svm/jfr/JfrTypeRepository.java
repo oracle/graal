@@ -25,74 +25,47 @@
 package com.oracle.svm.jfr;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
+import com.oracle.svm.jfr.traceid.JfrTraceId;
+import com.oracle.svm.jfr.traceid.JfrTraceIdLoadBarrier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.VMOperation;
 
 public class JfrTypeRepository implements JfrRepository {
-    private final VMMutex mutex;
     private final JfrSymbolRepository symbolRepo;
-    @UnknownObjectField(types = boolean[].class) private boolean[] usedTypes;
-
-    private int count;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTypeRepository(JfrSymbolRepository symbolRepo) {
-        this.mutex = new VMMutex();
         this.symbolRepo = symbolRepo;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void initialize(int typeCount) {
-        usedTypes = new boolean[typeCount];
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public long getClassId(Class<?> clazz) {
-        int typeId = DynamicHub.fromClass(clazz).getTypeID();
-
-        if (!usedTypes[typeId]) {
-            mutex.lockNoTransition();
-            try {
-                if (!usedTypes[typeId]) {
-                    usedTypes[typeId] = true;
-                    count++;
-                }
-            } finally {
-                mutex.unlock();
-            }
-        }
-
-        return typeId;
+        return JfrTraceId.load(clazz);
     }
 
     @Override
     public void write(JfrChunkWriter writer) throws IOException {
         assert VMOperation.isInProgressAtSafepoint();
         writer.writeCompressedLong(JfrTypes.Class.getId());
-        writer.writeCompressedLong(count);
+        writer.writeCompressedLong(JfrTraceIdLoadBarrier.klassCount(true));
 
-        // TODO: this won't work as the id doesn't match the order/index of the written data.
-        // JfrMethodRepository has a similar issue. Possible solutions are:
-        // - just write all klasses
-        // - use a long[] instead of the boolean[]
-        // - use an UninterruptibleHashmap
-        for (Class<?> clazz : Heap.getHeap().getClassList()) {
-            int id = DynamicHub.fromClass(clazz).getTypeID();
-            if (usedTypes[id]) {
-                usedTypes[id] = false;
-                writer.writeCompressedLong(0L); // classloader
-                writer.writeCompressedLong(symbolRepo.getSymbolId(clazz));
-                writer.writeCompressedLong(0); // package id
-                writer.writeCompressedLong(clazz.getModifiers());
-            }
+        Consumer<Class<?>> kc = aClass -> writeKlass(aClass, writer);
+        JfrTraceIdLoadBarrier.doKlasses(kc, true);
+    }
+
+    private void writeKlass(Class<?> clazz, JfrChunkWriter writer) {
+        try {
+            writer.writeCompressedLong(0L); // classloader
+            writer.writeCompressedLong(symbolRepo.getSymbolId(clazz));
+            writer.writeCompressedLong(0); // package id
+            writer.writeCompressedLong(clazz.getModifiers());
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
     }
 }

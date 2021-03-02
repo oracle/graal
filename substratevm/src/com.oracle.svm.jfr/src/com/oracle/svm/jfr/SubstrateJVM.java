@@ -40,7 +40,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadListener;
@@ -245,11 +244,6 @@ class SubstrateJVM {
     /** See {@link JVM#getClassId}. */
     public long getClassId(Class<?> clazz) {
         return typeRepo.getClassId(clazz);
-    }
-
-    /** See {@link JVM#getTypeId}. */
-    public long getTypeId(Class<?> clazz) {
-        return DynamicHub.fromClass(clazz).getTypeID();
     }
 
     /**

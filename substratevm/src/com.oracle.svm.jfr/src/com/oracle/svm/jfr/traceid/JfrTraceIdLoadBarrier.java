@@ -118,4 +118,8 @@ public class JfrTraceIdLoadBarrier {
             kc.accept(c);
         }
     }
+
+    public static long klassCount(boolean previousEpoch) {
+        return klassQueue(previousEpoch).size();
+    }
 }
