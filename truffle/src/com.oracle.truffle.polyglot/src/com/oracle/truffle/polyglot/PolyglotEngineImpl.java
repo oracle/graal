@@ -213,7 +213,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @CompilationFinal private HostToGuestCodeCache hostToGuestCodeCache;
 
     final SpecializationStatistics specializationStatistics;
-    final Function<String, TruffleLogger> engineLoggerSupplier;
+    Function<String, TruffleLogger> engineLoggerSupplier;   // effectively final
     private volatile TruffleLogger engineLogger;
 
     @CompilationFinal volatile StableLocalLocations contextLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
@@ -469,6 +469,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.logLevels = newLogConfig.logLevels;
         boolean wasStore = this.storeEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
+        this.engineLoggerSupplier = logSupplier;
+        this.engineLogger = null;
 
         intitializeStore(wasStore, storeEngine);
 

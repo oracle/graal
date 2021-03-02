@@ -1928,10 +1928,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         CompilerAsserts.neverPartOfCompilation();
 
         this.config = newConfig;
-        if (contextBoundLoggers != null) {
-            PolyglotLoggers.LoggerCache spi = (PolyglotLoggers.LoggerCache) EngineAccessor.LANGUAGE.getLoggersSPI(contextBoundLoggers);
-            spi.setLogHandler(this.config.logHandler);
-        }
         initializeStaticContext(this);
         if (!newConfig.logLevels.isEmpty()) {
             EngineAccessor.LANGUAGE.configureLoggers(this, newConfig.logLevels, getAllLoggers());

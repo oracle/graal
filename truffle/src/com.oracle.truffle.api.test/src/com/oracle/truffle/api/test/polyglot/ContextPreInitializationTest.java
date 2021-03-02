@@ -1003,6 +1003,68 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    public void testEngineBoundLoggers() throws Exception {
+        String loggerName = "engine";
+        String loggerLevelOptionName = String.format("log.%s.level", loggerName);
+        setPatchable(FIRST);
+        // In context pre-initialization there is no sdk Context to set log handler,
+        // logging is done to System.err
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine();
+            TruffleLogger log = getEngineLogger(engine);
+            log.log(Level.INFO, "preInit:info");
+            log.log(Level.FINEST, "preInit:finest");
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine();
+            TruffleLogger log = getEngineLogger(engine);
+            log.log(Level.INFO, "patch:info");
+            log.log(Level.FINEST, "patch:finest");
+        });
+        final PrintStream origErr = System.err;
+        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        String origLogFile = System.getProperty("polyglot.log.file");
+        try (PrintStream printStream = new PrintStream(preInitErr)) {
+            System.setErr(printStream);
+            System.setProperty("polyglot." + loggerLevelOptionName, "FINE");
+            System.clearProperty("polyglot.log.file");
+            doContextPreinitialize(FIRST);
+        } finally {
+            System.setErr(origErr);
+            System.clearProperty("polyglot." + loggerLevelOptionName);
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
+        }
+        final String preInitLog = preInitErr.toString("UTF-8");
+        assertTrue(preInitLog.contains("preInit:info"));
+        assertFalse(preInitLog.contains("preInit:finest"));
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        final TestHandler testHandler = new TestHandler(loggerName);
+        try (Context ctx = Context.newBuilder().option(loggerLevelOptionName, "FINEST").logHandler(testHandler).build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            assertEquals(2, testHandler.logs.size());
+            assertEquals("patch:info", testHandler.logs.get(0).getMessage());
+            assertEquals("patch:finest", testHandler.logs.get(1).getMessage());
+        }
+    }
+
+    private static TruffleLogger getEngineLogger(Object engine) {
+        try {
+            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl");
+            Method m = clz.getDeclaredMethod("getEngineLogger");
+            m.setAccessible(true);
+            return (TruffleLogger) m.invoke(engine);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
     public void testContextBoundLogger() throws Exception {
         String logger1Name = String.format("%s.bound", FIRST);
         String logger1LevelOptionName = String.format("log.%s.level", logger1Name);

@@ -51,6 +51,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -186,7 +187,7 @@ final class PolyglotLoggers {
 
         static final LoggerCache DEFAULT = new LoggerCache(PolyglotLogHandler.INSTANCE, null, true, null, Collections.emptySet());
 
-        private Handler handler;
+        private final Handler handler;
         private final boolean useCurrentContext;
         private final Map<String, Level> ownerLogLevels;
         private final Set<String> rawLoggerIds;
@@ -219,7 +220,7 @@ final class PolyglotLoggers {
         }
 
         static LoggerCache newContextLoggerCache(PolyglotContextImpl context) {
-            return new LoggerCache(context.config.logHandler, Objects.requireNonNull(context), false, context.config.logLevels, Collections.emptySet());
+            return new LoggerCache(new ContextLogHandler(context), Objects.requireNonNull(context), false, context.config.logLevels, Collections.emptySet());
         }
 
         public VMObject getOwner() {
@@ -228,10 +229,6 @@ final class PolyglotLoggers {
 
         public Handler getLogHandler() {
             return handler;
-        }
-
-        void setLogHandler(Handler newHandler) {
-            this.handler = newHandler;
         }
 
         public Map<String, Level> getLogLevels() {
@@ -243,7 +240,7 @@ final class PolyglotLoggers {
             }
             if (ownerLogLevels != null) {
                 if (getOwner() == null) {
-                    throw new AssertionError("Invalid sharing of bound TruffleLogger in AST nodes detected.");
+                    throw ContextLogHandler.invalidSharing();
                 }
                 return ownerLogLevels;
             }
@@ -307,6 +304,46 @@ final class PolyglotLoggers {
         private static Handler findDelegate() {
             final PolyglotContextImpl currentContext = getCurrentOuterContext();
             return currentContext != null ? currentContext.config.logHandler : null;
+        }
+    }
+
+    /**
+     * Delegates to the Context's logging Handler. The Context's logging Handler may be different in
+     * the context pre-inialization and the context execution time.
+     */
+    private static final class ContextLogHandler extends Handler {
+
+        private final Reference<PolyglotContextImpl> contextRef;
+
+        ContextLogHandler(PolyglotContextImpl context) {
+            this.contextRef = new WeakReference<>(context);
+        }
+
+        @Override
+        public void publish(final LogRecord record) {
+            findDelegate().publish(record);
+        }
+
+        @Override
+        public void flush() {
+            findDelegate().flush();
+        }
+
+        @Override
+        public void close() throws SecurityException {
+            findDelegate().close();
+        }
+
+        private Handler findDelegate() {
+            final PolyglotContextImpl context = contextRef.get();
+            if (context == null) {
+                throw invalidSharing();
+            }
+            return context.config.logHandler;
+        }
+
+        static AssertionError invalidSharing() {
+            throw new AssertionError("Invalid sharing of bound TruffleLogger in AST nodes detected.");
         }
     }
 
