@@ -276,7 +276,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Suites newSuites = this.lastTierSuites.copy();
         removeInliningPhase(newSuites);
         OptionValues options = debug.getOptions();
-        StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).useProfilingInfo(false).method(javaMethod).compilationId(compilationId).build();
 
         Plugins plugins = new Plugins(new InvocationPlugins());
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) lastTierProviders.getCodeCache();
