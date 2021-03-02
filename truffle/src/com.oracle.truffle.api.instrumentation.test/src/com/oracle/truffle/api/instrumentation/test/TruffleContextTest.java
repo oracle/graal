@@ -120,6 +120,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertFalse(tc.isEntered());
         assertFalse(tc.isClosed());
         assertFalse(tc.isCancelling());
+        assertFalse(tc.isExiting());
         assertNotNull(tc.toString());
         assertEquals(tc.getParent(), languageEnv.getContext());
 
@@ -130,6 +131,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         assertFalse(tc.isEntered());
         assertFalse(tc.isClosed());
+        tc.close();
     }
 
     @Test
@@ -338,6 +340,78 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testExiting() throws ExecutionException, InterruptedException {
+        setupEnv(Context.newBuilder(), new ProxyLanguage() {
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        });
+
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+        try {
+            AtomicReference<TruffleContext> entered = new AtomicReference<>();
+            CountDownLatch waitUntilExited = new CountDownLatch(1);
+            instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
+                @TruffleBoundary
+                @Override
+                public void onEnter(EventContext ctx, VirtualFrame frame) {
+                    entered.set(instrumentEnv.getEnteredContext());
+                }
+
+                @Override
+                public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+
+                }
+            });
+            Future<?> future = executorService.submit(() -> {
+                context.enter();
+                try {
+                    context.eval(InstrumentationTestLanguage.ID, "ROOT(STATEMENT,EXIT(1))");
+                    fail();
+                } catch (PolyglotException pe) {
+                    if (!pe.isExit()) {
+                        throw pe;
+                    }
+                    assertEquals(1, pe.getExitStatus());
+                    assertTrue(entered.get().isExiting());
+                } finally {
+                    context.leave();
+                }
+                waitUntilExited.countDown();
+            });
+
+            boolean othrerThreadExited = false;
+            while (!othrerThreadExited) {
+                try {
+                    waitUntilExited.await();
+                    othrerThreadExited = true;
+                } catch (InterruptedException ie) {
+                }
+            }
+            /*
+             * Multi-threading is necessary, otherwise the context is closed while entered and we
+             * cannot check isExiting().
+             */
+            context.leave();
+            TruffleContext tc = entered.get();
+            tc.close();
+
+            future.get();
+            assertFalse(tc.isExiting());
+            assertTrue(tc.isClosed());
+        } finally {
+            executorService.shutdownNow();
+            executorService.awaitTermination(100, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
     public void testCancellingUncaughtExceptionHandler() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         setupEnv(Context.newBuilder().allowAllAccess(true).err(out).build(), new ProxyLanguage() {
@@ -420,6 +494,8 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         tc2.leave(null, prev2);
         tc1.leave(null, prev1);
 
+        tc2.close();
+        tc1.close();
     }
 
     @Test
@@ -450,6 +526,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         } finally {
             innerContext.leave(null, prev);
         }
+        innerContext.close();
 
         innerContext = languageEnv.newContextBuilder().initializeCreatorContext(true).build();
         prev = innerContext.enter(null);
@@ -458,6 +535,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         } finally {
             innerContext.leave(null, prev);
         }
+        innerContext.close();
     }
 
     @Test
@@ -484,6 +562,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertFails(() -> innerContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder("foobarbazz$_", "", "").build()), IllegalArgumentException.class, (e) -> {
             assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id 'foobarbazz$_' is not installed. Installed languages are:"));
         });
+        innerContext.close();
     }
 
     @Test
@@ -518,6 +597,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         }
         assertEquals(3, innerException.executeCount);
         assertEquals(3, outerObject.executeCount);
+        innerContext.close();
     }
 
     @SuppressWarnings("serial")
@@ -574,6 +654,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         com.oracle.truffle.api.source.Source internal = com.oracle.truffle.api.source.Source.newBuilder(LanguageSPIOrderTest.INTERNAL, "", "test").build();
         assertFails(() -> innerContext.evalPublic(null, internal), IllegalArgumentException.class);
+        innerContext.close();
     }
 
     @Test
@@ -587,6 +668,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         // test that objects that cross the boundary are entered in the inner context
         EvalContextTestObject innerObject = new EvalContextTestObject();
         EvalContextTestObject outerObject = new EvalContextTestObject();
+        innerContext.close();
         setupLanguageThatReturns(() -> innerObject);
         innerContext = languageEnv.newContextBuilder().build();
         innerObject.expectedContext = innerContext;
@@ -603,6 +685,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         assertEquals(2, innerObject.executeCount);
         assertEquals(2, outerObject.executeCount);
+        innerContext.close();
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -659,6 +742,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertFalse(multiContextInitialized.get());
         internalContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").build());
         assertTrue(multiContextInitialized.get());
+        internalContext.close();
     }
 
     @Test
@@ -681,8 +765,9 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                 return true;
             }
         });
-        languageEnv.newContextBuilder().initializeCreatorContext(true).build();
+        TruffleContext ic = languageEnv.newContextBuilder().initializeCreatorContext(true).build();
         assertTrue(multiContextInitialized.get());
+        ic.close();
     }
 
     private void setupLanguageThatReturns(Supplier<Object> supplier) {
@@ -743,6 +828,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         } finally {
             tc.leave(null, prev);
         }
+        tc.close();
     }
 
     private static Class<? extends Throwable> getCancelExecutionClass() {

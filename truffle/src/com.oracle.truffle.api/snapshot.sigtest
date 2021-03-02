@@ -236,6 +236,7 @@ meth public boolean isActive()
 meth public boolean isCancelling()
 meth public boolean isClosed()
 meth public boolean isEntered()
+meth public boolean isExiting()
 meth public com.oracle.truffle.api.TruffleContext getParent()
 meth public int hashCode()
 meth public java.lang.Object enter()
@@ -246,6 +247,7 @@ meth public java.lang.Object evalPublic(com.oracle.truffle.api.nodes.Node,com.or
 meth public java.util.concurrent.Future<java.lang.Void> pause()
 meth public void close()
 meth public void closeCancelled(com.oracle.truffle.api.nodes.Node,java.lang.String)
+meth public void closeExited(com.oracle.truffle.api.nodes.Node,int)
 meth public void closeResourceExhausted(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public void leave(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public void leave(java.lang.Object)
@@ -402,6 +404,7 @@ innr public abstract interface static Provider
 innr public abstract static ContextReference
 innr public abstract static LanguageReference
 innr public final static !enum ContextPolicy
+innr public final static !enum ExitMode
 innr public final static Env
 innr public final static InlineParsingRequest
 innr public final static ParsingRequest
@@ -445,6 +448,7 @@ meth protected static <%0 extends java.lang.Object, %1 extends com.oracle.truffl
  anno 0 java.lang.Deprecated()
 meth protected void disposeContext({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected void disposeThread({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Thread)
+meth protected void exitContext({com.oracle.truffle.api.TruffleLanguage%0},com.oracle.truffle.api.TruffleLanguage$ExitMode,int)
 meth protected void finalizeContext({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected void initializeContext({com.oracle.truffle.api.TruffleLanguage%0}) throws java.lang.Exception
 meth protected void initializeMultiThreading({com.oracle.truffle.api.TruffleLanguage%0})
@@ -558,6 +562,14 @@ meth public void setCurrentWorkingDirectory(com.oracle.truffle.api.TruffleFile)
 supr java.lang.Object
 hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,in,initialized,initializedUnchangedAssumption,languageServicesCollector,options,out,polyglotLanguageContext,services,spi,valid
 hcls TruffleFileFactory
+
+CLSS public final static !enum com.oracle.truffle.api.TruffleLanguage$ExitMode
+ outer com.oracle.truffle.api.TruffleLanguage
+fld public final static com.oracle.truffle.api.TruffleLanguage$ExitMode HARD
+fld public final static com.oracle.truffle.api.TruffleLanguage$ExitMode NATURAL
+meth public static com.oracle.truffle.api.TruffleLanguage$ExitMode valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.TruffleLanguage$ExitMode[] values()
+supr java.lang.Enum<com.oracle.truffle.api.TruffleLanguage$ExitMode>
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest
  outer com.oracle.truffle.api.TruffleLanguage

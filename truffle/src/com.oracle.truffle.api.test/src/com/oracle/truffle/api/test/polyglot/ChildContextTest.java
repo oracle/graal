@@ -44,6 +44,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -95,7 +96,8 @@ public class ChildContextTest extends AbstractPolyglotTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            REFERENCE.get(null).env.newContextBuilder().build();
+            TruffleContext tc = REFERENCE.get(null).env.newContextBuilder().build();
+            tc.close();
             return RootNode.createConstantNode("foo").getCallTarget();
         }
 

@@ -1372,6 +1372,13 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isContextExiting(Object polyglotContext) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            PolyglotContextImpl.State contextState = context.state;
+            return contextState.isExiting();
+        }
+
+        @Override
         public Future<Void> pause(Object polyglotContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
             return context.pause();
@@ -1408,12 +1415,12 @@ final class EngineAccessor extends Accessor {
             } else {
                 synchronized (context) {
                     /*
-                     * Closing the context on another thread done as a part of cancelling enters the
-                     * context which could lead to the following IllegalStateException if the
-                     * cancelling flag was not checked.
+                     * Closing the context on another thread done as a part of cancelling or exiting
+                     * enters the context which could lead to the following IllegalStateException if
+                     * the cancelling flag was not checked.
                      */
                     PolyglotContextImpl.State localContextState = context.state;
-                    if (context.isActiveNotCancelled(false) && !localContextState.isCancelling()) {
+                    if (context.isActiveNotCancelled(false) && !localContextState.isCancelling() && !localContextState.isExiting()) {
                         /*
                          * Polyglot threads are still allowed to run at this point. They are
                          * required to be finished after finalizeContext.
@@ -1511,6 +1518,12 @@ final class EngineAccessor extends Accessor {
         @Override
         public String getStaticObjectStorageStrategy(Object polyglotLanguageInstance) {
             return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.StaticObjectStorageStrategy).name();
+        }
+
+        @Override
+        public void exitContext(Object impl, Node exitLocation, int exitCode) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) impl);
+            context.closeExited(exitLocation, exitCode);
         }
     }
 

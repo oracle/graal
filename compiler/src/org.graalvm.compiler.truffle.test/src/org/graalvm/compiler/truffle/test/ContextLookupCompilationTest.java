@@ -280,6 +280,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             assertLookupsInnerContext();
         } finally {
             innerContext.leave(null, prev);
+            innerContext.close();
         }
         assertLookupsInnerContext();
         context.leave();
