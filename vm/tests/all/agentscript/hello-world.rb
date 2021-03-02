@@ -1,6 +1,14 @@
-def welcome(h, w)
-  text = h + " " + w + "!"
-  return text
+class Welcome
+    def initialize(hi)
+      @h = hi
+    end
+
+    def welcome(w)
+      text = @h + " " + w + "!"
+      return text
+    end
 end
 
-puts(welcome("Hello", "World"));
+
+msg = Welcome.new("Hello")
+puts(msg.welcome("World"));

@@ -252,10 +252,11 @@ final class HeapGenerator {
     ClassInstance findClass(InteropLibrary iop, HeapDump seg, String metaHint, Object obj) throws IOException {
         TreeSet<String> sortedNames = new TreeSet<>();
         try {
-            Object names = iop.getMembers(obj);
+            Object names = iop.getMembers(obj, true);
             long len = iop.getArraySize(names);
             for (long i = 0; i < len; i++) {
-                sortedNames.add(iop.readArrayElement(names, i).toString());
+                final String ithName = iop.asString(iop.readArrayElement(names, i));
+                sortedNames.add(ithName);
             }
         } catch (UnsupportedMessageException ex) {
             // no names

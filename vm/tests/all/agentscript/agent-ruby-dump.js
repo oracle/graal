@@ -7,7 +7,7 @@ insight.on('enter', (ctx, frame) => {
               frame: frame
           }
       ]
-  }], 2);
+  }], 3);
 }, {
   roots: true,
   statements: true,
