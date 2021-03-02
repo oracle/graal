@@ -342,7 +342,7 @@ final class HeapUtils {
                             }
                         } else {
                             heap.writeByte(TYPE_OBJECT);
-                            fieldBytes += 4;
+                            fieldBytes += ids.sizeOf();
                         }
                     }
                     ClassInstance inst = new ClassInstance(classId, fieldNamesAndTypes, fieldBytes);
