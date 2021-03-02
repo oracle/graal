@@ -37,7 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -67,7 +67,10 @@ public class BitcodeFormatTest {
     private static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "bitcodeformat");
 
     protected Map<String, String> getContextOptions() {
-        return Collections.emptyMap();
+        HashMap<String, String> options = new HashMap<>();
+        options.put("llvm.verifyBitcode", "false");
+        options.put("log.llvm.BitcodeVerifier.level", "OFF");
+        return options;
     }
 
     protected Function<Context.Builder, CaptureOutput> getCaptureOutput() {
