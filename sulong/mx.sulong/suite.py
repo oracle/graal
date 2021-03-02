@@ -1518,7 +1518,6 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
           "dependency:com.oracle.truffle.llvm.tests.llirtestgen.generated/*",
-          "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
           "dependency:com.oracle.truffle.llvm.tests.other.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulong.native/*",
@@ -1545,6 +1544,7 @@ suite = {
       "layout" : {
         "./" : [
           "dependency:other/*",
+          "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
         ],
       },
       "license" : "BSD-new",
