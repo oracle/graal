@@ -73,8 +73,9 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
 
         /*
          * Re-initialize the registered shutdown hooks, because any hooks registered during native
-         * image construction can not survive into the running image.
+         * image construction must not survive into the running image. Both classes have only static
+         * members and do not allow instantiation.
          */
-        rerunClassInit(a, "java.lang.ApplicationShutdownHooks");
+        rerunClassInit(a, "java.lang.ApplicationShutdownHooks", "java.io.DeleteOnExitHook");
     }
 }
