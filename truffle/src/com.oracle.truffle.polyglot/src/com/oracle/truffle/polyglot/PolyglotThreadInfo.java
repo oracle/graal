@@ -42,9 +42,9 @@ package com.oracle.truffle.polyglot;
 
 import java.util.LinkedList;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
 
 final class PolyglotThreadInfo {
@@ -101,43 +101,33 @@ final class PolyglotThreadInfo {
         return getThread() == Thread.currentThread();
     }
 
-    /*
-     * Volatile increment is safe if only one thread does it.
+    /**
+     * Not to be used directly. Use
+     * {@link PolyglotEngineImpl#enter(PolyglotContextImpl, Node, boolean)} instead.
      */
-    @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
-    void enter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
-        assert Thread.currentThread() == getThread();
+    PolyglotContextImpl enterInternal() {
+        PolyglotContextImpl prev = PolyglotContextImpl.getSingleContextState().getContextThreadLocal().setReturnParent(context);
         enteredCount++;
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, profiledContext.invalid)) {
-            /*
-             * PolyglotContextImpl#closeImpl can be called on another thread just before
-             * enteredCount is incremented. In that case, closeImpl can pass the check for other
-             * threads being active and proceed with close while this thread is entered and may try
-             * to access things that can be invalidated by the closing process at any time.
-             * Therefore, we do a standard checkClosed check to make sure the enter is still safe.
-             * Please note that this still does not guarantee 100% safety, because the closing
-             * process might be in a phase where closingThread is already set, but invalid (which is
-             * set automatically right after closed) is still not set to true. Therefore, always
-             * invalidate the context manually before closing a context that might still be active
-             * in other threads.
-             */
-            CompilerDirectives.transferToInterpreter();
-            try {
-                profiledContext.checkClosed();
-            } catch (Throwable t) {
-                enteredCount--;
-                throw t;
-            }
-        }
+        return prev;
+    }
+
+    /**
+     * Not to be used directly. Use
+     * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl, com.oracle.truffle.api.nodes.Node, boolean)}
+     * instead.
+     */
+    void leaveInternal(PolyglotContextImpl prev) {
+        enteredCount--;
+        PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
+    }
+
+    void notifyEnter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         if (!engine.customHostClassLoader.isValid()) {
             setContextClassLoader();
         }
-        try {
-            EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
-        } catch (Throwable t) {
-            enteredCount--;
-            throw t;
-        }
+
+        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+
         if (engine.specializationStatistics != null) {
             enterStatistics(engine.specializationStatistics);
         }
@@ -148,6 +138,26 @@ final class PolyglotThreadInfo {
             return ((PolyglotThread) getThread()).isOwner(c);
         }
         return false;
+    }
+
+    /*
+     * Volatile decrement is safe if only one thread does it.
+     */
+    @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
+    void notifyLeave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
+        /*
+         * Notify might be false if the context was closed already on a second thread.
+         */
+        try {
+            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+        } finally {
+            if (!engine.customHostClassLoader.isValid()) {
+                restoreContextClassLoader();
+            }
+            if (engine.specializationStatistics != null) {
+                leaveStatistics(engine.specializationStatistics);
+            }
+        }
     }
 
     /*

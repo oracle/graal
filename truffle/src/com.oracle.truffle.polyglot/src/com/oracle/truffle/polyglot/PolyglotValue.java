@@ -1000,7 +1000,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             return null;
         }
         try {
-            return languageContext.context.engine.enterIfNeeded(languageContext.context);
+            return languageContext.context.engine.enterIfNeeded(languageContext.context, true);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(languageContext, t, false);
         }

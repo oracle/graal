@@ -235,7 +235,8 @@ public abstract class TruffleSafepoint {
      *             interruptable.run(lock);
      *             break;
      *         } catch (InterruptedException e) {
-     *             TruffleSafepoint.poll(this);
+     *             TruffleSafepoint.poll(location);
+     *             continue;
      *         }
      *     }
      * } finally {
@@ -261,6 +262,7 @@ public abstract class TruffleSafepoint {
                     break;
                 } catch (InterruptedException e) {
                     TruffleSafepoint.poll(location);
+                    continue;
                 }
             }
         } finally {

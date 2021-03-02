@@ -337,7 +337,7 @@ final class PolyglotThreadLocalActions {
             if (!isActive && context.closed) {
                 return;
             }
-            Object prev = context.engine.enterIfNeeded(context);
+            Object prev = context.engine.enterIfNeeded(context, false);
             try {
                 notifyStart();
                 PolyglotTLAccess access = new PolyglotTLAccess(Thread.currentThread(), location, isActive);
@@ -429,7 +429,7 @@ final class PolyglotThreadLocalActions {
         protected void acceptImpl(PolyglotTLAccess access) {
             PolyglotThreadInfo thread;
             synchronized (context) {
-                thread = context.getCurrentThreadInfo();
+                thread = context.getCachedThreadInfo();
             }
             awaitLatch.countDown();
 
