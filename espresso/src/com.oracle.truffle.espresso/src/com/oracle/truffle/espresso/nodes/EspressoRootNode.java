@@ -142,7 +142,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
-    protected EspressoMethodNode getMethodNode() {
+    public EspressoMethodNode getMethodNode() {
         Node child = methodNode;
         if (child instanceof WrapperNode) {
             child = ((WrapperNode) child).getDelegateNode();
