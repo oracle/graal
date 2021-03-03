@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.collection.DelegatingBlockingQueue;
+import org.graalvm.compiler.truffle.runtime.collection.TraversingBlockingQueue;
 import org.graalvm.compiler.truffle.runtime.collection.TraversingQueue;
 
 /**
@@ -155,8 +156,7 @@ public class BackgroundCompileQueue {
 
     private void initQueue(OptimizedCallTarget callTarget) {
         if (callTarget.getOptionValue(PolyglotCompilerOptions.ConfigurableCompilationQueue)) {
-            boolean firstTierPriority = callTarget.getOptionValue(PolyglotCompilerOptions.TraversingQueueFirstTierPriority);
-            this.compilationQueue = new DelegatingBlockingQueue<>(new TraversingQueue<>(firstTierPriority));
+            this.compilationQueue = new TraversingBlockingQueue<>();
         } else {
             this.compilationQueue = new IdlingPriorityBlockingQueue<>();
         }
