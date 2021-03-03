@@ -1069,6 +1069,7 @@ suite = {
       "defaultBuild" : False,
     },
     "com.oracle.truffle.llvm.tests.embedded.custom.native" : {
+      "description" : "Embedded tests with custom Makefiles",
       "subDir" : "tests",
       "native": True,
       "vpath": True,
