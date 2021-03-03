@@ -240,8 +240,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
     }
 
     private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
-        // getInstanceFields(true) seems cached and getInstanceFields(false) is not
-        for (ResolvedJavaField field : type.getInstanceFields(true)) {
+        for (ResolvedJavaField field : type.getInstanceFields(false)) {
             if (field.getName().equals(name)) {
                 return field;
             }
