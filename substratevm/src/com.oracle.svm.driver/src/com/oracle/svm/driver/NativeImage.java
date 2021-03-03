@@ -806,7 +806,10 @@ public class NativeImage {
         config.getBuilderJavaArgs().forEach(this::addImageBuilderJavaArgs);
         addImageBuilderJavaArgs("-Xss10m");
         addImageBuilderJavaArgs(oXms + getXmsValue());
-        addImageBuilderJavaArgs(oXmx + getXmxValue(1));
+        String xmxVal = getXmxValue(1);
+        if (!"0".equals(xmxVal)) {
+            addImageBuilderJavaArgs(oXmx + xmxVal);
+        }
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
         /* Prevent JVM that runs the image builder to steal focus */
         if (OS.getCurrent() != OS.WINDOWS || JavaVersionUtil.JAVA_SPEC > 8) {
@@ -1178,13 +1181,6 @@ public class NativeImage {
         }
         imageClasspath.addAll(customImageClasspath);
 
-        /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
-        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
-        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
-        if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
-            replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
-        }
-
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.disableEagerInitialization=true");
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
@@ -1207,6 +1203,14 @@ public class NativeImage {
             }
         }
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
+        /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
+        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
+        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
+        if (xmxValue != null) {
+            if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
+                replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
+            }
+        }
 
         /* Perform option consolidation of imageBuilderArgs */
 
