@@ -24,7 +24,11 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
+import java.util.ListIterator;
+
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -37,7 +41,10 @@ public final class TruffleCompilerPhases {
         if (suites.isImmutable()) {
             throw new IllegalStateException("Suites are already immutable.");
         }
-        suites.getMidTier().findPhase(LoopSafepointInsertionPhase.class).add(new TruffleSafepointInsertionPhase(providers));
+        // insert before to always insert safepoints consistently before host vm safepoints.
+        ListIterator<BasePhase<? super MidTierContext>> iterator = suites.getMidTier().findPhase(LoopSafepointInsertionPhase.class);
+        iterator.previous();
+        iterator.add(new TruffleSafepointInsertionPhase(providers));
     }
 
 }

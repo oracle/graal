@@ -24,11 +24,15 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import jdk.vm.ci.code.Architecture;
+import java.util.Arrays;
+import java.util.List;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+
+import jdk.vm.ci.code.Architecture;
 
 public final class TruffleCompilerConfiguration {
     private final TruffleCompilerRuntime runtime;
@@ -39,7 +43,6 @@ public final class TruffleCompilerConfiguration {
 
     public TruffleCompilerConfiguration(TruffleCompilerRuntime runtime, GraphBuilderConfiguration.Plugins plugins, SnippetReflectionProvider provider, TruffleTierConfiguration firstTier,
                     TruffleTierConfiguration lastTier) {
-        assert firstTier.backend() == lastTier.backend() : "Tiers currently must use the same backend object.";
         this.runtime = runtime;
         this.plugins = plugins;
         this.provider = provider;
@@ -71,12 +74,17 @@ public final class TruffleCompilerConfiguration {
         return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier);
     }
 
-    public Backend backend() {
-        // Currently, the first tier and the last tier have the same backend object.
-        return lastTier().backend();
+    public List<Backend> backends() {
+        if (lastTier.backend() == firstTier.backend()) {
+            return Arrays.asList(lastTier.backend());
+        } else {
+            return Arrays.asList(firstTier.backend(), lastTier.backend());
+        }
     }
 
     public Architecture architecture() {
-        return backend().getTarget().arch;
+        Architecture arch = lastTier().backend().getTarget().arch;
+        assert arch.equals(firstTier().backend().getTarget().arch) : "target architecture must be the same for first and list tier.";
+        return arch;
     }
 }

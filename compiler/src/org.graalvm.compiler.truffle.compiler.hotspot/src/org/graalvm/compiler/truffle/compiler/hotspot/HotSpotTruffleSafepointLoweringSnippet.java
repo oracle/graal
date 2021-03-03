@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
@@ -40,6 +39,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
@@ -76,7 +76,8 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
      * {@code org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.doHandshake()}
      * via a stub.
      */
-    static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "HotSpotThreadLocalHandshake.doHandshake",
+    static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(SAFEPOINT, Reexecutability.REEXECUTABLE, NO_LOCATIONS,
+                    "HotSpotThreadLocalHandshake.doHandshake",
                     void.class, Object.class);
 
     // The names of these location identifies are invalid C++ identifies to represent
@@ -165,14 +166,15 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                         GraalHotSpotVMConfig config,
                         HotSpotHostForeignCallsProvider foreignCalls,
                         Iterable<DebugHandlersFactory> factories) {
+
             GraalError.guarantee(templates == null, "cannot re-initialize " + this);
-            GraalError.guarantee(config.invokeJavaMethodAddress != 0, "Cannot lower %ss as JVMCIRuntime::invoke_static_method_one_arg is missing", TruffleSafepointNode.class);
+            GraalError.guarantee(config.invokeJavaMethodAddress != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", TruffleSafepointNode.class);
             this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget());
             this.deferredInit = () -> {
                 long address = config.invokeJavaMethodAddress;
                 GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);
                 ResolvedJavaType handshakeType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
-                HotSpotSignature sig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "(Lcom/oracle/truffle/api/nodes/Node;)V");
+                HotSpotSignature sig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "(Ljava/lang/Object;)V");
                 ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", sig);
                 assert staticMethod != null;
                 foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);

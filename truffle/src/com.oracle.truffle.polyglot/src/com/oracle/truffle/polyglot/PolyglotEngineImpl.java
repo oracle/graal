@@ -103,6 +103,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -121,7 +122,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
@@ -221,15 +221,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @CompilationFinal volatile StableLocalLocations contextThreadLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
 
     /*
-     * Dummy call target used to call runtime methods associated with an engine. Graal truffle
-     * runtime currently requires a call target for initilization. Whenever initialization needs to
-     * be forced we pass this dummy call target. In the future, the runtime will no longer require a
-     * call target but directly take the runtimeData object, then this dummyCallTarget can be
-     * removed.
-     *
-     * See GR-25471.
+     * Node location to be used when no node is available. In the future this should no longer be
+     * necessary as we should have a node for any VM operation.
      */
-    private volatile CallTarget dummyCallTarget;
+    @CompilationFinal private volatile Node noLocation;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
@@ -330,6 +325,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             hostToGuestCodeCache = cache = new HostToGuestCodeCache();
         }
         return cache;
+    }
+
+    public Node getUncachedLocation() {
+        Node location = this.noLocation;
+        if (location == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.noLocation = location = new NoLocationNode(this);
+        }
+        return location;
     }
 
     void notifyCreated() {
@@ -677,23 +681,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @Override
     public PolyglotEngineImpl getEngine() {
         return this;
-    }
-
-    CallTarget getDummyCallTarget(PolyglotContextImpl context) {
-        if (dummyCallTarget == null) {
-            synchronized (lock) {
-                if (dummyCallTarget == null) {
-                    CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(context.getHostContext().getLanguageInstance().spi) {
-                        @Override
-                        public Object execute(VirtualFrame frame) {
-                            return 42;
-                        }
-                    });
-                    dummyCallTarget = target;
-                }
-            }
-        }
-        return dummyCallTarget;
     }
 
     PolyglotLanguage findLanguage(PolyglotLanguageContext accessingLanguage, String languageId, String mimeType, boolean failIfNotFound, boolean allowInternalAndDependent) {
@@ -1552,13 +1539,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     }
 
-    /*
-     * Used in safepoint tests.
-     */
-    static ThreadDeath createTestCancelExecution() {
-        return new CancelExecution(null, "", false);
-    }
-
     @ExportLibrary(InteropLibrary.class)
     static final class InterruptExecution extends AbstractTruffleException {
 
@@ -1745,7 +1725,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             // events must be replayed without engine lock.
             final PolyglotContextImpl prev;
             try {
-                prev = enter(context);
+                prev = enter(context, getUncachedLocation(), true);
             } catch (Throwable t) {
                 throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
             }
@@ -1755,7 +1735,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 throw PolyglotImpl.guestToHostException(context.getHostContext(), t, true);
             } finally {
                 try {
-                    leave(prev, context);
+                    leave(prev, context, getUncachedLocation(), true);
                 } catch (Throwable t) {
                     throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
                 }
@@ -1875,39 +1855,53 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    Object enterIfNeeded(PolyglotContextImpl context) {
+    Object enterIfNeeded(PolyglotContextImpl context, boolean pollSafepoint) {
         if (needsEnter(context)) {
-            return enter(context);
+            return enter(context, getUncachedLocation(), pollSafepoint);
         }
         assert PolyglotContextImpl.currentNotEntered() != null;
         return NO_ENTER;
     }
 
-    void leaveIfNeeded(Object prev, PolyglotContextImpl context) {
+    void leaveIfNeeded(Object prev, PolyglotContextImpl context, boolean pollSafepoint) {
         if (prev != NO_ENTER) {
-            leave((PolyglotContextImpl) prev, context);
+            leave((PolyglotContextImpl) prev, context, getUncachedLocation(), pollSafepoint);
         }
     }
 
-    PolyglotContextImpl enter(PolyglotContextImpl context) {
+    PolyglotContextImpl enter(PolyglotContextImpl context, Node safepointLocation, boolean pollSafepoint) {
         PolyglotContextImpl prev;
-        PolyglotThreadInfo info = getCachedThreadInfo(context);
+        PolyglotThreadInfo info = context.cachedThreadInfo;
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
-            // fast-path -> same thread
-            prev = PolyglotContextImpl.getSingleContextState().getContextThreadLocal().setReturnParent(context);
-            try {
-                info.enter(this, context);
-            } catch (Throwable t) {
-                PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
-                throw t;
+            // Volatile increment is safe if only one thread does it.
+            prev = info.enterInternal();
+
+            // Check again whether the cached thread info is still the same as expected
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.cachedThreadInfo)) {
+
+                /*
+                 * We are deliberately not polling a safepoint here. In case a safepoint is
+                 * submitted cached thread info will be null and we will enter slow path, where the
+                 * safepoint is polled.
+                 */
+                try {
+                    info.notifyEnter(this, context);
+                } catch (Throwable e) {
+                    info.leaveInternal(prev);
+                    throw e;
+                }
+                return prev;
+            } else {
+                info.leaveInternal(prev);
             }
-        } else {
-            // slow path -> changed thread
-            if (singleThreadPerContext.isValid()) {
-                CompilerDirectives.transferToInterpreter();
-            }
-            prev = context.enterThreadChanged();
         }
+        /*
+         * Slow path. This happens when the cached thread info was set to null by context
+         * invalidation or submission of a safepoint or if the previous thread was not the same
+         * thread. The slow path acquires context lock to ensure ordering for context operations
+         * like close.
+         */
+        prev = context.enterThreadChanged(safepointLocation, pollSafepoint);
         assert verifyContext(context);
         return prev;
     }
@@ -1916,29 +1910,30 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return context == PolyglotContextImpl.currentNotEntered() || context.closed || context.invalid;
     }
 
-    void leave(PolyglotContextImpl prev, PolyglotContextImpl polyglotContext) {
-        assert polyglotContext.closed || polyglotContext.closingThread == Thread.currentThread() ||
-                        PolyglotContextImpl.currentNotEntered() == polyglotContext : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
-        PolyglotThreadInfo info = getCachedThreadInfo(polyglotContext);
-        try {
-            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
-                info.leave(this, polyglotContext);
-            } else {
-                if (singleThreadPerContext.isValid() && singleContext.isValid()) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                polyglotContext.leaveThreadChanged();
-            }
-        } finally {
-            PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
-        }
-    }
+    void leave(PolyglotContextImpl prev, PolyglotContextImpl context, Node safepointLocation, boolean pollSafepoint) {
+        assert context.closed || context.closingThread == Thread.currentThread() ||
+                        PolyglotContextImpl.currentNotEntered() == context : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
 
-    PolyglotThreadInfo getCachedThreadInfo(PolyglotContextImpl context) {
-        if (singleThreadPerContext.isValid() && singleContext.isValid() && neverInterrupted.isValid()) {
-            return context.constantCurrentThreadInfo;
-        } else {
-            return context.currentThreadInfo;
+        try {
+            boolean entered = true;
+            PolyglotThreadInfo info = context.cachedThreadInfo;
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
+                try {
+                    info.notifyLeave(this, context);
+                } finally {
+                    info.leaveInternal(prev);
+                    entered = false;
+                }
+                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.cachedThreadInfo)) {
+                    // fast path leave
+                    return;
+                }
+            }
+            context.leaveThreadChanged(prev, entered);
+        } finally {
+            if (pollSafepoint) {
+                TruffleSafepoint.poll(safepointLocation);
+            }
         }
     }
 
@@ -2048,6 +2043,29 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         synchronized (PolyglotImpl.class) {
             fallbackEngine = null;
         }
+    }
+
+    private static final class NoLocationNode extends HostToGuestRootNode {
+
+        NoLocationNode(PolyglotEngineImpl engine) {
+            super(engine);
+        }
+
+        @Override
+        protected Class<?> getReceiverType() {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
+
     }
 
 }

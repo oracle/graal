@@ -40,36 +40,7 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleFile.FileSystemContext;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.ReadOnlyArrayList;
-import com.oracle.truffle.api.io.TruffleProcessBuilder;
-import com.oracle.truffle.api.nodes.ExecutableNode;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Context.Builder;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
+import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -97,9 +68,39 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.concurrent.Future;
-import java.util.function.Consumer;
 
-import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile.FileSystemContext;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleSafepoint.ThreadInterruptable;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.ReadOnlyArrayList;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
+import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -3457,26 +3458,49 @@ public abstract class TruffleLanguage<C> {
             return getLogger(forClass.getName());
         }
 
-        @TruffleBoundary
-        public Future<Void> runThreadLocalAsynchronous(Thread[] threads, Consumer<ThreadLocalAccess> action) {
-            return runThreadLocal(threads, action, true);
-        }
-
-        @TruffleBoundary
-        public Future<Void> runThreadLocalSynchronous(Thread[] threads, Consumer<ThreadLocalAccess> action) {
-            return runThreadLocal(threads, action, false);
-        }
-
-        private Future<Void> runThreadLocal(Thread[] threads, Consumer<ThreadLocalAccess> action, boolean async) {
-            Objects.requireNonNull(action);
-            if (threads != null) {
-                for (int i = 0; i < threads.length; i++) {
-                    Objects.requireNonNull(threads[i]);
-                }
-            }
+        /**
+         * Submits a thread local action to be performed at the next guest language safepoint on a
+         * provided set of threads, once for each thread. If the threads array is <code>null</code>
+         * then the thread local action will be performed on all alive threads. If a thread is no
+         * longer alive for this context then no thread local action will be submitted and the
+         * action will immediately complete The submitted actions are processed in the same order as
+         * they are submitted in. . The action can be synchronous or asynchronous, side-effecting or
+         * non-sideeffecting. Please see {@link ThreadLocalAction} for details.
+         * <p>
+         * The method returns a {@link Future} instance that allows to wait for the thread local
+         * action to complete or to cancel a currently performed event.
+         * <p>
+         * Example Usage:
+         *
+         * <pre>
+         * Env env; // supplied
+         *
+         * env.submitThreadLocal(null, new ThreadLocalAction(true, true) {
+         *     &#64;Override
+         *     protected void perform(Access access) {
+         *         // perform action
+         *     }
+         * });
+         * </pre>
+         *
+         * <p>
+         * If the thread local action future needs to be waited on and this might be prone to
+         * deadlocks the
+         * {@link TruffleSafepoint#setBlockedInterruptable(Node, ThreadInterruptable, Object)} can
+         * be used to allow other thread local actions to be processed while the current thread is
+         * waiting. The returned {@link Future#get()} method can be used as
+         * {@link ThreadInterruptable}.
+         *
+         * @param threads the threads to execute the action on. <code>null</code> for all threads
+         * @param action the action to perform on that thread.
+         * @see ThreadLocalAction
+         * @see TruffleSafepoint
+         * @since 21.1
+         */
+        public Future<Void> submitThreadLocal(Thread[] threads, ThreadLocalAction action) {
             checkDisposed();
             try {
-                return LanguageAccessor.ENGINE.runThreadLocal(polyglotLanguageContext, threads, action, async);
+                return LanguageAccessor.ENGINE.submitThreadLocal(LanguageAccessor.ENGINE.getContext(polyglotLanguageContext), threads, action);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

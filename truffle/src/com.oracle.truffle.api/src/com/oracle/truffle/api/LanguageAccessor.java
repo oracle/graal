@@ -600,5 +600,20 @@ final class LanguageAccessor extends Accessor {
             return truffleFile.getSPIPath();
         }
 
+        @Override
+        public boolean isSynchronousTLAction(ThreadLocalAction action) {
+            return action.isSynchronous();
+        }
+
+        @Override
+        public boolean isSideEffectingTLAction(ThreadLocalAction action) {
+            return action.hasSideEffects();
+        }
+
+        @Override
+        public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
+            action.perform(access);
+        }
+
     }
 }

@@ -794,11 +794,15 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Allows guest languages to run actions between long running host calls.
+     * Polls safepoints events and executes them for the current thread. This allows guest languages
+     * to run actions between long running host method calls. Polyglot embeddings that rely on
+     * cancellation should call this method whenev a potentially long running host operation is
+     * executed. For example, iterating an unbounded array. Guest language code and operations
+     * automatically poll safepoints regularly.
      *
-     * For in this example we allow {@link Context#interrupt(Duration) interruption} cancellation
-     * {@link Context#close(boolean) cancellation} to stop the processing of e.g. events in a host
-     * calls.
+     * <p>
+     * In this example we allow {@link Context#interrupt(Duration) interruption} and
+     * {@link Context#close(boolean) cancellation} to stop the processing of our event queue.
      *
      * <pre>
      * class EventProcessor {
@@ -818,18 +822,21 @@ public final class Context implements AutoCloseable {
      *         } catch (PolyglotException e) {
      *             if (e.isInterrupted() || e.isCancelled()) {
      *                 // break event processing if interrupted or cancelled
-     *                 break;
+     *                 throw e;
      *             }
+     *             // other handling of guest errors or rethrow
      *         }
      *     }
      *  }
      * }
      * </pre>
      *
-     * @throws PolyglotException
+     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws IllegalStateException if the context is already {@link #close() closed}.
+     * @since 21.1
      */
     public void safepoint() {
-        // TODO implement
+        impl.safepoint();
     }
 
     /**

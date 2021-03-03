@@ -30,6 +30,7 @@ import java.util.Map;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.options.OptionValues;
@@ -40,6 +41,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -72,11 +74,13 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Override
     public void initialize(Map<String, Object> optionsMap, CompilableTruffleAST compilable, boolean firstInitialization) {
         super.initialize(optionsMap, compilable, firstInitialization);
-        SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(getBackend());
+        for (Backend backend : getConfig().backends()) {
+            SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(backend);
+        }
     }
 
     @Override
-    public PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    public PhaseSuite<HighTierContext> createGraphBuilderSuite(TruffleTierConfiguration tier) {
         return null;
     }
 

@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler.phases;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -35,12 +36,14 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
 
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -78,6 +81,11 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         this.parentField = findField(nodeType, "parent");
     }
 
+    public static boolean allowsSafepoints(StructuredGraph graph) {
+        // only allowed in Truffle compilations.
+        return graph.compilationId() instanceof TruffleCompilationIdentifier;
+    }
+
     @Override
     public boolean checkContract() {
         return false;
@@ -85,6 +93,10 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        if (!allowsSafepoints(graph)) {
+            return;
+        }
+
         for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
             try (DebugCloseable s = returnNode.withNodeSourcePosition()) {
                 insertSafepoint(graph, returnNode);
@@ -92,12 +104,18 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         }
         for (LoopBeginNode loopBeginNode : graph.getNodes(LoopBeginNode.TYPE)) {
             for (LoopEndNode loopEndNode : loopBeginNode.loopEnds()) {
-                if (loopEndNode.canSafepoint()) {
+                // Invokes inside truffle compilations do not have a guaranteed truffle safepoint so
+                // we cannot elide them when Graal thinks it is safe to do so.
+                if (loopEndNode.canSafepoint() || loopEndNode.guaranteedSafepoint()) {
                     try (DebugCloseable s = loopEndNode.withNodeSourcePosition()) {
                         insertSafepoint(graph, loopEndNode);
                     }
                 }
             }
+        }
+
+        for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            insertSafepoint(graph, (FixedNode) callTarget.invoke());
         }
     }
 
@@ -109,7 +127,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
             node = graph.maybeAddOrUnique(node);
         } else {
             // we always must find a node location for truffle safepoints
-            throw new AssertionError("No Truffle node found in frame state of " + returnNode);
+            throw GraalError.shouldNotReachHere("No Truffle node found in frame state of " + returnNode);
         }
         graph.addBeforeFixed(returnNode, graph.add(new TruffleSafepointNode(node)));
     }
@@ -117,22 +135,30 @@ public final class TruffleSafepointInsertionPhase extends Phase {
     private ConstantNode findTruffleNode(Node node) {
         Node n = node;
         while (n != null) {
-            if (n instanceof StateSplit) {
-                FrameState state = ((StateSplit) n).stateAfter();
-                while (state != null) {
-                    ConstantNode foundTruffleConstant = findTruffleNode(state);
-                    if (foundTruffleConstant != null) {
-                        return foundTruffleConstant;
+            if (n instanceof NodeWithState) {
+                for (FrameState innerMostState : ((NodeWithState) n).states()) {
+                    FrameState state = innerMostState;
+                    while (state != null) {
+                        ConstantNode foundTruffleConstant = findTruffleNode(state);
+                        if (foundTruffleConstant != null) {
+                            return foundTruffleConstant;
+                        }
+                        if (state.getMethod().equals(executeRootMethod)) {
+                            // we should not need to cross a call boundary to find a constant node
+                            // it must be guaranteed that we find this earlier.
+                            throw GraalError.shouldNotReachHere("Found a frame state of executeRootNode but not a constant node.");
+                        }
+                        state = state.outerFrameState();
                     }
-                    if (state.getMethod().equals(executeRootMethod)) {
-                        // we should not need to cross a call boundary to find a constant node
-                        // it must be guaranteed that we find this earlier.
-                        throw new AssertionError("Found a frame state of executeRootNode but not a constant node.");
-                    }
-                    state = state.outerFrameState();
+                    break;
                 }
-                break;
             }
+
+            /*
+             * This makes the location a guess. In the future we want to require the location
+             * available from the TruffleSafepoint.poll(Node) call. We need languages to adopt the
+             * TruffleSafepoint.poll(Node) call.
+             */
             n = n.predecessor();
         }
         return null;
@@ -192,10 +218,11 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
     private boolean isAdoptedTruffleNode(JavaConstant javaConstant) {
         JavaConstant current = javaConstant;
-        JavaConstant parent;
+        JavaConstant parent = current;
         do {
             // traversing the parent pointer must always be cycle free
-            parent = providers.getConstantReflection().readFieldValue(parentField, javaConstant);
+            current = parent;
+            parent = providers.getConstantReflection().readFieldValue(parentField, current);
         } while (!parent.isNull());
 
         // not a RootNode instance at the end of the parent chain -> not adopted
@@ -209,16 +236,15 @@ public final class TruffleSafepointInsertionPhase extends Phase {
                 return m;
             }
         }
-        throw new AssertionError("Required method " + name + " not found in " + type);
+        throw GraalError.shouldNotReachHere("Required method " + name + " not found in " + type);
     }
 
     private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
-        // getInstanceFields(true) seems cached and getInstanceFields(false) is not
-        for (ResolvedJavaField field : type.getInstanceFields(true)) {
+        for (ResolvedJavaField field : type.getInstanceFields(false)) {
             if (field.getName().equals(name)) {
                 return field;
             }
         }
-        throw new AssertionError("Required field " + name + " not found in " + type);
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
     }
 }

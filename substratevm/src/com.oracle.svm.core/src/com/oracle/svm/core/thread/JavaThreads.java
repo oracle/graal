@@ -199,30 +199,27 @@ public abstract class JavaThreads {
         return toTarget(thread).isVirtual();
     }
 
+    /**
+     * Returns the current isolate thread associated with a Java thread. The following properties
+     * must hold when this method is used:
+     * <ul>
+     * <li>The Java thread is already alive and executing when this method is invoked.
+     * <li>The thread is not stopped and remains alive while this method is executed.
+     * <ul>
+     */
     @Uninterruptible(reason = "Calls uninterruptible code.", mayBeInlined = true)
     public static IsolateThread fromJavaThread(Thread t) {
         if (t == Thread.currentThread()) {
-            // fast path
             return CurrentIsolate.getCurrentThread();
         } else {
-            return findIsolateThread(t);
-        }
-    }
-
-    @Uninterruptible(reason = "Calls uninterruptible code.", mayBeInlined = true)
-    private static IsolateThread findIsolateThread(Thread search) {
-        // TODO this is is unsafe. we need a better solution
-        // running this in a safepoint seems too slow and
-        // locking the thread mutex may lead to deadlocks.
-        // TODO backlink from java.lang.Thread to IsolateThread
-        // TODO file issue
-        for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-            Thread current = currentThread.get(vmThread);
-            if (current == search) {
-                return vmThread;
+            for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                Thread current = currentThread.get(vmThread);
+                if (current == t) {
+                    return vmThread;
+                }
             }
+            throw VMError.shouldNotReachHere("Java thread not alive.");
         }
-        throw VMError.shouldNotReachHere("Java thread not alive.");
     }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")

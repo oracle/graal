@@ -562,9 +562,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
-        // register thread local foreign poll
-        config.getBigBang().addRootMethod((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()));
-
         getLanguageClasses().forEach(RuntimeReflection::registerForReflectiveInstantiation);
 
         config.registerHierarchyForReflectiveInstantiation(DefaultExportProvider.class);
@@ -577,6 +574,14 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
+
+            for (Class<?> initType : truffleRuntime.getLookupTypes()) {
+                access.registerAsUsed(initType);
+            }
+
+            // register thread local foreign poll as compiled otherwise the stub won't work
+            config.registerAsCompiled((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()));
+
             GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
             SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
             SubstrateTruffleCompiler truffleCompiler = truffleRuntime.initTruffleCompiler();
@@ -597,15 +602,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             registerNeverPartOfCompilation(graphBuilderConfig.getPlugins().getInvocationPlugins());
             graphBuilderConfig.getPlugins().getInvocationPlugins().closeRegistration();
 
+            Providers peProviders = partialEvaluator.getProviders();
             HostedProviders newHostedProviders = new HostedProviders(
-                            partialEvaluator.getProviders().getMetaAccess(),
-                            partialEvaluator.getProviders().getCodeCache(),
-                            partialEvaluator.getProviders().getConstantReflection(),
-                            new HostedTruffleConstantFieldProvider(partialEvaluator.getProviders().getConstantFieldProvider()),
-                            partialEvaluator.getProviders().getForeignCalls(),
-                            partialEvaluator.getProviders().getLowerer(),
-                            partialEvaluator.getProviders().getReplacements(),
-                            partialEvaluator.getProviders().getStampProvider(),
+                            peProviders.getMetaAccess(),
+                            peProviders.getCodeCache(),
+                            peProviders.getConstantReflection(),
+                            new HostedTruffleConstantFieldProvider(peProviders.getConstantFieldProvider()),
+                            peProviders.getForeignCalls(),
+                            peProviders.getLowerer(),
+                            peProviders.getReplacements(),
+                            peProviders.getStampProvider(),
                             snippetReflection,
                             graalFeature.getHostedProviders().getWordTypes(),
                             graalFeature.getHostedProviders().getPlatformConfigurationProvider(),

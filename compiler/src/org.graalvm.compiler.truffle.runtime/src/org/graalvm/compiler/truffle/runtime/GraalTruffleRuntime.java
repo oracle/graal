@@ -208,6 +208,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     /**
+     * Returns a set of classes that need to be initialized before compilations can be performed.
+     */
+    public final Iterable<Class<?>> getLookupTypes() {
+        return lookupTypes.getValues();
+    }
+
+    /**
      * This method allows retrieval of the compiler configuration without requiring to initialize
      * the {@link TruffleCompiler} with
      * {@link #getTruffleCompiler(org.graalvm.compiler.truffle.common.CompilableTruffleAST)
