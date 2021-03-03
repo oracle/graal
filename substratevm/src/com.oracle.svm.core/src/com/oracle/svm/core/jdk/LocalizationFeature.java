@@ -390,7 +390,7 @@ public abstract class LocalizationFeature implements Feature {
                 cur.keySet();
             } else {
                 if (bundle instanceof PropertyResourceBundle) {
-                    ImageSingletons.lookup(ResourcesRegistry.class).addResourceBundles(bundle.getClass().getName().replace('.', '/') + "\\.properties");
+                    ImageSingletons.lookup(ResourcesRegistry.class).addResources(bundle.getClass().getName().replace('.', '/') + "\\.properties");
                 } else {
                     RuntimeReflection.register(cur.getClass());
                     RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
