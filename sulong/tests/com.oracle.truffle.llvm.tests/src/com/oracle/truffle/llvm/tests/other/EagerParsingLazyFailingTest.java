@@ -53,7 +53,7 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 public class EagerParsingLazyFailingTest {
 
-    private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "other").toPath();
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
     private static final String FILENAME = "O0_MEM2REG.bc";
 
     private static final class Runner implements AutoCloseable {

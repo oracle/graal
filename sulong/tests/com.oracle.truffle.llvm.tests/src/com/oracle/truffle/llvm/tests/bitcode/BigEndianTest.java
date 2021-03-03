@@ -53,7 +53,7 @@ public class BigEndianTest {
         TestOptions.assumeBundledLLVM();
     }
 
-    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_TEST_SUITES"), "other").toPath();
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
     private static final String FILENAME = "O0.bc";
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
