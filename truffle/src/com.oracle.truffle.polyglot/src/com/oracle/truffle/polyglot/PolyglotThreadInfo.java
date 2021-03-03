@@ -160,29 +160,6 @@ final class PolyglotThreadInfo {
         }
     }
 
-    /*
-     * Volatile decrement is safe if only one thread does it.
-     */
-    @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
-    void leave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
-        assert Thread.currentThread() == getThread();
-        /*
-         * Notify might be false if the context was closed already on a second thread.
-         */
-        try {
-            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
-        } finally {
-            enteredCount--;
-            if (!engine.customHostClassLoader.isValid()) {
-                restoreContextClassLoader();
-            }
-            if (engine.specializationStatistics != null) {
-                leaveStatistics(engine.specializationStatistics);
-            }
-        }
-
-    }
-
     @TruffleBoundary
     private void enterStatistics(SpecializationStatistics statistics) {
         SpecializationStatistics prev = statistics.enter();
