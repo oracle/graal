@@ -121,19 +121,20 @@ public abstract class LocalizationFeature implements Feature {
      * locale is requested or a single locale is requested but different from the default one.
      */
     public static boolean isMultiLocale() {
-        if (Options.IncludeAllLocales.getValue()) {
-            return true;
-        }
-        List<String> locales = Options.IncludeLocales.getValue().values();
-        if (locales.isEmpty()) {
-            return false;
-        }
-        if (locales.size() > 1) {
-            return true;
-        }
-        final String singleSelectedLocale = locales.get(0);
-        boolean selectedIsDefault = singleSelectedLocale.equals(Options.DefaultLocale.getValue());
-        return !selectedIsDefault;
+        return true;
+// if (Options.IncludeAllLocales.getValue()) {
+// return true;
+// }
+// List<String> locales = Options.IncludeLocales.getValue().values();
+// if (locales.isEmpty()) {
+// return false;
+// }
+// if (locales.size() > 1) {
+// return true;
+// }
+// final String singleSelectedLocale = locales.get(0);
+// boolean selectedIsDefault = singleSelectedLocale.equals(Options.DefaultLocale.getValue());
+// return !selectedIsDefault;
     }
 
     public static boolean isSingleLocale() {
