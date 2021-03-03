@@ -34,8 +34,7 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 
 public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
-    BlockingQueue<E> firstTierEntries = new LinkedBlockingDeque<>();
-    BlockingQueue<E> lastTierEntries = new LinkedBlockingDeque<>();
+    BlockingQueue<E> entries = new LinkedBlockingDeque<>();
 
     private static boolean greater(double maxWeight, boolean maxCompiled, double weight, boolean compiled) {
         if (compiled && !maxCompiled) {
@@ -54,47 +53,50 @@ public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
 
     @Override
     public boolean add(E e) {
-        if (task(e).isFirstTier()) {
-            return firstTierEntries.add(e);
-        } else {
-            return lastTierEntries.add(e);
-        }
+        return entries.add(e);
     }
 
     @Override
     public boolean isEmpty() {
-        return firstTierEntries.isEmpty() && lastTierEntries.isEmpty();
+        return entries.isEmpty();
     }
 
     @Override
     public E poll(long timeout, TimeUnit unit) throws InterruptedException {
-        // We don't wait for elements.
-        return poll();
+        E maxFirstTier = maxFirstTier();
+        if (maxFirstTier != null) {
+            return maxFirstTier;
+        }
+        return entries.poll(timeout, unit);
     }
 
     @Override
     public E poll() {
-        if (firstTierEntries.isEmpty()) {
-            return lastTierEntries.poll();
+        E maxFirstTier = maxFirstTier();
+        if (maxFirstTier != null) {
+            return maxFirstTier;
         }
-        return poll(firstTierEntries);
+        return entries.poll();
     }
 
-    private E poll(Queue<E> entries) {
+    private E maxFirstTier() {
         if (entries.isEmpty()) {
             return null;
         }
         long time = System.nanoTime();
         Iterator<E> it = entries.iterator();
-        E max = it.next();
-        double maxWeight = task(max).weight(time);
-        boolean maxCompiled = task(max).targetPreviouslyCompiled();
+        E max = null;
+        double maxWeight = Double.MIN_VALUE;
+        boolean maxCompiled = false;
         while (it.hasNext()) {
             E entry = it.next();
             CompilationTask task = task(entry);
             double weight = task.weight(time);
             if (task.isCancelled() || weight < 0) {
                 it.remove();
+                continue;
+            }
+            if (task.isLastTier()) {
                 continue;
             }
             boolean compiled = task.targetPreviouslyCompiled();
@@ -108,8 +110,11 @@ public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     private E remove(E max, Queue<E> entries) {
-        entries.remove(max);
-        return max;
+        if (max != null && entries.remove(max)) {
+            return max;
+        } else {
+            return null;
+        }
     }
 
     @Override
