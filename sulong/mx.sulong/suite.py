@@ -1064,6 +1064,25 @@ suite = {
         "linker",
         "rpath",
         "reload",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.embedded.custom.native" : {
+      "subDir" : "tests",
+      "native": True,
+      "vpath": True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CLANG": "<toolchainGetToolPath:native,CC>",
+        "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.embedded.custom.native>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "results": [
         "interop",
       ],
       "testProject" : True,
@@ -1545,6 +1564,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.embedded.custom.native/*",
         ],
       },
       "license" : "BSD-new",

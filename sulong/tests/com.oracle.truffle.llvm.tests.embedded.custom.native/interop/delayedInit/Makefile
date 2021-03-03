@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,4 +28,16 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-include $(SRC_DIR)/interop/*/Makefile
+default: interop/delayedInit/libFoo.so interop/delayedInit/libBar.so
+
+interop/delayedInit/libBaz.so: interop/delayedInit/baz.c interop/delayedInit/Makefile
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
+
+interop/delayedInit/libFoo.so: interop/delayedInit/foo.c interop/delayedInit/Makefile interop/delayedInit/delayedInit.h interop/delayedInit/libBaz.so
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -Linterop/delayedInit -lBaz -o $@ $<
+
+interop/delayedInit/libBar.so: interop/delayedInit/bar.c interop/delayedInit/Makefile interop/delayedInit/delayedInit.h interop/delayedInit/libBaz.so
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -Linterop/delayedInit -lBaz -o $@ $<
