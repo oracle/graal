@@ -268,11 +268,12 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
         return isNonENSupported;
     }
 
-    @Substitute
-    @SuppressWarnings("static-method")
-    protected Set<String> createLanguageTagSet(String category) {
-        throw VMError.unsupportedFeature("All language tag sets must be created at image build time. Missing category: " + category);
-    }
+// @Substitute
+// @SuppressWarnings("static-method")
+// protected Set<String> createLanguageTagSet(String category) {
+// throw VMError.unsupportedFeature("All language tag sets must be created at image build time.
+// Missing category: " + category);
+// }
 }
 
 final class Util_java_text_BreakIterator {
