@@ -43,6 +43,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
+import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 import java.util.spi.CalendarDataProvider;
 import java.util.spi.CalendarNameProvider;
@@ -51,6 +52,7 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
+import com.oracle.svm.core.configure.ResourcesRegistry;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -387,8 +389,12 @@ public abstract class LocalizationFeature implements Feature {
                 RuntimeClassInitialization.initializeAtBuildTime(cur.getClass());
                 cur.keySet();
             } else {
-                RuntimeReflection.register(cur.getClass());
-                RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
+                if (bundle instanceof PropertyResourceBundle) {
+                    ImageSingletons.lookup(ResourcesRegistry.class).addResourceBundles(bundle.getClass().getName().replace('.', '/') + "\\.properties");
+                } else {
+                    RuntimeReflection.register(cur.getClass());
+                    RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
+                }
             }
         }
 
