@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.utilities.TriState;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.junit.Test;
@@ -62,6 +63,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -328,6 +330,54 @@ public class HashTest extends AbstractPolyglotTest {
         }
         assertEquals(0, map.size());
         assertEquals(0, hash.getHashSize());
+    }
+
+    @Test
+    public void testPolyglotMapWithTypeLiteral() {
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
+        Map<Object, Object> expected = new HashMap<>();
+        expected.put(1, "string");
+        expected.put(2, 3);
+        Function<Object, Object> valueMapper = (o) -> {
+            Value v = (Value) o;
+            if (v.fitsInInt()) {
+                return v.asInt();
+            } else if (v.isString()) {
+                return v.asString();
+            } else {
+                throw new UnsupportedOperationException();
+            }
+        };
+        TypeLiteral<Map<Integer, Value>> type1 = new TypeLiteral<Map<Integer, Value>>() {
+        };
+        testPolyglotMapWithTypeLiteralImlp(expected, type1, Function.identity(), valueMapper, true);
+        expected = new HashMap<>();
+        expected.put("key", "value1");
+        expected.put(2, "value2");
+        TypeLiteral<Map<Value, String>> type2 = new TypeLiteral<Map<Value, String>>() {
+        };
+        testPolyglotMapWithTypeLiteralImlp(expected, type2, valueMapper, Function.identity(), false);
+    }
+
+    private void testPolyglotMapWithTypeLiteralImlp(Map<?, ?> testData, TypeLiteral<?> type,
+                    Function<Object, Object> unboxKey, Function<Object, Object> unboxValue, boolean keyHasIdentity) {
+        Value hash = context.asValue(new Hash());
+        for (Map.Entry<?, ?> e : testData.entrySet()) {
+            hash.putHashEntry(e.getKey(), e.getValue());
+        }
+        assertEquals(testData.size(), hash.getHashSize());
+        Map<?, ?> m = (Map<?, ?>) hash.as(type);
+        assertEquals(2, m.size());
+        if (keyHasIdentity) {
+            for (Map.Entry<?, ?> e : testData.entrySet()) {
+                assertEquals(e.getValue(), unboxValue.apply(m.get(e.getKey())));
+            }
+        }
+        Map<Object, Object> collected = new HashMap<>();
+        for (Map.Entry<?, ?> e : m.entrySet()) {
+            collected.put(unboxKey.apply(e.getKey()), unboxValue.apply(e.getValue()));
+        }
+        assertEquals(testData, collected);
     }
 
     @ExportLibrary(InteropLibrary.class)

@@ -127,31 +127,6 @@ final class ProxyHashMapImpl implements ProxyHashMap {
     }
 
     private static Object unboxKey(Value key) {
-        // Todo: Should we unbox key is null? ConcurrentHashMap does not support null as a key
-        if (key.isHostObject()) {
-            return key.asHostObject();
-        } else if (key.isString()) {
-            return key.asString();
-        } else if (key.isBoolean()) {
-            return key.asBoolean();
-        } else if (key.fitsInByte()) {
-            return key.asInt();
-        } else if (key.fitsInLong()) {
-            return key.asLong();
-        } else if (key.fitsInDouble()) {
-            return key.asDouble();
-        } else if (key.isDate()) {
-            return key.asDate();
-        } else if (key.isDuration()) {
-            return key.asDuration();
-        } else if (key.isInstant()) {
-            return key.asInstant();
-        } else if (key.isTime()) {
-            return key.asTime();
-        } else if (key.isTimeZone()) {
-            return key.asTimeZone();
-        } else {
-            return key;
-        }
+        return key.as(Object.class);
     }
 }

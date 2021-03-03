@@ -245,11 +245,11 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
                 throw HostInteropErrors.mapEntryUnsupported(languageContext, receiver, getKeyType(), getValueType(), getOperationName());
             }
 
-            Type getKeyType() {
+            protected final Type getKeyType() {
                 return cache.keyType != null ? cache.keyType : cache.keyClass;
             }
 
-            Type getValueType() {
+            protected final Type getValueType() {
                 return cache.valueType != null ? cache.valueType : cache.valueClass;
             }
         }
@@ -279,7 +279,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
                         error.enter();
                         throw unsupported(languageContext, receiver);
                     }
-                    return toHost.execute(result, cache.valueClass, cache.valueType, languageContext, true);
+                    return toHost.execute(result, cache.keyClass, cache.keyType, languageContext, true);
                 } else {
                     error.enter();
                     throw unsupported(languageContext, receiver);
