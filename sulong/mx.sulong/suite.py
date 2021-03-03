@@ -1529,6 +1529,7 @@ suite = {
     },
 
     "SULONG_STANDALONE_TEST_SUITES" : {
+      "description" : "Tests with a reference executable that is used to verify the result.",
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
@@ -1552,6 +1553,7 @@ suite = {
       "defaultBuild" : False,
     },
     "SULONG_EMBEDDED_TEST_SUITES" : {
+      "description" : "Tests without a reference executable that require a special JUnit test class.",
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
