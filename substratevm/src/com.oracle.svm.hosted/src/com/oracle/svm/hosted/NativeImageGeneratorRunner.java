@@ -456,7 +456,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      *
      * @param e error to be reported.
      */
-    private static void reportFatalError(Throwable e) {
+    protected static void reportFatalError(Throwable e) {
         System.err.print("Fatal error:");
         e.printStackTrace();
     }
@@ -467,7 +467,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param e error to be reported.
      * @param msg message to report.
      */
-    private static void reportFatalError(Throwable e, String msg) {
+    protected static void reportFatalError(Throwable e, String msg) {
         System.err.print("Fatal error: " + msg);
         e.printStackTrace();
     }

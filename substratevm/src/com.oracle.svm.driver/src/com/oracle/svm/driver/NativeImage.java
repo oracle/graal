@@ -468,12 +468,12 @@ public class NativeImage {
         }
     }
 
-    private static class DefaultBuildConfiguration implements BuildConfiguration {
-        private final Path workDir;
-        private final Path rootDir;
-        private final List<String> args;
+    protected static class DefaultBuildConfiguration implements BuildConfiguration {
+        protected final Path workDir;
+        protected final Path rootDir;
+        protected final List<String> args;
 
-        DefaultBuildConfiguration(List<String> args) {
+        protected DefaultBuildConfiguration(List<String> args) {
             this(null, null, args);
         }
 
@@ -1481,7 +1481,7 @@ public class NativeImage {
         System.exit(0);
     }
 
-    private static void build(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
+    protected static void build(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
         NativeImage nativeImage = nativeImageProvider.apply(config);
         if (config.getBuildArgs().isEmpty()) {
             nativeImage.showMessage(usageText);

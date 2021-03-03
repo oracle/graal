@@ -61,7 +61,7 @@ public final class IdentityHashCodeSupport {
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int generateIdentityHashCode(Object obj) {
+    public static int generateIdentityHashCode(Object obj) {
 
         // generate a new hashcode and try to store it into the object
         int newHashCode = generateHashCode();

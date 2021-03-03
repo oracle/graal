@@ -214,7 +214,7 @@ public class SubstrateGraphKit extends GraphKit {
         return invoke;
     }
 
-    private Stamp returnStamp(Signature signature) {
+    public Stamp returnStamp(Signature signature) {
         JavaType returnType = signature.getReturnType(null);
         JavaKind returnKind = signature.getReturnKind();
 

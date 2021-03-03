@@ -54,7 +54,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
         return original;
     }
 
-    void addInjectedField(ResolvedJavaField field) {
+    public void addInjectedField(ResolvedJavaField field) {
         for (int i = 0; i < instanceFields.length; i++) {
             ResolvedJavaField[] newFields = Arrays.copyOf(instanceFields[i], instanceFields[i].length + 1, ResolvedJavaField[].class);
             newFields[newFields.length - 1] = field;

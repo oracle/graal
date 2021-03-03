@@ -325,7 +325,6 @@ public class CompileQueue {
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
 
-        // let aotjs override the replacements registration
         callForReplacements(debug, runtimeConfig);
     }
 
@@ -471,7 +470,7 @@ public class CompileQueue {
         System.out.println("Number of deopt during calls entries       ; " + totalNumDuringCallEntryPoints);
     }
 
-    private void parseAll() throws InterruptedException {
+    protected void parseAll() throws InterruptedException {
         executor.init();
 
         parseDeoptimizationTargetMethods();
@@ -525,7 +524,7 @@ public class CompileQueue {
         ensureParsed(universe.createDeoptTarget(method), new EntryPointReason());
     }
 
-    private void checkTrivial(HostedMethod method) {
+    protected void checkTrivial(HostedMethod method) {
         if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(method.compilationInfo.getGraph())) {
             method.compilationInfo.setTrivialMethod(true);
             inliningProgress = true;
@@ -533,7 +532,7 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("try")
-    private void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
+    protected void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
         for (HostedMethod method : universe.getMethods()) {
             try (DebugContext.Scope s = debug.scope("InlineTrivial", method.compilationInfo.getGraph(), method, this)) {
                 if (method.compilationInfo.getGraph() != null) {
