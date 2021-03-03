@@ -63,7 +63,7 @@ public class LoaderTest {
         }
     }
 
-    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_STANDALONE_TEST_SUITES")).toPath();
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES")).toPath();
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
         Map<String, String> map = new HashMap<>();

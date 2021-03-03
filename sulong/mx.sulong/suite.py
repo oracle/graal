@@ -1568,6 +1568,8 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.embedded.custom.native/*",
           "dependency:com.oracle.truffle.llvm.tests.other.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
+          # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
+          "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",
         ],
       },
       "license" : "BSD-new",
