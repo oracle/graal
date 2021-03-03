@@ -114,14 +114,14 @@ public enum ELFMachine/* implements Integral */ {
                         return ELFAArch64Relocation.R_AARCH64_MOVW_UABS_G3;
                     case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
                         return ELFAArch64Relocation.R_AARCH64_ADR_PREL_PG_HI21;
-                    case AARCH64_R_AARCH64_LDST128_ABS_LO12_NC:
-                        return ELFAArch64Relocation.R_AARCH64_LDST128_ABS_LO12_NC;
                     case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_ADD_ABS_LO12_NC;
                     case AARCH64_R_GOT_LD_PREL19:
                         return ELFAArch64Relocation.R_AARCH64_GOT_LD_PREL19;
                     case AARCH64_R_LD_PREL_LO19:
                         return ELFAArch64Relocation.R_AARCH64_LD_PREL_LO19;
+                    case AARCH64_R_AARCH64_LDST128_ABS_LO12_NC:
+                        return ELFAArch64Relocation.R_AARCH64_LDST128_ABS_LO12_NC;
                     case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_LDST64_ABS_LO12_NC;
                     case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:

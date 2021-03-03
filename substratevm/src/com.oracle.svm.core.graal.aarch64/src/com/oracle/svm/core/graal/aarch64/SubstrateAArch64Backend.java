@@ -303,7 +303,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
     }
 
-    protected final class SubstrateAArch64LIRGenerator extends AArch64LIRGenerator implements SubstrateLIRGenerator {
+    protected class SubstrateAArch64LIRGenerator extends AArch64LIRGenerator implements SubstrateLIRGenerator {
 
         public SubstrateAArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
             super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
@@ -848,10 +848,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         return new SubstrateAArch64LIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
     }
 
-    protected AArch64Kind getCompressedOopKind() {
-        return AArch64Kind.QWORD;
-    }
-
     protected AArch64NodeMatchRules createMatchRules(LIRGeneratorTool lirGen) {
         return new AArch64NodeMatchRules(lirGen);
     }
@@ -862,7 +858,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         return new SubstrateAArch64NodeLIRBuilder(graph, lirGen, nodeMatchRules);
     }
 
-    private static boolean useLinearPointerCompression() {
+    protected static boolean useLinearPointerCompression() {
         return SubstrateOptions.SpawnIsolates.getValue();
     }
 
