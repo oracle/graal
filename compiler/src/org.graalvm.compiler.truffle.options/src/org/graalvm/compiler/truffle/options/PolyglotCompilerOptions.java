@@ -163,12 +163,12 @@ public final class PolyglotCompilerOptions {
          */
         ExitVM;
 
-        private static final String HELP = "Specifies the action to take when Truffle compilation fails.%n" +
-                        "The accepted values are:%n" +
-                        "    Silent - Print nothing to the console.%n" +
-                        "     Print - Print the exception to the console.%n" +
-                        "     Throw - Throw the exception to caller.%n" +
-                        "  Diagnose - Retry compilation with extra diagnostics enabled.%n" +
+        private static final String HELP = "Specifies the action to take when Truffle compilation fails.\n" +
+                        "The accepted values are:\n" +
+                        "    Silent - Print nothing to the console.\n" +
+                        "     Print - Print the exception to the console.\n" +
+                        "     Throw - Throw the exception to caller.\n" +
+                        "  Diagnose - Retry compilation with extra diagnostics enabled.\n" +
                         "    ExitVM - Exit the VM process.";
     }
 
@@ -354,13 +354,13 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
 
-    private static final String EXPANSION_VALUES = "Accepted values are:%n" +
-                    "    true - Collect data for the default tier 'truffleTier'.%n" +
-                    "    false - No data will be collected.%n" +
-                    "Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier) :%n" +
-                    "    peTier - After partial evaluation without additional phases applied.%n" +
-                    "    truffleTier - After partial evaluation with additional phases applied.%n" +
-                    "    lowTier - After low tier phases were applied.%n";
+    private static final String EXPANSION_VALUES = "Accepted values are:\n" +
+                    "    true - Collect data for the default tier 'truffleTier'.\n" +
+                    "    false - No data will be collected.\n" +
+                    "Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):\n" +
+                    "    peTier - After partial evaluation without additional phases applied.\n" +
+                    "    truffleTier - After partial evaluation with additional phases applied.\n" +
+                    "    lowTier - After low tier phases were applied.\n";
 
     @Option(help = "Print a tree of all expanded Java methods with statistics after each compilation. " + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
     public static final OptionKey<Set<CompilationTier>> TraceMethodExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
