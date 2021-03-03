@@ -206,7 +206,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     private double rate(int count, long elapsed) {
-        double rawRate =  ((double) count - lastCount) / elapsed;
+        double rawRate = ((double) count - lastCount) / elapsed;
         return 1.0 + (Double.isNaN(rawRate) ? 0 : rawRate);
     }
 

@@ -28,13 +28,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 
 public class TraversingQueue<E> implements SerialQueue<E> {
     private final boolean firstTierPriority;
     List<E> firstTierEntries = new LinkedList<>();
-    List<E> lastTierEntries = new LinkedList<>();
+    Queue<E> lastTierEntries = new LinkedList<>();
 
     public TraversingQueue(boolean priority) {
         this.firstTierPriority = priority;
@@ -52,23 +53,21 @@ public class TraversingQueue<E> implements SerialQueue<E> {
     @Override
     public E poll() {
         if (firstTierEntries.isEmpty()) {
-            return poll(lastTierEntries);
+            return lastTierEntries.poll();
         }
         return poll(firstTierEntries);
     }
 
     private E poll(List<E> entries) {
         if (entries.isEmpty()) {
-           return null;
+            return null;
         }
         List<E> toRemove = new ArrayList<>();
         long time = System.nanoTime();
         Iterator<E> it = entries.iterator();
         E max = it.next();
         double maxWeight = task(max).weight(time);
-        if (task(max).targetPreviouslyCompiled()) {
-            return remove(max, entries);
-        }
+        boolean maxCompiled = task(max).targetPreviouslyCompiled();
         while (it.hasNext()) {
             E entry = it.next();
             CompilationTask task = task(entry);
@@ -80,13 +79,25 @@ public class TraversingQueue<E> implements SerialQueue<E> {
                 toRemove.add(entry);
                 continue;
             }
-            if (weight > maxWeight) {
+            boolean compiled = task.targetPreviouslyCompiled();
+            if (greater(maxWeight, maxCompiled, weight, compiled)) {
                 maxWeight = weight;
+                maxCompiled = compiled;
                 max = entry;
             }
         }
         remove(toRemove, entries);
         return remove(max, entries);
+    }
+
+    private static boolean greater(double maxWeight, boolean maxCompiled, double weight, boolean compiled) {
+        if (compiled && !maxCompiled) {
+            return true;
+        }
+        if (maxCompiled && !compiled) {
+            return false;
+        }
+        return weight > maxWeight;
     }
 
     private void remove(List<E> toRemove, List<E> entries) {
