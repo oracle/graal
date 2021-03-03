@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -63,11 +64,11 @@ final class EnumSwitchPlugin implements NodePlugin {
     private static final String METHOD_NAME_PREFIX = "$SWITCH_TABLE$";
 
     private final SnippetReflectionProvider snippetReflection;
-    private final boolean analysis;
+    private final ParsingReason reason;
 
-    EnumSwitchPlugin(SnippetReflectionProvider snippetReflection, boolean analysis) {
+    EnumSwitchPlugin(SnippetReflectionProvider snippetReflection, ParsingReason reason) {
         this.snippetReflection = snippetReflection;
-        this.analysis = analysis;
+        this.reason = reason;
     }
 
     @Override
@@ -76,7 +77,7 @@ final class EnumSwitchPlugin implements NodePlugin {
             return false;
         }
 
-        if (analysis) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             if (!method.getDeclaringClass().isInitialized()) {
                 /*
                  * Declaring class is initialized at run time. Even if the enum itself is
@@ -140,7 +141,7 @@ final class EnumSwitchFeature implements GraalFeature {
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
-        plugins.appendNodePlugin(new EnumSwitchPlugin(providers.getSnippetReflection(), analysis));
+    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        plugins.appendNodePlugin(new EnumSwitchPlugin(providers.getSnippetReflection(), reason));
     }
 }

@@ -104,6 +104,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
@@ -170,7 +171,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
-    private final boolean analysis;
+    private final ParsingReason reason;
     private final Providers parsingProviders;
     private final Providers universeProviders;
     private final AnalysisUniverse aUniverse;
@@ -190,8 +191,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private static final Method unsupportedFeatureMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
 
-    public IntrinsifyMethodHandlesInvocationPlugin(boolean analysis, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
-        this.analysis = analysis;
+    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
+        this.reason = reason;
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
         this.universeProviders = providers;
@@ -201,7 +202,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         this.classInitializationPlugin = new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM());
 
-        if (analysis) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             intrinsificationRegistry = new IntrinsificationRegistry();
             ImageSingletons.add(IntrinsificationRegistry.class, intrinsificationRegistry);
         } else {
@@ -508,7 +509,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
-        if (!analysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
+        if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
             return reportUnsupportedFeature(b, methodHandleMethod);
         }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
@@ -553,7 +554,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             try {
                 transplanter.graph(graph);
 
-                if (analysis) {
+                if (reason == ParsingReason.PointsToAnalysis) {
                     /*
                      * Successfully intrinsified during analysis, remember that we can intrinsify
                      * when parsing for compilation.

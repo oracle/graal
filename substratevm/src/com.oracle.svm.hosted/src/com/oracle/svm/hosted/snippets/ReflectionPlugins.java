@@ -58,6 +58,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -113,33 +114,31 @@ public final class ReflectionPlugins {
     private final AnnotationSubstitutionProcessor annotationSubstitutions;
     private final SVMHost hostVM;
     private final AnalysisUniverse aUniverse;
-    private final boolean analysis;
-    private final boolean hosted;
+    private final ParsingReason reason;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SVMHost hostVM,
-                    AnalysisUniverse aUniverse, boolean analysis, boolean hosted) {
+                    AnalysisUniverse aUniverse, ParsingReason reason) {
         this.imageClassLoader = imageClassLoader;
         this.snippetReflection = snippetReflection;
         this.annotationSubstitutions = annotationSubstitutions;
         this.hostVM = hostVM;
         this.aUniverse = aUniverse;
-        this.analysis = analysis;
-        this.hosted = hosted;
+        this.reason = reason;
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    InvocationPlugins plugins, SVMHost hostVM, AnalysisUniverse aUniverse, boolean analysis, boolean hosted) {
+                    InvocationPlugins plugins, SVMHost hostVM, AnalysisUniverse aUniverse, ParsingReason reason) {
         /*
          * Initialize the registry if we are during analysis. If hosted is false, i.e., we are
          * analyzing the static initializers, then we always intrinsify, so don't need a registry.
          */
-        if (hosted && analysis) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             if (!ImageSingletons.contains(ReflectionPluginRegistry.class)) {
                 ImageSingletons.add(ReflectionPluginRegistry.class, new ReflectionPluginRegistry());
             }
         }
 
-        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, hostVM, aUniverse, analysis, hosted);
+        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, hostVM, aUniverse, reason);
         rp.registerMethodHandlesPlugins(plugins);
         rp.registerClassPlugins(plugins);
     }
@@ -442,17 +441,15 @@ public final class ReflectionPlugins {
      * compilation, not a lossy copy of it.
      */
     private <T> T getIntrinsic(GraphBuilderContext context, T element) {
-        if (!hosted) {
+        if (reason == ParsingReason.UnsafeSubstitutionAnalysis) {
             /* We are analyzing the static initializers and should always intrinsify. */
             return element;
         }
-        /*
-         * We don't intrinsify if bci is not unique.
-         */
+        /* We don't intrinsify if bci is not unique. */
         if (context.bciCanBeDuplicated()) {
             return null;
         }
-        if (analysis) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             if (isDeleted(element, context.getMetaAccess())) {
                 /*
                  * Should not intrinsify. Will fail during the reflective lookup at
@@ -464,10 +461,10 @@ public final class ReflectionPlugins {
 
             Object replaced = aUniverse.replaceObject(element);
 
-            /* We are during analysis, we should intrinsify and cache the intrinsified object. */
+            /* During parsing for analysis we intrinsify and cache the result for compilation. */
             ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getCallingContext(), replaced);
         }
-        /* We are during compilation, we only intrinsify if intrinsified during analysis. */
+        /* During parsing for compilation we only intrinsify if intrinsified during analysis. */
         return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getCallingContext());
     }
 
