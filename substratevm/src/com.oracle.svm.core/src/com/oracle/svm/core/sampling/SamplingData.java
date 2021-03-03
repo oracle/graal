@@ -13,6 +13,10 @@ import com.oracle.svm.core.ProfilingSampler;
 
 public class SamplingData {
 
+    public Runnable dumpToFile() {
+        return SamplingData::dumpProfiles;
+    }
+
     public static void dumpProfiles() {
         BufferedWriter writer = null;
         try {
@@ -32,22 +36,8 @@ public class SamplingData {
         }
     }
 
-    public Runnable dumpToFile() {
-        return SamplingData::dumpProfiles;
-    }
-
     static void dumpFromTree(BufferedWriter writer) throws IOException {
         PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
-        System.out.println(prefixTree.root().toStringa());
-// prefixTree.bottomUp((PrefixTree.Visitor<Long>) (n, childResults) -> {
-// long sum = 0;
-// for (long result : childResults) {
-// sum += result;
-// }
-// return n.get() + sum;
-// });
         prefixTree.topDown(writer);
-        prefixTree.root().toStringa();
-// System.out.println(prefixTree.root().toString());
     }
 }

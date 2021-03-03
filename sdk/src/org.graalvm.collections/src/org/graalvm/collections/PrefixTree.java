@@ -124,29 +124,8 @@ public class PrefixTree {
             if (key == EMPTY_KEY) {
                 throw new IllegalArgumentException("Key in the prefix tree cannot be 0.");
             }
-            System.out.println("key " + key);
-            System.out.println("arity " + arity);
             Node child = findChildLockFree(key);
-            child = child != null ? child : tryAddChild(key);
-            System.out.println(child);
-            return child;
-        }
-
-        public String toStringa() {
-            System.out.println("arity " + arity);
-            StringBuilder res = new StringBuilder();
-            long[] keysSnapshot = keys;
-            if (keysSnapshot == null) {
-                System.out.println("null");
-                return "null";
-            }
-            System.out.println(keysSnapshot.length);
-
-            for (long key : keysSnapshot
-            ) {
-                res.append(key).append(",");
-            }
-            return res.toString();
+            return child != null ? child : tryAddChild(key);
         }
 
         public long seqlockValue() {
@@ -349,7 +328,9 @@ public class PrefixTree {
             for (int i = 0; i < childrenSnapshot.length; i++) {
                 if (childrenSnapshot[i] != null) {
                     String childContext = String.valueOf(keysSnapshot[i]);
+                    writer.write(childContext);
                     childrenSnapshot[i].topDown(childContext, writer);
+                    System.out.println(childContext);
                 }
             }
         }

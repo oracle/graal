@@ -508,7 +508,6 @@ public abstract class JavaThreads {
         singleton().beforeThreadRun(thread);
         ManagementSupport.getSingleton().noteThreadStart(thread);
 
-        System.out.println("id " + Thread.currentThread().getId());
         ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
 
         try {

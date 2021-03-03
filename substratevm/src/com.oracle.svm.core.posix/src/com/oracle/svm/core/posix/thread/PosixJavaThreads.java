@@ -188,7 +188,6 @@ public final class PosixJavaThreads extends JavaThreads {
     static WordBase pthreadStartRoutine(ThreadStartData data) {
         ObjectHandle threadHandle = data.getThreadHandle();
         UnmanagedMemory.free(data);
-
         threadStartRoutine(threadHandle);
 
         return WordFactory.nullPointer();

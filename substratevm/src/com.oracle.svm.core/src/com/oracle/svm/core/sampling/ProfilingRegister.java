@@ -3,10 +3,12 @@ package com.oracle.svm.core.sampling;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.collections.PrefixTree;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Threading;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.ProfilingSampler;
+import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 
 public class ProfilingRegister implements ProfilingSampler {
@@ -19,21 +21,26 @@ public class ProfilingRegister implements ProfilingSampler {
         this.collectingActive = collectingActive;
     }
 
-    public void sampleThreadStack() {
+    public int sampleThreadStack() {
+        System.out.println("start: " + System.nanoTime());
         SamplingStackVisitor visitor = visitor();
-        System.out.println(visitor + ", visitor");
         SamplingStackVisitor.SamplingStackTrace data = new SamplingStackVisitor.SamplingStackTrace(prefixTree().root());
-        JavaStackWalker.walkThread(CurrentIsolate.getCurrentThread(), visitor, data);
+        walkCurrentThread(data, visitor);
         data.node.incValue();
+        System.out.println("end: " + System.nanoTime());
+        return 0;
+    }
+
+    @NeverInline("")
+    void walkCurrentThread(SamplingStackVisitor.SamplingStackTrace data, SamplingStackVisitor visitor) {
+        Pointer sp = KnownIntrinsics.readStackPointer();
+        JavaStackWalker.walkCurrentThread(sp, visitor, data);
     }
 
     @Override
     public void registerSampler() {
-        System.out.println("register");
         if (collectingActive) {
-            System.out.println("active");
             Threading.registerRecurringCallback(1000, TimeUnit.MILLISECONDS, (access) -> {
-                System.out.println("callback");
                 sampleThreadStack();
             });
         }
