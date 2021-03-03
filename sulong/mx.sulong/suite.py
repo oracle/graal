@@ -1063,6 +1063,7 @@ suite = {
         "dynLink",
         "linker",
         "rpath",
+        "reload",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -1083,7 +1084,6 @@ suite = {
       ],
       "results": [
         "interop",
-        "reload",
       ],
       "testProject" : True,
       "defaultBuild" : False,

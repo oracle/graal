@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-__attribute__((constructor)) static void beginB(void) {
-    printf("ctor b\n");
+__attribute__((constructor)) static void beginA(void) {
+    printf("ctor a\n");
 }
