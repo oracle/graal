@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.thread.VMOperationControl;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -249,17 +250,17 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     public void writeBoolean(boolean value) throws IOException {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
         writeCompressedInt(value ? 1 : 0);
     }
 
     public void writeCompressedInt(int value) throws IOException {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
         writeCompressedLong(value & 0xFFFFFFFFL);
     }
 
     public void writeCompressedLong(long value) throws IOException {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
         long v = value;
         if ((v & ~0x7FL) == 0L) {
             file.write((byte) v); // 0-6
@@ -332,7 +333,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         protected void operate() {
             changeEpoch();
             try {
-
                 long constantPoolPosition = writeCheckpointEvent(repositories);
                 long metadataPosition = writeMetadataEvent(metadataDescriptor);
                 patchFileHeader(constantPoolPosition, metadataPosition);
