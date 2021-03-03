@@ -1915,21 +1915,21 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                         PolyglotContextImpl.currentNotEntered() == context : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
 
         try {
+            boolean entered = true;
             PolyglotThreadInfo info = context.cachedThreadInfo;
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
-                // Volatile increment is safe if only one thread does it.
-                info.leaveInternal(prev);
-
-                // Check again whether the cached thread info is still the same as expected
-                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.cachedThreadInfo)) {
+                try {
                     info.notifyLeave(this, context);
+                } finally {
+                    info.leaveInternal(prev);
+                    entered = false;
+                }
+                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.cachedThreadInfo)) {
+                    // fast path leave
                     return;
-                } else {
-                    PolyglotContextImpl newPrev = info.enterInternal();
-                    assert newPrev == prev;
                 }
             }
-            context.leaveThreadChanged(prev);
+            context.leaveThreadChanged(prev, entered);
         } finally {
             if (pollSafepoint) {
                 TruffleSafepoint.poll(safepointLocation);
