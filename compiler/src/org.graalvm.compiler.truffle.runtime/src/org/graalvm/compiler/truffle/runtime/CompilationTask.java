@@ -40,18 +40,6 @@ import com.oracle.truffle.api.Truffle;
 
 public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
-    final WeakReference<OptimizedCallTarget> targetRef;
-    private final BackgroundCompileQueue.Priority priority;
-    private int lastCount;
-    private long lastTime;
-    private double lastWeight;
-    private final boolean multiTier;
-    private final boolean priorityQueue;
-    private final long id;
-    private final Consumer<CompilationTask> action;
-    private volatile Future<?> future;
-    private volatile boolean cancelled;
-    private volatile boolean started;
     private static final Consumer<CompilationTask> compilationAction = new Consumer<CompilationTask>() {
         @Override
         public void accept(CompilationTask task) {
@@ -66,14 +54,18 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             }
         }
     };
-
-    static CompilationTask createInitializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
-        return new CompilationTask(BackgroundCompileQueue.Priority.INITIALIZATION, targetRef, action, 0);
-    }
-
-    static CompilationTask createCompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, long id) {
-        return new CompilationTask(priority, targetRef, compilationAction, id);
-    }
+    final WeakReference<OptimizedCallTarget> targetRef;
+    private final BackgroundCompileQueue.Priority priority;
+    private final boolean multiTier;
+    private final boolean priorityQueue;
+    private final long id;
+    private final Consumer<CompilationTask> action;
+    private int lastCount;
+    private long lastTime;
+    private double lastWeight;
+    private volatile Future<?> future;
+    private volatile boolean cancelled;
+    private volatile boolean started;
 
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
@@ -86,6 +78,14 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastWeight = target != null ? target.getCallAndLoopCount() : -1;
         priorityQueue = target != null && target.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
         multiTier = target != null && target.getOptionValue(PolyglotCompilerOptions.MultiTier);
+    }
+
+    static CompilationTask createInitializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
+        return new CompilationTask(BackgroundCompileQueue.Priority.INITIALIZATION, targetRef, action, 0);
+    }
+
+    static CompilationTask createCompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, long id) {
+        return new CompilationTask(priority, targetRef, compilationAction, id);
     }
 
     public void awaitCompletion(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
@@ -188,18 +188,28 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return null;
     }
 
-    public double weight(long time) {
+    public boolean greaterThan(CompilationTask other) {
+        int otherCompileTier = other.targetHighestCompiledTier();
+        int compiledTier = targetHighestCompiledTier();
+        if (compiledTier == otherCompileTier) {
+            assert compiledTier < 2 : "Weights of targets previously compiled with second tier are wrong (no profiling)";
+            return lastWeight > other.lastWeight;
+        }
+        return compiledTier > otherCompileTier;
+    }
+
+    public double updateWeight(long currentTime) {
         OptimizedCallTarget target = targetRef.get();
         if (target == null) {
             return -1.0;
         }
-        long elapsed = time - lastTime;
+        long elapsed = currentTime - lastTime;
         if (elapsed < 1_000_000) {
             return lastWeight;
         }
         int count = target.getCallAndLoopCount();
         double weight = rate(count, elapsed) * count;
-        lastTime = time;
+        lastTime = currentTime;
         lastCount = count;
         lastWeight = weight;
         return weight;
@@ -210,12 +220,12 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return 1.0 + (Double.isNaN(rawRate) ? 0 : rawRate);
     }
 
-    public boolean targetPreviouslyCompiled() {
+    public int targetHighestCompiledTier() {
         OptimizedCallTarget target = targetRef.get();
         if (target == null) {
-            return false;
+            return -1;
         }
-        return target.highestCompiledTier() >= tier();
+        return target.highestCompiledTier();
     }
 
     /**

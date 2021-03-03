@@ -42,9 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.collection.DelegatingBlockingQueue;
 import org.graalvm.compiler.truffle.runtime.collection.TraversingBlockingQueue;
-import org.graalvm.compiler.truffle.runtime.collection.TraversingQueue;
 
 /**
  * The compilation queue accepts compilation requests, and schedules compilations.
