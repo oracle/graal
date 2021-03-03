@@ -1547,6 +1547,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.amd64.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.pthread.native/*",
         ],
       },
       "license" : "BSD-new",
