@@ -190,7 +190,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 }
 
 @Delete
-@TargetClass(sun.util.locale.provider.AuxLocaleProviderAdapter.class)
+@TargetClass(value = sun.util.locale.provider.AuxLocaleProviderAdapter.class, onlyWith = SingleLocaleOnly.class)
 final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter {
 }
 
