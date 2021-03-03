@@ -1528,7 +1528,7 @@ suite = {
       "defaultBuild" : False,
     },
 
-    "SULONG_TEST_SUITES" : {
+    "SULONG_STANDALONE_TEST_SUITES" : {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
@@ -1571,6 +1571,15 @@ suite = {
       "license" : "BSD-new",
       "testDistribution" : True,
       "defaultBuild" : False,
+    },
+    "SULONG_TEST_SUITES" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+      "ignore" : "No longer available. Use either SULONG_STANDALONE_TEST_SUITES or SULONG_EMBEDDED_TEST_SUITES.",
     },
     # <editor-fold desc="External Test Suites">
     "SULONG_GCC_C_TEST_SUITE" : {
