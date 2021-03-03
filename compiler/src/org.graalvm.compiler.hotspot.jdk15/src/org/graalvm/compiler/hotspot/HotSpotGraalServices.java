@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
 
 /**
- * JDK 15 version of {@code HotSpotGraalServices}.
+ * JDK 15+ version of {@code HotSpotGraalServices}.
  */
 public class HotSpotGraalServices {
 
