@@ -164,8 +164,6 @@ public final class ComputeBlockOrder {
     private static <T extends AbstractBlockBase<T>> void addPathToCodeEmittingOrder(T initialBlock, List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         T block = initialBlock;
         while (block != null) {
-            // Skip loop headers if there is only a single loop end block to
-            // make the backward jump be a conditional jump.
             if (!skipLoopHeader(block)) {
 
                 // Align unskipped loop headers as they are the target of the backward jump.
@@ -182,20 +180,29 @@ public final class ComputeBlockOrder {
                 // Add the header immediately afterwards.
                 addBlock(loop.getHeader(), order);
 
-                // Make sure the loop successors of the loop header are aligned
-                // as they are the target
-                // of the backward jump.
-                for (T successor : loop.getHeader().getSuccessors()) {
-                    if (successor.getLoopDepth() == block.getLoopDepth()) {
-                        successor.setAlign(true);
+                // for inverted loops (they always have a single loop end) do not align the header
+                // successor block if its a trivial loop, since thats the loop end again
+                boolean alignSucc = true;
+                if (loop.isInverted() && loop.getBlocks().size() < 2) {
+                    alignSucc = false;
+                }
+
+                if (alignSucc) {
+                    // Make sure the loop successors of the loop header are aligned
+                    // as they are the target
+                    // of the backward jump.
+                    for (T successor : loop.getHeader().getSuccessors()) {
+                        if (successor.getLoopDepth() == block.getLoopDepth()) {
+                            successor.setAlign(true);
+                        }
                     }
                 }
             }
-
             T mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
             enqueueSuccessors(block, worklist, visitedBlocks);
             block = mostLikelySuccessor;
         }
+
     }
 
     /**
