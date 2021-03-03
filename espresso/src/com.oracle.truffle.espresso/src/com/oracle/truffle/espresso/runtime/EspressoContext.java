@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +42,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -58,7 +60,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -66,6 +67,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -101,6 +103,7 @@ public final class EspressoContext {
     private final TruffleLanguage.Env env;
 
     private String[] mainArguments;
+    private String[] vmArguments;
 
     // region Debug
     private final TimerCollection timers;
@@ -255,6 +258,8 @@ public final class EspressoContext {
         this.multiThreadingDisabled = multiThreadingDisabledReason;
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
+
+        this.vmArguments = buildVmArguments();
     }
 
     private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
@@ -316,6 +321,38 @@ public final class EspressoContext {
 
     public void setMainArguments(String[] mainArguments) {
         this.mainArguments = mainArguments;
+    }
+
+    public String[] getVmArguments() {
+        return vmArguments;
+    }
+
+    private String[] buildVmArguments() {
+        OptionMap<String> argsMap = getEnv().getOptions().get(EspressoOptions.VMArguments);
+        if (argsMap == null) {
+            return new String[0];
+        }
+        Set<Map.Entry<String, String>> set = argsMap.entrySet();
+        int length = set.size();
+        String[] array = new String[length];
+        for (Map.Entry<String, String> entry : set) {
+            try {
+                String key = entry.getKey();
+                int idx = Integer.parseInt(key.substring(key.lastIndexOf('.') + 1));
+                if (idx < 0 || idx >= length) {
+                    getLogger().severe("Unsupported use of the 'java.VMArguments' option: " +
+                                    "Declared index: " + idx + ", actual number of arguments: " + length + ".\n" +
+                                    "Please only declare positive index starting from 0, and growing by 1 each.");
+                    throw EspressoError.shouldNotReachHere();
+                }
+                array[idx] = entry.getValue();
+            } catch (NumberFormatException e) {
+                getLogger().warning("Unsupported use of the 'java.VMArguments' option: java.VMArguments." + entry.getKey() + "=" + entry.getValue() + "\n" +
+                                "Should be of the form: java.VMArguments.<int>=<value>");
+                throw EspressoError.shouldNotReachHere();
+            }
+        }
+        return array;
     }
 
     public Classpath getBootClasspath() {

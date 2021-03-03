@@ -62,8 +62,6 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.ffi.RawPointer;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -84,9 +82,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.ffi.NativeSignature;
-import com.oracle.truffle.espresso.ffi.NativeType;
-import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -98,6 +93,11 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Validation;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -2263,6 +2263,33 @@ public final class VM extends NativeEnv implements ContextAccess {
         });
     }
 
+    /**
+     * Returns all values declared to the {@link EspressoOptions#VMArguments} option during context
+     * creation.
+     * <p>
+     * In practice, this should be the list of arguments passed to the context, but depending on who
+     * built it, it may be any arbitrary list of Strings.
+     * <p>
+     * Note that even if that's the case, it may differs slightly from the expected list of
+     * arguments. The Java world expects this to be the arguments passed to the VM creation, which
+     * is expected to have passed through the regular java launcher, and have been de-sugarified
+     * (/ex: '-m [module]' -> '-Djdk.module.main=[module]').
+     * <p>
+     * In the Java-on-Truffle case, the VM arguments and the context builder options are equivalent,
+     * but that is not true in the regular Espresso launcher case, or in an embedding scenario.
+     */
+    @JniImpl
+    @VmImpl
+    @TruffleBoundary
+    public @Host(String[].class) StaticObject JVM_GetVmArguments() {
+        String[] vmArgs = getContext().getVmArguments();
+        StaticObject array = getMeta().java_lang_String.allocateReferenceArray(vmArgs.length);
+        for (int i = 0; i < vmArgs.length; i++) {
+            getInterpreterToVM().setArrayObject(getMeta().toGuestString(vmArgs[i]), i, array);
+        }
+        return array;
+    }
+
     // region Management
 
     // Partial/incomplete implementation disclaimer!
@@ -2539,13 +2566,13 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public @Host(String[].class) StaticObject GetInputArgumentArray() {
-        return getMeta().java_lang_String.allocateReferenceArray(0);
+        return JVM_GetVmArguments();
     }
 
     @JniImpl
     @VmImpl
     public @Host(String[].class) StaticObject GetInputArguments() {
-        return GetInputArgumentArray();
+        return JVM_GetVmArguments();
     }
 
     @JniImpl
