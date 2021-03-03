@@ -34,6 +34,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
@@ -46,6 +47,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Multi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingDumpDecisions;
@@ -378,7 +380,7 @@ public final class EngineData {
         if (multiTier) {
             return Math.min(options.get(FirstTierMinInvokeThreshold), options.get(FirstTierCompilationThreshold));
         } else {
-            return Math.min(options.get(MinInvokeThreshold), options.get(CompilationThreshold));
+            return Math.min(options.get(MinInvokeThreshold), options.get(SingleTierCompilationThreshold));
         }
     }
 
@@ -389,7 +391,11 @@ public final class EngineData {
         if (multiTier) {
             return options.get(FirstTierCompilationThreshold);
         } else {
-            return options.get(CompilationThreshold);
+            // TODO: GR-29467 - Legacy behaviour, should be removed
+            if (options.hasBeenSet(CompilationThreshold)) {
+                return options.get(CompilationThreshold);
+            }
+            return options.get(SingleTierCompilationThreshold);
         }
     }
 
@@ -397,14 +403,18 @@ public final class EngineData {
         if (compileImmediately) {
             return 0;
         }
-        return Math.min(options.get(MinInvokeThreshold), options.get(CompilationThreshold));
+        return Math.min(options.get(MinInvokeThreshold), options.get(LastTierCompilationThreshold));
     }
 
     private int computeCallAndLoopThresholdInFirstTier(OptionValues options) {
         if (compileImmediately) {
             return 0;
         }
-        return options.get(CompilationThreshold);
+        // TODO: GR-29467 - Legacy behaviour, should be removed
+        if (options.hasBeenSet(CompilationThreshold)) {
+            return options.get(CompilationThreshold);
+        }
+        return options.get(LastTierCompilationThreshold);
     }
 
     public TruffleLogger getEngineLogger() {
