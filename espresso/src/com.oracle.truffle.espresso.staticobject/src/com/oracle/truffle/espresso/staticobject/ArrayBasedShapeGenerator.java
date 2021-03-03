@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.Label;
@@ -62,16 +63,40 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.T_BYTE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
-
+    private static final int UNINITIALIZED_NATIVE_OFFSET = -1;
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, ArrayBasedShapeGenerator<?>> generatorCache = new ConcurrentHashMap<>();
 
     private final int byteArrayOffset;
     private final int objectArrayOffset;
 
+    static {
+        if (TruffleOptions.AOT) {
+            try {
+                Class<?> defaultStorageSuperClass = Class.forName("com.oracle.truffle.espresso.runtime.StaticObject");
+                Class<?> defaultStorageFactoryInterface = Class.forName("com.oracle.truffle.espresso.runtime.StaticObject$StaticObjectFactory");
+                Class<?> defaultStorageClass = Class.forName("com.oracle.truffle.espresso.runtime.StaticObject$DefaultArrayBasedStaticObject");
+                Class<?> defaultFactoryClass = Class.forName("com.oracle.truffle.espresso.runtime.StaticObject$DefaultArrayBasedStaticObjectFactory");
+                Collection<ExtendedProperty> storageProperties = generateStorageProperties();
+                // The offsets of the byte and object arrays cannot be computed at image build time.
+                // They would refer to a Java object, not to a Native object.
+                ArrayBasedShapeGenerator<?> sg = new ArrayBasedShapeGenerator<Object>(defaultStorageClass, defaultFactoryClass, storageProperties, UNINITIALIZED_NATIVE_OFFSET,
+                                UNINITIALIZED_NATIVE_OFFSET);
+                generatorCache.putIfAbsent(Pair.create(defaultStorageSuperClass, defaultStorageFactoryInterface), sg);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     private ArrayBasedShapeGenerator(ArrayBasedShapeGenerator<T> rootSG, Collection<ExtendedProperty> extendedProperties, StaticShape<T> parentShape) {
         super(rootSG.generatedStorageClass, rootSG.generatedFactoryClass, extendedProperties, parentShape);
-        byteArrayOffset = rootSG.byteArrayOffset;
-        objectArrayOffset = rootSG.objectArrayOffset;
+        if (TruffleOptions.AOT) {
+            byteArrayOffset = rootSG.byteArrayOffset == UNINITIALIZED_NATIVE_OFFSET ? getObjectFieldOffset(rootSG.generatedStorageClass, "primitive") : rootSG.byteArrayOffset;
+            objectArrayOffset = rootSG.objectArrayOffset == UNINITIALIZED_NATIVE_OFFSET ? getObjectFieldOffset(rootSG.generatedStorageClass, "object") : rootSG.objectArrayOffset;
+        } else {
+            byteArrayOffset = rootSG.byteArrayOffset;
+            objectArrayOffset = rootSG.objectArrayOffset;
+        }
     }
 
     private ArrayBasedShapeGenerator(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, Collection<ExtendedProperty> extendedProperties) {
@@ -80,11 +105,19 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         objectArrayOffset = getObjectFieldOffset(generatedStorageClass, "object");
     }
 
+    private ArrayBasedShapeGenerator(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, Collection<ExtendedProperty> extendedProperties, int byteArrayOffset,
+                    int objectArrayOffset) {
+        super(generatedStorageClass, generatedFactoryClass, extendedProperties, null);
+        this.byteArrayOffset = byteArrayOffset;
+        this.objectArrayOffset = objectArrayOffset;
+    }
+
     @SuppressWarnings("unchecked")
     static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(StaticShape<T> parentShape, Collection<ExtendedProperty> extendedProperties) {
         Class<?> parentStorageSuperClass = parentShape.getStorageClass().getSuperclass();
         Class<T> parentStorageFactoryInterface = parentShape.getFactoryInterface();
         ArrayBasedShapeGenerator<T> rootSG = (ArrayBasedShapeGenerator<T>) generatorCache.get(Pair.create(parentStorageSuperClass, parentStorageFactoryInterface));
+        assert rootSG != null;
         return new ArrayBasedShapeGenerator<>(rootSG, extendedProperties, parentShape);
     }
 
@@ -93,17 +126,18 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Pair<Class<?>, Class<?>> pair = Pair.create(storageSuperClass, storageFactoryInterface);
         ArrayBasedShapeGenerator<T> sg = (ArrayBasedShapeGenerator<T>) generatorCache.get(pair);
         if (sg == null) {
+            assert !TruffleOptions.AOT;
             Class<?> generatedStorageClass = generateStorage(storageSuperClass);
             Class<? extends T> generatedFactoryClass = generateFactory(generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass, extendedProperties);
             ArrayBasedShapeGenerator<T> prevSg = (ArrayBasedShapeGenerator<T>) generatorCache.putIfAbsent(pair, sg);
-            if (prevSg != null) {
+            if (prevSg == null) {
+                return sg;
+            } else {
                 sg = prevSg;
             }
-        } else {
-            sg = new ArrayBasedShapeGenerator<>(sg, extendedProperties, null);
         }
-        return sg;
+        return new ArrayBasedShapeGenerator<>(sg, extendedProperties, null);
     }
 
     private static int getObjectFieldOffset(Class<?> c, String fieldName) {
@@ -180,8 +214,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     private static void addCloneMethod(ClassVisitor cv, String className) {
+        // TODO(da): should the descriptor and the exceptions match those of `super.clone()`?
         MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "clone", "()Ljava/lang/Object;", null, new String[]{"java/lang/CloneNotSupportedException"});
         mv.visitVarInsn(ALOAD, 0);
+        // TODO(da): we need to call `super.clone()`, not `java.lang.Object.clone()`
         mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "clone", "()Ljava/lang/Object;", false);
         mv.visitTypeInsn(CHECKCAST, className);
         mv.visitVarInsn(ASTORE, 1);
@@ -280,12 +316,16 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
+    private static Collection<ExtendedProperty> generateStorageProperties() {
+        return Arrays.asList(
+                        new ExtendedProperty(new StaticProperty(StaticPropertyKind.BYTE_ARRAY), "primitive", true),
+                        new ExtendedProperty(new StaticProperty(StaticPropertyKind.OBJECT_ARRAY), "object", true));
+    }
+
     private static Class<?> generateStorage(Class<?> storageSuperClass) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
         String storageName = generateStorageName(storageSuperClass);
-        Collection<ExtendedProperty> arrayProperties = Arrays.asList(
-                        new ExtendedProperty(new StaticProperty(StaticPropertyKind.BYTE_ARRAY), "primitive", true),
-                        new ExtendedProperty(new StaticProperty(StaticPropertyKind.OBJECT_ARRAY), "object", true));
+        Collection<ExtendedProperty> arrayProperties = generateStorageProperties();
 
         int classWriterFlags = ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS;
         ClassWriter storageWriter = new ClassWriter(classWriterFlags);

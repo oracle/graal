@@ -245,13 +245,19 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (getKlass().isArray()) {
             obj = createArray((ArrayKlass) getKlass(), cloneWrappedArray());
         } else {
-            try {
-                return (StaticObject) this.clone();
-            } catch (CloneNotSupportedException e) {
-                throw new RuntimeException(e);
-            }
+            obj = (StaticObject) clone();
         }
         return trackAllocation(getKlass(), obj);
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object clone() {
+        try {
+            return super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static StaticObject trackAllocation(Klass klass, StaticObject obj) {
@@ -636,4 +642,52 @@ public class StaticObject implements TruffleObject, Cloneable {
         StaticObject create(ObjectKlass klass, Void unused);
     }
     // endregion Factory interface.
+
+    public static final class DefaultArrayBasedStaticObject extends StaticObject {
+        public final byte[] primitive;
+        public final Object[] object;
+
+        private DefaultArrayBasedStaticObject(ObjectKlass klass, int primitiveArraySize, int objectArraySize) {
+            super(klass);
+            primitive = new byte[primitiveArraySize];
+            object = new Object[objectArraySize];
+        }
+
+        private DefaultArrayBasedStaticObject(Klass klass, int primitiveArraySize, int objectArraySize) {
+            super(klass);
+            primitive = new byte[primitiveArraySize];
+            object = new Object[objectArraySize];
+        }
+
+        private DefaultArrayBasedStaticObject(ObjectKlass klass, Void unused, int primitiveArraySize, int objectArraySize) {
+            super(klass, unused);
+            primitive = new byte[primitiveArraySize];
+            object = new Object[objectArraySize];
+        }
+    }
+
+    public static final class DefaultArrayBasedStaticObjectFactory implements StaticObjectFactory {
+        private final int primitiveArraySize;
+        private final int objectArraySize;
+
+        public DefaultArrayBasedStaticObjectFactory(int primitiveArraySize, int objectArraySize) {
+            this.primitiveArraySize = primitiveArraySize;
+            this.objectArraySize = objectArraySize;
+        }
+
+        @Override
+        public StaticObject create(ObjectKlass klass) {
+            return new DefaultArrayBasedStaticObject(klass, primitiveArraySize, objectArraySize);
+        }
+
+        @Override
+        public StaticObject create(Klass klass) {
+            return new DefaultArrayBasedStaticObject(klass, primitiveArraySize, objectArraySize);
+        }
+
+        @Override
+        public StaticObject create(ObjectKlass klass, Void unused) {
+            return new DefaultArrayBasedStaticObject(klass, unused, primitiveArraySize, objectArraySize);
+        }
+    }
 }
