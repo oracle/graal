@@ -180,37 +180,7 @@ final class HeapUtils {
                 final Class<? extends Object> clazz = obj.getClass();
                 ClassInstance wrapperClass = primitiveClasses.get(clazz);
                 if (wrapperClass == null) {
-                    assert clazz.getName().startsWith("java.lang.");
-                    Class<?> primitiveType;
-                    switch (clazz.getName()) {
-                        case "java.lang.Boolean":
-                            primitiveType = Boolean.TYPE;
-                            break;
-                        case "java.lang.Byte":
-                            primitiveType = Byte.TYPE;
-                            break;
-                        case "java.lang.Short":
-                            primitiveType = Short.TYPE;
-                            break;
-                        case "java.lang.Integer":
-                            primitiveType = Integer.TYPE;
-                            break;
-                        case "java.lang.Long":
-                            primitiveType = Long.TYPE;
-                            break;
-                        case "java.lang.Float":
-                            primitiveType = Float.TYPE;
-                            break;
-                        case "java.lang.Double":
-                            primitiveType = Double.TYPE;
-                            break;
-                        case "java.lang.Character":
-                            primitiveType = Character.TYPE;
-                            break;
-                        default:
-                            throw new IllegalStateException(clazz.getName());
-                    }
-                    assert primitiveType.isPrimitive();
+                    Class<?> primitiveType = findPrimitiveType(clazz);
 
                     wrapperClass = newClass(clazz.getName()).addField("value", primitiveType).dumpClass();
                     primitiveClasses.put(clazz, wrapperClass);
@@ -303,49 +273,22 @@ final class HeapUtils {
                     ids.writeID(heap, 0); // protection domain ID
                     ids.writeID(heap, 0); // reserved 1
                     ids.writeID(heap, 0); // reserved 2
-                    heap.writeInt(0); // instance size
+                    int instanceSize = 0;
+                    for (Map.Entry<String, Class<?>> entry : fieldNamesAndTypes.entrySet()) {
+                        final Class<?> type = entry.getValue();
+                        instanceSize += switchOnType(type, ids)[1];
+                    }
+                    heap.writeInt(instanceSize);
                     heap.writeShort(0); // # of constant pool entries
                     heap.writeShort(0); // # of static fields
                     heap.writeShort(fieldNamesAndTypes.size()); // # of instance fields
-                    int fieldBytes = 0;
                     for (Map.Entry<String, Class<?>> entry : fieldNamesAndTypes.entrySet()) {
                         int nId = writeString(entry.getKey());
                         heap.writeInt(nId);
                         final Class<?> type = entry.getValue();
-                        if (type.isPrimitive()) {
-                            if (type == Boolean.TYPE) {
-                                heap.writeByte(TYPE_BOOLEAN);
-                                fieldBytes++;
-                            } else if (type == Character.TYPE) {
-                                heap.writeByte(TYPE_CHAR);
-                                fieldBytes += 2;
-                            } else if (type == Float.TYPE) {
-                                heap.writeByte(TYPE_FLOAT);
-                                fieldBytes += 4;
-                            } else if (type == Double.TYPE) {
-                                heap.writeByte(TYPE_DOUBLE);
-                                fieldBytes += 8;
-                            } else if (type == Byte.TYPE) {
-                                heap.writeByte(TYPE_BYTE);
-                                fieldBytes++;
-                            } else if (type == Short.TYPE) {
-                                heap.writeByte(TYPE_SHORT);
-                                fieldBytes += 2;
-                            } else if (type == Integer.TYPE) {
-                                heap.writeByte(TYPE_INT);
-                                fieldBytes += 4;
-                            } else if (type == Long.TYPE) {
-                                heap.writeByte(TYPE_LONG);
-                                fieldBytes += 8;
-                            } else {
-                                throw new IllegalStateException("Unsupported primitive type: " + type);
-                            }
-                        } else {
-                            heap.writeByte(TYPE_OBJECT);
-                            fieldBytes += ids.sizeOf();
-                        }
+                        heap.writeByte(switchOnType(type, ids)[0]);
                     }
-                    ClassInstance inst = new ClassInstance(classId, fieldNamesAndTypes, fieldBytes);
+                    ClassInstance inst = new ClassInstance(classId, fieldNamesAndTypes, instanceSize);
                     fieldNamesAndTypes = new TreeMap<>();
                     return inst;
                 }
@@ -550,4 +493,64 @@ final class HeapUtils {
         }
     }
 
+    private static int[] switchOnType(final Class<?> type, Identifiers ids) throws IllegalStateException, IOException {
+        if (type.isPrimitive()) {
+            if (type == Boolean.TYPE) {
+                return new int[]{TYPE_BOOLEAN, 1};
+            } else if (type == Character.TYPE) {
+                return new int[]{TYPE_CHAR, 2};
+            } else if (type == Float.TYPE) {
+                return new int[]{TYPE_FLOAT, 4};
+            } else if (type == Double.TYPE) {
+                return new int[]{TYPE_DOUBLE, 8};
+            } else if (type == Byte.TYPE) {
+                return new int[]{TYPE_BYTE, 1};
+            } else if (type == Short.TYPE) {
+                return new int[]{TYPE_SHORT, 2};
+            } else if (type == Integer.TYPE) {
+                return new int[]{TYPE_INT, 4};
+            } else if (type == Long.TYPE) {
+                return new int[]{TYPE_LONG, 8};
+            } else {
+                throw new IllegalStateException("Unsupported primitive type: " + type);
+            }
+        } else {
+            return new int[]{TYPE_OBJECT, ids.sizeOf()};
+        }
+    }
+
+    private static Class<?> findPrimitiveType(final Class<? extends Object> clazz) throws IllegalStateException {
+        assert clazz.getName().startsWith("java.lang.");
+        Class<?> primitiveType;
+        switch (clazz.getName()) {
+            case "java.lang.Boolean":
+                primitiveType = Boolean.TYPE;
+                break;
+            case "java.lang.Byte":
+                primitiveType = Byte.TYPE;
+                break;
+            case "java.lang.Short":
+                primitiveType = Short.TYPE;
+                break;
+            case "java.lang.Integer":
+                primitiveType = Integer.TYPE;
+                break;
+            case "java.lang.Long":
+                primitiveType = Long.TYPE;
+                break;
+            case "java.lang.Float":
+                primitiveType = Float.TYPE;
+                break;
+            case "java.lang.Double":
+                primitiveType = Double.TYPE;
+                break;
+            case "java.lang.Character":
+                primitiveType = Character.TYPE;
+                break;
+            default:
+                throw new IllegalStateException(clazz.getName());
+        }
+        assert primitiveType.isPrimitive();
+        return primitiveType;
+    }
 }
