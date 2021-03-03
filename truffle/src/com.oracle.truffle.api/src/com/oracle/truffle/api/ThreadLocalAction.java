@@ -154,7 +154,7 @@ public abstract class ThreadLocalAction {
          */
         protected Access(AbstractPolyglotImpl impl) {
             if (impl == null) {
-                throw new AssertionError("No custom subclasses without poolygl.");
+                throw new AssertionError("Constructor for framework use only.");
             }
         }
 

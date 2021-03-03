@@ -232,7 +232,7 @@ public abstract class TruffleSafepoint {
      * try {
      *     while (true) {
      *         try {
-     *             interruptable.run(lock);
+     *             interruptable.apply(lock);
      *             break;
      *         } catch (InterruptedException e) {
      *             TruffleSafepoint.poll(location);
