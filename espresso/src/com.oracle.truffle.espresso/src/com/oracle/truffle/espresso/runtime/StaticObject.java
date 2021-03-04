@@ -1167,7 +1167,7 @@ public final class StaticObject implements TruffleObject {
         ObjectKlass k = getInteropKlass();
 
         for (Method m : k.getVTable()) {
-            if (LookupVirtualMethodNode.isCanditate(m)) {
+            if (LookupVirtualMethodNode.isCandidate(m)) {
                 // Note: If there are overloading, the same key may appear twice.
                 // TODO: Cache the keys array in the Klass.
                 members.add(m.getNameAsString());

@@ -35,8 +35,8 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     public abstract Method.MethodVersion execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity);
 
-    public boolean isInvocable(Klass klass, String key, boolean publicOnly, boolean isStatic) {
-        return doLookup(klass, key, publicOnly, isStatic, -1) != null;
+    public boolean isInvocable(Klass klass, String key, boolean isStatic) {
+        return isInvocable(klass, key, true, isStatic);
     }
 
     @SuppressWarnings("unused")

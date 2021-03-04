@@ -186,7 +186,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @ExportMessage
     final boolean isMemberInvocable(String member,
                     @Exclusive @Cached LookupDeclaredMethod lookupMethod) {
-        return lookupMethod.isInvocable(this, member, true, true);
+        return lookupMethod.isInvocable(this, member, true);
     }
 
     @ExportMessage
