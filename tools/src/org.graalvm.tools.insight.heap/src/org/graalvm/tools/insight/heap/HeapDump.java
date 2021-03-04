@@ -105,14 +105,14 @@ public final class HeapDump {
     private final ClassInstance typeString;
     private final ClassInstance typeThread;
 
-    HeapDump() throws IOException {
+    HeapDump() {
         this.builder = null;
         this.heap = null;
         this.typeObject = null;
         this.typeString = null;
         this.typeThread = null;
     }
-    
+
     HeapDump(OutputStream out, final Builder builder) throws IOException {
         this.builder = builder;
         this.heap = new DataOutputStream(out);
