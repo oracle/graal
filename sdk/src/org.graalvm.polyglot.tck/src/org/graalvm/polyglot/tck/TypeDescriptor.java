@@ -45,12 +45,15 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.Value;
 
@@ -390,36 +393,68 @@ public final class TypeDescriptor {
                 subtypes.add(typeImpl);
             }
         }
-        final Set<TypeDescriptorImpl> impls = new HashSet<>();
-        final Set<TypeDescriptorImpl> arrays = new HashSet<>();
+        Set<TypeDescriptorImpl> impls = new HashSet<>();
+        Map<Class<? extends ParameterizedTypeDescriptorImpl>, List<TypeDescriptorImpl>> parameterizedTypesByClz = new HashMap<>();
         for (TypeDescriptorImpl part : subtypes) {
             if (isArray(part)) {
+                List<TypeDescriptorImpl> arrays = parameterizedTypesByClz.computeIfAbsent(ArrayImpl.class, (k) -> new ArrayList<>());
                 arrays.add(part);
+            } else if (part instanceof IterableImpl) {
+                List<TypeDescriptorImpl> iterables = parameterizedTypesByClz.computeIfAbsent(IterableImpl.class, (k) -> new ArrayList<>());
+                iterables.add(part);
+            } else if (part instanceof IteratorImpl) {
+                List<TypeDescriptorImpl> iterators = parameterizedTypesByClz.computeIfAbsent(IteratorImpl.class, (k) -> new ArrayList<>());
+                iterators.add(part);
             } else {
                 impls.add(part);
             }
         }
-        switch (arrays.size()) {
-            case 0:
-                break;
-            case 1:
-                impls.add(arrays.iterator().next());
-                break;
-            default:
-                boolean seenWildCard = false;
-                final Set<TypeDescriptorImpl> contentTypes = new HashSet<>();
-                for (TypeDescriptorImpl array : arrays) {
-                    final TypeDescriptorImpl contentType = asArrayImpl(array).contentType;
-                    if (contentType == null || isAny(contentType)) {
-                        seenWildCard = true;
-                        break;
+        for (Map.Entry<Class<? extends ParameterizedTypeDescriptorImpl>, List<TypeDescriptorImpl>> e : parameterizedTypesByClz.entrySet()) {
+            Class<? extends ParameterizedTypeDescriptorImpl> clz = e.getKey();
+            List<TypeDescriptorImpl> parameterizedTypes = e.getValue();
+            switch (parameterizedTypes.size()) {
+                case 0:
+                    break;
+                case 1:
+                    impls.add(parameterizedTypes.get(0));
+                    break;
+                default:
+                    boolean seenWildCard = false;
+                    Set<TypeDescriptorImpl> contentTypes = new HashSet<>();
+                    for (TypeDescriptorImpl type : parameterizedTypes) {
+                        ParameterizedTypeDescriptorImpl parameterizedType;
+                        if (isArray(type)) {
+                            parameterizedType = asArrayImpl(type);
+                        } else {
+                            parameterizedType = (ParameterizedTypeDescriptorImpl) type;
+                        }
+                        TypeDescriptorImpl contentType = parameterizedType.typeParameters.get(0);
+                        if (contentType == null || isAny(contentType)) {
+                            seenWildCard = true;
+                            break;
+                        }
+                        contentTypes.add(contentType);
                     }
-                    contentTypes.add(contentType);
-                }
-                final TypeDescriptorImpl contentType = unionImpl(contentTypes);
-                impls.add(seenWildCard || isAny(contentType) ? ARRAY.impl : array(new TypeDescriptor(contentType)).impl);
+                    TypeDescriptorImpl contentType = unionImpl(contentTypes);
+                    impls.add(PARAM_TYPES_FACTORIES.get(clz).apply(seenWildCard, contentType));
+            }
         }
         return impls.size() == 1 ? impls.iterator().next() : new UnionImpl(impls);
+    }
+
+    private static final Map<Class<? extends ParameterizedTypeDescriptorImpl>, BiFunction<Boolean, TypeDescriptorImpl, TypeDescriptorImpl>> PARAM_TYPES_FACTORIES;
+    static {
+        Map<Class<? extends ParameterizedTypeDescriptorImpl>, BiFunction<Boolean, TypeDescriptorImpl, TypeDescriptorImpl>> m = new HashMap<>();
+        m.put(ArrayImpl.class, (topType, typeParam) -> {
+            return topType || isAny(typeParam) ? ARRAY.impl : array(new TypeDescriptor(typeParam)).impl;
+        });
+        m.put(IterableImpl.class, (topType, typeParam) -> {
+            return topType || isAny(typeParam) ? ITERABLE.impl : iterable(new TypeDescriptor(typeParam)).impl;
+        });
+        m.put(IteratorImpl.class, (topType, typeParam) -> {
+            return topType || isAny(typeParam) ? ITERATOR.impl : iterator(new TypeDescriptor(typeParam)).impl;
+        });
+        PARAM_TYPES_FACTORIES = Collections.unmodifiableMap(m);
     }
 
     /**
@@ -803,7 +838,9 @@ public final class TypeDescriptor {
         }
         switch (contentTypes.size()) {
             case 0:
-                return intersection(NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, INSTANTIABLE);
+                return intersection(NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT,
+                                ARRAY, EXECUTABLE, INSTANTIABLE, ITERABLE, ITERATOR, DATE, TIME, TIME_ZONE, DURATION,
+                                META_OBJECT, EXCEPTION);
             case 1:
                 return contentTypes.iterator().next();
             default:
@@ -1055,13 +1092,17 @@ public final class TypeDescriptor {
         }
     }
 
-    private abstract static class ContentTypeDescriptorImpl extends TypeDescriptorImpl {
+    private abstract static class ParameterizedTypeDescriptorImpl extends TypeDescriptorImpl {
 
-        final TypeDescriptorImpl contentType;
+        final List<? extends TypeDescriptorImpl> typeParameters;
         private final Set<Class<? extends TypeDescriptorImpl>> exclude;
 
-        ContentTypeDescriptorImpl(TypeDescriptorImpl contentType, Collection<Class<? extends ContentTypeDescriptorImpl>> exclude) {
-            this.contentType = contentType;
+        ParameterizedTypeDescriptorImpl(TypeDescriptorImpl typeParameter, Collection<Class<? extends ParameterizedTypeDescriptorImpl>> exclude) {
+            this(Collections.singletonList(typeParameter), exclude);
+        }
+
+        ParameterizedTypeDescriptorImpl(List<? extends TypeDescriptorImpl> typeParameters, Collection<Class<? extends ParameterizedTypeDescriptorImpl>> exclude) {
+            this.typeParameters = typeParameters;
             this.exclude = new HashSet<>();
             Collections.addAll(this.exclude, PrimitiveImpl.class, ExecutableImpl.class, InstantiableImpl.class);
             this.exclude.addAll(exclude);
@@ -1071,7 +1112,7 @@ public final class TypeDescriptor {
 
         @Override
         public final int hashCode() {
-            return contentType != null ? contentType.hashCode() : 0;
+            return typeParameters.hashCode();
         }
 
         @Override
@@ -1082,17 +1123,25 @@ public final class TypeDescriptor {
             if (obj == null || obj.getClass() != getClass()) {
                 return false;
             }
-            return Objects.equals(contentType, ((ContentTypeDescriptorImpl) obj).contentType);
+            return typeParameters.equals(((ParameterizedTypeDescriptorImpl) obj).typeParameters);
         }
 
         @Override
         public final String toString() {
             final StringBuilder sb = new StringBuilder(getName());
             sb.append("<");
-            if (contentType == null) {
-                sb.append("<any>");
-            } else {
-                sb.append(contentType.toString());
+            boolean first = true;
+            for (TypeDescriptorImpl typeParameter : typeParameters) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(", ");
+                }
+                if (typeParameter == null) {
+                    sb.append("<any>");
+                } else {
+                    sb.append(typeParameter.toString());
+                }
             }
             sb.append(">");
             return sb.toString();
@@ -1105,20 +1154,28 @@ public final class TypeDescriptor {
             if (exclude.contains(otherClz)) {
                 return false;
             } else if (otherClz == getClass()) {
-                final ContentTypeDescriptorImpl origContentType = (ContentTypeDescriptorImpl) origType;
-                final ContentTypeDescriptorImpl byContentType = (ContentTypeDescriptorImpl) byType;
-                return origContentType.resolveContentType().isAssignable(origContentType.resolveContentType(), byContentType.resolveContentType());
+                final ParameterizedTypeDescriptorImpl origParameterizedType = (ParameterizedTypeDescriptorImpl) origType;
+                final ParameterizedTypeDescriptorImpl byParameterizedType = (ParameterizedTypeDescriptorImpl) byType;
+                assert origParameterizedType.typeParameters.size() == byParameterizedType.typeParameters.size();
+                for (int i = 0; i < origParameterizedType.typeParameters.size(); i++) {
+                    TypeDescriptorImpl origContentType = resolveContentType(origParameterizedType.typeParameters.get(i));
+                    TypeDescriptorImpl byContentType = resolveContentType(byParameterizedType.typeParameters.get(i));
+                    if (!origContentType.isAssignable(origContentType, byContentType)) {
+                        return false;
+                    }
+                }
+                return true;
             } else {
                 return other.isAssignable(origType, byType);
             }
         }
 
-        final TypeDescriptorImpl resolveContentType() {
-            return contentType != null ? contentType : ANY.impl;
+        static TypeDescriptorImpl resolveContentType(TypeDescriptorImpl type) {
+            return type != null ? type : ANY.impl;
         }
     }
 
-    private static final class ArrayImpl extends ContentTypeDescriptorImpl {
+    private static final class ArrayImpl extends ParameterizedTypeDescriptorImpl {
 
         ArrayImpl(final TypeDescriptorImpl contentType) {
             super(contentType, Collections.emptySet());
@@ -1130,7 +1187,7 @@ public final class TypeDescriptor {
         }
     }
 
-    private static final class IterableImpl extends ContentTypeDescriptorImpl {
+    private static final class IterableImpl extends ParameterizedTypeDescriptorImpl {
 
         IterableImpl(final TypeDescriptorImpl contentType) {
             super(contentType, Collections.singleton(ArrayImpl.class));
@@ -1142,7 +1199,7 @@ public final class TypeDescriptor {
         }
     }
 
-    private static final class IteratorImpl extends ContentTypeDescriptorImpl {
+    private static final class IteratorImpl extends ParameterizedTypeDescriptorImpl {
 
         IteratorImpl(final TypeDescriptorImpl contentType) {
             super(contentType, Arrays.asList(ArrayImpl.class, IterableImpl.class));
@@ -1165,7 +1222,7 @@ public final class TypeDescriptor {
         boolean isAssignable(TypeDescriptorImpl origType, TypeDescriptorImpl byType) {
             final TypeDescriptorImpl other = other(origType, byType);
             final Class<? extends TypeDescriptorImpl> otherClz = other.getClass();
-            if (otherClz == PrimitiveImpl.class || other instanceof ContentTypeDescriptorImpl || other instanceof ExecutableImpl) {
+            if (otherClz == PrimitiveImpl.class || other instanceof ParameterizedTypeDescriptorImpl || other instanceof ExecutableImpl) {
                 if (other == origType) {
                     for (TypeDescriptorImpl type : types) {
                         if (other.isAssignable(other, type)) {
@@ -1193,10 +1250,10 @@ public final class TypeDescriptor {
                 for (TypeDescriptorImpl subType : origIntersection.types) {
                     if (byIntersection.types.contains(subType)) {
                         continue;
-                    } else if (subType instanceof ContentTypeDescriptorImpl) {
+                    } else if (subType instanceof ParameterizedTypeDescriptorImpl) {
                         boolean included = false;
                         for (TypeDescriptorImpl bySubType : byIntersection.types) {
-                            if (bySubType instanceof ContentTypeDescriptorImpl) {
+                            if (bySubType instanceof ParameterizedTypeDescriptorImpl) {
                                 if (subType.isAssignable(subType, bySubType)) {
                                     included = true;
                                     break;
@@ -1262,7 +1319,7 @@ public final class TypeDescriptor {
         boolean isAssignable(final TypeDescriptorImpl origType, TypeDescriptorImpl byType) {
             final TypeDescriptorImpl other = other(origType, byType);
             final Class<? extends TypeDescriptorImpl> otherClz = other.getClass();
-            if (otherClz == PrimitiveImpl.class || other instanceof ContentTypeDescriptorImpl || other instanceof ExecutableImpl) {
+            if (otherClz == PrimitiveImpl.class || other instanceof ParameterizedTypeDescriptorImpl || other instanceof ExecutableImpl) {
                 if (other == byType) {
                     for (TypeDescriptorImpl type : types) {
                         if (type.isAssignable(type, other)) {
@@ -1296,7 +1353,7 @@ public final class TypeDescriptor {
                 for (TypeDescriptorImpl type : byUnion.types) {
                     if (origUnion.types.contains(type)) {
                         copy.add(type);
-                    } else if (type instanceof ContentTypeDescriptorImpl || type instanceof ExecutableImpl || type.getClass() == IntersectionImpl.class) {
+                    } else if (type instanceof ParameterizedTypeDescriptorImpl || type instanceof ExecutableImpl || type.getClass() == IntersectionImpl.class) {
                         for (TypeDescriptorImpl filteredType : origUnion.types) {
                             if (filteredType.isAssignable(filteredType, type)) {
                                 copy.add(type);

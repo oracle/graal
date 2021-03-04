@@ -41,12 +41,15 @@
 package com.oracle.truffle.tck.tests;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyIterable;
+import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.Assert;
@@ -66,7 +69,9 @@ public class TypeDescriptorTest {
                     TypeDescriptor.EXECUTABLE,
                     TypeDescriptor.EXECUTABLE_ANY,
                     TypeDescriptor.INSTANTIABLE,
-                    TypeDescriptor.INSTANTIABLE_ANY
+                    TypeDescriptor.INSTANTIABLE_ANY,
+                    TypeDescriptor.ITERATOR,
+                    TypeDescriptor.ITERABLE
     };
 
     @Test
@@ -91,6 +96,7 @@ public class TypeDescriptorTest {
                                 td1 == td2 ||
                                                 td1 == TypeDescriptor.EXECUTABLE_ANY && td2 == TypeDescriptor.EXECUTABLE ||
                                                 td1 == TypeDescriptor.INSTANTIABLE_ANY && td2 == TypeDescriptor.INSTANTIABLE ||
+                                                td1 == TypeDescriptor.ITERABLE && td2 == TypeDescriptor.ARRAY ||
                                                 !td1.isAssignable(td2));
             }
         }
@@ -109,9 +115,10 @@ public class TypeDescriptorTest {
         }
 
         for (TypeDescriptor td : PREDEFINED) {
-            Assert.assertFalse(td != TypeDescriptor.ARRAY && td.isAssignable(numArray));
-            Assert.assertFalse(td != TypeDescriptor.ARRAY && td.isAssignable(strArray));
-            Assert.assertFalse(td != TypeDescriptor.ARRAY && td.isAssignable(numArrayArray));
+            boolean iterable = td == TypeDescriptor.ARRAY || td == TypeDescriptor.ITERABLE;
+            Assert.assertFalse(!iterable && td.isAssignable(numArray));
+            Assert.assertFalse(!iterable && td.isAssignable(strArray));
+            Assert.assertFalse(!iterable && td.isAssignable(numArrayArray));
         }
         Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(numArray));
         Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(strArray));
@@ -132,6 +139,72 @@ public class TypeDescriptorTest {
                         numArray);
         Assert.assertFalse(numArray.isAssignable(objOrArrayNum));
         Assert.assertTrue(objOrArrayNum.isAssignable(numArray));
+    }
+
+    @Test
+    public void testIterable() {
+        final TypeDescriptor numIterable = TypeDescriptor.iterable(TypeDescriptor.NUMBER);
+        final TypeDescriptor strIterable = TypeDescriptor.iterable(TypeDescriptor.STRING);
+        final TypeDescriptor numIterableIterable = TypeDescriptor.iterable(TypeDescriptor.iterable(TypeDescriptor.NUMBER));
+
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(numIterable.isAssignable(td));
+            Assert.assertFalse(strIterable.isAssignable(td));
+            Assert.assertFalse(numIterableIterable.isAssignable(td));
+        }
+
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(td != TypeDescriptor.ITERABLE && td.isAssignable(numIterable));
+            Assert.assertFalse(td != TypeDescriptor.ITERABLE && td.isAssignable(strIterable));
+            Assert.assertFalse(td != TypeDescriptor.ITERABLE && td.isAssignable(numIterableIterable));
+        }
+        Assert.assertTrue(TypeDescriptor.ITERABLE.isAssignable(numIterable));
+        Assert.assertTrue(TypeDescriptor.ITERABLE.isAssignable(strIterable));
+        Assert.assertTrue(TypeDescriptor.ITERABLE.isAssignable(numIterableIterable));
+
+        Assert.assertFalse(numIterable.isAssignable(strIterable));
+        Assert.assertFalse(numIterable.isAssignable(numIterableIterable));
+        Assert.assertFalse(strIterable.isAssignable(numIterable));
+        Assert.assertFalse(strIterable.isAssignable(numIterableIterable));
+        Assert.assertFalse(numIterableIterable.isAssignable(numIterable));
+        Assert.assertFalse(numIterableIterable.isAssignable(strIterable));
+        Assert.assertTrue(numIterable.isAssignable(numIterable));
+        Assert.assertTrue(strIterable.isAssignable(strIterable));
+        Assert.assertTrue(numIterableIterable.isAssignable(numIterableIterable));
+
+        final TypeDescriptor objOrArrayNum = TypeDescriptor.union(
+                        TypeDescriptor.OBJECT,
+                        numIterable);
+        Assert.assertFalse(numIterable.isAssignable(objOrArrayNum));
+        Assert.assertTrue(objOrArrayNum.isAssignable(numIterable));
+    }
+
+    @Test
+    public void testIterator() {
+        final TypeDescriptor numIterator = TypeDescriptor.iterator(TypeDescriptor.NUMBER);
+        final TypeDescriptor strIterator = TypeDescriptor.iterator(TypeDescriptor.STRING);
+
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(numIterator.isAssignable(td));
+            Assert.assertFalse(strIterator.isAssignable(td));
+        }
+
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(td != TypeDescriptor.ITERATOR && td.isAssignable(numIterator));
+            Assert.assertFalse(td != TypeDescriptor.ITERATOR && td.isAssignable(strIterator));
+        }
+        Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(numIterator));
+        Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(strIterator));
+        Assert.assertFalse(numIterator.isAssignable(strIterator));
+        Assert.assertFalse(strIterator.isAssignable(numIterator));
+        Assert.assertTrue(numIterator.isAssignable(numIterator));
+        Assert.assertTrue(strIterator.isAssignable(strIterator));
+
+        final TypeDescriptor objOrIteratorNum = TypeDescriptor.union(
+                        TypeDescriptor.OBJECT,
+                        numIterator);
+        Assert.assertFalse(numIterator.isAssignable(objOrIteratorNum));
+        Assert.assertTrue(objOrIteratorNum.isAssignable(numIterator));
     }
 
     @Test
@@ -182,6 +255,68 @@ public class TypeDescriptorTest {
         final TypeDescriptor boolOrArrNum = TypeDescriptor.union(TypeDescriptor.BOOLEAN, arrNum);
         Assert.assertFalse(numOrBoolOrArrNumBool.isAssignable(objOrArrNum));
         Assert.assertTrue(numOrBoolOrArrNumBool.isAssignable(boolOrArrNum));
+
+        TypeDescriptor iterableNumberOrBool = TypeDescriptor.union(
+                        TypeDescriptor.iterable(TypeDescriptor.NUMBER),
+                        TypeDescriptor.BOOLEAN);
+        TypeDescriptor iterableNumberOrString = TypeDescriptor.union(
+                        TypeDescriptor.iterable(TypeDescriptor.NUMBER),
+                        TypeDescriptor.STRING);
+        TypeDescriptor iterableBoolOrString = TypeDescriptor.union(
+                        TypeDescriptor.iterable(TypeDescriptor.BOOLEAN),
+                        TypeDescriptor.STRING);
+        TypeDescriptor iterableNumberOrBoolOrStr = TypeDescriptor.union(
+                        TypeDescriptor.iterable(TypeDescriptor.NUMBER),
+                        TypeDescriptor.BOOLEAN,
+                        TypeDescriptor.STRING);
+        Assert.assertFalse(iterableNumberOrBool.isAssignable(iterableNumberOrString));
+        Assert.assertFalse(iterableNumberOrBool.isAssignable(iterableBoolOrString));
+        Assert.assertTrue(iterableNumberOrBoolOrStr.isAssignable(iterableNumberOrString));
+        TypeDescriptor iterableNumBool = TypeDescriptor.iterable(numOrBool);
+        TypeDescriptor iterableNum = TypeDescriptor.iterable(TypeDescriptor.NUMBER);
+        TypeDescriptor numOrBoolOrIterableNumBool = TypeDescriptor.union(numOrBool, iterableNumBool);
+        Assert.assertTrue(numOrBoolOrIterableNumBool.isAssignable(iterableNum));
+        TypeDescriptor objOrIterableNum = TypeDescriptor.union(TypeDescriptor.OBJECT, iterableNum);
+        TypeDescriptor boolOrIterableNum = TypeDescriptor.union(TypeDescriptor.BOOLEAN, iterableNum);
+        Assert.assertFalse(numOrBoolOrIterableNumBool.isAssignable(objOrIterableNum));
+        Assert.assertTrue(numOrBoolOrIterableNumBool.isAssignable(boolOrIterableNum));
+        TypeDescriptor iteratorNumberOrBool = TypeDescriptor.union(
+                        TypeDescriptor.iterator(TypeDescriptor.NUMBER),
+                        TypeDescriptor.BOOLEAN);
+        TypeDescriptor iteratorNumberOrString = TypeDescriptor.union(
+                        TypeDescriptor.iterator(TypeDescriptor.NUMBER),
+                        TypeDescriptor.STRING);
+        TypeDescriptor iteratorBoolOrString = TypeDescriptor.union(
+                        TypeDescriptor.iterator(TypeDescriptor.BOOLEAN),
+                        TypeDescriptor.STRING);
+        TypeDescriptor iteratorNumberOrBoolOrStr = TypeDescriptor.union(
+                        TypeDescriptor.iterator(TypeDescriptor.NUMBER),
+                        TypeDescriptor.BOOLEAN,
+                        TypeDescriptor.STRING);
+        Assert.assertFalse(iteratorNumberOrBool.isAssignable(iteratorNumberOrString));
+        Assert.assertFalse(iteratorNumberOrBool.isAssignable(iteratorBoolOrString));
+        Assert.assertTrue(iteratorNumberOrBoolOrStr.isAssignable(iteratorNumberOrString));
+        TypeDescriptor iteratorNumBool = TypeDescriptor.iterator(numOrBool);
+        TypeDescriptor iteratorNum = TypeDescriptor.iterator(TypeDescriptor.NUMBER);
+        TypeDescriptor numOrBoolOrIteratorNumBool = TypeDescriptor.union(numOrBool, iteratorNumBool);
+        Assert.assertTrue(numOrBoolOrIteratorNumBool.isAssignable(iteratorNum));
+        TypeDescriptor objOrIteratorNum = TypeDescriptor.union(TypeDescriptor.OBJECT, iteratorNum);
+        TypeDescriptor boolOrIteratorNum = TypeDescriptor.union(TypeDescriptor.BOOLEAN, iteratorNum);
+        Assert.assertFalse(numOrBoolOrIteratorNumBool.isAssignable(objOrIteratorNum));
+        Assert.assertTrue(numOrBoolOrIteratorNumBool.isAssignable(boolOrIteratorNum));
+
+        TypeDescriptor arrString = TypeDescriptor.array(TypeDescriptor.STRING);
+        TypeDescriptor arrBool = TypeDescriptor.array(TypeDescriptor.BOOLEAN);
+        TypeDescriptor union = TypeDescriptor.union(arrString, arrBool);
+        Assert.assertFalse(union.toString(), union.isUnion());
+        TypeDescriptor iterableString = TypeDescriptor.iterable(TypeDescriptor.STRING);
+        TypeDescriptor iterableBool = TypeDescriptor.iterable(TypeDescriptor.BOOLEAN);
+        union = TypeDescriptor.union(iterableString, iterableBool);
+        Assert.assertFalse(union.toString(), union.isUnion());
+        TypeDescriptor iteratorString = TypeDescriptor.iterator(TypeDescriptor.STRING);
+        TypeDescriptor iteratorBool = TypeDescriptor.iterator(TypeDescriptor.BOOLEAN);
+        union = TypeDescriptor.union(iteratorString, iteratorBool);
+        Assert.assertFalse(union.toString(), union.isUnion());
     }
 
     @Test
@@ -445,6 +580,10 @@ public class TypeDescriptorTest {
     public void testAny() {
         Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(TypeDescriptor.array(TypeDescriptor.ANY)));
         Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.ANY).isAssignable(TypeDescriptor.ARRAY));
+        Assert.assertTrue(TypeDescriptor.ITERABLE.isAssignable(TypeDescriptor.iterable(TypeDescriptor.ANY)));
+        Assert.assertTrue(TypeDescriptor.iterable(TypeDescriptor.ANY).isAssignable(TypeDescriptor.ITERABLE));
+        Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(TypeDescriptor.iterator(TypeDescriptor.ANY)));
+        Assert.assertTrue(TypeDescriptor.iterator(TypeDescriptor.ANY).isAssignable(TypeDescriptor.ITERATOR));
         Assert.assertFalse(TypeDescriptor.EXECUTABLE.isAssignable(TypeDescriptor.ANY));
         Assert.assertTrue(TypeDescriptor.ANY.isAssignable(TypeDescriptor.EXECUTABLE));
         Assert.assertFalse(TypeDescriptor.executable(TypeDescriptor.ANY).isAssignable(TypeDescriptor.ANY));
@@ -481,6 +620,22 @@ public class TypeDescriptorTest {
         Assert.assertFalse(arrayAny.isAssignable(TypeDescriptor.ANY));
         Assert.assertTrue(arrayAny.isAssignable(arrayNum));
         Assert.assertFalse(arrayNum.isAssignable(arrayAny));
+        TypeDescriptor iterableNum = TypeDescriptor.iterable(TypeDescriptor.NUMBER);
+        TypeDescriptor iterableAny = TypeDescriptor.iterable(TypeDescriptor.ANY);
+        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(iterableNum));
+        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(iterableAny));
+        Assert.assertFalse(iterableNum.isAssignable(TypeDescriptor.ANY));
+        Assert.assertFalse(iterableAny.isAssignable(TypeDescriptor.ANY));
+        Assert.assertTrue(iterableAny.isAssignable(iterableNum));
+        Assert.assertFalse(iterableNum.isAssignable(iterableAny));
+        TypeDescriptor iteratorNum = TypeDescriptor.iterator(TypeDescriptor.NUMBER);
+        TypeDescriptor iteratorAny = TypeDescriptor.iterator(TypeDescriptor.ANY);
+        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(iteratorNum));
+        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(iteratorAny));
+        Assert.assertFalse(iteratorNum.isAssignable(TypeDescriptor.ANY));
+        Assert.assertFalse(iteratorAny.isAssignable(TypeDescriptor.ANY));
+        Assert.assertTrue(iteratorAny.isAssignable(iteratorNum));
+        Assert.assertFalse(iteratorNum.isAssignable(iteratorAny));
     }
 
     @Test
@@ -507,6 +662,12 @@ public class TypeDescriptorTest {
         Assert.assertFalse(TypeDescriptor.ARRAY.isAssignable(strAndNum));
         Assert.assertFalse(TypeDescriptor.ARRAY.isAssignable(strAndObj));
         Assert.assertFalse(TypeDescriptor.ARRAY.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(TypeDescriptor.ITERABLE.isAssignable(strAndNum));
+        Assert.assertFalse(TypeDescriptor.ITERABLE.isAssignable(strAndObj));
+        Assert.assertFalse(TypeDescriptor.ITERABLE.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(TypeDescriptor.ITERATOR.isAssignable(strAndNum));
+        Assert.assertFalse(TypeDescriptor.ITERATOR.isAssignable(strAndObj));
+        Assert.assertFalse(TypeDescriptor.ITERATOR.isAssignable(strAndNumAndObj));
         Assert.assertFalse(TypeDescriptor.BOOLEAN.isAssignable(strAndNum));
         Assert.assertFalse(TypeDescriptor.BOOLEAN.isAssignable(strAndObj));
         Assert.assertFalse(TypeDescriptor.BOOLEAN.isAssignable(strAndNumAndObj));
@@ -566,6 +727,36 @@ public class TypeDescriptorTest {
         Assert.assertTrue(arrAndArrNum.isAssignable(TypeDescriptor.array(TypeDescriptor.NUMBER)));
         Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(arrAndArrNum));
         Assert.assertFalse(TypeDescriptor.array(TypeDescriptor.NUMBER).isAssignable(arrAndArrNum));
+        TypeDescriptor numAndIterableNum = TypeDescriptor.intersection(
+                        TypeDescriptor.NUMBER,
+                        TypeDescriptor.iterable(TypeDescriptor.NUMBER));
+        Assert.assertFalse(numAndIterableNum.isAssignable(TypeDescriptor.NUMBER));
+        Assert.assertFalse(numAndIterableNum.isAssignable(TypeDescriptor.iterable(TypeDescriptor.NUMBER)));
+        Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(numAndIterableNum));
+        Assert.assertTrue(TypeDescriptor.iterable(TypeDescriptor.NUMBER).isAssignable(numAndIterableNum));
+        Assert.assertTrue(TypeDescriptor.union(TypeDescriptor.iterable(TypeDescriptor.NUMBER), TypeDescriptor.OBJECT).isAssignable(numAndIterableNum));
+        TypeDescriptor iterableAnyAndIterableNum = TypeDescriptor.intersection(
+                        TypeDescriptor.ITERABLE,
+                        TypeDescriptor.iterable(TypeDescriptor.NUMBER));
+        Assert.assertTrue(iterableAnyAndIterableNum.isAssignable(TypeDescriptor.ITERABLE));
+        Assert.assertTrue(iterableAnyAndIterableNum.isAssignable(TypeDescriptor.iterable(TypeDescriptor.NUMBER)));
+        Assert.assertTrue(TypeDescriptor.ITERABLE.isAssignable(iterableAnyAndIterableNum));
+        Assert.assertFalse(TypeDescriptor.iterable(TypeDescriptor.NUMBER).isAssignable(iterableAnyAndIterableNum));
+        TypeDescriptor numAndIteratorNum = TypeDescriptor.intersection(
+                        TypeDescriptor.NUMBER,
+                        TypeDescriptor.iterator(TypeDescriptor.NUMBER));
+        Assert.assertFalse(numAndIteratorNum.isAssignable(TypeDescriptor.NUMBER));
+        Assert.assertFalse(numAndIteratorNum.isAssignable(TypeDescriptor.iterator(TypeDescriptor.NUMBER)));
+        Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(numAndIteratorNum));
+        Assert.assertTrue(TypeDescriptor.iterator(TypeDescriptor.NUMBER).isAssignable(numAndIteratorNum));
+        Assert.assertTrue(TypeDescriptor.union(TypeDescriptor.iterator(TypeDescriptor.NUMBER), TypeDescriptor.OBJECT).isAssignable(numAndIteratorNum));
+        TypeDescriptor iteratorAnyAndIteratorNum = TypeDescriptor.intersection(
+                        TypeDescriptor.ITERATOR,
+                        TypeDescriptor.iterator(TypeDescriptor.NUMBER));
+        Assert.assertTrue(iteratorAnyAndIteratorNum.isAssignable(TypeDescriptor.ITERATOR));
+        Assert.assertTrue(iteratorAnyAndIteratorNum.isAssignable(TypeDescriptor.iterator(TypeDescriptor.NUMBER)));
+        Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(iteratorAnyAndIteratorNum));
+        Assert.assertFalse(TypeDescriptor.iterator(TypeDescriptor.NUMBER).isAssignable(iteratorAnyAndIteratorNum));
         final TypeDescriptor numAndStr = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING);
         final TypeDescriptor numAndStrAndBool = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.BOOLEAN);
         final TypeDescriptor numAndStrAndObj = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
@@ -614,6 +805,11 @@ public class TypeDescriptorTest {
 
     @Test
     public void testForValue() {
+        TypeDescriptor all = TypeDescriptor.intersection(TypeDescriptor.NULL, TypeDescriptor.BOOLEAN,
+                        TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.HOST_OBJECT, TypeDescriptor.NATIVE_POINTER,
+                        TypeDescriptor.OBJECT, TypeDescriptor.ARRAY, TypeDescriptor.EXECUTABLE, TypeDescriptor.INSTANTIABLE,
+                        TypeDescriptor.ITERABLE, TypeDescriptor.ITERATOR, TypeDescriptor.DATE, TypeDescriptor.TIME,
+                        TypeDescriptor.TIME_ZONE, TypeDescriptor.DURATION, TypeDescriptor.META_OBJECT, TypeDescriptor.EXCEPTION);
         try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
             Value v = ctx.asValue(1);
             Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(TypeDescriptor.forValue(v)));
@@ -643,9 +839,23 @@ public class TypeDescriptorTest {
             v = ctx.asValue(ProxyArray.fromArray(1, true, "value"));
             Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN, TypeDescriptor.STRING)).isAssignable(TypeDescriptor.forValue(v)));
             v = ctx.asValue(ProxyArray.fromArray());
-            Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.intersection(TypeDescriptor.NULL, TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.HOST_OBJECT,
-                            TypeDescriptor.NATIVE_POINTER, TypeDescriptor.OBJECT, TypeDescriptor.ARRAY, TypeDescriptor.EXECUTABLE, TypeDescriptor.INSTANTIABLE)).isAssignable(
-                                            TypeDescriptor.forValue(v)));
+            Assert.assertTrue(TypeDescriptor.array(all).isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyIterable.from(Collections.singleton(1)));
+            Assert.assertTrue(TypeDescriptor.iterable(TypeDescriptor.NUMBER).isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyIterable.from(Collections.singleton(true)));
+            Assert.assertTrue(TypeDescriptor.iterable(TypeDescriptor.BOOLEAN).isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyIterable.from(Arrays.asList(1, true, "value")));
+            Assert.assertTrue(TypeDescriptor.iterable(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN, TypeDescriptor.STRING)).isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyIterable.from(Collections.emptySet()));
+            Assert.assertTrue(TypeDescriptor.iterable(all).isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyIterator.from(Collections.singleton((Object) 1).iterator()));
+            Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyIterator.from(Collections.singleton((Object) true).iterator()));
+            Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyIterator.from(Arrays.asList((Object) 1, true, "value").iterator()));
+            Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyIterator.from(Collections.emptySet().iterator()));
+            Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(TypeDescriptor.forValue(v)));
         }
     }
 }
