@@ -169,7 +169,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         setDontInlineCallBoundaryMethod(boundaryMethods);
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
 
-        int counters = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
+        int counters = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*");
         this.threadLocalPendingHandshakeOffset = counters;
     }
 
