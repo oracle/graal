@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.heapdump;
+package org.graalvm.tools.insight.heap.instrument;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
@@ -40,13 +40,14 @@ import java.io.OutputStream;
 import java.util.Collections;
 import java.util.Map;
 import org.graalvm.tools.insight.Insight.SymbolProvider;
+import org.graalvm.tools.insight.heap.HeapDump;
 
 @SuppressWarnings({"static-method", "unused"})
 @ExportLibrary(InteropLibrary.class)
 final class HeapObject implements TruffleObject, SymbolProvider {
     private final TruffleInstrument.Env env;
     private final String path;
-    private HeapUtils.HprofGenerator generator;
+    private HeapDump.Builder generator;
 
     HeapObject(TruffleInstrument.Env env, String path) {
         this.env = env;
@@ -62,12 +63,12 @@ final class HeapObject implements TruffleObject, SymbolProvider {
         }
     }
 
-    synchronized HeapUtils.HprofGenerator getGenerator() throws IOException {
+    synchronized HeapDump.Builder getGenerator() throws IOException {
         if (generator == null) {
             TruffleFile file = env.getTruffleFile(path);
             final OutputStream rawStream = file.newOutputStream();
             final OutputStream bufferedStream = new BufferedOutputStream(rawStream);
-            generator = new HeapUtils.HprofGenerator(bufferedStream);
+            generator = HeapDump.newHeapBuilder(bufferedStream);
         }
         return generator;
     }

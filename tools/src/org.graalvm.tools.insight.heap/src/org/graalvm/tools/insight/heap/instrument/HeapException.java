@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.tools.insight.heap.instrument;
 
-/*
- @ApiInfo(
- group="Tools"
- )
- */
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-/**
- * Package containing classes implementing the Truffle Code Coverage Tracker.
- *
- * @since 19.3.0
- */
-package com.oracle.truffle.tools.coverage;
+final class HeapException extends AbstractTruffleException {
+    static final long serialVersionUID = 1L;
+
+    HeapException(String message) {
+        super(message);
+    }
+
+    HeapException(Throwable cause) {
+        super(cause.getMessage(), cause, UNLIMITED_STACK_TRACE, null);
+    }
+}

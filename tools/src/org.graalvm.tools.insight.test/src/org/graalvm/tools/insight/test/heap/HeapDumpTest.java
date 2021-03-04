@@ -24,150 +24,85 @@
  */
 package org.graalvm.tools.insight.test.heap;
 
-import java.util.HashMap;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
-import org.graalvm.tools.insight.test.InsightObjectFactory;
-import static org.junit.Assert.assertFalse;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import org.graalvm.tools.insight.heap.HeapDump;
+import org.graalvm.tools.insight.heap.HeapDump.Builder;
+import org.graalvm.tools.insight.heap.HeapDump.ClassInstance;
+import org.graalvm.tools.insight.heap.HeapDump.ObjectInstance;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class HeapDumpTest {
+    @Rule public TemporaryFolder tmp = new TemporaryFolder();
+
     @Test
-    public void heapDumpOption() throws Exception {
-        Context.Builder b = Context.newBuilder();
-        b.option("heap.dump", "x.hprof");
-        b.allowIO(true);
-        Context ctx = InsightObjectFactory.newContext(b);
-        Value heap = InsightObjectFactory.readObject(ctx, "heap");
-        assertFalse("Heap object is defined", heap.isNull());
-        heap.invokeMember("record", (Object) new Event[0]);
-        heap.invokeMember("record", new Event[0], 10);
-        try {
-            heap.invokeMember("record");
-            fail("Exception shall be raised");
-        } catch (IllegalArgumentException ex) {
-            assertMessage(ex, "Instructive error message provided", " Use as record(obj: [], depth?: number)");
-        }
-        try {
-            heap.invokeMember("record", new Event[0], null);
-            fail("Exception shall be raised");
-        } catch (IllegalArgumentException ex) {
-            assertMessage(ex, "Second argument must be a 32-bit number", " Use as record(obj: [], depth?: number)");
-        }
-        try {
-            heap.invokeMember("record", new Event[]{
-                            new UnrelatedEvent()
-            }, Integer.MAX_VALUE);
-            fail("Should fail");
-        } catch (PolyglotException ex) {
-            assertMessage(ex, "Member stack must be present", "'stack' among [a, b, c]");
-        }
-        try {
-            heap.invokeMember("record", new Event[]{
-                            new StackEvent("any")
-            }, 1);
-            fail("Should fail");
-        } catch (PolyglotException ex) {
-            assertMessage(ex, "Member stack must be an array", "'stack' shall be an array");
-        }
-        heap.invokeMember("record", new Event[]{
-                        new StackEvent(new Object[0])
-        }, 1);
-        try {
-            heap.invokeMember("record", new Event[]{
-                            new StackEvent(new Object[]{new UnrelatedEvent()})
-            }, 1);
-            fail("Should fail");
-        } catch (PolyglotException ex) {
-            assertMessage(ex, "Expecting 'at' ", "'at' among [a, b, c]");
-        }
-        try {
-            heap.invokeMember("record", new Event[]{
-                            new StackEvent(new StackElement[]{new StackElement(null, null)})
-            }, 1);
-            fail("Expeting failure");
-        } catch (PolyglotException ex) {
-            assertMessage(ex, "Expecting non-null 'at' ", "'at' should be defined");
-        }
-        Source nullSource = new Source(null, null, null, null, null);
-        heap.invokeMember("record", new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
-        }, 1);
+    public void generateSampleHeapDump() throws Exception {
+        File hprof = tmp.newFile();
+        // @formatter:off
+        // BEGIN: org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump
+        Builder builder = HeapDump.newHeapBuilder(new FileOutputStream(hprof));
+        builder.dumpHeap((heap) -> {
+            final ClassInstance classActor = heap.newClass("cartoons.Actor").
+                field("name", String.class).
+                field("friend", Object.class).
+                field("age", int.class).
+                dumpClass();
+            final ObjectInstance jerry = heap.newInstance(classActor).
+                put("name", heap.dumpString("Jerry")).
+                putInt("age", 47).
+                // field 'friend' remains null
+                dumpInstance();
+            final ObjectInstance tom = heap.newInstance(classActor).
+                put("name", heap.dumpString("Tom")).
+                put("friend", jerry).
+                putInt("age", 32).
+                dumpInstance();
+            final ClassInstance classMain = heap.newClass("cartoons.Main").
+                field("tom", classActor).
+                field("jerry", classActor).
+                field("thread", java.lang.Thread.class).
+                dumpClass();
 
-        Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
-        heap.invokeMember("record", new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
-        }, 1);
+            // BEGIN: org.graalvm.tools.insight.test.heap.HeapDumpTest#cyclic
+            HeapDump.InstanceBuilder mainBuilder = heap.newInstance(classMain);
+            final ObjectInstance main = mainBuilder.id();
+            mainBuilder.put("tom", tom).put("jerry", jerry);
+
+            ObjectInstance cathingThread = heap.newThread("Catching Jerry").
+                group("Cartoons").
+                addStackFrame(classActor, "tom", "Actor.java", -1, jerry, tom, main).
+                addStackFrame(classMain, "main", "Main.java", -1, mainBuilder.id()).
+                dumpThread();
+
+            mainBuilder.put("thread", cathingThread).dumpInstance();
+            // END: org.graalvm.tools.insight.test.heap.HeapDumpTest#cyclic
+        });
+        // END: org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump
+        // @formatter:on
     }
 
-    private static void assertMessage(Throwable ex, String msg, String exp) {
-        int found = ex.getMessage().indexOf(exp);
-        if (found == -1) {
-            fail(msg +
-                            "\nexpecting:" + exp +
-                            "\nwas      : " + ex.getMessage());
-        }
-    }
-
-    public abstract static class Event {
-    }
-
-    public static final class UnrelatedEvent extends Event {
-        @HostAccess.Export public final int a = 3;
-        @HostAccess.Export public final int b = 4;
-        @HostAccess.Export public final int c = 5;
-    }
-
-    public static final class StackEvent extends Event {
-        @HostAccess.Export public final Object stack;
-
-        StackEvent(Object stack) {
-            this.stack = stack;
-        }
-    }
-
-    public static final class StackElement extends Event {
-        @HostAccess.Export public final Object at;
-        @HostAccess.Export public final Object frame;
-
-        StackElement(Object at, Object frame) {
-            this.at = at;
-            this.frame = frame;
-        }
-    }
-
-    public static final class Source {
-        @HostAccess.Export public final String name;
-        @HostAccess.Export public final String mimeType;
-        @HostAccess.Export public final String language;
-        @HostAccess.Export public final String uri;
-        @HostAccess.Export public final String characters;
-
-        Source(String name, String mimeType, String language, String uri, String characters) {
-            this.name = name;
-            this.mimeType = mimeType;
-            this.language = language;
-            this.uri = uri;
-            this.characters = characters;
-        }
-    }
-
-    public static final class At {
-        @HostAccess.Export public final String name;
-        @HostAccess.Export public final Source source;
-        @HostAccess.Export public final Integer line;
-        @HostAccess.Export public final Integer charIndex;
-        @HostAccess.Export public final Integer charLength;
-
-        At(String name, Source source, Integer line, Integer charIndex, Integer charLength) {
-            this.name = name;
-            this.source = source;
-            this.line = line;
-            this.charIndex = charIndex;
-            this.charLength = charLength;
-        }
+    @Test
+    public void errorOnWrongField() throws Exception {
+        Builder builder = HeapDump.newHeapBuilder(new ByteArrayOutputStream());
+        builder.dumpHeap((heap) -> {
+            ClassInstance classPerson = heap.newClass("heapdemo.Counter").field("count", int.class).dumpClass();
+            try {
+                ObjectInstance zeroCounter = heap.newInstance(classPerson).putInt("value", 0).dumpInstance();
+                fail("put should fail, but it yielded " + zeroCounter);
+            } catch (IllegalArgumentException ex) {
+                assertEquals("Unknown field 'value'", ex.getMessage());
+            }
+            try {
+                ObjectInstance zeroCounter = heap.newInstance(classPerson).putDouble("count", 0.0).dumpInstance();
+                fail("put should fail, but it yielded " + zeroCounter);
+            } catch (IllegalArgumentException ex) {
+                assertEquals("Wrong type for field 'count'", ex.getMessage());
+            }
+        });
     }
 }

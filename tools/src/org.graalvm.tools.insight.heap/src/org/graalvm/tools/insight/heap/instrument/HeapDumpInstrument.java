@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.heapdump;
+package org.graalvm.tools.insight.heap.instrument;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -33,7 +33,7 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.tools.insight.Insight;
 
 @TruffleInstrument.Registration(id = "heap", internal = false, services = Insight.SymbolProvider.class)
-public final class HeapDump extends TruffleInstrument {
+public final class HeapDumpInstrument extends TruffleInstrument {
     @Option(stability = OptionStability.STABLE, name = "dump", help = "Output file to ", category = OptionCategory.EXPERT) //
     static final OptionKey<String> DUMP = new OptionKey<>("");
 
@@ -48,7 +48,7 @@ public final class HeapDump extends TruffleInstrument {
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        return new HeapDumpOptionDescriptors();
+        return new HeapDumpInstrumentOptionDescriptors();
     }
 
 }

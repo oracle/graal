@@ -22,18 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.heapdump;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
+/*
+ @ApiInfo(
+ group="Insight"
+ )
+ */
 
-final class HeapException extends AbstractTruffleException {
-    static final long serialVersionUID = 1L;
-
-    HeapException(String message) {
-        super(message);
-    }
-
-    HeapException(Throwable cause) {
-        super(cause.getMessage(), cause, UNLIMITED_STACK_TRACE, null);
-    }
-}
+/**
+ * Support for generating {@code .hprof} files in <a target="_blank" href=
+ * "http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/manual.html">
+ * Java Profiler Heap Dump Format</a>.
+ */
+package org.graalvm.tools.insight.heap;

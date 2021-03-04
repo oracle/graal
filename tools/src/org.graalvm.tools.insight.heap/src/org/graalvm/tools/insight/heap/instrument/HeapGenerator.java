@@ -22,12 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.heapdump;
+package org.graalvm.tools.insight.heap.instrument;
 
-import com.oracle.truffle.tools.heapdump.HeapUtils.HprofGenerator.ClassInstance;
-import com.oracle.truffle.tools.heapdump.HeapUtils.HprofGenerator.HeapDump;
-import com.oracle.truffle.tools.heapdump.HeapUtils.HprofGenerator.HeapDump.InstanceBuilder;
-import com.oracle.truffle.tools.heapdump.HeapUtils.HprofGenerator.HeapDump.ThreadBuilder;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -37,6 +33,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.tools.insight.heap.HeapDump.InstanceBuilder;
+import org.graalvm.tools.insight.heap.HeapDump.ThreadBuilder;
+import org.graalvm.tools.insight.heap.HeapDump;
+import org.graalvm.tools.insight.heap.HeapDump.ClassInstance;
+import org.graalvm.tools.insight.heap.HeapDump.ObjectInstance;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -47,20 +48,20 @@ import java.util.TreeSet;
 import org.graalvm.tools.insight.Insight;
 
 final class HeapGenerator {
-    private final HeapUtils.HprofGenerator generator;
+    private final HeapDump.Builder generator;
     private final Map<TreeSet<String>, ClassInstance> classes = new HashMap<>();
     private final Map<String, ClassInstance> languages = new HashMap<>();
-    private final Map<Object, Integer> objects = new IdentityHashMap<>();
-    private final Map<SourceKey, Integer> sources = new HashMap<>();
-    private final Map<SourceSectionKey, Integer> sourceSections = new HashMap<>();
+    private final Map<Object, ObjectInstance> objects = new IdentityHashMap<>();
+    private final Map<SourceKey, ObjectInstance> sources = new HashMap<>();
+    private final Map<SourceSectionKey, ObjectInstance> sourceSections = new HashMap<>();
     private final LinkedList<Dump> pending = new LinkedList<>();
     private ClassInstance sourceSectionClass;
-    private Integer unreachable;
+    private ObjectInstance unreachable;
     private int frames;
     private ClassInstance keyClass;
     private ClassInstance sourceClass;
 
-    HeapGenerator(HeapUtils.HprofGenerator generator) {
+    HeapGenerator(HeapDump.Builder generator) {
         this.generator = generator;
     }
 
@@ -89,7 +90,7 @@ final class HeapGenerator {
                         Dump d = pending.removeFirst();
                         d.dump();
                     }
-                } catch (InteropException ex) {
+                } catch (IOException | InteropException ex) {
                     throw new HeapException(ex);
                 }
             });
@@ -186,17 +187,17 @@ final class HeapGenerator {
             Integer charLength = asIntOrNull(iop, at, "charLength");
 
             if (unreachable == null) {
-                ClassInstance unreachClass = seg.newClass("unreachable").addField("<unreachable>", boolean.class).dumpClass();
-                unreachable = seg.newInstance(unreachClass).put("<unreachable>", true).dumpInstance();
+                ClassInstance unreachClass = seg.newClass("unreachable").field("<unreachable>", boolean.class).dumpClass();
+                unreachable = seg.newInstance(unreachClass).putBoolean("<unreachable>", true).dumpInstance();
             }
 
             if (threadBuilder == null) {
                 threadBuilder = seg.newThread(rootName + "#" + ++frames);
             }
 
-            int sourceId = dumpSource(iop, seg, source);
-            int sectionId = dumpSourceSection(seg, sourceId, charIndex, charLength);
-            int localFrame = dumpObject(iop, seg, "frame:" + rootName, frame, depth);
+            ObjectInstance sourceId = dumpSource(iop, seg, source);
+            ObjectInstance sectionId = dumpSourceSection(seg, sourceId, charIndex, charLength);
+            ObjectInstance localFrame = dumpObject(iop, seg, "frame:" + rootName, frame, depth);
             threadBuilder.addStackFrame(language, rootName, srcName, line == null ? -1 : line, localFrame, sectionId);
         }
         if (threadBuilder != null) {
@@ -204,7 +205,7 @@ final class HeapGenerator {
         }
     }
 
-    private ClassInstance findLanguage(HeapDump seg, String language) throws IOException {
+    private ClassInstance findLanguage(HeapDump seg, String language) {
         ClassInstance l = this.languages.get(language);
         if (l == null) {
             l = seg.newClass("lang:" + language).dumpClass();
@@ -213,9 +214,9 @@ final class HeapGenerator {
         return l;
     }
 
-    private int dumpObject(InteropLibrary iop, HeapDump seg, String metaName, Object obj, int depth)
+    private ObjectInstance dumpObject(InteropLibrary iop, HeapDump seg, String metaName, Object obj, int depth)
                     throws IOException {
-        Integer id = objects.get(obj);
+        ObjectInstance id = objects.get(obj);
         if (id != null) {
             return id;
         }
@@ -241,7 +242,7 @@ final class HeapGenerator {
         pending.add(() -> {
             for (String n : clazz.names()) {
                 final Object v = iop.readMember(obj, n);
-                int vId = dumpObject(iop, seg, null, v, depth - 1);
+                ObjectInstance vId = dumpObject(iop, seg, null, v, depth - 1);
                 builder.put(n, vId);
             }
             builder.dumpInstance();
@@ -282,7 +283,7 @@ final class HeapGenerator {
 
             HeapDump.ClassBuilder builder = seg.newClass(metaName);
             for (String n : sortedNames) {
-                builder.addField(n, Object.class);
+                builder.field(n, Object.class);
             }
             clazz = builder.dumpClass();
             classes.put(sortedNames, clazz);
@@ -299,15 +300,17 @@ final class HeapGenerator {
      * @param charLength number of characters in the section
      * @throws IOException when I/O fails
      */
-    private int dumpSourceSection(HeapDump seg, int sourceId, Integer charIndex, Integer charLength) throws IOException {
+    private ObjectInstance dumpSourceSection(HeapDump seg, ObjectInstance sourceId, Integer charIndex, Integer charLength) throws IOException {
         if (sourceSectionClass == null) {
-            sourceSectionClass = seg.newClass("com.oracle.truffle.api.source.SourceSection").addField("source", Object.class).addField("charIndex", int.class).addField("charLength",
+            sourceSectionClass = seg.newClass("com.oracle.truffle.api.source.SourceSection").field("source", Object.class).field("charIndex", int.class).field("charLength",
                             int.class).dumpClass();
         }
-        SourceSectionKey key = new SourceSectionKey(sourceId, charIndex == null ? -1 : charIndex, charLength == null ? -1 : charLength);
-        Integer id = sourceSections.get(key);
+        final int index = charIndex == null ? -1 : charIndex;
+        final int length = charLength == null ? -1 : charLength;
+        SourceSectionKey key = new SourceSectionKey(sourceId, index, length);
+        ObjectInstance id = sourceSections.get(key);
         if (id == null) {
-            id = seg.newInstance(sourceSectionClass).put("source", sourceId).put("charIndex", charIndex).put("charLength", charLength).dumpInstance();
+            id = seg.newInstance(sourceSectionClass).put("source", sourceId).putInt("charIndex", index).putInt("charLength", length).dumpInstance();
             sourceSections.put(key, id);
         }
         return id;
@@ -320,32 +323,32 @@ final class HeapGenerator {
      * @param seg segment to write heap data to
      * @param source object representing the {@code SourceInfo} object defined by {@link Insight}
      *            specification
-     * @return instance id of the dumped object representing the source
+     * @return instance of the dumped object representing the source
      * @throws IOException when I/O fails
      * @throws UnsupportedMessageException for example if the source object isn't properly
      *             represented
      */
-    private int dumpSource(InteropLibrary iop, HeapDump seg, Object source) throws IOException, UnsupportedMessageException {
+    private ObjectInstance dumpSource(InteropLibrary iop, HeapDump seg, Object source) throws IOException, UnsupportedMessageException {
         String srcName = asStringOrNull(iop, source, "name");
         String mimeType = asStringOrNull(iop, source, "mimeType");
         String uri = asStringOrNull(iop, source, "uri");
         String characters = asStringOrNull(iop, source, "characters");
 
         SourceKey key = new SourceKey(srcName, uri, mimeType, characters);
-        Integer prevId = sources.get(key);
+        ObjectInstance prevId = sources.get(key);
         if (prevId != null) {
             return prevId;
         }
 
         if (sourceClass == null) {
-            keyClass = seg.newClass("com.oracle.truffle.api.source.SourceImpl$Key").addField("uri", String.class).addField("content", String.class).addField("mimeType", String.class).addField("name",
+            keyClass = seg.newClass("com.oracle.truffle.api.source.SourceImpl$Key").field("uri", String.class).field("content", String.class).field("mimeType", String.class).field("name",
                             String.class).dumpClass();
-            sourceClass = seg.newClass("com.oracle.truffle.api.source.Source").addField("key", Object.class).dumpClass();
+            sourceClass = seg.newClass("com.oracle.truffle.api.source.Source").field("key", Object.class).dumpClass();
         }
 
-        int keyId = seg.newInstance(keyClass).put("uri", seg.dumpString(uri)).put("mimeType", seg.dumpString(mimeType)).put("content", seg.dumpString(characters)).put("name",
+        ObjectInstance keyId = seg.newInstance(keyClass).put("uri", seg.dumpString(uri)).put("mimeType", seg.dumpString(mimeType)).put("content", seg.dumpString(characters)).put("name",
                         seg.dumpString(srcName)).dumpInstance();
-        int srcId = seg.newInstance(sourceClass).put("key", keyId).dumpInstance();
+        ObjectInstance srcId = seg.newInstance(sourceClass).put("key", keyId).dumpInstance();
         sources.put(key, srcId);
         return srcId;
     }
@@ -403,16 +406,22 @@ final class HeapGenerator {
     }
 
     private static final class SourceSectionKey {
-        private final int sourceId;
+        private final ObjectInstance sourceId;
         private final int charIndex;
         private final int charLength;
+
+        private SourceSectionKey(ObjectInstance sourceId, int charIndex, int charLength) {
+            this.sourceId = sourceId;
+            this.charIndex = charIndex;
+            this.charLength = charLength;
+        }
 
         @Override
         public int hashCode() {
             int hash = 7;
-            hash = 53 * hash + this.sourceId;
-            hash = 53 * hash + this.charIndex;
-            hash = 53 * hash + this.charLength;
+            hash = 41 * hash + Objects.hashCode(this.sourceId);
+            hash = 41 * hash + this.charIndex;
+            hash = 41 * hash + this.charLength;
             return hash;
         }
 
@@ -428,19 +437,16 @@ final class HeapGenerator {
                 return false;
             }
             final SourceSectionKey other = (SourceSectionKey) obj;
-            if (this.sourceId != other.sourceId) {
-                return false;
-            }
             if (this.charIndex != other.charIndex) {
                 return false;
             }
-            return this.charLength == other.charLength;
-        }
-
-        private SourceSectionKey(int sourceId, int charIndex, int charLength) {
-            this.sourceId = sourceId;
-            this.charIndex = charIndex;
-            this.charLength = charLength;
+            if (this.charLength != other.charLength) {
+                return false;
+            }
+            if (!Objects.equals(this.sourceId, other.sourceId)) {
+                return false;
+            }
+            return true;
         }
 
     }

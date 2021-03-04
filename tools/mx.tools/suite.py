@@ -95,7 +95,7 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
-        "com.oracle.truffle.tools.heapdump" : {
+        "org.graalvm.tools.insight.heap" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
@@ -114,7 +114,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.agentscript",
-                "com.oracle.truffle.tools.heapdump",
+                "org.graalvm.tools.insight.heap",
                 "truffle:TRUFFLE_TEST",
                 "mx:JUNIT"
             ],
@@ -381,8 +381,7 @@ suite = {
             },
             "dependencies": [
                 "org.graalvm.tools.insight",
-                "com.oracle.truffle.tools.agentscript",
-                "com.oracle.truffle.tools.heapdump"
+                "com.oracle.truffle.tools.agentscript"
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
@@ -392,6 +391,29 @@ suite = {
             },
             "description" : "The Ultimate Insights Gathering Platform",
         },
+        "INSIGHT_HEAP": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleInfo" : {
+                "name" : "org.graalvm.tools.insight.heap",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation",
+                    ],
+                },
+            },
+            "dependencies": [
+                "org.graalvm.tools.insight.heap"
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+                "INSIGHT",
+            ],
+            "maven" : {
+              "artifactId" : "insight-heap",
+            },
+            "description" : "Heap Dump for GraalVM Insight",
+        },
         "INSIGHT_TEST": {
             "subDir": "src",
             "dependencies": [
@@ -400,6 +422,7 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_TEST",
                 "INSIGHT",
+                "INSIGHT_HEAP",
             ],
             "description" : "Tests for the Ultimate Insights Gathering Platform",
             "maven" : False,
@@ -407,6 +430,13 @@ suite = {
         "INSIGHT_GRAALVM_SUPPORT" : {
             "native" : True,
             "description" : "The Ultimate Insights Gathering Platform for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-insight.properties",
+            },
+        },
+        "INSIGHT_HEAP_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Heap Dump for Insight for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-insight.properties",
             },

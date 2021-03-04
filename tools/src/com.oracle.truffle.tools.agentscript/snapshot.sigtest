@@ -9,6 +9,7 @@ innr public abstract interface static !annotation DefaultExport
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean defaultExportLookupEnabled()
 meth public abstract !hasdefault boolean dynamicDispatchEnabled()
+meth public abstract !hasdefault boolean pushEncapsulatingNode()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.library.Library> assertions()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
 
@@ -65,20 +66,25 @@ hfds GIL_LOCK,UNCACHED_CONTEXT_REFERENCES,UNCACHED_LANGUAGE_REFERENCES,parent
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
 CLSS public abstract interface com.oracle.truffle.tools.agentscript.AgentScript
+ anno 0 java.lang.Deprecated()
 fld public final static java.lang.String ID = "agentscript"
-fld public final static java.lang.String VERSION = "0.4"
+ anno 0 java.lang.Deprecated()
+fld public final static java.lang.String VERSION = "1.1"
+ anno 0 java.lang.Deprecated()
 meth public void registerAgentScript(com.oracle.truffle.api.source.Source)
+ anno 0 java.lang.Deprecated()
 
 CLSS public abstract com.oracle.truffle.tools.agentscript.FrameLibrary
-cons public init()
-innr public final static Query
+cons protected init()
+innr public final Query
 meth public java.lang.Object readMember(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException
 meth public static com.oracle.truffle.tools.agentscript.FrameLibrary getUncached()
 meth public void collectNames(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.util.Set<java.lang.String>) throws com.oracle.truffle.api.interop.InteropException
+meth public void writeMember(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.lang.String,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedTypeException
 supr com.oracle.truffle.api.library.Library
 hcls UncachedDefault
 
-CLSS public final static com.oracle.truffle.tools.agentscript.FrameLibrary$Query
+CLSS public final com.oracle.truffle.tools.agentscript.FrameLibrary$Query
  outer com.oracle.truffle.tools.agentscript.FrameLibrary
 meth public com.oracle.truffle.api.frame.Frame frame()
 meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes()
@@ -86,6 +92,12 @@ supr java.lang.Object
 hfds env,frame,where
 
 CLSS public abstract interface java.lang.Cloneable
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public java.lang.Object
 cons public init()
