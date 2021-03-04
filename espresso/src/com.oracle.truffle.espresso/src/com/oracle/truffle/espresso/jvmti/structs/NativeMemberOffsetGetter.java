@@ -55,7 +55,7 @@ public final class NativeMemberOffsetGetter implements MemberOffsetGetter {
         try (RawBuffer memberBuffer = RawBuffer.getNativeString(str)) {
             return (long) library.execute(lookupMemberOffset, memberInfoPtr, memberBuffer.pointer());
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 }

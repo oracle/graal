@@ -57,7 +57,7 @@ public final class JVMTI {
     @CompilationFinal //
     private volatile Structs structs;
 
-    private final ArrayList<JVMTIEnv> created = new ArrayList<>();
+    private final ArrayList<JVMTIEnv> activeEnvironments = new ArrayList<>();
 
     private JvmtiPhase phase;
 
@@ -128,23 +128,23 @@ public final class JVMTI {
             return null;
         }
         JVMTIEnv jvmtiEnv = new JVMTIEnv(context, initializeJvmtiContext, version);
-        created.add(jvmtiEnv);
+        activeEnvironments.add(jvmtiEnv);
         return jvmtiEnv.getEnv();
     }
 
     public synchronized void dispose() {
-        for (JVMTIEnv jvmtiEnv : created) {
+        for (JVMTIEnv jvmtiEnv : activeEnvironments) {
             jvmtiEnv.dispose(disposeJvmtiContext);
         }
-        created.clear();
+        activeEnvironments.clear();
     }
 
     @TruffleBoundary
     synchronized void dispose(JVMTIEnv env) {
         CompilerAsserts.neverPartOfCompilation();
-        if (created.contains(env)) {
+        if (activeEnvironments.contains(env)) {
             env.dispose(disposeJvmtiContext);
-            created.remove(env);
+            activeEnvironments.remove(env);
         }
     }
 
