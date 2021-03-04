@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.polyglot.PolyglotIterableFactory.CacheFactory.GetIteratorNodeGen;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Iterator;
 
@@ -113,6 +114,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
         final Type valueType;
         final CallTarget getIterator;
         final CallTarget apply;
+        final Type iteratorType;
 
         private Cache(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
             this.receiverClass = receiverClass;
@@ -120,6 +122,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
             this.valueType = valueType;
             this.getIterator = HostToGuestRootNode.createTarget(GetIteratorNodeGen.create(this));
             this.apply = HostToGuestRootNode.createTarget(new Apply(this));
+            this.iteratorType = new ParameterizedIteratorType(valueType);
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
@@ -211,7 +214,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
                             @Cached ToHostNode toHost,
                             @Cached BranchProfile error) {
                 try {
-                    return toHost.execute(iterables.getIterator(receiver), cache.valueClass, cache.valueType, languageContext, true);
+                    return toHost.execute(iterables.getIterator(receiver), Iterator.class, cache.iteratorType, languageContext, true);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
                     throw HostInteropErrors.iterableUnsupported(languageContext, receiver, cache.valueType, "iterator()");
@@ -238,6 +241,28 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
             }
         }
 
+        private static final class ParameterizedIteratorType implements ParameterizedType {
+            private final Type valueType;
+
+            ParameterizedIteratorType(Type valueType) {
+                this.valueType = valueType;
+            }
+
+            @Override
+            public Type[] getActualTypeArguments() {
+                return new Type[]{valueType};
+            }
+
+            @Override
+            public Type getRawType() {
+                return Iterator.class;
+            }
+
+            @Override
+            public Type getOwnerType() {
+                return null;
+            }
+        }
     }
 
     @TruffleBoundary
