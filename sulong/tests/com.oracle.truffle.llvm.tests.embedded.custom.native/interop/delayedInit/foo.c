@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,10 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <graalvm/llvm/polyglot.h>
+#include "delayedInit.h"
 
-#define CALLBACK(str)                                                                                                                                \
-    {                                                                                                                                                \
-        void (*callback)(const char *) = polyglot_import("callback");                                                                                \
-        callback(polyglot_from_string(str, "ascii"));                                                                                                \
-    }
+extern void hello();
+
+__attribute__((constructor)) static void beginB(void) {
+    CALLBACK("ctor foo");
+    hello();
+}

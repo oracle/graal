@@ -1673,7 +1673,7 @@ public class LLVMInteropTest {
         }
     }
 
-    private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "interop").toPath();
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop").toPath();
     public static final String FILENAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     protected static Map<String, String> getSulongTestLibContextOptions() {

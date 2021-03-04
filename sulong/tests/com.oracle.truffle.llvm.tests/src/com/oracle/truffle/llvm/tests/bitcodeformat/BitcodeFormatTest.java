@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -68,7 +68,7 @@ public class BitcodeFormatTest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
 
-    private static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "bitcodeformat");
+    private static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "bitcodeformat");
 
     protected Map<String, String> getContextOptions() {
         return Collections.emptyMap();

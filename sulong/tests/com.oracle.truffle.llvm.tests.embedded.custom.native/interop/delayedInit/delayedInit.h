@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,10 +28,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * Executed via DelayedInitTest JUnit test.
- * <pre>
- *   DelayedInitTest --- (parse) ---> libFoo ------v
- *             `-------- (parse) ---> libBar --> libBaz
- * </pre>
- */
+#include <graalvm/llvm/polyglot.h>
+
+#define CALLBACK(str)                                                                                                                                \
+    {                                                                                                                                                \
+        void (*callback)(const char *) = polyglot_import("callback");                                                                                \
+        callback(polyglot_from_string(str, "ascii"));                                                                                                \
+    }

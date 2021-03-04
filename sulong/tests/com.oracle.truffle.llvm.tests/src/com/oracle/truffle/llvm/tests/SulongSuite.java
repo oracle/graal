@@ -48,7 +48,7 @@ public class SulongSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
+        Path suitesPath = new File(TestOptions.getTestDistribution("SULONG_STANDALONE_TEST_SUITES")).toPath();
         return TestCaseCollector.collectTestCases(SulongSuite.class, suitesPath, SulongSuite::isReference);
     }
 

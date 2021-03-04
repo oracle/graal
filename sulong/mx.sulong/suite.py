@@ -1064,6 +1064,26 @@ suite = {
         "linker",
         "rpath",
         "reload",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.embedded.custom.native" : {
+      "description" : "Embedded tests with custom Makefiles",
+      "subDir" : "tests",
+      "native": True,
+      "vpath": True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CLANG": "<toolchainGetToolPath:native,CC>",
+        "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.embedded.custom.native>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "results": [
         "interop",
       ],
       "testProject" : True,
@@ -1508,19 +1528,14 @@ suite = {
       "defaultBuild" : False,
     },
 
-    "SULONG_TEST_SUITES" : {
+    "SULONG_STANDALONE_TEST_SUITES" : {
+      "description" : "Tests with a reference executable that is used to verify the result.",
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
       "layout" : {
         "./" : [
-          "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
-          "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
-          "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
           "dependency:com.oracle.truffle.llvm.tests.llirtestgen.generated/*",
-          "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
-          "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
-          "dependency:com.oracle.truffle.llvm.tests.other.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulong.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongavx.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongcpp.native/*",
@@ -1530,7 +1545,6 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.inlineasm.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
-          "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.amd64.native/*",
         ],
       },
@@ -1539,17 +1553,37 @@ suite = {
       "defaultBuild" : False,
     },
     "SULONG_EMBEDDED_TEST_SUITES" : {
+      "description" : "Tests without a reference executable that require a special JUnit test class.",
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
       "layout" : {
         "./" : [
           "dependency:other/*",
+          "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.embedded.custom.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.other.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
+          # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
+          "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",
         ],
       },
       "license" : "BSD-new",
       "testDistribution" : True,
       "defaultBuild" : False,
+    },
+    "SULONG_TEST_SUITES" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+      "ignore" : "No longer available. Use either SULONG_STANDALONE_TEST_SUITES or SULONG_EMBEDDED_TEST_SUITES.",
     },
     # <editor-fold desc="External Test Suites">
     "SULONG_GCC_C_TEST_SUITE" : {

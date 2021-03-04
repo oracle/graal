@@ -181,14 +181,14 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', description="GCC 5.2 test suite (C tests)", testClasses=['GccCSuite'], tags=['gcc_c', 'sulongCoverage'])
     _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp', 'sulongCoverage'])
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
-    _unittest('Sulong', 'SULONG_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Interop', 'SULONG_TEST_SUITES', description="Truffle Language interoperability tests", testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Linker', 'SULONG_TEST_SUITES', description=None, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Debug', 'SULONG_TEST_SUITES', description="Debug support test suite", testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
-    _unittest('IRDebug', 'SULONG_TEST_SUITES', description=None, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
-    _unittest('BitcodeFormat', 'SULONG_TEST_SUITES', description=None, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
-    _unittest('DebugExpr', 'SULONG_TEST_SUITES', description=None, testClasses='LLVMDebugExprParserTest', tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
-    _unittest('OtherTests', 'SULONG_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.other', 'com.oracle.truffle.llvm.tests.bitcode.'], tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
+    _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
+    _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
+    _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMDebugExprParserTest', tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
+    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.other', 'com.oracle.truffle.llvm.tests.bitcode.'], tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
     _unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', description="Tests main args passing", testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'], tags=['args', 'sulongMisc', 'sulongCoverage'])
     _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc', 'sulongCoverage'])
     _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc', 'sulongCoverage'])
@@ -223,7 +223,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
         testName += '#test[' + test + ']'
     if unittestArgs is None:
         unittestArgs = []
-    test_suite = 'SULONG_TEST_SUITES'
+    test_suite = 'SULONG_STANDALONE_TEST_SUITES'
     mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
     mx_sulong_suite_constituents.run(args + unittestArgs, testName)
 
@@ -253,7 +253,7 @@ def runLLVMUnittests(unittest_runner):
     java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
     java_run_props += get_test_distribution_path_properties(_suite)
 
-    test_suite = 'SULONG_TEST_SUITES'
+    test_suite = 'SULONG_EMBEDDED_TEST_SUITES'
     mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
 
     run_args = [libpath, libs] + java_run_props

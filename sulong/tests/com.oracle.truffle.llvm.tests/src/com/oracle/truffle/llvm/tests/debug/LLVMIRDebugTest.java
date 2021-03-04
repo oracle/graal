@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,7 +53,7 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
 
     private static final String CONFIGURATION = "O0.bc";
 
-    private static final Path BC_DIR_PATH = Paths.get(TestOptions.TEST_SUITE_PATH, "irdebug");
+    private static final Path BC_DIR_PATH = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "irdebug");
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug.native", "irdebug");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug.native", "trace");
 
