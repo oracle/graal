@@ -270,6 +270,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> stop = StaticSymbols.putName("stop");
         public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
         public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
+        public static final Symbol<Name> contextClassLoader = StaticSymbols.putName("contextClassLoader");
 
         // j.l.StackTraceElement
         public static final Symbol<Name> declaringClassObject = StaticSymbols.putName("declaringClassObject");
@@ -728,6 +729,8 @@ public final class Symbol<T> extends ByteSequence {
         // Special threads
         public static final Symbol<Type> java_lang_ref_Finalizer$FinalizerThread = StaticSymbols.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");
         public static final Symbol<Type> java_lang_ref_Reference$ReferenceHandler = StaticSymbols.putType("Ljava/lang/ref/Reference$ReferenceHandler;");
+        public static final Symbol<Type> jdk_internal_misc_InnocuousThread = StaticSymbols.putType("Ljdk/internal/misc/InnocuousThread;");
+        public static final Symbol<Type> sun_misc_InnocuousThread = StaticSymbols.putType("Lsun/misc/InnocuousThread;");
         // java.management
         public static final Symbol<Type> java_lang_management_MemoryManagerMXBean = StaticSymbols.putType(java.lang.management.MemoryManagerMXBean.class);
         public static final Symbol<Type> java_lang_management_MemoryPoolMXBean = StaticSymbols.putType(java.lang.management.MemoryPoolMXBean.class);

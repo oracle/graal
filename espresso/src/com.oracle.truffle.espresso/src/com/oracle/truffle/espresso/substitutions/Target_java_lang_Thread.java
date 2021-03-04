@@ -255,17 +255,27 @@ public final class Target_java_lang_Thread {
         } else {
             String reason = context.getMultiThreadingDisabledReason();
             Klass threadKlass = self.getKlass();
-            if (threadKlass == meta.java_lang_ref_Finalizer$FinalizerThread || threadKlass == meta.java_lang_ref_Reference$ReferenceHandler) {
+            EspressoLanguage.getCurrentContext().getLogger().warning(() -> {
+                String guestName = Target_java_lang_Thread.getThreadName(meta, self);
+                String className = threadKlass.getExternalName();
+                return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
+            });
+            if (threadKlass == meta.java_lang_ref_Finalizer$FinalizerThread || threadKlass == meta.java_lang_ref_Reference$ReferenceHandler || isSystemInnocuousThread(self, meta)) {
                 // no exception: bootstrap code cannot recover from this
-                EspressoLanguage.getCurrentContext().getLogger().warning(() -> {
-                    String guestName = Target_java_lang_Thread.getThreadName(meta, self);
-                    String className = threadKlass.getExternalName();
-                    return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
-                });
             } else {
-                Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "Thread support is disabled: " + reason);
+                meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "Thread support is disabled: " + reason);
             }
         }
+    }
+
+    private static boolean isSystemInnocuousThread(StaticObject thread, Meta meta) {
+        if (!meta.misc_InnocuousThread.isAssignableFrom(thread.getKlass())) {
+            return false;
+        }
+        if (!StaticObject.isNull(meta.java_lang_Thread_contextClassLoader.getObject(thread))) {
+            return false;
+        }
+        return true;
     }
 
     public static void terminate(StaticObject thread, Meta meta) {
