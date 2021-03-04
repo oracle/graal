@@ -796,21 +796,26 @@ Place your hook whenever needed and at the right moment dump the heap:
 
 ```js
 insight.on('return', (ctx, frame) => {
-    heap.record([
-        {
-            stack : [
-                {
-                    at : ctx, // location of dump sieve.js:73
-                    frame : {
-                        // assemble frame content as you want
-                        primes : frame.primes // capture primes object
-                    }
-                }
-                // there can be more stack elements than a single one
-            ]
-        }
-        // there can be multiple records like this
-    ], 10); // follow ten object references at max, unlimited if omitted
+    heap.dump({
+        format: '1.0',
+        events: [
+            {
+                stack : [
+                    {
+                        at : ctx, // location of dump sieve.js:73
+                        frame : {
+                            // assemble frame content as you want
+                            primes : frame.primes // capture primes object
+                        },
+                        depth : 10 // follow ten object references at max, unlimited if omitted
+                    },
+                    // there can be more stack elements than a single one
+                ]
+            },
+            // there can be multiple events like this
+        ],
+        depth: 10 // default max depth or null
+    }); 
     throw 'Heap dump written!';
 }, {
     roots: true,

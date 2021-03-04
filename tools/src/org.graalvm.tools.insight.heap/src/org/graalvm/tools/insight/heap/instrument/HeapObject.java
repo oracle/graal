@@ -76,14 +76,13 @@ final class HeapObject implements TruffleObject, SymbolProvider {
     @TruffleBoundary
     @ExportMessage
     Object invokeMember(String name, Object[] args) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-        if (name.equals("record")) {
-
+        if (name.equals("dump")) {
             try {
                 HeapGenerator heap = new HeapGenerator(getGenerator());
                 heap.dump(args);
                 return this;
             } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                throw new HeapException(ex);
             }
         }
         throw UnknownIdentifierException.create(name);
@@ -96,7 +95,7 @@ final class HeapObject implements TruffleObject, SymbolProvider {
 
     @ExportMessage
     boolean isMemberInvocable(String member) {
-        return "record".equals(member);
+        return "dump".equals(member);
     }
 
     @ExportMessage

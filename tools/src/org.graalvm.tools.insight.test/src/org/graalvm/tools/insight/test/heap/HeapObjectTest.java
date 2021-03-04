@@ -32,75 +32,108 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.tools.insight.test.InsightObjectFactory;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+import org.junit.Before;
 import org.junit.Test;
 
 public class HeapObjectTest {
-    @Test
-    public void heapDumpOption() throws Exception {
+    private Value heap;
+
+    @Before
+    public void prepareHeap() throws Exception {
         Context.Builder b = Context.newBuilder();
         b.option("heap.dump", "x.hprof");
         b.allowIO(true);
         Context ctx = InsightObjectFactory.newContext(b);
-        Value heap = InsightObjectFactory.readObject(ctx, "heap");
+        heap = InsightObjectFactory.readObject(ctx, "heap");
         assertFalse("Heap object is defined", heap.isNull());
-        heap.invokeMember("record", (Object) new Event[0]);
-        heap.invokeMember("record", new Event[0], 10);
+    }
+
+    private Object invokeDump(Integer depth, Object[] args) {
+        return heap.invokeMember("dump", new Config("1.0", depth, args));
+    }
+
+    @Test
+    public void noEvents() throws Exception {
+        invokeDump(null, new Event[0]);
+    }
+
+    @Test
+    public void noEventsAndDepth() throws Exception {
+        invokeDump(10, new Event[0]);
+    }
+
+    @Test
+    public void noArguments() throws Exception {
         try {
-            heap.invokeMember("record");
+            heap.invokeMember("dump");
             fail("Exception shall be raised");
         } catch (IllegalArgumentException ex) {
-            assertMessage(ex, "Instructive error message provided", " Use as record(obj: [], depth?: number)");
+            assertMessage(ex, "Instructive error message provided", " Use as dump({ format: '', events: []})");
         }
+    }
+
+    @Test
+    public void stackMustBeThere() throws Exception {
         try {
-            heap.invokeMember("record", new Event[0], null);
-            fail("Exception shall be raised");
-        } catch (IllegalArgumentException ex) {
-            assertMessage(ex, "Second argument must be a 32-bit number", " Use as record(obj: [], depth?: number)");
-        }
-        try {
-            heap.invokeMember("record", new Event[]{
+            invokeDump(Integer.MAX_VALUE, new Event[]{
                             new UnrelatedEvent()
-            }, Integer.MAX_VALUE);
+            });
             fail("Should fail");
         } catch (PolyglotException ex) {
             assertMessage(ex, "Member stack must be present", "'stack' among [a, b, c]");
         }
+    }
+
+    @Test
+    public void stackNeedsToBeAnArray() throws Exception {
         try {
-            heap.invokeMember("record", new Event[]{
+            invokeDump(1, new Event[]{
                             new StackEvent("any")
-            }, 1);
+            });
             fail("Should fail");
         } catch (PolyglotException ex) {
             assertMessage(ex, "Member stack must be an array", "'stack' shall be an array");
         }
-        heap.invokeMember("record", new Event[]{
+    }
+
+    @Test
+    public void atMustBePresent() throws Exception {
+        invokeDump(1, new Event[]{
                         new StackEvent(new Object[0])
-        }, 1);
+        });
         try {
-            heap.invokeMember("record", new Event[]{
+            invokeDump(1, new Event[]{
                             new StackEvent(new Object[]{new UnrelatedEvent()})
-            }, 1);
+            });
             fail("Should fail");
         } catch (PolyglotException ex) {
             assertMessage(ex, "Expecting 'at' ", "'at' among [a, b, c]");
         }
+    }
+
+    @Test
+    public void nonNullAt() throws Exception {
         try {
-            heap.invokeMember("record", new Event[]{
+            invokeDump(1, new Event[]{
                             new StackEvent(new StackElement[]{new StackElement(null, null)})
-            }, 1);
+            });
             fail("Expeting failure");
         } catch (PolyglotException ex) {
             assertMessage(ex, "Expecting non-null 'at' ", "'at' should be defined");
         }
+    }
+
+    @Test
+    public void everythingIsOK() throws Exception {
         Source nullSource = new Source(null, null, null, null, null);
-        heap.invokeMember("record", new Event[]{
+        invokeDump(1, new Event[]{
                         new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
-        }, 1);
+        });
 
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
-        heap.invokeMember("record", new Event[]{
+        invokeDump(1, new Event[]{
                         new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
-        }, 1);
+        });
     }
 
     private static void assertMessage(Throwable ex, String msg, String exp) {
@@ -168,6 +201,28 @@ public class HeapObjectTest {
             this.line = line;
             this.charIndex = charIndex;
             this.charLength = charLength;
+        }
+    }
+
+    public static final class Config {
+        @HostAccess.Export public final String format;
+        @HostAccess.Export public final Integer depth;
+        @HostAccess.Export public final Object[] events;
+
+        Config(String format, Integer depth, Object... events) {
+            this.format = format;
+            this.depth = depth;
+            this.events = events;
+        }
+    }
+
+    public static final class NoDepthConfig {
+        @HostAccess.Export public final String format;
+        @HostAccess.Export public final Object[] events;
+
+        NoDepthConfig(String format, Object[] events) {
+            this.format = format;
+            this.events = events;
         }
     }
 }

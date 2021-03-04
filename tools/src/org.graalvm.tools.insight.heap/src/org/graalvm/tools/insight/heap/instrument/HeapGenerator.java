@@ -66,20 +66,34 @@ final class HeapGenerator {
     }
 
     void dump(Object[] args) throws UnsupportedTypeException, UnsupportedMessageException {
+        InteropLibrary iop = InteropLibrary.getUncached();
         try {
-            InteropLibrary iop = InteropLibrary.getUncached();
-            if (args.length < 1 || !iop.hasArrayElements(args[0]) || (args.length > 1 && !iop.fitsInInt(args[1]))) {
-                final String errMessage = "Use as record(obj: [], depth?: number)";
+            Object dump = checkDumpParameter(args, iop);
+
+            // format check
+            final String errMessage = "Use as dump({ format: '1.0', events: []})";
+
+            Object format = readMember(iop, dump, "format");
+            if (!iop.isString(format) || !"1.0".equals(iop.asString(format))) {
                 throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
             }
-            Object events = args[0];
-            int depth = args.length == 2 ? iop.asInt(args[1]) : Integer.MAX_VALUE;
+
+            Object events = readMember(iop, dump, "events");
+            if (!iop.hasArrayElements(events)) {
+                throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
+            }
+
+            Integer depthOrNull = asIntOrNull(iop, dump, "depth");
+            int defaultDepth = depthOrNull != null ? depthOrNull : Integer.MAX_VALUE;
+
             long eventCount = iop.getArraySize(events);
             generator.dumpHeap((data) -> {
                 try {
                     for (long i = 0; i < eventCount; i++) {
                         Object ithEvent = iop.readArrayElement(events, i);
                         Object stack = readMember(iop, ithEvent, "stack");
+                        Integer ithDepthOrNull = asIntOrNull(iop, ithEvent, "depth");
+                        int depth = ithDepthOrNull != null ? ithDepthOrNull : defaultDepth;
                         if (iop.hasArrayElements(stack)) {
                             dumpStack(data, iop, stack, depth);
                         } else {
@@ -97,6 +111,20 @@ final class HeapGenerator {
         } catch (IOException ex) {
             throw new HeapException(ex);
         }
+    }
+
+    private static Object checkDumpParameter(Object[] args, InteropLibrary iop) throws UnsupportedTypeException {
+        // argument check
+        final String errMessage = "Use as dump({ format: '', events: []})";
+        if (args.length != 1) {
+            throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
+        }
+        Object dump = args[0];
+        if (iop.isExecutable(dump)) {
+            // we don't want executable objects in format 1.0
+            throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
+        }
+        return dump;
     }
 
     private static String asStringOrNull(InteropLibrary iop, Object from, String key) throws UnsupportedMessageException {
