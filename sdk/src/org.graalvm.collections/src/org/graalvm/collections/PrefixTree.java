@@ -310,10 +310,31 @@ public class PrefixTree {
         private synchronized void topDown(String context, BufferedWriter writer) throws IOException {
             Node[] childrenSnapshot = children;
             long[] keysSnapshot = keys;
-            if (childrenSnapshot.length == 0) {
+            long value = get();
+            if (value > 0) {
+                System.out.println("context: " + context + " " + value);
+                writer.write(context + " " + get());
+                writer.newLine();
+            }
+            if (childrenSnapshot == null || childrenSnapshot.length == 0) {
+                System.out.println("No children: context: " + context + ", value: " + value);
                 return;
             }
-            writer.write(context + " " + get());
+            int notNull = 0;
+            for (int i = 0; i < childrenSnapshot.length; i++) {
+                if (childrenSnapshot[i] != null) {
+                    notNull++;
+                }
+            }
+            if (notNull > 1) {
+                System.out.println("More children = " + notNull + ", context: " + context + ", value: " + value);
+                for (int i = 0; i < childrenSnapshot.length; i++) {
+                    if (childrenSnapshot[i] != null) {
+                        System.out.println("More children. Child " + i + ": " + context + ';' + keysSnapshot[i]);
+                    }
+                }
+            }
+
             for (int i = 0; i < childrenSnapshot.length; i++) {
                 if (childrenSnapshot[i] != null) {
                     String childContext = context + ';' + keysSnapshot[i];
@@ -328,9 +349,7 @@ public class PrefixTree {
             for (int i = 0; i < childrenSnapshot.length; i++) {
                 if (childrenSnapshot[i] != null) {
                     String childContext = String.valueOf(keysSnapshot[i]);
-                    writer.write(childContext);
                     childrenSnapshot[i].topDown(childContext, writer);
-                    System.out.println(childContext);
                 }
             }
         }

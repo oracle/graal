@@ -40,7 +40,7 @@ public class ProfilingRegister implements ProfilingSampler {
     @Override
     public void registerSampler() {
         if (collectingActive) {
-            Threading.registerRecurringCallback(1000, TimeUnit.MILLISECONDS, (access) -> {
+            Threading.registerRecurringCallback(50, TimeUnit.MILLISECONDS, (access) -> {
                 sampleThreadStack();
             });
         }
