@@ -44,13 +44,11 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -60,8 +58,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -235,76 +231,6 @@ final class Target_javax_crypto_CryptoAllPermission {
     static Target_javax_crypto_CryptoAllPermission INSTANCE;
 }
 
-final class EnableAllSecurityServicesIsSet implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return SubstrateOptions.EnableAllSecurityServices.getValue();
-    }
-}
-
-/**
- * This substitution is enabled only when EnableAllSecurityServices is set since the functionality
- * that it currently provides, i.e., loading security native libraries, is not needed by default.
- */
-@TargetClass(value = java.security.Provider.class, onlyWith = EnableAllSecurityServicesIsSet.class)
-final class Target_java_security_Provider {
-
-    @Alias //
-    private transient boolean initialized;
-
-    @Alias//
-    private String name;
-
-    /*
-     * Provider.checkInitialized() is called from the other Provider API methods, before any
-     * computation, thus is a convenient location to do our own initialization, i.e., make sure that
-     * the required libraries are loaded.
-     */
-    @Substitute
-    private void checkInitialized() {
-        if (this.name.equals("SunEC")) {
-            ProviderUtil.initSunEC();
-        }
-
-        if (!initialized) {
-            throw new IllegalStateException();
-        }
-    }
-
-}
-
-final class ProviderUtil {
-    private static volatile boolean initialized = false;
-
-    static void initSunEC() {
-        if (initialized) {
-            return;
-        }
-        /* Lazy initialization. */
-        initOnce();
-    }
-
-    // Checkstyle: stop
-    private static synchronized void initOnce() {
-        // Checkstyle: resume
-        if (!initialized) {
-            try {
-                System.loadLibrary("sunec");
-            } catch (UnsatisfiedLinkError e) {
-                /*
-                 * SunEC has a mode where it can function without the full ECC implementation when
-                 * native library is absent, however, then fewer EC algorithms are available). If
-                 * those algorithms are actually used an java.lang.UnsatisfiedLinkError will be
-                 * thrown. Just warn the user that the library could not be loaded.
-                 */
-                Log.log().string("WARNING: The sunec native library, required by the SunEC provider, could not be loaded.").newline();
-            }
-            initialized = true;
-        }
-    }
-
-}
-
 @TargetClass(className = "javax.crypto.ProviderVerifier", onlyWith = JDK11OrLater.class)
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_ProviderVerifier {
@@ -386,10 +312,7 @@ final class Target_javax_crypto_JceSecurity {
          * getVerificationResult() allows for a better error message.
          */
         throw VMError.unsupportedFeature("Trying to verify a provider that was not registered at build time: " + p + ". " +
-                        "All providers must be registered and verified in the Native Image builder. " +
-                        "Only the SUN provider is registered and verified by default. " +
-                        "All other built-in providers are processed when all security services are enabled using the " + JceSecurityUtil.enableAllSecurityServices + " option. " +
-                        "Third party providers must be configured in the Native Image builder VM. ");
+                        "All providers must be registered and verified in the Native Image builder. ");
     }
 
 }
@@ -423,8 +346,6 @@ class JceSecurityAccessor {
 }
 
 final class JceSecurityUtil {
-    static final String enableAllSecurityServices = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableAllSecurityServices, "+");
-
     static RuntimeException shouldNotReach(String method) {
         throw VMError.shouldNotReachHere(method + " is reached at runtime. " +
                         "This should not happen. The contents of JceSecurity.verificationResults " +

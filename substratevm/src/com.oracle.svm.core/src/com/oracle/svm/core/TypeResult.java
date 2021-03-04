@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import java.util.function.Consumer;
+
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -60,6 +62,12 @@ public final class TypeResult<T> {
 
     public boolean isPresent() {
         return type != null;
+    }
+
+    public void ifPresent(Consumer<? super T> consumer) {
+        if (type != null) {
+            consumer.accept(type);
+        }
     }
 
     public T get() {

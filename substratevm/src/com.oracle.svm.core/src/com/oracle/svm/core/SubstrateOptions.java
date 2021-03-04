@@ -46,12 +46,10 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.UserError;
@@ -243,32 +241,12 @@ public class SubstrateOptions {
     @APIOption(name = "enable-https", fixedValue = "https", customHelp = "enable https support in the generated image")//
     @APIOption(name = "enable-url-protocols")//
     @Option(help = "List of comma separated URL protocols to enable.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<LocatableMultiOptionValue.Strings>(new LocatableMultiOptionValue.Strings()) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, LocatableMultiOptionValue.Strings oldValue, LocatableMultiOptionValue.Strings newValue) {
-            for (String protocol : OptionUtils.flatten(",", newValue)) {
-                if (protocol.equals(JavaNetSubstitutions.HTTPS_PROTOCOL)) {
-                    EnableAllSecurityServices.update(values, true);
-                }
-            }
-        }
-    };
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
+    @SuppressWarnings("unused") //
     @APIOption(name = "enable-all-security-services")//
-    @Option(help = "Add all security service classes to the generated image.")//
-    public static final HostedOptionKey<Boolean> EnableAllSecurityServices = new HostedOptionKey<Boolean>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                /*
-                 * Some providers like SunEC and SunSASL are implemented in native libs. These
-                 * providers are added to the image when EnableAllSecurityServices is set. If they
-                 * are actually used at runtime the user must provide and load the native libs.
-                 */
-                JNI.update(values, true);
-            }
-        }
-    };
+    @Option(help = "Add all security service classes to the generated image.", deprecated = true)//
+    public static final HostedOptionKey<Boolean> EnableAllSecurityServices = new HostedOptionKey<>(false);
 
     @Option(help = "Enable Java Native Interface (JNI) support.")//
     public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(true);
