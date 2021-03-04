@@ -1,3 +1,11 @@
+# Version 21.1.0
+
+New features:
+
+* Added a sanity check to verify that loaded bitcode files have been compiled correctly.
+  If not, a _mismatching target triple_ error is reported. To make this error non-fatal,
+  set `--llvm.verifyBitcode=false`. To silence the message, set `--log.llvm.BitcodeVerifier.level=OFF`.
+
 # Version 21.0.0
 
 Fixes:
