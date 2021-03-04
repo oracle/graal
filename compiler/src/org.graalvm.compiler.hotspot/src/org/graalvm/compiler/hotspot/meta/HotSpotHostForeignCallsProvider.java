@@ -153,18 +153,61 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     public static final HotSpotForeignCallDescriptor NOTIFY_ALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notifyAll", boolean.class, Object.class);
 
     public static class TestForeignCalls {
+        public static final HotSpotForeignCallDescriptor BOOLEAN_RETURNS_BOOLEAN = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "boolean returns boolean",
+                        Boolean.TYPE, Boolean.TYPE);
         public static final HotSpotForeignCallDescriptor BYTE_RETURNS_BYTE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "byte returns byte",
                         Byte.TYPE, Byte.TYPE);
+        public static final HotSpotForeignCallDescriptor SHORT_RETURNS_SHORT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "short returns short",
+                        Short.TYPE, Short.TYPE);
+        public static final HotSpotForeignCallDescriptor CHAR_RETURNS_CHAR = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "char returns char",
+                        Character.TYPE, Character.TYPE);
         public static final HotSpotForeignCallDescriptor INT_RETURNS_INT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "int returns int",
                         Integer.TYPE, Integer.TYPE);
+        public static final HotSpotForeignCallDescriptor LONG_RETURNS_LONG = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "long returns long",
+                        Long.TYPE, Long.TYPE);
+        public static final HotSpotForeignCallDescriptor FLOAT_RETURNS_FLOAT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "float returns float",
+                        Float.TYPE, Float.TYPE);
+        public static final HotSpotForeignCallDescriptor DOUBLE_RETURNS_DOUBLE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "double returns double",
+                        Double.TYPE, Double.TYPE);
+        public static final HotSpotForeignCallDescriptor OBJECT_RETURNS_OBJECT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "object returns object",
+                        Object.class, Object.class);
+
+        static boolean booleanReturnsBoolean(boolean arg) {
+            return arg;
+        }
 
         static byte byteReturnsByte(byte arg) {
+            return arg;
+        }
+
+        static short shortReturnsShort(short arg) {
+            return arg;
+        }
+
+        static char charReturnsChar(char arg) {
             return arg;
         }
 
         static int intReturnsInt(int arg) {
             return arg;
         }
+
+        static long longReturnsLong(long arg) {
+            return arg;
+        }
+
+        static float floatReturnsFloat(float arg) {
+            return arg;
+        }
+
+        static double doubleReturnsDouble(double arg) {
+            return arg;
+        }
+
+        static Object objectReturnsObject(Object arg) {
+            return arg;
+        }
+
     }
 
     public HotSpotHostForeignCallsProvider(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
@@ -222,10 +265,25 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     }
 
     private boolean registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        ResolvedJavaMethod booleanReturnsBoolean = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "booleanReturnsBoolean");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.BOOLEAN_RETURNS_BOOLEAN, config.invokeJavaMethodAddress, booleanReturnsBoolean);
         ResolvedJavaMethod byteReturnsByte = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "byteReturnsByte");
         invokeJavaMethodStub(options, providers, TestForeignCalls.BYTE_RETURNS_BYTE, config.invokeJavaMethodAddress, byteReturnsByte);
+        ResolvedJavaMethod shortReturnsShort = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "shortReturnsShort");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.SHORT_RETURNS_SHORT, config.invokeJavaMethodAddress, shortReturnsShort);
+        ResolvedJavaMethod charReturnsChar = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "charReturnsChar");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.CHAR_RETURNS_CHAR, config.invokeJavaMethodAddress, charReturnsChar);
         ResolvedJavaMethod intReturnsInt = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "intReturnsInt");
         invokeJavaMethodStub(options, providers, TestForeignCalls.INT_RETURNS_INT, config.invokeJavaMethodAddress, intReturnsInt);
+        ResolvedJavaMethod longReturnsLong = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "longReturnsLong");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.LONG_RETURNS_LONG, config.invokeJavaMethodAddress, longReturnsLong);
+        ResolvedJavaMethod floatReturnsFloat = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "floatReturnsFloat");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.FLOAT_RETURNS_FLOAT, config.invokeJavaMethodAddress, floatReturnsFloat);
+        ResolvedJavaMethod doubleReturnsDouble = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "doubleReturnsDouble");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.DOUBLE_RETURNS_DOUBLE, config.invokeJavaMethodAddress, doubleReturnsDouble);
+        ResolvedJavaMethod objectReturnsObject = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "objectReturnsObject");
+        invokeJavaMethodStub(options, providers, TestForeignCalls.OBJECT_RETURNS_OBJECT, config.invokeJavaMethodAddress, objectReturnsObject);
+
         return true;
     }
 

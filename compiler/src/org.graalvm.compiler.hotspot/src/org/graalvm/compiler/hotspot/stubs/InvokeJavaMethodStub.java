@@ -24,19 +24,28 @@
  */
 package org.graalvm.compiler.hotspot.stubs;
 
+import static org.graalvm.compiler.core.common.type.PrimitiveStamp.getBits;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.type.FloatStamp;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.compiler.word.WordCastNode;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
@@ -87,7 +96,25 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
         if (params.length == 0) {
             targetArguments[2] = ConstantNode.defaultForKind(JavaKind.Long, kit.getGraph());
         } else {
-            targetArguments[2] = params[0];
+            // Repack the value into a Java long
+            ValueNode value = params[0];
+            Stamp valueStamp = value.stamp(NodeView.DEFAULT);
+            if (valueStamp instanceof ObjectStamp) {
+                value = WordCastNode.objectToUntrackedPointer(value, JavaKind.Long);
+                kit.append(value);
+            } else if (valueStamp instanceof PrimitiveStamp) {
+                if (valueStamp instanceof FloatStamp) {
+                    // Convert float to integer
+                    value = ReinterpretNode.create(valueStamp.getStackKind() == JavaKind.Float ? JavaKind.Int : JavaKind.Long, value, NodeView.DEFAULT);
+                }
+                int bits = getBits(valueStamp);
+                if (bits != 0 && bits < JavaKind.Long.getBitCount()) {
+                    // The VM will narrow these values to their expected size so simply zero extend
+                    // to the required bits.
+                    value = new ZeroExtendNode(value, JavaKind.Long.getBitCount());
+                }
+            }
+            targetArguments[2] = value;
         }
 
         return kit.append(new StubForeignCallNode(providers.getForeignCalls(), stamp, target.getDescriptor(), targetArguments));
