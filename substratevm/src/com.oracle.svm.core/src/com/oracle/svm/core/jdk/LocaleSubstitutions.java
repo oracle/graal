@@ -270,8 +270,9 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     }
 
     @Substitute
-    private static String createSupportedLocaleString(String category) {
-        return ImageSingletons.lookup(LocalizationSupport.class).supportedLocaleString;
+    @SuppressWarnings("static-method")
+    protected Set<String> createLanguageTagSet(String category) {
+        return ImageSingletons.lookup(LocalizationSupport.class).supportedLanguageTags;
     }
 }
 

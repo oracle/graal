@@ -32,11 +32,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.spi.LocaleServiceProvider;
+import java.util.stream.Collectors;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import org.graalvm.collections.Pair;
-import static java.util.stream.Collectors.joining;
 
 //Checkstyle: stop
 import sun.util.locale.provider.LocaleProviderAdapter;
@@ -62,16 +63,12 @@ public final class LocalizationSupport {
      */
     final Locale[] allLocales;
 
-    final String supportedLocaleString;
+    final Set<String> supportedLanguageTags;
 
     public LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
-        this.supportedLocaleString = computeSupportedLocaleString(locales);
-    }
-
-    private static String computeSupportedLocaleString(List<Locale> locales) {
-        return locales.stream().map(Locale::toString).collect(joining(" "));
+        this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
     }
 
     /**
