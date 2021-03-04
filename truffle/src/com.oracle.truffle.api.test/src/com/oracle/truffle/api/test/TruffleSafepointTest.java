@@ -1024,5 +1024,10 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             actions.add(access.getThread());
             ids.add(counter.incrementAndGet());
         }
+
+        @Override
+        public String toString() {
+            return "ActionCollector@" + Integer.toHexString(hashCode());
+        }
     }
 }

@@ -237,7 +237,7 @@ final class PolyglotThreadLocalActions {
                 String sideEffectLabel = sideEffect ? "side-effecting  " : "side-effect-free";
                 String syncLabel = sync ? "synchronous " : "asynchronous";
                 handshake.debugId = idCounter++;
-                log("submit", handshake, String.format("%-25s   %s   %s   action: %s", threadLabel, sideEffectLabel, syncLabel, action.toString()));
+                log("submit", handshake, String.format("%-25s  %s  %s", threadLabel, sideEffectLabel, syncLabel));
             }
             Future<Void> future = handshake.future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake,
                             AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action));
@@ -248,7 +248,10 @@ final class PolyglotThreadLocalActions {
 
     private void log(String action, AbstractTLHandshake handshake, String details) {
         if (traceActions) {
-            logger.log(Level.INFO, String.format("[tl] %-15s %8d  %-30s   %s", action, handshake.debugId, "thread[" + Thread.currentThread().getName() + "]", details));
+            logger.log(Level.INFO,
+                            String.format("[tl] %-18s %8d  %-30s %-30s %s", action, handshake.debugId,
+                                            "thread[" + Thread.currentThread().getName() + "]",
+                                            "action[" + handshake.action.toString() + "]", details));
         }
     }
 
@@ -373,7 +376,7 @@ final class PolyglotThreadLocalActions {
 
         private void notifyFailed(Throwable t) {
             if (context.threadLocalActions.traceActions) {
-                context.threadLocalActions.log("  perform-failed", this, "exception: " + t.toString());
+                context.threadLocalActions.log("  perform-failed", this, " exception: " + t.toString());
             }
         }
 
@@ -492,6 +495,11 @@ final class PolyglotThreadLocalActions {
                 threadBean = bean = (ThreadMXBean) ManagementFactory.getThreadMXBean();
             }
             return bean.getCurrentThreadCpuTime();
+        }
+
+        @Override
+        public String toString() {
+            return "StatisticsAction@" + Integer.toHexString(hashCode());
         }
 
     }
