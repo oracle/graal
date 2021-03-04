@@ -44,15 +44,18 @@ public final class NativeMemberOffsetGetter implements MemberOffsetGetter {
 
     @Override
     public long getInfo(String str) {
-        long result;
-        try (RawBuffer memberBuffer = RawBuffer.getNativeString(str)) {
-            result = (long) library.execute(lookupMemberOffset, memberInfoPtr, memberBuffer.pointer());
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere();
-        }
+        long result = lookupInfo(str);
         if (result == -1) {
             throw EspressoError.shouldNotReachHere("Struct offset lookup for " + str + " failed.");
         }
         return result;
+    }
+
+    private long lookupInfo(String str) {
+        try (RawBuffer memberBuffer = RawBuffer.getNativeString(str)) {
+            return (long) library.execute(lookupMemberOffset, memberInfoPtr, memberBuffer.pointer());
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
     }
 }

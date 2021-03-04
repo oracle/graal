@@ -429,6 +429,7 @@ JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv* env, int version, void (*re
 
 JNIEXPORT void JNICALL initializeJvmtiHandlerContext(void (*notify_member_offset_init)(void *)) {
   member_info** info = malloc(sizeof(struct member_info*));
+  (*info) = NULL;
 	
   #define MEMBER_INFO__(STRUCT_NAME, MEMBER_NAME) \
     add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME, offsetof(struct STRUCT_NAME, MEMBER_NAME));
