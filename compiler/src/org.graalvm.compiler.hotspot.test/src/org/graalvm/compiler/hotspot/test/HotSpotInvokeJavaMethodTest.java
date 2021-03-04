@@ -42,6 +42,14 @@ public class HotSpotInvokeJavaMethodTest extends HotSpotGraalCompilerTest {
         invocationPlugins.register(new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
+                ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.BOOLEAN_RETURNS_BOOLEAN, arg);
+                b.addPush(JavaKind.Boolean, node);
+                return true;
+            }
+        }, HotSpotInvokeJavaMethodTest.class, "booleanReturnsBoolean", boolean.class);
+        invocationPlugins.register(new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.BYTE_RETURNS_BYTE, arg);
                 b.addPush(JavaKind.Byte, node);
                 return true;
@@ -50,26 +58,132 @@ public class HotSpotInvokeJavaMethodTest extends HotSpotGraalCompilerTest {
         invocationPlugins.register(new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
+                ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.SHORT_RETURNS_SHORT, arg);
+                b.addPush(JavaKind.Short, node);
+                return true;
+            }
+        }, HotSpotInvokeJavaMethodTest.class, "shortReturnsShort", short.class);
+        invocationPlugins.register(new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
+                ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.CHAR_RETURNS_CHAR, arg);
+                b.addPush(JavaKind.Char, node);
+                return true;
+            }
+        }, HotSpotInvokeJavaMethodTest.class, "charReturnsChar", char.class);
+        invocationPlugins.register(new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.INT_RETURNS_INT, arg);
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
         }, HotSpotInvokeJavaMethodTest.class, "intReturnsInt", int.class);
+        invocationPlugins.register(new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
+                ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.LONG_RETURNS_LONG, arg);
+                b.addPush(JavaKind.Long, node);
+                return true;
+            }
+        }, HotSpotInvokeJavaMethodTest.class, "longReturnsLong", long.class);
+        invocationPlugins.register(new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
+                ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.FLOAT_RETURNS_FLOAT, arg);
+                b.addPush(JavaKind.Float, node);
+                return true;
+            }
+        }, HotSpotInvokeJavaMethodTest.class, "floatReturnsFloat", float.class);
+        invocationPlugins.register(new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
+                ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.DOUBLE_RETURNS_DOUBLE, arg);
+                b.addPush(JavaKind.Double, node);
+                return true;
+            }
+        }, HotSpotInvokeJavaMethodTest.class, "doubleReturnsDouble", double.class);
+        invocationPlugins.register(new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
+                ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.OBJECT_RETURNS_OBJECT, arg);
+                b.addPush(JavaKind.Object, node);
+                return true;
+            }
+        }, HotSpotInvokeJavaMethodTest.class, "objectReturnsObject", Object.class);
+
         super.registerInvocationPlugins(invocationPlugins);
     }
+
+    static boolean[] booleanValues = new boolean[]{Boolean.TRUE, Boolean.FALSE};
+
+    static boolean booleanReturnsBoolean(boolean arg) {
+        return arg;
+    }
+
+    public static boolean booleanReturnsBooleanSnippet(boolean arg) {
+        return booleanReturnsBoolean(arg);
+    }
+
+    @Test
+    public void testBooleanReturnsBoolean() {
+        for (boolean value : booleanValues) {
+            test("booleanReturnsBooleanSnippet", value);
+        }
+    }
+
+    static byte[] byteValues = new byte[]{Byte.MAX_VALUE, -1, 0, 1, Byte.MIN_VALUE};
 
     static byte byteReturnsByte(byte arg) {
         return arg;
     }
 
-    public static int byteReturnsByteSnippet(byte arg) {
+    public static byte byteReturnsByteSnippet(byte arg) {
         return byteReturnsByte(arg);
     }
 
     @Test
     public void testByteReturnsByte() {
-        test("byteReturnsByteSnippet", (byte) 255);
+        for (byte value : byteValues) {
+            test("byteReturnsByteSnippet", value);
+        }
     }
+
+    static short[] shortValues = new short[]{Short.MAX_VALUE, -1, 0, 1, Short.MIN_VALUE};
+
+    static short shortReturnsShort(short arg) {
+        return arg;
+    }
+
+    public static short shortReturnsShortSnippet(short arg) {
+        return shortReturnsShort(arg);
+    }
+
+    @Test
+    public void testShortReturnsShort() {
+        for (short value : shortValues) {
+            test("shortReturnsShortSnippet", value);
+        }
+    }
+
+    static char[] charValues = new char[]{Character.MAX_VALUE, 1, Character.MIN_VALUE};
+
+    static char charReturnsChar(char arg) {
+        return arg;
+    }
+
+    public static char charReturnsCharSnippet(char arg) {
+        return charReturnsChar(arg);
+    }
+
+    @Test
+    public void testCharReturnsChar() {
+        for (char value : charValues) {
+            test("charReturnsCharSnippet", value);
+        }
+    }
+
+    static int[] intValues = new int[]{Integer.MAX_VALUE, -1, 0, 1, Integer.MIN_VALUE};
 
     static int intReturnsInt(int arg) {
         return arg;
@@ -81,6 +195,76 @@ public class HotSpotInvokeJavaMethodTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testIntReturnsInt() {
-        test("intReturnsIntSnippet", 255);
+        for (int value : intValues) {
+            test("intReturnsIntSnippet", value);
+        }
+    }
+
+    static long[] longValues = new long[]{Long.MAX_VALUE, -1, 0, 1, Long.MIN_VALUE};
+
+    static long longReturnsLong(long arg) {
+        return arg;
+    }
+
+    public static long longReturnsLongSnippet(long arg) {
+        return longReturnsLong(arg);
+    }
+
+    @Test
+    public void testLongReturnsLong() {
+        for (long value : longValues) {
+            test("longReturnsLongSnippet", value);
+        }
+    }
+
+    static float[] floatValues = new float[]{Float.MAX_VALUE, -1, 0, 1, Float.MIN_VALUE};
+
+    static float floatReturnsFloat(float arg) {
+        return arg;
+    }
+
+    public static float floatReturnsFloatSnippet(float arg) {
+        return floatReturnsFloat(arg);
+    }
+
+    @Test
+    public void testFloatReturnsFloat() {
+        for (float value : floatValues) {
+            test("floatReturnsFloatSnippet", value);
+        }
+    }
+
+    static double[] doubleValues = new double[]{Double.MAX_VALUE, -1, 0, 1, Double.MIN_VALUE};
+
+    static double doubleReturnsDouble(double arg) {
+        return arg;
+    }
+
+    public static double doubleReturnsDoubleSnippet(double arg) {
+        return doubleReturnsDouble(arg);
+    }
+
+    @Test
+    public void testDoubleReturnsDouble() {
+        for (double value : doubleValues) {
+            test("doubleReturnsDoubleSnippet", value);
+        }
+    }
+
+    static Object[] objectValues = new Object[]{null, "String", Integer.valueOf(-1)};
+
+    static Object objectReturnsObject(Object arg) {
+        return arg;
+    }
+
+    public static Object objectReturnsObjectSnippet(Object arg) {
+        return objectReturnsObject(arg);
+    }
+
+    @Test
+    public void testObjectReturnsObject() {
+        for (Object value : objectValues) {
+            test("objectReturnsObjectSnippet", value);
+        }
     }
 }
