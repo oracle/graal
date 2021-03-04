@@ -40,6 +40,20 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 
 public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapabilityBase<S> {
 
+    // Flags for DLOpen
+    public static final int RTLD_LAZY = 1;
+    public static final int RTLD_Global = 256;
+
+    @Override
+    public boolean isGlobalDLOpenFlagSet(int flag) {
+        return (flag & RTLD_Global) == RTLD_Global;
+    }
+
+    @Override
+    public boolean isLazyDLOpenFlagSet(int flag) {
+        return (flag & RTLD_LAZY) == RTLD_LAZY;
+    }
+
     public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
         if (LLVMInfo.SYSNAME.equalsIgnoreCase("linux")) {
             if (LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {

@@ -145,8 +145,10 @@ final class ParserDriver {
         // Process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, bytes);
         if (result == null) {
-            // If result is null, then the file parsed does not contain bitcode.
-            // The NFI can handle it later if it's a native file.
+            // If result is null, then the file parsed does not contain bitcode,
+            // as it's purely native.
+            // DLOpen will go through here. We will have to adjust loadNativeNode to be able
+            // to load stand alone native files.
             TruffleFile file = createNativeTruffleFile(source.getName(), source.getPath());
             // An empty call target is returned for native libraries.
             if (file == null) {

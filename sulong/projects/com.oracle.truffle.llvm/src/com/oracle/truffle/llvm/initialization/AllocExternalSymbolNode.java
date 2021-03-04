@@ -48,6 +48,8 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -86,37 +88,70 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
         this.symbol = symbol;
     }
 
-    public abstract LLVMPointer execute(LLVMLocalScope localScope, LLVMScope globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension, LLVMContext context);
+    public abstract LLVMPointer execute(LLVMLocalScope localScope, LLVMScope globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension, LLVMContext context,
+                    RTLDFlags rtldFlags);
 
     /**
      * Allocating symbols to the symbol table as provided by the local scope.
      */
-    @ImportStatic(LLVMAlias.class)
+    @ImportStatic({LLVMAlias.class, LLVMDLOpen.class})
     abstract static class AllocExistingLocalSymbolsNode extends AllocExternalSymbolNode {
 
         AllocExistingLocalSymbolsNode(LLVMSymbol symbol) {
             super(symbol);
         }
 
-        @Specialization(guards = {"cachedLocalSymbol != null", "localScope.get(symbol.getName()) == cachedLocalSymbol", "!(containsSymbol(cachedLocalSymbol))"})
+        @Specialization(guards = {"cachedLocalSymbol != null", "localScope.get(symbol.getName()) == cachedLocalSymbol", "!(containsSymbol(cachedLocalSymbol))", "isDefaultFlagActive(rtldFlags)"})
         LLVMPointer allocateFromLocalScopeCached(@SuppressWarnings("unused") LLVMLocalScope localScope,
                         @SuppressWarnings("unused") LLVMScope globalScope,
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                         @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
                         LLVMContext context,
+                        @SuppressWarnings("unused") RTLDFlags rtldFlags,
                         @Cached("resolveAlias(localScope.get(symbol.getName()))") LLVMSymbol cachedLocalSymbol) {
             LLVMPointer pointer = context.getSymbol(cachedLocalSymbol);
             context.registerSymbol(symbol, pointer);
             return pointer;
         }
 
-        @Specialization(replaces = "allocateFromLocalScopeCached", guards = {"localScope.get(symbol.getName()) != null", "!(containsSymbol(localScope.get(symbol.getName())))"})
+        @Specialization(replaces = "allocateFromLocalScopeCached", guards = {"localScope.get(symbol.getName()) != null", "!(containsSymbol(localScope.get(symbol.getName())))",
+                        "isDefaultFlagActive(rtldFlags)"})
         LLVMPointer allocateFromLocalScope(LLVMLocalScope localScope,
                         @SuppressWarnings("unused") LLVMScope globalScope,
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                         @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
-                        LLVMContext context) {
+                        LLVMContext context,
+                        @SuppressWarnings("unused") RTLDFlags rtldFlags) {
             LLVMSymbol function = LLVMAlias.resolveAlias(localScope.get(symbol.getName()));
+            LLVMPointer pointer = context.getSymbol(function);
+            context.registerSymbol(symbol, pointer);
+            return pointer;
+        }
+
+        @Specialization(guards = {"localScope.get(symbol.getName()) == null", "cachedGlobalSymbol != null", "globalScope.get(symbol.getName()) == cachedGlobalSymbol",
+                        "!(containsSymbol(cachedGlobalSymbol))", "!(isDefaultFlagActive(rtldFlags))"})
+        LLVMPointer allocateFromGlobalScopeCachedNew(@SuppressWarnings("unused") LLVMLocalScope localScope,
+                        @SuppressWarnings("unused") LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
+                        LLVMContext context,
+                        @SuppressWarnings("unused") RTLDFlags rtldFlags,
+                        @Cached("resolveAlias(globalScope.get(symbol.getName()))") LLVMSymbol cachedGlobalSymbol) {
+            LLVMPointer pointer = context.getSymbol(cachedGlobalSymbol);
+            context.registerSymbol(symbol, pointer);
+            return pointer;
+        }
+
+        @Specialization(replaces = "allocateFromGlobalScopeCachedNew", guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) != null",
+                        "!(containsSymbol(globalScope.get(symbol.getName())))", "!(isDefaultFlagActive(rtldFlags))"})
+        LLVMPointer allocateFromGlobalScopeNew(@SuppressWarnings("unused") LLVMLocalScope localScope,
+                        LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
+                        LLVMContext context,
+                        @SuppressWarnings("unused") RTLDFlags rtldFlags) {
+            LLVMSymbol function = LLVMAlias.resolveAlias(globalScope.get(symbol.getName()));
+            assert function.isFunction();
             LLVMPointer pointer = context.getSymbol(function);
             context.registerSymbol(symbol, pointer);
             return pointer;
@@ -125,6 +160,10 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
         @TruffleBoundary
         protected boolean containsSymbol(LLVMSymbol localSymbol) {
             return symbol.equals(localSymbol);
+        }
+
+        protected boolean isDefaultFlagActive(RTLDFlags rtldFlags) {
+            return RTLDFlags.RTLD_DEFAULT.isActive(rtldFlags);
         }
 
         /**
@@ -137,14 +176,15 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                         @SuppressWarnings("unused") LLVMScope globalScope,
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                         @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
-                        @SuppressWarnings("unused") LLVMContext context) {
+                        @SuppressWarnings("unused") LLVMContext context,
+                        @SuppressWarnings("unused") RTLDFlags rtldFlags) {
             return null;
         }
 
         /**
          * Allocating symbols to the symbol table as provided by the global scope.
          */
-        @ImportStatic(LLVMAlias.class)
+        @ImportStatic({LLVMAlias.class, LLVMDLOpen.class})
         abstract static class AllocExistingGlobalSymbolsNode extends AllocExistingLocalSymbolsNode {
 
             AllocExistingGlobalSymbolsNode(LLVMSymbol symbol) {
@@ -152,12 +192,13 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             }
 
             @Specialization(guards = {"localScope.get(symbol.getName()) == null", "cachedGlobalSymbol != null", "globalScope.get(symbol.getName()) == cachedGlobalSymbol",
-                            "!(containsSymbol(cachedGlobalSymbol))"})
+                            "!(containsSymbol(cachedGlobalSymbol))", "isDefaultFlagActive(rtldFlags)"})
             LLVMPointer allocateFromGlobalScopeCached(@SuppressWarnings("unused") LLVMLocalScope localScope,
                             @SuppressWarnings("unused") LLVMScope globalScope,
                             @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                             @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
                             LLVMContext context,
+                            @SuppressWarnings("unused") RTLDFlags rtldFlags,
                             @Cached("resolveAlias(globalScope.get(symbol.getName()))") LLVMSymbol cachedGlobalSymbol) {
                 LLVMPointer pointer = context.getSymbol(cachedGlobalSymbol);
                 context.registerSymbol(symbol, pointer);
@@ -165,14 +206,43 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             }
 
             @Specialization(replaces = "allocateFromGlobalScopeCached", guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) != null",
-                            "!(containsSymbol(globalScope.get(symbol.getName())))"})
+                            "!(containsSymbol(globalScope.get(symbol.getName())))", "isDefaultFlagActive(rtldFlags)"})
             LLVMPointer allocateFromGlobalScope(@SuppressWarnings("unused") LLVMLocalScope localScope,
                             LLVMScope globalScope,
                             @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                             @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
-                            LLVMContext context) {
+                            LLVMContext context,
+                            @SuppressWarnings("unused") RTLDFlags rtldFlags) {
                 LLVMSymbol function = LLVMAlias.resolveAlias(globalScope.get(symbol.getName()));
                 assert function.isFunction();
+                LLVMPointer pointer = context.getSymbol(function);
+                context.registerSymbol(symbol, pointer);
+                return pointer;
+            }
+
+            @Specialization(guards = {"cachedLocalSymbol != null", "localScope.get(symbol.getName()) == cachedLocalSymbol", "!(containsSymbol(cachedLocalSymbol))",
+                            "!(isDefaultFlagActive(rtldFlags))"})
+            LLVMPointer allocateFromLocalScopeCachedNew(@SuppressWarnings("unused") LLVMLocalScope localScope,
+                            @SuppressWarnings("unused") LLVMScope globalScope,
+                            @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                            @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
+                            LLVMContext context,
+                            @SuppressWarnings("unused") RTLDFlags rtldFlags,
+                            @Cached("resolveAlias(localScope.get(symbol.getName()))") LLVMSymbol cachedLocalSymbol) {
+                LLVMPointer pointer = context.getSymbol(cachedLocalSymbol);
+                context.registerSymbol(symbol, pointer);
+                return pointer;
+            }
+
+            @Specialization(replaces = "allocateFromLocalScopeCachedNew", guards = {"localScope.get(symbol.getName()) != null", "!(containsSymbol(localScope.get(symbol.getName())))",
+                            "!(isDefaultFlagActive(rtldFlags))"})
+            LLVMPointer allocateFromLocalScopeNew(LLVMLocalScope localScope,
+                            @SuppressWarnings("unused") LLVMScope globalScope,
+                            @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                            @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
+                            LLVMContext context,
+                            @SuppressWarnings("unused") RTLDFlags rtldFlags) {
+                LLVMSymbol function = LLVMAlias.resolveAlias(localScope.get(symbol.getName()));
                 LLVMPointer pointer = context.getSymbol(function);
                 context.registerSymbol(symbol, pointer);
                 return pointer;
@@ -186,7 +256,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
 
             @Override
             public abstract LLVMPointer execute(LLVMLocalScope localScope, LLVMScope globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
-                            LLVMContext context);
+                            LLVMContext context, RTLDFlags rtldFlags);
 
             /**
              * Allocating a native global symbol to the symbol table as provided by the nfi context.
@@ -203,7 +273,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 @SuppressWarnings("unused") LLVMScope globalScope,
                                 @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                                 @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
-                                @SuppressWarnings("unused") LLVMContext context) {
+                                @SuppressWarnings("unused") LLVMContext context,
+                                @SuppressWarnings("unused") RTLDFlags rtldFlags) {
                     return LLVMNativePointer.createNull();
                 }
 
@@ -215,7 +286,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 @SuppressWarnings("unused") LLVMScope globalScope,
                                 @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                                 NativeContextExtension nativeContextExtension,
-                                @SuppressWarnings("unused") LLVMContext context) {
+                                @SuppressWarnings("unused") LLVMContext context,
+                                @SuppressWarnings("unused") RTLDFlags rtldFlags) {
                     NativeContextExtension.NativePointerIntoLibrary pointer = nativeContextExtension.getNativeHandle(symbol.getName());
                     if (pointer != null) {
                         return LLVMNativePointer.create(pointer.getAddress());
@@ -245,7 +317,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 @SuppressWarnings("unused") LLVMScope globalScope,
                                 @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                                 @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
-                                @SuppressWarnings("unused") LLVMContext context) {
+                                @SuppressWarnings("unused") LLVMContext context,
+                                @SuppressWarnings("unused") RTLDFlags rtldFlags) {
                     return LLVMNativePointer.createNull();
                 }
 
@@ -256,7 +329,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 @SuppressWarnings("unused") LLVMScope globalScope,
                                 LLVMIntrinsicProvider intrinsicProvider,
                                 @SuppressWarnings("unused") NativeContextExtension nativeContextExtension,
-                                LLVMContext context) {
+                                LLVMContext context,
+                                @SuppressWarnings("unused") RTLDFlags rtldFlags) {
                     LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), functionCode);
                     functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
                     return LLVMManagedPointer.create(functionDescriptor);
@@ -278,7 +352,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 @SuppressWarnings("unused") LLVMScope globalScope,
                                 @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                                 NativeContextExtension nativeContextExtension,
-                                LLVMContext context) {
+                                LLVMContext context,
+                                @SuppressWarnings("unused") RTLDFlags rtldFlags) {
                     NativeContextExtension.NativeLookupResult nativeFunction = nativeContextExtension.getNativeFunctionOrNull(symbol.getName());
                     if (nativeFunction != null) {
                         LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), new LLVMFunctionCode(symbol.asFunction()));

@@ -79,8 +79,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
     @Child private LLVMAllocateNode allocRwSection;
 
     /**
-     * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type
-     * ({@link LLVMGlobalContainer}).
+     * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type (
+     * {@link LLVMGlobalContainer}).
      */
     @CompilationFinal(dimensions = 1) private final int[] globalOffsets;
     @CompilationFinal(dimensions = 1) private final boolean[] globalIsReadOnly;
