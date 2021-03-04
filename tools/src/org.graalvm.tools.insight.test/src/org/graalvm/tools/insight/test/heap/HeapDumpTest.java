@@ -76,7 +76,7 @@ public class HeapDumpTest {
             ObjectInstance cathingThread = heap.newThread("Catching Jerry").
                 group("Cartoons").
                 addStackFrame(classActor, "tom", "Actor.java", -1, jerry, tom, main).
-                addStackFrame(classMain, "main", "Main.java", -1, mainBuilder.id()).
+                addStackFrame(classMain, "main", "Main.java", -1, main).
                 dumpThread();
 
             mainBuilder.put("thread", cathingThread).dumpInstance();

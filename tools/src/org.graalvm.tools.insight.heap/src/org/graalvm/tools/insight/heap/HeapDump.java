@@ -148,18 +148,55 @@ public final class HeapDump {
         final Identifiers ids;
         private final Map<String, Integer> wholeStrings = new HashMap<>();
         private final DataOutputStream whole;
+        private Long timeBase;
         int objectCounter;
 
-        private Builder(Identifiers ids, OutputStream os) throws IOException {
+        private Builder(Identifiers ids, OutputStream os) {
             this.whole = new DataOutputStream(os);
             this.ids = ids;
-            whole.write(MAGIC_WITH_SEGMENTS.getBytes());
-            whole.write(0); // null terminated string
-            whole.writeInt(ids.sizeOf());
-            whole.writeLong(System.currentTimeMillis());
         }
 
+        private void dumpPrologue(Identifiers ids1, final long millis) throws IOException {
+            whole.write(MAGIC_WITH_SEGMENTS.getBytes());
+            whole.write(0); // null terminated string
+            whole.writeInt(ids1.sizeOf());
+            whole.writeLong(millis);
+        }
+
+        /**
+         * Generates heap dump.
+         * <p>
+         * {@codesnippet org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump}
+         * 
+         * @param generator callback that performs the heap generating operations
+         * @throws IOException when an I/O error occurs
+         * 
+         * @see HeapDump#newHeapBuilder(java.io.OutputStream)
+         * @since 21.1
+         */
         public void dumpHeap(Consumer<HeapDump> generator) throws IOException {
+            dumpHeap(System.currentTimeMillis(), generator);
+        }
+
+        /**
+         * Generates heap dump with an explicitly specified time stamp. Should there be multiple
+         * {@link HeapDump dumps} in a single file, it is expected the subsequent values of
+         * {@code timeStamp} are not going to be decreasing.
+         * <p>
+         * {@codesnippet org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump}
+         * 
+         * @param timeStamp time when the heap dump is supposed to be taken in milliseconds
+         * @param generator callback that performs the heap generating operations
+         * @throws IOException when an I/O error occurs
+         * 
+         * @see HeapDump#newHeapBuilder(java.io.OutputStream)
+         * @since 21.1
+         */
+        public void dumpHeap(long timeStamp, Consumer<HeapDump> generator) throws IOException {
+            if (timeBase == null) {
+                dumpPrologue(ids, timeBase = timeStamp);
+            }
+
             final ByteArrayOutputStream rawHeap = new ByteArrayOutputStream();
             HeapDump seg = new HeapDump(rawHeap, this);
             try {
@@ -170,7 +207,8 @@ public final class HeapDump {
             seg.flush();
             if (rawHeap.size() > 0) {
                 whole.writeByte(TAG_HEAP_DUMP);
-                whole.writeInt(0); // ms
+                long diffMillis = Math.min(Math.max(0, timeStamp - timeBase), Integer.MAX_VALUE);
+                whole.writeInt((int) diffMillis);
                 final byte[] bytes = rawHeap.toByteArray();
                 whole.writeInt(bytes.length);
                 whole.write(bytes);
