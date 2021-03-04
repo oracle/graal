@@ -38,7 +38,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.LocalizationSupport;
-import com.oracle.svm.core.jdk.SingleLocaleOnly;
+import com.oracle.svm.core.jdk.OptimizedLocaleMode;
 
 //Checkstyle: stop
 import sun.util.resources.Bundles.Strategy;
@@ -51,7 +51,7 @@ final class Target_sun_util_resources_Bundles {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
     private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
 
-    @TargetElement(onlyWith = SingleLocaleOnly.class)
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle loadBundleOf(String baseName, Locale targetLocale, Strategy strategy) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);

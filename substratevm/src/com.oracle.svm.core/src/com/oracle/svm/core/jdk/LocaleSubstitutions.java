@@ -86,7 +86,7 @@ final class DefaultLocaleComputer implements RecomputeFieldValue.CustomFieldValu
     }
 }
 
-@TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = SingleLocaleOnly.class)
+@TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = OptimizedLocaleMode.class)
 final class Target_sun_util_locale_provider_LocaleProviderAdapter {
 
     @Substitute
@@ -109,9 +109,9 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
     }
 }
 
-class Wrapper {
+class MultiLocaleWrapper {
     @SuppressWarnings({"static-method"})
-    @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = MultiLocale.class)
+    @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = FallbackLocaleMode.class)
     static final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
         @Substitute
         private static Locale[] getAllAvailableLocales() {
@@ -126,7 +126,7 @@ class Wrapper {
 }
 
 @Substitute
-@TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = SingleLocaleOnly.class)
+@TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = OptimizedLocaleMode.class)
 @SuppressWarnings({"static-method"})
 final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 
@@ -190,7 +190,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 }
 
 @Delete
-@TargetClass(value = sun.util.locale.provider.AuxLocaleProviderAdapter.class, onlyWith = SingleLocaleOnly.class)
+@TargetClass(value = sun.util.locale.provider.AuxLocaleProviderAdapter.class, onlyWith = OptimizedLocaleMode.class)
 final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter {
 }
 
@@ -204,6 +204,7 @@ final class Target_sun_util_locale_provider_TimeZoneNameUtility {
     static Map<String, SoftReference<Map<Locale, String[]>>> cachedDisplayNames = new ConcurrentHashMap<>();
 }
 
+// todo put into locale support
 @TargetClass(java.text.BreakIterator.class)
 final class Target_java_text_BreakIterator {
 
@@ -268,12 +269,10 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
         return isNonENSupported;
     }
 
-// @Substitute
-// @SuppressWarnings("static-method")
-// protected Set<String> createLanguageTagSet(String category) {
-// throw VMError.unsupportedFeature("All language tag sets must be created at image build time.
-// Missing category: " + category);
-// }
+    @Substitute
+    private static String createSupportedLocaleString(String category) {
+        return ImageSingletons.lookup(LocalizationSupport.class).supportedLocaleString;
+    }
 }
 
 final class Util_java_text_BreakIterator {

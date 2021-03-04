@@ -53,6 +53,7 @@ import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -110,37 +111,23 @@ public abstract class LocalizationFeature implements Feature {
         @Option(help = "Make all hosted locales available at run time.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
 
+        @Option(help = "Optimize the resource bundle lookup in a custom map.", type = OptionType.User)//
+        public static final HostedOptionKey<Boolean> OptimizedMode = new HostedOptionKey<>(true);
+
         @Option(help = "When enabled, localization feature details are printed.", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceLocalizationFeature = new HostedOptionKey<>(true);
     }
 
-    protected final boolean singleLocaleMode = isSingleLocale();
+    protected final boolean optimizedMode = optimizedMode();
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
-    /**
-     * Support for multiple locales is enabled iff all locales should be included or more than one
-     * locale is requested or a single locale is requested but different from the default one.
-     */
-    public static boolean isMultiLocale() {
-        return true;
-// if (Options.IncludeAllLocales.getValue()) {
-// return true;
-// }
-// List<String> locales = Options.IncludeLocales.getValue().values();
-// if (locales.isEmpty()) {
-// return false;
-// }
-// if (locales.size() > 1) {
-// return true;
-// }
-// final String singleSelectedLocale = locales.get(0);
-// boolean selectedIsDefault = singleSelectedLocale.equals(Options.DefaultLocale.getValue());
-// return !selectedIsDefault;
+    public static boolean optimizedMode() {
+        return Options.OptimizedMode.getValue();
     }
 
-    public static boolean isSingleLocale() {
-        return !isMultiLocale();
+    public static boolean fallbackMode() {
+        return !optimizedMode();
     }
 
     /**
@@ -206,7 +193,7 @@ public abstract class LocalizationFeature implements Feature {
         ImageSingletons.add(LocalizationFeature.class, this);
 
         addCharsets();
-        if (singleLocaleMode) {
+        if (optimizedMode) {
             addProviders();
         }
     }
@@ -380,14 +367,15 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     private void prepareBundle(String bundleName, ResourceBundle bundle) {
+        trace("Adding bundle " + bundleName);
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
          * down to the root.
          */
         for (ResourceBundle cur = bundle; cur != null; cur = getParent(cur)) {
-            if (singleLocaleMode) {
-                RuntimeClassInitialization.initializeAtBuildTime(cur.getClass());
+            if (optimizedMode) {
                 cur.keySet();
+                support.resourceBundles.put(Pair.create(bundleName, cur.getLocale()), cur);
             } else {
                 if (bundle instanceof PropertyResourceBundle) {
                     ImageSingletons.lookup(ResourcesRegistry.class).addResources(bundle.getClass().getName().replace('.', '/') + "\\.properties");
@@ -396,12 +384,6 @@ public abstract class LocalizationFeature implements Feature {
                     RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
                 }
             }
-        }
-
-        trace("Adding bundle " + bundleName);
-
-        if (singleLocaleMode) {
-            support.resourceBundles.put(bundleName, bundle);
         }
     }
 

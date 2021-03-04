@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 //Checkstyle: allow reflection
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.ResourceBundle.Control;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,37 +52,37 @@ final class Target_java_util_ResourceBundle {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
     private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
 
-    @TargetElement(onlyWith = SingleLocaleOnly.class)
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, Locale.getDefault());
     }
 
-    @TargetElement(onlyWith = SingleLocaleOnly.class)
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Control control) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, Locale.getDefault());
     }
 
-    @TargetElement(onlyWith = SingleLocaleOnly.class)
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale locale) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, locale);
     }
 
-    @TargetElement(onlyWith = SingleLocaleOnly.class)
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, Control control) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);
     }
 
-    @TargetElement(onlyWith = SingleLocaleOnly.class)
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale locale, ClassLoader loader) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, locale);
     }
 
-    @TargetElement(onlyWith = SingleLocaleOnly.class)
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, ClassLoader loader, Control control) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);
@@ -92,20 +93,70 @@ final class Target_java_util_ResourceBundle {
      * therefore ignored.
      */
 
-    @TargetElement(onlyWith = {JDK11OrLater.class, SingleLocaleOnly.class})
+    @TargetElement(onlyWith = {JDK11OrLater.class, OptimizedLocaleMode.class})
     @Substitute
     private static ResourceBundle getBundle(String baseName, Target_java_lang_Module module) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, Locale.getDefault());
     }
 
-    @TargetElement(onlyWith = {JDK11OrLater.class, SingleLocaleOnly.class})
+    @TargetElement(onlyWith = {JDK11OrLater.class, OptimizedLocaleMode.class})
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, Target_java_lang_Module module) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);
     }
 }
 
-@TargetClass(value = java.util.ListResourceBundle.class, onlyWith = SingleLocaleOnly.class)
+class MultiLocaleWrapper1 {
+    @TargetClass(value = java.util.ListResourceBundle.class, onlyWith = FallbackLocaleMode.class)
+    @SuppressWarnings({"static-method"})
+    static final class Target_java_util_ListResourceBundle {
+
+        @Alias private Map<String, Object> lookup;
+
+        @Substitute
+        private void loadLookup() {
+            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
+        }
+    }
+
+    @TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = FallbackLocaleMode.class)
+    @SuppressWarnings({"static-method"})
+    static final class Target_sun_util_resources_OpenListResourceBundle {
+
+        @Alias private Map<String, Object> lookup;
+
+        @Substitute
+        private void loadLookup() {
+            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
+        }
+    }
+
+    @TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = FallbackLocaleMode.class)
+    @SuppressWarnings({"unused", "static-method"})
+    static final class Target_sun_util_resources_ParallelListResourceBundle {
+
+        @Alias private ConcurrentMap<String, Object> lookup;
+
+        @Substitute
+        private void setParallelContents(OpenListResourceBundle rb) {
+            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
+        }
+
+        @Substitute
+        private boolean areParallelContentsComplete() {
+            return true;
+        }
+
+        @Substitute
+        private void loadLookupTablesIfNecessary() {
+            if (lookup == null) {
+                throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
+            }
+        }
+    }
+}
+
+@TargetClass(value = java.util.ListResourceBundle.class, onlyWith = OptimizedLocaleMode.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_util_ListResourceBundle {
 
@@ -115,7 +166,7 @@ final class Target_java_util_ListResourceBundle {
     }
 }
 
-@TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = SingleLocaleOnly.class)
+@TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = OptimizedLocaleMode.class)
 @SuppressWarnings({"static-method"})
 final class Target_sun_util_resources_OpenListResourceBundle {
 
@@ -125,7 +176,7 @@ final class Target_sun_util_resources_OpenListResourceBundle {
     }
 }
 
-@TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = SingleLocaleOnly.class)
+@TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = OptimizedLocaleMode.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_util_resources_ParallelListResourceBundle {
 

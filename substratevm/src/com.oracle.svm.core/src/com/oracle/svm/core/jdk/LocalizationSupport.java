@@ -35,6 +35,8 @@ import java.util.ResourceBundle;
 import java.util.spi.LocaleServiceProvider;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import org.graalvm.collections.Pair;
+import static java.util.stream.Collectors.joining;
 
 //Checkstyle: stop
 import sun.util.locale.provider.LocaleProviderAdapter;
@@ -50,7 +52,7 @@ public final class LocalizationSupport {
     final Map<Class<? extends LocaleServiceProvider>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
     final Map<LocaleProviderAdapter.Type, LocaleProviderAdapter> adaptersByType = new HashMap<>();
     final Map<Class<? extends LocaleServiceProvider>, Object> providerPools = new HashMap<>();
-    final Map<String, ResourceBundle> resourceBundles = new HashMap<>();
+    final Map<Pair<String, Locale>, ResourceBundle> resourceBundles = new HashMap<>();
 
     private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");
 
@@ -60,9 +62,16 @@ public final class LocalizationSupport {
      */
     final Locale[] allLocales;
 
+    final String supportedLocaleString;
+
     public LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
+        this.supportedLocaleString = computeSupportedLocaleString(locales);
+    }
+
+    private static String computeSupportedLocaleString(List<Locale> locales) {
+        return locales.stream().map(Locale::toString).collect(joining(" "));
     }
 
     /**
@@ -71,7 +80,7 @@ public final class LocalizationSupport {
      * @param locale this parameter is not currently used.
      */
     public ResourceBundle getCached(String baseName, Locale locale) throws MissingResourceException {
-        ResourceBundle result = resourceBundles.get(baseName);
+        ResourceBundle result = resourceBundles.get(Pair.create(baseName, locale));
         if (result == null) {
             String errorMessage = "Resource bundle not found " + baseName + ". " +
                             "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
