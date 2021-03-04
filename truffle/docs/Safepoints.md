@@ -103,16 +103,16 @@ The option `--engine.TraceThreadLocalActions` allows to trace all thread local a
 Example output:
 
 ```
-[engine] [tl] submit                 0  thread[main]                     all-threads[alive=4]        side-effecting     asynchronous   action: com.oracle.truffle.api.test.TruffleSafepointTest$ActionCollector@6c779568
-[engine] [tl]   perform-start        0  thread[pool-1-thread-410]
-[engine] [tl]   perform-start        0  thread[pool-1-thread-413]
-[engine] [tl]   perform-start        0  thread[pool-1-thread-412]
-[engine] [tl]   perform-done         0  thread[pool-1-thread-413]
-[engine] [tl]   perform-done         0  thread[pool-1-thread-410]
-[engine] [tl]   perform-start        0  thread[pool-1-thread-411]
-[engine] [tl]   perform-done         0  thread[pool-1-thread-412]
-[engine] [tl]   perform-done         0  thread[pool-1-thread-411]
-[engine] [tl] done                   0  thread[pool-1-thread-411]
+[engine] [tl] submit                 0  thread[main]                action[SampleAction$8@5672f0d1]     all-threads[alive=4]        side-effecting     asynchronous
+[engine] [tl]   perform-start        0  thread[pool-1-thread-410]   action[SampleAction$8@5672f0d1]
+[engine] [tl]   perform-start        0  thread[pool-1-thread-413]   action[SampleAction$8@5672f0d1]
+[engine] [tl]   perform-start        0  thread[pool-1-thread-412]   action[SampleAction$8@5672f0d1]
+[engine] [tl]   perform-done         0  thread[pool-1-thread-413]   action[SampleAction$8@5672f0d1]
+[engine] [tl]   perform-done         0  thread[pool-1-thread-410]   action[SampleAction$8@5672f0d1]
+[engine] [tl]   perform-start        0  thread[pool-1-thread-411]   action[SampleAction$8@5672f0d1]
+[engine] [tl]   perform-done         0  thread[pool-1-thread-412]   action[SampleAction$8@5672f0d1]
+[engine] [tl]   perform-done         0  thread[pool-1-thread-411]   action[SampleAction$8@5672f0d1]
+[engine] [tl] done                   0  thread[pool-1-thread-411]   action[SampleAction$8@5672f0d1]
 ```
 
 ### Printing guest and host stack frames every time interval.
