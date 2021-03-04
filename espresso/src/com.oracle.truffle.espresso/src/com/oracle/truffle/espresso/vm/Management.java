@@ -147,10 +147,10 @@ public final class Management extends NativeEnv {
     public Management(EspressoContext context, TruffleObject mokapotLibrary) {
         assert context.EnableManagement;
         this.context = context;
-        this.initializeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeMokapotContext",
+        this.initializeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeManagementContext",
                         NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
 
-        this.disposeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeMokapotContext",
+        this.disposeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeManagementContext",
                         NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT, NativeType.POINTER));
     }
 
