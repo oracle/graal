@@ -64,16 +64,8 @@ abstract class ShapeGenerator<T> {
         return ArrayBasedShapeGenerator.getShapeGenerator(storageSuperClass, storageFactoryInterface, extendedProperties);
     }
 
-    static String generateStorageName(Class<?> storageSuperClass) {
-        String internalStorageSuperClassName = Type.getInternalName(storageSuperClass);
-        String baseName;
-        int index = internalStorageSuperClassName.indexOf(DELIMITER);
-        if (index == -1) {
-            baseName = internalStorageSuperClassName + DELIMITER;
-        } else {
-            baseName = internalStorageSuperClassName.substring(0, index + DELIMITER.length());
-        }
-        return baseName + counter.incrementAndGet();
+    static String generateStorageName() {
+        return ShapeGenerator.class.getPackage().getName().replace('.', '/') + "/GeneratedStaticObject" + DELIMITER + counter.incrementAndGet();
     }
 
     static String generateFactoryName(Class<?> generatedStorageClass) {

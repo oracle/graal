@@ -324,7 +324,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     private static Class<?> generateStorage(Class<?> storageSuperClass) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
-        String storageName = generateStorageName(storageSuperClass);
+        String storageName = generateStorageName();
         Collection<ExtendedProperty> arrayProperties = generateStorageProperties();
 
         int classWriterFlags = ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS;
