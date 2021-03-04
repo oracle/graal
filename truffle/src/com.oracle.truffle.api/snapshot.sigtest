@@ -483,6 +483,8 @@ meth public com.oracle.truffle.api.TruffleFile getInternalTruffleFile(java.lang.
 meth public com.oracle.truffle.api.TruffleFile getInternalTruffleFile(java.net.URI)
 meth public com.oracle.truffle.api.TruffleFile getPublicTruffleFile(java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile getPublicTruffleFile(java.net.URI)
+meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.lang.String,java.util.function.Predicate<com.oracle.truffle.api.TruffleFile>)
+meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.net.URI,java.util.function.Predicate<com.oracle.truffle.api.TruffleFile>)
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
@@ -519,6 +521,7 @@ meth public void registerService(java.lang.Object)
 meth public void setCurrentWorkingDirectory(com.oracle.truffle.api.TruffleFile)
 supr java.lang.Object
 hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,in,initialized,initializedUnchangedAssumption,languageServicesCollector,options,out,polyglotLanguageContext,services,spi,valid
+hcls TruffleFileFactory
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest
  outer com.oracle.truffle.api.TruffleLanguage
