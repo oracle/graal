@@ -27,6 +27,8 @@ package org.graalvm.compiler.replacements.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
+import java.io.PrintStream;
+
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -35,6 +37,13 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
+/**
+ * High-level node for simple low level logging. This node can be used early on in high-tier to
+ * produce simple {@linkplain PrintStream}-like logging of values to stdout. This can be useful in
+ * debugging / logging value flow throughout a compiler graph. A simple example would be: new
+ * optimization added that reads a value and computes a mathematical function on it then this node
+ * can be used to print all original and transformed values to stdout.
+ */
 @NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class LogNode extends FixedWithNextNode implements Lowerable {
     public static final NodeClass<LogNode> TYPE = NodeClass.create(LogNode.class);
