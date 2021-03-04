@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.util.concurrent.ForkJoinPool;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-
-import java.util.concurrent.ForkJoinPool;
 
 @AutomaticFeature
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -46,8 +46,6 @@ public class LoomContinuationFeature implements Feature {
             FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) arg;
             access.registerAsInHeap(StoredContinuation.class);
             RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
-            // Initialize `Random` field at runtime
-            RuntimeClassInitialization.initializeAtRunTime(access.findClassByName("sun.nio.ch.UnixDomainSockets"));
         }
     }
 }
