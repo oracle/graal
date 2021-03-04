@@ -47,7 +47,10 @@ import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordCastNode;
 
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -118,5 +121,21 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
         }
 
         return kit.append(new StubForeignCallNode(providers.getForeignCalls(), stamp, target.getDescriptor(), targetArguments));
+    }
+
+    @Override
+    protected void checkSafeDataReference(DataPatch data) {
+        if (data.reference instanceof ConstantReference) {
+            ConstantReference reference = (ConstantReference) data.reference;
+            if (reference.getConstant() instanceof HotSpotMetaspaceConstant) {
+                HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) reference.getConstant();
+                if (javaMethod.equals(meta.asResolvedJavaMethod())) {
+                    // Permit direct metadata reference to the target method since metadata doesn't
+                    // move and the ResolvedJavaMethod instance will keep it alive.
+                    return;
+                }
+            }
+        }
+        super.checkSafeDataReference(data);
     }
 }
