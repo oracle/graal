@@ -55,6 +55,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -169,8 +170,21 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         setDontInlineCallBoundaryMethod(boundaryMethods);
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
 
-        int counters = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*");
-        this.threadLocalPendingHandshakeOffset = counters;
+        int offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, -1, new String[]{"intptr_t*"});
+        if (offset == -1) {
+            int counterSize = vmConfigAccess.getFlag("JVMCICounterSize", Integer.class);
+            if (counterSize <= 0) {
+                // We can only use the jvmci counters it they are not used otherwise.
+                offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
+            } else {
+                throw new InternalError("Failed to initialize the HotSpot Truffle runtime. " +
+                                "The flag -XX:JVMCICounterSize can no longer be used in combination with Truffle and an older version of JVMCI. " +
+                                "Upgrade the JVMCI version in use, do not use jvmci counters or switch the Truffle runtime to the default runtime with -Dtruffle.TruffleRuntime=" +
+                                DefaultTruffleRuntime.class.getName() + ".");
+            }
+        }
+        assert offset != -1 : "unexpected offset value";
+        this.threadLocalPendingHandshakeOffset = offset;
     }
 
     @Override
