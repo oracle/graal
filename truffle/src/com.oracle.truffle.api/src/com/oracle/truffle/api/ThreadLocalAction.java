@@ -50,7 +50,7 @@ import com.oracle.truffle.api.nodes.Node;
  * Represents an action that is executed at a {@link TruffleSafepoint safepoint} location of the
  * guest language execution. Thread local actions can be submitted by
  * {@link TruffleLanguage.Env#submitThreadLocal(Thread[], ThreadLocalAction) languages} or
- * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#submitThreadLocal(TruffleContext, Thread[], ThreadLocalAction)
+ * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#submitThreadLocal(TruffleContext, Thread[], ThreadLocalAction, boolean)
  * instruments}. When an action is submitted it will be {@link #perform(Access) performed} locally
  * on the threads they are submitted to. After submitting a thread local action a {@link Future} is
  * returned that allows to wait for and cancel the submitted action.
@@ -173,17 +173,6 @@ public abstract class ThreadLocalAction {
          * @since 21.1
          */
         public abstract Thread getThread();
-
-        /**
-         * Returns <code>true</code> if the context is currently active on that thread. A thread can
-         * only be non-active if the thread has just been left. Checking on the result value of this
-         * method allows running an action just before a context becomes inactive on a thread. This
-         * can be useful to detect threads becoming inactive and stop submitting thread-local
-         * actions when they need to be performed repeatedly.
-         *
-         * @since 21.1
-         */
-        public abstract boolean isContextActive();
 
     }
 

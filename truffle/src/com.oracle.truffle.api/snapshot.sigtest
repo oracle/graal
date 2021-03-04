@@ -208,7 +208,6 @@ hfds hasSideEffects,synchronous
 CLSS public abstract static com.oracle.truffle.api.ThreadLocalAction$Access
  outer com.oracle.truffle.api.ThreadLocalAction
 cons protected init(org.graalvm.polyglot.impl.AbstractPolyglotImpl)
-meth public abstract boolean isContextActive()
 meth public abstract com.oracle.truffle.api.nodes.Node getLocation()
 meth public abstract java.lang.Thread getThread()
 supr java.lang.Object

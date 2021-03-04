@@ -3498,9 +3498,16 @@ public abstract class TruffleLanguage<C> {
          * @since 21.1
          */
         public Future<Void> submitThreadLocal(Thread[] threads, ThreadLocalAction action) {
+            return submitThreadLocalInternal(threads, action, true);
+        }
+
+        /*
+         * For reflective use in tests.
+         */
+        Future<Void> submitThreadLocalInternal(Thread[] threads, ThreadLocalAction action, boolean needsEnter) {
             checkDisposed();
             try {
-                return LanguageAccessor.ENGINE.submitThreadLocal(LanguageAccessor.ENGINE.getContext(polyglotLanguageContext), threads, action);
+                return LanguageAccessor.ENGINE.submitThreadLocal(LanguageAccessor.ENGINE.getContext(polyglotLanguageContext), threads, action, needsEnter);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

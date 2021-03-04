@@ -1399,8 +1399,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Future<Void> submitThreadLocal(Object polyglotContext, Thread[] threads, ThreadLocalAction action) {
-            return ((PolyglotContextImpl) polyglotContext).threadLocalActions.submit(threads, action);
+        public Future<Void> submitThreadLocal(Object polyglotContext, Thread[] threads, ThreadLocalAction action, boolean needsEnter) {
+            return ((PolyglotContextImpl) polyglotContext).threadLocalActions.submit(threads, action, needsEnter);
         }
 
         @Override
