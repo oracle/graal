@@ -63,23 +63,24 @@ public abstract class ByteArrayLoadNode extends QuickNode {
                     @Cached ToEspressoNode toEspressoNode,
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
-        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, context.getMeta(), exceptionProfile);
+        Meta meta = context.getMeta();
+        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, meta, exceptionProfile);
 
-        if (array.getKlass() == context.getMeta()._byte_array) {
+        if (array.getKlass() == meta._byte_array) {
             try {
-                return (byte) toEspressoNode.execute(result, context.getMeta()._byte);
+                return (byte) toEspressoNode.execute(result, meta._byte);
             } catch (UnsupportedTypeException e) {
                 exceptionProfile.enter();
-                throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to byte");
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast the foreign array element to byte");
             }
         } else {
-            assert array.getKlass() == context.getMeta()._boolean_array;
+            assert array.getKlass() == meta._boolean_array;
             try {
-                boolean element = (boolean) toEspressoNode.execute(result, context.getMeta()._boolean);
+                boolean element = (boolean) toEspressoNode.execute(result, meta._boolean);
                 return (byte) (element ? 1 : 0);
             } catch (UnsupportedTypeException e) {
                 exceptionProfile.enter();
-                throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to boolean");
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast the foreign array element to boolean");
             }
         }
     }

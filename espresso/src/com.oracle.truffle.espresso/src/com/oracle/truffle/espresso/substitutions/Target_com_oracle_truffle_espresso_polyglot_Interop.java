@@ -1507,7 +1507,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                             ? (StaticObject) meta.polyglot.UnsupportedMessageException_create.invokeDirect(null)
                             // UnsupportedMessageException.create(Throwable cause)
                             : (StaticObject) meta.polyglot.UnsupportedMessageException_create_Throwable.invokeDirect(null, wrapForeignException(cause, meta));
-            throw EspressoException.wrap(exception);
+            throw EspressoException.wrap(exception, meta);
         }
 
         if (e instanceof UnknownIdentifierException) {
@@ -1519,7 +1519,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                             // UnknownIdentifierException.create(String unknownIdentifier, Throwable
                             // cause)
                             : (StaticObject) meta.polyglot.UnknownIdentifierException_create_String_Throwable.invokeDirect(null, unknownIdentifier, wrapForeignException(cause, meta));
-            throw EspressoException.wrap(exception);
+            throw EspressoException.wrap(exception, meta);
         }
 
         if (e instanceof ArityException) {
@@ -1532,7 +1532,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                             // ArityException.create(int expectedArity, int actualArity, Throwable
                             // cause)
                             : (StaticObject) meta.polyglot.ArityException_create_int_int_Throwable.invokeDirect(null, expectedArity, actualArity, wrapForeignException(cause, meta));
-            throw EspressoException.wrap(exception);
+            throw EspressoException.wrap(exception, meta);
         }
 
         if (e instanceof UnsupportedTypeException) {
@@ -1557,7 +1557,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                             // UnsupportedTypeException.create(Object[] suppliedValues, String hint,
                             // Throwable cause)
                             : (StaticObject) meta.polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.invokeDirect(null, suppliedValues, hint, wrapForeignException(cause, meta));
-            throw EspressoException.wrap(exception);
+            throw EspressoException.wrap(exception, meta);
         }
 
         if (e instanceof InvalidArrayIndexException) {
@@ -1568,7 +1568,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                             ? (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long.invokeDirect(null, invalidIndex)
                             // InvalidArrayIndexException.create(long invalidIndex, Throwable cause)
                             : (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long_Throwable.invokeDirect(null, invalidIndex, wrapForeignException(cause, meta));
-            throw EspressoException.wrap(exception);
+            throw EspressoException.wrap(exception, meta);
         }
 
         CompilerDirectives.transferToInterpreter();

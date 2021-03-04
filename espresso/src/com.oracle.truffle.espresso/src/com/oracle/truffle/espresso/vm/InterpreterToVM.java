@@ -124,7 +124,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -140,7 +140,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -156,7 +156,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -172,7 +172,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -188,7 +188,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -212,7 +212,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -228,7 +228,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -248,7 +248,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -264,7 +264,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -280,7 +280,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -296,7 +296,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -324,7 +324,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -340,7 +340,7 @@ public final class InterpreterToVM implements ContextAccess {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
             Meta meta = getMeta();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -383,7 +383,7 @@ public final class InterpreterToVM implements ContextAccess {
         if (!holdsLock(lock)) {
             // No owner checks in SVM. This is a safeguard against unbalanced monitor accesses until
             // Espresso has its own monitor handling.
-            throw Meta.throwException(meta.java_lang_IllegalMonitorStateException);
+            throw meta.throwException(meta.java_lang_IllegalMonitorStateException);
         }
         monitorUnsafeExit(lock);
     }
@@ -482,18 +482,18 @@ public final class InterpreterToVM implements ContextAccess {
 
     @TruffleBoundary(transferToInterpreterOnException = false)
     private static EspressoException throwNegativeArraySizeException(Meta meta) {
-        throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
+        throw meta.throwException(meta.java_lang_NegativeArraySizeException);
     }
 
     @TruffleBoundary
     public StaticObject newMultiArray(Klass component, int... dimensions) {
         Meta meta = getMeta();
         if (component == meta._void) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         for (int d : dimensions) {
             if (d < 0) {
-                throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
+                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
             }
         }
         return newMultiArrayWithoutChecks(component, dimensions);
@@ -526,7 +526,7 @@ public final class InterpreterToVM implements ContextAccess {
     public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta) {
         // the constants for the cpi are loosely defined and no real cpi indices.
         if (length < 0) {
-            throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
+            throw meta.throwException(meta.java_lang_NegativeArraySizeException);
         }
         // @formatter:off
         switch (jvmPrimitiveType) {
@@ -572,7 +572,7 @@ public final class InterpreterToVM implements ContextAccess {
             return instance;
         }
         Meta meta = klass.getMeta();
-        throw Meta.throwException(meta.java_lang_ClassCastException);
+        throw meta.throwException(meta.java_lang_ClassCastException);
     }
 
     /**
@@ -589,7 +589,7 @@ public final class InterpreterToVM implements ContextAccess {
         assert klass != null && !klass.isArray() && !klass.isPrimitive() : klass;
         if (klass.isAbstract() || klass.isInterface()) {
             Meta meta = klass.getMeta();
-            throw Meta.throwException(
+            throw meta.throwException(
                             throwsError
                                             ? meta.java_lang_InstantiationError
                                             : meta.java_lang_InstantiationException);
@@ -619,7 +619,7 @@ public final class InterpreterToVM implements ContextAccess {
         if (frames != null) {
             return throwable;
         }
-        EspressoException e = EspressoException.wrap(throwable);
+        EspressoException e = EspressoException.wrap(throwable, meta);
         List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
         if (trace == null) {
             meta.HIDDEN_FRAMES.setHiddenObject(throwable, VM.StackTrace.EMPTY_STACK_TRACE);

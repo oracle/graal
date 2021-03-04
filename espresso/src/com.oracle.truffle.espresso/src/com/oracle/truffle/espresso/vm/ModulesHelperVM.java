@@ -59,7 +59,7 @@ public final class ModulesHelperVM {
             toModuleEntry = getModuleEntry(toModule, meta);
             if (toModuleEntry == null) {
                 profiler.profile(8);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "to_module is invalid");
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "to_module is invalid");
             }
         }
         return toModuleEntry;
@@ -74,7 +74,7 @@ public final class ModulesHelperVM {
         ModuleTable.ModuleEntry fromModuleEntry = getModuleEntry(fromModule, meta);
         if (fromModuleEntry == null) {
             profiler.profile(10);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "from_module cannot be found");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "from_module cannot be found");
         }
         return fromModuleEntry;
     }
@@ -88,12 +88,12 @@ public final class ModulesHelperVM {
         }
         if (packageEntry == null) {
             profiler.profile(11);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                             cat("package ", pkg, " cannot be found in ", fromModuleEntry.getNameAsString()));
         }
         if (packageEntry.module() != fromModuleEntry) {
             profiler.profile(12);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                             cat("package ", pkg, " found in ", packageEntry.module().getNameAsString(), ", not in ", fromModuleEntry.getNameAsString()));
         }
         return packageEntry;

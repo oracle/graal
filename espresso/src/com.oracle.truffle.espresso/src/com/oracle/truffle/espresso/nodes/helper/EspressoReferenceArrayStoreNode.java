@@ -48,11 +48,13 @@ public class EspressoReferenceArrayStoreNode extends Node {
                 array.putObjectUnsafe(value, index);
             } else {
                 enterArrayStoreEx();
-                throw Meta.throwException(typeCheck.getMeta().java_lang_ArrayStoreException);
+                Meta meta = typeCheck.getMeta();
+                throw meta.throwException(meta.java_lang_ArrayStoreException);
             }
         } else {
             enterOutOfBound();
-            throw Meta.throwException(typeCheck.getMeta().java_lang_ArrayIndexOutOfBoundsException);
+            Meta meta = typeCheck.getMeta();
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 

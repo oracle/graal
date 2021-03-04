@@ -467,6 +467,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // Throwable
         public static final Symbol<Name> HIDDEN_FRAMES = StaticSymbols.putName("0HIDDEN_FRAMES");
+        public static final Symbol<Name> HIDDEN_EXCEPTION_WRAPPER = StaticSymbols.putName("0HIDDEN_EXCEPTION_WRAPPER");
 
         // Thread
         public static final Symbol<Name> HIDDEN_DEATH = StaticSymbols.putName("0HIDDEN_DEATH");

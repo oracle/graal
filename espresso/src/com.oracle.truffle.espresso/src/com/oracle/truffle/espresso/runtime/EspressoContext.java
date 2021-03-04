@@ -523,8 +523,8 @@ public final class EspressoContext {
             meta.HIDDEN_FRAMES.setHiddenObject(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
             meta.java_lang_Throwable_backtrace.setObject(outOfMemoryErrorInstance, outOfMemoryErrorInstance);
 
-            this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance);
-            this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance);
+            this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance, meta);
+            this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance, meta);
             meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 

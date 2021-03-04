@@ -59,6 +59,7 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv.PrependEnv;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.InjectMeta;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
 import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
 import com.oracle.truffle.espresso.substitutions.ManagementCollector;
@@ -243,7 +244,7 @@ public final class Management extends NativeEnv {
             long tid = threadIds.<long[]> unwrap()[i];
             if (tid <= 0) {
                 profiler.profile(3);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid thread ID entry");
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid thread ID entry");
             }
         }
     }
@@ -255,7 +256,7 @@ public final class Management extends NativeEnv {
             Klass component = ((ArrayKlass) infoArrayKlass).getComponentType();
             if (!meta.java_lang_management_ThreadInfo.equals(component)) {
                 profiler.profile(4);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
             }
         }
     }
@@ -270,7 +271,7 @@ public final class Management extends NativeEnv {
 
         if (maxDepth < -1) {
             profiler.profile(1);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid maxDepth");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid maxDepth");
         }
 
         validateThreadIdArray(meta, ids, profiler);
@@ -278,7 +279,7 @@ public final class Management extends NativeEnv {
 
         if (ids.length() != infoArray.length()) {
             profiler.profile(2);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
         }
 
         Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Symbol.Name._init_, getSignatures().makeRaw(
@@ -525,7 +526,7 @@ public final class Management extends NativeEnv {
         if (StaticObject.notNull(names)) {
             if (!names.getKlass().equals(meta.java_lang_String.array())) {
                 profiler.profile(1);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Array element type is not String class");
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Array element type is not String class");
             }
 
             StaticObject[] entries = names.unwrap();
@@ -584,15 +585,16 @@ public final class Management extends NativeEnv {
     public void GetThreadAllocatedMemory(
                     @Host(long[].class) StaticObject ids,
                     @Host(long[].class) StaticObject sizeArray,
+                    @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(ids) || StaticObject.isNull(sizeArray)) {
             profiler.profile(0);
-            throw Meta.throwException(getMeta().java_lang_NullPointerException);
+            throw meta.throwException(meta.java_lang_NullPointerException);
         }
-        validateThreadIdArray(getMeta(), ids, profiler);
+        validateThreadIdArray(meta, ids, profiler);
         if (ids.length() != sizeArray.length()) {
             profiler.profile(1);
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "The length of the given long array does not match the length of the given array of thread IDs");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given long array does not match the length of the given array of thread IDs");
         }
         StaticObject[] activeThreads = getContext().getActiveThreads();
 
@@ -601,7 +603,7 @@ public final class Management extends NativeEnv {
             StaticObject thread = StaticObject.NULL;
 
             for (int j = 0; j < activeThreads.length; ++j) {
-                if (Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]) == id) {
+                if (Target_java_lang_Thread.getThreadId(meta, activeThreads[j]) == id) {
                     thread = activeThreads[j];
                     break;
                 }

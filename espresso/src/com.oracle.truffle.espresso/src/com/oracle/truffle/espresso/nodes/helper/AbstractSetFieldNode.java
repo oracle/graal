@@ -82,10 +82,12 @@ public abstract class AbstractSetFieldNode extends Node {
             interopLibrary.writeMember(receiver.rawForeignObject(), fieldName, fieldValue);
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             error.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_NoSuchFieldError, "Foreign object has no writable field " + fieldName);
+            Meta meta = context.getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, "Foreign object has no writable field " + fieldName);
         } catch (UnsupportedTypeException e) {
             error.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException,
+            Meta meta = context.getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
                             "Could not cast the value to the actual type of the foreign field " + fieldName);
         }
     }

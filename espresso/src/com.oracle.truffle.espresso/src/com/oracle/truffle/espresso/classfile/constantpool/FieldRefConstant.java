@@ -124,7 +124,7 @@ public interface FieldRefConstant extends MemberRefConstant {
             Field field = lookupField(holderKlass, name, type);
             if (field == null) {
                 Meta meta = pool.getContext().getMeta();
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, meta.toGuestString(name));
+                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, meta.toGuestString(name));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field)) {
@@ -132,7 +132,7 @@ public interface FieldRefConstant extends MemberRefConstant {
                 meta.getContext().getLogger().log(Level.WARNING,
                                 "Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
                                                 " throws IllegalAccessError");
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
             }
 
             field.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), field.getDeclaringKlass().getDefiningClassLoader());

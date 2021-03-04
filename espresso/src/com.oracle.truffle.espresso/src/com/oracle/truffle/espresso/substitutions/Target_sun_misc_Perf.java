@@ -70,7 +70,7 @@ public final class Target_sun_misc_Perf {
                     @SuppressWarnings("unused") @Host(String.class) StaticObject name, int variability, int units, long value,
                     @InjectMeta Meta meta) {
         if (units <= 0 || units > U_Last) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         // check that the PerfData name doesn't already exist
@@ -85,7 +85,7 @@ public final class Target_sun_misc_Perf {
             case V_Variable:
                 break;
             default:
-                throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         return (StaticObject) meta.java_nio_ByteBuffer_wrap.invokeDirect(null, StaticObject.wrap(longToBytes(value), meta));
