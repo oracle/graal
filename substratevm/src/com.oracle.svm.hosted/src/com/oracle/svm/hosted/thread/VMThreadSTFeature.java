@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.thread;
 
 import java.util.List;
 
+import com.oracle.svm.core.ParsingReason;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -90,7 +91,7 @@ public class VMThreadSTFeature implements GraalFeature {
      * ignored.
      */
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, ParsingReason reason) {
         for (Class<? extends FastThreadLocal> threadLocalClass : VMThreadLocalInfo.THREAD_LOCAL_CLASSES) {
             Registration r = new Registration(invocationPlugins, threadLocalClass);
             Class<?> valueClass = VMThreadLocalInfo.getValueClass(threadLocalClass);

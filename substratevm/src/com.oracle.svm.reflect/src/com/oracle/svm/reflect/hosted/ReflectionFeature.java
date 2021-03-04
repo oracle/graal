@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.reflect.hosted;
 
+import com.oracle.svm.core.ParsingReason;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.util.Providers;
@@ -103,11 +104,11 @@ public final class ReflectionFeature implements GraalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, ParsingReason reason) {
         /*
          * The reflection invocation plugins need to be registered only when reflection is enabled
          * since it adds Field and Method objects to the image heap which otherwise are not allowed.
          */
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, invocationPlugins, hostVM, aUniverse, analysis, hosted);
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, invocationPlugins, hostVM, aUniverse, reason);
     }
 }

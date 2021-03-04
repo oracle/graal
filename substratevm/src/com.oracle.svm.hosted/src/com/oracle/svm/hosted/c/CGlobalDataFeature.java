@@ -68,6 +68,7 @@ import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataImpl;
@@ -120,7 +121,7 @@ public class CGlobalDataFeature implements GraalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, ParsingReason reason) {
         Registration r = new Registration(invocationPlugins, CGlobalData.class);
         r.register1("get", Receiver.class, new InvocationPlugin() {
             @Override
