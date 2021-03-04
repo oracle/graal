@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;
@@ -153,7 +154,7 @@ public final class LLVMContext {
     private boolean initializeContextCalled;
     private DataLayout libsulongDatalayout;
     private boolean datalayoutInitialised;
-    private String libsulongTargetTriple;
+    private TargetTriple libsulongTargetTriple;
     private boolean targetTripleInitialised;
     private final LLVMLanguage language;
 
@@ -436,7 +437,7 @@ public final class LLVMContext {
         return libsulongDatalayout;
     }
 
-    public void addLibsulongTargetTriple(String targetTriple) {
+    public void addLibsulongTargetTriple(TargetTriple targetTriple) {
         // Libsulong targettriple can only be set once.
         if (!targetTripleInitialised) {
             this.libsulongTargetTriple = targetTriple;
@@ -446,7 +447,7 @@ public final class LLVMContext {
         }
     }
 
-    public String getLibsulongTargetTriple() {
+    public TargetTriple getLibsulongTargetTriple() {
         return libsulongTargetTriple;
     }
 

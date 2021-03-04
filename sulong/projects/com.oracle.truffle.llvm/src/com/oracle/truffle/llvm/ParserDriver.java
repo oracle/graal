@@ -60,7 +60,6 @@ import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
@@ -85,6 +84,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 
 /**
  * Drives a parsing request.
@@ -161,7 +161,7 @@ final class ParserDriver {
             language.addInternalFileScope(libraryName, result.getRuntime().getFileScope());
             if (libraryName.equals("libsulong")) {
                 context.addLibsulongDataLayout(result.getDataLayout());
-                context.addLibsulongTargetTriple(result.getTargetTriple().toString());
+                context.addLibsulongTargetTriple(TargetTriple.create(result.getTargetTriple().toString()));
             }
             // renaming is attempted only for internal libraries.
             resolveRenamedSymbols(result);
@@ -343,7 +343,7 @@ final class ParserDriver {
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source);
         TargetDataLayout layout = module.getTargetDataLayout();
         DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
-        TargetTriple targetTriple = module.getTargetInformation(TargetTriple.class);
+        TargetTriple targetTriple = TargetTriple.create(module.getTargetInformation(com.oracle.truffle.llvm.parser.model.target.TargetTriple.class).toString());
         verifyBitcodeSource(source, targetDataLayout, targetTriple);
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         LLVMScope fileScope = new LLVMScope();
@@ -360,8 +360,8 @@ final class ParserDriver {
             throw new LLVMParserException("Byte order " + targetDataLayout.getByteOrder() + " of file " + source.getPath() + " is not supported");
         }
         boolean verifyBitcode = context.getEnv().getOptions().get(SulongEngineOption.VERIFY_BITCODE);
-        String defaultTargetTriple = context.getLibsulongTargetTriple();
-        if (defaultTargetTriple != null && targetTriple != null && !defaultTargetTriple.equals(targetTriple.toString())) {
+        TargetTriple defaultTargetTriple = context.getLibsulongTargetTriple();
+        if (defaultTargetTriple != null && targetTriple != null && !defaultTargetTriple.matches(targetTriple)) {
             TruffleLogger logger = TruffleLogger.getLogger(LLVMLanguage.ID, "BitcodeVerifier");
             String exceptionMessage = "Mismatching target triple (expected " + defaultTargetTriple + ", got " + targetTriple + ')';
             logger.severe(exceptionMessage);
