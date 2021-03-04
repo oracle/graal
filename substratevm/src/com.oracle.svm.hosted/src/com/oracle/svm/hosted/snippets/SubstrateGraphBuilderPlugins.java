@@ -154,13 +154,14 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-/** Collection of debug options for SubstrateGraphBuilderPlugins. */
-class Options {
-    @Option(help = "Enable trace logging for dynamic proxy.")//
-    static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
-}
-
 public class SubstrateGraphBuilderPlugins {
+
+    /** Collection of debug options for SubstrateGraphBuilderPlugins. */
+    public static class Options {
+        @Option(help = "Enable trace logging for dynamic proxy.")//
+        public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
+    }
+
     private static final String reflectionClass;
 
     static {

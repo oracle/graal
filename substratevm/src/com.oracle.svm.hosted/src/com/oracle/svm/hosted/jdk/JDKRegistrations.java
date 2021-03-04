@@ -70,5 +70,12 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).preregisterAsWritableForAnalysis(ReflectionUtil.lookupField(CopyOnWriteArrayList.class, "lock"));
         /* AtomicReferenceArray.readObject uses reflection to write the final field `array`. */
         ImageSingletons.lookup(RuntimeReflectionSupport.class).preregisterAsWritableForAnalysis(ReflectionUtil.lookupField(AtomicReferenceArray.class, "array"));
+
+        /*
+         * Re-initialize the registered shutdown hooks, because any hooks registered during native
+         * image construction must not survive into the running image. Both classes have only static
+         * members and do not allow instantiation.
+         */
+        rerunClassInit(a, "java.lang.ApplicationShutdownHooks", "java.io.DeleteOnExitHook");
     }
 }

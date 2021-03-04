@@ -37,18 +37,4 @@ public interface AArch64ArithmeticLIRGeneratorTool extends ArithmeticLIRGenerato
 
     Value emitCountTrailingZeros(Value value);
 
-    enum RoundingMode {
-        NEAREST(0),
-        DOWN(1),
-        UP(2),
-        TRUNCATE(3);
-
-        public final int encoding;
-
-        RoundingMode(int encoding) {
-            this.encoding = encoding;
-        }
-    }
-
-    Value emitRound(Value value, RoundingMode mode);
 }

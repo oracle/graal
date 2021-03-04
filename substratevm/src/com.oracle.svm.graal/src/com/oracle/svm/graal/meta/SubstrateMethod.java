@@ -105,7 +105,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
          * GraalObjectReplacer replaces them with SubstrateMethods. Therefore we have to preserve
          * the hashCode of the original AnalysisMethod. Note that this is only required because it
          * is a replaced object. For not replaced objects the hash code is preserved automatically
-         * in a synthetic hash-code field (see BootImageHeap.ObjectInfo.identityHashCode).
+         * in a synthetic hash-code field (see NativeImageHeap.ObjectInfo.identityHashCode).
          */
         hashCode = original.hashCode();
         implementations = new SubstrateMethod[0];

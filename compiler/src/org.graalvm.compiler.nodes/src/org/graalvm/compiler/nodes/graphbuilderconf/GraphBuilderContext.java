@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -420,6 +421,15 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      */
     default void replacePlugin(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args, PluginReplacementNode.ReplacementFunction replacementFunction) {
         throw GraalError.unimplemented();
+    }
+
+    /**
+     * A hook for subclasses to add other instructions around the provided instruction.
+     *
+     * @param instr The instruction used to determine which instructions must be added.
+     */
+    default void processInstruction(FixedWithNextNode instr) {
+        /* By default, no additional processing is needed. */
     }
 }
 

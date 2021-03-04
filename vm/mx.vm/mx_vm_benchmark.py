@@ -74,13 +74,22 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
                ['--vm.' + x[1:] if x.startswith('-X') else x for x in self.debug_args] + \
                args
 
+    def home(self):
+        return mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True)
+
+    def generate_java_command(self, args):
+        return [os.path.join(self.home(), 'bin', 'java')] + args
+
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         """Run 'java' workloads."""
         self.extract_vm_info(args)
-        return mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'java')] + args, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+        cmd = self.generate_java_command(args)
+        cmd = mx.apply_command_mapper_hooks(cmd, self.command_mapper_hooks)
+        return mx.run(cmd, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
     def run_lang(self, cmd, args, cwd):
         """Deprecated. Call 'run_launcher' instead."""
+        mx.log_deprecation("'run_lang' is deprecated. Use 'run_launcher' instead.")
         return self.run_launcher(cmd, args, cwd)
 
     def run_launcher(self, cmd, args, cwd):
@@ -89,7 +98,9 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         self.extract_vm_info(args)
         mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), " ".join(args)))
         out = mx.TeeOutputCapture(mx.OutputCapture())
-        code = mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
+        command = [os.path.join(self.home(), 'bin', cmd)] + args
+        command = mx.apply_command_mapper_hooks(command, self.command_mapper_hooks)
+        code = mx.run(command, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
         out = out.underlying.data
         dims = self.dimensions(cwd, args, code, out)
         return code, out, dims
@@ -346,9 +357,13 @@ class NativeImageVM(GraalVm):
             self.command = command
             return self
 
-        def execute_command(self, final_command=False):
+        def execute_command(self, final_command=False, vm=None):
             write_output = final_command or self.is_gate
-            self.exit_code = self.config.bmSuite.run_stage(self.current_stage, self.command, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
+            cmd = self.command
+            if final_command and vm is not None:
+                # only apply the command manipulation hooks when running the final image
+                cmd = mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
+            self.exit_code = self.config.bmSuite.run_stage(self.current_stage, cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
             if "image" not in self.current_stage and self.config.bmSuite.validateReturnCode(self.exit_code):
                 self.exit_code = 0
 
@@ -431,7 +446,7 @@ class NativeImageVM(GraalVm):
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
         with stages.set_command([image_path] + config.image_run_args + config.extra_run_args) as s:
-            s.execute_command(True)
+            s.execute_command(True, vm=self)
             if s.exit_code == 0:
                 # The image size for benchmarks is tracked by printing on stdout and matching the rule.
                 image_size = os.stat(image_path).st_size
@@ -630,7 +645,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self):
         super(PolyBenchBenchmarkSuite, self).__init__()
-        self._extensions = [".js", ".rb", ".wasm", ".bc"]
+        self._extensions = [".js", ".rb", ".wasm", ".bc", ".py"]
 
     def _get_benchmark_root(self):
         if not hasattr(self, '_benchmark_root'):

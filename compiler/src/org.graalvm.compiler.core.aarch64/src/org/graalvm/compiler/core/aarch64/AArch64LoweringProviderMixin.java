@@ -38,4 +38,10 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
     default boolean supportsBulkZeroing() {
         return true;
     }
+
+    @Override
+    default boolean supportsRounding() {
+        return true;
+    }
+
 }

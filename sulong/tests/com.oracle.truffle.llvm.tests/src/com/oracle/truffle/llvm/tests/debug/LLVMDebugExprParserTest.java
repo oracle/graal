@@ -35,19 +35,17 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -62,6 +60,7 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.tests.TestCaseCollector;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.DebuggerTester;
 
@@ -74,22 +73,18 @@ public final class LLVMDebugExprParserTest {
 
     private static final String CONFIGURATION = "O1.bc";
 
-    public LLVMDebugExprParserTest(String testName, String configuration) {
-        this.testName = testName;
-        this.configuration = configuration;
+    public LLVMDebugExprParserTest(Path testPath, String testName, String excludeReason) {
+        this.testPath = testPath;
+        this.testName = getTestSource(testName);
+        this.excludeReason = excludeReason;
     }
 
-    @Parameters(name = "{0}")
+    @Parameters(name = "{1}")
     public static Collection<Object[]> getConfigurations() {
-        try (Stream<Path> dirs = Files.walk(BC_DIR_PATH)) {
-            return dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{getTestSource(path), CONFIGURATION}).collect(Collectors.toSet());
-        } catch (IOException e) {
-            throw new AssertionError("Error while finding tests!", e);
-        }
+        return TestCaseCollector.collectTestCases(LLVMDebugExprParserTest.class, BC_DIR_PATH, f -> f.getFileName().toString().equals(CONFIGURATION));
     }
 
-    private static String getTestSource(Path path) {
-        String filename = path.getParent().getFileName().toString();
+    private static String getTestSource(String filename) {
         if (filename.endsWith(TEST_FOLDER_EXT)) {
             return filename.substring(0, filename.length() - TEST_FOLDER_EXT.length());
         }
@@ -101,13 +96,24 @@ public final class LLVMDebugExprParserTest {
     private static final String TRACE_EXT = ".txt";
     private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";
 
+    private final Path testPath;
     private final String testName;
-    private final String configuration;
+    private final String excludeReason;
 
     private DebuggerTester tester;
 
-    String getTestName() {
+    protected String getTestName() {
         return testName;
+    }
+
+    protected void assumeNotExcluded() {
+        if (getExclusionReason() != null) {
+            throw new AssumptionViolatedException("Test excluded: " + getExclusionReason());
+        }
+    }
+
+    private String getExclusionReason() {
+        return excludeReason;
     }
 
     @Before
@@ -141,7 +147,7 @@ public final class LLVMDebugExprParserTest {
     }
 
     private Source loadBitcodeSource() {
-        final File file = getBitcodePath().resolve(Paths.get(testName + ".dir", configuration)).toFile();
+        final File file = testPath.resolve(CONFIGURATION).toFile();
         Assert.assertTrue("Locate Bitcode", file.exists());
         return loadSource(file);
     }
@@ -150,10 +156,6 @@ public final class LLVMDebugExprParserTest {
         final Path path = getTracePath().resolve(testName + TRACE_EXT);
         Assert.assertTrue("Locate Test Expression", path.toFile().exists());
         return TestExpressions.parse(path);
-    }
-
-    static Path getBitcodePath() {
-        return BC_DIR_PATH;
     }
 
     static Path getSourcePath() {
@@ -288,6 +290,7 @@ public final class LLVMDebugExprParserTest {
 
     @Test
     public void test() throws Throwable {
+        assumeNotExcluded();
         final TestExpressions testExpr = fetchExpressions();
 
         final Source source = loadOriginalSource();

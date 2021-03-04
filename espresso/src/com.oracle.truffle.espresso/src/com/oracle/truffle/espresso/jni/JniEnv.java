@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
-
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -43,18 +41,21 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode;
-import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -85,12 +86,11 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class JniEnv extends NativeEnv implements ContextAccess {
 
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
-    private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
+    private final InteropLibrary uncached = InteropLibrary.getUncached();
 
     protected InteropLibrary getUncached() {
         return uncached;
@@ -133,7 +133,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // Native methods in libenespresso.
     private final @Pointer TruffleObject initializeNativeContext;
     private final @Pointer TruffleObject disposeNativeContext;
-    private final @Pointer TruffleObject dupClosureRef;
     private final @Pointer TruffleObject popBoolean;
     private final @Pointer TruffleObject popByte;
     private final @Pointer TruffleObject popChar;
@@ -144,10 +143,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject popLong;
     private final @Pointer TruffleObject popObject;
 
-    private final @Pointer TruffleObject malloc;
-    private final @Pointer TruffleObject realloc;
-    private final @Pointer TruffleObject free;
-    private final @Pointer TruffleObject ctypeInit;
     private final @Pointer TruffleObject getSizeMax;
 
     private static final Map<String, JniSubstitutor.Factory> jniMethods = buildJniMethods();
@@ -189,11 +184,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     public Callback jniMethodWrapper(JniSubstitutor.Factory factory) {
         return new Callback(factory.getParameterCount() + 1, new Callback.Function() {
-            @CompilerDirectives.CompilationFinal private JniSubstitutor subst = null;
+            @CompilationFinal private JniSubstitutor subst = null;
 
             @Override
             public Object call(Object... args) {
-                assert interopAsPointer((TruffleObject) args[0]) == interopAsPointer(JniEnv.this.getNativePointer()) : "Calling " + factory + " from alien JniEnv";
+                assert NativeUtils.interopAsPointer((TruffleObject) args[0]) == NativeUtils.interopAsPointer(JniEnv.this.getNativePointer()) : "Calling " + factory + " from alien JniEnv";
                 try {
                     if (subst == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -220,27 +215,28 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public TruffleObject lookupJniImpl(String methodName) {
         JniSubstitutor.Factory m = jniMethods.get(methodName);
-        try {
-            // Dummy placeholder for unimplemented/unknown methods.
-            if (m == null) {
-                getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
-                return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(dupClosureRefAndCast("(pointer): void"),
-                                new Callback(1, new Callback.Function() {
-                                    @Override
-                                    public Object call(Object... args) {
-                                        CompilerDirectives.transferToInterpreter();
-                                        getLogger().log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
-                                        throw EspressoError.unimplemented("JNI method: " + methodName);
-                                    }
-                                }));
-            }
-
-            String signature = m.jniNativeSignature();
-            Callback target = jniMethodWrapper(m);
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(dupClosureRefAndCast(signature), target);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere(e);
+        // Dummy placeholder for unimplemented/unknown methods.
+        if (m == null) {
+            getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
+            @Pointer
+            TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(0, new Callback.Function() {
+                @Override
+                public Object call(Object... args) {
+                    CompilerDirectives.transferToInterpreter();
+                    getLogger().log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
+                    throw EspressoError.unimplemented("JNI method: " + methodName);
+                }
+            }), NativeSignature.create(NativeType.VOID));
+            nativeClosures.add(errorClosure);
+            return errorClosure;
         }
+
+        NativeSignature signature = m.jniNativeSignature();
+        Callback target = jniMethodWrapper(m);
+        @Pointer
+        TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature);
+        nativeClosures.add(nativeClosure);
+        return nativeClosure;
     }
 
     public static boolean containsMethod(String methodName) {
@@ -258,7 +254,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public boolean popBoolean() {
             try {
-                return ((byte) InteropLibrary.getFactory().getUncached().execute(popBoolean, nativePointer)) != 0;
+                return (boolean) getUncached().execute(popBoolean, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -267,7 +263,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public byte popByte() {
             try {
-                return (byte) InteropLibrary.getFactory().getUncached().execute(popByte, nativePointer);
+                return (byte) getUncached().execute(popByte, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -276,7 +272,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public char popChar() {
             try {
-                return (char) (short) InteropLibrary.getFactory().getUncached().execute(popChar, nativePointer);
+                return (char) getUncached().execute(popChar, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -285,7 +281,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public short popShort() {
             try {
-                return (short) InteropLibrary.getFactory().getUncached().execute(popShort, nativePointer);
+                return (short) getUncached().execute(popShort, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -294,7 +290,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public int popInt() {
             try {
-                return (int) InteropLibrary.getFactory().getUncached().execute(popInt, nativePointer);
+                return (int) getUncached().execute(popInt, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -303,7 +299,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public float popFloat() {
             try {
-                return (float) InteropLibrary.getFactory().getUncached().execute(popFloat, nativePointer);
+                return (float) getUncached().execute(popFloat, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -312,7 +308,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public double popDouble() {
             try {
-                return (Double) InteropLibrary.getFactory().getUncached().execute(popDouble, nativePointer);
+                return (double) getUncached().execute(popDouble, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -321,7 +317,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public long popLong() {
             try {
-                return (long) InteropLibrary.getFactory().getUncached().execute(popLong, nativePointer);
+                return (long) getUncached().execute(popLong, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -331,12 +327,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         public Object popObject() {
             try {
                 @Handle(StaticObject.class)
-                long handle = (long) InteropLibrary.getFactory().getUncached().execute(popObject, nativePointer);
+                long handle = (long) getUncached().execute(popObject, nativePointer);
                 TruffleObject result = getHandles().get(Math.toIntExact(handle));
                 if (result instanceof StaticObject) {
                     return result;
                 } else {
-                    if (InteropLibrary.getFactory().getUncached().isNull(result)) {
+                    if (getUncached().isNull(result)) {
                         // TODO(garcia) understand the weird stuff happening here.
                         // DaCapo batik gives us a NativePointer to 0 here. This is a workaround
                         // until I
@@ -346,9 +342,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                         throw EspressoError.unimplemented("non null native pointer in JniEnv");
                     }
                 }
-            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            } catch (ClassCastException e) {
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | ClassCastException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -362,15 +356,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             JavaKind kind = Signatures.parameterKind(signature, i);
             // @formatter:off
             switch (kind) {
-                case Boolean : args[i] = varargs.popBoolean();   break;
-                case Byte    : args[i] = varargs.popByte();      break;
-                case Short   : args[i] = varargs.popShort();     break;
-                case Char    : args[i] = varargs.popChar();      break;
-                case Int     : args[i] = varargs.popInt();       break;
-                case Float   : args[i] = varargs.popFloat();     break;
-                case Long    : args[i] = varargs.popLong();      break;
-                case Double  : args[i] = varargs.popDouble();    break;
-                case Object  : args[i] = varargs.popObject();    break;
+                case Boolean : args[i] = varargs.popBoolean(); break;
+                case Byte    : args[i] = varargs.popByte();    break;
+                case Short   : args[i] = varargs.popShort();   break;
+                case Char    : args[i] = varargs.popChar();    break;
+                case Int     : args[i] = varargs.popInt();     break;
+                case Float   : args[i] = varargs.popFloat();   break;
+                case Long    : args[i] = varargs.popLong();    break;
+                case Double  : args[i] = varargs.popDouble();  break;
+                case Object  : args[i] = varargs.popObject();  break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
@@ -385,50 +379,32 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         this.context = context;
         try {
             Path espressoLibraryPath = props.espressoHome().resolve("lib");
-            if (context.IsolatedNamespace) {
-                // libeden.so must be the first library loaded in the isolated namespace.
-                TruffleObject edenLibrary = loadLibraryInternal(Collections.singletonList(espressoLibraryPath), "eden", true);
-                ctypeInit = NativeLibrary.lookupAndBind(edenLibrary, "ctypeInit",
-                                "(): void");
-            } else {
-                ctypeInit = null;
-            }
+            nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
+            initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "initializeNativeContext",
+                            NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
+            disposeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "disposeNativeContext",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
 
-            nespressoLibrary = loadLibraryInternal(Collections.singletonList(espressoLibraryPath), "nespresso");
-            dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
-            initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
-                            "initializeNativeContext", "(env, (pointer): pointer): pointer");
-            disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
-                            "(env, pointer): void");
-
-            getSizeMax = NativeLibrary.lookupAndBind(nespressoLibrary, "get_SIZE_MAX",
-                            "(): sint64");
+            getSizeMax = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "get_SIZE_MAX", NativeSignature.create(NativeType.LONG));
 
             assert sizeMax() > Integer.MAX_VALUE : "size_t must be 64-bit wide";
 
-            malloc = NativeLibrary.lookupAndBind(nespressoLibrary, "allocateMemory",
-                            "(sint64): pointer"); // void*(size_t)
-            realloc = NativeLibrary.lookupAndBind(nespressoLibrary, "reallocateMemory",
-                            "(pointer, sint64): pointer"); // void*(void*,size_t)
-            free = NativeLibrary.lookupAndBind(nespressoLibrary, "freeMemory",
-                            "(pointer): void"); // void(void*)
-
             // Varargs native bindings.
-            popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_boolean", "(pointer): sint8");
-            popByte = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_byte", "(pointer): sint8");
-            popChar = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_char", "(pointer): sint16");
-            popShort = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_short", "(pointer): sint16");
-            popInt = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_int", "(pointer): sint32");
-            popFloat = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_float", "(pointer): float");
-            popDouble = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_double", "(pointer): double");
-            popLong = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_long", "(pointer): sint64");
-            popObject = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_object", "(pointer): sint64");
+            popBoolean = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_boolean", NativeSignature.create(NativeType.BOOLEAN, NativeType.POINTER));
+            popByte = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_byte", NativeSignature.create(NativeType.BYTE, NativeType.POINTER));
+            popChar = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_char", NativeSignature.create(NativeType.CHAR, NativeType.POINTER));
+            popShort = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_short", NativeSignature.create(NativeType.SHORT, NativeType.POINTER));
+            popInt = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_int", NativeSignature.create(NativeType.INT, NativeType.POINTER));
+            popFloat = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_float", NativeSignature.create(NativeType.FLOAT, NativeType.POINTER));
+            popDouble = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_double", NativeSignature.create(NativeType.DOUBLE, NativeType.POINTER));
+            popLong = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_long", NativeSignature.create(NativeType.LONG, NativeType.POINTER));
+            popObject = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "pop_object", NativeSignature.create(NativeType.OBJECT, NativeType.POINTER));
 
             Callback lookupJniImplCallback = new Callback(LOOKUP_JNI_IMPL_PARAMETER_COUNT, new Callback.Function() {
                 @Override
                 public Object call(Object... args) {
                     try {
-                        String name = interopPointerToString((TruffleObject) args[0]);
+                        String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
                         return JniEnv.this.lookupJniImpl(name);
                     } catch (ClassCastException e) {
                         throw EspressoError.shouldNotReachHere(e);
@@ -439,13 +415,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                     }
                 }
             });
-            this.jniEnvPtr = (TruffleObject) getUncached().execute(initializeNativeContext, lookupJniImplCallback);
+            @Pointer
+            TruffleObject lookupJniImplNativeCallback = getNativeAccess().createNativeClosure(lookupJniImplCallback, NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
+            this.jniEnvPtr = (TruffleObject) getUncached().execute(initializeNativeContext, lookupJniImplNativeCallback);
             assert getUncached().isPointer(jniEnvPtr);
 
             this.handles = new JNIHandles();
 
             assert jniEnvPtr != null && !getUncached().isNull(jniEnvPtr);
-        } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+        } catch (UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
     }
@@ -462,36 +440,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     private ByteBuffer allocateDirect(int capacity) {
         ByteBuffer bb = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
-        long address = byteBufferAddress(bb);
+        long address = NativeUtils.byteBufferAddress(bb);
         nativeBuffers.put(address, bb);
         return bb;
-    }
-
-    private static String nfiSignature(final Symbol<Type>[] signature, boolean isJni) {
-
-        int argCount = Signatures.parameterCount(signature, false);
-        StringBuilder sb = new StringBuilder("(");
-
-        boolean first = true;
-        if (isJni) {
-            sb.append(NativeSimpleType.POINTER); // JNIEnv*
-            sb.append(",");
-            sb.append(Utils.kindToType(JavaKind.Object)); // Receiver or class (for static
-            // methods).
-            first = false;
-        }
-        for (int i = 0; i < argCount; ++i) {
-            JavaKind kind = Signatures.parameterKind(signature, i);
-            if (!first) {
-                sb.append(", ");
-            } else {
-                first = false;
-            }
-            sb.append(Utils.kindToType(kind));
-        }
-
-        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature)));
-        return sb.toString();
     }
 
     private static Map<String, JniSubstitutor.Factory> buildJniMethods() {
@@ -501,11 +452,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             map.put(method.methodName(), method);
         }
         return Collections.unmodifiableMap(map);
-    }
-
-    public TruffleObject dupClosureRefAndCast(String signature) {
-        // TODO(peterssen): Cache binding per signature.
-        return NativeLibrary.bind(dupClosureRef, "(env, " + signature + ")" + ": pointer");
     }
 
     public static JniEnv create(EspressoContext context) {
@@ -524,58 +470,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void dispose() {
         assert jniEnvPtr != null : "JNIEnv already disposed";
         try {
-            InteropLibrary.getFactory().getUncached().execute(disposeNativeContext, jniEnvPtr);
+            getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             threadLocalPendingException.dispose();
             this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
         assert jniEnvPtr == null;
-    }
-
-    public @Pointer TruffleObject malloc(long size) {
-        try {
-            TruffleObject result = (TruffleObject) getUncached().execute(malloc, size);
-            assert getUncached().isPointer(result);
-            return result;
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    public @Pointer TruffleObject realloc(@Pointer TruffleObject ptr, long size) {
-        assert getUncached().isPointer(ptr);
-        try {
-            TruffleObject result = (TruffleObject) getUncached().execute(realloc, ptr, size);
-            assert getUncached().isPointer(result);
-            return result;
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    public void free(@Pointer TruffleObject ptr) {
-        assert getUncached().isPointer(ptr);
-        try {
-            getUncached().execute(free, ptr);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    public void ctypeInit() {
-        if (ctypeInit == null) {
-            return;
-        }
-        try {
-            getUncached().execute(ctypeInit);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
     }
 
     public long sizeMax() {
@@ -618,8 +519,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(Field.class) long GetFieldID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
-        String name = interopPointerToString(namePtr);
-        String type = interopPointerToString(typePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        String type = NativeUtils.interopPointerToString(typePtr);
         assert name != null && type != null;
         Klass klass = clazz.getMirrorKlass();
 
@@ -661,8 +562,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(Field.class) long GetStaticFieldID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
-        String name = interopPointerToString(namePtr);
-        String type = interopPointerToString(typePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        String type = NativeUtils.interopPointerToString(typePtr);
         assert name != null && type != null;
         Field field = null;
         Symbol<Name> fieldName = getNames().lookup(name);
@@ -704,8 +605,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(Method.class) long GetMethodID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
-        String name = interopPointerToString(namePtr);
-        String signature = interopPointerToString(signaturePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        String signature = NativeUtils.interopPointerToString(signaturePtr);
         assert name != null && signature != null;
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
@@ -743,8 +644,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(Method.class) long GetStaticMethodID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
-        String name = interopPointerToString(namePtr);
-        String signature = interopPointerToString(signaturePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
+        String signature = NativeUtils.interopPointerToString(signaturePtr);
         assert name != null && signature != null;
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
@@ -778,259 +679,67 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     // region GetStatic*Field
 
-    /**
-     * Converts a boxed value to a boolean.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
-     * conversion is not possible, throws {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    private boolean asBoolean(Object value, boolean defaultIfNull) {
-        if (value instanceof Boolean) {
-            return (boolean) value;
-        }
-        return tryBitwiseConversionToLong(value, defaultIfNull) != 0; // == 1?
-    }
-
-    /**
-     * Converts a boxed value to a byte.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
-     * conversion is not possible, throws {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    private byte asByte(Object value, boolean defaultIfNull) {
-        if (value instanceof Byte) {
-            return (byte) value;
-        }
-        return (byte) tryBitwiseConversionToLong(value, defaultIfNull);
-    }
-
-    /**
-     * Converts a boxed value to a short.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
-     * conversion is not possible, throws {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    private short asShort(Object value, boolean defaultIfNull) {
-        if (value instanceof Short) {
-            return (short) value;
-        }
-        return (short) tryBitwiseConversionToLong(value, defaultIfNull);
-    }
-
-    /**
-     * Converts a boxed value to a char.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
-     * conversion is not possible, throws {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    private char asChar(Object value, boolean defaultIfNull) {
-        if (value instanceof Character) {
-            return (char) value;
-        }
-        return (char) tryBitwiseConversionToLong(value, defaultIfNull);
-    }
-
-    /**
-     * Converts a boxed value to an int.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
-     * conversion is not possible, throws {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    private int asInt(Object value, boolean defaultIfNull) {
-        if (value instanceof Integer) {
-            return (int) value;
-        }
-        return (int) tryBitwiseConversionToLong(value, defaultIfNull);
-    }
-
-    /**
-     * Converts a boxed value to a float.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
-     * conversion is not possible, throws {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    private float asFloat(Object value, boolean defaultIfNull) {
-        if (value instanceof Float) {
-            return (float) value;
-        }
-        return Float.intBitsToFloat((int) tryBitwiseConversionToLong(value, defaultIfNull));
-    }
-
-    /**
-     * Converts a boxed value to a double.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
-     * conversion is not possible, throws {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    private double asDouble(Object value, boolean defaultIfNull) {
-        if (value instanceof Double) {
-            return (double) value;
-        }
-        return Double.longBitsToDouble(tryBitwiseConversionToLong(value, defaultIfNull));
-    }
-
-    /**
-     * Converts a boxed value to a long.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
-     * conversion is not possible, throws {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    private long asLong(Object value, boolean defaultIfNull) {
-        if (value instanceof Long) {
-            return (long) value;
-        }
-        return tryBitwiseConversionToLong(value, defaultIfNull);
-    }
-
-    /**
-     * Bitwise conversion from a boxed value to a long.
-     *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
-     * will fill the upper bits with 0. If the conversion is not possible, throws
-     * {@link EspressoError}.
-     *
-     * @param defaultIfNull if true and value is {@link StaticObject#isNull(StaticObject) guest
-     *            null}, the conversion will return the default value of the primitive type.
-     */
-    @TruffleBoundary
-    private long tryBitwiseConversionToLong(Object value, boolean defaultIfNull) {
-        if (getContext().SpecCompliancyMode == HOTSPOT) {
-            // @formatter:off
-            if (value instanceof Boolean)   return ((boolean) value) ? 1 : 0;
-            if (value instanceof Byte)      return (byte) value;
-            if (value instanceof Short)     return (short) value;
-            if (value instanceof Character) return (char) value;
-            if (value instanceof Integer)   return (int) value;
-            if (value instanceof Long)      return (long) value;
-            if (value instanceof Float)     return Float.floatToRawIntBits((float) value);
-            if (value instanceof Double)    return Double.doubleToRawLongBits((double) value);
-            // @formatter:on
-            if (defaultIfNull) {
-                if (value instanceof StaticObject && StaticObject.isNull((StaticObject) value)) {
-                    return 0L;
-                }
-            }
-        }
-        throw EspressoError.shouldNotReachHere("Unexpected primitive value: " + value);
-    }
-
-    @TruffleBoundary
-    private StaticObject hotSpotMaybeNull(Object value) {
-        assert !(value instanceof StaticObject);
-        if (getContext().SpecCompliancyMode == HOTSPOT) {
-            return StaticObject.NULL;
-        }
-        throw EspressoError.shouldNotReachHere("Unexpected object:" + value);
-    }
-
-    private StaticObject asObject(Object value) {
-        if (value instanceof StaticObject) {
-            return (StaticObject) value;
-        }
-        return hotSpotMaybeNull(value);
-    }
-
     @JniImpl
     public @Host(Object.class) StaticObject GetStaticObjectField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        return (StaticObject) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
+        return field.getAsObject(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
     public boolean GetStaticBooleanField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        Object result = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
-        return asBoolean(result, false);
+        return field.getAsBoolean(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
     public byte GetStaticByteField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        Object result = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
-        return asByte(result, false);
+        return field.getAsByte(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
     public char GetStaticCharField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        Object result = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
-        return asChar(result, false);
+        return field.getAsChar(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
     public short GetStaticShortField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        Object result = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
-        return asShort(result, false);
+        return field.getAsShort(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
     public int GetStaticIntField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        Object result = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
-        return asInt(result, false);
+        return field.getAsInt(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
     public long GetStaticLongField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        Object result = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
-        return asLong(result, false);
+        return field.getAsLong(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
     public float GetStaticFloatField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        Object result = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
-        return asFloat(result, false);
+        return field.getAsFloat(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
     public double GetStaticDoubleField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
-        Object result = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
-        return asDouble(result, false);
+        return field.getAsDouble(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     // endregion GetStatic*Field
@@ -1040,63 +749,55 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Object.class) StaticObject GetObjectField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        return (StaticObject) field.get(object);
+        return field.getAsObject(getMeta(), object);
     }
 
     @JniImpl
     public boolean GetBooleanField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        Object result = field.get(object);
-        return asBoolean(result, false);
+        return field.getAsBoolean(getMeta(), object, false);
     }
 
     @JniImpl
     public byte GetByteField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        Object result = field.get(object);
-        return asByte(result, false);
+        return field.getAsByte(getMeta(), object, false);
     }
 
     @JniImpl
     public char GetCharField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        Object result = field.get(object);
-        return asChar(result, false);
+        return field.getAsChar(getMeta(), object, false);
     }
 
     @JniImpl
     public short GetShortField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        Object result = field.get(object);
-        return asShort(result, false);
+        return field.getAsShort(getMeta(), object, false);
     }
 
     @JniImpl
     public int GetIntField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        Object result = field.get(object);
-        return asInt(result, false);
+        return field.getAsInt(getMeta(), object, false);
     }
 
     @JniImpl
     public long GetLongField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        Object result = field.get(object);
-        return asLong(result, false);
+        return field.getAsLong(getMeta(), object, false);
     }
 
     @JniImpl
     public float GetFloatField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        Object result = field.get(object);
-        return asFloat(result, false);
+        return field.getAsFloat(getMeta(), object, false);
     }
 
     @JniImpl
     public double GetDoubleField(StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
-        Object result = field.get(object);
-        return asDouble(result, false);
+        return field.getAsDouble(getMeta(), object, false);
     }
 
     // endregion Get*Field
@@ -1260,63 +961,63 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Object.class) StaticObject CallObjectMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asObject(result);
+        return getMeta().asObject(result);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public boolean CallBooleanMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asBoolean(result, true);
+        return getMeta().asBoolean(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public char CallCharMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asChar(result, true);
+        return getMeta().asChar(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public byte CallByteMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asByte(result, true);
+        return getMeta().asByte(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public short CallShortMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asShort(result, true);
+        return getMeta().asShort(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public int CallIntMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asInt(result, true);
+        return getMeta().asInt(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public float CallFloatMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asFloat(result, true);
+        return getMeta().asFloat(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public double CallDoubleMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asDouble(result, true);
+        return getMeta().asDouble(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
     public long CallLongMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
-        return asLong(result, true);
+        return getMeta().asLong(result, true);
     }
 
     @SuppressWarnings("unused")
@@ -1337,7 +1038,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asObject(result);
+        return getMeta().asObject(result);
     }
 
     @JniImpl
@@ -1347,7 +1048,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asBoolean(result, true);
+        return getMeta().asBoolean(result, true);
     }
 
     @JniImpl
@@ -1357,7 +1058,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asChar(result, true);
+        return getMeta().asChar(result, true);
     }
 
     @JniImpl
@@ -1367,7 +1068,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asByte(result, true);
+        return getMeta().asByte(result, true);
     }
 
     @JniImpl
@@ -1377,7 +1078,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asShort(result, true);
+        return getMeta().asShort(result, true);
     }
 
     @JniImpl
@@ -1387,7 +1088,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asInt(result, true);
+        return getMeta().asInt(result, true);
     }
 
     @JniImpl
@@ -1397,7 +1098,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asFloat(result, true);
+        return getMeta().asFloat(result, true);
     }
 
     @JniImpl
@@ -1407,7 +1108,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asDouble(result, true);
+        return getMeta().asDouble(result, true);
     }
 
     @JniImpl
@@ -1417,7 +1118,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asLong(result, true);
+        return getMeta().asLong(result, true);
     }
 
     @JniImpl
@@ -1440,7 +1141,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asObject(result);
+        return getMeta().asObject(result);
     }
 
     @JniImpl
@@ -1449,7 +1150,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asBoolean(result, true);
+        return getMeta().asBoolean(result, true);
     }
 
     @JniImpl
@@ -1458,7 +1159,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asChar(result, true);
+        return getMeta().asChar(result, true);
     }
 
     @JniImpl
@@ -1467,7 +1168,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asByte(result, true);
+        return getMeta().asByte(result, true);
     }
 
     @JniImpl
@@ -1476,7 +1177,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asShort(result, true);
+        return getMeta().asShort(result, true);
     }
 
     @JniImpl
@@ -1485,7 +1186,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asInt(result, true);
+        return getMeta().asInt(result, true);
     }
 
     @JniImpl
@@ -1494,7 +1195,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asFloat(result, true);
+        return getMeta().asFloat(result, true);
     }
 
     @JniImpl
@@ -1503,7 +1204,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asDouble(result, true);
+        return getMeta().asDouble(result, true);
     }
 
     @JniImpl
@@ -1512,7 +1213,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
-        return asLong(result, true);
+        return getMeta().asLong(result, true);
     }
 
     @JniImpl
@@ -1589,7 +1290,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         boolean[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         for (int i = 0; i < len; ++i) {
             buf.put(contents[start + i] ? (byte) 1 : (byte) 0);
         }
@@ -1607,7 +1308,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetCharArrayRegion(@Host(char[].class /* or byte[].class */) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         char[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
+        CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1616,7 +1317,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         byte[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.put(contents, start, len);
     }
 
@@ -1625,7 +1326,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         short[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ShortBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
+        ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1634,7 +1335,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         int[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        IntBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
+        IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1643,7 +1344,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         float[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        FloatBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
+        FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1652,7 +1353,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         double[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        DoubleBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
+        DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1661,7 +1362,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         long[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        LongBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
+        LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
         buf.put(contents, start, len);
     }
 
@@ -1674,7 +1375,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         boolean[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         for (int i = 0; i < len; ++i) {
             contents[start + i] = buf.get() != 0;
         }
@@ -1685,7 +1386,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         char[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
+        CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1694,7 +1395,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         byte[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.get(contents, start, len);
     }
 
@@ -1703,7 +1404,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         short[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        ShortBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
+        ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1712,7 +1413,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         int[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        IntBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
+        IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1721,7 +1422,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         float[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        FloatBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
+        FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1730,7 +1431,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         double[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        DoubleBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
+        DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1739,7 +1440,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void SetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         long[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
-        LongBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
+        LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
         buf.get(contents, start, len);
     }
 
@@ -1766,19 +1467,17 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jstring NewStringUTF(JNIEnv *env, const char *bytes);</h3>
-     *
+     * <p>
      * Constructs a new java.lang.String object from an array of characters in modified UTF-8
      * encoding.
      *
      * @param bytesPtr pointer to a modified UTF-8 string.
-     *
      * @return a Java string object, or NULL if the string cannot be constructed.
-     *
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
     public @Host(String.class) StaticObject NewStringUTF(@Pointer TruffleObject bytesPtr) {
-        String hostString = fromUTF8Ptr(bytesPtr);
+        String hostString = NativeUtils.fromUTF8Ptr(bytesPtr);
         return getMeta().toGuestString(hostString);
     }
 
@@ -1802,20 +1501,20 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Pointer TruffleObject GetStringCritical(@Host(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         StaticObject stringChars;
         if (getJavaVersion().compactStringsEnabled()) {
             stringChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(str);
         } else {
-            stringChars = ((StaticObject) getMeta().java_lang_String_value.get(str));
+            stringChars = getMeta().java_lang_String_value.getObject(str);
         }
         int len = stringChars.length();
         ByteBuffer criticalRegion = allocateDirect(len, JavaKind.Char); // direct byte buffer
         // (non-relocatable)
         @Pointer
-        TruffleObject address = byteBufferPointer(criticalRegion);
+        TruffleObject address = NativeUtils.byteBufferPointer(criticalRegion);
         GetCharArrayRegion(stringChars, 0, len, address);
         return address;
     }
@@ -1824,21 +1523,21 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Pointer TruffleObject GetStringUTFChars(@Host(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         byte[] bytes = ModifiedUtf8.asUtf(getMeta().toHostString(str), true);
         ByteBuffer region = allocateDirect(bytes.length);
         region.put(bytes);
-        return byteBufferPointer(region);
+        return NativeUtils.byteBufferPointer(region);
     }
 
     /**
      * <h3>const jchar * GetStringChars(JNIEnv *env, jstring string, jboolean *isCopy);</h3>
-     *
+     * <p>
      * Returns a pointer to the array of Unicode characters of the string. This pointer is valid
      * until ReleaseStringChars() is called.
-     *
+     * <p>
      * If isCopy is not NULL, then *isCopy is set to JNI_TRUE if a copy is made; or it is set to
      * JNI_FALSE if no copy is made.
      *
@@ -1850,7 +1549,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Pointer TruffleObject GetStringChars(@Host(String.class) StaticObject string, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         char[] chars;
@@ -1858,26 +1557,26 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             StaticObject wrappedChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(string);
             chars = wrappedChars.unwrap();
         } else {
-            chars = ((StaticObject) getMeta().java_lang_String_value.get(string)).unwrap();
+            chars = getMeta().java_lang_String_value.getObject(string).unwrap();
         }
         // Add one for zero termination.
         ByteBuffer bb = allocateDirect(chars.length + 1, JavaKind.Char);
         CharBuffer region = bb.asCharBuffer();
         region.put(chars);
         region.put((char) 0);
-        return byteBufferPointer(bb);
+        return NativeUtils.byteBufferPointer(bb);
     }
 
     @TruffleBoundary
     public void releasePtr(@Pointer TruffleObject ptr) {
-        long nativePtr = interopAsPointer(ptr);
+        long nativePtr = NativeUtils.interopAsPointer(ptr);
         assert nativeBuffers.containsKey(nativePtr);
         nativeBuffers.remove(nativePtr);
     }
 
     /**
      * <h3>void ReleaseStringChars(JNIEnv *env, jstring string, const jchar *chars);</h3>
-     *
+     * <p>
      * Informs the VM that the native code no longer needs access to chars. The chars argument is a
      * pointer obtained from string using GetStringChars().
      *
@@ -1910,9 +1609,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>void GetStringRegion(JNIEnv *env, jstring str, jsize start, jsize len, jchar *buf);</h3>
-     *
+     * <p>
      * Copies len number of Unicode characters beginning at offset start to the given buffer buf.
-     *
+     * <p>
      * Throws StringIndexOutOfBoundsException on index overflow.
      */
     @JniImpl
@@ -1922,12 +1621,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (getJavaVersion().compactStringsEnabled()) {
             chars = getMeta().toHostString(str).toCharArray();
         } else {
-            chars = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();
+            chars = getMeta().java_lang_String_value.getObject(str).unwrap();
         }
         if (start < 0 || start + (long) len > chars.length) {
             throw Meta.throwException(getMeta().java_lang_StringIndexOutOfBoundsException);
         }
-        CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
+        CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(chars, start, len);
     }
 
@@ -1946,7 +1645,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         byte[] bytes = ModifiedUtf8.asUtf(getMeta().toHostString(str), start, len, true); // always
         // 0
         // terminated.
-        ByteBuffer buf = directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);
     }
 
@@ -2010,7 +1709,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public static int ThrowNew(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject messagePtr) {
-        String message = interopPointerToString(messagePtr);
+        String message = NativeUtils.interopPointerToString(messagePtr);
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
         throw Meta.throwExceptionWithMessage((ObjectKlass) clazz.getMirrorKlass(), message);
@@ -2036,7 +1735,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>void ExceptionDescribe(JNIEnv *env);</h3>
-     *
+     * <p>
      * Prints an exception and a backtrace of the stack to a system error-reporting channel, such as
      * stderr. This is a convenience routine provided for debugging.
      */
@@ -2055,7 +1754,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>void FatalError(JNIEnv *env, const char *msg);</h3>
-     *
+     * <p>
      * Raises a fatal error and does not expect the VM to recover. This function does not return.
      *
      * @param msgPtr an error message. The string is encoded in modified UTF-8.
@@ -2063,7 +1762,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     @TruffleBoundary
     public void FatalError(@Pointer TruffleObject msgPtr) {
-        String msg = interopPointerToString(msgPtr);
+        String msg = NativeUtils.interopPointerToString(msgPtr);
         PrintWriter writer = new PrintWriter(context.getEnv().err(), true);
         writer.println("FATAL ERROR in native method: " + msg);
         // TODO print stack trace
@@ -2118,13 +1817,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     /**
      * <h3>void SetObjectArrayElement(JNIEnv *env, jobjectArray array, jsize index, jobject value);
      * </h3>
-     *
+     * <p>
      * Sets an element of an Object array.
      *
      * @param array a Java array.
-     *
      * @param index array index.
-     *
      * @param value the new value.
      * @throws ArrayIndexOutOfBoundsException if index does not specify a valid index in the array.
      * @throws ArrayStoreException if the class of value is not a subclass of the element class of
@@ -2143,7 +1840,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public @Pointer TruffleObject GetBooleanArrayElements(@Host(boolean[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         boolean[] data = array.unwrap();
@@ -2151,105 +1848,105 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         for (int i = 0; i < data.length; ++i) {
             bytes.put(data[i] ? (byte) 1 : (byte) 0);
         }
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetCharArrayElements(@Host(char[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         char[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Char);
         CharBuffer elements = bytes.asCharBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetByteArrayElements(@Host(byte[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         byte[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Byte);
         ByteBuffer elements = bytes;
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetShortArrayElements(@Host(short[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         short[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Short);
         ShortBuffer elements = bytes.asShortBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetIntArrayElements(@Host(int[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         int[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Int);
         IntBuffer elements = bytes.asIntBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetFloatArrayElements(@Host(float[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         float[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Float);
         FloatBuffer elements = bytes.asFloatBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetDoubleArrayElements(@Host(double[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         double[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Double);
         DoubleBuffer elements = bytes.asDoubleBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     @JniImpl
     @TruffleBoundary
     public @Pointer TruffleObject GetLongArrayElements(@Host(long[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         long[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Long);
         LongBuffer elements = bytes.asLongBuffer();
         elements.put(data);
-        return byteBufferPointer(bytes);
+        return NativeUtils.byteBufferPointer(bytes);
     }
 
     // endregion Get*ArrayElements
@@ -2265,15 +1962,16 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             int length = GetArrayLength(array);
             // @formatter:off
             switch (componentKind) {
-                case Boolean : SetBooleanArrayRegion(array, 0, length, bufPtr);  break;
-                case Byte    : SetByteArrayRegion(array, 0, length, bufPtr);     break;
-                case Short   : SetShortArrayRegion(array, 0, length, bufPtr);    break;
-                case Char    : SetCharArrayRegion(array, 0, length, bufPtr);     break;
-                case Int     : SetIntArrayRegion(array, 0, length, bufPtr);      break;
-                case Float   : SetFloatArrayRegion(array, 0, length, bufPtr);    break;
-                case Long    : SetLongArrayRegion(array, 0, length, bufPtr);     break;
-                case Double  : SetDoubleArrayRegion(array, 0, length, bufPtr);   break;
-                default      : throw EspressoError.shouldNotReachHere();
+                case Boolean : SetBooleanArrayRegion(array, 0, length, bufPtr); break;
+                case Byte    : SetByteArrayRegion(array, 0, length, bufPtr);    break;
+                case Short   : SetShortArrayRegion(array, 0, length, bufPtr);   break;
+                case Char    : SetCharArrayRegion(array, 0, length, bufPtr);    break;
+                case Int     : SetIntArrayRegion(array, 0, length, bufPtr);     break;
+                case Float   : SetFloatArrayRegion(array, 0, length, bufPtr);   break;
+                case Long    : SetLongArrayRegion(array, 0, length, bufPtr);    break;
+                case Double  : SetDoubleArrayRegion(array, 0, length, bufPtr);  break;
+                default:
+                    throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
         }
@@ -2336,10 +2034,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity);</h3>
-     *
+     * <p>
      * Allocates and returns a direct java.nio.ByteBuffer referring to the block of memory starting
      * at the memory address address and extending capacity bytes.
-     *
+     * <p>
      * Native code that calls this function and returns the resulting byte-buffer object to
      * Java-level code should ensure that the buffer refers to a valid region of memory that is
      * accessible for reading and, if appropriate, writing. An attempt to access an invalid memory
@@ -2347,9 +2045,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * cause an unspecified exception to be thrown.
      *
      * @param addressPtr the starting address of the memory region (must not be NULL)
-     *
      * @param capacity the size in bytes of the memory region (must be positive)
-     *
      * @return a local reference to the newly-instantiated java.nio.ByteBuffer object. Returns NULL
      *         if an exception occurs, or if JNI access to direct buffers is not supported by this
      *         virtual machine.
@@ -2359,14 +2055,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public @Host(typeName = "Ljava/nio/DirectByteBuffer;") StaticObject NewDirectByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
         Meta meta = getMeta();
         StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance();
-        long address = interopAsPointer(addressPtr);
+        long address = NativeUtils.interopAsPointer(addressPtr);
         meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
         return instance;
     }
 
     /**
      * <h3>void* GetDirectBufferAddress(JNIEnv* env, jobject buf);</h3>
-     *
+     * <p>
      * Fetches and returns the starting address of the memory region referenced by the given direct
      * {@link java.nio.Buffer}. This function allows native code to access the same memory region
      * that is accessible to Java code via the buffer object.
@@ -2394,7 +2090,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jlong GetDirectBufferCapacity(JNIEnv* env, jobject buf);</h3>
-     *
+     * <p>
      * Fetches and returns the capacity of the memory region referenced by the given direct
      * {@link java.nio.Buffer}. The capacity is the number of elements that the memory region
      * contains.
@@ -2429,8 +2125,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     @TruffleBoundary
     public int RegisterNative(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject methodNamePtr, @Pointer TruffleObject methodSignaturePtr, @Pointer TruffleObject closure) {
-        String methodName = interopPointerToString(methodNamePtr);
-        String methodSignature = interopPointerToString(methodSignaturePtr);
+        String methodName = NativeUtils.interopPointerToString(methodNamePtr);
+        String methodSignature = NativeUtils.interopPointerToString(methodSignaturePtr);
         assert methodName != null && methodSignature != null;
 
         Symbol<Name> name = getNames().lookup(methodName);
@@ -2451,13 +2147,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             return JNI_ERR;
         }
 
-        final TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(getSignatures().parsed(signature), true));
+        NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
+        final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns);
         Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
                 if (forceValid || methodToSubstitute == targetMethod) {
                     // Runtime substitutions apply only to the given method.
-                    return EspressoRootNode.create(null, new NativeMethodNode(boundNative, methodToSubstitute.getMethodVersion(), true));
+                    return EspressoRootNode.create(null, new NativeMethodNode(boundNative, methodToSubstitute.getMethodVersion()));
                 }
 
                 Substitutions.getLogger().warning(new Supplier<String>() {
@@ -2480,15 +2177,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jint UnregisterNatives(JNIEnv *env, jclass clazz);</h3>
-     *
+     * <p>
      * Unregisters native methods of a class. The class goes back to the state before it was linked
      * or registered with its native method functions.
-     *
+     * <p>
      * This function should not be used in normal native code. Instead, it provides special programs
      * a way to reload and relink native libraries.
      *
      * @param clazz a Java class object.
-     *
+     *            <p>
      *            Returns 0 on success; returns a negative value on failure.
      */
     @JniImpl
@@ -2511,11 +2208,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     /**
      * <h3>jobject ToReflectedMethod(JNIEnv *env, jclass cls, jmethodID methodID, jboolean
      * isStatic);</h3>
-     *
+     * <p>
      * Converts a method ID derived from cls to a java.lang.reflect.Method or
      * java.lang.reflect.Constructor object. isStatic must be set to JNI_TRUE if the method ID
      * refers to a static field, and JNI_FALSE otherwise.
-     *
+     * <p>
      * Throws OutOfMemoryError and returns 0 if fails.
      */
     @JniImpl
@@ -2536,10 +2233,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             Method m = null;
             if (method.isConstructor()) {
                 assert InterpreterToVM.instanceOf(declMethod, getMeta().java_lang_reflect_Constructor);
-                m = (Method) declMethod.getHiddenField(getMeta().HIDDEN_CONSTRUCTOR_KEY);
+                m = (Method) getMeta().HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(declMethod);
             } else {
                 assert InterpreterToVM.instanceOf(declMethod, getMeta().java_lang_reflect_Method);
-                m = (Method) declMethod.getHiddenField(getMeta().HIDDEN_METHOD_KEY);
+                m = (Method) getMeta().HIDDEN_METHOD_KEY.getHiddenObject(declMethod);
             }
             if (method == m) {
                 return declMethod;
@@ -2552,10 +2249,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     /**
      * <h3>jobject ToReflectedField(JNIEnv *env, jclass cls, jfieldID fieldID, jboolean isStatic);
      * </h3>
-     *
+     * <p>
      * Converts a field ID derived from cls to a java.lang.reflect.Field object. isStatic must be
      * set to JNI_TRUE if fieldID refers to a static field, and JNI_FALSE otherwise.
-     *
+     * <p>
      * Throws OutOfMemoryError and returns 0 if fails.
      */
     @JniImpl
@@ -2565,7 +2262,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         StaticObject fields = Target_java_lang_Class.getDeclaredFields0(field.getDeclaringKlass().mirror(), false, getMeta());
         for (StaticObject declField : fields.<StaticObject[]> unwrap()) {
             assert InterpreterToVM.instanceOf(declField, getMeta().java_lang_reflect_Field);
-            Field f = (Field) declField.getHiddenField(getMeta().HIDDEN_FIELD_KEY);
+            Field f = (Field) getMeta().HIDDEN_FIELD_KEY.getHiddenObject(declField);
             if (field == f) {
                 return declField;
             }
@@ -2576,7 +2273,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jfieldID FromReflectedField(JNIEnv *env, jobject field);</h3>
-     *
+     * <p>
      * Converts a java.lang.reflect.Field to a field ID.
      */
     @JniImpl
@@ -2589,7 +2286,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jmethodID FromReflectedMethod(JNIEnv *env, jobject method);</h3>
-     *
+     * <p>
      * Converts a java.lang.reflect.Method or java.lang.reflect.Constructor object to a method ID.
      */
     @JniImpl
@@ -2625,7 +2322,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jobject NewGlobalRef(JNIEnv *env, jobject obj);</h3>
-     *
+     * <p>
      * Creates a new global reference to the object referred to by the obj argument. The
      * <b>handle</b> argument may be a global or local reference. Global references must be
      * explicitly disposed of by calling DeleteGlobalRef().
@@ -2640,7 +2337,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>void DeleteGlobalRef(JNIEnv *env, jobject globalRef);</h3>
-     *
+     * <p>
      * Deletes the global reference pointed to by globalRef.
      *
      * @param handle a global reference.
@@ -2652,7 +2349,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>void DeleteLocalRef(JNIEnv *env, jobject localRef);</h3>
-     *
+     * <p>
      * Deletes the local reference pointed to by localRef.
      *
      * <p>
@@ -2661,7 +2358,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * large array of objects and uses one element in each iteration, it is a good practice to
      * delete the local reference to the no-longer-used array element before a new local reference
      * is created in the next iteration.
-     *
+     * <p>
      * As of JDK/JRE 1.2 an additional set of functions are provided for local reference lifetime
      * management. They are the four functions listed below.
      *
@@ -2674,7 +2371,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jweak NewWeakGlobalRef(JNIEnv *env, jobject obj);</h3>
-     *
+     * <p>
      * Creates a new weak global reference. Returns NULL if obj refers to null, or if the VM runs
      * out of memory. If the VM runs out of memory, an OutOfMemoryError will be thrown.
      */
@@ -2685,7 +2382,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>void DeleteWeakGlobalRef(JNIEnv *env, jweak obj);</h3>
-     *
+     * <p>
      * Delete the VM resources needed for the given weak global reference.
      */
     @JniImpl
@@ -2725,12 +2422,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jboolean IsSameObject(JNIEnv *env, jobject ref1, jobject ref2);</h3>
-     *
+     * <p>
      * Tests whether two references refer to the same Java object.
      *
      * @param ref1 a Java object.
      * @param ref2 a Java object.
-     *
      * @return JNI_TRUE if ref1 and ref2 refer to the same Java object, or are both NULL; otherwise,
      *         returns JNI_FALSE.
      */
@@ -2741,7 +2437,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jobjectRefType GetObjectRefType(JNIEnv* env, jobject obj);</h3>
-     *
+     * <p>
      * Returns the type of the object referred to by the obj argument. The argument obj can either
      * be a local, global or weak global reference.
      *
@@ -2758,26 +2454,25 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * <li>If the obj argument is not a valid reference, the return value for this function will be
      * {@link #JNIInvalidRefType}.
      * </ul>
-     *
-     *
+     * <p>
+     * <p>
      * An invalid reference is a reference which is not a valid handle. That is, the obj pointer
      * address does not point to a location in memory which has been allocated from one of the Ref
      * creation functions or returned from a JNI function.
-     *
+     * <p>
      * As such, NULL would be an invalid reference and GetObjectRefType(env,NULL) would return
      * JNIInvalidRefType.
-     *
+     * <p>
      * On the other hand, a null reference, which is a reference that points to a null, would return
      * the type of reference that the null reference was originally created as.
-     *
+     * <p>
      * GetObjectRefType cannot be used on deleted references.
-     *
+     * <p>
      * Since references are typically implemented as pointers to memory data structures that can
      * potentially be reused by any of the reference allocation services in the VM, once deleted, it
      * is not specified what value the GetObjectRefType will return.
      *
      * @param handle a local, global or weak global reference.
-     *
      * @return one of the following enumerated values defined as a <b>jobjectRefType</b>:
      *         <ul>
      *         <li>{@link #JNIInvalidRefType} = 0
@@ -2793,14 +2488,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jint EnsureLocalCapacity(JNIEnv *env, jint capacity);</h3>
-     *
+     * <p>
      * Ensures that at least a given number of local references can be created in the current
      * thread. Returns 0 on success; otherwise returns a negative number and throws an
      * OutOfMemoryError.
-     *
+     * <p>
      * Before it enters a native method, the VM automatically ensures that at least 16 local
      * references can be created.
-     *
+     * <p>
      * For backward compatibility, the VM allocates local references beyond the ensured capacity.
      * (As a debugging support, the VM may give the user warnings that too many local references are
      * being created. In the JDK, the programmer can supply the -verbose:jni command line option to
@@ -2828,7 +2523,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *         lower 16 bits.
      *
      *         <p>
-     *         <b>Error codes</b>
+     *         codes</b>
      *         <ul>
      *         <li>#define JNI_EDETACHED (-2) // thread detached from the VM
      *         <li>#define JNI_EVERSION (-3) // JNI version error
@@ -2859,7 +2554,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Pointer TruffleObject GetPrimitiveArrayCritical(StaticObject object, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
-            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         StaticObject array = object;
@@ -2870,21 +2565,22 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
         ByteBuffer region = allocateDirect(length, componentKind);
         @Pointer
-        TruffleObject addressPtr = byteBufferPointer(region);
+        TruffleObject addressPtr = NativeUtils.byteBufferPointer(region);
         // @formatter:off
         switch (componentKind) {
-            case Boolean : GetBooleanArrayRegion(array, 0, length, addressPtr);  break;
-            case Byte    : GetByteArrayRegion(array, 0, length, addressPtr);     break;
-            case Short   : GetShortArrayRegion(array, 0, length, addressPtr);    break;
-            case Char    : GetCharArrayRegion(array, 0, length, addressPtr);     break;
-            case Int     : GetIntArrayRegion(array, 0, length, addressPtr);      break;
-            case Float   : GetFloatArrayRegion(array, 0, length, addressPtr);    break;
-            case Long    : GetLongArrayRegion(array, 0, length, addressPtr);     break;
-            case Double  : GetDoubleArrayRegion(array, 0, length, addressPtr);   break;
+            case Boolean : GetBooleanArrayRegion(array, 0, length, addressPtr); break;
+            case Byte    : GetByteArrayRegion(array, 0, length, addressPtr);    break;
+            case Short   : GetShortArrayRegion(array, 0, length, addressPtr);   break;
+            case Char    : GetCharArrayRegion(array, 0, length, addressPtr);    break;
+            case Int     : GetIntArrayRegion(array, 0, length, addressPtr);     break;
+            case Float   : GetFloatArrayRegion(array, 0, length, addressPtr);   break;
+            case Long    : GetLongArrayRegion(array, 0, length, addressPtr);    break;
+            case Double  : GetDoubleArrayRegion(array, 0, length, addressPtr);  break;
             case Object  : // fall through
             case Void    : // fall through
             case Illegal : // fall through
-            default      : throw EspressoError.shouldNotReachHere();
+            default:
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
 
@@ -2901,15 +2597,16 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             int length = GetArrayLength(array);
             // @formatter:off
             switch (componentKind) {
-                case Boolean : SetBooleanArrayRegion(array, 0, length, carrayPtr);   break;
-                case Byte    : SetByteArrayRegion(array, 0, length, carrayPtr);      break;
-                case Short   : SetShortArrayRegion(array, 0, length, carrayPtr);     break;
-                case Char    : SetCharArrayRegion(array, 0, length, carrayPtr);      break;
-                case Int     : SetIntArrayRegion(array, 0, length, carrayPtr);       break;
-                case Float   : SetFloatArrayRegion(array, 0, length, carrayPtr);     break;
-                case Long    : SetLongArrayRegion(array, 0, length, carrayPtr);      break;
-                case Double  : SetDoubleArrayRegion(array, 0, length, carrayPtr);    break;
-                default      : throw EspressoError.shouldNotReachHere();
+                case Boolean : SetBooleanArrayRegion(array, 0, length, carrayPtr); break;
+                case Byte    : SetByteArrayRegion(array, 0, length, carrayPtr);    break;
+                case Short   : SetShortArrayRegion(array, 0, length, carrayPtr);   break;
+                case Char    : SetCharArrayRegion(array, 0, length, carrayPtr);    break;
+                case Int     : SetIntArrayRegion(array, 0, length, carrayPtr);     break;
+                case Float   : SetFloatArrayRegion(array, 0, length, carrayPtr);   break;
+                case Long    : SetLongArrayRegion(array, 0, length, carrayPtr);    break;
+                case Double  : SetDoubleArrayRegion(array, 0, length, carrayPtr);  break;
+                default:
+                    throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
         }
@@ -2920,7 +2617,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jclass GetObjectClass(JNIEnv *env, jobject obj);</h3>
-     *
+     * <p>
      * Returns the class of an object.
      *
      * @param self a Java object (must not be NULL).
@@ -2932,7 +2629,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     /**
      * <h3>jclass GetSuperclass(JNIEnv *env, jclass clazz);</h3>
-     *
+     * <p>
      * If clazz represents any class other than the class Object, then this function returns the
      * object that represents the superclass of the class specified by clazz. If clazz specifies the
      * class Object, or clazz represents an interface, this function returns NULL.
@@ -3012,13 +2709,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *             found.
      * @throws OutOfMemoryError if the system runs out of memory.
      */
+    @TruffleBoundary
     @JniImpl
     public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
                     @GuestCall(target = "java_lang_ClassLoader_getSystemClassLoader") DirectCallNode getSystemClassLoader,
                     @GuestCall(target = "java_lang_ClassLoader$NativeLibrary_getFromClass") DirectCallNode nativeLibraryGetFromClass,
                     @GuestCall(target = "java_lang_Class_forName_String_boolean_ClassLoader") DirectCallNode classForName,
                     @InjectProfile SubstitutionProfiler profiler) {
-        String name = interopPointerToString(namePtr);
+        String name = NativeUtils.interopPointerToString(namePtr);
         Meta meta = getMeta();
         if (name == null || (name.indexOf('.') > -1)) {
             profiler.profile(7);
@@ -3065,7 +2763,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             throw e;
         }
 
-        guestClass.setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, protectionDomain);
+        meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(guestClass, protectionDomain);
+        // FindClass should initialize the class.
         guestClass.getMirrorKlass().safeInitialize();
 
         return guestClass;
@@ -3094,23 +2793,23 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public int GetJavaVM(@Pointer TruffleObject vmPtr) {
-        ByteBuffer buf = directByteBuffer(vmPtr, 1, JavaKind.Long); // 64 bits pointer
-        buf.putLong(interopAsPointer(getVM().getJavaVM()));
+        ByteBuffer buf = NativeUtils.directByteBuffer(vmPtr, 1, JavaKind.Long); // 64 bits pointer
+        buf.putLong(NativeUtils.interopAsPointer(getVM().getJavaVM()));
         return JNI_OK;
     }
 
     /**
      * <h3>jobject AllocObject(JNIEnv *env, jclass clazz);</h3>
-     *
+     * <p>
      * Allocates a new Java object without invoking any of the constructors for the object. Returns
      * a reference to the object.
-     *
+     * <p>
      * The clazz argument must not refer to an array class.
      *
      * @param clazz a Java class object.
-     *
+     *            <p>
      *            Returns a Java object, or NULL if the object cannot be constructed.
-     *
+     *            <p>
      *            Throws InstantiationException if the class is an interface or an abstract class.
      * @throws OutOfMemoryError if the system runs out of memory.
      */

@@ -258,7 +258,9 @@ public final class RegexParser {
                 if (group.size() == 1 && group.getFirstAlternative().size() == 1 && group.getFirstAlternative().getFirstTerm().isPositionAssertion()) {
                     // unwrap positive lookarounds containing only a position assertion
                     removeCurTerm();
-                    addTerm(group.getFirstAlternative().getFirstTerm());
+                    PositionAssertion positionAssertion = (PositionAssertion) group.getFirstAlternative().getFirstTerm();
+                    ast.register(positionAssertion);
+                    addTerm(positionAssertion);
                 } else {
                     int innerPositionAssertion = -1;
                     for (int i = 0; i < group.size(); i++) {
@@ -456,15 +458,15 @@ public final class RegexParser {
         return characterClass;
     }
 
-    private void createOptionalBranch(QuantifiableTerm term, Quantifier quantifier, boolean copy, boolean unroll, int recurse) throws RegexSyntaxException {
+    private void createOptionalBranch(QuantifiableTerm term, Quantifier quantifier, boolean copy, boolean unroll, int recurse, boolean emptyGuard) throws RegexSyntaxException {
         addTerm(copy ? copyVisitor.copy(term) : term);
         curTerm.setExpandedQuantifier(false);
         ((QuantifiableTerm) curTerm).setQuantifier(null);
-        curTerm.setEmptyGuard(true);
-        createOptional(term, quantifier, true, unroll, recurse - 1);
+        curTerm.setEmptyGuard(emptyGuard);
+        createOptional(term, quantifier, true, unroll, recurse - 1, emptyGuard);
     }
 
-    private void createOptional(QuantifiableTerm term, Quantifier quantifier, boolean copy, boolean unroll, int recurse) throws RegexSyntaxException {
+    private void createOptional(QuantifiableTerm term, Quantifier quantifier, boolean copy, boolean unroll, int recurse, boolean emptyGuard) throws RegexSyntaxException {
         if (recurse < 0) {
             return;
         }
@@ -479,13 +481,13 @@ public final class RegexParser {
             curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getEnclosedCaptureGroupsHigh());
         }
         if (quantifier.isGreedy()) {
-            createOptionalBranch(term, quantifier, copy, unroll, recurse);
+            createOptionalBranch(term, quantifier, copy, unroll, recurse, emptyGuard);
             addSequence();
             curSequence.setExpandedQuantifier(true);
         } else {
             curSequence.setExpandedQuantifier(true);
             addSequence();
-            createOptionalBranch(term, quantifier, copy, unroll, recurse);
+            createOptionalBranch(term, quantifier, copy, unroll, recurse, emptyGuard);
         }
         popGroup(null, false);
     }
@@ -518,7 +520,11 @@ public final class RegexParser {
             toExpand.getParent().asSequence().replace(toExpand.getSeqIndex(), createGroup(null, false, false, false, null));
         }
         // unroll optional part ( x{0,3} -> (x(x(x|)|)|) )
-        createOptional(toExpand, quantifier, unroll && quantifier.getMin() > 0, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
+        // In Ruby, loops are repeated until a fixed point in the observable state is reached.
+        // We can simulate this by dropping empty guards in small bounded loops, such as is the
+        // case for unrolled loops.
+        createOptional(toExpand, quantifier, unroll && quantifier.getMin() > 0, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1,
+                        source.getOptions().getFlavor() != RubyFlavor.INSTANCE);
         if (!unroll || quantifier.isInfiniteLoop()) {
             ((Group) curTerm).setLoop(true);
         }
@@ -780,14 +786,28 @@ public final class RegexParser {
             replaceCurTermWithDeadNode();
             return;
         }
-        boolean curTermIsZeroWidthGroup = curTerm.isGroup() && curTerm.asGroup().isAlwaysZeroWidth();
-        if (quantifier.getMax() == 0 || quantifier.getMin() == 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup ||
-                        curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing())) {
+        if (quantifier.getMax() == 0) {
             removeCurTerm();
             return;
         }
+        boolean curTermIsZeroWidthGroup = curTerm.isGroup() && curTerm.asGroup().isAlwaysZeroWidth();
+        if (source.getOptions().getFlavor() == RubyFlavor.INSTANCE) {
+            // In Ruby, we cannot remove optional zero-width groups or lookaround assertions as Ruby
+            // will admit executing them even though they match the empty string, because they can
+            // change the state of capture groups.
+            if (quantifier.getMin() == 0 && curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing()) {
+                removeCurTerm();
+                return;
+            }
+        } else {
+            if (quantifier.getMin() == 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup ||
+                            curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing())) {
+                removeCurTerm();
+                return;
+            }
+        }
         ast.addSourceSection(curTerm, quantifier);
-        if (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup) {
+        if (quantifier.getMin() > 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup)) {
             // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
             // ignore.
             return;
@@ -904,11 +924,22 @@ public final class RegexParser {
             return;
         }
         ArrayList<Sequence> newAlternatives = null;
+        // This optimization could change the order in which different paths are explored during
+        // backtracking and therefore change the semantics of the expression. After the
+        // optimization, the resulting regex will first try to match the prefix and then try to
+        // continue with any of the possible suffixes before backtracking and trying different
+        // branches in the prefix. However, the original regex will first completely exhaust all
+        // options in the prefix while retaining the first suffix.
+        // See the example: /.+(?=bar)|.+/.exec("foobar"), in which it is important to try to
+        // backtrack the .+ prefix to just "foo" and then satisfy the lookahead.
+        // In order to handle this, we limit this optimization so that only deterministic prefixes
+        // are considered.
+        IsDeterministicVisitor isDeterministicVisitor = new IsDeterministicVisitor();
         int lastEnd = 0;
         int begin = 0;
         while (begin + 1 < group.size()) {
             int end = findMatchingAlternatives(group, begin);
-            if (end < 0) {
+            if (end < 0 || !isDeterministicVisitor.isDeterministic(group.getAlternatives().get(begin).getFirstTerm())) {
                 begin++;
             } else {
                 if (newAlternatives == null) {
@@ -919,7 +950,7 @@ public final class RegexParser {
                 }
                 lastEnd = end;
                 int prefixSize = 1;
-                while (alternativesAreEqualAt(group, begin, end, prefixSize)) {
+                while (alternativesAreEqualAt(group, begin, end, prefixSize) && isDeterministicVisitor.isDeterministic(group.getAlternatives().get(begin).get(prefixSize))) {
                     prefixSize++;
                 }
                 Sequence prefixSeq = ast.createSequence();
@@ -987,6 +1018,52 @@ public final class RegexParser {
                 newAlternatives.add(group.getAlternatives().get(i));
             }
             group.setAlternatives(newAlternatives);
+        }
+    }
+
+    private static final class IsDeterministicVisitor extends DepthFirstTraversalRegexASTVisitor {
+
+        private boolean result;
+
+        public boolean isDeterministic(RegexASTNode node) {
+            result = true;
+            run(node);
+            return result;
+        }
+
+        private static boolean hasNonDeterministicQuantifier(QuantifiableTerm term) {
+            if (term.hasQuantifier()) {
+                Token.Quantifier quantifier = term.getQuantifier();
+                if (quantifier.getMin() != quantifier.getMax()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        protected void visit(BackReference backReference) {
+            if (hasNonDeterministicQuantifier(backReference)) {
+                result = false;
+            }
+        }
+
+        @Override
+        protected void visit(Group group) {
+            if (hasNonDeterministicQuantifier(group)) {
+                result = false;
+                return;
+            }
+            if (group.getAlternatives().size() > 1) {
+                result = false;
+            }
+        }
+
+        @Override
+        protected void visit(CharacterClass characterClass) {
+            if (hasNonDeterministicQuantifier(characterClass)) {
+                result = false;
+            }
         }
     }
 

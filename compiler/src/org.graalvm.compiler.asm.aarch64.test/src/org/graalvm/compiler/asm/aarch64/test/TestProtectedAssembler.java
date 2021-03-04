@@ -25,21 +25,24 @@
 
 package org.graalvm.compiler.asm.aarch64.test;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 
 /**
  * Cheat so that we can test protected functions of assembler.
  */
 class TestProtectedAssembler extends AArch64Assembler {
 
+    public final TestProtectedASIMDAssembler neon;
+
     TestProtectedAssembler(TargetDescription target) {
         super(target);
+        this.neon = new TestProtectedASIMDAssembler(this);
     }
 
     @Override
@@ -418,11 +421,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void frintz(int size, Register dst, Register src) {
-        super.frintz(size, dst, src);
-    }
-
-    @Override
     public void fabs(int size, Register dst, Register src) {
         super.fabs(size, dst, src);
     }
@@ -540,18 +538,25 @@ class TestProtectedAssembler extends AArch64Assembler {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public void cnt(int size, Register dst, Register src) {
-        super.cnt(size, dst, src);
-    }
+    public static class TestProtectedASIMDAssembler extends AArch64ASIMDAssembler {
 
-    @Override
-    public void addv(int size, SIMDElementSize laneWidth, Register dst, Register src) {
-        super.addv(size, laneWidth, dst, src);
-    }
+        protected TestProtectedASIMDAssembler(AArch64Assembler asm) {
+            super(asm);
+        }
 
-    @Override
-    public void umov(int size, Register dst, int srcIdx, Register src) {
-        super.umov(size, dst, srcIdx, src);
+        @Override
+        public void cntVV(ASIMDSize size, Register dst, Register src) {
+            super.cntVV(size, dst, src);
+        }
+
+        @Override
+        public void addvSV(ASIMDSize size, ElementSize laneWidth, Register dst, Register src) {
+            super.addvSV(size, laneWidth, dst, src);
+        }
+
+        @Override
+        public void umovGX(ElementSize size, Register dst, Register src, int index) {
+            super.umovGX(size, dst, src, index);
+        }
     }
 }

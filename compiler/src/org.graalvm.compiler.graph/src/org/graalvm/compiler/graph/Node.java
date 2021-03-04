@@ -876,6 +876,11 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
+    public Node singleUsage() {
+        assert hasExactlyOneUsage();
+        return this.usage0;
+    }
+
     public void replaceAtMatchingUsages(Node other, NodePredicate usagePredicate) {
         checkReplaceWith(other);
         replaceAtMatchingUsages(other, usagePredicate, null);

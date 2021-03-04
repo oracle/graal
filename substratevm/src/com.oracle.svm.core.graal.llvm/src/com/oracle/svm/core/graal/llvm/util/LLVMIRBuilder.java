@@ -1211,8 +1211,8 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, boolean returnValue) {
         LLVMTypeRef exchangeType = typeOf(expectedValue);
-        if (returnValue && isObjectType(typeOf(expectedValue))) {
-            return buildCall(helpers.getCmpxchgFunction(isCompressedPointerType(exchangeType)), address, expectedValue, newValue);
+        if (isObjectType(typeOf(expectedValue))) {
+            return buildCall(helpers.getCmpxchgFunction(isCompressedPointerType(exchangeType), returnValue), address, expectedValue, newValue);
         }
         return buildAtomicCmpXchg(address, expectedValue, newValue, returnValue);
     }

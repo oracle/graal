@@ -157,8 +157,8 @@ final class PolyglotReferences {
     private static boolean assertDirectContextAccess(PolyglotLanguageContext languageContext, Object languageContextImpl) throws AssertionError {
         if (languageContext == null) {
             /*
-             * This case may happen if the assertions were disabled during boot image generation but
-             * were later enabled at runtime. See GR-14463.
+             * This case may happen if the assertions were disabled during image generation but were
+             * later enabled at runtime. See GR-14463.
              */
             return true;
         }
@@ -248,8 +248,8 @@ final class PolyglotReferences {
         private static boolean assertDirectContextAccess(Object seenContext, WeakReference<PolyglotLanguageContext> contextRef) {
             if (contextRef == null) {
                 /*
-                 * This case may happen if the assertions were disabled during boot image generation
-                 * but were later enabled at runtime. See GR-14463.
+                 * This case may happen if the assertions were disabled during image generation but
+                 * were later enabled at runtime. See GR-14463.
                  */
                 return true;
             }

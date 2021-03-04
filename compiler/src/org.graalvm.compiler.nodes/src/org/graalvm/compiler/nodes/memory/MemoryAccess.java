@@ -24,13 +24,14 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.graph.NodeInterface;
 import org.graalvm.word.LocationIdentity;
 
 /**
  * This interface marks nodes that access some memory location, and that have an edge to the last
  * node that kills this location.
  */
-public interface MemoryAccess {
+public interface MemoryAccess extends NodeInterface {
 
     LocationIdentity getLocationIdentity();
 

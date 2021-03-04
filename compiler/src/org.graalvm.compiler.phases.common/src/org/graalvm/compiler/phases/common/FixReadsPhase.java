@@ -203,6 +203,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             }
 
             @Override
+            public boolean supportsRounding() {
+                return false;
+            }
+
+            @Override
             public OptionValues getOptions() {
                 return graph.getOptions();
             }

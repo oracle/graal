@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,50 +29,55 @@
  */
 package com.oracle.truffle.llvm.tests;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
+import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
-public final class ParserTortureSuite {
+@Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
+public final class ParserTortureSuite extends GccSuiteBase {
 
-    private static final Path GCC_SUITE_DIR = new File(TestOptions.EXTERNAL_TEST_SUITE_PATH).toPath();
-    private static final Path GCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/compileConfigs").toPath();
-
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
+    public static final String TEST_DISTRIBUTION = "SULONG_PARSER_TORTURE";
+    public static final String SOURCE = "GCC_SOURCE";
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return BaseTestHarness.collectRegularRun(GCC_CONFIG_DIR, GCC_SUITE_DIR);
+        return TestCaseCollector.collectTestCases(ParserTortureSuite.class, Paths.get(TestOptions.getTestDistribution(TEST_DISTRIBUTION)), CommonTestUtils.isSulong);
     }
 
     @Test
+    @Override
     public void test() throws IOException {
+        assumeNotExcluded();
         try (Stream<Path> files = Files.walk(path)) {
-            for (Path candidate : (Iterable<Path>) files.filter(BaseTestHarness.isFile).filter(BaseTestHarness.isSulong)::iterator) {
+            for (Path candidate : (Iterable<Path>) files.filter(CommonTestUtils.isFile).filter(CommonTestUtils.isSulong)::iterator) {
 
                 if (!candidate.toAbsolutePath().toFile().exists()) {
                     throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
                 }
 
-                try (Context context = Context.newBuilder().option("llvm.lazyParsing", String.valueOf(false)).allowAllAccess(true).build()) {
+                try (Context context = Context.newBuilder().option("llvm.parseOnly", String.valueOf(true)).option("llvm.lazyParsing", String.valueOf(false)).allowAllAccess(true).build()) {
                     context.eval(org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, candidate.toFile()).build());
                 }
             }
         }
+    }
+
+    @AfterClass
+    public static void printStatistics() {
+        printStatistics(GccFortranSuite.class, SOURCE);
     }
 }

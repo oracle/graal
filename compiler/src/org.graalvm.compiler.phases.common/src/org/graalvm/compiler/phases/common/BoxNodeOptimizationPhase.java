@@ -170,6 +170,12 @@ public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
                                     }
                                     Block boxUsageOnBoxedValBlock = cfg.blockFor(boxUsageOnBoxedVal);
                                     Block originalBoxBlock = cfg.blockFor(box);
+                                    if (boxUsageOnBoxedValBlock.getLoop() != null) {
+                                        if (originalBoxBlock.getLoop() != boxUsageOnBoxedValBlock.getLoop()) {
+                                            // avoid proxy creation for now
+                                            continue boxedValUsageLoop;
+                                        }
+                                    }
                                     if (AbstractControlFlowGraph.dominates(boxUsageOnBoxedValBlock, originalBoxBlock)) {
                                         if (boxUsageOnBoxedValBlock == originalBoxBlock) {
                                             // check dominance within one block

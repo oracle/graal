@@ -239,7 +239,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 }
                 output.append("}");
             }
-            if (greedy) {
+            if (!greedy) {
                 output.append("?");
             }
             return output.toString();
@@ -667,8 +667,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     // First pass - identifying capture groups
 
     private void scanForCaptureGroups() {
-        // character classes (where '(' stands for a literal '(') and any characters after the '('
-        // which might turn into a non-capturing group or a look-around assertion.
+        // We scan the source of the regex and search for '(' characters, which mark capture
+        // groups. However, we have to watch out for exceptions, e.g. character classes (where
+        // '(' stands for a literal '(') or syntax characters following a '(' which might turn
+        // it into a non-capturing group, a look-around assertion or some other construction.
         final int restorePosition = position;
         numberOfCaptureGroups = 0;
         int charClassDepth = 0;
@@ -692,6 +694,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     break;
                 case '[':
                     charClassDepth++;
+                    // Closing brackets are treated as literals if they are the first char
+                    // in a char class.
                     if (!match("]")) {
                         match("^]");
                     }
@@ -713,8 +717,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                                 }
                                 numberOfCaptureGroups++;
                                 namedCaptureGroups.put(groupName, numberOfCaptureGroups);
-                            } else {
-                                match("(");
+                            } else if (match("(")) {
                                 if (match("<")) {
                                     parseGroupReference('>', true, true, true, true);
                                 } else if (match("'")) {
@@ -727,6 +730,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                             if (namedCaptureGroups == null) {
                                 numberOfCaptureGroups++;
                             }
+                        }
+                    }
+                    break;
+                case '#':
+                    if (globalFlags.isExtended()) {
+                        int endOfLine = inPattern.indexOf('\n', position);
+                        if (endOfLine >= 0) {
+                            position = endOfLine + 1;
+                        } else {
+                            position = inPattern.length();
                         }
                     }
                     break;
@@ -1473,11 +1486,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             switch (ch) {
                 case ']':
                     if (position == firstPosInside + 1) {
-                        lowerBound = Optional.of((int) ']');
+                        throw syntaxErrorAt("empty char-class", beginPos);
                     } else {
                         break classBody;
                     }
-                    break;
                 case '\\':
                     lowerBound = classEscape();
                     break;
@@ -1665,6 +1677,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             } else {
                 Optional<BigInteger> lowerBound = Optional.empty();
                 Optional<BigInteger> upperBound = Optional.empty();
+                boolean canBeNonGreedy = true;
                 String lower = getMany(RubyFlavorProcessor::isDecDigit);
                 if (!lower.isEmpty()) {
                     lowerBound = Optional.of(new BigInteger(lower));
@@ -1676,6 +1689,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     }
                 } else {
                     upperBound = lowerBound;
+                    canBeNonGreedy = false;
                 }
                 if (!match("}")) {
                     // We did not find a complete quantifier, so we should just emit a string of
@@ -1686,9 +1700,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
                     throw syntaxErrorAt(RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
                 }
+                boolean greedy = true;
+                if (canBeNonGreedy && match("?")) {
+                    greedy = false;
+                }
                 quantifier = new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
                                 upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
-                                match("?"));
+                                greedy);
             }
         } else {
             int lower;
@@ -1709,14 +1727,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 default:
                     throw new IllegalStateException("should not reach here");
             }
-            boolean greedy;
+            boolean greedy = true;
             if (match("?")) {
-                greedy = true;
-            } else {
                 greedy = false;
-                if (match("+")) {
-                    bailOut("possessive quantifiers not supported");
-                }
+            } else if (match("+")) {
+                bailOut("possessive quantifiers not supported");
             }
             quantifier = new Quantifier(lower, upper, greedy);
         }

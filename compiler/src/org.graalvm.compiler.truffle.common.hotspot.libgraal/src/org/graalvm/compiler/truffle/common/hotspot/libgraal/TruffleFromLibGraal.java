@@ -65,6 +65,7 @@ public @interface TruffleFromLibGraal {
         CancelCompilation(boolean.class, Object.class, String.class),
         CompilableToString(String.class, Object.class),
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
+        CountInlinedCalls(int.class, Object.class),
         CreateInliningPlan(Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueInlined(void.class, Object.class),

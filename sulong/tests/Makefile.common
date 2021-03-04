@@ -269,6 +269,18 @@ define OPT_RULES
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
+%.f.dir/$(1)_OUT.bc: %.f.dir/ref.out %.f.dir/$(1).bc
+	$(QUIETLY) cp $$< $$@
+	$(QUIETLY) $(LLVM_OBJCOPY) --add-section .llvmbc=$$(word 2,$$^) $$@
+
+%.f90.dir/$(1)_OUT.bc:%.f90.dir/ref.out %.f90.dir/$(1).bc
+	$(QUIETLY) cp $$< $$@
+	$(QUIETLY) $(LLVM_OBJCOPY) --add-section .llvmbc=$$(word 2,$$^) $$@
+
+%.f03.dir/$(1)_OUT.bc: %.f03.dir/ref.out %.f03.dir/$(1).bc
+	$(QUIETLY) cp $$< $$@
+	$(QUIETLY) $(LLVM_OBJCOPY) --add-section .llvmbc=$$(word 2,$$^) $$@
+
 endef
 
 $(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))

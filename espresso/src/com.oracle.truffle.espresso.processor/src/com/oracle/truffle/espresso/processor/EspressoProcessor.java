@@ -26,8 +26,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.time.Year;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +43,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 
@@ -313,26 +312,22 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     static final String TAB_3 = TAB_2 + TAB_1;
     static final String TAB_4 = TAB_3 + TAB_1;
 
-    private static final Map<String, NativeSimpleType> classToNative = buildClassToNative();
-
-    static Map<String, NativeSimpleType> buildClassToNative() {
-        Map<String, NativeSimpleType> map = new HashMap<>();
-        map.put("boolean", NativeSimpleType.SINT8);
-        map.put("byte", NativeSimpleType.SINT8);
-        map.put("short", NativeSimpleType.SINT16);
-        map.put("char", NativeSimpleType.SINT16);
-        map.put("int", NativeSimpleType.SINT32);
-        map.put("float", NativeSimpleType.FLOAT);
-        map.put("long", NativeSimpleType.SINT64);
-        map.put("double", NativeSimpleType.DOUBLE);
-        map.put("void", NativeSimpleType.VOID);
-        map.put("java.lang.String", NativeSimpleType.STRING);
-        return Collections.unmodifiableMap(map);
-    }
-
-    public static NativeSimpleType classToType(String clazz) {
-        // TODO(peterssen): Allow native-sized words.
-        return classToNative.getOrDefault(clazz, NativeSimpleType.SINT64);
+    public static NativeType classToType(TypeKind typeKind) {
+        // @formatter:off
+        switch (typeKind) {
+            case BOOLEAN : return NativeType.BOOLEAN;
+            case BYTE    : return NativeType.BYTE;
+            case SHORT   : return NativeType.SHORT;
+            case CHAR    : return NativeType.CHAR;
+            case INT     : return NativeType.INT;
+            case FLOAT   : return NativeType.FLOAT;
+            case LONG    : return NativeType.LONG;
+            case DOUBLE  : return NativeType.DOUBLE;
+            case VOID    : return NativeType.VOID;
+            default:
+                return NativeType.OBJECT;
+        }
+        // @formatter:on
     }
 
     @Override
@@ -599,6 +594,16 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     static String generateString(String str) {
         return "\"" + str + "\"";
+    }
+
+    static String generateNativeSignature(NativeType[] signature) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("NativeSignature.create(NativeType.").append(signature[0]);
+        for (int i = 1; i < signature.length; ++i) {
+            sb.append(", NativeType.").append(signature[i]);
+        }
+        sb.append(")");
+        return sb.toString();
     }
 
     // @formatter:off

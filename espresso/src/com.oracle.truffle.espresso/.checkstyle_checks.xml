@@ -214,6 +214,11 @@
     <property name="format" value="System\.(out|err)\.print"/>
     <property name="fileExtensions" value="java"/>
   </module>
+  <module name="RegexpSingleline">
+    <property name="format" value="com\.oracle\.truffle\.object\.DebugCounter"/>
+    <property name="fileExtensions" value="java"/>
+    <property name="message" value="com.oracle.truffle.object.DebugCounter is forbidden, use com.oracle.truffle.espresso.perf.DebugCounter instead."/>
+  </module>  
   <module name="SuppressWithPlainTextCommentFilter">
     <property name="offCommentFormat" value="Checkstyle: stop"/>
     <property name="onCommentFormat" value="Checkstyle: resume"/>

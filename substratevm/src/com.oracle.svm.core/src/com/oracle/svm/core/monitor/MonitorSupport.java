@@ -28,6 +28,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * This interface provides functions related to monitor operations (the Java "synchronized" keyword
@@ -77,6 +78,8 @@ public abstract class MonitorSupport {
 
     /** Determines whether the object's monitor is locked by the current or any other thread. */
     public abstract boolean isLockedByAnyThread(Object obj);
+
+    public abstract int countThreadLock(IsolateThread vmThread);
 
     /**
      * Implements the semantics of {@link Object#wait}.

@@ -259,8 +259,8 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
         /*
          * Normally creating call targets schedules the initialization. However if call targets were
-         * already created in the boot image and they are directly compiled then the compile queue
-         * might not yet be initialized.
+         * already created in the image and they are directly compiled then the compile queue might
+         * not yet be initialized.
          */
         ensureInitializedAtRuntime(optimizedCallTarget);
 

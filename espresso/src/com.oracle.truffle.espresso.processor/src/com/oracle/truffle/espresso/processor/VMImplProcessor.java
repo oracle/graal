@@ -65,17 +65,15 @@ public class VMImplProcessor extends IntrinsicsProcessor {
     }
 
     static class VMHelper extends SubstitutionHelper {
-        final String jniNativeSignature;
+        final NativeType[] jniNativeSignature;
         final List<Boolean> referenceTypes;
-        final String returnType;
         final boolean isStatic;
         final boolean isJni;
 
-        public VMHelper(EspressoProcessor processor, ExecutableElement method, String jniNativeSignature, List<Boolean> referenceTypes, String returnType, boolean isStatic, boolean isJni) {
+        public VMHelper(EspressoProcessor processor, ExecutableElement method, NativeType[] jniNativeSignature, List<Boolean> referenceTypes, boolean isStatic, boolean isJni) {
             super(processor, method);
             this.jniNativeSignature = jniNativeSignature;
             this.referenceTypes = referenceTypes;
-            this.returnType = returnType;
             this.isStatic = isStatic;
             this.isJni = isJni;
         }
@@ -98,16 +96,14 @@ public class VMImplProcessor extends IntrinsicsProcessor {
             // Spawn the name of the Substitutor we will create.
             String substitutorName = getSubstitutorClassName(className, targetMethodName, espressoTypes);
             if (!classes.contains(substitutorName)) {
-                // Obtain the fully qualified guest return type of the method.
-                String returnType = extractReturnType(VMmethod);
                 // Check if this VM method has the @JniImpl annotation
                 boolean isJni = getAnnotation(VMmethod, jniImpl) != null;
                 // Obtain the jniNativeSignature
-                String jniNativeSignature = jniNativeSignature(VMmethod, returnType, isJni);
+                NativeType[] jniNativeSignature = jniNativeSignature(VMmethod, isJni);
                 // Check if we need to call an instance method
                 boolean isStatic = VMmethod.getModifiers().contains(Modifier.STATIC);
                 // Spawn helper
-                VMHelper h = new VMHelper(this, (ExecutableElement) method, jniNativeSignature, referenceTypes, returnType, isStatic, isJni);
+                VMHelper h = new VMHelper(this, (ExecutableElement) method, jniNativeSignature, referenceTypes, isStatic, isJni);
                 // Create the contents of the source file
                 String classFile = spawnSubstitutor(
                                 className,
@@ -142,10 +138,12 @@ public class VMImplProcessor extends IntrinsicsProcessor {
         StringBuilder str = new StringBuilder();
         VMHelper h = (VMHelper) helper;
         str.append(IMPORT_VM);
+        str.append(IMPORT_NATIVE_SIGNATURE);
+        str.append(IMPORT_NATIVE_TYPE);
         if (parameterTypeName.contains("String")) {
             str.append(IMPORT_INTEROP_LIBRARY);
         }
-        if (parameterTypeName.contains("StaticObject") || h.returnType.equals("void")) {
+        if (parameterTypeName.contains("StaticObject") || h.jniNativeSignature[0].equals(NativeType.VOID)) {
             str.append(IMPORT_STATIC_OBJECT);
         }
         if (parameterTypeName.contains("TruffleObject")) {
@@ -161,9 +159,8 @@ public class VMImplProcessor extends IntrinsicsProcessor {
         VMHelper h = (VMHelper) helper;
         str.append(TAB_3).append("super(\n");
         str.append(TAB_4).append(generateString(targetMethodName)).append(",\n");
-        str.append(TAB_4).append(generateString(h.jniNativeSignature)).append(",\n");
+        str.append(TAB_4).append(generateNativeSignature(h.jniNativeSignature)).append(",\n");
         str.append(TAB_4).append(parameterTypeName.size()).append(",\n");
-        str.append(TAB_4).append(generateString(h.returnType)).append(",\n");
         str.append(TAB_4).append(h.isJni).append("\n");
         str.append(TAB_3).append(");\n");
         str.append(TAB_2).append("}\n");
@@ -180,19 +177,12 @@ public class VMImplProcessor extends IntrinsicsProcessor {
             boolean isNonPrimitive = h.referenceTypes.get(argIndex);
             str.append(extractArg(argIndex++, type, isNonPrimitive, h.isJni ? 1 : 0, TAB_2));
         }
-        switch (h.returnType) {
-            case "char":
-                str.append(TAB_2).append("return ").append("(short) ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
-                break;
-            case "boolean":
-                str.append(TAB_2).append("boolean b = ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
-                str.append(TAB_2).append("return b ? (byte) 1 : (byte) 0;\n");
-                break;
-            case "void":
+        switch (h.jniNativeSignature[0]) {
+            case VOID:
                 str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
                 str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
                 break;
-            case "StaticObject":
+            case OBJECT:
                 str.append(TAB_2).append("return ").append(
                                 "(long) env.getHandles().createLocal(" + extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper) + ")").append(";\n");
                 break;

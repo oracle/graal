@@ -38,7 +38,6 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -234,13 +233,13 @@ public interface EspressoProperties {
     static Builder inheritFromHostVM() {
         return newPlatformBuilder() //
                         .javaHome(Paths.get(System.getProperty("java.home"))) //
-                        .bootClasspath(Utils.parsePaths(System.getProperty("sun.boot.class.path"))) //
-                        .javaLibraryPath(Utils.parsePaths(System.getProperty("java.library.path"))) //
-                        .bootLibraryPath(Utils.parsePaths(System.getProperty("sun.boot.library.path"))) //
-                        .extDirs(Utils.parsePaths(System.getProperty("java.ext.dirs")));
+                        .bootClasspath(EspressoOptions.parsePaths(System.getProperty("sun.boot.class.path"))) //
+                        .javaLibraryPath(EspressoOptions.parsePaths(System.getProperty("java.library.path"))) //
+                        .bootLibraryPath(EspressoOptions.parsePaths(System.getProperty("sun.boot.library.path"))) //
+                        .extDirs(EspressoOptions.parsePaths(System.getProperty("java.ext.dirs")));
     }
 
-    static Builder processOptions(EspressoLanguage language, Builder builder, OptionValues options) {
+    static Builder processOptions(Builder builder, OptionValues options) {
         // Always set JavaHome first.
         Path javaHome = options.hasBeenSet(EspressoOptions.JavaHome)
                         ? options.get(EspressoOptions.JavaHome)
@@ -275,7 +274,7 @@ public interface EspressoProperties {
 
         // Inject polyglot.jar.
         if (options.get(EspressoOptions.Polyglot)) {
-            Path espressoHome = Paths.get(language.getEspressoHome());
+            Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
             Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
             if (Files.isReadable(polyglotJar)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);

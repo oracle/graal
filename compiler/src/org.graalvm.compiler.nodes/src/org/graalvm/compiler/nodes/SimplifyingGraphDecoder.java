@@ -108,6 +108,12 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             // there will be more opportunities for this optimization later
             return null;
         }
+
+        @Override
+        public boolean supportsRounding() {
+            return getLowerer().supportsRounding();
+        }
+
     }
 
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED, allowedUsageTypes = {Guard, InputType.Anchor})

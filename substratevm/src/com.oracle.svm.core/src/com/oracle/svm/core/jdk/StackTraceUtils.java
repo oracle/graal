@@ -26,6 +26,8 @@ package com.oracle.svm.core.jdk;
 
 import java.util.ArrayList;
 
+import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
@@ -127,6 +129,15 @@ public class StackTraceUtils {
              * one method of each class is affected.
              */
             return false;
+        }
+
+        if (JavaContinuations.useLoom() && clazz == Target_java_lang_Continuation.class) {
+            // Skip intrinsics in JDK
+            if ("enterSpecial".equals(frameInfo.getSourceMethodName())) {
+                return false;
+            } else if ("doYield".equals(frameInfo.getSourceMethodName())) {
+                return false;
+            }
         }
 
         return true;

@@ -183,6 +183,10 @@ public class CountedLoopInfo {
         }
     }
 
+    public IfNode getCountCheck() {
+        return ifNode;
+    }
+
     /**
      * @return true if the loop has constant bounds.
      */

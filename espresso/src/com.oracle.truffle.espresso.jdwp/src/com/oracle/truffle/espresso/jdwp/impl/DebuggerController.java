@@ -68,7 +68,7 @@ public final class DebuggerController implements ContextsListener {
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
-    private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
+    private final Map<Object, SuspendedInfo> suspendedInfos = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SteppingInfo> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob<?>> threadJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
@@ -125,7 +125,7 @@ public final class DebuggerController implements ContextsListener {
         return suspendedInfos.get(thread);
     }
 
-    public boolean shouldWaitForAttach() {
+    public boolean isSuspend() {
         return options.suspend;
     }
 
@@ -363,9 +363,9 @@ public final class DebuggerController implements ContextsListener {
                 suspendedInfos.put(thread, null);
 
                 JDWPLogger.log("Waking up thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
+                threadSuspension.removeHardSuspendedThread(thread);
                 lock.release();
                 lock.notifyAll();
-                threadSuspension.removeHardSuspendedThread(thread);
                 return true;
             } else {
                 JDWPLogger.log("Not resuming thread: %s with suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
@@ -423,8 +423,7 @@ public final class DebuggerController implements ContextsListener {
 
                 // quite often the Debug API will not call back the onSuspend method in time,
                 // even if the guestThread is executing. If the guestThread is blocked or waiting we
-                // still need
-                // to suspend it, thus we manage this with a hard suspend mechanism
+                // still need to suspend it, thus we manage this with a hard suspend mechanism
                 threadSuspension.addHardSuspendedThread(guestThread);
                 if (suspendedInfos.get(guestThread) == null) {
                     // if already set, we have captured a blocking suspendedInfo already
@@ -506,7 +505,11 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void endSession() {
-        debuggerSession.close();
+        try {
+            debuggerSession.close();
+        } catch (IllegalStateException ex) {
+            // already closed, ignore
+        }
     }
 
     public JDWPOptions getOptions() {
@@ -738,8 +741,7 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, instrument.getEnv(), null,
-                                context.getLanguageClass()));
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, null, context));
                 return null;
             }
         });
@@ -815,6 +817,7 @@ public final class DebuggerController implements ContextsListener {
             List<Callable<Void>> jobs = new ArrayList<>();
 
             boolean hit = false;
+            boolean handledLineBreakpoint = false;
             HashSet<Breakpoint> handled = new HashSet<>(event.getBreakpoints().size());
             for (Breakpoint bp : event.getBreakpoints()) {
                 if (handled.contains(bp)) {
@@ -824,6 +827,11 @@ public final class DebuggerController implements ContextsListener {
                 suspendPolicy = info.getSuspendPolicy();
 
                 if (info.isLineBreakpoint()) {
+                    // only allow one line breakpoint to avoid confusing the debugger
+                    if (handledLineBreakpoint) {
+                        continue;
+                    }
+                    handledLineBreakpoint = true;
                     hit = true;
                     // check if breakpoint request limited to a specific thread
                     Object thread = info.getThread();
@@ -1049,7 +1057,7 @@ public final class DebuggerController implements ContextsListener {
                     }
                 }
 
-                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame, context.getLanguageClass()));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, frame, context));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);

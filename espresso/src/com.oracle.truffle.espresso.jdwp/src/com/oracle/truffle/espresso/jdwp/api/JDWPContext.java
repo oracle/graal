@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -474,4 +475,19 @@ public interface JDWPContext {
      */
     void clearFrameMonitors(CallFrame frame);
 
+    /**
+     * Aborts the context.
+     *
+     * @param exitCode the system exit code
+     */
+    void abort(int exitCode);
+
+    /**
+     * Returns the nearest {@link com.oracle.truffle.api.instrumentation.InstrumentableNode node} or
+     * <code>null</code>. The nodes are traversed by walking the parent node hierarchy.
+     *
+     * @param node the node
+     * @return the nearest instrumentable node
+     */
+    Node getInstrumentableNode(Node node);
 }

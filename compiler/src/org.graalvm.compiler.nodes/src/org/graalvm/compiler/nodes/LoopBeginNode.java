@@ -58,7 +58,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected int unswitches;
     protected int splits;
     protected int peelings;
-    protected int inversionCount;
+    protected boolean compilerInverted;
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
@@ -343,12 +343,13 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         unswitches++;
     }
 
-    public int getInversionCount() {
-        return inversionCount;
+    public boolean isCompilerInverted() {
+        return compilerInverted;
     }
 
-    public void setInversionCount(int count) {
-        inversionCount = count;
+    public void setCompilerInverted() {
+        assert !compilerInverted;
+        compilerInverted = true;
     }
 
     @Override

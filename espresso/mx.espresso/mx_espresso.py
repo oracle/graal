@@ -93,6 +93,10 @@ def _espresso_gate_runner(args, tasks):
         if t:
             jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
 
+    with Task('Espresso: GraalVM dist names', tasks, tags=['names']) as t:
+        if t:
+            mx_sdk_vm.verify_graalvm_configs(suites=['espresso'])
+
     mokapot_header_gate_name = 'Verify consistency of mokapot headers'
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:
         if t:
@@ -171,7 +175,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     short_name='java',
     installable_id='espresso',
     installable=True,
-    license_files=['LICENSE_ESPRESSO'],
+    license_files=['LICENSE_JAVAONTRUFFLE'],
     third_party_license_files=[],
     dependencies=['Truffle', 'Truffle NFI', 'ejvm'],
     truffle_jars=['espresso:ESPRESSO'],

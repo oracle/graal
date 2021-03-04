@@ -28,6 +28,8 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import java.util.Map;
+
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -36,6 +38,8 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
+
+import jdk.vm.ci.code.MemoryBarriers;
 
 /**
  * Creates a memory barrier.
@@ -60,6 +64,16 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return location;
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
+        map.put("barriersString", MemoryBarriers.barriersString(barriers));
+        return super.getDebugProperties(map);
+    }
+
+    public int getBarriers() {
+        return barriers;
     }
 
     @Override

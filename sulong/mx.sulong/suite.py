@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.239.0",
+  "mxversion" : "5.288.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -176,6 +176,9 @@ suite = {
         "test.sulongtest.lib" : "<path:SULONG_TEST_NATIVE>/<lib:sulongtest>",
         "test.sulongtest.lib.path" : "<path:SULONG_TEST_NATIVE>",
         "sulongtest.projectRoot" : "<path:com.oracle.truffle.llvm>/../",
+        "sulongtest.source.GCC_SOURCE" : "<path:GCC_SOURCE>",
+        "sulongtest.source.LLVM_TEST_SUITE" : "<path:LLVM_TEST_SUITE>",
+        "sulongtest.source.NWCC_SUITE" : "<path:NWCC_SUITE>",
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -850,6 +853,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.bitcode.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
+      "bundledLLVMOnly" : True,
       "variants" : ["O0"],
       "fileExts" : [".ll"],
       "buildEnv" : {
@@ -865,6 +869,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.bitcode.uncommon.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
+      "bundledLLVMOnly" : True,
       # This should be the O1 variant (and the CFLAGS buildEnv entry
       # below should be changed to -O1) but it currently breaks the
       # tests in the project (difference in behavior between O0 and
@@ -887,6 +892,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.bitcode.other.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
+      "bundledLLVMOnly" : True,
       "variants" : ["O0"],
       "fileExts" : [".ll"],
       "buildRef" : False,
@@ -903,6 +909,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.bitcode.amd64.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
+      "bundledLLVMOnly" : True,
       "variants" : ["O0"],
       "fileExts" : [".ll"],
       "buildRef" : True,
@@ -984,16 +991,13 @@ suite = {
         },
       },
     },
-    "inlineassemblytests" : {
+    "com.oracle.truffle.llvm.tests.inlineasm.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
       },
-      "dependencies" : [
-        "SULONG_TEST_SUITES",
-      ],
       "buildDependencies" : [
         "LINUX_AMD64_SUPPORT",
       ],
@@ -1174,8 +1178,7 @@ suite = {
       "requireDragonegg" : True,
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
-      "extraLibs" : ["libgfortran.so.3"],
+      "variants" : ["O0_OUT"],
       "single_job" : True, # problem with parallel builds and temporary module files
       "buildRef" : True,
       "buildEnv" : {
@@ -1194,7 +1197,6 @@ suite = {
     "parserTorture" : {
       "subDir" : "tests/gcc",
       "class" : "ExternalTestSuite",
-      "testClasses" : ["com.oracle.truffle.llvm.tests.ParserTortureSuite"],
       "testDir" : "gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile",
       "configDir" : "configs/gcc.c-torture/compile",
       "fileExts" : [".c"],
@@ -1219,7 +1221,6 @@ suite = {
     "llvm" : {
       "subDir" : "tests/llvm",
       "class" : "ExternalTestSuite",
-      "testClasses" : ["com.oracle.truffle.llvm.tests.LLVMSuite"],
       "testDir" : "test-suite-3.2.src",
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m"],
       "native" : True,
@@ -1243,13 +1244,11 @@ suite = {
     "shootout" : {
       "subDir" : "tests/benchmarksgame",
       "class" : "ExternalTestSuite",
-      "testClasses" : ["com.oracle.truffle.llvm.tests.ShootoutsSuite"],
       "testDir" : "benchmarksgame-2014-08-31/benchmarksgame/bench/",
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m", ".gcc", ".cint", ".gpp"],
       "native" : True,
       "vpath" : True,
       "variants" : ["O1_OUT"],
-      "extraLibs" : ["libgmp.so.10"],
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_LDFLAGS" : "-lm -lgmp",
@@ -1268,7 +1267,6 @@ suite = {
     "nwcc" : {
       "subDir" : "tests/nwcc",
       "class" : "ExternalTestSuite",
-      "testClasses" : ["com.oracle.truffle.llvm.tests.NWCCSuite"],
       "testDir" : "nwcc_0.8.3",
       "fileExts" : [".c"],
       "native" : True,
@@ -1529,18 +1527,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.linker.native/*",
           "dependency:com.oracle.truffle.llvm.tests.va.native/*",
-        ],
-      },
-      "license" : "BSD-new",
-      "testDistribution" : True,
-      "defaultBuild" : False,
-    },
-    "SULONG_LL_TEST_SUITES" : {
-      "native" : True,
-      "relpath" : True,
-      "platformDependent" : True,
-      "layout" : {
-        "./" : [
+          "dependency:com.oracle.truffle.llvm.tests.inlineasm.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
@@ -1551,6 +1538,105 @@ suite = {
       "testDistribution" : True,
       "defaultBuild" : False,
     },
+    "SULONG_EMBEDDED_TEST_SUITES" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:other/*",
+        ],
+      },
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    # <editor-fold desc="External Test Suites">
+    "SULONG_GCC_C_TEST_SUITE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:gcc_c/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_GCC_CPP_TEST_SUITE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:gcc_cpp/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_GCC_FORTRAN_TEST_SUITE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:gcc_fortran/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_PARSER_TORTURE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:parserTorture/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_LLVM_TEST_SUITE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:llvm/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_SHOOTOUT_TEST_SUITE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:shootout/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_NWCC_TEST_SUITE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:nwcc/*",
+        ],
+      },
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    # </editor-fold>
     "SULONG_TCK_NATIVE" : {
       "native" : True,
       "relpath" : True,

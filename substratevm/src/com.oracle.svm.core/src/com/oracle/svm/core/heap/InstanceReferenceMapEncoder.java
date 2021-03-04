@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 
 /**
@@ -56,7 +55,7 @@ public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
          * The table always starts with the empty reference map. This allows clients to actually
          * iterate the empty reference map, making a check for the empty map optional.
          */
-        assert CodeInfoQueryResult.EMPTY_REFERENCE_MAP == writeBuffer.getBytesWritten();
+        assert ReferenceMapIndex.EMPTY_REFERENCE_MAP == writeBuffer.getBytesWritten();
         writeBuffer.putS4(0);
 
         for (Map.Entry<ReferenceMapEncoder.Input, Long> entry : sortedEntries) {

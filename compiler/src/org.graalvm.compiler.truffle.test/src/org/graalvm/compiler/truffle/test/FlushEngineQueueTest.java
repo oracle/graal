@@ -40,7 +40,7 @@ public class FlushEngineQueueTest {
     @Test
     public void testTargetsDequeuedOnClose() {
 
-        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "true").option("engine.CompilationThreshold", "3").build();
+        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "true").option("engine.SingleTierCompilationThreshold", "3").build();
         context.enter();
 
         OptimizedCallTarget[] targets = new OptimizedCallTarget[300];

@@ -150,4 +150,23 @@ public interface ArithmeticLIRGeneratorTool {
     default Value emitMathMin(Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
+
+    @SuppressWarnings("unused")
+    default Value emitRound(Value operand, RoundingMode mode) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    enum RoundingMode {
+        NEAREST(0),
+        DOWN(1),
+        UP(2),
+        TRUNCATE(3);
+
+        public final int encoding;
+
+        RoundingMode(int encoding) {
+            this.encoding = encoding;
+        }
+    }
+
 }

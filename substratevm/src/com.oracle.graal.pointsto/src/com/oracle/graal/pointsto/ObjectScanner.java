@@ -372,8 +372,9 @@ public abstract class ObjectScanner {
                     if (workInProgressCount.get() > 0) {
                         int worklistLength = worklist.size();
                         while (!worklist.isEmpty()) {
+                            int poolSize = exec.isSequential() ? 1 : exec.getExecutorService().getPoolSize();
                             // Put workitems into buckets to avoid overhead for scheduling
-                            int bucketSize = Integer.max(1, Integer.max(worklistLength, worklist.size()) / (2 * exec.getExecutorService().getPoolSize()));
+                            int bucketSize = Integer.max(1, Integer.max(worklistLength, worklist.size()) / (2 * poolSize));
                             final ArrayList<WorklistEntry> items = new ArrayList<>();
                             while (!worklist.isEmpty() && items.size() < bucketSize) {
                                 items.add(worklist.remove());

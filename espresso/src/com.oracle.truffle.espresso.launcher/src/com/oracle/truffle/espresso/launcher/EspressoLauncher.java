@@ -40,7 +40,7 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-public class EspressoLauncher extends AbstractLanguageLauncher {
+public final class EspressoLauncher extends AbstractLanguageLauncher {
     private static final String AGENT_LIB = "java.AgentLib.";
     private static final String AGENT_PATH = "java.AgentPath.";
     private static final String JAVA_AGENT = "java.JavaAgent";
@@ -144,6 +144,10 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             currentArgument = null;
             skip = false;
             return index < arguments.size();
+        }
+
+        int getNumberOfProcessedArgs() {
+            return index + ((currentKey == null) ? 0 : 1 /* arg in processing */);
         }
 
         void pushLeftoversArgs() {
@@ -309,6 +313,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
                     mainClassName = getMainClassName(jarFileName);
                 }
+                buildJvmArgs(arguments, args.getNumberOfProcessedArgs());
                 args.pushLeftoversArgs();
                 break;
             }
@@ -332,6 +337,26 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         espressoOptions.put("java.Classpath", classpath);
 
         return unrecognized;
+    }
+
+    private void buildJvmArgs(List<String> arguments, int toBuild) {
+        /*
+         * Note:
+         *
+         * The format of the arguments passing through here is not the one expected by the java
+         * world. It is actually expected that the vm arguments list is populated with arguments
+         * which have been pre-formatted by the regular Java launcher when passed to the VM, ie: the
+         * arguments if the VM was created through a call to JNI_CreateJavaVM.
+         * 
+         * In particular, it expects all kay-value pairs to be equals-separated and not
+         * space-separated. Furthermore, it does not expect syntactic-sugared some arguments such as
+         * '-m' or '--modules', that would have been replaced by the regular java launcher as
+         * '-Djdk.module.main='.
+         */
+        assert toBuild <= arguments.size();
+        for (int i = 0; i < toBuild; i++) {
+            espressoOptions.put("java.VMArguments." + i, arguments.get(i));
+        }
     }
 
     private void parseNumberedOption(Arguments arguments, String property, String type) {

@@ -52,7 +52,7 @@ for /f "delims=" %%i in ("%relcp:;=!newline!%") do (
 )
 
 set "jvm_args=-Dorg.graalvm.launcher.shell=true "-Dorg.graalvm.launcher.executablename=%executablename%""
-set "launcher_args="
+set "launcher_args=<launcher_args>"
 
 :: Check option-holding variables.
 :: Those can be specified as the `option_vars` argument of the LauncherConfig constructor.

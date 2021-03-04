@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -49,6 +48,7 @@ import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 public class EagerParsingLazyFailingTest {
@@ -80,7 +80,7 @@ public class EagerParsingLazyFailingTest {
         Value load() {
             if (library == null) {
                 try {
-                    File file = TEST_DIR.resolve(testName + BaseSuiteHarness.TEST_DIR_EXT).resolve(FILENAME).toFile();
+                    File file = TEST_DIR.resolve(testName + CommonTestUtils.TEST_DIR_EXT).resolve(FILENAME).toFile();
                     Source source = Source.newBuilder(LLVMLanguage.ID, file).build();
                     library = context.eval(source);
                 } catch (RuntimeException e) {

@@ -201,6 +201,10 @@ public final class Types {
         return index;
     }
 
+    public static boolean isReference(Symbol<Type> type) {
+        return type.length() > 1;
+    }
+
     public static boolean isPrimitive(ByteSequence type) {
         if (type.length() != 1) {
             return false;
@@ -289,7 +293,7 @@ public final class Types {
     public Symbol<Type> fromClass(Class<?> clazz) {
         // TODO(peterssen): checkType is not needed here, just testing Class to Symbol<Type>
         // conversion.
-        return symbols.symbolify(ByteSequence.create(checkType(internalFromClassName(clazz.getCanonicalName()))));
+        return symbols.symbolify(ByteSequence.create(checkType(internalFromClassName(clazz.getName()))));
     }
 
     static ByteSequence checkType(ByteSequence sequence) {

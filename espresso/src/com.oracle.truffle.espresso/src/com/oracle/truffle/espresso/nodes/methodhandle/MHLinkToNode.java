@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,9 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -58,7 +61,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     private final int argCount;
     private final Linker linker;
-    private final int hiddenVmtarget;
+    private final Field hiddenVmtarget;
     private final boolean hasReceiver;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
@@ -66,7 +69,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
         this.argCount = Signatures.parameterCount(method.getParsedSignature(), false);
-        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET.getIndex();
+        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET;
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
         this.linker = findLinker(id);
         assert method.isStatic();
@@ -75,29 +78,36 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     @Override
     public Object call(Object[] args) {
         assert (getMethod().isStatic());
-        Method target = linker.linkTo(getTarget(args), args);
-        Object[] basicArgs = unbasic(args, target.getParsedSignature(), 0, argCount - 1, hasReceiver);
-        Object result = executeCall(basicArgs, target);
+        Method resolutionSeed = getTarget(args);
+        Object[] basicArgs = unbasic(args, resolutionSeed.getParsedSignature(), 0, argCount - 1, hasReceiver);
+        // method might have been redefined or removed by redefinition
+        if (resolutionSeed.isRemovedByRedefition()) {
+            Klass receiverKlass = hasReceiver ? ((StaticObject) basicArgs[0]).getKlass() : resolutionSeed.getDeclaringKlass();
+            resolutionSeed = ClassRedefinition.handleRemovedMethod(resolutionSeed, receiverKlass);
+        }
+
+        Method target = linker.linkTo(resolutionSeed, args);
+        Object result = executeCall(basicArgs, target.getMethodVersion());
         return rebasic(result, target.getReturnKind());
     }
 
-    protected abstract Object executeCall(Object[] args, Method target);
+    protected abstract Object executeCall(Object[] args, Method.MethodVersion target);
 
-    public static boolean canInline(Method target, Method cachedTarget) {
-        return target.identity() == cachedTarget.identity();
+    public static boolean canInline(Method.MethodVersion target, Method.MethodVersion cachedTarget) {
+        return target.getMethod().identity() == cachedTarget.getMethod().identity();
     }
 
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"inliningEnabled()", "canInline(target, cachedTarget)"})
-    Object executeCallDirect(Object[] args, Method target,
-                    @Cached("target") Method cachedTarget,
+    Object executeCallDirect(Object[] args, Method.MethodVersion target,
+                    @Cached("target") Method.MethodVersion cachedTarget,
                     @Cached("create(target.getCallTarget())") DirectCallNode directCallNode) {
         hits.inc();
         return directCallNode.call(args);
     }
 
     @Specialization(replaces = "executeCallDirect")
-    Object executeCallIndirect(Object[] args, Method target,
+    Object executeCallIndirect(Object[] args, Method.MethodVersion target,
                     @Cached("create()") IndirectCallNode callNode) {
         miss.inc();
         return callNode.call(target.getCallTarget(), args);
@@ -152,6 +162,6 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         assert args.length >= 1;
         StaticObject memberName = (StaticObject) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.java_lang_invoke_MemberName);
-        return (Method) memberName.getUnsafeField(hiddenVmtarget);
+        return (Method) hiddenVmtarget.getHiddenObject(memberName);
     }
 }

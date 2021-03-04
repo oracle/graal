@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.tests.options;
 
+import org.junit.Assume;
+
 public final class TestOptions {
     public static final String[] FILE_EXTENSION_FILTER = getFileExtensions();
     public static final String TEST_DISCOVERY_PATH = System.getProperty("sulongtest.testDiscoveryPath");
@@ -36,8 +38,8 @@ public final class TestOptions {
     public static final String TEST_AOT_ARGS = System.getProperty("sulongtest.testAOTArgs");
     public static final String TEST_FILTER = System.getProperty("sulongtest.testFilter");
     public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
+    public static final String CONFIG_ROOT = System.getProperty("sulongtest.configRoot");
     public static final String TEST_SUITE_PATH = getTestDistribution("SULONG_TEST_SUITES");
-    public static final String LL_TEST_SUITE_PATH = getTestDistribution("SULONG_LL_TEST_SUITES");
     public static final String EXTERNAL_TEST_SUITE_PATH = System.getProperty("sulongtest.externalTestSuitePath");
     public static final String TEST_SOURCE_PATH = System.getProperty("sulongtest.testSourcePath");
     public static final String TEST_CONFIG_PATH = System.getProperty("sulongtest.testConfigPath");
@@ -52,7 +54,7 @@ public final class TestOptions {
     }
 
     /**
-     * Gets get path of an mx test distribution.
+     * Gets the path of an mx test distribution.
      * 
      * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
      */
@@ -62,5 +64,25 @@ public final class TestOptions {
             throw new RuntimeException("Test distribution does not exist: " + distribution);
         }
         return property;
+    }
+
+    /**
+     * Gets the path of a test source.
+     *
+     * The properties are manually set in {@code suite.py}.
+     */
+    public static String getSourcePath(String source) {
+        String property = System.getProperty("sulongtest.source." + source);
+        if (property == null) {
+            throw new RuntimeException("Test sources does not exist: " + source);
+        }
+        return property;
+    }
+
+    /**
+     * Assumption that the tests have been compiled with the bundled LLVM version.
+     */
+    public static void assumeBundledLLVM() {
+        Assume.assumeTrue("Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'", System.getenv("CLANG_CC") == null);
     }
 }

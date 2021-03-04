@@ -1035,6 +1035,15 @@ public class GraphUtil {
                 return null;
             }
         }
+
+        @Override
+        public boolean supportsRounding() {
+            if (getLowerer() != null) {
+                return getLowerer().supportsRounding();
+            } else {
+                return false;
+            }
+        }
     }
 
     public static SimplifierTool getDefaultSimplifier(CoreProviders providers, boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {

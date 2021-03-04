@@ -82,9 +82,17 @@ public final class QuantifierGuard {
         enterZeroWidth,
         /**
          * Transition is leaving a quantified expression that may match the empty string. Check if
-         * the current index is greater than the saved index.
+         * the current index is greater than the saved index. In the case of Ruby, also check if any
+         * capture groups were modified.
          */
         exitZeroWidth,
+        /**
+         * Transition is leaving a quantified expression that may match the empty string and it is
+         * about to continue to what follows the loop. This is only possible in Ruby and only when
+         * the last iteration of the quantiifed expression fails the empty check (the check for the
+         * index and the state of capture groups tested by {@link #exitZeroWidth}).
+         */
+        escapeZeroWidth,
         /**
          * Transition would go through an entire quantified expression without matching anything.
          * Check if quantifier count is less than {@link Quantifier#getMin()}, then increase the
@@ -97,17 +105,32 @@ public final class QuantifierGuard {
          * guard doesn't do anything, it just serves as a marker for
          * {@link QuantifierGuard#getKindReverse()}.
          */
-        exitEmptyMatch
+        exitEmptyMatch,
+        /**
+         * Transition is passing a capture group boundary. We need this information in order to
+         * implement the empty check test in {@link #exitZeroWidth}, which, in the case of Ruby,
+         * also needs to monitor the state of capture groups in between {@link #enterZeroWidth} and
+         * {@link #exitZeroWidth}.
+         */
+        updateCG
     }
 
     public static final QuantifierGuard[] NO_GUARDS = {};
 
     private final Kind kind;
     private final Quantifier quantifier;
+    private final int index;
 
     private QuantifierGuard(Kind kind, Quantifier quantifier) {
         this.kind = kind;
         this.quantifier = quantifier;
+        this.index = -1;
+    }
+
+    private QuantifierGuard(Kind kind, int index) {
+        this.kind = kind;
+        this.quantifier = null;
+        this.index = index;
     }
 
     public static QuantifierGuard createEnter(Quantifier quantifier) {
@@ -138,12 +161,20 @@ public final class QuantifierGuard {
         return new QuantifierGuard(Kind.exitZeroWidth, quantifier);
     }
 
+    public static QuantifierGuard createEscapeZeroWidth(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.escapeZeroWidth, quantifier);
+    }
+
     public static QuantifierGuard createEnterEmptyMatch(Quantifier quantifier) {
         return new QuantifierGuard(Kind.enterEmptyMatch, quantifier);
     }
 
     public static QuantifierGuard createExitEmptyMatch(Quantifier quantifier) {
         return new QuantifierGuard(Kind.exitEmptyMatch, quantifier);
+    }
+
+    public static QuantifierGuard createUpdateCG(int index) {
+        return new QuantifierGuard(Kind.updateCG, index);
     }
 
     public Kind getKind() {
@@ -166,11 +197,14 @@ public final class QuantifierGuard {
             case enterZeroWidth:
                 return Kind.exitZeroWidth;
             case exitZeroWidth:
+            case escapeZeroWidth:
                 return Kind.enterZeroWidth;
             case enterEmptyMatch:
                 return Kind.exitEmptyMatch;
             case exitEmptyMatch:
                 return Kind.enterEmptyMatch;
+            case updateCG:
+                return Kind.updateCG;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
@@ -180,9 +214,20 @@ public final class QuantifierGuard {
         return quantifier;
     }
 
+    /**
+     * Returns the capture group boundary index for {@code updateCG} guards.
+     */
+    public int getIndex() {
+        return index;
+    }
+
     @TruffleBoundary
     @Override
     public String toString() {
-        return kind + " " + quantifier;
+        if (quantifier != null) {
+            return kind + " " + quantifier;
+        } else {
+            return kind + " " + index;
+        }
     }
 }

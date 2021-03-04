@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.phases.schedule;
 
+import java.util.ArrayDeque;
 import java.util.List;
 
 import org.graalvm.collections.EconomicSet;
@@ -32,9 +33,11 @@ import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -43,6 +46,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -135,15 +139,6 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                 for (Node usage : n.usages()) {
                     Node usageNode = usage;
 
-                    if (!(usage instanceof GuardNode) && usage.hasNoUsages()) {
-                        /*
-                         * We do not want to run the schedule behind the verification with dead code
-                         * elimination, i.e., floating nodes without usages are not removed, thus we
-                         * must handle the case that a floating node without a usage occurs here.
-                         */
-                        continue;
-                    }
-
                     if (usageNode instanceof PhiNode) {
                         PhiNode phiNode = (PhiNode) usage;
                         usageNode = phiNode.merge();
@@ -156,6 +151,22 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                         }
                     }
                     Block usageBlock = nodeMap.get(usageNode);
+
+                    if (usageBlock == null) {
+                        if (usage instanceof FloatingNode || usage instanceof VirtualState || usage instanceof CallTargetNode) {
+                            if (!(usage instanceof GuardNode)) {
+                                /*
+                                 * We do not want to run the schedule behind the verification with
+                                 * dead code elimination, i.e., floating nodes without usages are
+                                 * not removed, thus we must handle the case that a floating node
+                                 * without a usage occurs here.
+                                 */
+                                if (nonFixedNodeTreeWithoutUsages(usage)) {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
 
                     assert usageBlock != null || usage instanceof ProxyNode : "Usage " + usageNode + " of node " + n + " has no block";
 
@@ -185,6 +196,29 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
             }
         }
         return currentState;
+    }
+
+    private static boolean nonFixedNodeTreeWithoutUsages(Node n) {
+        if (!(n instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode)) {
+            return false;
+        }
+        NodeBitMap visited = n.graph().createNodeBitMap();
+        ArrayDeque<Node> stack = new ArrayDeque<>();
+        stack.push(n);
+        while (!stack.isEmpty()) {
+            Node cur = stack.pop();
+            if (visited.isMarked(cur)) {
+                continue;
+            }
+            if (!(cur instanceof FloatingNode || cur instanceof VirtualState || cur instanceof CallTargetNode)) {
+                return false;
+            }
+            visited.mark(cur);
+            for (Node usage : cur.usages()) {
+                stack.push(usage);
+            }
+        }
+        return true;
     }
 
     private static void addFloatingReadUsages(EconomicSet<FloatingReadNode> currentState, Node n) {

@@ -43,7 +43,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     @Test
     public void testVisibleOptions() {
         Engine engine = Engine.create();
-        OptionDescriptor compilationThreshold = engine.getOptions().get("engine.CompilationThreshold");
+        OptionDescriptor compilationThreshold = engine.getOptions().get("engine.SingleTierCompilationThreshold");
         Assert.assertNotNull(compilationThreshold);
         engine.close();
     }
@@ -57,20 +57,20 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
         Runnable doWhile = () -> testCompilationThreshold(50, "50", null);
         testCompilationThreshold(42, "42", doWhile); // test default value
-        testCompilationThreshold(target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold), null, doWhile);
+        testCompilationThreshold(target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold), null, doWhile);
         testCompilationThreshold(2, "2", doWhile); // test default value
     }
 
     @Test
     public void testPolyglotCompilerOptionsAreUsed() {
-        setupContext("engine.CompilationThreshold", "27", //
+        setupContext("engine.LastTierCompilationThreshold", "27", //
                         "engine.TraceCompilation", "true", //
                         "engine.TraceCompilationDetails", "true", //
                         "engine.Inlining", "false", //
                         "engine.Splitting", "false", //
                         "engine.Mode", "latency");
         OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
-        Assert.assertEquals(27, (int) target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
+        Assert.assertEquals(27, (int) target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold));
         Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilation));
         Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails));
         Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Inlining));
@@ -98,7 +98,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
     private void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
         Context ctx = setupContext(compilationThresholdOption == null ? new String[]{"engine.MultiTier", "false"}
-                        : new String[]{"engine.CompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
+                        : new String[]{"engine.SingleTierCompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
         ctx.eval("sl", "function test() {}");
         SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
 

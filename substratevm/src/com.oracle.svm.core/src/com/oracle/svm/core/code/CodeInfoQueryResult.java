@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,19 +41,6 @@ public class CodeInfoQueryResult {
      * registered for the {@link #getIP() IP}.
      */
     public static final int NO_EXCEPTION_OFFSET = 0;
-
-    /**
-     * Marker value returned by {@link #getReferenceMapIndex()} when no reference map is registered
-     * for the {@link #getIP() IP}.
-     */
-
-    public static final int NO_REFERENCE_MAP = -1;
-
-    /**
-     * Marker value returned by {@link #getReferenceMapIndex()} when the reference map is empty for
-     * the {@link #getIP() IP}.
-     */
-    public static final int EMPTY_REFERENCE_MAP = 0;
 
     /**
      * Marker value of {@link #getFrameInfo()} when no frame information is available for the

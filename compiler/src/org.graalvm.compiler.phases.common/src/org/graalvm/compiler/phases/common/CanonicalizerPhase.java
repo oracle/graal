@@ -597,6 +597,11 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
 
             @Override
+            public boolean supportsRounding() {
+                return context.getLowerer().supportsRounding();
+            }
+
+            @Override
             public OptionValues getOptions() {
                 return options;
             }

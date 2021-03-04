@@ -35,19 +35,20 @@ import org.graalvm.options.OptionMap;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.jni.NativeEnv;
-import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
-final class AgentLibraries {
+final class AgentLibraries implements ContextAccess {
 
     private static final String AGENT_ONLOAD = "Agent_OnLoad";
-    private static final String ONLOAD_SIGNATURE = "(pointer, pointer, pointer): sint32";
+    private static final NativeSignature ONLOAD_SIGNATURE = NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
 
     private final EspressoContext context;
 
@@ -60,10 +61,9 @@ final class AgentLibraries {
 
     TruffleObject bind(Method method, String mangledName) {
         for (AgentLibrary agent : agents) {
-            try {
-                return Method.bind(agent.lib, method, mangledName);
-            } catch (UnknownIdentifierException e) {
-                /* Not found in this library: Safe to ignore and check for the next one */
+            TruffleObject bound = method.lookupAndBind(agent.lib, mangledName);
+            if (bound != null) {
+                return bound;
             }
         }
         return null;
@@ -73,11 +73,11 @@ final class AgentLibraries {
         Object ret;
         for (AgentLibrary agent : agents) {
             TruffleObject onLoad = lookupOnLoad(agent);
-            if (onLoad == null || interop.isNull(onLoad)) {
+            if (onLoad == null) {
                 throw context.abort("Unable to locate " + AGENT_ONLOAD + " in agent " + agent.name);
             }
             try (RawBuffer optionBuffer = RawBuffer.getNativeString(agent.options)) {
-                ret = interop.execute(onLoad, context.getVM().getJavaVM(), optionBuffer.pointer(), NativeEnv.RawPointer.nullInstance());
+                ret = interop.execute(onLoad, context.getVM().getJavaVM(), optionBuffer.pointer(), RawPointer.nullInstance());
                 assert interop.fitsInInt(ret);
                 if (interop.asInt(ret) != JNI_OK) {
                     throw context.abort(AGENT_ONLOAD + " call for agent " + agent.name + " returned with error: " + interop.asInt(ret));
@@ -104,27 +104,27 @@ final class AgentLibraries {
         TruffleObject library;
         // TODO: handle statically linked libraries
         if (agent.isAbsolutePath) {
-            library = NativeLibrary.loadLibrary(Paths.get(agent.name));
+            library = getNativeAccess().loadLibrary(Paths.get(agent.name));
         } else {
             // Lookup standard directory
-            library = NativeEnv.loadLibraryInternal(context.getVmProperties().bootLibraryPath(), agent.name);
-            if (interop.isNull(library)) {
+            library = getNativeAccess().loadLibrary(context.getVmProperties().bootLibraryPath(), agent.name, false);
+            if (library == null) {
                 // Try library path directory
-                library = NativeEnv.loadLibraryInternal(context.getVmProperties().javaLibraryPath(), agent.name);
+                library = getNativeAccess().loadLibrary(context.getVmProperties().javaLibraryPath(), agent.name, false);
             }
         }
-        if (interop.isNull(library)) {
+        if (library == null) {
             throw context.abort("Could not locate library for agent " + agent.name);
         }
         agent.lib = library;
 
-        TruffleObject onLoad;
-        try {
-            onLoad = NativeLibrary.lookupAndBind(library, AGENT_ONLOAD, ONLOAD_SIGNATURE);
-        } catch (UnknownIdentifierException e) {
-            return null;
-        }
+        TruffleObject onLoad = getNativeAccess().lookupAndBindSymbol(library, AGENT_ONLOAD, ONLOAD_SIGNATURE);
         return onLoad;
+    }
+
+    @Override
+    public EspressoContext getContext() {
+        return context;
     }
 
     private static class AgentLibrary {

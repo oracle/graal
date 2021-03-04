@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -63,4 +64,10 @@ public interface LoweringProvider {
      * {@code long} values.
      */
     boolean supportsOptimizedFilling(OptionValues options);
+
+    /**
+     * Indicates whether this target platform supports lowering {@link RoundNode}.
+     */
+    boolean supportsRounding();
+
 }

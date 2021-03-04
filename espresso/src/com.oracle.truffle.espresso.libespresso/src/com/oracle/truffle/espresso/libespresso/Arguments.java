@@ -26,6 +26,9 @@ import static com.oracle.truffle.espresso.libespresso.jniapi.JNIErrors.JNI_ERR;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -48,6 +51,17 @@ public final class Arguments {
     private static final String AGENT_PATH = "java.AgentPath.";
     private static final String JAVA_AGENT = "java.JavaAgent";
 
+    /*
+     * HotSpot comment:
+     * 
+     * the -Djava.class.path and the -Dsun.java.command options are omitted from jvm_args string as
+     * each have their own PerfData string constant object.
+     */
+    private static final List<String> ignoredJvmArgs = Arrays.asList(
+                    "-Djava.class.path",
+                    "-Dsun.java.command",
+                    "-Dsun.java.launcher");
+
     private Arguments() {
     }
 
@@ -59,6 +73,7 @@ public final class Arguments {
         String bootClasspathAppend = null;
 
         ArgumentsHandler handler = new ArgumentsHandler(builder, args);
+        List<String> jvmArgs = new ArrayList<>();
 
         boolean ignoreUnrecognized = false;
 
@@ -68,6 +83,7 @@ public final class Arguments {
             try {
                 if (str.isNonNull()) {
                     String optionString = CTypeConversion.toJavaString(option.getOptionString());
+                    buildJvmArg(jvmArgs, optionString);
                     if (optionString.startsWith("-Xbootclasspath:")) {
                         bootClasspathPrepend = null;
                         bootClasspathAppend = null;
@@ -199,8 +215,21 @@ public final class Arguments {
 
         builder.option("java.Classpath", classpath);
 
+        for (int i = 0; i < jvmArgs.size(); i++) {
+            builder.option("java.VMArguments." + i, jvmArgs.get(i));
+        }
+
         handler.argumentProcessingDone();
         return JNIErrors.JNI_OK();
+    }
+
+    private static void buildJvmArg(List<String> jvmArgs, String optionString) {
+        for (String ignored : ignoredJvmArgs) {
+            if (optionString.startsWith(ignored)) {
+                return;
+            }
+        }
+        jvmArgs.add(optionString);
     }
 
     private static boolean isExperimentalFlag(String optionString) {

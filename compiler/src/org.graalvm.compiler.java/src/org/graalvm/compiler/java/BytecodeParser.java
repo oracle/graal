@@ -620,12 +620,9 @@ public class BytecodeParser implements GraphBuilderContext {
 
                         /*
                          * To enable any needed modifications for the exception object with its new
-                         * state, finishInstruction must be called.
+                         * state, processInstruction must be called.
                          */
-                        FixedNode originalNext = exceptionNode.next();
-                        exceptionNode.setNext(null);
-                        FixedWithNextNode lastInstruction = parser.finishInstruction(exceptionNode, dispatchState);
-                        lastInstruction.setNext(originalNext);
+                        parser.processInstruction(exceptionNode, dispatchState);
 
                     } else if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
                         if (graph.getGuardsStage().allowsFloatingGuards()) {
@@ -1344,7 +1341,7 @@ public class BytecodeParser implements GraphBuilderContext {
             dispatchState.setRethrowException(true);
         }
         this.controlFlowSplit = true;
-        FixedWithNextNode afterExceptionLoaded = finishInstruction(dispatchBegin, dispatchState);
+        FixedWithNextNode afterExceptionLoaded = processInstruction(dispatchBegin, dispatchState);
 
         if (deoptimizeOnly) {
             DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
@@ -2682,7 +2679,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
             if (returnMergeNode != null) {
                 returnMergeNode.setStateAfter(createFrameState(stream.nextBCI(), returnMergeNode));
-                lastInstr = finishInstruction(returnMergeNode, frameState);
+                lastInstr = processInstruction(returnMergeNode, frameState);
             }
             return calleeReturnValue;
         }
@@ -3314,7 +3311,7 @@ public class BytecodeParser implements GraphBuilderContext {
     @SuppressWarnings("try")
     private void createExceptionDispatch(ExceptionDispatchBlock block) {
         try (DebugCloseable context = openNodeContext(frameState, BytecodeFrame.AFTER_EXCEPTION_BCI)) {
-            lastInstr = finishInstruction(lastInstr, frameState);
+            processInstruction(lastInstr);
 
             assert frameState.stackSize() == 1 : frameState;
             if (block.handler.isCatchAll()) {
@@ -3410,7 +3407,7 @@ public class BytecodeParser implements GraphBuilderContext {
         assert lastInstr.next() == null : "instructions already appended at block " + block;
         debug.log("  frameState: %s", frameState);
 
-        lastInstr = finishInstruction(lastInstr, frameState);
+        processInstruction(lastInstr);
 
         int endBCI = stream.endBCI();
 
@@ -3464,7 +3461,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
             assert block == currentBlock;
             assert checkLastInstruction();
-            lastInstr = finishInstruction(lastInstr, frameState);
+            processInstruction(lastInstr);
             if (bci < endBCI) {
                 if (bci > block.endBci) {
                     assert !block.getSuccessor(0).isExceptionEntry();
@@ -3542,13 +3539,16 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     /**
-     * Hook for subclasses to modify the last instruction or add other instructions.
+     * Like {@link GraphBuilderContext#processInstruction(FixedWithNextNode)}, a hook for subclasses
+     * to add other instructions after the provided instruction.
      *
-     * @param instr The last instruction (= fixed node) which was added.
-     * @param state The current frame state.
-     * @return Returns the (new) last instruction.
+     * @param instr The instruction used to determine which instructions must be added.
+     * @param state The current state under which the node is processed.
+     * @return Returns either the last instruction added (if changes performed) or the provided
+     *         instruction.
      */
-    protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, FrameStateBuilder state) {
+    protected FixedWithNextNode processInstruction(FixedWithNextNode instr, FrameStateBuilder state) {
+        /* By default, no additional processing is needed. */
         return instr;
     }
 

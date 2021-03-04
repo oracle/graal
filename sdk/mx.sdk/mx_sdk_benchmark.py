@@ -113,12 +113,18 @@ class NativeImageBenchmarkMixin(object):
             return None
 
 
-class JMeterBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
-    """Base class for JMeter based benchmark suites."""
+class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImageBenchmarkMixin, mx_benchmark.AveragingBenchmarkMixin):
+    """
+    Base class for Microservice benchmark suites. A Microservice is an application that opens a port that is ready to
+    receive requests. This benchmark suite runs a tester process in the background (such as JMeter or Wrk2) and run a
+    Microservice application in foreground. Once the tester finishes stress testing the application, the tester process
+    terminates and the application is killed with SIGTERM.
+    """
 
     def __init__(self):
-        super(JMeterBenchmarkSuite, self).__init__()
-        self.jmeterOutput = None
+        super(BaseMicroserviceBenchmarkSuite, self).__init__()
+        self.testerOutput = None
+        self.bmSuiteArgs = None
 
     def benchSuiteName(self):
         return self.name()
@@ -139,7 +145,79 @@ class JMeterBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averagi
         """
         return 8080
 
-    def workloadPath(self, benchmark):
+    def inNativeMode(self):
+        return self.jvm(self.bmSuiteArgs) == "native-image"
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        return self.vmArgs(bmSuiteArgs) + ["-jar", self.applicationPath()]
+
+    @staticmethod
+    def waitForPort(port, timeout=10):
+        try:
+            import psutil
+        except ImportError:
+            mx.abort("Failed to import {0} dependency module: psutil".format(BaseMicroserviceBenchmarkSuite.__name__))
+        for _ in range(timeout + 1):
+            for proc in psutil.process_iter():
+                try:
+                    for conns in proc.connections(kind='inet'):
+                        if conns.laddr.port == port:
+                            return proc
+                except:
+                    pass
+            time.sleep(1)
+        return None
+
+    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
+        ret_code, applicationOutput, dims = super(BaseMicroserviceBenchmarkSuite, self).runAndReturnStdOut(benchmarks, bmSuiteArgs)
+        return ret_code, self.testerOutput.underlying.data + applicationOutput, dims
+
+    def tailDatapointsToSkip(self, results):
+        return int(len(results) * .10)
+
+    @staticmethod
+    def terminateApplication(port):
+        proc = BaseMicroserviceBenchmarkSuite.waitForPort(port, 0)
+        if proc:
+            proc.send_signal(signal.SIGTERM)
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def runTesterInBackground(benchmarkSuite, benchmarkName):
+        if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.applicationPort()):
+            mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
+        benchmarkSuite.runTester(benchmarkName)
+        if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.applicationPort()):
+            mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
+
+    def run_stage(self, stage, server_command, out, err, cwd, nonZeroIsFatal):
+        if 'image' in stage:
+            # For image stages, we just run the given command
+            return super(BaseMicroserviceBenchmarkSuite, self).run_stage(stage, server_command, out, err, cwd, nonZeroIsFatal)
+        else:
+            # For run stages, we need to run the server and the loader
+            threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self, self.benchmarkName()]).start()
+            return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+
+    def run(self, benchmarks, bmSuiteArgs):
+        if len(benchmarks) > 1:
+            mx.abort("A single benchmark should be specified for {0}.".format(BaseMicroserviceBenchmarkSuite.__name__))
+        self.bmSuiteArgs = bmSuiteArgs
+        self.benchmark_name = benchmarks[0]
+        if not self.inNativeMode():
+            threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self, benchmarks[0]]).start()
+        results = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        results = results[:len(results) - self.tailDatapointsToSkip(results)]
+        self.addAverageAcrossLatestResults(results, "throughput")
+        return results
+
+
+class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+    """Base class for JMeter based benchmark suites."""
+
+    def jmeterWorkloadPath(self, benchmark):
         """Returns the JMeter workload (.jmx file) path.
 
         :return: Path to workload file.
@@ -149,16 +227,6 @@ class JMeterBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averagi
 
     def jmeterVersion(self):
         return '5.3'
-
-    def jmeterPath(self):
-        jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
-        return os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
-
-    def tailDatapointsToSkip(self, results):
-        return int(len(results) * .10)
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        return self.vmArgs(bmSuiteArgs) + ["-jar", self.applicationPath()]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         # Example of jmeter output:
@@ -179,55 +247,105 @@ class JMeterBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averagi
             )
         ]
 
-    @staticmethod
-    def findApplication(port, timeout=10):
-        try:
-            import psutil
-        except ImportError:
-            mx.abort("Failed to import JMeterBenchmarkSuite dependency module: psutil")
-        for _ in range(timeout + 1):
-            for proc in psutil.process_iter():
-                try:
-                    for conns in proc.connections(kind='inet'):
-                        if conns.laddr.port == port:
-                            return proc
-                except:
-                    pass
-            time.sleep(1)
-        return None
-
-    @staticmethod
-    def terminateApplication(port):
-        proc = JMeterBenchmarkSuite.findApplication(port, 0)
-        if proc:
-            proc.send_signal(signal.SIGTERM)
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def runJMeterInBackground(jmeterBenchmarkSuite, benchmarkName):
-        if not JMeterBenchmarkSuite.findApplication(jmeterBenchmarkSuite.applicationPort()):
-            mx.abort("Failed to find server application in JMeterBenchmarkSuite")
-        jmeterCmd = [mx.get_jdk().java, "-jar", jmeterBenchmarkSuite.jmeterPath(), "-n", "-t", jmeterBenchmarkSuite.workloadPath(benchmarkName), "-j", "/dev/stdout"] # pylint: disable=line-too-long
+    def runTester(self, benchmarkName):
+        jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
+        jmeterPath = os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
+        jmeterCmd = [mx.get_jdk().java, "-jar", jmeterPath, "-n", "-t", self.jmeterWorkloadPath(benchmarkName), "-j", "/dev/stdout"]  # pylint: disable=line-too-long
         mx.log("Running JMeter: {0}".format(jmeterCmd))
-        jmeterBenchmarkSuite.jmeterOutput = mx.TeeOutputCapture(mx.OutputCapture())
-        mx.run(jmeterCmd, out=jmeterBenchmarkSuite.jmeterOutput, err=subprocess.PIPE)
-        if not jmeterBenchmarkSuite.terminateApplication(jmeterBenchmarkSuite.applicationPort()):
-            mx.abort("Failed to terminate server application in JMeterBenchmarkSuite")
+        self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
+        mx.run(jmeterCmd, out=self.testerOutput, err=subprocess.PIPE)
 
-    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
-        ret_code, _, dims = super(JMeterBenchmarkSuite, self).runAndReturnStdOut(benchmarks, bmSuiteArgs)
-        return ret_code, self.jmeterOutput.underlying.data, dims
 
-    def run(self, benchmarks, bmSuiteArgs):
-        if len(benchmarks) > 1:
-            mx.abort("A single benchmark should be specified for the selected suite.")
-        if isinstance(self, NativeImageBenchmarkMixin):
-            self.benchmark_name = benchmarks[0]
+class BaseWrk2BenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+    """Base class for Wrk2 based benchmark suites."""
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        # Example of wrk2 output:
+        # " 50.000%  3.24ms"
+        return [
+            mx_benchmark.StdOutRule(
+                r"^\s*(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)ms$",
+                {
+                    "benchmark": benchmarks[0],
+                    "bench-suite": self.benchSuiteName(),
+                    "metric.name": "sample-time",
+                    "metric.value": ("<latency>", float),
+                    "metric.unit": "ms",
+                    "metric.better": "lower",
+                    "metric.percentile": ("<percentile>", float),
+                }
+            )
+        ]
+
+    def loadConfiguration(self, benchmarkName):
+        """Returns a json object that describes the Wrk2 configuration. The following syntax is expected:
+        {
+          "connections" : <number of connections to keep open>,
+          "script" : <path to lua script to be used>,
+          "threads" : <number of threads to use>,
+          "duration" : <duration of the test, for example "30s">,
+          "warmup-duration" : <duration of the warmup run, for example "30s">,
+          "rate" : <work rate (requests per second)>,
+          "target-url" : <URL to target, for example "http://localhost:8080">,
+          "target-path" : <path to append to the target URL>
+        }
+
+        All json fields are optional except the rate and the target-url.
+
+        :return: Configuration json.
+        :rtype: json
+        """
+        raise NotImplementedError()
+
+    def getScriptPath(self, config):
+        pass
+
+    def runTester(self, benchmarkName):
+        config = self.loadConfiguration(benchmarkName)
+        wrkDirectory = mx.library("WRK2", True).get_path(True)
+        if mx.get_os() == "linux":
+            distro = "linux"
+        elif mx.get_os() == "darwin":
+            distro = "macos"
         else:
-            threading.Thread(target=JMeterBenchmarkSuite.runJMeterInBackground, args=[self, benchmarks[0]]).start()
-        results = super(JMeterBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
-        results = results[:len(results) - self.tailDatapointsToSkip(results)]
-        self.addAverageAcrossLatestResults(results, "throughput")
-        return results
+            mx.abort("{0} not supported in {1}.".format(BaseMicroserviceBenchmarkSuite.__name__, mx.get_os()))
+
+        wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
+        wrkCmd = [wrkPath, "--latency"]
+
+        for optional in ["connections", "threads"]:
+            if optional in config:
+                wrkCmd += ["--" + optional, str(config[optional])]
+
+        if "script" in config:
+            wrkCmd += ["--script", str(self.getScriptPath(config))]
+
+        if "rate" in config:
+            wrkCmd += ["--rate", str(config["rate"])]
+        else:
+            mx.abort("rate not specified in Wrk2 configuration.")
+
+        if "target-url" in config:
+            if "target-path" in config:
+                wrkCmd.append(str(config["target-url"] + config["target-path"]))
+            else:
+                wrkCmd.append(str(config["target-url"]))
+        else:
+            mx.abort("target-url not specified in Wrk2 configuration.")
+
+        warmupDuration = None
+        if self.inNativeMode():
+            warmupDuration = config.get("warmup-duration-native-image", None)
+        elif "warmup-duration" in config:
+            warmupDuration = config["warmup-duration"]
+        if warmupDuration:
+            mx.log("Warming up with Wrk2: {0}".format(wrkCmd + ["--duration", str(warmupDuration)]))
+            warmupOutput = mx.TeeOutputCapture(mx.OutputCapture())
+            mx.run(wrkCmd, out=warmupOutput, err=subprocess.PIPE)
+
+        if "duration" in config:
+            wrkCmd += ["--duration", str(config["duration"])]
+
+        mx.log("Running Wrk2: {0}".format(wrkCmd))
+        self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
+        mx.run(wrkCmd, out=self.testerOutput, err=subprocess.PIPE)

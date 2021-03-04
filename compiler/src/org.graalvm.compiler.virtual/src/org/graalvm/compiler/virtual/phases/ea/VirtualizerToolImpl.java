@@ -373,4 +373,9 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
             return null;
         }
     }
+
+    @Override
+    public boolean supportsRounding() {
+        return getLowerer().supportsRounding();
+    }
 }

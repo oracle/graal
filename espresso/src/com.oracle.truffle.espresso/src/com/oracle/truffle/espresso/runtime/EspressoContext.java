@@ -29,8 +29,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +42,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -62,6 +67,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -97,6 +103,7 @@ public final class EspressoContext {
     private final TruffleLanguage.Env env;
 
     private String[] mainArguments;
+    private String[] vmArguments;
 
     // region Debug
     private final TimerCollection timers;
@@ -152,7 +159,6 @@ public final class EspressoContext {
     public final boolean EnableManagement;
     public final EspressoOptions.VerifyMode Verify;
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
-    public final boolean IsolatedNamespace;
     public final boolean Polyglot;
     public final boolean ExitHost;
     private final String multiThreadingDisabled;
@@ -175,6 +181,7 @@ public final class EspressoContext {
     @CompilationFinal private EspressoProperties vmProperties;
     @CompilationFinal private JavaVersion javaVersion;
     @CompilationFinal private AgentLibraries agents;
+    @CompilationFinal private NativeAccess nativeAccess;
     // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -252,9 +259,7 @@ public final class EspressoContext {
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
 
-        // Isolated (native) namespaces via dlmopen is only supported on Linux.
-        this.IsolatedNamespace = env.getOptions().get(EspressoOptions.UseTruffleNFIIsolatedNamespace) && OS.getCurrent() == OS.Linux;
-
+        this.vmArguments = buildVmArguments();
     }
 
     private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
@@ -318,6 +323,38 @@ public final class EspressoContext {
         this.mainArguments = mainArguments;
     }
 
+    public String[] getVmArguments() {
+        return vmArguments;
+    }
+
+    private String[] buildVmArguments() {
+        OptionMap<String> argsMap = getEnv().getOptions().get(EspressoOptions.VMArguments);
+        if (argsMap == null) {
+            return new String[0];
+        }
+        Set<Map.Entry<String, String>> set = argsMap.entrySet();
+        int length = set.size();
+        String[] array = new String[length];
+        for (Map.Entry<String, String> entry : set) {
+            try {
+                String key = entry.getKey();
+                int idx = Integer.parseInt(key.substring(key.lastIndexOf('.') + 1));
+                if (idx < 0 || idx >= length) {
+                    getLogger().severe("Unsupported use of the 'java.VMArguments' option: " +
+                                    "Declared index: " + idx + ", actual number of arguments: " + length + ".\n" +
+                                    "Please only declare positive index starting from 0, and growing by 1 each.");
+                    throw EspressoError.shouldNotReachHere();
+                }
+                array[idx] = entry.getValue();
+            } catch (NumberFormatException e) {
+                getLogger().warning("Unsupported use of the 'java.VMArguments' option: java.VMArguments." + entry.getKey() + "=" + entry.getValue() + "\n" +
+                                "Should be of the form: java.VMArguments.<int>=<value>");
+                throw EspressoError.shouldNotReachHere();
+            }
+        }
+        return array;
+    }
+
     public Classpath getBootClasspath() {
         if (bootClasspath == null) {
             CompilerAsserts.neverPartOfCompilation();
@@ -376,6 +413,10 @@ public final class EspressoContext {
         return meta;
     }
 
+    public NativeAccess getNativeAccess() {
+        return nativeAccess;
+    }
+
     @SuppressWarnings("try")
     private void spawnVM() {
         try (DebugCloseable spawn = SPAWN_VM.scope(timers)) {
@@ -391,6 +432,7 @@ public final class EspressoContext {
 
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
+                this.nativeAccess = spawnNativeAccess();
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
             }
@@ -465,10 +507,10 @@ public final class EspressoContext {
             StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
 
             // Preemptively set stack trace.
-            stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
-            stackOverflowErrorInstance.setField(meta.java_lang_Throwable_backtrace, stackOverflowErrorInstance);
-            outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
-            outOfMemoryErrorInstance.setField(meta.java_lang_Throwable_backtrace, outOfMemoryErrorInstance);
+            meta.HIDDEN_FRAMES.setHiddenObject(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_backtrace.setObject(stackOverflowErrorInstance, stackOverflowErrorInstance);
+            meta.HIDDEN_FRAMES.setHiddenObject(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_backtrace.setObject(outOfMemoryErrorInstance, outOfMemoryErrorInstance);
 
             this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance);
             this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance);
@@ -486,6 +528,35 @@ public final class EspressoContext {
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
             getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
         }
+    }
+
+    private NativeAccess spawnNativeAccess() {
+        String nativeBackend;
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
+            nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
+        } else {
+            if (EspressoOptions.RUNNING_ON_SVM) {
+                nativeBackend = "nfi-native";
+            } else {
+                if (OS.getCurrent() == OS.Linux) {
+                    nativeBackend = "nfi-dlmopen";
+                } else {
+                    nativeBackend = "nfi-sulong";
+                }
+            }
+        }
+
+        List<String> available = new ArrayList<>();
+        // TODO(peterssen): Investigate which class loader is needed here and why.
+        ServiceLoader<NativeAccess.Provider> loader = ServiceLoader.load(NativeAccess.Provider.class, getClass().getClassLoader());
+        for (NativeAccess.Provider provider : loader) {
+            available.add(provider.id());
+            if (nativeBackend.equals(provider.id())) {
+                getLogger().fine("Native backend: " + nativeBackend);
+                return provider.create(getEnv());
+            }
+        }
+        throw abort("Cannot find native backend '" + nativeBackend + "'. Available backends: " + available);
     }
 
     private void initializeAgents() {
@@ -507,7 +578,7 @@ public final class EspressoContext {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
-        vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
+        vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
         javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
     }
 

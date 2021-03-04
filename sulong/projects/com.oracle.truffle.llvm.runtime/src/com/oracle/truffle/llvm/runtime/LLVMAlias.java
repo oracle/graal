@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,7 @@ public class LLVMAlias extends LLVMSymbol {
     @CompilationFinal private LLVMSymbol target;
 
     public LLVMAlias(String name, LLVMSymbol target, boolean exported) {
-        super(name, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID, exported);
+        super(name, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID, exported, false);
         setTarget(target);
     }
 

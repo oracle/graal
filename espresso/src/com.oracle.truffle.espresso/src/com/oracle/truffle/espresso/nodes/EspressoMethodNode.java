@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -37,7 +36,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 /**
  * Base node for all implementations of Java methods.
  */
-public abstract class EspressoMethodNode extends EspressoPreludeNode implements ContextAccess {
+public abstract class EspressoMethodNode extends EspressoPreludeNode {
 
     private final MethodVersion method;
     private SourceSection sourceSection;
@@ -50,6 +49,7 @@ public abstract class EspressoMethodNode extends EspressoPreludeNode implements 
         return method;
     }
 
+    @Override
     public final Method getMethod() {
         return method.getMethod();
     }

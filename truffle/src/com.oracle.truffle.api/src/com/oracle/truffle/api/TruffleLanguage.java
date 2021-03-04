@@ -2787,40 +2787,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns a {@link TruffleFile} for given path.
-         *
-         * @param path the absolute or relative path to create {@link TruffleFile} for
-         * @return {@link TruffleFile}
-         * @since 19.0
-         * @deprecated use {@link #getInternalTruffleFile(java.lang.String) getInternalTruffleFile}
-         *             for language standard library files or
-         *             {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} for user
-         *             files.
-         */
-        @TruffleBoundary
-        @Deprecated
-        public TruffleFile getTruffleFile(String path) {
-            return getInternalTruffleFile(path);
-        }
-
-        /**
-         * Returns a {@link TruffleFile} for given {@link URI}.
-         *
-         * @param uri the {@link URI} to create {@link TruffleFile} for
-         * @return {@link TruffleFile}
-         * @since 19.0
-         * @deprecated use {@link #getInternalTruffleFile(java.lang.String) getInternalTruffleFile}
-         *             for language standard library files or
-         *             {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} for user
-         *             files.
-         */
-        @TruffleBoundary
-        @Deprecated
-        public TruffleFile getTruffleFile(URI uri) {
-            return getInternalTruffleFile(uri);
-        }
-
-        /**
          * Returns a public {@link TruffleFile} for given path. The access to public files depends
          * on {@link Builder#allowIO(boolean) Context's IO policy}. When IO is not enabled by the
          * {@code Context} the {@link TruffleFile} operations throw {@link SecurityException}. The

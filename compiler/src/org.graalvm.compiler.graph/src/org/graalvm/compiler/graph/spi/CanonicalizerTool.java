@@ -60,5 +60,11 @@ public interface CanonicalizerTool {
      */
     Integer smallestCompareWidth();
 
+    /**
+     * Indicates whether this target platform supports lowering {@code RoundNode}.
+     */
+    boolean supportsRounding();
+
     OptionValues getOptions();
+
 }

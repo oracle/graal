@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -335,7 +335,7 @@ import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.object.DebugCounter;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * Bytecode interpreter loop.
@@ -629,6 +629,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         frame.setObject(primitivesSlot, primitives);
         frame.setObject(refsSlot, refs);
         initArguments(frame.getArguments(), primitives, refs);
+        // initialize the bci slot
+        setBCI(frame, 0);
     }
 
     @Override
@@ -1254,7 +1256,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         return rootNode;
     }
 
-    public int readBCI(Frame frame) {
+    @Override
+    public int getCurrentBCI(Frame frame) {
         try {
             assert bciSlot != null;
             return frame.getInt(bciSlot);
@@ -2490,12 +2493,33 @@ public final class BytecodeNode extends EspressoMethodNode {
 
             if (table != LineNumberTableAttribute.EMPTY) {
                 LineNumberTableAttribute.Entry[] entries = table.getEntries();
+                // don't allow multiple entries with same line, keep only the first one
+                // reduce the checks needed heavily by keeping track of max seen line number
+                int[] seenLines = new int[entries.length];
+                Arrays.fill(seenLines, -1);
+                int maxSeenLine = -1;
+
                 this.statementNodes = new EspressoInstrumentableNode[entries.length];
                 this.hookBCIToNodeIndex = new MapperBCI(table);
 
                 for (int i = 0; i < entries.length; i++) {
                     LineNumberTableAttribute.Entry entry = entries[i];
-                    statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), entry.getLineNumber());
+                    int lineNumber = entry.getLineNumber();
+                    boolean seen = false;
+                    boolean checkSeen = !(maxSeenLine < lineNumber);
+                    if (checkSeen) {
+                        for (int seenLine : seenLines) {
+                            if (seenLine == lineNumber) {
+                                seen = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!seen) {
+                        statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), lineNumber);
+                        seenLines[i] = lineNumber;
+                        maxSeenLine = Math.max(maxSeenLine, lineNumber);
+                    }
                 }
             } else {
                 this.statementNodes = null;
