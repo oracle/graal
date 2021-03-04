@@ -174,7 +174,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         if (offset == -1) {
             int counterSize = vmConfigAccess.getFlag("JVMCICounterSize", Integer.class);
             if (counterSize <= 0) {
-                // We can only use the jvmci counters it they are not used otherwise.
                 offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
             } else {
                 throw new InternalError("Failed to initialize the HotSpot Truffle runtime. " +
