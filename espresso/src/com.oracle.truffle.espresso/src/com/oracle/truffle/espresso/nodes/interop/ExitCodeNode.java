@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class ExitCodeNode extends RootNode {
+public final class ExitCodeNode extends RootNode {
     public static final String EVAL_NAME = "<ExitCode>";
 
     public ExitCodeNode(TruffleLanguage<?> language) {
