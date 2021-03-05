@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -61,6 +62,7 @@ public final class OptimizedLoopNode extends LoopNode {
             return status;
         } finally {
             reportLoopCount(this, loopCount);
+            TruffleSafepoint.poll(this);
         }
     }
 

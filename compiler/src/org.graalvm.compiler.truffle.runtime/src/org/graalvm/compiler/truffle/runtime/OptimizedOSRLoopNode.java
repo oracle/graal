@@ -556,6 +556,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     if (CompilerDirectives.inInterpreter()) {
                         return loopNode.repeatableNode.initialLoopStatus();
                     }
+                    TruffleSafepoint.poll(this);
                 }
                 return status;
             } finally {
