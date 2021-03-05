@@ -227,7 +227,10 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
         // not a RootNode instance at the end of the parent chain -> not adopted
         // not adopted means this node will not have a valid source location
-        return rootNodeType.isInstance(current);
+        rootNodeType.isInstance(current);
+
+        ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(current);
+        return rootNodeType.isAssignableFrom(type);
     }
 
     private static ResolvedJavaMethod findMethod(ResolvedJavaType type, String name) {
