@@ -29,7 +29,6 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.security.ProtectionDomain;
 import java.util.function.Function;
 

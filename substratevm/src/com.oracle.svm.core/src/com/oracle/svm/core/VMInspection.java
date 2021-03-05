@@ -93,14 +93,14 @@ public class VMInspection implements Feature {
             return VMInspection.isEnabled();
         }
     }
-}
 
-class VMInspectionOptions {
-    @Option(help = "Enables features that allow the VM to be inspected during runtime.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false);
+    public static class VMInspectionOptions {
+        @Option(help = "Enables features that allow the VM to be inspected during runtime.", type = OptionType.User) //
+        public static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false);
 
-    @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
+        @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
+        public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
+    }
 }
 
 class DumpAllStacks implements SignalHandler {
