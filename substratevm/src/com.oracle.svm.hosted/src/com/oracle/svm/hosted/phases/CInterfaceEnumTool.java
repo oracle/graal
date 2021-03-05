@@ -112,7 +112,7 @@ public class CInterfaceEnumTool {
         // Create the instanceof guard to narrow the return type for the analysis
         LogicNode instanceOfNode = kit.append(InstanceOfNode.createAllowNull(TypeReference.createExactTrusted(enumType), invoke, null, null));
         ConstantNode enumClass = kit.createConstant(kit.getConstantReflection().asJavaClass(enumType), JavaKind.Object);
-        GuardingNode guard = kit.createCheckThrowingBytecodeException(instanceOfNode, BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST, invoke, enumClass);
+        GuardingNode guard = kit.createCheckThrowingBytecodeException(instanceOfNode, false, BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST, invoke, enumClass);
 
         // Create the PiNode anchored at the guard to narrow the return type for compilation
         ObjectStamp resultStamp = StampFactory.object(TypeReference.create(null, enumType), false);

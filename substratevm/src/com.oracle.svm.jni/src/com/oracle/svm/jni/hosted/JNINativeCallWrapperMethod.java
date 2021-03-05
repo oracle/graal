@@ -31,21 +31,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.type.StampTool;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -125,7 +129,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         List<ValueNode> javaArguments = kit.loadArguments(javaArgumentTypes);
 
         List<ValueNode> jniArguments = new ArrayList<>(2 + javaArguments.size());
-        List<JavaType> jniArgumentTypes = new ArrayList<>(jniArguments.size());
+        List<JavaType> jniArgumentTypes = new ArrayList<>(2 + javaArguments.size());
         JavaType environmentType = providers.getMetaAccess().lookupJavaType(JNIEnvironment.class);
         JavaType objectHandleType = providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class);
         jniArguments.add(environment);
@@ -162,6 +166,11 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
                 monitorObject = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
             } else {
                 monitorObject = javaArguments.get(0);
+                if (!StampTool.isPointerNonNull(monitorObject)) {
+                    kit.createCheckThrowingBytecodeException(IsNullNode.create(monitorObject), true, BytecodeExceptionKind.NULL_POINTER);
+                    Stamp nonNullStamp = monitorObject.stamp(NodeView.DEFAULT).join(StampFactory.objectNonNull());
+                    monitorObject = kit.append(PiNode.create(monitorObject, nonNullStamp));
+                }
             }
             MonitorIdNode monitorId = graph.add(new MonitorIdNode(kit.getFrameState().lockDepth(false)));
             MonitorEnterNode monitorEnter = kit.append(new MonitorEnterNode(monitorObject, monitorId));
@@ -203,7 +212,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
             if (!condition.isTautology()) {
                 ObjectStamp stamp = StampFactory.object(typeRef, false);
                 ValueNode expectedClass = kit.createConstant(kit.getConstantReflection().asJavaClass(type), JavaKind.Object);
-                GuardingNode guard = kit.createCheckThrowingBytecodeException(condition, BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST, object, expectedClass);
+                GuardingNode guard = kit.createCheckThrowingBytecodeException(condition, false, BytecodeExceptionKind.CLASS_CAST, object, expectedClass);
                 casted = kit.append(PiNode.create(object, stamp, guard.asNode()));
             }
         }

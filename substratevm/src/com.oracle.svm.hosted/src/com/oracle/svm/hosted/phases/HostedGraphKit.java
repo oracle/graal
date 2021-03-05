@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.phases;
 
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -33,6 +34,7 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -133,14 +135,30 @@ public class HostedGraphKit extends SubstrateGraphKit {
         }
     }
 
-    public GuardingNode createCheckThrowingBytecodeException(LogicNode condition, BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
-        IfNode ifNode = startIf(condition, BranchProbabilityNode.FAST_PATH_PROBABILITY);
-        elsePart();
+    public GuardingNode createCheckThrowingBytecodeException(LogicNode condition, boolean failOnTrue, BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
+        double trueProbability = failOnTrue ? BranchProbabilityNode.SLOW_PATH_PROBABILITY : BranchProbabilityNode.FAST_PATH_PROBABILITY;
+        IfNode ifNode = startIf(condition, trueProbability);
+        if (failOnTrue) {
+            thenPart();
+        } else {
+            elsePart();
+        }
         BytecodeExceptionNode exception = append(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, arguments));
         setStateAfterException(getFrameState(), bci(), exception);
         append(new UnwindNode(exception));
         AbstractMergeNode merge = endIf();
         assert merge == null;
-        return ifNode.trueSuccessor();
+        return failOnTrue ? ifNode.falseSuccessor() : ifNode.trueSuccessor();
+    }
+
+    public BytecodeExceptionNode createBytecodeExceptionObjectNode(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
+        BytecodeExceptionNode exception = append(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, arguments));
+        FrameStateBuilder frameStateBuilder = getFrameState();
+        if (frameStateBuilder != null) {
+            FrameStateBuilder exceptionState = frameStateBuilder.copy();
+            exceptionState.push(JavaKind.Object, ((StateSplit) exception).asNode());
+            exception.setStateAfter(exceptionState.create(bci(), exception));
+        }
+        return exception;
     }
 }

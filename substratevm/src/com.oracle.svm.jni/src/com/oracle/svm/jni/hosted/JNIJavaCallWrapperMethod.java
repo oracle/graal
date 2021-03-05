@@ -57,10 +57,12 @@ import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -117,18 +119,6 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         VARARGS,
         ARRAY,
         VA_LIST,
-    }
-
-    private static final ClassCastException cachedArgumentClassCastException;
-    static {
-        cachedArgumentClassCastException = new ClassCastException("Object argument to JNI call does not match type in Java signature");
-        cachedArgumentClassCastException.setStackTrace(new StackTraceElement[0]);
-    }
-
-    private static final NullPointerException cachedReceiverNullPointerException;
-    static {
-        cachedReceiverNullPointerException = new NullPointerException("The receiver of a JNI call must not be null");
-        cachedArgumentClassCastException.setStackTrace(new StackTraceElement[0]);
     }
 
     private final NativeLibraries nativeLibs;
@@ -204,13 +194,13 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         Signature invokeSignature = invokeMethod.getSignature();
         List<Pair<ValueNode, ResolvedJavaType>> argsWithTypes = loadAndUnboxArguments(kit, providers, invokeSignature);
 
-        /* Unbox handle if there is one. */
-        ValueNode unboxedHandle = null; // only available if there is a receiver
+        /* Unbox receiver handle if there is one. */
+        ValueNode unboxedReceiver = null;
         if (invokeMethod.hasReceiver()) {
             int javaIndex = metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind().getSlotCount();
             JavaKind handleKind = metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind();
             ValueNode handle = kit.loadLocal(javaIndex, handleKind);
-            unboxedHandle = kit.unboxHandle(handle);
+            unboxedReceiver = kit.unboxHandle(handle);
         }
 
         /*
@@ -224,7 +214,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             ValueNode value = argsWithType.getLeft();
             ResolvedJavaType type = argsWithType.getRight();
             if (!type.isPrimitive() && !type.isJavaLangObject()) {
-                value = typeChecked(kit, value, type, illegalTypeEnds);
+                value = typeChecked(kit, value, type, illegalTypeEnds, false);
             }
             args[argIndex++] = value;
         }
@@ -235,7 +225,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         JNIJavaCallWrapperMethodSupport support = ImageSingletons.lookup(JNIJavaCallWrapperMethodSupport.class);
         ValueNode returnValue;
         if (!invokeMethod.hasReceiver()) {
-            returnValue = support.createCallTypeMethodCall(kit, invokeMethod, invokeKind, state, args);
+            returnValue = support.createMethodCall(kit, invokeMethod, invokeKind, state, args);
         } else if (invokeMethod.isConstructor()) {
             /*
              * If the target method is a constructor, we can narrow down the JNI call to two
@@ -249,20 +239,20 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
             Constant hub = providers.getConstantReflection().asObjectHub(receiverClass);
             ConstantNode hubNode = kit.createConstant(hub, JavaKind.Object);
-            ObjectEqualsNode isNewObjectCall = kit.unique(new ObjectEqualsNode(unboxedHandle, hubNode));
+            ObjectEqualsNode isNewObjectCall = kit.unique(new ObjectEqualsNode(unboxedReceiver, hubNode));
             kit.startIf(isNewObjectCall, BranchProbabilityNode.FAST_PATH_PROBABILITY);
             kit.thenPart();
-            ValueNode createdReceiverOrException = support.createNewObjectCall(kit, invokeMethod, state, args);
+            ValueNode createdObjectOrNull = support.createNewObjectCall(kit, invokeMethod, state, args);
             kit.elsePart();
-            args[0] = unboxedHandle;
-            ValueNode unboxedReceiverOrException = typeCheckReceiverAndCreateCallTypeMethod(kit, invokeMethod, invokeKind, state, args);
+            args[0] = typeChecked(kit, unboxedReceiver, invokeMethod.getDeclaringClass(), illegalTypeEnds, true);
+            ValueNode unboxedReceiverOrNull = support.createMethodCall(kit, invokeMethod, invokeKind, state, args);
             AbstractMergeNode merge = kit.endIf();
             merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
-            returnValue = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{createdReceiverOrException, unboxedReceiverOrException}));
+            returnValue = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{createdObjectOrNull, unboxedReceiverOrNull}));
         } else {
             // This is a JNI call via `Call<Type>Method` to a non-static method
-            args[0] = typeChecked(kit, unboxedHandle, invokeMethod.getDeclaringClass(), illegalTypeEnds);
-            returnValue = support.createCallTypeMethodCall(kit, invokeMethod, invokeKind, state, args);
+            args[0] = typeChecked(kit, unboxedReceiver, invokeMethod.getDeclaringClass(), illegalTypeEnds, true);
+            returnValue = support.createMethodCall(kit, invokeMethod, invokeKind, state, args);
         }
         JavaKind returnKind = (returnValue != null) ? returnValue.getStackKind() : JavaKind.Void;
 
@@ -274,16 +264,28 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
              */
             BeginNode afterSuccess = kit.append(new BeginNode());
 
-            MergeNode illegalTypesMerge = kit.append(new MergeNode());
-            illegalTypesMerge.replaceAtPredecessor(null);
-            for (EndNode end : illegalTypeEnds) {
-                illegalTypesMerge.addForwardEnd(end);
+            ValueNode exception;
+            if (illegalTypeEnds.size() == 1) {
+                BeginNode illegalTypeBegin = kit.append(new BeginNode());
+                illegalTypeBegin.replaceAtPredecessor(null);
+
+                EndNode end = illegalTypeEnds.get(0);
+                exception = (BytecodeExceptionNode) end.predecessor();
+                end.replaceAtPredecessor(illegalTypeBegin);
+                end.safeDelete();
+            } else {
+                MergeNode illegalTypesMerge = kit.append(new MergeNode());
+                ValuePhiNode phi = kit.getGraph().addWithoutUnique(new ValuePhiNode(StampFactory.object(), illegalTypesMerge));
+                for (EndNode end : illegalTypeEnds) {
+                    illegalTypesMerge.addForwardEnd(end);
+                    phi.addInput((BytecodeExceptionNode) end.predecessor());
+                }
+                illegalTypesMerge.setStateAfter(state.create(kit.bci(), illegalTypesMerge));
+                phi.inferStamp();
+                exception = phi;
             }
-            illegalTypesMerge.setStateAfter(state.create(kit.bci(), illegalTypesMerge));
-            ConstantNode exception = kit.createObject(cachedArgumentClassCastException);
             kit.setPendingException(exception);
             BeginNode afterIllegalType = kit.append(new BeginNode());
-            MergeNode.removeMergeIfDegenerated(illegalTypesMerge);
 
             MergeNode returnMerge = kit.append(new MergeNode());
             EndNode afterSuccessEnd = kit.add(new EndNode());
@@ -318,15 +320,27 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         return kit.finalizeGraph();
     }
 
-    private static PiNode typeChecked(JNIGraphKit kit, ValueNode value, ResolvedJavaType type, List<EndNode> illegalTypeEnds) {
+    private static PiNode typeChecked(JNIGraphKit kit, ValueNode uncheckedValue, ResolvedJavaType type, List<EndNode> illegalTypeEnds, boolean isReceiver) {
+        ValueNode value = uncheckedValue;
+        if (isReceiver && !StampTool.isPointerNonNull(value)) {
+            IfNode ifNode = kit.startIf(kit.unique(IsNullNode.create(value)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+            kit.thenPart();
+            kit.append(kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.NULL_POINTER));
+            illegalTypeEnds.add(kit.append(new EndNode()));
+            kit.endIf();
+            Stamp nonNullStamp = value.stamp(NodeView.DEFAULT).improveWith(StampFactory.objectNonNull());
+            value = kit.append(new PiNode(value, nonNullStamp, ifNode.falseSuccessor()));
+        }
         TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
-        LogicNode instanceOf = kit.unique(InstanceOfNode.createAllowNull(typeRef, value, null, null));
+        LogicNode instanceOf = kit.append(InstanceOfNode.createAllowNull(typeRef, value, null, null));
         IfNode ifNode = kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
         kit.elsePart();
-        EndNode end = kit.append(new EndNode());
-        illegalTypeEnds.add(end);
+        ConstantNode typeNode = kit.createConstant(kit.getConstantReflection().asJavaClass(type), JavaKind.Object);
+        kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.CLASS_CAST, value, typeNode);
+        illegalTypeEnds.add(kit.append(new EndNode()));
         kit.endIf();
-        return kit.unique(new PiNode(value, StampFactory.object(typeRef), ifNode.trueSuccessor()));
+        Stamp checkedStamp = value.stamp(NodeView.DEFAULT).improveWith(StampFactory.objectNonNull(typeRef));
+        return kit.unique(new PiNode(value, checkedStamp, ifNode.trueSuccessor()));
     }
 
     /**
@@ -419,60 +433,6 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             throw VMError.unsupportedFeature("Call variant: " + callVariant);
         }
         return args;
-    }
-
-    /**
-     * Creates the nodes to type-check and null-check the receiver; creates the nodes for a
-     * {@code Call<Type>Method} JNI call, which will be executed iff the check succeeds.
-     * 
-     * @param kit Graph building kit
-     * @param invokeMethod Method to invoke. This method should take a receiver.
-     * @param invokeKind Kind of invoke
-     * @param state Used for creating {@linkplain AbstractMergeNode merge node} FrameStates
-     * @param args Args to pass to the method. The first argument should be the receiver.
-     * 
-     * @return A node representing the return value of the invoke, or the thrown error. Errors may
-     *         be thrown by the type check, or by the called method. Returns {@code null} if the
-     *         method is an instance method with a {@link JavaKind#Void void} return type.
-     */
-    private static ValueNode typeCheckReceiverAndCreateCallTypeMethod(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind invokeKind, FrameStateBuilder state, ValueNode... args) {
-        assert invokeMethod.hasReceiver() : "Expected to be called on a method that takes a receiver";
-        assert args.length > 0 : "Expected args to at least contain a receiver";
-        assert args[0] != null : "Expected the receiver to be non-null";
-        assert args[0].getStackKind() == JavaKind.Object : "Expected the receiver to be an object";
-        ValueNode receiver = args[0];
-
-        ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
-        TypeReference expectedTypeRef = TypeReference.createTrusted(kit.getAssumptions(), receiverClass);
-        /* Receiver must not be null, in which case the instanceof test is false */
-        LogicNode instanceOf = kit.unique(InstanceOfNode.create(expectedTypeRef, receiver, null, null));
-        IfNode ifNode = kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
-        GuardingNode guard = ifNode.trueSuccessor();
-
-        kit.thenPart();
-        args[0] = kit.append(PiNode.create(receiver, StampFactory.object(expectedTypeRef), guard.asNode()));
-        ValueNode invokeResult = ImageSingletons.lookup(JNIJavaCallWrapperMethodSupport.class).createCallTypeMethodCall(kit, invokeMethod, invokeKind, state, args);
-
-        kit.elsePart();
-        kit.startIf(kit.unique(IsNullNode.create(receiver)), 0.5);
-        kit.thenPart();
-        ConstantNode nullExceptionObject = kit.createObject(cachedReceiverNullPointerException);
-        kit.elsePart();
-        ConstantNode castExceptionObject = kit.createObject(cachedArgumentClassCastException);
-        AbstractMergeNode nullCheckMerge = kit.endIf();
-        Stamp stamp = nullExceptionObject.stamp(NodeView.DEFAULT).meet(castExceptionObject.stamp(NodeView.DEFAULT));
-        ValuePhiNode exceptionResult = kit.unique(new ValuePhiNode(stamp, nullCheckMerge, new ValueNode[]{nullExceptionObject, castExceptionObject}));
-        state.push(stamp.getStackKind(), exceptionResult);
-        nullCheckMerge.setStateAfter(state.create(kit.bci(), nullCheckMerge));
-        kit.setPendingException(exceptionResult);
-        state.pop(stamp.getStackKind());
-
-        AbstractMergeNode receiverCheckMerge = kit.endIf();
-        receiverCheckMerge.setStateAfter(state.create(kit.bci(), receiverCheckMerge));
-        if (invokeResult == null) {
-            return null;
-        }
-        return kit.getGraph().addWithoutUnique(new ValuePhiNode(invokeResult.stamp(NodeView.DEFAULT), receiverCheckMerge, new ValueNode[]{invokeResult, exceptionResult}));
     }
 
     /**
