@@ -41,6 +41,7 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.function.BiFunction;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.execution.MavenSession;
@@ -288,16 +289,20 @@ public class NativeImageMojo extends AbstractMojo {
         return null;
     }
 
+    private void maybeSetMainClassFromPlugin(BiFunction<String, String[], String> mainClassProvider, String pluginName, String... nodeNames) {
+        if (mainClass == null) {
+            mainClass = mainClassProvider.apply(pluginName, nodeNames);
+
+            if (mainClass != null) {
+                getLog().info("Obtained main class from plugin " + pluginName + " with the following path: " + String.join(" -> ", nodeNames));
+            }
+        }
+    }
+
     private List<String> getBuildArgs() {
-        if (mainClass == null) {
-            mainClass = consumeExecutionsNodeValue("org.apache.maven.plugins:maven-shade-plugin", "transformers", "transformer", "mainClass");
-        }
-        if (mainClass == null) {
-            mainClass = consumeConfigurationNodeValue("org.apache.maven.plugins:maven-assembly-plugin", "archive", "manifest", "mainClass");
-        }
-        if (mainClass == null) {
-            mainClass = consumeConfigurationNodeValue("org.apache.maven.plugins:maven-jar-plugin", "archive", "manifest", "mainClass");
-        }
+        maybeSetMainClassFromPlugin(this::consumeExecutionsNodeValue, "org.apache.maven.plugins:maven-shade-plugin", "transformers", "transformer", "mainClass");
+        maybeSetMainClassFromPlugin(this::consumeConfigurationNodeValue, "org.apache.maven.plugins:maven-assembly-plugin", "archive", "manifest", "mainClass");
+        maybeSetMainClassFromPlugin(this::consumeConfigurationNodeValue, "org.apache.maven.plugins:maven-jar-plugin", "archive", "manifest", "mainClass");
 
         List<String> list = new ArrayList<>();
         if (buildArgs != null && !buildArgs.isEmpty()) {
