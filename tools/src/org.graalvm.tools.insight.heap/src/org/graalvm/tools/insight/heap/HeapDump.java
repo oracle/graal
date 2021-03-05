@@ -116,7 +116,7 @@ public final class HeapDump {
     HeapDump(OutputStream out, final Builder builder) throws IOException {
         this.builder = builder;
         this.heap = new DataOutputStream(out);
-        int classId = builder.writeLoadClass(0, "java.lang.Object");
+        int classId = builder.writeLoadClass("java.lang.Object");
         this.typeObject = new ClassBuilder(classId, 0).dumpClass();
         newClass("char[]").dumpClass();
         this.typeString = newClass("java.lang.String").field("value", char[].class).field("hash", Integer.TYPE).dumpClass();
@@ -148,6 +148,7 @@ public final class HeapDump {
         final Identifiers ids;
         private final Map<String, Integer> wholeStrings = new HashMap<>();
         private final DataOutputStream whole;
+        private int defaultStackTrace;
         private Long timeBase;
         int objectCounter;
 
@@ -161,6 +162,7 @@ public final class HeapDump {
             whole.write(0); // null terminated string
             whole.writeInt(ids1.sizeOf());
             whole.writeLong(millis);
+            defaultStackTrace = writeStackTrace(0);
         }
 
         /**
@@ -221,6 +223,10 @@ public final class HeapDump {
             whole.close();
         }
 
+        void writeDefaultStackTraceSerialNumber(DataOutputStream os) throws IOException {
+            os.writeInt(defaultStackTrace);
+        }
+
         // internal primitives
         void writeThreadStarted(int id, String threadName, String groupName, int stackTraceId) throws IOException {
             int threadNameId = writeString(threadName);
@@ -267,7 +273,7 @@ public final class HeapDump {
             return id;
         }
 
-        int writeLoadClass(int stackTrace, String className) throws IOException {
+        int writeLoadClass(String className) throws IOException {
             int classId = ++objectCounter;
             int classNameId = writeString(className);
             whole.writeByte(TAG_LOAD_CLASS);
@@ -275,7 +281,7 @@ public final class HeapDump {
             whole.writeInt(8 + ids.sizeOf() * 2); // size of following entries
             whole.writeInt(classId); // class serial number
             ids.writeID(whole, classId); // class object ID
-            whole.writeInt(stackTrace); // stack trace serial number
+            writeDefaultStackTraceSerialNumber(whole);
             ids.writeID(whole, classNameId); // class name string ID
             return classId;
         }
@@ -394,7 +400,7 @@ public final class HeapDump {
     public ClassBuilder newClass(String name) throws UncheckedIOException {
         int classId;
         try {
-            classId = builder.writeLoadClass(0, name);
+            classId = builder.writeLoadClass(name);
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
         }
@@ -460,7 +466,7 @@ public final class HeapDump {
         int instanceId = ++builder.objectCounter;
         heap.writeByte(HEAP_PRIMITIVE_ARRAY_DUMP);
         builder.ids.writeID(heap, instanceId);
-        heap.writeInt(instanceId); // serial number
+        builder.writeDefaultStackTraceSerialNumber(heap);
         heap.writeInt(text.length()); // number of elements
         heap.writeByte(TYPE_CHAR);
         for (char ch : text.toCharArray()) {
@@ -679,7 +685,7 @@ public final class HeapDump {
         private ClassInstance dumpClassImpl() throws IOException {
             heap.writeByte(HEAP_CLASS_DUMP);
             builder.ids.writeID(heap, classId);
-            heap.writeInt(classId); // stacktrace serial number
+            builder.writeDefaultStackTraceSerialNumber(heap);
             builder.ids.writeID(heap, superId);
             builder.ids.writeID(heap, 0); // classloader ID
             builder.ids.writeID(heap, 0); // signers ID
@@ -917,7 +923,7 @@ public final class HeapDump {
             }
             heap.writeByte(HEAP_INSTANCE_DUMP);
             builder.ids.writeID(heap, instanceId.id(thiz));
-            heap.writeInt(instanceId.id(thiz)); // serial number
+            builder.writeDefaultStackTraceSerialNumber(heap);
             builder.ids.writeID(heap, clazz.id(thiz));
             heap.writeInt(clazz.fieldBytes);
             for (Map.Entry<String, Class<?>> entry : clazz.fieldNamesAndTypes.entrySet()) {
