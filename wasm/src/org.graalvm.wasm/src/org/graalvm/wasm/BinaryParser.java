@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.collection.ByteArrayList;
@@ -241,10 +242,14 @@ public class BinaryParser extends BinaryStreamParser {
         Assert.assertUnsignedIntLessOrEqual(sectionEndOffset, data.length, Failure.UNEXPECTED_END);
         module.allocateCustomSection(name, offset, sectionEndOffset - offset);
         if ("name".equals(name)) {
-            readNameSection();
-        } else {
-            offset = sectionEndOffset;
+            try {
+                readNameSection();
+            } catch (WasmException ex) {
+                // Malformed name section should not result in invalidation of the module
+                assert ex.getExceptionType() == ExceptionType.PARSE_ERROR;
+            }
         }
+        offset = sectionEndOffset;
     }
 
     /**
