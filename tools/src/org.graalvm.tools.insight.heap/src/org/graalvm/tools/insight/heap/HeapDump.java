@@ -150,6 +150,9 @@ public final class HeapDump {
         private int defaultStackTrace;
         private Long timeBase;
         int objectCounter;
+        private int stackFrameCounter;
+        private int stackTraceCounter;
+        private int classCounter;
 
         private Builder(Identifiers ids, OutputStream os) {
             this.whole = new DataOutputStream(os);
@@ -227,7 +230,7 @@ public final class HeapDump {
         }
 
         int writeStackFrame(HeapDump thiz, ClassInstance language, String rootName, String sourceFile, int lineNumber) throws IOException {
-            int id = ++objectCounter;
+            int id = ++stackFrameCounter;
             int rootNameId = writeString(rootName);
             int signatureId = writeString("");
             int sourceFileId = writeString(sourceFile);
@@ -244,7 +247,7 @@ public final class HeapDump {
         }
 
         int writeStackTrace(int threadId, int... frames) throws IOException {
-            int id = ++objectCounter;
+            int id = ++stackTraceCounter;
             whole.writeByte(TAG_STACK_TRACE);
             whole.writeInt(0); // ms
             whole.writeInt(12 + ids.sizeOf() * frames.length); // size of following entries
@@ -258,12 +261,13 @@ public final class HeapDump {
         }
 
         int writeLoadClass(String className) throws IOException {
+            int classSerial = ++classCounter;
             int classId = ++objectCounter;
             int classNameId = writeString(className);
             whole.writeByte(TAG_LOAD_CLASS);
             whole.writeInt(0); // ms
             whole.writeInt(8 + ids.sizeOf() * 2); // size of following entries
-            whole.writeInt(classId); // class serial number
+            whole.writeInt(classSerial); // class serial number
             ids.writeID(whole, classId); // class object ID
             writeDefaultStackTraceSerialNumber(whole);
             ids.writeID(whole, classNameId); // class name string ID
