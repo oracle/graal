@@ -306,14 +306,15 @@ public abstract class LocalizationFeature implements Feature {
 
     protected void addResourceBundles() {
         for (Locale locale : locales) {
-            prepareBundle(localeData(java.util.spi.CalendarDataProvider.class, locale).getCalendarData(locale));
-            prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class, locale).getCurrencyNames(locale));
-            prepareBundle(localeData(java.util.spi.LocaleNameProvider.class, locale).getLocaleNames(locale));
-            prepareBundle(localeData(java.util.spi.TimeZoneNameProvider.class, locale).getTimeZoneNames(locale));
-            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorInfo(locale));
-            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getCollationData(locale));
-            prepareBundle(localeData(java.text.spi.DateFormatProvider.class, locale).getDateFormatData(locale));
-            prepareBundle(localeData(java.text.spi.NumberFormatProvider.class, locale).getNumberFormatData(locale));
+            // todo refactor
+            prepareBundle(localeData(java.util.spi.CalendarDataProvider.class, locale).getCalendarData(locale), locale);
+            prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class, locale).getCurrencyNames(locale), locale);
+            prepareBundle(localeData(java.util.spi.LocaleNameProvider.class, locale).getLocaleNames(locale), locale);
+            prepareBundle(localeData(java.util.spi.TimeZoneNameProvider.class, locale).getTimeZoneNames(locale), locale);
+            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorInfo(locale), locale);
+            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getCollationData(locale), locale);
+            prepareBundle(localeData(java.text.spi.DateFormatProvider.class, locale).getDateFormatData(locale), locale);
+            prepareBundle(localeData(java.text.spi.NumberFormatProvider.class, locale).getNumberFormatData(locale), locale);
             /* Note that JDK 11 support overrides this method to register more bundles. */
         }
 
@@ -334,8 +335,8 @@ public abstract class LocalizationFeature implements Feature {
         return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, locale)).getLocaleData();
     }
 
-    protected void prepareBundle(ResourceBundle bundle) {
-        prepareBundle(bundle.getBaseBundleName(), bundle);
+    protected void prepareBundle(ResourceBundle bundle, Locale locale) {
+        prepareBundle(bundle.getBaseBundleName(), bundle, locale);
     }
 
     public void prepareBundle(String bundleName) {
@@ -362,11 +363,11 @@ public abstract class LocalizationFeature implements Feature {
             UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " +
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.", bundleName);
-            prepareBundle(bundleName, resourceBundle);
+            prepareBundle(bundleName, resourceBundle, locale);
         }
     }
 
-    private void prepareBundle(String bundleName, ResourceBundle bundle) {
+    private void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         trace("Adding bundle " + bundleName);
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
@@ -384,6 +385,10 @@ public abstract class LocalizationFeature implements Feature {
                     RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
                 }
             }
+        }
+
+        if (optimizedMode) {
+            support.resourceBundles.put(Pair.create(bundleName, locale), bundle);
         }
     }
 
