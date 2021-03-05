@@ -40,7 +40,7 @@ import sun.util.locale.provider.LocaleProviderAdapter;
 //Checkstyle: resume
 
 public class OptimizedLocalizationSupport extends LocalizationSupport {
-    final Map<Class<? extends LocaleServiceProvider>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
+    final Map<Pair<Class<? extends LocaleServiceProvider>, Locale>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
     final Map<LocaleProviderAdapter.Type, LocaleProviderAdapter> adaptersByType = new HashMap<>();
     final Map<Class<? extends LocaleServiceProvider>, Object> providerPools = new HashMap<>();
     final Map<Pair<String, Locale>, ResourceBundle> resourceBundles = new HashMap<>();
@@ -51,21 +51,27 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
         super(defaultLocale, locales);
     }
 
+    private final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
+
     /**
      * Get cached resource bundle.
      *
      * @param locale this parameter is not currently used.
      */
     public ResourceBundle getCached(String baseName, Locale locale) throws MissingResourceException {
-        ResourceBundle result = resourceBundles.get(Pair.create(baseName, locale));
-        if (result == null) {
-            String errorMessage = "Resource bundle not found " + baseName + ", locale + " + locale + ". " +
-                            "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
-            for (Pair<String, Locale> pair : resourceBundles.keySet()) {
-                System.err.println(pair);
+        // todo optimize the map into a trie-like structure instead instead of linear search?
+        for (Locale candidateLocale : control.getCandidateLocales(baseName, locale)) {
+            ResourceBundle result = resourceBundles.get(Pair.create(baseName, candidateLocale));
+            if (result != null) {
+                return result;
             }
-            throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
         }
-        return result;
+        String errorMessage = "Resource bundle not found " + baseName + ", locale + " + locale + ". " +
+                        "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
+        for (Pair<String, Locale> pair : resourceBundles.keySet()) {
+            System.err.println(pair);
+        }
+        throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
+
     }
 }
