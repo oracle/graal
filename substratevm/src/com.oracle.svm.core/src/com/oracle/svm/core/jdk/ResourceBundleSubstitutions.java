@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 //Checkstyle: allow reflection
+//Checkstyle: allow synchronization
 
 import java.util.Locale;
 import java.util.Map;
@@ -106,77 +107,46 @@ final class Target_java_util_ResourceBundle {
     }
 }
 
-class MultiLocaleWrapper1 {
-    @TargetClass(value = java.util.ListResourceBundle.class, onlyWith = FallbackLocaleMode.class)
-    @SuppressWarnings({"static-method"})
-    static final class Target_java_util_ListResourceBundle {
-
-        @Alias private Map<String, Object> lookup;
-
-        @Substitute
-        private void loadLookup() {
-            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
-        }
-    }
-
-    @TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = FallbackLocaleMode.class)
-    @SuppressWarnings({"static-method"})
-    static final class Target_sun_util_resources_OpenListResourceBundle {
-
-        @Alias private Map<String, Object> lookup;
-
-        @Substitute
-        private void loadLookup() {
-            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
-        }
-    }
-
-    @TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = FallbackLocaleMode.class)
-    @SuppressWarnings({"unused", "static-method"})
-    static final class Target_sun_util_resources_ParallelListResourceBundle {
-
-        @Alias private ConcurrentMap<String, Object> lookup;
-
-        @Substitute
-        private void setParallelContents(OpenListResourceBundle rb) {
-            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
-        }
-
-        @Substitute
-        private boolean areParallelContentsComplete() {
-            return true;
-        }
-
-        @Substitute
-        private void loadLookupTablesIfNecessary() {
-            if (lookup == null) {
-                throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
-            }
-        }
-    }
-}
-
-@TargetClass(value = java.util.ListResourceBundle.class, onlyWith = OptimizedLocaleMode.class)
+@TargetClass(value = java.util.ListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_util_ListResourceBundle {
 
+    @Alias private volatile Map<String, Object> lookup;
+
     @Substitute
     private void loadLookup() {
-        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
+        if (lookup != null) {
+            return;
+        }
+        lookup = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentFor(getClass());
     }
 }
 
-@TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = OptimizedLocaleMode.class)
+@TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"static-method"})
 final class Target_sun_util_resources_OpenListResourceBundle {
 
+    @Alias private volatile Map<String, Object> lookup;
+
     @Substitute
     private void loadLookup() {
-        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
+        LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
+        Map<String, Object> content = support.getBundleContentFor(getClass());
+        // use the supplied map implementation specified by the factory method
+        Map<String, Object> tmp = createMap(content.size());
+        tmp.putAll(content);
+        synchronized (this) {
+            if (lookup == null) {
+                lookup = content;
+            }
+        }
     }
+
+    @Alias
+    protected native <K, V> Map<K, V> createMap(int size);
 }
 
-@TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = OptimizedLocaleMode.class)
+@TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_util_resources_ParallelListResourceBundle {
 
@@ -194,8 +164,11 @@ final class Target_sun_util_resources_ParallelListResourceBundle {
 
     @Substitute
     private void loadLookupTablesIfNecessary() {
-        if (lookup == null) {
-            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
+        LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
+        synchronized (this) {
+            if (lookup == null) {
+                lookup = new ConcurrentHashMap<>(support.getBundleContentFor(getClass()));
+            }
         }
     }
 }

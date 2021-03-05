@@ -126,6 +126,9 @@ public abstract class LocalizationFeature implements Feature {
         @Option(help = "Optimize the resource bundle lookup in a custom map.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> OptimizedMode = new HostedOptionKey<>(true);
 
+        @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
+        public static final HostedOptionKey<Boolean> SubstituteLoadLookup = new HostedOptionKey<>(true);
+
         @Option(help = "When enabled, localization feature details are printed.", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceLocalizationFeature = new HostedOptionKey<>(true);
     }

@@ -32,6 +32,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.debug.GraalError;
 
 /**
@@ -59,5 +61,9 @@ public abstract class LocalizationSupport {
     public OptimizedLocalizationSupport asOptimizedSupport() {
         GraalError.guarantee(LocalizationFeature.optimizedMode(), "Optimized support only available in optimized mode");
         return ((OptimizedLocalizationSupport) this);
+    }
+
+    public Map<String, Object> getBundleContentFor(Class<?> bundleClass) {
+        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundleClass.getTypeName());
     }
 }

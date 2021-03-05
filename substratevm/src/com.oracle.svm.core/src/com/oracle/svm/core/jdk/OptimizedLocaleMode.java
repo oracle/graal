@@ -33,6 +33,13 @@ public class OptimizedLocaleMode implements BooleanSupplier {
     }
 }
 
+class SubstituteLoadLookup implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return LocalizationFeature.optimizedMode() || LocalizationFeature.Options.SubstituteLoadLookup.getValue();
+    }
+}
+
 class FallbackLocaleMode implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
