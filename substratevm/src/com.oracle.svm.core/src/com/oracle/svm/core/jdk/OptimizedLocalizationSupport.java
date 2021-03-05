@@ -61,6 +61,9 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
         if (result == null) {
             String errorMessage = "Resource bundle not found " + baseName + ", locale + " + locale + ". " +
                             "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
+            for (Pair<String, Locale> pair : resourceBundles.keySet()) {
+                System.err.println(pair);
+            }
             throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
         }
         return result;
