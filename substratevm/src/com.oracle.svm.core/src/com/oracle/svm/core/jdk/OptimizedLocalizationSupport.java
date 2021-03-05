@@ -51,7 +51,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
         super(defaultLocale, locales);
     }
 
-    private final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
+    final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
     /**
      * Get cached resource bundle.

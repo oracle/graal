@@ -93,9 +93,12 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
     @Substitute
     @SuppressWarnings({"unused"})
     public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
-        LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().adaptersByClass.get(Pair.create(providerClass, locale));
-        if (result != null) {
-            return result;
+        OptimizedLocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport();
+        for (Locale candidateLocale : support.control.getCandidateLocales("", locale)) {
+            LocaleProviderAdapter result = support.adaptersByClass.get(Pair.create(providerClass, candidateLocale));
+            if (result != null) {
+                return result;
+            }
         }
         throw VMError.unsupportedFeature("LocaleProviderAdapter.getAdapter:  providerClass: " + providerClass.getName() + ", locale: " + locale);
     }
