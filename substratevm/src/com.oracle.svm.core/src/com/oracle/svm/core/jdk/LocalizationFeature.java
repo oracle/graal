@@ -85,6 +85,8 @@ public abstract class LocalizationFeature implements Feature {
 
     protected final boolean optimizedMode = optimizedMode();
 
+    private final boolean substituteLoadLookup = Options.SubstituteLoadLookup.getValue();
+
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
     public static boolean optimizedMode() {
@@ -191,7 +193,7 @@ public abstract class LocalizationFeature implements Feature {
         if (!locales.contains(defaultLocale)) {
             locales.add(defaultLocale);
         }
-        support = new OptimizedLocalizationSupport(defaultLocale, locales);
+        support = selectLocalizationSupport(defaultLocale, locales);
         ImageSingletons.add(LocalizationSupport.class, support);
         ImageSingletons.add(LocalizationFeature.class, this);
 
@@ -200,6 +202,15 @@ public abstract class LocalizationFeature implements Feature {
             // todo encapsulate if into strategy ?
             addProviders();
         }
+    }
+
+    private LocalizationSupport selectLocalizationSupport(Locale defaultLocale, List<Locale> locales) {
+        if (optimizedMode) {
+            return new OptimizedLocalizationSupport(defaultLocale, locales);
+        } else if (substituteLoadLookup) {
+            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, locales);
+        }
+        return new LocalizationSupport(defaultLocale, locales);
     }
 
     @Override
@@ -397,6 +408,12 @@ public abstract class LocalizationFeature implements Feature {
                 } else {
                     RuntimeReflection.register(cur.getClass());
                     RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
+                    if (substituteLoadLookup) {
+                        final BundleContentSubstitutedLocalizationSupport support = this.support.asBundleContentSubstitutedSupport();
+                        if (support.isBundleSupported(cur)) {
+                            support.storeBundleContentOf(cur);
+                        }
+                    }
                 }
             }
         }

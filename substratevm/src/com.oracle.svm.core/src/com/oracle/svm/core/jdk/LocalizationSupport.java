@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ import org.graalvm.compiler.debug.GraalError;
  * Holder for localization information that is computed during image generation and used at run
  * time.
  */
-public abstract class LocalizationSupport {
+public class LocalizationSupport {
 
     final Map<String, Charset> charsets = new HashMap<>();
 
@@ -59,8 +59,13 @@ public abstract class LocalizationSupport {
     }
 
     public OptimizedLocalizationSupport asOptimizedSupport() {
-        GraalError.guarantee(LocalizationFeature.optimizedMode(), "Optimized support only available in optimized mode");
+        GraalError.guarantee(LocalizationFeature.optimizedMode(), "Optimized support only available in optimized mode.");
         return ((OptimizedLocalizationSupport) this);
+    }
+
+    public BundleContentSubstitutedLocalizationSupport asBundleContentSubstitutedSupport() {
+        GraalError.guarantee(LocalizationFeature.Options.SubstituteLoadLookup.getValue(), "LoadLookup substitutions only allowed in special mode.");
+        return ((BundleContentSubstitutedLocalizationSupport) this);
     }
 
     public Map<String, Object> getBundleContentFor(Class<?> bundleClass) {
