@@ -160,8 +160,7 @@ final class ParserDriver {
             // Add the file scope of the source to the language
             language.addInternalFileScope(libraryName, result.getRuntime().getFileScope());
             if (libraryName.equals("libsulong")) {
-                context.addLibsulongDataLayout(result.getDataLayout());
-                context.addLibsulongTargetTriple(TargetTriple.create(result.getTargetTriple().toString()));
+                language.setDefaultBitcode(result.getDataLayout(), TargetTriple.create(result.getTargetTriple().toString()));
             }
             // renaming is attempted only for internal libraries.
             resolveRenamedSymbols(result);
@@ -360,7 +359,7 @@ final class ParserDriver {
             throw new LLVMParserException("Byte order " + targetDataLayout.getByteOrder() + " of file " + source.getPath() + " is not supported");
         }
         boolean verifyBitcode = context.getEnv().getOptions().get(SulongEngineOption.VERIFY_BITCODE);
-        TargetTriple defaultTargetTriple = context.getLibsulongTargetTriple();
+        TargetTriple defaultTargetTriple = language.getDefaultTargetTriple();
         if (defaultTargetTriple == null && !context.isInternalLibraryPath(Paths.get(source.getPath()))) {
             // some internal libraries (libsulong++) might be loaded before libsulong
             throw new IllegalStateException("No default target triple.");

@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguageFactory.InitializeContextNode
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprExecutableNode;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
@@ -62,6 +63,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
@@ -143,6 +145,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
 
     private final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
+
+    private DataLayout defaultDataLayout;
+    private TargetTriple defaultTargetTriple;
 
     @CompilationFinal private LLVMFunctionCode sulongInitContextCode;
     @CompilationFinal private LLVMFunction sulongDisposeContext;
@@ -440,6 +445,29 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public CallTarget getFreeGlobalBlocks() {
         return freeGlobalBlocks;
+    }
+
+    public synchronized void setDefaultBitcode(DataLayout datalayout, TargetTriple targetTriple) {
+        // Libsulong datalayout can only be set once.
+        if (defaultDataLayout == null) {
+            this.defaultDataLayout = datalayout;
+        } else {
+            throw new NullPointerException("The default datalayout cannot be overwritten");
+        }
+        // Libsulong targettriple can only be set once.
+        if (defaultTargetTriple == null) {
+            this.defaultTargetTriple = targetTriple;
+        } else {
+            throw new NullPointerException("The default targetTriple cannot be overwritten");
+        }
+    }
+
+    public DataLayout getDefaultDataLayout() {
+        return defaultDataLayout;
+    }
+
+    public TargetTriple getDefaultTargetTriple() {
+        return defaultTargetTriple;
     }
 
     public AtomicInteger getRawRunnerID() {

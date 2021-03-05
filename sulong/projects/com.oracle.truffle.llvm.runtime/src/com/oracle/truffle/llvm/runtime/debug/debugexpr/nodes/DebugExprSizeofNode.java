@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,7 +43,7 @@ public abstract class DebugExprSizeofNode extends LLVMExpressionNode {
     private final long typeSize;
 
     public static DebugExprSizeofNode create(DebugExprType type) throws TypeOverflowException {
-        DataLayout datalayout = LLVMLanguage.getContext().getLibsulongDataLayout();
+        DataLayout datalayout = LLVMLanguage.getLanguage().getDefaultDataLayout();
         return DebugExprSizeofNodeGen.create(type.getLLVMRuntimeType().getSize(datalayout));
     }
 

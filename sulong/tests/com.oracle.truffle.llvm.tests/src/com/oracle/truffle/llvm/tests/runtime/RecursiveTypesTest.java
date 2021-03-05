@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -175,7 +175,7 @@ public class RecursiveTypesTest {
             TruffleLanguage.Env env = runWithPolyglot.getTruffleTestEnv();
             LanguageInfo llvmInfo = env.getInternalLanguages().get("llvm");
             env.initializeLanguage(llvmInfo);
-            dataLayout = LLVMLanguage.getContext().getLibsulongDataLayout();
+            dataLayout = LLVMLanguage.getLanguage().getDefaultDataLayout();
             Assert.assertNotNull(dataLayout);
         }
         return dataLayout;

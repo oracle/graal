@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -110,7 +110,7 @@ public abstract class LLVMNode extends Node {
                 assert !(datalayoutNode instanceof RootNode) : "root node must not have a parent";
                 datalayoutNode = datalayoutNode.getParent();
             } else {
-                return LLVMLanguage.getContext().getLibsulongDataLayout();
+                return LLVMLanguage.getLanguage().getDefaultDataLayout();
             }
         }
         return ((LLVMHasDatalayoutNode) datalayoutNode).getDatalayout();
