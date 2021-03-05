@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test;
 
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -89,16 +90,17 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class TruffleSafepointTest extends AbstractPolyglotTest {
+public class TruffleSafepointTest {
 
     private static final Method SUBMIT_INTERNAL = ReflectionUtils.requireDeclaredMethod(TruffleLanguage.Env.class, "submitThreadLocalInternal", null);
 
@@ -139,7 +141,6 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                 return true;
             }
         });
-        enterContext = false;
         if (VERBOSE) {
             System.out.println();
             System.out.print(name.getMethodName() + ":");
@@ -157,14 +158,17 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
     @Test
     public void testNullArgs() {
-        setupEnv();
-
-        assertFails(() -> languageEnv.submitThreadLocal(new Thread[]{null}, new ThreadLocalAction(true, true) {
-            @Override
-            protected void perform(Access access) {
-            }
-        }), NullPointerException.class);
-        assertFails(() -> languageEnv.submitThreadLocal(null, null), NullPointerException.class);
+        try (TestSetup setup = setupSafepointLoop(1, (node) -> {
+            TruffleSafepoint.poll(node);
+            return false;
+        })) {
+            assertFails(() -> setup.env.submitThreadLocal(new Thread[]{null}, new ThreadLocalAction(true, true) {
+                @Override
+                protected void perform(Access access) {
+                }
+            }), NullPointerException.class);
+            assertFails(() -> setup.env.submitThreadLocal(null, null), NullPointerException.class);
+        }
     }
 
     @Test
@@ -779,6 +783,24 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
     }
 
+    @Test
+    public void testSubmitAsInstrument() {
+        forEachConfig((threads, events) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+                TruffleSafepoint.poll(node);
+                return false;
+            })) {
+                AtomicInteger eventCounter = new AtomicInteger();
+                ActionCollector runnable = new ActionCollector(setup, eventCounter, true, false);
+                for (int i = 0; i < events; i++) {
+                    setup.instrumentEnv.submitThreadLocal(setup.env.getContext(), null, runnable);
+                }
+                setup.stopAndAwait();
+                assertActionsAnyOrder(threads, events, runnable);
+            }
+        });
+    }
+
     @FunctionalInterface
     interface TestRunner {
 
@@ -858,81 +880,87 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     @SuppressWarnings("unchecked")
     private TestSetup setupSafepointLoop(int threads, NodeCallable callable, Consumer<Throwable> exHandler) {
         Context c = createTestContext();
-        c.enter();
-        c.initialize(ProxyLanguage.ID);
-        ProxyLanguage proxyLanguage = ProxyLanguage.getCurrentLanguage();
-        Env env = ProxyLanguage.getCurrentContext().getEnv();
-        c.leave();
-        CountDownLatch latch = new CountDownLatch(threads);
-        Object targetEnter = env.getContext().enter(null);
-        AtomicBoolean stopped = new AtomicBoolean();
-        RootCallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(proxyLanguage) {
-            @SuppressWarnings("unchecked")
-            @Override
-            public Object execute(VirtualFrame frame) {
-                waitForLatch(latch);
-                while (true) {
-                    if (stopped.get()) {
-                        return null;
-                    }
-                    Boolean result = callable.call(this);
-                    if (result) {
-                        return result;
+        try {
+            c.enter();
+            c.initialize(ProxyLanguage.ID);
+            ProxyLanguage proxyLanguage = ProxyLanguage.getCurrentLanguage();
+            Env env = ProxyLanguage.getCurrentContext().getEnv();
+            TruffleInstrument.Env instrument = c.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class).getEnv();
+            c.leave();
+            CountDownLatch latch = new CountDownLatch(threads);
+            Object targetEnter = env.getContext().enter(null);
+            AtomicBoolean stopped = new AtomicBoolean();
+            RootCallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(proxyLanguage) {
+                @SuppressWarnings("unchecked")
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    waitForLatch(latch);
+                    while (true) {
+                        if (stopped.get()) {
+                            return null;
+                        }
+                        Boolean result = callable.call(this);
+                        if (result) {
+                            return result;
+                        }
                     }
                 }
-            }
 
-            @Override
-            public boolean isInternal() {
-                return false;
-            }
+                @Override
+                public boolean isInternal() {
+                    return false;
+                }
 
-            @Override
-            public String getName() {
-                return "org.graalvm.TestRoot";
-            }
+                @Override
+                public String getName() {
+                    return "org.graalvm.TestRoot";
+                }
 
-        });
-        env.getContext().leave(null, targetEnter);
-        List<Future<Boolean>> futures = new ArrayList<>();
-        for (int i = 0; i < threads; i++) {
-            futures.add(service.submit(() -> {
-                Object prev = env.getContext().enter(target.getRootNode());
-                try {
-                    while (!stopped.get()) {
-                        try {
-                            return (Boolean) target.call(latch);
-                        } catch (Throwable t) {
-                            if (exHandler != null) {
-                                exHandler.accept(t);
-                            } else {
-                                throw t;
+            });
+            env.getContext().leave(null, targetEnter);
+            List<Future<Boolean>> futures = new ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                futures.add(service.submit(() -> {
+                    Object prev = env.getContext().enter(target.getRootNode());
+                    try {
+                        while (!stopped.get()) {
+                            try {
+                                return (Boolean) target.call(latch);
+                            } catch (Throwable t) {
+                                if (exHandler != null) {
+                                    exHandler.accept(t);
+                                } else {
+                                    throw t;
+                                }
+                            }
+                        }
+                        return true;
+                    } finally {
+                        env.getContext().leave(target.getRootNode(), prev);
+                    }
+                }));
+            }
+            try {
+                if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    for (Future<Boolean> future : futures) {
+                        if (future.isDone()) {
+                            try {
+                                future.get();
+                            } catch (ExecutionException e) {
+                                throw new AssertionError(e.getCause());
                             }
                         }
                     }
-                    return true;
-                } finally {
-                    env.getContext().leave(target.getRootNode(), prev);
+                    throw new AssertionError();
                 }
-            }));
-        }
-        try {
-            if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                for (Future<Boolean> future : futures) {
-                    if (future.isDone()) {
-                        try {
-                            future.get();
-                        } catch (ExecutionException e) {
-                            throw new AssertionError(e.getCause());
-                        }
-                    }
-                }
-                throw new AssertionError();
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
             }
-        } catch (InterruptedException e) {
-            throw new AssertionError(e);
+            return new TestSetup(c, env, instrument, futures, target, stopped);
+        } catch (Throwable t) {
+            c.close();
+            throw t;
         }
-        return new TestSetup(c, env, futures, target, stopped);
     }
 
     @FunctionalInterface
@@ -946,13 +974,15 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
         final Context context;
         final Env env;
+        final TruffleInstrument.Env instrumentEnv;
         final List<Future<Boolean>> futures;
         final RootCallTarget target;
         final AtomicBoolean stopped;
 
-        TestSetup(Context context, Env env, List<Future<Boolean>> futures, RootCallTarget target, AtomicBoolean stopped) {
+        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, List<Future<Boolean>> futures, RootCallTarget target, AtomicBoolean stopped) {
             this.context = context;
             this.env = env;
+            this.instrumentEnv = instrumentEnv;
             this.futures = futures;
             this.target = target;
             this.stopped = stopped;
