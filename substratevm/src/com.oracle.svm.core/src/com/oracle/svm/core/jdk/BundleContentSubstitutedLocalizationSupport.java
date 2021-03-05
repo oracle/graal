@@ -24,12 +24,23 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -46,7 +57,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         Map<String, Object> getContent();
     }
 
-    private static class ExtractedBundle implements StoredBundle {
+    private static final class ExtractedBundle implements StoredBundle {
         private final Map<String, Object> lookup;
 
         ExtractedBundle(Map<String, Object> lookup) {
@@ -56,6 +67,21 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         @Override
         public Map<String, Object> getContent() {
             return lookup;
+        }
+    }
+
+    private static final class CompressedBundle implements StoredBundle {
+        private final byte[] content;
+        private final Function<byte[], Map<String, Object>> decompressionAlgorithm;
+
+        private CompressedBundle(byte[] content, Function<byte[], Map<String, Object>> decompressionAlgorithm) {
+            this.content = content;
+            this.decompressionAlgorithm = decompressionAlgorithm;
+        }
+
+        @Override
+        public Map<String, Object> getContent() {
+            return decompressionAlgorithm.apply(content);
         }
     }
 
@@ -72,10 +98,10 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private StoredBundle processBundle(ResourceBundle bundle) {
         Map<String, Object> content = extractContent(bundle);
-        return maybeCompressBundle(bundle, content);
-    }
-
-    private ExtractedBundle maybeCompressBundle(ResourceBundle bundle, Map<String, Object> content) {
+        StoredBundle compressed = compressBundle(content);
+        if (compressed != null) {
+            return compressed;
+        }
         return new ExtractedBundle(content);
     }
 
@@ -110,5 +136,65 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
             }
         }
         throw VMError.shouldNotReachHere("Failed to extract content for " + bundle + " of type " + bundle.getClass());
+    }
+
+    private static CompressedBundle compressBundle(Map<String, Object> content) {
+        String input = serializeContent(content);
+        if (input == null) {
+            return null;
+        }
+        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(byteStream)) {
+            out.write(input.getBytes(StandardCharsets.UTF_8));
+            out.finish();
+            return new CompressedBundle(byteStream.toByteArray(), BundleContentSubstitutedLocalizationSupport::decompressBundle);
+        } catch (IOException ex) {
+            // if the compression fails for some reason, the bundle can still be saved uncompressed
+            // todo log this as a warning?
+            return null;
+        }
+    }
+
+    private static Map<String, Object> decompressBundle(byte[] data) {
+        Map<String, Object> content = new HashMap<>();
+        try (BufferedReader input = new BufferedReader(new InputStreamReader(new GZIPInputStream(new ByteArrayInputStream(data))))) {
+            String key = input.readLine();
+            List<String> values = new ArrayList<>();
+            while (key != null) {
+                String line = input.readLine();
+                while (line != null && !line.isEmpty()) {
+                    values.add(line);
+                    line = input.readLine();
+                }
+                content.put(key, values.toArray(new String[0]));
+                values.clear();
+                key = input.readLine();
+            }
+        } catch (IOException e) {
+            GraalError.shouldNotReachHere(e, "Decompressing a resource bundle failed.");
+        }
+        return content;
+    }
+
+    private static String serializeContent(Map<String, Object> content) {
+        StringBuilder builder = new StringBuilder();
+        for (Map.Entry<String, Object> entry : content.entrySet()) {
+            builder.append(entry.getKey()).append('\n');
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                builder.append(value).append('\n');
+            } else if (value instanceof Object[]) {
+                Object[] arr = (Object[]) value;
+                for (Object o : arr) {
+                    if (!(o instanceof String)) {
+                        return null;
+                    }
+                    builder.append(o).append('\n');
+                }
+            } else {
+                return null;
+            }
+            builder.append('\n');
+        }
+        return builder.toString();
     }
 }
