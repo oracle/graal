@@ -278,7 +278,7 @@ public class NativeImageMojo extends AbstractMojo {
     private String evaluateValue(String value) {
         if (value != null) {
             try {
-                Object evaluatedValue = (String) evaluator.evaluate(value);
+                Object evaluatedValue = evaluator.evaluate(value);
                 if (evaluatedValue instanceof String) {
                     return (String) evaluatedValue;
                 }
