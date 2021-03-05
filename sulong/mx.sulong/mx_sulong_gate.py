@@ -136,9 +136,6 @@ def _unittest_config_participant(config):
     (vmArgs, mainClass, mainClassArgs) = config
     vmArgs += get_test_distribution_path_properties(_suite)
     vmArgs += ['-Dsulongtest.configRoot={}'.format(_sulongTestConfigRoot)]
-    if any(x.startswith('com.oracle.truffle.llvm.') for x in mainClassArgs):
-        # only set if we are running a sulong test
-        vmArgs += ['-Dpolyglot.llvm.verifyBitcode=true']
     return (vmArgs, mainClass, mainClassArgs)
 
 
