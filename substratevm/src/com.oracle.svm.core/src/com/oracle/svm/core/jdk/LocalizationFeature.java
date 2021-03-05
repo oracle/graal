@@ -301,13 +301,15 @@ public abstract class LocalizationFeature implements Feature {
         }
 
         for (Locale locale : locales) {
-            for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
-                LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, locale));
+            for (Locale candidateLocale : optimizedLocalizationSupport.control.getCandidateLocales("", locale)) {
+                for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
+                    LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, candidateLocale));
 
-                optimizedLocalizationSupport.adaptersByClass.put(Pair.create(providerClass, locale), adapter);
-                LocaleProviderAdapter existing = optimizedLocalizationSupport.adaptersByType.put(adapter.getAdapterType(), adapter);
-                assert existing == null || existing == adapter : "Overwriting adapter type with a different adapter";
+                    optimizedLocalizationSupport.adaptersByClass.put(Pair.create(providerClass, candidateLocale), adapter);
+                    LocaleProviderAdapter existing = optimizedLocalizationSupport.adaptersByType.put(adapter.getAdapterType(), adapter);
+                    assert existing == null || existing == adapter : "Overwriting adapter type with a different adapter";
 
+                }
             }
         }
     }
