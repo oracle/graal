@@ -74,6 +74,23 @@ public final class LoopEndNode extends AbstractEndNode {
      */
     boolean canSafepoint;
 
+    /**
+     * As with host safepoints most loops need Truffle safepoints in order to allow the guest
+     * language execution to be interrupted. Unlike host safepoints Truffle safepoints are not used
+     * by garbage collectors but require a constant time interview between safepoint polls.
+     * <p>
+     * Truffle safepoints can be disabled if either there is a tight loop without any allocations or
+     * if there is a Truffle call in the loop body. Regular foreign calls and invokes do not disable
+     * Truffle safepoints as they do not automatically poll Truffle safeopints, only Truffle guest
+     * language calls do.
+     * <p>
+     * If Truffle is not in use then this flag will be always be <code>true</code>.
+     * <p>
+     * More information on Truffle safepoints can be found
+     * <a href="http://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md">here</a>.
+     */
+    boolean canTruffleSafepoint;
+
     boolean guaranteedSafepoint;
 
     public LoopEndNode(LoopBeginNode begin) {
@@ -83,6 +100,7 @@ public final class LoopEndNode extends AbstractEndNode {
         this.endIndex = idx;
         this.loopBegin = begin;
         this.canSafepoint = begin.canEndsSafepoint;
+        this.canTruffleSafepoint = begin.canEndsTruffleSafepoint;
     }
 
     @Override
@@ -107,21 +125,13 @@ public final class LoopEndNode extends AbstractEndNode {
         this.canSafepoint = false;
     }
 
-    /**
-     * Disables the safepoint and marks the loop and as guaranteed by an inner method call.
-     */
-    public void garanteeSafepoint() {
-        disableSafepoint();
-        guaranteedSafepoint = true;
+    public void disableTruffleSafepoint() {
+        this.canTruffleSafepoint = false;
     }
 
-    /**
-     * Returns true if the safepoint was disabled due to a method invocation or a node that implied
-     * a guaranteed safepoint.
-     */
-    public boolean guaranteedSafepoint() {
-        assert !guaranteedSafepoint || !canSafepoint;
-        return guaranteedSafepoint;
+    public boolean canTruffleSafepoint() {
+        assert !canTruffleSafepoint || loopBegin().canEndsTruffleSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
+        return this.canTruffleSafepoint;
     }
 
     public boolean canSafepoint() {

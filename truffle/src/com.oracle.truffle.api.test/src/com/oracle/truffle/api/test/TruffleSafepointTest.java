@@ -82,6 +82,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
@@ -95,7 +97,9 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -158,7 +162,7 @@ public class TruffleSafepointTest {
 
     @Test
     public void testNullArgs() {
-        try (TestSetup setup = setupSafepointLoop(1, (node) -> {
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
         })) {
@@ -173,7 +177,7 @@ public class TruffleSafepointTest {
 
     @Test
     public void testSynchronousRecursiveError() throws InterruptedException, AssertionError, ExecutionException {
-        try (TestSetup setup = setupSafepointLoop(1, (node) -> {
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
         })) {
@@ -209,7 +213,7 @@ public class TruffleSafepointTest {
     @Test
     public void testSynchronous() {
         forEachConfig((threads, events) -> {
-            TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             });
@@ -257,7 +261,7 @@ public class TruffleSafepointTest {
     @Test
     public void testAsynchronous() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -307,7 +311,7 @@ public class TruffleSafepointTest {
             AtomicBoolean stopped = new AtomicBoolean(false);
             AtomicBoolean allowSideEffects = new AtomicBoolean(true);
 
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint config = TruffleSafepoint.getCurrent();
                 boolean prev = config.setAllowSideEffects(false);
                 try {
@@ -344,7 +348,7 @@ public class TruffleSafepointTest {
     @Test
     public void testStackTrace() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -388,7 +392,7 @@ public class TruffleSafepointTest {
 
             AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(null);
             List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             }, (e) -> {
@@ -438,7 +442,7 @@ public class TruffleSafepointTest {
     public void testBlockedAndSafepoints() {
         forEachConfig((threads, events) -> {
             Semaphore semaphore = new Semaphore(threads);
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
                 lockCooperativelySafepoint(semaphore, node, safepoint);
                 return false;
@@ -520,7 +524,7 @@ public class TruffleSafepointTest {
     public void testBlocked() {
         forEachConfig((threads, events) -> {
             Semaphore semaphore = new Semaphore(threads);
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.setBlockedInterruptable(node, Semaphore::acquire, semaphore);
                 releaseSemaphore(semaphore);
                 assert !Thread.interrupted() : "invalid trailing interrupted state";
@@ -578,7 +582,7 @@ public class TruffleSafepointTest {
     @Test
     public void testContextAlive() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -648,7 +652,7 @@ public class TruffleSafepointTest {
     @Test
     public void testContextCancellation() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -690,7 +694,7 @@ public class TruffleSafepointTest {
     @Test
     public void testEventCancellation() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -724,7 +728,7 @@ public class TruffleSafepointTest {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean();
 
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 while (!isStopped(stopped)) {
                     contextSafepoint();
                 }
@@ -759,7 +763,7 @@ public class TruffleSafepointTest {
 
     @Test
     public void testNonSideEffectInvalidErrorThrown() throws InterruptedException {
-        try (TestSetup setup = setupSafepointLoop(1, (node) -> {
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
         })) {
@@ -778,6 +782,158 @@ public class TruffleSafepointTest {
         }
     }
 
+    /*
+     * This needs to be higher than graal.MaximumEscapeAnalysisArrayLength. However in this truffle
+     * test the value is not easily accessible.
+     */
+    static int nonConstantValue = 1024;
+
+    @Test
+    public void testBigAllocationInLoop() {
+        final int loopCount = 1024;
+        Object[] values = new Object[loopCount];
+        Semaphore awaitSubmit = new Semaphore(0);
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            acquireBoundary(awaitSubmit);
+            for (int i = 0; i < loopCount; i++) {
+                // perform an escaping allocation
+                values[i] = new Object[nonConstantValue];
+                TruffleSafepoint.poll(node);
+            }
+            return false;
+        })) {
+            SafepointCounter counter = new SafepointCounter(setup);
+            setup.env.submitThreadLocal(null, counter);
+
+            awaitSubmit.release();
+
+            // now the loop runs and we should get at least one safepoint invocation for each loop
+            // invocation. otherwise something is wrong with safepoint elimination
+
+            setup.stopAndAwait();
+            int count = counter.counter.get();
+            assertTrue(String.valueOf(count), count >= loopCount);
+        }
+    }
+
+    @Test
+    public void testSimpleAllocationInLoop() {
+        final int loopCount = 1024;
+        Object[] values = new Object[loopCount];
+        Semaphore awaitSubmit = new Semaphore(0);
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            acquireBoundary(awaitSubmit);
+            for (int i = 0; i < loopCount; i++) {
+                // perform an escaping allocation
+                values[i] = new Object();
+                TruffleSafepoint.poll(node);
+            }
+            return false;
+        })) {
+            SafepointCounter counter = new SafepointCounter(setup);
+            setup.env.submitThreadLocal(null, counter);
+
+            awaitSubmit.release();
+
+            // now the loop runs and we should get at least one safepoint invocation for each loop
+            // invocation. otherwise something is wrong with safepoint elimination
+
+            setup.stopAndAwait();
+            int count = counter.counter.get();
+            assertTrue(String.valueOf(count), count >= loopCount);
+        }
+    }
+
+    @Test
+    public void testCountedSumLoop() {
+        final int loopCount = 1024;
+        int[] values = new int[loopCount];
+        Semaphore awaitSubmit = new Semaphore(0);
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            acquireBoundary(awaitSubmit);
+            int sum = 0;
+            for (int i = 0; i < loopCount; i++) {
+                // perform an escaping allocation
+                sum += values[i];
+            }
+            // escape sum value
+            values[0] = sum;
+            return false;
+        })) {
+            SafepointCounter counter = new SafepointCounter(setup);
+            setup.env.submitThreadLocal(null, counter);
+
+            awaitSubmit.release();
+
+            setup.stopAndAwait();
+            int count = counter.counter.get();
+
+            // for a sum loop the number of notifications should be below 1024
+            // otherwise truffle loop safepoint elimination did not work.
+            assertTrue(String.valueOf(count), count < loopCount);
+        }
+    }
+
+    @TruffleBoundary
+    private static void acquireBoundary(Semaphore awaitSubmit) {
+        try {
+            awaitSubmit.acquire();
+        } catch (InterruptedException e) {
+            // not expected to interrupt
+            throw new AssertionError(e);
+        }
+    }
+
+    static class CallInLoopNode extends Node implements NodeCallable {
+
+        @Child IndirectCallNode indirectCall = IndirectCallNode.create();
+
+        static final int LOOP_COUNT = 1024;
+
+        CallTarget target;
+        Semaphore awaitSubmit = new Semaphore(0);
+        Object[] values = new Object[LOOP_COUNT];
+
+        public boolean call(TestSetup setup, TestRootNode node) {
+            initialize();
+            for (int i = 0; i < LOOP_COUNT; i++) {
+                // perform an escaping allocation
+                values[i] = indirectCall.call(target);
+            }
+            return false;
+        }
+
+        @TruffleBoundary
+        private void initialize() {
+            target = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            try {
+                awaitSubmit.acquire();
+            } catch (InterruptedException e) {
+                // not expected to interrupt
+                throw new AssertionError(e);
+            }
+        }
+    }
+
+    @Test
+    public void testTruffleCallInLoop() {
+        CallInLoopNode callInLoop = new CallInLoopNode();
+        try (TestSetup setup = setupSafepointLoop(1, callInLoop)) {
+            SafepointCounter counter = new SafepointCounter(setup);
+            setup.env.submitThreadLocal(null, counter);
+
+            callInLoop.awaitSubmit.release();
+
+            setup.stopAndAwait();
+            int count = counter.counter.get();
+
+            // if there is an indirect truffle call in the loop
+            // we can omit the safepoint. if that safepoint would
+            // therefore we expect a safepoint count around 1024 but definitely less than 1024 * 2
+            assertTrue(String.valueOf(count), count < CallInLoopNode.LOOP_COUNT * 2);
+        }
+    }
+
     @SuppressWarnings("serial")
     static class GuestException extends AbstractTruffleException {
 
@@ -786,7 +942,7 @@ public class TruffleSafepointTest {
     @Test
     public void testSubmitAsInstrument() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -877,9 +1033,54 @@ public class TruffleSafepointTest {
         return setupSafepointLoop(threads, callable, null);
     }
 
+    static class TestRootNode extends RootNode {
+
+        final AtomicBoolean stopped;
+        final TestSetup setup;
+        final CountDownLatch latch;
+        @CompilationFinal NodeCallable callable;
+
+        TestRootNode(TruffleLanguage<?> language, AtomicBoolean stopped, TestSetup setup, CountDownLatch latch, NodeCallable callable) {
+            super(language);
+            this.stopped = stopped;
+            this.setup = setup;
+            this.latch = latch;
+            if (callable instanceof Node) {
+                this.callable = (NodeCallable) insert((Node) callable);
+            } else {
+                this.callable = callable;
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object execute(VirtualFrame frame) {
+            waitForLatch(latch);
+            do {
+                Boolean result = callable.call(setup, this);
+                if (result) {
+                    return result;
+                }
+                // we want to call at least once
+            } while (!stopped.get());
+            return null;
+        }
+
+        @Override
+        public boolean isInternal() {
+            return false;
+        }
+
+        @Override
+        public String getName() {
+            return "org.graalvm.TestRoot";
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private TestSetup setupSafepointLoop(int threads, NodeCallable callable, Consumer<Throwable> exHandler) {
         Context c = createTestContext();
+        TestSetup setup = null;
         try {
             c.enter();
             c.initialize(ProxyLanguage.ID);
@@ -890,42 +1091,19 @@ public class TruffleSafepointTest {
             CountDownLatch latch = new CountDownLatch(threads);
             Object targetEnter = env.getContext().enter(null);
             AtomicBoolean stopped = new AtomicBoolean();
-            RootCallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(proxyLanguage) {
-                @SuppressWarnings("unchecked")
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    waitForLatch(latch);
-                    while (true) {
-                        if (stopped.get()) {
-                            return null;
-                        }
-                        Boolean result = callable.call(this);
-                        if (result) {
-                            return result;
-                        }
-                    }
-                }
 
-                @Override
-                public boolean isInternal() {
-                    return false;
-                }
-
-                @Override
-                public String getName() {
-                    return "org.graalvm.TestRoot";
-                }
-
-            });
+            TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped);
+            setup.root = new TestRootNode(proxyLanguage, stopped, setup, latch, callable);
+            setup.target = Truffle.getRuntime().createCallTarget(setup.root);
             env.getContext().leave(null, targetEnter);
-            List<Future<Boolean>> futures = new ArrayList<>();
+            setup.futures = new ArrayList<>();
             for (int i = 0; i < threads; i++) {
-                futures.add(service.submit(() -> {
-                    Object prev = env.getContext().enter(target.getRootNode());
+                setup.futures.add(service.submit(() -> {
+                    Object prev = env.getContext().enter(finalSetup.target.getRootNode());
                     try {
-                        while (!stopped.get()) {
+                        do {
                             try {
-                                return (Boolean) target.call(latch);
+                                return (Boolean) finalSetup.target.call(latch);
                             } catch (Throwable t) {
                                 if (exHandler != null) {
                                     exHandler.accept(t);
@@ -933,16 +1111,16 @@ public class TruffleSafepointTest {
                                     throw t;
                                 }
                             }
-                        }
+                        } while (!stopped.get());
                         return true;
                     } finally {
-                        env.getContext().leave(target.getRootNode(), prev);
+                        env.getContext().leave(finalSetup.target.getRootNode(), prev);
                     }
                 }));
             }
             try {
                 if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                    for (Future<Boolean> future : futures) {
+                    for (Future<Boolean> future : setup.futures) {
                         if (future.isDone()) {
                             try {
                                 future.get();
@@ -956,17 +1134,21 @@ public class TruffleSafepointTest {
             } catch (InterruptedException e) {
                 throw new AssertionError(e);
             }
-            return new TestSetup(c, env, instrument, futures, target, stopped);
+            return setup;
         } catch (Throwable t) {
-            c.close();
+            if (setup != null && setup.futures != null) {
+                setup.close();
+            } else {
+                c.close();
+            }
             throw t;
         }
     }
 
     @FunctionalInterface
-    interface NodeCallable {
+    interface NodeCallable extends NodeInterface {
 
-        boolean call(Node node);
+        boolean call(TestSetup setup, TestRootNode node);
 
     }
 
@@ -975,16 +1157,15 @@ public class TruffleSafepointTest {
         final Context context;
         final Env env;
         final TruffleInstrument.Env instrumentEnv;
-        final List<Future<Boolean>> futures;
-        final RootCallTarget target;
+        List<Future<Boolean>> futures;
+        @CompilationFinal RootCallTarget target;
+        @CompilationFinal TestRootNode root;
         final AtomicBoolean stopped;
 
-        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, List<Future<Boolean>> futures, RootCallTarget target, AtomicBoolean stopped) {
+        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, AtomicBoolean stopped) {
             this.context = context;
             this.env = env;
             this.instrumentEnv = instrumentEnv;
-            this.futures = futures;
-            this.target = target;
             this.stopped = stopped;
         }
 
@@ -1000,10 +1181,14 @@ public class TruffleSafepointTest {
         }
     }
 
+    static boolean isGraalRuntime() {
+        return Truffle.getRuntime().getName().contains("Graal");
+    }
+
     protected Context createTestContext() {
         Context.Builder b = Context.newBuilder();
         b.allowExperimentalOptions(true);
-        if (Truffle.getRuntime().getName().contains("Graal")) {
+        if (isGraalRuntime()) {
             b.option("engine.CompileImmediately", "true");
             b.option("engine.BackgroundCompilation", "false");
         }
@@ -1045,6 +1230,26 @@ public class TruffleSafepointTest {
 
     @SuppressWarnings("serial")
     static class SafepointPerformed extends RuntimeException {
+    }
+
+    static class SafepointCounter extends ThreadLocalAction {
+
+        private final TestSetup setup;
+
+        final AtomicInteger counter = new AtomicInteger();
+
+        protected SafepointCounter(TestSetup setup) {
+            super(false, false);
+            this.setup = setup;
+        }
+
+        @Override
+        protected void perform(Access access) {
+            counter.incrementAndGet();
+
+            // resubmit
+            setup.env.submitThreadLocal(new Thread[]{Thread.currentThread()}, this);
+        }
     }
 
     static class ActionCollector extends ThreadLocalAction {

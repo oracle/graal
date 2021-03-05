@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,9 +104,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         }
         for (LoopBeginNode loopBeginNode : graph.getNodes(LoopBeginNode.TYPE)) {
             for (LoopEndNode loopEndNode : loopBeginNode.loopEnds()) {
-                // Invokes inside truffle compilations do not have a guaranteed truffle safepoint so
-                // we cannot elide them when Graal thinks it is safe to do so.
-                if (loopEndNode.canSafepoint() || loopEndNode.guaranteedSafepoint()) {
+                if (loopEndNode.canTruffleSafepoint()) {
                     try (DebugCloseable s = loopEndNode.withNodeSourcePosition()) {
                         insertSafepoint(graph, loopEndNode);
                     }
@@ -227,13 +225,11 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
         // not a RootNode instance at the end of the parent chain -> not adopted
         // not adopted means this node will not have a valid source location
-        rootNodeType.isInstance(current);
-
         ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(current);
         return rootNodeType.isAssignableFrom(type);
     }
 
-    private static ResolvedJavaMethod findMethod(ResolvedJavaType type, String name) {
+    static ResolvedJavaMethod findMethod(ResolvedJavaType type, String name) {
         for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
             if (m.getName().equals(name)) {
                 return m;
@@ -242,7 +238,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         throw GraalError.shouldNotReachHere("Required method " + name + " not found in " + type);
     }
 
-    private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
+    static ResolvedJavaField findField(ResolvedJavaType type, String name) {
         for (ResolvedJavaField field : type.getInstanceFields(false)) {
             if (field.getName().equals(name)) {
                 return field;
