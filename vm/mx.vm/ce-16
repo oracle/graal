@@ -1,2 +1,2 @@
 DYNAMIC_IMPORTS=/substratevm
-COMPONENTS=LibGraal
+COMPONENTS=LibGraal,Component installer
