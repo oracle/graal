@@ -418,8 +418,8 @@ public final class Meta implements ContextAccess {
         java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
         java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
         java_lang_invoke_MethodHandleNatives_linkCallSite = requireMethodDiffVersion(java_lang_invoke_MethodHandleNatives,
-                Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array,
-                Name.linkCallSite, Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
+                        Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array,
+                        Name.linkCallSite, Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
         java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethodHandleConstant,
                         Signature.MethodHandle_Class_int_Class_String_Object);
         java_lang_invoke_MethodHandleNatives_findMethodHandleType = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_Class_Class);
@@ -527,14 +527,14 @@ public final class Meta implements ContextAccess {
         sun_misc_NativeSignalHandler_handler = sun_misc_NativeSignalHandler.requireDeclaredField(Name.handler, Type._long);
         sun_misc_SignalHandler = knownKlassDiffVersion(Type.sun_misc_SignalHandler, Type.jdk_internal_misc_Signal$Handler);
         sun_misc_SignalHandler_handle = requireMethodDiffVersion(sun_misc_SignalHandler,
-                Name.handle, Signature._void_sun_misc_Signal,
-                Name.handle, Signature._void_jdk_internal_misc_Signal);
+                        Name.handle, Signature._void_sun_misc_Signal,
+                        Name.handle, Signature._void_jdk_internal_misc_Signal);
         sun_misc_SignalHandler_SIG_DFL = requireFieldDiffVersion(sun_misc_SignalHandler,
-                Name.SIG_DFL, Type.sun_misc_SignalHandler,
-                Name.SIG_DFL, Type.jdk_internal_misc_Signal$Handler);
+                        Name.SIG_DFL, Type.sun_misc_SignalHandler,
+                        Name.SIG_DFL, Type.jdk_internal_misc_Signal$Handler);
         sun_misc_SignalHandler_SIG_IGN = requireFieldDiffVersion(sun_misc_SignalHandler,
-                Name.SIG_IGN, Type.sun_misc_SignalHandler,
-                Name.SIG_IGN, Type.jdk_internal_misc_Signal$Handler);
+                        Name.SIG_IGN, Type.sun_misc_SignalHandler,
+                        Name.SIG_IGN, Type.jdk_internal_misc_Signal$Handler);
 
         sun_reflect_ConstantPool = knownKlassDiffVersion(Type.sun_reflect_ConstantPool, Type.jdk_internal_reflect_ConstantPool);
         sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.requireDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
@@ -547,14 +547,14 @@ public final class Meta implements ContextAccess {
             java_lang_ref_Reference_pending = null;
         }
         java_lang_ref_Reference_lock = requireFieldDiffVersion(java_lang_ref_Reference,
-                Name.lock, Type.java_lang_ref_Reference$Lock,
-                Name.processPendingLock, Type.java_lang_Object);
+                        Name.lock, Type.java_lang_ref_Reference$Lock,
+                        Name.processPendingLock, Type.java_lang_Object);
 
         sun_reflect_Reflection_getCallerClass = knownKlassDiffVersion(Type.sun_reflect_Reflection, Type.jdk_internal_reflect_Reflection).requireDeclaredMethod(Name.getCallerClass, Signature.Class);
 
         if (getJavaVersion().java11OrLater()) {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
-                    Signature.Object_Object_int_Object_Object_Object_Object);
+                            Signature.Object_Object_int_Object_Object_Object_Object);
         } else {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
         }
