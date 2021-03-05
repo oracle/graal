@@ -3507,7 +3507,7 @@ public abstract class TruffleLanguage<C> {
         Future<Void> submitThreadLocalInternal(Thread[] threads, ThreadLocalAction action, boolean needsEnter) {
             checkDisposed();
             try {
-                return LanguageAccessor.ENGINE.submitThreadLocal(LanguageAccessor.ENGINE.getContext(polyglotLanguageContext), threads, action, needsEnter);
+                return LanguageAccessor.ENGINE.submitThreadLocal(LanguageAccessor.ENGINE.getContext(polyglotLanguageContext), polyglotLanguageContext, threads, action, needsEnter);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

@@ -1382,7 +1382,7 @@ public abstract class TruffleInstrument {
         public Future<Void> submitThreadLocal(TruffleContext context, Thread[] threads, ThreadLocalAction action) {
             Objects.requireNonNull(context);
             try {
-                return InstrumentAccessor.ENGINE.submitThreadLocal(InstrumentAccessor.LANGUAGE.getPolyglotContext(context), threads, action, true);
+                return InstrumentAccessor.ENGINE.submitThreadLocal(InstrumentAccessor.LANGUAGE.getPolyglotContext(context), this.polyglotInstrument, threads, action, true);
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }

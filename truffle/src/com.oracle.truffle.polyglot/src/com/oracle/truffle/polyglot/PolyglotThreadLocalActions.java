@@ -104,7 +104,7 @@ final class PolyglotThreadLocalActions {
         intervalTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                submit(null, new PrintStackTraceAction(false, false), true);
+                submit(null, PolyglotEngineImpl.ENGINE_ID, new PrintStackTraceAction(false, false), true);
             }
         }, interval, interval);
     }
@@ -124,7 +124,7 @@ final class PolyglotThreadLocalActions {
         if (statistics != null) {
             PolyglotStatisticsAction collector = new PolyglotStatisticsAction(this, Thread.currentThread());
             statistics.add(collector);
-            submit(new Thread[]{Thread.currentThread()}, collector, false);
+            submit(new Thread[]{Thread.currentThread()}, PolyglotEngineImpl.ENGINE_ID, collector, false);
         }
     }
 
@@ -179,7 +179,7 @@ final class PolyglotThreadLocalActions {
                         statistics.getMax() / 1000d));
     }
 
-    Future<Void> submit(Thread[] threads, ThreadLocalAction action, boolean needsEnter) {
+    Future<Void> submit(Thread[] threads, String originId, ThreadLocalAction action, boolean needsEnter) {
         Objects.requireNonNull(action);
         if (threads != null) {
             for (int i = 0; i < threads.length; i++) {
@@ -219,9 +219,9 @@ final class PolyglotThreadLocalActions {
             Thread[] activeThreads = activePolyglotThreads.toArray(new Thread[0]);
             AbstractTLHandshake handshake;
             if (sync) {
-                handshake = new SyncEvent(context, activeThreads, action, needsEnter);
+                handshake = new SyncEvent(context, originId, activeThreads, action, needsEnter);
             } else {
-                handshake = new AsyncEvent(context, action, needsEnter);
+                handshake = new AsyncEvent(context, originId, action, needsEnter);
             }
 
             if (traceActions) {
@@ -249,8 +249,10 @@ final class PolyglotThreadLocalActions {
     private void log(String action, AbstractTLHandshake handshake, String details) {
         if (traceActions) {
             logger.log(Level.INFO,
-                            String.format("[tl] %-18s %8d  %-30s %-30s %s", action, handshake.debugId,
+                            String.format("[tl] %-18s %8d  %-30s %-10s %-30s %s", action,
+                                            handshake.debugId,
                                             "thread[" + Thread.currentThread().getName() + "]",
+                                            handshake.originId,
                                             "action[" + handshake.action.toString() + "]", details));
         }
     }
@@ -317,14 +319,16 @@ final class PolyglotThreadLocalActions {
 
     private abstract static class AbstractTLHandshake implements Consumer<Node> {
 
+        private final String originId;
         final ThreadLocalAction action;
         long debugId;
         protected final PolyglotContextImpl context;
         private final boolean needsEnter;
         Future<Void> future;
 
-        AbstractTLHandshake(PolyglotContextImpl context, ThreadLocalAction action, boolean needsEnter) {
+        AbstractTLHandshake(PolyglotContextImpl context, String originId, ThreadLocalAction action, boolean needsEnter) {
             this.action = action;
+            this.originId = originId;
             this.context = context;
             this.needsEnter = needsEnter;
         }
@@ -404,8 +408,8 @@ final class PolyglotThreadLocalActions {
 
     private static final class AsyncEvent extends AbstractTLHandshake {
 
-        AsyncEvent(PolyglotContextImpl context, ThreadLocalAction action, boolean needsEnter) {
-            super(context, action, needsEnter);
+        AsyncEvent(PolyglotContextImpl context, String originId, ThreadLocalAction action, boolean needsEnter) {
+            super(context, originId, action, needsEnter);
         }
 
         @Override
@@ -420,8 +424,8 @@ final class PolyglotThreadLocalActions {
         private final CountDownLatch doneLatch;
         private final CountDownLatch awaitLatch;
 
-        SyncEvent(PolyglotContextImpl context, Thread[] threads, ThreadLocalAction action, boolean needsEnter) {
-            super(context, action, needsEnter);
+        SyncEvent(PolyglotContextImpl context, String originId, Thread[] threads, ThreadLocalAction action, boolean needsEnter) {
+            super(context, originId, action, needsEnter);
             this.doneLatch = new CountDownLatch(threads.length);
             this.awaitLatch = new CountDownLatch(threads.length);
         }
@@ -478,7 +482,7 @@ final class PolyglotThreadLocalActions {
                 long now = System.nanoTime();
                 intervalStatistics.accept(now - prev);
             }
-            actions.submit(new Thread[]{access.getThread()}, this, false);
+            actions.submit(new Thread[]{access.getThread()}, PolyglotEngineImpl.ENGINE_ID, this, false);
             this.prevTime = System.nanoTime();
         }
 
