@@ -88,7 +88,6 @@ CLSS public final org.graalvm.tools.insight.heap.HeapDump$ThreadBuilder
  outer org.graalvm.tools.insight.heap.HeapDump
 meth public !varargs org.graalvm.tools.insight.heap.HeapDump$ThreadBuilder addStackFrame(org.graalvm.tools.insight.heap.HeapDump$ClassInstance,java.lang.String,java.lang.String,int,org.graalvm.tools.insight.heap.HeapDump$ObjectInstance[])
 meth public org.graalvm.tools.insight.heap.HeapDump$ObjectInstance dumpThread()
-meth public org.graalvm.tools.insight.heap.HeapDump$ThreadBuilder group(java.lang.String)
 supr java.lang.Object
-hfds groupName,name,stacks
+hfds name,stacks
 

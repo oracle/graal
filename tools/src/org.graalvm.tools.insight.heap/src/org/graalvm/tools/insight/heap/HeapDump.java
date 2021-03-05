@@ -504,26 +504,12 @@ public final class HeapDump {
      */
     public final class ThreadBuilder {
 
-        private String groupName;
         private final List<Object[]> stacks;
         private final String name;
 
         private ThreadBuilder(String name) {
             this.stacks = new ArrayList<>();
             this.name = name;
-        }
-
-        /**
-         * Specifies group name this thread belongs to.
-         *
-         * @param group name of the group the thread belongs to
-         * @return {@code this} builder
-         *
-         * @since 21.1
-         */
-        public ThreadBuilder group(String group) {
-            this.groupName = group;
-            return this;
         }
 
         /**
