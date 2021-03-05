@@ -98,9 +98,12 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private StoredBundle processBundle(ResourceBundle bundle) {
         Map<String, Object> content = extractContent(bundle);
-        StoredBundle compressed = compressBundle(content);
-        if (compressed != null) {
-            return compressed;
+        boolean isInDefaultLocale = bundle.getLocale().equals(defaultLocale);
+        if (!isInDefaultLocale) {
+            StoredBundle compressed = compressBundle(content);
+            if (compressed != null) {
+                return compressed;
+            }
         }
         return new ExtractedBundle(content);
     }
