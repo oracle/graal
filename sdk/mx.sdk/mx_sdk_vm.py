@@ -551,7 +551,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
     if not isdir(jmods_dir):
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods_dir + ' is missing or is not a directory')
 
-    jdk_modules = {jmd.name: jmd for jmd in jdk.get_modules()}
+    # Exclude jdk.aot due to GR-10545 and JDK-8255616
+    jdk_modules = {jmd.name: jmd for jmd in jdk.get_modules() if jmd.name != 'jdk.aot'}
     modules = [as_java_module(dist, jdk) for dist in module_dists]
     all_module_names = frozenset(list(jdk_modules.keys()) + [m.name for m in modules])
 
