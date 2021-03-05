@@ -81,6 +81,10 @@
 			{
 				"os": "linux",
 				"arch": "amd64"
+			},
+			{
+				"os": "darwin",
+				"arch": "amd64"
 			}
 		]
 	},
