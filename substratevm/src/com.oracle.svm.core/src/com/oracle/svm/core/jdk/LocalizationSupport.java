@@ -30,32 +30,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.MissingResourceException;
-import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.spi.LocaleServiceProvider;
 import java.util.stream.Collectors;
-
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import org.graalvm.collections.Pair;
-
-//Checkstyle: stop
-import sun.util.locale.provider.LocaleProviderAdapter;
-//Checkstyle: resume
+import org.graalvm.compiler.debug.GraalError;
 
 /**
  * Holder for localization information that is computed during image generation and used at run
  * time.
  */
-public final class LocalizationSupport {
+public abstract class LocalizationSupport {
 
     final Map<String, Charset> charsets = new HashMap<>();
-    final Map<Class<? extends LocaleServiceProvider>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
-    final Map<LocaleProviderAdapter.Type, LocaleProviderAdapter> adaptersByType = new HashMap<>();
-    final Map<Class<? extends LocaleServiceProvider>, Object> providerPools = new HashMap<>();
-    final Map<Pair<String, Locale>, ResourceBundle> resourceBundles = new HashMap<>();
-
-    private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");
 
     final Locale defaultLocale;
     /**
@@ -65,24 +50,14 @@ public final class LocalizationSupport {
 
     final Set<String> supportedLanguageTags;
 
-    public LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
+    protected LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
     }
 
-    /**
-     * Get cached resource bundle.
-     *
-     * @param locale this parameter is not currently used.
-     */
-    public ResourceBundle getCached(String baseName, Locale locale) throws MissingResourceException {
-        ResourceBundle result = resourceBundles.get(Pair.create(baseName, locale));
-        if (result == null) {
-            String errorMessage = "Resource bundle not found " + baseName + ". " +
-                            "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
-            throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
-        }
-        return result;
+    public OptimizedLocalizationSupport asOptimizedSupport() {
+        GraalError.guarantee(LocalizationFeature.optimizedMode(), "Optimized support only available in optimized mode");
+        return ((OptimizedLocalizationSupport) this);
     }
 }

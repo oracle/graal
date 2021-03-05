@@ -92,7 +92,7 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
     @Substitute
     @SuppressWarnings({"unused"})
     public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
-        LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).adaptersByClass.get(providerClass);
+        LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().adaptersByClass.get(providerClass);
         if (result != null) {
             return result;
         }
@@ -101,7 +101,7 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
 
     @Substitute
     public static LocaleProviderAdapter forType(Type type) {
-        final LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).adaptersByType.get(type);
+        final LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().adaptersByType.get(type);
         if (result != null) {
             return result;
         }
@@ -138,7 +138,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 
     @Substitute
     private static LocaleServiceProviderPool getPool(Class<? extends LocaleServiceProvider> providerClass) {
-        LocaleServiceProviderPool result = (LocaleServiceProviderPool) ImageSingletons.lookup(LocalizationSupport.class).providerPools.get(providerClass);
+        LocaleServiceProviderPool result = (LocaleServiceProviderPool) ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().providerPools.get(providerClass);
         if (result == null) {
             throw VMError.unsupportedFeature("LocaleServiceProviderPool.getPool " + providerClass.getName());
         }
@@ -270,7 +270,7 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     }
 
     @Substitute
-    @SuppressWarnings("static-method")
+    @SuppressWarnings("unused")
     protected Set<String> createLanguageTagSet(String category) {
         return ImageSingletons.lookup(LocalizationSupport.class).supportedLanguageTags;
     }

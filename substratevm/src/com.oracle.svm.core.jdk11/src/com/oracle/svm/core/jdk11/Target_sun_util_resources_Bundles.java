@@ -54,6 +54,6 @@ final class Target_sun_util_resources_Bundles {
     @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle loadBundleOf(String baseName, Locale targetLocale, Strategy strategy) {
-        return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);
+        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
     }
 }

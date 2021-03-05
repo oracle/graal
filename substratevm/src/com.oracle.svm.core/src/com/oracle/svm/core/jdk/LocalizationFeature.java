@@ -61,7 +61,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -83,6 +82,18 @@ import sun.util.resources.LocaleData;
 // Checkstyle: resume
 
 public abstract class LocalizationFeature implements Feature {
+
+    protected final boolean optimizedMode = optimizedMode();
+
+    protected final boolean trace = Options.TraceLocalizationFeature.getValue();
+
+    public static boolean optimizedMode() {
+        return Options.OptimizedMode.getValue();
+    }
+
+    public static boolean fallbackMode() {
+        return !optimizedMode();
+    }
 
     /**
      * The Locale that the native image is built for. Currently, switching the Locale at run time is
@@ -116,18 +127,6 @@ public abstract class LocalizationFeature implements Feature {
 
         @Option(help = "When enabled, localization feature details are printed.", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceLocalizationFeature = new HostedOptionKey<>(true);
-    }
-
-    protected final boolean optimizedMode = optimizedMode();
-
-    protected final boolean trace = Options.TraceLocalizationFeature.getValue();
-
-    public static boolean optimizedMode() {
-        return Options.OptimizedMode.getValue();
-    }
-
-    public static boolean fallbackMode() {
-        return !optimizedMode();
     }
 
     /**
@@ -188,12 +187,13 @@ public abstract class LocalizationFeature implements Feature {
         if (!locales.contains(defaultLocale)) {
             locales.add(defaultLocale);
         }
-        support = new LocalizationSupport(defaultLocale, locales);
+        support = new OptimizedLocalizationSupport(defaultLocale, locales);
         ImageSingletons.add(LocalizationSupport.class, support);
         ImageSingletons.add(LocalizationFeature.class, this);
 
         addCharsets();
         if (optimizedMode) {
+            // todo encapsulate if into strategy ?
             addProviders();
         }
     }
@@ -295,18 +295,19 @@ public abstract class LocalizationFeature implements Feature {
         for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
             LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
 
-            support.adaptersByClass.put(providerClass, adapter);
-            LocaleProviderAdapter existing = support.adaptersByType.put(adapter.getAdapterType(), adapter);
+            OptimizedLocalizationSupport optimizedLocalizationSupport = support.asOptimizedSupport();
+            optimizedLocalizationSupport.adaptersByClass.put(providerClass, adapter);
+            LocaleProviderAdapter existing = optimizedLocalizationSupport.adaptersByType.put(adapter.getAdapterType(), adapter);
             assert existing == null || existing == adapter : "Overwriting adapter type with a different adapter";
 
             LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
-            support.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
+            optimizedLocalizationSupport.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
         }
     }
 
     protected void addResourceBundles() {
         for (Locale locale : locales) {
-            // todo refactor
+            // todo refactor ?
             prepareBundle(localeData(java.util.spi.CalendarDataProvider.class, locale).getCalendarData(locale), locale);
             prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class, locale).getCurrencyNames(locale), locale);
             prepareBundle(localeData(java.util.spi.LocaleNameProvider.class, locale).getLocaleNames(locale), locale);
@@ -374,12 +375,13 @@ public abstract class LocalizationFeature implements Feature {
          * down to the root.
          */
         for (ResourceBundle cur = bundle; cur != null; cur = getParent(cur)) {
+            // todo encapsulate into strategy ?
             if (optimizedMode) {
                 cur.keySet();
-                support.resourceBundles.put(Pair.create(bundleName, cur.getLocale()), cur);
+                support.asOptimizedSupport().resourceBundles.put(Pair.create(bundleName, cur.getLocale()), cur);
             } else {
-                if (bundle instanceof PropertyResourceBundle) {
-                    ImageSingletons.lookup(ResourcesRegistry.class).addResources(bundle.getClass().getName().replace('.', '/') + "\\.properties");
+                if (cur instanceof PropertyResourceBundle) {
+                    ImageSingletons.lookup(ResourcesRegistry.class).addResources(cur.getClass().getName().replace('.', '/') + "\\.properties");
                 } else {
                     RuntimeReflection.register(cur.getClass());
                     RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
@@ -388,7 +390,7 @@ public abstract class LocalizationFeature implements Feature {
         }
 
         if (optimizedMode) {
-            support.resourceBundles.put(Pair.create(bundleName, locale), bundle);
+            support.asOptimizedSupport().resourceBundles.put(Pair.create(bundleName, locale), bundle);
         }
     }
 
