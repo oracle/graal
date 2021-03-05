@@ -271,7 +271,7 @@ public class BinaryParser extends BinaryStreamParser {
      */
     private void readModuleName() {
         final int subsectionId = read1();
-        assert subsectionId == 2;
+        assert subsectionId == 0;
         final int size = readLength();
         // We don't currently use debug module name.
         offset += size;
