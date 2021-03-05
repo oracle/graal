@@ -71,7 +71,9 @@ public class TypeDescriptorTest {
                     TypeDescriptor.INSTANTIABLE,
                     TypeDescriptor.INSTANTIABLE_ANY,
                     TypeDescriptor.ITERATOR,
-                    TypeDescriptor.ITERABLE
+                    TypeDescriptor.ITERABLE,
+                    TypeDescriptor.HASH,
+                    TypeDescriptor.HASH_ENTRY,
     };
 
     @Test
@@ -205,6 +207,96 @@ public class TypeDescriptorTest {
                         numIterator);
         Assert.assertFalse(numIterator.isAssignable(objOrIteratorNum));
         Assert.assertTrue(objOrIteratorNum.isAssignable(numIterator));
+    }
+
+    @Test
+    public void testHash() {
+        final TypeDescriptor numStrHash = TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.STRING);
+        final TypeDescriptor numNumHash = TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
+        final TypeDescriptor strStrHash = TypeDescriptor.hash(TypeDescriptor.STRING, TypeDescriptor.STRING);
+        final TypeDescriptor strNumHash = TypeDescriptor.hash(TypeDescriptor.STRING, TypeDescriptor.NUMBER);
+
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(numStrHash.isAssignable(td));
+            Assert.assertFalse(numNumHash.isAssignable(td));
+            Assert.assertFalse(strStrHash.isAssignable(td));
+            Assert.assertFalse(strNumHash.isAssignable(td));
+        }
+
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(td != TypeDescriptor.HASH && td.isAssignable(numStrHash));
+            Assert.assertFalse(td != TypeDescriptor.HASH && td.isAssignable(numNumHash));
+            Assert.assertFalse(td != TypeDescriptor.HASH && td.isAssignable(strStrHash));
+            Assert.assertFalse(td != TypeDescriptor.HASH && td.isAssignable(strNumHash));
+        }
+        Assert.assertTrue(TypeDescriptor.HASH.isAssignable(numStrHash));
+        Assert.assertTrue(TypeDescriptor.HASH.isAssignable(numNumHash));
+        Assert.assertTrue(TypeDescriptor.HASH.isAssignable(strStrHash));
+        Assert.assertTrue(TypeDescriptor.HASH.isAssignable(strNumHash));
+        Assert.assertTrue(numStrHash.isAssignable(numStrHash));
+        Assert.assertFalse(numStrHash.isAssignable(numNumHash));
+        Assert.assertFalse(numStrHash.isAssignable(strStrHash));
+        Assert.assertFalse(numStrHash.isAssignable(strNumHash));
+        Assert.assertFalse(numNumHash.isAssignable(numStrHash));
+        Assert.assertTrue(numNumHash.isAssignable(numNumHash));
+        Assert.assertFalse(numNumHash.isAssignable(strStrHash));
+        Assert.assertFalse(numNumHash.isAssignable(strNumHash));
+        Assert.assertFalse(strStrHash.isAssignable(numStrHash));
+        Assert.assertFalse(strStrHash.isAssignable(numNumHash));
+        Assert.assertTrue(strStrHash.isAssignable(strStrHash));
+        Assert.assertFalse(strStrHash.isAssignable(strNumHash));
+        Assert.assertFalse(strNumHash.isAssignable(numStrHash));
+        Assert.assertFalse(strNumHash.isAssignable(numNumHash));
+        Assert.assertFalse(strNumHash.isAssignable(strStrHash));
+        Assert.assertTrue(strNumHash.isAssignable(strNumHash));
+        TypeDescriptor objOrNumNumHash = TypeDescriptor.union(TypeDescriptor.OBJECT, numNumHash);
+        Assert.assertFalse(numNumHash.isAssignable(objOrNumNumHash));
+        Assert.assertTrue(objOrNumNumHash.isAssignable(numNumHash));
+    }
+
+    @Test
+    public void testHashEntry() {
+        final TypeDescriptor numStrHashEntry = TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING);
+        final TypeDescriptor numNumHashEntry = TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
+        final TypeDescriptor strStrHashEntry = TypeDescriptor.hashEntry(TypeDescriptor.STRING, TypeDescriptor.STRING);
+        final TypeDescriptor strNumHashEntry = TypeDescriptor.hashEntry(TypeDescriptor.STRING, TypeDescriptor.NUMBER);
+
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(numStrHashEntry.isAssignable(td));
+            Assert.assertFalse(numNumHashEntry.isAssignable(td));
+            Assert.assertFalse(strStrHashEntry.isAssignable(td));
+            Assert.assertFalse(strNumHashEntry.isAssignable(td));
+        }
+
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(td != TypeDescriptor.HASH_ENTRY && td.isAssignable(numStrHashEntry));
+            Assert.assertFalse(td != TypeDescriptor.HASH_ENTRY && td.isAssignable(numNumHashEntry));
+            Assert.assertFalse(td != TypeDescriptor.HASH_ENTRY && td.isAssignable(strStrHashEntry));
+            Assert.assertFalse(td != TypeDescriptor.HASH_ENTRY && td.isAssignable(strNumHashEntry));
+        }
+        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(numStrHashEntry));
+        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(numNumHashEntry));
+        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(strStrHashEntry));
+        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(strNumHashEntry));
+        Assert.assertTrue(numStrHashEntry.isAssignable(numStrHashEntry));
+        Assert.assertFalse(numStrHashEntry.isAssignable(numNumHashEntry));
+        Assert.assertFalse(numStrHashEntry.isAssignable(strStrHashEntry));
+        Assert.assertFalse(numStrHashEntry.isAssignable(strNumHashEntry));
+        Assert.assertFalse(numNumHashEntry.isAssignable(numStrHashEntry));
+        Assert.assertTrue(numNumHashEntry.isAssignable(numNumHashEntry));
+        Assert.assertFalse(numNumHashEntry.isAssignable(strStrHashEntry));
+        Assert.assertFalse(numNumHashEntry.isAssignable(strNumHashEntry));
+        Assert.assertFalse(strStrHashEntry.isAssignable(numStrHashEntry));
+        Assert.assertFalse(strStrHashEntry.isAssignable(numNumHashEntry));
+        Assert.assertTrue(strStrHashEntry.isAssignable(strStrHashEntry));
+        Assert.assertFalse(strStrHashEntry.isAssignable(strNumHashEntry));
+        Assert.assertFalse(strNumHashEntry.isAssignable(numStrHashEntry));
+        Assert.assertFalse(strNumHashEntry.isAssignable(numNumHashEntry));
+        Assert.assertFalse(strNumHashEntry.isAssignable(strStrHashEntry));
+        Assert.assertTrue(strNumHashEntry.isAssignable(strNumHashEntry));
+        TypeDescriptor objOrNumNumHashEntry = TypeDescriptor.union(TypeDescriptor.OBJECT, numNumHashEntry);
+        Assert.assertFalse(numNumHashEntry.isAssignable(objOrNumNumHashEntry));
+        Assert.assertTrue(objOrNumNumHashEntry.isAssignable(numNumHashEntry));
     }
 
     @Test

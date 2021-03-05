@@ -120,6 +120,10 @@ public final class TypeDescriptor {
      */
     public static final TypeDescriptor ITERATOR = new TypeDescriptor(new IteratorImpl(null));
 
+    public static final TypeDescriptor HASH = new TypeDescriptor(new HashImpl(null, null));
+
+    public static final TypeDescriptor HASH_ENTRY = new TypeDescriptor(new HashEntryImpl(null, null));
+
     /**
      * Represents an object created by a guest language.
      *
@@ -268,11 +272,11 @@ public final class TypeDescriptor {
      */
     public static final TypeDescriptor ANY = new TypeDescriptor(new UnionImpl(new HashSet<>(Arrays.asList(
                     NOTYPE.impl, NULL.impl, BOOLEAN.impl, NUMBER.impl, STRING.impl, HOST_OBJECT.impl, NATIVE_POINTER.impl, OBJECT.impl, ARRAY.impl, EXECUTABLE_ANY.impl, INSTANTIABLE_ANY.impl,
-                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, META_OBJECT.impl, ITERABLE.impl, ITERATOR.impl, EXCEPTION.impl))));
+                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, META_OBJECT.impl, ITERABLE.impl, ITERATOR.impl, EXCEPTION.impl, HASH.impl, HASH_ENTRY.impl))));
 
     private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
                     NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, DATE, TIME, TIME_ZONE, DURATION, META_OBJECT, EXCEPTION, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY,
-                    INSTANTIABLE, ITERABLE, ITERATOR,
+                    INSTANTIABLE, ITERABLE, ITERATOR, HASH, HASH_ENTRY,
                     INSTANTIABLE_ANY, ANY
     };
 
@@ -556,7 +560,9 @@ public final class TypeDescriptor {
                                     (wildCards.get(1) && isIncludedInWildCard(td, ITERABLE.impl)) ||
                                     (wildCards.get(2) && isIncludedInWildCard(td, ITERATOR.impl)) ||
                                     (wildCards.get(3) && isIncludedInWildCard(td, EXECUTABLE.impl)) ||
-                                    (wildCards.get(4) && isIncludedInWildCard(td, INSTANTIABLE.impl))) {
+                                    (wildCards.get(4) && isIncludedInWildCard(td, INSTANTIABLE.impl)) ||
+                                    (wildCards.get(5) && isIncludedInWildCard(td, HASH.impl)) ||
+                                    (wildCards.get(6) && isIncludedInWildCard(td, HASH_ENTRY.impl))) {
                         it.remove();
                     }
                 }
@@ -582,6 +588,10 @@ public final class TypeDescriptor {
             wildcards.set(3);
         } else if (component.equals(INSTANTIABLE.impl)) {
             wildcards.set(4);
+        } else if (component.equals(HASH.impl)) {
+            wildcards.set(5);
+        } else if (component.equals(HASH_ENTRY.impl)) {
+            wildcards.set(6);
         }
     }
 
@@ -618,7 +628,7 @@ public final class TypeDescriptor {
      * @since 0.30
      */
     public static TypeDescriptor array(TypeDescriptor componentType) {
-        Objects.requireNonNull(componentType, "Component type canot be null");
+        Objects.requireNonNull(componentType, "Component type must be non null");
         if (isAny(componentType.impl)) {
             return ARRAY;
         } else {
@@ -636,7 +646,7 @@ public final class TypeDescriptor {
      * @since 21.1
      */
     public static TypeDescriptor iterable(TypeDescriptor componentType) {
-        Objects.requireNonNull(componentType, "Component type canot be null");
+        Objects.requireNonNull(componentType, "Component type must be non null");
         if (isAny(componentType.impl)) {
             return ITERABLE;
         } else {
@@ -652,11 +662,31 @@ public final class TypeDescriptor {
      * @since 21.1
      */
     public static TypeDescriptor iterator(TypeDescriptor componentType) {
-        Objects.requireNonNull(componentType, "Component type canot be null");
+        Objects.requireNonNull(componentType, "Component type must be non null");
         if (isAny(componentType.impl)) {
             return ITERATOR;
         } else {
             return new TypeDescriptor(new IteratorImpl(componentType.impl));
+        }
+    }
+
+    public static TypeDescriptor hash(TypeDescriptor keyType, TypeDescriptor valueType) {
+        Objects.requireNonNull(keyType, "Key type must be non null");
+        Objects.requireNonNull(valueType, "Value type must be non null");
+        if (isAny(keyType.impl) && isAny(valueType.impl)) {
+            return HASH;
+        } else {
+            return new TypeDescriptor(new HashImpl(keyType.impl, valueType.impl));
+        }
+    }
+
+    public static TypeDescriptor hashEntry(TypeDescriptor keyType, TypeDescriptor valueType) {
+        Objects.requireNonNull(keyType, "Key type must be non null");
+        Objects.requireNonNull(valueType, "Value type must be non null");
+        if (isAny(keyType.impl) && isAny(valueType.impl)) {
+            return HASH_ENTRY;
+        } else {
+            return new TypeDescriptor(new HashEntryImpl(keyType.impl, valueType.impl));
         }
     }
 
@@ -840,7 +870,7 @@ public final class TypeDescriptor {
             case 0:
                 return intersection(NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT,
                                 ARRAY, EXECUTABLE, INSTANTIABLE, ITERABLE, ITERATOR, DATE, TIME, TIME_ZONE, DURATION,
-                                META_OBJECT, EXCEPTION);
+                                META_OBJECT, EXCEPTION, HASH, HASH_ENTRY);
             case 1:
                 return contentTypes.iterator().next();
             default:
@@ -1208,6 +1238,30 @@ public final class TypeDescriptor {
         @Override
         String getName() {
             return "Iterator";
+        }
+    }
+
+    private static final class HashImpl extends ParameterizedTypeDescriptorImpl {
+
+        HashImpl(TypeDescriptorImpl keyType, TypeDescriptorImpl valueType) {
+            super(Arrays.asList(keyType, valueType), Arrays.asList(ArrayImpl.class, IterableImpl.class, IteratorImpl.class));
+        }
+
+        @Override
+        String getName() {
+            return "Hash";
+        }
+    }
+
+    private static final class HashEntryImpl extends ParameterizedTypeDescriptorImpl {
+
+        HashEntryImpl(TypeDescriptorImpl keyType, TypeDescriptorImpl valueType) {
+            super(Arrays.asList(keyType, valueType), Arrays.asList(ArrayImpl.class, IterableImpl.class, IteratorImpl.class, HashImpl.class));
+        }
+
+        @Override
+        String getName() {
+            return "HashEntry";
         }
     }
 
