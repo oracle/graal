@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.spi.LocaleServiceProvider;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -92,11 +93,11 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
     @Substitute
     @SuppressWarnings({"unused"})
     public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
-        LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().adaptersByClass.get(providerClass);
+        LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().adaptersByClass.get(Pair.create(providerClass, locale));
         if (result != null) {
             return result;
         }
-        throw VMError.unsupportedFeature("LocaleProviderAdapter.getAdapter:  providerClass: " + providerClass.getName());
+        throw VMError.unsupportedFeature("LocaleProviderAdapter.getAdapter:  providerClass: " + providerClass.getName() + ", locale: " + locale);
     }
 
     @Substitute

@@ -107,6 +107,7 @@ public abstract class LocalizationFeature implements Feature {
     protected LocalizationSupport support;
 
     public static class Options {
+        // todo support per bundle locale decisions?
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
@@ -292,16 +293,22 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     private void addProviders() {
+        OptimizedLocalizationSupport optimizedLocalizationSupport = support.asOptimizedSupport();
         for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
             LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
-
-            OptimizedLocalizationSupport optimizedLocalizationSupport = support.asOptimizedSupport();
-            optimizedLocalizationSupport.adaptersByClass.put(providerClass, adapter);
-            LocaleProviderAdapter existing = optimizedLocalizationSupport.adaptersByType.put(adapter.getAdapterType(), adapter);
-            assert existing == null || existing == adapter : "Overwriting adapter type with a different adapter";
-
             LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
             optimizedLocalizationSupport.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
+        }
+
+        for (Locale locale : locales) {
+            for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
+                LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, locale));
+
+                optimizedLocalizationSupport.adaptersByClass.put(Pair.create(providerClass, locale), adapter);
+                LocaleProviderAdapter existing = optimizedLocalizationSupport.adaptersByType.put(adapter.getAdapterType(), adapter);
+                assert existing == null || existing == adapter : "Overwriting adapter type with a different adapter";
+
+            }
         }
     }
 
