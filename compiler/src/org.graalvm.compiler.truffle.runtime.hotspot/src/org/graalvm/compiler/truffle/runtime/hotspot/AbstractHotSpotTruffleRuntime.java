@@ -172,15 +172,10 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
         int offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, -1, new String[]{"intptr_t*"});
         if (offset == -1) {
-            int counterSize = vmConfigAccess.getFlag("JVMCICounterSize", Integer.class);
-            if (counterSize <= 0) {
-                offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
-            } else {
-                throw new InternalError("Failed to initialize the HotSpot Truffle runtime. " +
-                                "The flag -XX:JVMCICounterSize can no longer be used in combination with Truffle and an older version of JVMCI. " +
-                                "Upgrade the JVMCI version in use, do not use jvmci counters or switch the Truffle runtime to the default runtime with -Dtruffle.TruffleRuntime=" +
-                                DefaultTruffleRuntime.class.getName() + ".");
-            }
+            throw new InternalError("Failed to initialize the HotSpot Truffle runtime. " +
+                            "The optimized Truffle runtime can no longer be used with an older version of JVMCI. " +
+                            "Upgrade the JVMCI version in use or switch the Truffle runtime to the default runtime with -Dtruffle.TruffleRuntime=" +
+                            DefaultTruffleRuntime.class.getName() + ".");
         }
         assert offset != -1 : "unexpected offset value";
         this.threadLocalPendingHandshakeOffset = offset;
