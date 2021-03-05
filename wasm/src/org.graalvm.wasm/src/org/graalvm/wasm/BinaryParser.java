@@ -288,8 +288,11 @@ public class BinaryParser extends BinaryStreamParser {
         final int size = readLength();
         final int startOffset = offset;
         final int length = readLength();
+        final int maxFunctionIndex = module.numFunctions() - 1;
         for (int i = 0; i < length; ++i) {
             final int functionIndex = readFunctionIndex();
+            assertIntLessOrEqual(0, functionIndex, "Negative function index", Failure.UNSPECIFIED_MALFORMED);
+            assertIntLessOrEqual(functionIndex, maxFunctionIndex, "Function index too large", Failure.UNSPECIFIED_MALFORMED);
             final String functionName = readName();
             module.function(functionIndex).setDebugName(functionName);
         }
