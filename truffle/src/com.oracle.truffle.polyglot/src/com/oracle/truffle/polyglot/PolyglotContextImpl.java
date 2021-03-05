@@ -704,16 +704,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             assert threadInfo != null;
             info = threadInfo;
 
-            if (cancelling && info.isLastActive()) {
-                notifyThreadClosed();
-            }
-
             if (entered) {
                 try {
                     info.notifyLeave(engine, this);
                 } finally {
                     info.leaveInternal(prev);
                 }
+            }
+            if (cancelling && !info.isActiveNotCancelled()) {
+                notifyThreadClosed();
             }
 
             if (!closed && !cancelling && !invalid && !interrupting) {

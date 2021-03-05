@@ -179,10 +179,6 @@ final class PolyglotThreadInfo {
         }
     }
 
-    boolean isLastActive() {
-        return getThread() != null && enteredCount == 1 && !cancelled;
-    }
-
     boolean isActiveNotCancelled() {
         return getThread() != null && enteredCount > 0 && !cancelled;
     }
