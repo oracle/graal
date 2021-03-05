@@ -35,8 +35,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.LLVMDLHandler;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -47,29 +47,32 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMDLSym extends LLVMIntrinsic {
 
-    @Specialization(guards = "isSulongLibrary(library)", limit = "1")
-    protected Object doOp(LLVMManagedPointer library,
-                          LLVMPointer flag,
-                          @Cached() LLVMReadStringNode readStr,
-                          @CachedLibrary("library.getObject()") InteropLibrary interop) {
+    @Specialization(guards = "isLLVMLibrary(pointer)", limit = "1")
+    protected Object doOp(LLVMManagedPointer pointer,
+                    LLVMPointer flag,
+                    @Cached() LLVMReadStringNode readStr,
+                    @CachedLibrary("getLibrary(pointer)") InteropLibrary interop) {
         try {
             String flagName = readStr.executeWithTarget(flag);
-            return LLVMManagedPointer.create(interop.readMember(library.getObject(), flagName));
+            return LLVMManagedPointer.create(interop.readMember(getLibrary(pointer), flagName));
         } catch (InteropException e) {
             return LLVMNativePointer.createNull();
         }
     }
 
-    @Specialization(guards = "!(isSulongLibrary(library))")
-    protected Object doOp(@SuppressWarnings("unused") LLVMManagedPointer library,
-                          @SuppressWarnings("unused") LLVMPointer flag,
-                          @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr){
+    @Specialization(guards = "!(isLLVMLibrary(pointer))")
+    protected Object doOp(@SuppressWarnings("unused") LLVMManagedPointer pointer,
+                    @SuppressWarnings("unused") LLVMPointer flag,
+                    @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr) {
         return LLVMNativePointer.createNull();
     }
 
-    protected boolean isSulongLibrary(LLVMManagedPointer library){
-        return library.getObject() instanceof SulongLibrary;
+    protected Object getLibrary(LLVMManagedPointer pointer){
+        return ((LLVMDLHandler) pointer.getObject()).getLibrary();
     }
 
+    protected boolean isLLVMLibrary(LLVMManagedPointer library) {
+        return library.getObject() instanceof LLVMDLHandler;
+    }
 
 }

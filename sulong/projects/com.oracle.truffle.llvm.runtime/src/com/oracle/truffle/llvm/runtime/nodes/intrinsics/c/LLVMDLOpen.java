@@ -35,10 +35,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -53,22 +56,46 @@ import java.nio.file.Paths;
 public abstract class LLVMDLOpen extends LLVMIntrinsic {
 
     public enum RTLDFlags {
-        RTLD_DEFAULT,       //  Linux   Max/Darwin
-        RTLD_LAZY,          //    1         1
-        RTLD_NOW,           //    2         2
-        RTLD_GLOBAL,        //   256        8
-        RTLD_LOCAL;         //    0         4
+        RTLD_DEFAULT,       // Linux Max/Darwin
+        RTLD_LAZY,          // 1 1
+        RTLD_NOW,           // 2 2
+        RTLD_GLOBAL,        // 256 8
+        RTLD_LOCAL;         // 0 4
 
         public boolean isActive(RTLDFlags phase) {
             return phase == this;
         }
     }
 
+    @ExportLibrary(LLVMAsForeignLibrary.class)
+    protected final class LLVMDLHandler {
+        final Object library;
+
+        private LLVMDLHandler(Object library) {
+            this.library = library;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        public boolean isForeign() {
+            return true;
+        }
+
+        @ExportMessage
+        public Object asForeign() {
+            return library;
+        }
+
+        public Object getLibrary() {
+            return library;
+        }
+    }
+
     @Specialization
     protected Object doOp(Object file,
-                          int flag,
-                          @Cached() LLVMReadStringNode readStr,
-                          @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                    int flag,
+                    @Cached() LLVMReadStringNode readStr,
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         // Default settings for RTLD flags.
         RTLDFlags rtld_flag_NowOrLazy = RTLDFlags.RTLD_NOW;
         RTLDFlags rtld_flag_GlobalOrLocal = RTLDFlags.RTLD_LOCAL;
@@ -88,9 +115,9 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
             CallTarget callTarget = ctx.getEnv().parsePublic(source, String.valueOf(flag));
             Object sulongLibrary = callTarget.call(rtld_flag_GlobalOrLocal, rtld_flag_NowOrLazy);
 
-            //pack the return library. dllibraryhandle
+            // pack the return library. dllibraryhandle
 
-            return LLVMManagedPointer.create(sulongLibrary);
+            return LLVMManagedPointer.create(new LLVMDLHandler(sulongLibrary));
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
