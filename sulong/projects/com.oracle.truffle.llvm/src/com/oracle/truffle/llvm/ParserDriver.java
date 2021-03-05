@@ -361,6 +361,10 @@ final class ParserDriver {
         }
         boolean verifyBitcode = context.getEnv().getOptions().get(SulongEngineOption.VERIFY_BITCODE);
         TargetTriple defaultTargetTriple = context.getLibsulongTargetTriple();
+        if (defaultTargetTriple == null && !context.isInternalLibraryPath(Paths.get(source.getPath()))) {
+            // some internal libraries (libsulong++) might be loaded before libsulong
+            throw new IllegalStateException("No default target triple.");
+        }
         if (defaultTargetTriple != null && targetTriple != null && !defaultTargetTriple.matches(targetTriple)) {
             TruffleLogger logger = TruffleLogger.getLogger(LLVMLanguage.ID, "BitcodeVerifier");
             String exceptionMessage = "Mismatching target triple (expected " + defaultTargetTriple + ", got " + targetTriple + ')';

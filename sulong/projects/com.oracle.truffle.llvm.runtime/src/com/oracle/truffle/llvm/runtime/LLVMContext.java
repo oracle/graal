@@ -582,6 +582,10 @@ public final class LLVMContext {
         return file.normalize().startsWith(internalLibraryPathFile);
     }
 
+    public boolean isInternalLibraryPath(Path path) {
+        return path.normalize().startsWith(internalLibraryPath);
+    }
+
     public TruffleFile getOrAddTruffleFile(TruffleFile file) {
         synchronized (truffleFilesLock) {
             int index = truffleFiles.indexOf(file);
