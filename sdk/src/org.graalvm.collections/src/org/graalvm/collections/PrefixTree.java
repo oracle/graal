@@ -43,8 +43,11 @@ package org.graalvm.collections;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 /**
  * Thread-safe prefix-tree implementation in which keys are sequences of 64-bit values, and the
@@ -307,51 +310,28 @@ public class PrefixTree {
             return visitor.visit(this, results);
         }
 
-        private synchronized void topDown(String context, BufferedWriter writer) throws IOException {
+        public <C> void topDown(C currentContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
             Node[] childrenSnapshot = children;
             long[] keysSnapshot = keys;
-            long value = get();
-            if (value > 0) {
-                System.out.println("context: " + context + " " + value);
-                writer.write(context + " " + get());
-                writer.newLine();
-            }
-            if (childrenSnapshot == null || childrenSnapshot.length == 0) {
-                System.out.println("No children: context: " + context + ", value: " + value);
+            consumeValue.accept(currentContext, get());
+
+            if (childrenSnapshot == null) {
                 return;
-            }
-            int notNull = 0;
-            for (int i = 0; i < childrenSnapshot.length; i++) {
-                if (childrenSnapshot[i] != null) {
-                    notNull++;
-                }
-            }
-            if (notNull > 1) {
-                System.out.println("More children = " + notNull + ", context: " + context + ", value: " + value);
-                for (int i = 0; i < childrenSnapshot.length; i++) {
-                    if (childrenSnapshot[i] != null) {
-                        System.out.println("More children. Child " + i + ": " + context + ';' + keysSnapshot[i]);
-                    }
-                }
             }
 
             for (int i = 0; i < childrenSnapshot.length; i++) {
-                if (childrenSnapshot[i] != null) {
-                    String childContext = context + ';' + keysSnapshot[i];
-                    childrenSnapshot[i].topDown(childContext, writer);
+                Node child = childrenSnapshot[i];
+                if (child != null) {
+                    long key = keysSnapshot[i];
+                    C extendedContext = createContext.apply(currentContext, key);
+                    topDown(extendedContext, createContext, consumeValue);
                 }
             }
         }
 
-        private synchronized void topDown(BufferedWriter writer) throws IOException {
-            Node[] childrenSnapshot = children;
-            long[] keysSnapshot = keys;
-            for (int i = 0; i < childrenSnapshot.length; i++) {
-                if (childrenSnapshot[i] != null) {
-                    String childContext = String.valueOf(keysSnapshot[i]);
-                    childrenSnapshot[i].topDown(childContext, writer);
-                }
-            }
+        @Override
+        public String toString() {
+            return "Node<" + value() + ">";
         }
     }
 
@@ -369,8 +349,7 @@ public class PrefixTree {
         return root.bottomUp(visitor);
     }
 
-    public void topDown(BufferedWriter writer) throws IOException {
-        root.topDown(writer);
-        writer.flush();
+    public <C> void topDown(C initialContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
+        root.topDown(initialContext, createContext, consumeValue);
     }
 }

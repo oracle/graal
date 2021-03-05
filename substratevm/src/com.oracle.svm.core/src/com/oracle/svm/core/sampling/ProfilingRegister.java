@@ -14,20 +14,21 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 public class ProfilingRegister implements ProfilingSampler {
 
     private final boolean collectingActive;
-    private PrefixTree prefixTree = null;
-    private SamplingStackVisitor visitor = null;
+    private PrefixTree prefixTree;
 
     public ProfilingRegister(boolean collectingActive) {
         this.collectingActive = collectingActive;
     }
 
     public int sampleThreadStack() {
-        System.out.println("start: " + System.nanoTime());
-        SamplingStackVisitor visitor = visitor();
+        // System.out.println("start: " + System.nanoTime());
+        SamplingStackVisitor visitor = new SamplingStackVisitor();
         SamplingStackVisitor.SamplingStackTrace data = new SamplingStackVisitor.SamplingStackTrace(prefixTree().root());
         walkCurrentThread(data, visitor);
         data.node.incValue();
-        System.out.println("end: " + System.nanoTime());
+        // prefixTree().topDown(null);
+        System.out.println(Thread.currentThread().getName() + " ... " + System.identityHashCode(data.node));
+        System.out.println("--- end: " + System.nanoTime());
         return 0;
     }
 
@@ -40,24 +41,17 @@ public class ProfilingRegister implements ProfilingSampler {
     @Override
     public void registerSampler() {
         if (collectingActive) {
-            Threading.registerRecurringCallback(50, TimeUnit.MILLISECONDS, (access) -> {
+            Threading.registerRecurringCallback(10, TimeUnit.MILLISECONDS, (access) -> {
                 sampleThreadStack();
             });
         }
     }
 
     @Override
-    public PrefixTree prefixTree() {
+    public synchronized PrefixTree prefixTree() {
         if (prefixTree == null) {
             prefixTree = new PrefixTree();
         }
         return prefixTree;
-    }
-
-    private SamplingStackVisitor visitor() {
-        if (visitor == null) {
-            visitor = new SamplingStackVisitor();
-        }
-        return visitor;
     }
 }

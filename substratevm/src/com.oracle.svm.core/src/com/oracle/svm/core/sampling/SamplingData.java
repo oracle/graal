@@ -13,6 +13,16 @@ import com.oracle.svm.core.ProfilingSampler;
 
 public class SamplingData {
 
+    private static class CallFrame {
+        final String name;
+        final CallFrame tail;
+
+        private CallFrame(String name, CallFrame tail) {
+            this.name = name;
+            this.tail = tail;
+        }
+    }
+
     public Runnable dumpToFile() {
         return SamplingData::dumpProfiles;
     }
@@ -38,6 +48,10 @@ public class SamplingData {
 
     static void dumpFromTree(BufferedWriter writer) throws IOException {
         PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
-        prefixTree.topDown(writer);
+        prefixTree.topDown(new CallFrame("<total>", null), (context, elem) -> new CallFrame(String.valueOf(elem), context), (context, value) -> {
+            if (value > 0) {
+                System.out.println("value: " + value);
+            }
+        });
     }
 }
