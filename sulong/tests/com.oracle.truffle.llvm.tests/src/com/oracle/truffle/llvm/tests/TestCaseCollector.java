@@ -37,6 +37,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 
 /**
  * Utils for collecting test cases and exclusion reasons.
@@ -132,40 +134,60 @@ public final class TestCaseCollector {
      */
     public static Map<String, String> getExcludedTests(Class<?> testSuiteClass) {
         try {
+            FileVisitors visitors = new FileVisitors();
+
             Path excludeDirectory = getConfigDirectory(testSuiteClass);
             Path osArchDirectory = excludeDirectory.resolve("os_arch");
-            FileVisitors visitors = new FileVisitors(osArchDirectory);
+            Path configDirectory = excludeDirectory.resolve("testEngineConfig");
+            // walk <ROOT><testSuiteClass>/, skip "os_arch" and "runtimeConfig"
+            FileVisitors.SkippingFileVisitor visitor = visitors.skippingVisitor(osArchDirectory, configDirectory);
+            walkFileTreeIfExists(excludeDirectory, visitor);
+            // walk <ROOT><testSuiteClass>/os_arch/
+            walkOsArch(visitors, osArchDirectory);
 
-            // walk all exclude files in the base exclude directory (skipping special directories)
-            Files.walkFileTree(excludeDirectory, visitors.skippingVisitor());
+            Path configExcludeDirectory = configDirectory.resolve(TestEngineConfig.getInstance().getName());
+            Path configOsArchDirectory = configExcludeDirectory.resolve("os_arch");
+            // walk <ROOT><testSuiteClass>/"runtimeConfig"/<LLVMRuntimeConfig>/, skip "os_arch"
+            walkFileTreeIfExists(configExcludeDirectory, visitors.skippingVisitor(configOsArchDirectory));
+            // walk <ROOT><testSuiteClass>/"runtimeConfig"/<LLVMRuntimeConfig>/os_arch/
+            walkOsArch(visitors, configOsArchDirectory);
 
-            // walk os/arch dirs. if "os" or "arch" does not exists, try a directory called "others"
-            if (osArchDirectory.toFile().exists()) {
-                try {
-                    Predicate<Path> exists = p -> p.toFile().exists();
-                    // try <os>, others
-                    Path osDirectory = Stream.of(OS, OTHERS).map(osArchDirectory::resolve).filter(exists).iterator().next();
-                    // try <arch>, others
-                    Path archDirectory = Stream.of(ARCH, OTHERS).map(osDirectory::resolve).filter(exists).iterator().next();
-                    // visit os/arch subdir
-                    Files.walkFileTree(archDirectory, visitors.visitor());
-                } catch (NoSuchElementException e) {
-                    // either os or arch directory is missing
-                }
-            }
             return visitors.getExcludeMap();
         } catch (IOException e) {
             return Collections.emptyMap();
         }
     }
 
+    private static void walkFileTreeIfExists(Path excludeDirectory, FileVisitors.ExcludeFileVisitor visitor) throws IOException {
+        if (excludeDirectory.toFile().exists()) {
+            Files.walkFileTree(excludeDirectory, visitor);
+        }
+    }
+
+    /**
+     * Walk os/arch dirs. If "os" or "arch" does not exists, try a directory called "others".
+     */
+    private static void walkOsArch(FileVisitors visitors, Path osArchDirectory) throws IOException {
+        if (osArchDirectory.toFile().exists()) {
+            try {
+                Predicate<Path> exists = p -> p.toFile().exists();
+                // try <os>, others
+                Path osDirectory = Stream.of(OS, OTHERS).map(osArchDirectory::resolve).filter(exists).iterator().next();
+                // try <arch>, others
+                Path archDirectory = Stream.of(ARCH, OTHERS).map(osDirectory::resolve).filter(exists).iterator().next();
+                // visit os/arch subdir
+                walkFileTreeIfExists(archDirectory, visitors.visitor());
+            } catch (NoSuchElementException e) {
+                // either os or arch directory is missing
+            }
+        }
+    }
+
     private static final class FileVisitors {
-        private final Path skip;
         private final Map<String, String> excludeTestToFile;
 
-        private FileVisitors(Path skip) {
+        private FileVisitors() {
             this.excludeTestToFile = new HashMap<>();
-            this.skip = skip;
         }
 
         public Map<String, String> getExcludeMap() {
@@ -176,8 +198,8 @@ public final class TestCaseCollector {
             return new ExcludeFileVisitor();
         }
 
-        public SkippingFileVisitor skippingVisitor() {
-            return new SkippingFileVisitor();
+        public SkippingFileVisitor skippingVisitor(Path... skip) {
+            return new SkippingFileVisitor(skip);
         }
 
         /**
@@ -202,10 +224,16 @@ public final class TestCaseCollector {
         /**
          * A {@link ExcludeFileVisitor} that skips special directories.
          */
-        private class SkippingFileVisitor extends ExcludeFileVisitor {
+        private final class SkippingFileVisitor extends ExcludeFileVisitor {
+            private final Path[] skip;
+
+            private SkippingFileVisitor(Path... skip) {
+                this.skip = skip;
+            }
+
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                if (dir.startsWith(skip)) {
+                if (Arrays.stream(skip).anyMatch(dir::startsWith)) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 return FileVisitResult.CONTINUE;
