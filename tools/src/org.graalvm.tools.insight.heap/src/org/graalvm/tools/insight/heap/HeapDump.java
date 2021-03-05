@@ -56,7 +56,6 @@ public final class HeapDump {
     private static final int TAG_LOAD_CLASS = 0x02;
     private static final int TAG_STACK_FRAME = 0x04;
     private static final int TAG_STACK_TRACE = 0x05;
-    private static final int TAG_START_THREAD = 0x0A;
     private static final int TAG_HEAP_DUMP = 0x0c;
 
     // heap dump codes
@@ -225,21 +224,6 @@ public final class HeapDump {
 
         void writeDefaultStackTraceSerialNumber(DataOutputStream os) throws IOException {
             os.writeInt(defaultStackTrace);
-        }
-
-        // internal primitives
-        void writeThreadStarted(int id, String threadName, String groupName, int stackTraceId) throws IOException {
-            int threadNameId = writeString(threadName);
-            int groupNameId = writeString(groupName);
-            whole.writeByte(TAG_START_THREAD);
-            whole.writeInt(0); // ms
-            whole.writeInt(8 + ids.sizeOf() * 4); // size of following entries
-            whole.writeInt(id); // serial number
-            ids.writeID(whole, id); // object id
-            whole.writeInt(stackTraceId); // stacktrace serial number
-            ids.writeID(whole, threadNameId);
-            ids.writeID(whole, groupNameId);
-            ids.writeID(whole, 0); // parent group
         }
 
         int writeStackFrame(HeapDump thiz, ClassInstance language, String rootName, String sourceFile, int lineNumber) throws IOException {
@@ -584,7 +568,6 @@ public final class HeapDump {
                 frameIds[cnt++] = builder.writeStackFrame(HeapDump.this, language, rootName, sourceFile, lineNumber);
             }
             int stackTraceId = builder.writeStackTrace(threadId.id(HeapDump.this), frameIds);
-            builder.writeThreadStarted(threadId.id(HeapDump.this), name, groupName, stackTraceId);
             heap.writeByte(HEAP_ROOT_THREAD_OBJECT);
             builder.ids.writeID(heap, threadId.id(HeapDump.this));
             heap.writeInt(threadId.id(HeapDump.this)); // serial #
