@@ -24,7 +24,12 @@ public class SamplingData {
     }
 
     public Runnable dumpToFile() {
-        return SamplingData::dumpProfiles;
+        try {
+            return SamplingData::dumpProfiles;
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return null;
+        }
     }
 
     public static void dumpProfiles() {
@@ -48,9 +53,28 @@ public class SamplingData {
 
     static void dumpFromTree(BufferedWriter writer) throws IOException {
         PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
-        prefixTree.topDown(new CallFrame("<total>", null), (context, elem) -> new CallFrame(String.valueOf(elem), context), (context, value) -> {
-            if (value > 0) {
-                System.out.println("value: " + value);
+        AOTSamplingData aotSamplingData = ImageSingletons.lookup(AOTSamplingData.class);
+
+        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> {
+            // int methodId = aotSamplingData.findMethod(address);
+            return new CallFrame(String.valueOf(address), context);
+        }, (context, value) -> {
+            try {
+                StringBuilder contextChain = new StringBuilder(context.name);
+                CallFrame elem = context.tail;
+                if (value > 0) {
+                    while (elem != null) {
+                        contextChain.append(";").append(elem.name);
+                        elem = elem.tail;
+                    }
+                    contextChain.append(" " + value);
+                    String contextString = contextChain.toString();
+                    System.out.println(contextString);
+                    writer.write(contextString);
+                    writer.newLine();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         });
     }

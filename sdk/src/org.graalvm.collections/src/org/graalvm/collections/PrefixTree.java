@@ -310,7 +310,7 @@ public class PrefixTree {
             return visitor.visit(this, results);
         }
 
-        public <C> void topDown(C currentContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
+        public synchronized <C> void topDown(C currentContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
             Node[] childrenSnapshot = children;
             long[] keysSnapshot = keys;
             consumeValue.accept(currentContext, get());
