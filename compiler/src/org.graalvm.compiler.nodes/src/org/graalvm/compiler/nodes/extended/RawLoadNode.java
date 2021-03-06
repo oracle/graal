@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,8 +71,8 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
         this(object, offset, accessKind, locationIdentity, false);
     }
 
-    public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceAnyLocation) {
-        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, forceAnyLocation);
+    public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation) {
+        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, forceLocation);
     }
 
     /**
@@ -104,7 +104,11 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, false);
+        this(c, object, offset, accessKind, locationIdentity, false);
+    }
+
+    protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation) {
+        super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, forceLocation);
     }
 
     @Override
@@ -169,7 +173,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!isAnyLocationForced()) {
+        if (!isLocationForced()) {
             ValueNode targetObject = object();
             if (offset().isConstant() && targetObject.isConstant() && !targetObject.isNullConstant()) {
                 ConstantNode objectConstant = (ConstantNode) targetObject;
