@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,14 +34,15 @@ import java.util.Formatter;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.calc.ReinterpretUtils;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.debug.GraalError;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -1623,6 +1624,25 @@ public final class IntegerStamp extends PrimitiveStamp {
                     null,   // BinaryOp.max
 
                     null,   // BinaryOp.min
+
+                    new ReinterpretOp() {
+
+                        @Override
+                        public Constant foldConstant(Stamp resultStamp, Constant constant) {
+                            return ReinterpretUtils.foldConstant(resultStamp, constant);
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp resultStamp, Stamp input) {
+                            if (input.isEmpty()) {
+                                return resultStamp.empty();
+                            } else if (resultStamp instanceof FloatStamp && input instanceof IntegerStamp) {
+                                return ReinterpretUtils.intToFloat((IntegerStamp) input);
+                            } else {
+                                return resultStamp;
+                            }
+                        }
+                    },
 
                     new FloatConvertOp(I2F) {
 
