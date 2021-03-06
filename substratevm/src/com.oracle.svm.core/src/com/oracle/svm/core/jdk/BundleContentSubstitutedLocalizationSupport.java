@@ -99,7 +99,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     private void storeBundleContentOf(ResourceBundle bundle) {
-        GraalError.guarantee(isBundleSupported(bundle), "Unsupported bundle " + bundle + " of type " + bundle.getClass());
+        GraalError.guarantee(isBundleSupported(bundle), "Unsupported bundle %s of type %s", bundle, bundle.getClass());
         storedBundles.put(bundle.getClass(), processBundle(bundle));
     }
 
