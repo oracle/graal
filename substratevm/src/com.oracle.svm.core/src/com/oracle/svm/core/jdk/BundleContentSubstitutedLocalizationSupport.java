@@ -44,6 +44,7 @@ import java.util.zip.GZIPOutputStream;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.GraalError;
 
 // Checkstyle: stop
@@ -149,14 +150,17 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     private static CompressedBundle compressBundle(Map<String, Object> content) {
-        String input = serializeContent(content);
+        Pair<String, int[]> input = serializeContent(content);
         if (input == null) {
             return null;
         }
+        String text = input.getLeft();
+        int[] indices = input.getRight();
         try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(byteStream)) {
-            out.write(input.getBytes(StandardCharsets.UTF_8));
+            out.write(text.getBytes(StandardCharsets.UTF_8));
             out.finish();
-            return new CompressedBundle(byteStream.toByteArray(), BundleContentSubstitutedLocalizationSupport::decompressBundle);
+            // todo compress the indices as well?
+            return new CompressedBundle(byteStream.toByteArray(), data -> decompressBundle(data, indices));
         } catch (IOException ex) {
             // if the compression fails for some reason, the bundle can still be saved uncompressed
             // todo log this as a warning?
@@ -164,20 +168,32 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         }
     }
 
-    private static Map<String, Object> decompressBundle(byte[] data) {
+    private static Map<String, Object> decompressBundle(byte[] data, int[] indices) {
         Map<String, Object> content = new HashMap<>();
         try (BufferedReader input = new BufferedReader(new InputStreamReader(new GZIPInputStream(new ByteArrayInputStream(data))))) {
-            String key = input.readLine();
-            List<String> values = new ArrayList<>();
-            while (key != null) {
-                String line = input.readLine();
-                while (line != null && !line.isEmpty()) {
-                    values.add(line);
-                    line = input.readLine();
+            String decompressed = input.readLine();
+            int i = 0;
+            int offset = 0;
+            while (i < indices.length) {
+                int len = indices[i++];
+                boolean isArray = len != -1;
+                int keyLen = indices[i++];
+                String key = decompressed.substring(offset, offset + keyLen);
+                offset += keyLen;
+                if (isArray) {
+                    Object[] values = new String[len];
+                    for (int j = 0; j < len; j++) {
+                        int valueLen = indices[i++];
+                        values[j] = decompressed.substring(offset, offset + valueLen);
+                        offset += valueLen;
+                    }
+                    content.put(key, values);
+                } else {
+                    int valueLen = indices[i++];
+                    String value = decompressed.substring(offset, offset + valueLen);
+                    offset += valueLen;
+                    content.put(key, value);
                 }
-                content.put(key, values.toArray(new String[0]));
-                values.clear();
-                key = input.readLine();
             }
         } catch (IOException e) {
             GraalError.shouldNotReachHere(e, "Decompressing a resource bundle failed.");
@@ -185,26 +201,33 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         return content;
     }
 
-    private static String serializeContent(Map<String, Object> content) {
+    private static Pair<String, int[]> serializeContent(Map<String, Object> content) {
+        List<Integer> indices = new ArrayList<>();
         StringBuilder builder = new StringBuilder();
         for (Map.Entry<String, Object> entry : content.entrySet()) {
-            builder.append(entry.getKey()).append('\n');
+            String key = entry.getKey();
+            builder.append(key);
             Object value = entry.getValue();
             if (value instanceof String) {
-                builder.append(value).append('\n');
+                builder.append(value);
+                indices.add(-1);
+                indices.add(key.length());
+                indices.add(((String) value).length());
             } else if (value instanceof Object[]) {
                 Object[] arr = (Object[]) value;
+                indices.add(arr.length);
+                indices.add(key.length());
                 for (Object o : arr) {
                     if (!(o instanceof String)) {
                         return null;
                     }
-                    builder.append(o).append('\n');
+                    builder.append(o);
+                    indices.add(((String) o).length());
                 }
             } else {
                 return null;
             }
-            builder.append('\n');
         }
-        return builder.toString();
+        return Pair.create(builder.toString(), indices.stream().mapToInt(i -> i).toArray());
     }
 }
