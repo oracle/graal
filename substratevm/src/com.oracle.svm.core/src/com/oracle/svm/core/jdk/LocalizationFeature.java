@@ -190,7 +190,7 @@ public abstract class LocalizationFeature implements Feature {
         if (!locales.contains(defaultLocale)) {
             locales.add(defaultLocale);
         }
-        support = selectLocalizationSupport(defaultLocale, locales);
+        support = selectLocalizationSupport();
         ImageSingletons.add(LocalizationSupport.class, support);
         ImageSingletons.add(LocalizationFeature.class, this);
 
@@ -203,7 +203,7 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
-    private LocalizationSupport selectLocalizationSupport(Locale defaultLocale, List<Locale> locales) {
+    private LocalizationSupport selectLocalizationSupport() {
         if (optimizedMode) {
             return new OptimizedLocalizationSupport(defaultLocale, locales);
         } else if (substituteLoadLookup) {

@@ -88,7 +88,7 @@ public class LocalizationSupport {
     /**
      * Template method for subclasses to do perform additional tasks.
      */
-    protected void onBundlePrepared(ResourceBundle bundle) {
+    protected void onBundlePrepared(@SuppressWarnings("unused") ResourceBundle bundle) {
 
     }
 }

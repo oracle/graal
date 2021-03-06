@@ -135,7 +135,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
      * handleGetObject methods.
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object> extractContent(ResourceBundle bundle) {
+    private static Map<String, Object> extractContent(ResourceBundle bundle) {
         bundle.keySet(); // force lazy initialization
         Class<?> clazz = bundle.getClass().getSuperclass();
         while (clazz != null && ResourceBundle.class.isAssignableFrom(clazz)) {
