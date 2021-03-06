@@ -367,13 +367,15 @@ public abstract class LocalizationFeature implements Feature {
             return;
         }
 
+        boolean somethingFound = false;
         for (Locale locale : locales) {
             ResourceBundle resourceBundle;
             try {
                 resourceBundle = ModuleSupport.getResourceBundle(bundleName, locale, Thread.currentThread().getContextClassLoader());
             } catch (MissingResourceException mre) {
                 if (!bundleName.contains("/")) {
-                    throw mre;
+                    // fallthrough
+                    continue;
                 }
                 // Due to a possible bug in the JDK, bundle names not following proper naming
                 // convention
@@ -381,12 +383,22 @@ public abstract class LocalizationFeature implements Feature {
                 // converted to fully qualified class names before loading can succeed.
                 // see GR-24211
                 String dotBundleName = bundleName.replace("/", ".");
-                resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, locale, Thread.currentThread().getContextClassLoader());
+                try {
+                    resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, locale, Thread.currentThread().getContextClassLoader());
+                } catch (MissingResourceException ex) {
+                    // fallthrough
+                    continue;
+                }
             }
-            UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " +
-                            "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
-                            "verify the bundle path is accessible in the classpath.", bundleName);
+            somethingFound = true;
             prepareBundle(bundleName, resourceBundle, locale);
+        }
+
+        if (!somethingFound) {
+            String errorMessage = "The bundle named: " + bundleName + ", has not been found. " +
+                            "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
+                            "verify the bundle path is accessible in the classpath.";
+            trace(errorMessage);
         }
     }
 
