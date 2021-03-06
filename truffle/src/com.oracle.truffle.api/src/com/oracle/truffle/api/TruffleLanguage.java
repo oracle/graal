@@ -3398,6 +3398,63 @@ public abstract class TruffleLanguage<C> {
             return createHostAdapterClassImpl(types, classOverrides);
         }
 
+        /**
+         * Find or create a context-bound logger. The returned {@link TruffleLogger} always uses a
+         * logging handler and options from this execution environment context and does not depend
+         * on being entered on any thread.
+         * <p>
+         * If a logger with a given name already exists it's returned. Otherwise, a new logger is
+         * created.
+         * <p>
+         * Unlike loggers created by
+         * {@link TruffleLogger#getLogger(java.lang.String, java.lang.String)
+         * TruffleLogger.getLogger} loggers created by this method are bound to a single context.
+         * There may be more logger instances having the same name but each bound to a different
+         * context. Languages should never store the returned logger into a static field. If the
+         * context policy is more permissive than {@link ContextPolicy#EXCLUSIVE} the returned
+         * logger must not be stored in a TruffleLanguage subclass. It is recommended to create all
+         * language loggers in {@link TruffleLanguage#createContext(Env)}.
+         *
+         * @param loggerName the the name of a {@link TruffleLogger}, if a {@code loggerName} is
+         *            null or empty a root logger for language or instrument is returned
+         * @return a {@link TruffleLogger}
+         * @since 21.1
+         *
+         */
+        @TruffleBoundary
+        public TruffleLogger getLogger(String loggerName) {
+            String languageId = this.spi.languageInfo.getId();
+            TruffleLogger.LoggerCache loggerCache = (TruffleLogger.LoggerCache) LanguageAccessor.engineAccess().getContextLoggerCache(this.polyglotLanguageContext);
+            return TruffleLogger.getLogger(languageId, loggerName, loggerCache);
+        }
+
+        /**
+         * Find or create a context-bound logger. The returned {@link TruffleLogger} always uses a
+         * logging handler and options from this execution environment context and does not depend
+         * on being entered on any thread.
+         * <p>
+         * If a logger with a given name already exists it's returned. Otherwise, a new logger is
+         * created.
+         * <p>
+         * Unlike loggers created by
+         * {@link TruffleLogger#getLogger(java.lang.String, java.lang.String)
+         * TruffleLogger.getLogger} loggers created by this method are bound to a single context.
+         * There may be more logger instances having the same name but each bound to a different
+         * context. Languages should never store the returned logger into a static field. If the
+         * context policy is more permissive than {@link ContextPolicy#EXCLUSIVE} the returned
+         * logger must not be stored in a TruffleLanguage subclass. It is recommended to create all
+         * language loggers in {@link TruffleLanguage#createContext(Env)}.
+         *
+         * @param forClass the {@link Class} to create a logger for
+         * @return a {@link TruffleLogger}
+         * @since 21.1
+         */
+        @TruffleBoundary
+        public TruffleLogger getLogger(Class<?> forClass) {
+            Objects.requireNonNull(forClass, "Class must be non null.");
+            return getLogger(forClass.getName());
+        }
+
         private Object createHostAdapterClassImpl(Class<?>[] types, Object classOverrides) {
             checkDisposed();
             try {

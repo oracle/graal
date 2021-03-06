@@ -389,6 +389,8 @@ public abstract class Accessor {
 
         public abstract Object createDefaultLoggerCache();
 
+        public abstract Object getContextLoggerCache(Object polyglotLanguageContext);
+
         public abstract Handler getLogHandler(Object loggerCache);
 
         public abstract Map<String, Level> getLogLevels(Object loggerCache);
@@ -645,6 +647,8 @@ public abstract class Accessor {
         public abstract Object getDefaultLoggers();
 
         public abstract Object createEngineLoggers(Object spi, Map<String, Level> logLevels);
+
+        public abstract Object getLoggersSPI(Object loggerCache);
 
         public abstract void closeEngineLoggers(Object loggers);
 

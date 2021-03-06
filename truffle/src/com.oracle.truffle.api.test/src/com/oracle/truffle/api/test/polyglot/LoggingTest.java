@@ -1035,6 +1035,125 @@ public class LoggingTest {
         });
     }
 
+    @Test
+    public void testContextBoundLoggerSingleContext() {
+        TestHandler handler = new TestHandler();
+        LoggingLanguageFirst.action = (ctx, loggers) -> {
+            for (Level level : AbstractLoggingLanguage.LOGGER_LEVELS) {
+                for (String loggerName : AbstractLoggingLanguage.LOGGER_NAMES) {
+                    TruffleLogger logger = ctx.env.getLogger(loggerName);
+                    logger.log(level, logger.getName());
+                }
+            }
+            return false;
+        };
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            Assert.assertEquals(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()), handler.getLog());
+        }
+    }
+
+    @Test
+    public void testContextBoundLoggerMultipleContexts() {
+        TestHandler handler1 = new TestHandler();
+        TestHandler handler2 = new TestHandler();
+        LoggingLanguageFirst.action = (ctx, loggers) -> {
+            for (Level level : AbstractLoggingLanguage.LOGGER_LEVELS) {
+                for (String loggerName : AbstractLoggingLanguage.LOGGER_NAMES) {
+                    TruffleLogger logger = ctx.env.getLogger(loggerName);
+                    logger.log(level, logger.getName());
+                }
+            }
+            return false;
+        };
+        try (Context ctx1 = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler1).build();
+                        Context ctx2 = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler2).build()) {
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            ctx2.eval(LoggingLanguageFirst.ID, "");
+            Assert.assertEquals(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()), handler1.getLog());
+            Assert.assertEquals(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()), handler2.getLog());
+        }
+    }
+
+    @Test
+    public void testContextBoundLoggerLoggersIdentitySingleContext() {
+        TestHandler handler = new TestHandler();
+        Map<String, TruffleLogger> loggersByName = new HashMap<>();
+        LoggingLanguageFirst.action = (ctx, loggers) -> {
+            boolean firstRun = loggersByName.isEmpty();
+            for (String loggerName : AbstractLoggingLanguage.LOGGER_NAMES) {
+                TruffleLogger logger = ctx.env.getLogger(loggerName);
+                Assert.assertNotNull(logger);
+                if (firstRun) {
+                    loggersByName.put(loggerName, logger);
+                } else {
+                    Assert.assertSame(loggersByName.get(loggerName), logger);
+                }
+            }
+            return false;
+        };
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            Assert.assertFalse(loggersByName.isEmpty());
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+    }
+
+    @Test
+    public void testContextBoundLoggerLoggersIdentityMultipleContexts() {
+        TestHandler handler = new TestHandler();
+        Map<String, TruffleLogger> loggersByName = new HashMap<>();
+        LoggingLanguageFirst.action = (ctx, loggers) -> {
+            boolean firstRun = loggersByName.isEmpty();
+            for (String loggerName : AbstractLoggingLanguage.LOGGER_NAMES) {
+                TruffleLogger logger = ctx.env.getLogger(loggerName);
+                Assert.assertNotNull(logger);
+                if (firstRun) {
+                    loggersByName.put(loggerName, logger);
+                } else {
+                    Assert.assertNotNull(loggersByName.get(loggerName));
+                    Assert.assertNotSame(loggersByName.get(loggerName), logger);
+                }
+            }
+            return false;
+        };
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+        Assert.assertFalse(loggersByName.isEmpty());
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+    }
+
+    @Test
+    public void testContextBoundLoggerNotEnteredContext() {
+        TestHandler handler1 = new TestHandler();
+        TestHandler handler2 = new TestHandler();
+        AtomicReference<TruffleLogger> loggerRef = new AtomicReference<>();
+        LoggingLanguageFirst.action = (ctx, loggers) -> {
+            TruffleLogger logger = ctx.getEnv().getLogger(AbstractLoggingLanguage.LOGGER_NAMES[0]);
+            Assert.assertNull(loggerRef.getAndSet(logger));
+            LoggingLanguageFirst.action = null;
+            return false;
+        };
+        try (Context ctx1 = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler1).build();
+                        Context ctx2 = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler2).build()) {
+            ctx2.eval(LoggingLanguageFirst.ID, "");
+            ctx1.enter();
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            try {
+                TruffleLogger logger = loggerRef.get();
+                Assert.assertNotNull(logger);
+                logger.log(Level.FINEST, "bound");
+            } finally {
+                ctx1.leave();
+            }
+            Assert.assertEquals(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()), handler1.getLog());
+            Assert.assertEquals(Collections.singletonList(new AbstractMap.SimpleImmutableEntry<>(Level.FINEST, "bound")), handler2.getLog());
+        }
+    }
+
     @SuppressWarnings("all")
     private static boolean assertionsEnabled() {
         boolean assertionsEnabled = false;
@@ -1044,7 +1163,7 @@ public class LoggingTest {
 
     private static BiPredicate<LoggingContext, TruffleLogger[]> createCustomLogging(String[] loggerIds, String[] loggerNames, String[] messages) {
         if (loggerIds.length != loggerNames.length || loggerNames.length != messages.length) {
-            throw new IllegalArgumentException("loggerIds, loggerNames and messages hsve to have same length.");
+            throw new IllegalArgumentException("loggerIds, loggerNames and messages must have same length.");
         }
         return new BiPredicate<LoggingContext, TruffleLogger[]>() {
             @Override

@@ -213,7 +213,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @CompilationFinal private HostToGuestCodeCache hostToGuestCodeCache;
 
     final SpecializationStatistics specializationStatistics;
-    final Function<String, TruffleLogger> engineLoggerSupplier;
+    Function<String, TruffleLogger> engineLoggerSupplier;   // effectively final
     private volatile TruffleLogger engineLogger;
 
     @CompilationFinal volatile StableLocalLocations contextLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
@@ -244,6 +244,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         Map<String, InstrumentInfo> instrumentInfos = new LinkedHashMap<>();
         this.idToInstrument = Collections.unmodifiableMap(initializeInstruments(instrumentInfos));
         this.idToInternalInstrumentInfo = Collections.unmodifiableMap(instrumentInfos);
+        engineLogger.setEngine(this);
         this.runtimeData = RUNTIME.createRuntimeData(engineOptions, engineLogger);
 
         this.classToLanguage = new HashMap<>();
@@ -453,7 +454,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     InputStream newIn,
                     OptionValuesImpl engineOptions,
                     LogConfig newLogConfig,
-                    Function<String, TruffleLogger> logSupplier,
+                    EngineLoggerProvider logSupplier,
                     Map<String, String> newOptions,
                     boolean newAllowExperimentalOptions,
                     ClassLoader newContextClassLoader, boolean newBoundEngine, Handler newLogHandler) {
@@ -469,6 +470,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.logLevels = newLogConfig.logLevels;
         boolean wasStore = this.storeEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
+        this.engineLoggerSupplier = logSupplier;
+        this.engineLogger = null;
+        logSupplier.setEngine(this);
 
         intitializeStore(wasStore, storeEngine);
 
@@ -1786,7 +1790,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             synchronized (this.lock) {
                 res = engineLoggers;
                 if (res == null) {
-                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.createEngineSPI(this), logLevels);
+                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.LoggerCache.newEngineLoggerCache(this), logLevels);
                     for (ContextWeakReference contextRef : contexts) {
                         PolyglotContextImpl context = contextRef.get();
                         if (context != null && !context.config.logLevels.isEmpty()) {

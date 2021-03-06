@@ -959,7 +959,12 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object createDefaultLoggerCache() {
-            return PolyglotLoggers.defaultSPI();
+            return PolyglotLoggers.LoggerCache.DEFAULT;
+        }
+
+        @Override
+        public Object getContextLoggerCache(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.getOrCreateContextLoggers();
         }
 
         @Override
@@ -984,7 +989,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object getLoggerOwner(Object loggerCache) {
-            return ((PolyglotLoggers.LoggerCache) loggerCache).getEngine();
+            return ((PolyglotLoggers.LoggerCache) loggerCache).getOwner();
         }
 
         @Override
