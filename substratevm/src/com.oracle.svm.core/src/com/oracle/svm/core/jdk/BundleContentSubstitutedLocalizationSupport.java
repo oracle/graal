@@ -91,7 +91,14 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         super(defaultLocale, locales);
     }
 
-    public void storeBundleContentOf(ResourceBundle bundle) {
+    @Override
+    protected void onBundlePrepared(ResourceBundle bundle) {
+        if (isBundleSupported(bundle)) {
+            storeBundleContentOf(bundle);
+        }
+    }
+
+    private void storeBundleContentOf(ResourceBundle bundle) {
         GraalError.guarantee(isBundleSupported(bundle), "Unsupported bundle " + bundle + " of type " + bundle.getClass());
         storedBundles.put(bundle.getClass(), processBundle(bundle));
     }

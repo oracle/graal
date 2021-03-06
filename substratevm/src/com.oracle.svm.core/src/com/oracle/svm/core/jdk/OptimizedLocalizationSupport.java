@@ -51,8 +51,6 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
         super(defaultLocale, locales);
     }
 
-    final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
-
     /**
      * Get cached resource bundle.
      *
@@ -70,5 +68,11 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
                         "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
         throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
 
+    }
+
+    @Override
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
+        bundle.keySet();
+        this.resourceBundles.put(Pair.create(bundleName, locale), bundle);
     }
 }

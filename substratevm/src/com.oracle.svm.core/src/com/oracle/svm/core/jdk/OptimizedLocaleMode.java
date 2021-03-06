@@ -36,7 +36,7 @@ public class OptimizedLocaleMode implements BooleanSupplier {
 class SubstituteLoadLookup implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return LocalizationFeature.optimizedMode() || LocalizationFeature.Options.SubstituteLoadLookup.getValue();
+        return LocalizationFeature.optimizedMode() || LocalizationFeature.Options.LocalizationSubstituteLoadLookup.getValue();
     }
 }
 

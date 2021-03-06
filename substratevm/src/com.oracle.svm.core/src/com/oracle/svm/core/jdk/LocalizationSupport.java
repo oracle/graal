@@ -30,11 +30,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.PropertyResourceBundle;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 /**
  * Holder for localization information that is computed during image generation and used at run
@@ -52,6 +57,8 @@ public class LocalizationSupport {
 
     final Set<String> supportedLanguageTags;
 
+    final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
+
     protected LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
@@ -59,16 +66,29 @@ public class LocalizationSupport {
     }
 
     public OptimizedLocalizationSupport asOptimizedSupport() {
-        GraalError.guarantee(LocalizationFeature.optimizedMode(), "Optimized support only available in optimized mode.");
+        GraalError.guarantee(LocalizationFeature.optimizedMode(), "Optimized support only available in optimized localization mode.");
         return ((OptimizedLocalizationSupport) this);
-    }
-
-    public BundleContentSubstitutedLocalizationSupport asBundleContentSubstitutedSupport() {
-        GraalError.guarantee(LocalizationFeature.Options.SubstituteLoadLookup.getValue(), "LoadLookup substitutions only allowed in special mode.");
-        return ((BundleContentSubstitutedLocalizationSupport) this);
     }
 
     public Map<String, Object> getBundleContentFor(Class<?> bundleClass) {
         throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundleClass.getTypeName());
+    }
+
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
+        if (bundle instanceof PropertyResourceBundle) {
+            String withLocale = control.toBundleName(bundleName, locale);
+            ImageSingletons.lookup(ResourcesRegistry.class).addResources(withLocale.replace('.', '/') + "\\.properties");
+        } else {
+            RuntimeReflection.register(bundle.getClass());
+            RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
+            onBundlePrepared(bundle);
+        }
+    }
+
+    /**
+     * Template method for subclasses to do perform additional tasks.
+     */
+    protected void onBundlePrepared(ResourceBundle bundle) {
+
     }
 }

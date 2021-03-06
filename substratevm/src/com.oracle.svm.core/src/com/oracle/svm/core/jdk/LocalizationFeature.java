@@ -43,7 +43,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
-import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 import java.util.spi.CalendarDataProvider;
 import java.util.spi.CalendarNameProvider;
@@ -52,7 +51,6 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -74,7 +72,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
@@ -85,12 +82,12 @@ public abstract class LocalizationFeature implements Feature {
 
     protected final boolean optimizedMode = optimizedMode();
 
-    private final boolean substituteLoadLookup = Options.SubstituteLoadLookup.getValue();
+    private final boolean substituteLoadLookup = Options.LocalizationSubstituteLoadLookup.getValue();
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
     public static boolean optimizedMode() {
-        return Options.OptimizedMode.getValue();
+        return Options.LocalizationOptimizedMode.getValue();
     }
 
     public static boolean fallbackMode() {
@@ -125,14 +122,14 @@ public abstract class LocalizationFeature implements Feature {
         @Option(help = "Make all hosted locales available at run time.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
 
-        @Option(help = "Optimize the resource bundle lookup in a custom map.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> OptimizedMode = new HostedOptionKey<>(true);
+        @Option(help = "Optimize the resource bundle lookup using a simple map.", type = OptionType.User)//
+        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(true);
 
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> SubstituteLoadLookup = new HostedOptionKey<>(true);
+        public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
 
-        @Option(help = "When enabled, localization feature details are printed.", type = OptionType.Debug) //
-        public static final HostedOptionKey<Boolean> TraceLocalizationFeature = new HostedOptionKey<>(true);
+        @Option(help = "When enabled, localization feature details are printed.", type = OptionType.Debug)//
+        public static final HostedOptionKey<Boolean> TraceLocalizationFeature = new HostedOptionKey<>(false);
     }
 
     /**
@@ -199,7 +196,9 @@ public abstract class LocalizationFeature implements Feature {
 
         addCharsets();
         if (optimizedMode) {
-            // todo encapsulate if into strategy ?
+            /*
+             * Providers are only preprocessed in the optimized mode. TODO refactor into strategy?
+             */
             addProviders();
         }
     }
@@ -398,29 +397,15 @@ public abstract class LocalizationFeature implements Feature {
          * down to the root.
          */
         for (ResourceBundle cur = bundle; cur != null; cur = getParent(cur)) {
-            // todo encapsulate into strategy ?
-            if (optimizedMode) {
-                cur.keySet();
-                support.asOptimizedSupport().resourceBundles.put(Pair.create(bundleName, cur.getLocale()), cur);
-            } else {
-                if (cur instanceof PropertyResourceBundle) {
-                    ImageSingletons.lookup(ResourcesRegistry.class).addResources(cur.getClass().getName().replace('.', '/') + "\\.properties");
-                } else {
-                    RuntimeReflection.register(cur.getClass());
-                    RuntimeReflection.registerForReflectiveInstantiation(cur.getClass());
-                    if (substituteLoadLookup) {
-                        final BundleContentSubstitutedLocalizationSupport support = this.support.asBundleContentSubstitutedSupport();
-                        if (support.isBundleSupported(cur)) {
-                            support.storeBundleContentOf(cur);
-                        }
-                    }
-                }
-            }
+            /* Register all bundles with their corresponding locales */
+            support.prepareBundle(bundleName, cur, cur.getLocale());
         }
 
-        if (optimizedMode) {
-            support.asOptimizedSupport().resourceBundles.put(Pair.create(bundleName, locale), bundle);
-        }
+        /*
+         * Finally, register the requested bundle with requested locale (Requested might be more
+         * specific than the actual bundle locale
+         */
+        support.prepareBundle(bundleName, bundle, locale);
     }
 
     /*
