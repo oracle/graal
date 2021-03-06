@@ -641,9 +641,9 @@ public class CheckGraalIntrinsics extends GraalTest {
                 }
             } else {
                 if (toBeInvestigated.contains(m)) {
-                    mischaracterizedAsToBeInvestigated.add(m);
+                    mischaracterizedAsToBeInvestigated.add(m + " [plugin: " + plugin + "]");
                 } else if (ignore.contains(m)) {
-                    mischaracterizedAsIgnored.add(m);
+                    mischaracterizedAsIgnored.add(m + " [plugin: " + plugin + "]");
                 }
             }
         }
