@@ -120,7 +120,11 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     public Map<String, Object> getBundleContentFor(Class<?> bundleClass) {
         StoredBundle bundle = storedBundles.get(bundleClass);
         if (bundle != null) {
-            return bundle.getContent();
+            try {
+                return bundle.getContent();
+            } catch (Exception ex) {
+                throw GraalError.shouldNotReachHere(ex, "Decompressing a resource bundle " + bundleClass.getName() + " failed.");
+            }
         }
         return super.getBundleContentFor(bundleClass);
     }
