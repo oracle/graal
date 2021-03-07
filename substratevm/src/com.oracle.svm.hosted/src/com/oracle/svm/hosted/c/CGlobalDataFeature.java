@@ -32,8 +32,9 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -204,6 +205,36 @@ public class CGlobalDataFeature implements GraalFeature {
                         });
     }
 
+    /**
+     * Makes the provided object available in the binary as a global symbol
+     *
+     * Warning: Global symbols are affected by linking and loading rules that are OS dependent. So
+     * accessing a global symbol content at run time using the symbol name could return a different
+     * content than the one provided at build time. This happens for example on Linux when a shared
+     * library is loaded and the main executable already defines a symbol with the same name.
+     */
+    public void registerWithGlobalSymbol(CGlobalData<?> obj) {
+        registerWithGlobalSymbolImpl(obj);
+    }
+
+    /**
+     * Same as {@link #registerWithGlobalSymbol(CGlobalData)} but hides the provided object so that
+     * it will not show up in the dynamic symbol table of the final image.
+     */
+    public void registerWithGlobalHiddenSymbol(CGlobalData<?> obj) {
+        registerWithGlobalSymbolImpl(obj).makeHiddenSymbol();
+    }
+
+    private CGlobalDataInfo registerWithGlobalSymbolImpl(CGlobalData<?> obj) {
+        CGlobalDataInfo info = registerAsAccessedOrGet(obj);
+        info.makeGlobalSymbol();
+        return info;
+    }
+
+    public Set<String> getGlobalHiddenSymbols() {
+        return map.entrySet().stream().filter(entry -> entry.getValue().isGlobalSymbol() && entry.getValue().isHiddenSymbol()).map(entry -> entry.getKey().symbolName).collect(Collectors.toSet());
+    }
+
     private Object replaceObject(Object obj) {
         if (obj instanceof CGlobalDataImpl<?>) {
             registerAsAccessedOrGet((CGlobalData<?>) obj);
@@ -250,7 +281,11 @@ public class CGlobalDataFeature implements GraalFeature {
         return totalSize;
     }
 
-    public void writeData(RelocatableBuffer buffer, BiFunction<Integer, String, ?> createSymbol, BiFunction<Integer, String, ?> createSymbolReference) {
+    public interface SymbolConsumer {
+        void apply(int offset, String symbolName, boolean isGlobalSymbol);
+    }
+
+    public void writeData(RelocatableBuffer buffer, SymbolConsumer createSymbol, SymbolConsumer createSymbolReference) {
         assert isLayouted() : "Not layouted yet";
         ByteBuffer bufferBytes = buffer.getByteBuffer();
         int start = bufferBytes.position();
@@ -263,10 +298,10 @@ public class CGlobalDataFeature implements GraalFeature {
             }
             CGlobalDataImpl<?> data = info.getData();
             if (data.symbolName != null && !info.isSymbolReference()) {
-                createSymbol.apply(info.getOffset(), data.symbolName);
+                createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
             if (data.nonConstant) {
-                createSymbolReference.apply(info.getOffset(), data.symbolName);
+                createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
         }
     }

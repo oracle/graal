@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Collectors;
@@ -41,7 +40,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
@@ -51,6 +49,8 @@ public class VMFeature implements Feature {
 
     private NativeLibraries nativeLibraries;
     private static final String STATIC_BINARY_MARKER_SYMBOL_NAME = "__svm_vm_is_static_binary";
+    private static final String VERSION_INFO_SYMBOL_NAME = "__svm_version_info";
+    private static final String valueSeparator = "=";
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
@@ -64,19 +64,13 @@ public class VMFeature implements Feature {
         }
 
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        String fieldName = "VERSION_INFO";
-        try {
-            Field declaredField = VM.class.getDeclaredField(fieldName);
-            access.registerAsRead(declaredField);
-        } catch (NoSuchFieldException e) {
-            VMError.shouldNotReachHere(VM.class.getName() + " should have field " + fieldName);
-        }
-
         nativeLibraries = access.getNativeLibraries();
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        CGlobalDataFeature.singleton().registerWithGlobalSymbol(CGlobalDataFactory.createCString(VM.class.getName() + valueSeparator + VM.VERSION, VERSION_INFO_SYMBOL_NAME));
+
         addCGlobalDataString("Target.Platform", ImageSingletons.lookup(Platform.class).getClass().getName());
         addCGlobalDataString("Target.LibC", ImageSingletons.lookup(LibCBase.class).getClass().getName());
 
@@ -94,12 +88,12 @@ public class VMFeature implements Feature {
         }
 
         CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
-        CGlobalDataFeature.singleton().registerAsAccessedOrGet(isStaticBinaryMarker);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
     }
 
     private static void addCGlobalDataString(String infoType, String content) {
-        String data = VM.class.getName() + "." + infoType + VM.valueSeparator + content;
+        String data = VM.class.getName() + "." + infoType + valueSeparator + content;
         String symbolName = "__svm_vm_" + infoType.toLowerCase().replace(".", "_");
-        CGlobalDataFeature.singleton().registerAsAccessedOrGet(CGlobalDataFactory.createCString(data, symbolName));
+        CGlobalDataFeature.singleton().registerWithGlobalSymbol(CGlobalDataFactory.createCString(data, symbolName));
     }
 }
