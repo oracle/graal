@@ -4551,7 +4551,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return toString.asString(objects.getMetaQualifiedName(receiver));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    throw unsupported(context, receiver, "throwException()", "isException()");
+                    throw unsupported(context, receiver, "getMetaQualifiedName()", "isMetaObject()");
                 }
             }
         }
@@ -4581,7 +4581,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return toString.asString(objects.getMetaSimpleName(receiver));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    throw unsupported(context, receiver, "throwException()", "isException()");
+                    throw unsupported(context, receiver, "getMetaSimpleName()", "isMetaObject()");
                 }
             }
         }
@@ -4611,7 +4611,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return objects.isMetaInstance(receiver, toGuest.execute(context, args[ARGUMENT_OFFSET]));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    throw unsupported(context, receiver, "throwException()", "isException()");
+                    throw unsupported(context, receiver, "isMetaInstance()", "isMetaObject()");
                 }
             }
         }
