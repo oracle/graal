@@ -56,6 +56,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -584,6 +585,35 @@ final class Target_sun_security_provider_PolicySpiFile {
 @Delete("Substrate VM does not use SecurityManager, so loading a security policy file would be misleading")
 @TargetClass(className = "sun.security.provider.PolicyFile")
 final class Target_sun_security_provider_PolicyFile {
+}
+
+@TargetClass(className = "sun.security.jca.ProviderConfig")
+@SuppressWarnings({"unused", "static-method"})
+final class Target_sun_security_jca_ProviderConfig {
+
+    /**
+     * All security providers used in a native-image must be registered during image build time. At
+     * runtime, we shouldn't have a call to doLoadProvider. However, this method is still reachable
+     * at runtime, and transitively includes other types in the image, among which is
+     * sun.security.jca.ProviderConfig.ProviderLoader. This class contains a static field with a
+     * cache of providers loaded during the image build. The contents of this cache can vary even
+     * when building the same image due to the way services are loaded on Java 11. This cache can
+     * increase the final image size substantially (if it contains, for example,
+     * {@link org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
+     */
+    @Substitute
+    private Provider doLoadProvider() {
+        throw VMError.unsupportedFeature("Cannot load new security provider at runtime.");
+    }
+
+}
+
+@SuppressWarnings("unused")
+@TargetClass(className = "sun.security.jca.ProviderConfig", innerClass = "ProviderLoader", onlyWith = JDK11OrLater.class)
+final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true)//
+    static Target_sun_security_jca_ProviderConfig_ProviderLoader INSTANCE;
 }
 
 /** Dummy class to have a class with the file's name. */
