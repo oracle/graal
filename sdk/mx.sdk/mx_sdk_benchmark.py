@@ -47,10 +47,27 @@ import subprocess
 import signal
 import threading
 import json
-
+import argparse
 import mx
 import mx_benchmark
 
+def parse_prefixed_args(prefix, args):
+    ret = []
+    for arg in args:
+        if arg.startswith(prefix):
+            parsed = arg.split(' ')[0].split(prefix)[1]
+            if parsed not in ret:
+                ret.append(parsed)
+    return ret
+
+def parse_prefixed_arg(prefix, args, errorMsg):
+    ret = parse_prefixed_args(prefix, args)
+    if len(ret) > 1:
+        mx.abort(errorMsg)
+    elif len(ret) < 1:
+        return None
+    else:
+        return ret[0]
 
 class NativeImageBenchmarkMixin(object):
 
@@ -65,47 +82,34 @@ class NativeImageBenchmarkMixin(object):
     def run_stage(self, stage, command, out, err, cwd, nonZeroIsFatal):
         return mx.run(command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
-    def parse_native_image_args(self, prefix, args):
-        ret = []
-        for arg in args:
-            if arg.startswith(prefix):
-                parsed = arg.split(' ')[0].split(prefix)[1]
-                if parsed not in ret:
-                    ret.append(parsed)
-        return ret
-
     def extra_image_build_argument(self, _, args):
-        return self.parse_native_image_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
 
     def extra_run_arg(self, _, args):
-        return self.parse_native_image_args('-Dnative-image.benchmark.extra-run-arg=', args)
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
 
     def extra_agent_run_arg(self, _, args):
-        return self.parse_native_image_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
 
     def extra_profile_run_arg(self, _, args):
-        return self.parse_native_image_args('-Dnative-image.benchmark.extra-profile-run-arg=', args)
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-profile-run-arg=', args)
 
     def extra_agent_profile_run_arg(self, _, args):
-        return self.parse_native_image_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
 
     def benchmark_output_dir(self, _, args):
-        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.benchmark-output-dir=', args)
+        parsed_args = parse_prefixed_args('-Dnative-image.benchmark.benchmark-output-dir=', args)
         if parsed_args:
             return parsed_args[0]
         else:
             return None
 
     def stages(self, args):
-        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.stages=', args)
-
-        if len(parsed_args) > 1:
-            mx.abort('Native Image benchmark stages should only be specified once.')
-
-        return parsed_args[0].split(',') if parsed_args else ['agent', 'instrument-image', 'instrument-run', 'image', 'run']
+        parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else ['agent', 'instrument-image', 'instrument-run', 'image', 'run']
 
     def skip_agent_assertions(self, _, args):
-        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.skip-agent-assertions=', args)
+        parsed_args = parse_prefixed_args('-Dnative-image.benchmark.skip-agent-assertions=', args)
         if 'true' in parsed_args or 'True' in parsed_args:
             return True
         elif 'false' in parsed_args or 'False' in parsed_args:
@@ -126,9 +130,28 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         super(BaseMicroserviceBenchmarkSuite, self).__init__()
         self.testerOutput = None
         self.bmSuiteArgs = None
+        self.workloadPath = None
+        self.parser = argparse.ArgumentParser()
+        self.parser.add_argument(
+            "--workload-configuration", type=str, default=None, help="Path to workload configuration.")
 
     def benchSuiteName(self):
         return self.name()
+
+    def defaultWorkloadPath(self, benchmarkName):
+        """Returns the workload configuration path.
+
+        :return: Path to configuration file.
+        :rtype: str
+        """
+        raise NotImplementedError()
+
+    def workloadConfigurationPath(self):
+        if self.workloadPath:
+            mx.log("Using user-provided workload configuration file: {0}".format(self.workloadPath))
+            return self.workloadPath
+        else:
+            return self.defaultWorkloadPath(self.benchmarkName())
 
     def applicationPath(self):
         """Returns the application Jar path.
@@ -183,10 +206,10 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             return False
 
     @staticmethod
-    def runTesterInBackground(benchmarkSuite, benchmarkName):
+    def runTesterInBackground(benchmarkSuite):
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.applicationPort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
-        benchmarkSuite.runTester(benchmarkName)
+        benchmarkSuite.runTester()
         if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.applicationPort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
@@ -196,7 +219,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             return super(BaseMicroserviceBenchmarkSuite, self).run_stage(stage, server_command, out, err, cwd, nonZeroIsFatal)
         else:
             # For run stages, we need to run the server and the loader
-            threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self, self.benchmarkName()]).start()
+            threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self]).start()
             return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
     def run(self, benchmarks, bmSuiteArgs):
@@ -204,22 +227,16 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             mx.abort("A single benchmark should be specified for {0}.".format(BaseMicroserviceBenchmarkSuite.__name__))
         self.bmSuiteArgs = bmSuiteArgs
         self.benchmark_name = benchmarks[0]
+        args, remainder = self.parser.parse_known_args(self.bmSuiteArgs)
+        self.workloadPath = args.workload_configuration
         if not self.inNativeMode():
-            threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self, benchmarks[0]]).start()
-        results = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+            threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self]).start()
+        results = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
         return results
 
 
 class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
     """Base class for JMeter based benchmark suites."""
-
-    def jmeterWorkloadPath(self, benchmark):
-        """Returns the JMeter workload (.jmx file) path.
-
-        :return: Path to workload file.
-        :rtype: str
-        """
-        raise NotImplementedError()
 
     def jmeterVersion(self):
         return '5.3'
@@ -243,10 +260,10 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
             )
         ]
 
-    def runTester(self, benchmarkName):
+    def runTester(self):
         jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
         jmeterPath = os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
-        jmeterCmd = [mx.get_jdk().java, "-jar", jmeterPath, "-n", "-t", self.jmeterWorkloadPath(benchmarkName), "-j", "/dev/stdout"]  # pylint: disable=line-too-long
+        jmeterCmd = [mx.get_jdk().java, "-jar", jmeterPath, "-n", "-t", self.workloadConfigurationPath(), "-j", "/dev/stdout"] # pylint: disable=line-too-long
         mx.log("Running JMeter: {0}".format(jmeterCmd))
         self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
         mx.run(jmeterCmd, out=self.testerOutput, err=subprocess.PIPE)
@@ -264,7 +281,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
 class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     """Base class for Wrk based benchmark suites."""
 
-    def loadConfiguration(self, benchmarkName):
+    def loadConfiguration(self):
         """Returns a json object that describes the Wrk configuration. The following syntax is expected:
         {
           "connections" : <number of connections to keep open>,
@@ -282,18 +299,10 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         :return: Configuration json.
         :rtype: json
         """
-        with open(self.wrkWorkloadPath(benchmarkName)) as configFile:
+        with open(self.workloadConfigurationPath()) as configFile:
             config = json.load(configFile)
             mx.log("Loading configuration file for {0}: {1}".format(BaseWrkBenchmarkSuite.__name__, configFile.name))
             return config
-
-    def wrkWorkloadPath(self, benchmark):
-        """Returns the workload configuration path.
-
-        :return: Path to configuration file.
-        :rtype: str
-        """
-        raise NotImplementedError()
 
     def getScriptPath(self, config):
         pass
@@ -324,8 +333,8 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             mx.abort("target-url not specified in Wrk configuration.")
         return cmd
 
-    def runTester(self, benchmarkName):
-        config = self.loadConfiguration(benchmarkName)
+    def runTester(self):
+        config = self.loadConfiguration()
         wrkDirectory = self.getLibraryDirectory()
         if mx.get_os() == "linux":
             distro = "linux"

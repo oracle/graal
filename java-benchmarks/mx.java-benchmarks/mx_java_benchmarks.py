@@ -219,10 +219,8 @@ class BaseShopCartBenchmarkSuite(object):
 
     def stages(self, args):
         # This method overrides NativeImageMixin.stages
-        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.stages=', args)
-        if len(parsed_args) > 1:
-            mx.abort('Native Image benchmark stages should only be specified once.')
-        return parsed_args[0].split(',') if parsed_args else ['instrument-image', 'instrument-run', 'image', 'run']
+        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else ['instrument-image', 'instrument-run', 'image', 'run']
 
 
 class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
@@ -237,7 +235,7 @@ class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.
     def benchmarkList(self, bmSuiteArgs):
         return ["tiny", "small", "large"]
 
-    def jmeterWorkloadPath(self, benchmark):
+    def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
@@ -262,7 +260,7 @@ class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Bas
     def targetHost(self):
         return "localhost"
 
-    def wrkWorkloadPath(self, benchmark):
+    def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
@@ -290,7 +288,7 @@ class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Ba
     def targetHost(self):
         return "localhost"
 
-    def wrkWorkloadPath(self, benchmark):
+    def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
@@ -301,16 +299,16 @@ class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Ba
 
     def loadConfiguration(self, benchmarkName):
         def postRequest(url, data):
-            req = urllib2.Request(url)
+            req = urllib.Request(url)
             req.add_header('Content-Type', 'application/json')
-            mx.log(urllib2.urlopen(req, json.dumps(data)).read())
+            mx.log(urllib.urlopen(req, str.encode(json.dumps(data))).read())
         try:
             if sys.version_info < (3, 0):
-                import urllib2
+                import urllib2 as urllib
             else:
-                import urllib.request as urllib2
+                import urllib.request as urllib
         except ImportError:
-            mx.abort("Failed to import {0} dependency module: urllib2".format(ShopCartWrk2BenchmarkSuite.__name__))
+            mx.abort("Failed to import {0} dependency module: urllib".format(ShopCartWrk2BenchmarkSuite.__name__))
         config = super(ShopCartWrk2BenchmarkSuite, self).loadConfiguration(benchmarkName)
         for request in config["setup"]:
             postRequest(config["target-url"] + request["path"], request["msg"])
