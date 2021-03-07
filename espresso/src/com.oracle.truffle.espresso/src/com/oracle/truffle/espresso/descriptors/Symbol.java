@@ -394,6 +394,13 @@ public final class Symbol<T> extends ByteSequence {
         // sun.reflect.ConstantPool
         public static final Symbol<Name> constantPoolOop = StaticSymbols.putName("constantPoolOop");
 
+        // sun.misc.SignalHandler
+        public static final Symbol<Name> handle = StaticSymbols.putName("handle");
+        public static final Symbol<Name> SIG_DFL = StaticSymbols.putName("SIG_DFL");
+        public static final Symbol<Name> SIG_IGN = StaticSymbols.putName("SIG_IGN");
+        // sun.misc.NativeSignalHandler
+        public static final Symbol<Name> handler = StaticSymbols.putName("handler");
+
         // Attribute names
         public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
         public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
@@ -613,6 +620,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType("Lsun/misc/VM;");
         public static final Symbol<Type> jdk_internal_misc_VM = StaticSymbols.putType("Ljdk/internal/misc/VM;");
         public static final Symbol<Type> java_lang_Thread$State = StaticSymbols.putType(Thread.State.class);
+
+        public static final Symbol<Type> sun_misc_Signal = StaticSymbols.putType("Lsun/misc/Signal;");
+        public static final Symbol<Type> jdk_internal_misc_Signal = StaticSymbols.putType("Ljdk/internal/misc/Signal;");
+        public static final Symbol<Type> sun_misc_NativeSignalHandler = StaticSymbols.putType("Lsun/misc/NativeSignalHandler;");
+        public static final Symbol<Type> jdk_internal_misc_Signal$NativeHandler = StaticSymbols.putType("Ljdk/internal/misc/Signal$NativeHandler;");
+        public static final Symbol<Type> sun_misc_SignalHandler = StaticSymbols.putType("Lsun/misc/SignalHandler;");
+        public static final Symbol<Type> jdk_internal_misc_Signal$Handler = StaticSymbols.putType("Ljdk/internal/misc/Signal$Handler;");
 
         public static final Symbol<Type> sun_nio_ch_DirectBuffer = StaticSymbols.putType(sun.nio.ch.DirectBuffer.class);
         public static final Symbol<Type> java_nio_Buffer = StaticSymbols.putType(java.nio.Buffer.class);
@@ -905,5 +919,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> InvalidArrayIndexException_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long);
         public static final Symbol<Signature> InvalidArrayIndexException_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long,
                         Type.java_lang_Throwable);
+        public static final Symbol<Signature> _void_sun_misc_Signal = StaticSymbols.putSignature(Type._void, Type.sun_misc_Signal);
+        public static final Symbol<Signature> _void_jdk_internal_misc_Signal = StaticSymbols.putSignature(Type._void, Type.jdk_internal_misc_Signal);
     }
 }

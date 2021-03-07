@@ -46,6 +46,7 @@ public interface DynamicConstant extends PoolConstant {
         return new Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
     }
 
+    @Override
     default Tag tag() {
         return Tag.DYNAMIC;
     }

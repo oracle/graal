@@ -2332,7 +2332,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(StaticObject.class) long NewGlobalRef(@Handle(StaticObject.class) long handle) {
-        return getHandles().createGlobal(getHandles().get(Math.toIntExact(handle)));
+        return getHandles().createGlobal(getHandles().get(JNIHandles.toIntHandle(handle)));
     }
 
     /**
@@ -2344,7 +2344,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public void DeleteGlobalRef(@Handle(StaticObject.class) long handle) {
-        getHandles().deleteGlobalRef(Math.toIntExact(handle));
+        getHandles().deleteGlobalRef(JNIHandles.toIntHandle(handle));
     }
 
     /**
@@ -2366,7 +2366,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public void DeleteLocalRef(@Handle(StaticObject.class) long handle) {
-        getHandles().deleteLocalRef(Math.toIntExact(handle));
+        getHandles().deleteLocalRef(JNIHandles.toIntHandle(handle));
     }
 
     /**
@@ -2377,7 +2377,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Handle(StaticObject.class) long NewWeakGlobalRef(@Handle(StaticObject.class) long handle) {
-        return getHandles().createWeakGlobal(getHandles().get(Math.toIntExact(handle)));
+        return getHandles().createWeakGlobal(getHandles().get(JNIHandles.toIntHandle(handle)));
     }
 
     /**
@@ -2387,7 +2387,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public void DeleteWeakGlobalRef(@Handle(StaticObject.class) long handle) {
-        getHandles().deleteGlobalRef(Math.toIntExact(handle));
+        getHandles().deleteGlobalRef(JNIHandles.toIntHandle(handle));
     }
 
     /**
@@ -2483,7 +2483,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public /* C enum */ int GetObjectRefType(@Handle(StaticObject.class) long handle) {
-        return getHandles().getObjectRefType(Math.toIntExact(handle));
+        return getHandles().getObjectRefType(JNIHandles.toIntHandle(handle));
     }
 
     /**

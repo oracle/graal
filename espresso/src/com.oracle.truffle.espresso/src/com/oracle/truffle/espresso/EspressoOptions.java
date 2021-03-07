@@ -449,6 +449,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
+    @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> EnableSignals = new OptionKey<>(false);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);

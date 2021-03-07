@@ -821,28 +821,42 @@ public final class VM extends NativeEnv implements ContextAccess {
                         });
         if (lastJavaMethod != null) {
             // this thread is executing
+            getLogger().warning(() -> {
+                Meta meta = getMeta();
+                String guestName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+                return "DetachCurrentThread called while thread is still executing Java code (" + guestName + ")";
+            });
             return JNI_ERR;
         }
         StaticObject pendingException = jniEnv.getPendingException();
         jniEnv.clearPendingException();
 
+        Meta meta = context.getMeta();
         try {
-            Meta meta = context.getMeta();
             if (pendingException != null) {
-                try {
-                    meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
-                } catch (EspressoException e) {
-                    String exception = e.getExceptionObject().getKlass().getExternalName();
-                    String threadName = Target_java_lang_Thread.getThreadName(meta, currentThread);
-                    context.getLogger().warning(String.format("Exception: %s thrown from the UncaughtExceptionHandler in thread \"%s\"", exception, threadName));
-                } catch (EspressoExitException e) {
-                    // ignore
-                }
+                meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
             }
 
             Target_java_lang_Thread.terminate(currentThread, meta);
+        } catch (EspressoException e) {
+            try {
+                StaticObject ex = e.getExceptionObject();
+                String exception = ex.getKlass().getExternalName();
+                String threadName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+                context.getLogger().warning(String.format("Exception: %s thrown while terminating thread \"%s\"", exception, threadName));
+                Method printStackTrace = ex.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
+                printStackTrace.invokeDirect(ex);
+            } catch (EspressoException ee) {
+                String exception = ee.getExceptionObject().getKlass().getExternalName();
+                context.getLogger().warning(String.format("Exception: %s thrown while trying to print stack trace", exception));
+            } catch (EspressoExitException ee) {
+                // ignore
+            }
         } catch (EspressoExitException e) {
             // ignore
+        } catch (Throwable t) {
+            context.getLogger().severe("Host exception thrown while trying to terminate thread");
+            t.printStackTrace();
         }
 
         return JNI_OK;
@@ -2980,7 +2994,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 assert pkgEntry != null; // should have been checked before
             }
             // Link guest module to its host representation
-            getMeta().HIDDEN_MODULE_ENTRY.setObject(module, moduleEntry);
+            getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(module, moduleEntry);
         }
         if (StaticObject.isNull(loader) && getContext().getVmProperties().bootClassPathType().isExplodedModule()) {
             profiler.profile(11);

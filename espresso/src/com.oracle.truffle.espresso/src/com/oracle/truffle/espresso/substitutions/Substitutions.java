@@ -222,6 +222,9 @@ public final class Substitutions implements ContextAccess {
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
+                if (!substitutorFactory.isValidFor(methodToSubstitute.getJavaVersion())) {
+                    return null;
+                }
                 StaticObject classLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
                 if (forceValid || ClassRegistry.loaderIsBootOrPlatform(classLoader, methodToSubstitute.getMeta())) {
                     return EspressoRootNode.create(null, new IntrinsicSubstitutorNode(substitutorFactory, methodToSubstitute));

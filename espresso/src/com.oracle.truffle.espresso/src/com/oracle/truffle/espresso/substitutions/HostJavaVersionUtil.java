@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 /**
  * Interface to query the host JVM version.
  */
-public final class JavaVersionUtil {
+public final class HostJavaVersionUtil {
 
     private static int getJavaSpecificationVersion() {
         String value = System.getProperty("java.specification.version");
@@ -41,6 +41,6 @@ public final class JavaVersionUtil {
      */
     public static final int JAVA_SPEC = getJavaSpecificationVersion();
 
-    private JavaVersionUtil() {
+    private HostJavaVersionUtil() {
     }
 }

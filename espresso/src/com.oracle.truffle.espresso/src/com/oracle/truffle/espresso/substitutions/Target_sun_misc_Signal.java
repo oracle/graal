@@ -23,51 +23,158 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.WeakHashMap;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
-@EspressoSubstitutions(nameProvider = Target_sun_misc_Signal.SharedSignal.class)
+@EspressoSubstitutions
 public final class Target_sun_misc_Signal {
-    @Substitution(nameProvider = SharedSignalAppend0.class)
+    private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "sun.misc.Signal");
+
+    // Avoid going through JVM_FindSignal which has a char* argument
+    @SuppressWarnings("unused")
+    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
     public static int findSignal(@Host(String.class) StaticObject name,
                     @InjectMeta Meta meta) {
-        return new Signal(meta.toHostString(name)).getNumber();
+        if (StaticObject.isNull(name)) {
+            throw meta.throwNullPointerException();
+        }
+        try {
+            return new Signal(meta.toHostString(name)).getNumber();
+        } catch (IllegalArgumentException e) {
+            return -1;
+        }
     }
 
     @SuppressWarnings("unused")
-    @Substitution
-    public static long handle0(int sig, long nativeH) {
-        // TODO(peterssen): Find out how to properly manage host/guest signals.
-        /* nop */
-        return 0;
-    }
-
-    public static class SharedSignal extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
-                        TARGET_SUN_MISC_SIGNAL,
-                        TARGET_JDK_INTERNAL_MISC_SIGNAL
-        };
-        public static SubstitutionNamesProvider INSTANCE = new SharedSignal();
-
-        @Override
-        public String[] substitutionClassNames() {
-            return NAMES;
+    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
+    @TruffleBoundary
+    public static void raise(@Host(Signal.class) StaticObject signal,
+                    @InjectMeta Meta meta) {
+        if (StaticObject.isNull(signal)) {
+            throw meta.throwNullPointerException();
+        }
+        Signal hostSignal = asHostSignal(signal, meta);
+        logger.finer(() -> "raising " + hostSignal);
+        try {
+            Signal.raise(hostSignal);
+        } catch (IllegalArgumentException e) {
+            logger.fine(() -> "failed to raise " + hostSignal + ": " + e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, meta.toGuestString(e.getMessage()));
         }
     }
 
-    public static class SharedSignalAppend0 extends SharedSignal {
-        public static SubstitutionNamesProvider INSTANCE = new SharedSignalAppend0();
+    private static Signal asHostSignal(StaticObject signal, Meta meta) {
+        StaticObject guestName = meta.sun_misc_Signal_name.getObject(signal);
+        return new Signal(meta.toHostString(guestName));
+    }
 
-        @Override
-        public String[] getMethodNames(String name) {
-            return append0(this, name);
+    private static StaticObject asGuestSignal(Signal signal, Meta meta) {
+        StaticObject guestSignal = meta.sun_misc_Signal.allocateInstance();
+        meta.sun_misc_Signal_init_String.invokeDirect(guestSignal, meta.toGuestString(signal.getName()));
+        return guestSignal;
+    }
+
+    @SuppressWarnings("unused")
+    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
+    @TruffleBoundary
+    public static @Host(SignalHandler.class) StaticObject handle(@Host(Signal.class) StaticObject signal, @Host(SignalHandler.class) StaticObject handler,
+                    @InjectMeta Meta meta) {
+        if (StaticObject.isNull(signal)) {
+            throw meta.throwNullPointerException();
+        }
+        if (!meta.getContext().EnableSignals) {
+            logger.fine(() -> "failed to setup handler for " + asHostSignal(signal, meta) + ": signal handling is disabled ");
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Signal API is disabled");
+        }
+        Signal hostSignal = asHostSignal(signal, meta);
+        SignalHandler hostHandler = asHostHandler(handler, meta);
+        logger.finer(() -> "setting up handler for " + hostSignal + ": " + hostHandler);
+        try {
+            SignalHandler oldHandler = Signal.handle(hostSignal, hostHandler);
+            return asGuestHandler(oldHandler, meta);
+        } catch (IllegalArgumentException e) {
+            logger.fine(() -> "failed to setup handler for " + hostSignal + ": " + e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, meta.toGuestString(e.getMessage()));
         }
     }
 
-    private static final String TARGET_SUN_MISC_SIGNAL = "Target_sun_misc_Signal";
-    private static final String TARGET_JDK_INTERNAL_MISC_SIGNAL = "Target_jdk_internal_misc_Signal";
+    private static StaticObject asGuestHandler(SignalHandler handler, Meta meta) {
+        if (handler == null) {
+            return StaticObject.NULL;
+        } else if (handler instanceof HostSignalHandler) {
+            return ((HostSignalHandler) handler).guestHandler;
+        } else if (handler == SignalHandler.SIG_DFL) {
+            return meta.sun_misc_SignalHandler_SIG_DFL.getObject(meta.sun_misc_SignalHandler.tryInitializeAndGetStatics());
+        } else if (handler == SignalHandler.SIG_IGN) {
+            return meta.sun_misc_SignalHandler_SIG_IGN.getObject(meta.sun_misc_SignalHandler.tryInitializeAndGetStatics());
+        }
+        throw EspressoError.shouldNotReachHere();
+    }
+
+    // uses slot 1
+    private static SignalHandler asHostHandler(StaticObject handler, Meta meta) {
+        if (StaticObject.isNull(handler)) {
+            return null;
+        }
+        if (meta.sun_misc_NativeSignalHandler.isAssignableFrom(handler.getKlass())) {
+            long rawHandler = meta.sun_misc_NativeSignalHandler_handler.getLong(handler);
+            if (rawHandler == 0) {
+                return SignalHandler.SIG_DFL;
+            } else if (rawHandler == 1) {
+                return SignalHandler.SIG_IGN;
+            } else {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, meta.toGuestString("Unsupported: arbitrary native signal handlers"));
+            }
+        }
+        return HostSignalHandler.get(meta, handler);
+    }
+
+    private static final class HostSignalHandler implements SignalHandler {
+        private final Meta meta;
+        private final StaticObject guestHandler;
+
+        HostSignalHandler(Meta meta, StaticObject guestHandler) {
+            this.meta = meta;
+            this.guestHandler = guestHandler;
+        }
+
+        public static SignalHandler get(Meta meta, StaticObject handler) {
+            WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = meta.getContext().getHostSignalHandlers();
+            SignalHandler hostHandler;
+            synchronized (hostSignalHandlers) {
+                hostHandler = hostSignalHandlers.get(handler);
+                if (hostHandler == null) {
+                    hostHandler = new HostSignalHandler(meta, handler);
+                    hostSignalHandlers.put(handler, hostHandler);
+                }
+            }
+            return hostHandler;
+        }
+
+        @Override
+        public void handle(Signal sig) {
+            // the VM will call this on an un-attached thread
+            Object prev = meta.getContext().getEnv().getContext().enter(null);
+            try {
+                int iTableIndex = meta.sun_misc_SignalHandler_handle.getITableIndex();
+                Method handleMethod = ((ObjectKlass) guestHandler.getKlass()).itableLookup(meta.sun_misc_SignalHandler, iTableIndex);
+                assert handleMethod != null;
+                handleMethod.invokeDirect(guestHandler, asGuestSignal(sig, meta));
+            } finally {
+                meta.getContext().getEnv().getContext().leave(null, prev);
+            }
+        }
+    }
 }
