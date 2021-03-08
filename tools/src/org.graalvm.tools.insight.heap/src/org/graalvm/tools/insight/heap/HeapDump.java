@@ -211,8 +211,9 @@ public final class HeapDump {
             seg.flush();
             if (rawHeap.size() > 0) {
                 whole.writeByte(TAG_HEAP_DUMP);
-                long diffMillis = Math.min(Math.max(0, timeStamp - timeBase), Integer.MAX_VALUE);
-                whole.writeInt((int) diffMillis);
+                final long diffMillis = Math.max(0, timeStamp - timeBase);
+                long diffMicroseconds = Math.min(diffMillis * 1000, Integer.MAX_VALUE);
+                whole.writeInt((int) diffMicroseconds);
                 final byte[] bytes = rawHeap.toByteArray();
                 whole.writeInt(bytes.length);
                 whole.write(bytes);
@@ -235,7 +236,7 @@ public final class HeapDump {
             int signatureId = writeString("");
             int sourceFileId = writeString(sourceFile);
             whole.writeByte(TAG_STACK_FRAME);
-            whole.writeInt(0); // ms
+            whole.writeInt(0); // microseconds
             whole.writeInt(8 + ids.sizeOf() * 4); // size of following entries
             ids.writeID(whole, id);
             ids.writeID(whole, rootNameId);
@@ -249,7 +250,7 @@ public final class HeapDump {
         int writeStackTrace(int threadId, int... frames) throws IOException {
             int id = ++stackTraceCounter;
             whole.writeByte(TAG_STACK_TRACE);
-            whole.writeInt(0); // ms
+            whole.writeInt(0); // microseconds
             whole.writeInt(12 + ids.sizeOf() * frames.length); // size of following entries
             whole.writeInt(id); // stack trace serial number
             whole.writeInt(threadId); // thread serial number
@@ -265,7 +266,7 @@ public final class HeapDump {
             int classId = ++objectCounter;
             int classNameId = writeString(className);
             whole.writeByte(TAG_LOAD_CLASS);
-            whole.writeInt(0); // ms
+            whole.writeInt(0); // microseconds
             whole.writeInt(8 + ids.sizeOf() * 2); // size of following entries
             whole.writeInt(classSerial); // class serial number
             ids.writeID(whole, classId); // class object ID
@@ -284,7 +285,7 @@ public final class HeapDump {
             }
             int stringId = ++objectCounter;
             whole.writeByte(TAG_STRING);
-            whole.writeInt(0); // ms
+            whole.writeInt(0); // microseconds
             byte[] utf8 = text.getBytes(StandardCharsets.UTF_8);
             whole.writeInt(ids.sizeOf() + utf8.length);
             ids.writeID(whole, stringId);
