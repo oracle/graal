@@ -3461,11 +3461,10 @@ public abstract class TruffleLanguage<C> {
         /**
          * Submits a thread local action to be performed at the next guest language safepoint on a
          * provided set of threads, once for each thread. If the threads array is <code>null</code>
-         * then the thread local action will be performed on all alive threads. If a thread is no
-         * longer alive for this context then no thread local action will be submitted and the
-         * action will immediately complete The submitted actions are processed in the same order as
-         * they are submitted in. . The action can be synchronous or asynchronous, side-effecting or
-         * non-sideeffecting. Please see {@link ThreadLocalAction} for details.
+         * then the thread local action will be performed on all alive threads. The submitted
+         * actions are processed in the same order as they are submitted in. The action can be
+         * synchronous or asynchronous, side-effecting or non-side-effecting. Please see
+         * {@link ThreadLocalAction} for details.
          * <p>
          * The method returns a {@link Future} instance that allows to wait for the thread local
          * action to complete or to cancel a currently performed event.

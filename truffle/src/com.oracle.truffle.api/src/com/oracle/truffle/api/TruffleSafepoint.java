@@ -331,7 +331,7 @@ public abstract class TruffleSafepoint {
 
     /**
      * An interrupter allows a foreign thread to interrupt the execution on a separate thread. Used
-     * to allo the Truffle safepoint mechanism to interrupt a blocked thread and schedule a
+     * to allow the Truffle safepoint mechanism to interrupt a blocked thread and schedule a
      * safepoint.
      *
      * @see TruffleSafepoint#setBlocked(Interrupter)

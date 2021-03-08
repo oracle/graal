@@ -55,6 +55,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * Implementation class for thread local handshakes. Contains the parts that can be shared between
+ * runtimes.
+ */
 public abstract class ThreadLocalHandshake {
 
     /*
@@ -74,9 +78,6 @@ public abstract class ThreadLocalHandshake {
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
-     *
-     * @param threads
-     * @param run
      */
     @TruffleBoundary
     public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting) {
