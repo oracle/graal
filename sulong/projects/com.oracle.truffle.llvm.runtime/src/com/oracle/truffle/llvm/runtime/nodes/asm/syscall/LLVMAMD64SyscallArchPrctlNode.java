@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -69,7 +69,7 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
                 context.setThreadLocalStorage(addr);
                 break;
             case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
-                Object tls = context.getThreadLocalStorage();
+                LLVMPointer tls = context.getThreadLocalStorage();
                 store.executeWithTarget(addr, tls);
                 break;
             }
