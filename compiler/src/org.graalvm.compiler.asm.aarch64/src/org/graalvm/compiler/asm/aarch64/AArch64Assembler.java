@@ -2480,6 +2480,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src floating point register. May not be null.
      */
     protected void fmov(int size, Register dst, Register src) {
+        assert size == 32 || size == 64;
         fpDataProcessing1Source(FMOV, dst, src, floatFromSize(size));
     }
 
@@ -2491,6 +2492,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src floating point register. May not be null.
      */
     protected void fmovFpu2Cpu(int size, Register dst, Register src) {
+        assert size == 32 || size == 64;
         assert dst.getRegisterCategory().equals(CPU);
         assert src.getRegisterCategory().equals(SIMD);
         fmovCpuFpuInstruction(dst, src, size == 64, Instruction.FMOVFPU2CPU);
@@ -2504,6 +2506,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src general purpose register. May not be null or stack-pointer.
      */
     protected void fmovCpu2Fpu(int size, Register dst, Register src) {
+        assert size == 32 || size == 64;
         assert dst.getRegisterCategory().equals(SIMD);
         assert src.getRegisterCategory().equals(CPU);
         fmovCpuFpuInstruction(dst, src, size == 64, Instruction.FMOVCPU2FPU);
@@ -2527,6 +2530,7 @@ public abstract class AArch64Assembler extends Assembler {
      *            depending on size.
      */
     protected void fmov(int size, Register dst, double imm) {
+        assert size == 32 || size == 64;
         assert dst.getRegisterCategory().equals(SIMD);
         InstructionType type = floatFromSize(size);
         int immEncoding;
