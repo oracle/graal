@@ -1785,9 +1785,13 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @ExportMessage
-    boolean isHashValueReadable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
-        return containsKey.execute(this, key);
+    @ExportMessage(name = "isHashValueReadable")
+    @ExportMessage(name = "isHashEntryModifiable")
+    @ExportMessage(name = "isHashEntryRemovable")
+    boolean isHashValueReadable(Object key,
+                    @Shared("isMap") @Cached IsMapNode isMap,
+                    @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
+        return isMap.execute(this) && containsKey.execute(this, key);
     }
 
     @ExportMessage
@@ -1830,13 +1834,10 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isHashEntryModifiable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
-        return containsKey.execute(this, key);
-    }
-
-    @ExportMessage
-    boolean isHashEntryInsertable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
-        return !containsKey.execute(this, key);
+    boolean isHashEntryInsertable(Object key,
+                    @Shared("isMap") @Cached IsMapNode isMap,
+                    @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
+        return isMap.execute(this) && !containsKey.execute(this, key);
     }
 
     @ExportMessage
@@ -1876,11 +1877,6 @@ final class HostObject implements TruffleObject {
         protected static void doNotMap(HostObject receiver, Object key, Object value, @Shared("isMap") @Cached IsMapNode isMap) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
-    }
-
-    @ExportMessage
-    boolean isHashEntryRemovable(Object key, @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
-        return containsKey.execute(this, key);
     }
 
     @ExportMessage

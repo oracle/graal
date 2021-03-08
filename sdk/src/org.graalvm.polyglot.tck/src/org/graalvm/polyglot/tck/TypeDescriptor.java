@@ -53,7 +53,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.Value;
 
@@ -388,6 +387,7 @@ public final class TypeDescriptor {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static TypeDescriptorImpl unionImpl(Collection<? extends TypeDescriptorImpl> typeImpls) {
         final Collection<TypeDescriptorImpl> subtypes = new HashSet<>();
         for (TypeDescriptorImpl typeImpl : typeImpls) {
@@ -403,19 +403,16 @@ public final class TypeDescriptor {
             if (isArray(part)) {
                 List<TypeDescriptorImpl> arrays = parameterizedTypesByClz.computeIfAbsent(ArrayImpl.class, (k) -> new ArrayList<>());
                 arrays.add(part);
-            } else if (part instanceof IterableImpl) {
-                List<TypeDescriptorImpl> iterables = parameterizedTypesByClz.computeIfAbsent(IterableImpl.class, (k) -> new ArrayList<>());
-                iterables.add(part);
-            } else if (part instanceof IteratorImpl) {
-                List<TypeDescriptorImpl> iterators = parameterizedTypesByClz.computeIfAbsent(IteratorImpl.class, (k) -> new ArrayList<>());
-                iterators.add(part);
+            } else if (part.getClass() == IterableImpl.class || part.getClass() == IteratorImpl.class ||
+                            part.getClass() == HashImpl.class || part.getClass() == HashEntryImpl.class) {
+                Class<ParameterizedTypeDescriptorImpl> clz = (Class<ParameterizedTypeDescriptorImpl>) part.getClass();
+                List<TypeDescriptorImpl> parameterized = parameterizedTypesByClz.computeIfAbsent(clz, (k) -> new ArrayList<>());
+                parameterized.add(part);
             } else {
                 impls.add(part);
             }
         }
-        for (Map.Entry<Class<? extends ParameterizedTypeDescriptorImpl>, List<TypeDescriptorImpl>> e : parameterizedTypesByClz.entrySet()) {
-            Class<? extends ParameterizedTypeDescriptorImpl> clz = e.getKey();
-            List<TypeDescriptorImpl> parameterizedTypes = e.getValue();
+        for (List<TypeDescriptorImpl> parameterizedTypes : parameterizedTypesByClz.values()) {
             switch (parameterizedTypes.size()) {
                 case 0:
                     break;
@@ -423,42 +420,36 @@ public final class TypeDescriptor {
                     impls.add(parameterizedTypes.get(0));
                     break;
                 default:
-                    boolean seenWildCard = false;
-                    Set<TypeDescriptorImpl> contentTypes = new HashSet<>();
+                    List<Set<TypeDescriptorImpl>> typeParameters = new ArrayList<>();
+                    BitSet seenWildCard = new BitSet();
                     for (TypeDescriptorImpl type : parameterizedTypes) {
-                        ParameterizedTypeDescriptorImpl parameterizedType;
-                        if (isArray(type)) {
-                            parameterizedType = asArrayImpl(type);
-                        } else {
-                            parameterizedType = (ParameterizedTypeDescriptorImpl) type;
+                        ParameterizedTypeDescriptorImpl parameterizedType = asParameterizedTypeImpl(type);
+                        for (int i = 0; i < parameterizedType.typeParameters.size(); i++) {
+                            if (!seenWildCard.get(i)) {
+                                Set<TypeDescriptorImpl> typeParametersAtIndex;
+                                if (i < typeParameters.size()) {
+                                    typeParametersAtIndex = typeParameters.get(i);
+                                } else {
+                                    typeParametersAtIndex = new HashSet<>();
+                                    typeParameters.add(typeParametersAtIndex);
+                                    assert typeParametersAtIndex == typeParameters.get(i);
+                                }
+                                TypeDescriptorImpl typeParameterAtIndex = parameterizedType.typeParameters.get(i);
+                                if (typeParameterAtIndex == null || isAny(typeParameterAtIndex)) {
+                                    seenWildCard.set(i);
+                                    typeParametersAtIndex.clear();
+                                    typeParametersAtIndex.add(ANY.impl);
+                                } else {
+                                    typeParametersAtIndex.add(typeParameterAtIndex);
+                                }
+                            }
                         }
-                        TypeDescriptorImpl contentType = parameterizedType.typeParameters.get(0);
-                        if (contentType == null || isAny(contentType)) {
-                            seenWildCard = true;
-                            break;
-                        }
-                        contentTypes.add(contentType);
                     }
-                    TypeDescriptorImpl contentType = unionImpl(contentTypes);
-                    impls.add(PARAM_TYPES_FACTORIES.get(clz).apply(seenWildCard, contentType));
+                    ParameterizedTypeDescriptorImpl parameterizedType = asParameterizedTypeImpl(parameterizedTypes.get(0));
+                    impls.add(parameterizedType.create(typeParameters.stream().map((tps) -> unionImpl(tps)).collect(Collectors.toList())));
             }
         }
         return impls.size() == 1 ? impls.iterator().next() : new UnionImpl(impls);
-    }
-
-    private static final Map<Class<? extends ParameterizedTypeDescriptorImpl>, BiFunction<Boolean, TypeDescriptorImpl, TypeDescriptorImpl>> PARAM_TYPES_FACTORIES;
-    static {
-        Map<Class<? extends ParameterizedTypeDescriptorImpl>, BiFunction<Boolean, TypeDescriptorImpl, TypeDescriptorImpl>> m = new HashMap<>();
-        m.put(ArrayImpl.class, (topType, typeParam) -> {
-            return topType || isAny(typeParam) ? ARRAY.impl : array(new TypeDescriptor(typeParam)).impl;
-        });
-        m.put(IterableImpl.class, (topType, typeParam) -> {
-            return topType || isAny(typeParam) ? ITERABLE.impl : iterable(new TypeDescriptor(typeParam)).impl;
-        });
-        m.put(IteratorImpl.class, (topType, typeParam) -> {
-            return topType || isAny(typeParam) ? ITERATOR.impl : iterator(new TypeDescriptor(typeParam)).impl;
-        });
-        PARAM_TYPES_FACTORIES = Collections.unmodifiableMap(m);
     }
 
     /**
@@ -617,6 +608,10 @@ public final class TypeDescriptor {
             }
         }
         throw new IllegalStateException("Missing array component " + type);
+    }
+
+    private static ParameterizedTypeDescriptorImpl asParameterizedTypeImpl(TypeDescriptorImpl type) {
+        return isArray(type) ? asArrayImpl(type) : (ParameterizedTypeDescriptorImpl) type;
     }
 
     /**
@@ -800,24 +795,7 @@ public final class TypeDescriptor {
         }
 
         if (value.hasArrayElements()) {
-            descs.add(array(detectContentType(new Iterator<Value>() {
-
-                private int index;
-
-                @Override
-                public boolean hasNext() {
-                    return index < value.getArraySize();
-                }
-
-                @Override
-                public Value next() {
-                    try {
-                        return value.getArrayElement(index++);
-                    } catch (ArrayIndexOutOfBoundsException e) {
-                        throw new NoSuchElementException();
-                    }
-                }
-            })));
+            descs.add(array(detectContentType(new ArrayValueIterator(value))));
         }
         if (value.hasMembers()) {
             descs.add(OBJECT);
@@ -832,23 +810,19 @@ public final class TypeDescriptor {
             descs.add(INSTANTIABLE);
         }
         if (value.hasIterator()) {
-            descs.add(iterable(detectContentType(new Iterator<Value>() {
-
-                private final Value delegate = value.getIterator();
-
-                @Override
-                public boolean hasNext() {
-                    return delegate.hasIteratorNextElement();
-                }
-
-                @Override
-                public Value next() {
-                    return delegate.getIteratorNextElement();
-                }
-            })));
+            descs.add(iterable(detectContentType(new IteratorValueIterator(value.getIterator()))));
         }
         if (value.isIterator()) {
             descs.add(ITERATOR);
+        }
+        if (value.hasHashEntries()) {
+            TypeDescriptor keyType = detectContentType(new HashKeysIterator(value));
+            TypeDescriptor valueType = detectContentType(new HashValuesIterator(value));
+            descs.add(hash(keyType, valueType));
+        }
+        if (value.isHashEntry()) {
+            descs.add(hashEntry(detectContentType(Collections.singleton(value.getHashEntryKey()).iterator()),
+                            detectContentType(Collections.singleton(value.getHashEntryValue()).iterator())));
         }
         switch (descs.size()) {
             case 1:
@@ -885,6 +859,87 @@ public final class TypeDescriptor {
             }
         }
         return null;
+    }
+
+    private static class IteratorValueIterator implements Iterator<Value> {
+
+        private final Value iteratorValue;
+
+        IteratorValueIterator(Value iterableValue) {
+            assert iterableValue.isIterator();
+            this.iteratorValue = iterableValue;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return iteratorValue.hasIteratorNextElement();
+        }
+
+        @Override
+        public Value next() {
+            return map(iteratorValue.getIteratorNextElement());
+        }
+
+        protected Value map(Value value) {
+            return value;
+        }
+    }
+
+    private static final class ArrayValueIterator implements Iterator<Value> {
+
+        private final Value arrayValue;
+        private int index;
+
+        ArrayValueIterator(Value arrayValue) {
+            assert arrayValue.hasArrayElements();
+            this.arrayValue = arrayValue;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < arrayValue.getArraySize();
+        }
+
+        @Override
+        public Value next() {
+            try {
+                return arrayValue.getArrayElement(index++);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw new NoSuchElementException();
+            }
+        }
+    }
+
+    private static final class HashValuesIterator extends IteratorValueIterator {
+
+        HashValuesIterator(Value hash) {
+            super(hash.getHashEntriesIterator());
+        }
+
+        @Override
+        protected Value map(Value value) {
+            if (value.isHashEntry()) {
+                return value.getHashEntryValue();
+            } else {
+                throw new AssertionError("Must be hash entry.");
+            }
+        }
+    }
+
+    private static final class HashKeysIterator extends IteratorValueIterator {
+
+        HashKeysIterator(Value hash) {
+            super(hash.getHashEntriesIterator());
+        }
+
+        @Override
+        protected Value map(Value value) {
+            if (value.isHashEntry()) {
+                return value.getHashEntryKey();
+            } else {
+                throw new AssertionError("Must be hash entry.");
+            }
+        }
     }
 
     private enum PrimitiveKind {
@@ -1140,6 +1195,8 @@ public final class TypeDescriptor {
 
         abstract String getName();
 
+        abstract TypeDescriptorImpl create(List<TypeDescriptorImpl> typeParams);
+
         @Override
         public final int hashCode() {
             return typeParameters.hashCode();
@@ -1215,6 +1272,14 @@ public final class TypeDescriptor {
         String getName() {
             return "Array";
         }
+
+        @Override
+        TypeDescriptorImpl create(List<TypeDescriptorImpl> typeParams) {
+            if (typeParams.size() != 1) {
+                throw new IllegalArgumentException("Array has single type parameter, given: " + typeParams);
+            }
+            return isAny(typeParams.get(0)) ? ARRAY.impl : array(new TypeDescriptor(typeParams.get(0))).impl;
+        }
     }
 
     private static final class IterableImpl extends ParameterizedTypeDescriptorImpl {
@@ -1226,6 +1291,14 @@ public final class TypeDescriptor {
         @Override
         String getName() {
             return "Iterable";
+        }
+
+        @Override
+        TypeDescriptorImpl create(List<TypeDescriptorImpl> typeParams) {
+            if (typeParams.size() != 1) {
+                throw new IllegalArgumentException("Iterable has single type parameter, given: " + typeParams);
+            }
+            return isAny(typeParams.get(0)) ? ITERABLE.impl : iterable(new TypeDescriptor(typeParams.get(0))).impl;
         }
     }
 
@@ -1239,6 +1312,14 @@ public final class TypeDescriptor {
         String getName() {
             return "Iterator";
         }
+
+        @Override
+        TypeDescriptorImpl create(List<TypeDescriptorImpl> typeParams) {
+            if (typeParams.size() != 1) {
+                throw new IllegalArgumentException("Iterator has single type parameter, given: " + typeParams);
+            }
+            return isAny(typeParams.get(0)) ? ITERATOR.impl : iterator(new TypeDescriptor(typeParams.get(0))).impl;
+        }
     }
 
     private static final class HashImpl extends ParameterizedTypeDescriptorImpl {
@@ -1251,6 +1332,14 @@ public final class TypeDescriptor {
         String getName() {
             return "Hash";
         }
+
+        @Override
+        TypeDescriptorImpl create(List<TypeDescriptorImpl> typeParams) {
+            if (typeParams.size() != 2) {
+                throw new IllegalArgumentException("Hash has two type parameters, given: " + typeParams);
+            }
+            return isAny(typeParams.get(0)) && isAny(typeParams.get(1)) ? HASH.impl : hash(new TypeDescriptor(typeParams.get(0)), new TypeDescriptor(typeParams.get(1))).impl;
+        }
     }
 
     private static final class HashEntryImpl extends ParameterizedTypeDescriptorImpl {
@@ -1262,6 +1351,14 @@ public final class TypeDescriptor {
         @Override
         String getName() {
             return "HashEntry";
+        }
+
+        @Override
+        TypeDescriptorImpl create(List<TypeDescriptorImpl> typeParams) {
+            if (typeParams.size() != 2) {
+                throw new IllegalArgumentException("Hash entry has two type parameters, given: " + typeParams);
+            }
+            return isAny(typeParams.get(0)) && isAny(typeParams.get(1)) ? HASH_ENTRY.impl : hashEntry(new TypeDescriptor(typeParams.get(0)), new TypeDescriptor(typeParams.get(1))).impl;
         }
     }
 

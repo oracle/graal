@@ -112,6 +112,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HASH;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
@@ -324,6 +325,10 @@ public class ValueAPITest {
 
             if (value instanceof Class) {
                 expectedTraits.add(META);
+            }
+
+            if (value instanceof Map) {
+                expectedTraits.add(HASH);
             }
 
             assertValue(context.asValue(value), expectedTraits.toArray(new Trait[0]));

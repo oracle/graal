@@ -97,7 +97,7 @@ public class HashTest extends AbstractPolyglotTest {
         Accessor accessor = new Accessor();
         Value accessorValue = context.asValue(accessor);
         for (KeyFactory<?> factory : KeyFactory.ALL) {
-            accessorValue.execute(context.asValue(ProxyHashMap.fromMap(new HashMap<>())));
+            accessorValue.execute(context.asValue(ProxyHashMap.from(new HashMap<>())));
             testInteropMessages(accessor.object, factory);
         }
     }
@@ -189,7 +189,7 @@ public class HashTest extends AbstractPolyglotTest {
         for (KeyFactory<?> factory : KeyFactory.ALL) {
             testValueImpl(context.asValue(new Hash()), (KeyFactory<Object>) factory, context);
             testValueImpl(context.asValue(new HashMap<>()), (KeyFactory<Object>) factory, context);
-            testValueImpl(context.asValue(ProxyHashMap.fromMap(new HashMap<>())), (KeyFactory<Object>) factory, context);
+            testValueImpl(context.asValue(ProxyHashMap.from(new HashMap<>())), (KeyFactory<Object>) factory, context);
         }
     }
 
@@ -261,7 +261,7 @@ public class HashTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
         for (KeyFactory<?> factory : KeyFactory.ALL) {
             testPolyglotMapImpl(context.asValue(new Hash()), (KeyFactory<Object>) factory, context);
-            testPolyglotMapImpl(context.asValue(ProxyHashMap.fromMap(new HashMap<>())), (KeyFactory<Object>) factory, context);
+            testPolyglotMapImpl(context.asValue(ProxyHashMap.from(new HashMap<>())), (KeyFactory<Object>) factory, context);
         }
     }
 

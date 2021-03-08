@@ -54,7 +54,7 @@ public interface ProxyHashEntry extends Proxy {
         throw new UnsupportedOperationException();
     }
 
-    static ProxyHashEntry create(Map.Entry<Object, Object> entry) {
+    static ProxyHashEntry from(Map.Entry<Object, Object> entry) {
         return new ProxyHashEntry() {
             @Override
             public Object getKey() {

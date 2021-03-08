@@ -62,7 +62,7 @@ public interface ProxyHashMap extends Proxy {
 
     Object getEntriesIterator();
 
-    static ProxyHashMap fromMap(Map<Object, Object> values) {
+    static ProxyHashMap from(Map<Object, Object> values) {
         return new ProxyHashMapImpl(values);
     }
 }
@@ -121,7 +121,7 @@ final class ProxyHashMapImpl implements ProxyHashMap {
             @Override
             public Object getNext() throws NoSuchElementException, UnsupportedOperationException {
                 Map.Entry<Object, Object> entry = entryIterator.next();
-                return ProxyHashEntry.create(entry);
+                return ProxyHashEntry.from(entry);
             }
         };
     }
