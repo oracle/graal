@@ -115,6 +115,11 @@ public class TruffleSafepointTest {
 
     private static final int TIMEOUT_SECONDS = 10;
     private static final boolean VERBOSE = false;
+    /*
+     * Rerun all thread configurations asynchronously. This flag is intended to be used for
+     * debugging failures in this class.
+     */
+    private static final boolean RERUN_THREAD_CONFIG_ASYNC = true;
 
     @Rule public TestName name = new TestName();
 
@@ -464,7 +469,9 @@ public class TruffleSafepointTest {
                         // after half of the events we let them run into the semaphore
                         // this encourages race conditions between setting blocked and unlocking
                         if (i == Math.floorDiv(events, 2)) {
-                            semaphore.acquireUninterruptibly(threads);
+                            for (int j = 0; j < threads; j++) {
+                                semaphore.acquireUninterruptibly();
+                            }
                         }
                     }
 
@@ -537,11 +544,13 @@ public class TruffleSafepointTest {
                 for (int i = 0; i < events; i++) {
                     threadLocals.add(setup.env.submitThreadLocal(null, runnable));
 
-                    // after half of the events we let them run into the semaphore
-                    // this encourages contention conditions between setting blocked and
-                    // unlocking
                     if (i == Math.floorDiv(events, 2)) {
-                        semaphore.acquireUninterruptibly(threads);
+                        // after half of the events we let them run into the semaphore
+                        // this encourages contention conditions between setting blocked and
+                        // unlocking
+                        for (int j = 0; j < threads; j++) {
+                            semaphore.acquireUninterruptibly();
+                        }
                     }
                 }
 
@@ -792,9 +801,9 @@ public class TruffleSafepointTest {
     public void testBigAllocationInLoop() {
         final int loopCount = 1024;
         Object[] values = new Object[loopCount];
-        Semaphore awaitSubmit = new Semaphore(0);
+        CountDownLatch await = new CountDownLatch(2);
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
-            acquireBoundary(awaitSubmit);
+            countDownAndAwait(await);
             for (int i = 0; i < loopCount; i++) {
                 // perform an escaping allocation
                 values[i] = new Object[nonConstantValue];
@@ -805,7 +814,7 @@ public class TruffleSafepointTest {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
 
-            awaitSubmit.release();
+            countDownAndAwait(await);
 
             // now the loop runs and we should get at least one safepoint invocation for each loop
             // invocation. otherwise something is wrong with safepoint elimination
@@ -820,9 +829,9 @@ public class TruffleSafepointTest {
     public void testSimpleAllocationInLoop() {
         final int loopCount = 1024;
         Object[] values = new Object[loopCount];
-        Semaphore awaitSubmit = new Semaphore(0);
+        CountDownLatch await = new CountDownLatch(2);
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
-            acquireBoundary(awaitSubmit);
+            countDownAndAwait(await);
             for (int i = 0; i < loopCount; i++) {
                 // perform an escaping allocation
                 values[i] = new Object();
@@ -833,7 +842,7 @@ public class TruffleSafepointTest {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
 
-            awaitSubmit.release();
+            countDownAndAwait(await);
 
             // now the loop runs and we should get at least one safepoint invocation for each loop
             // invocation. otherwise something is wrong with safepoint elimination
@@ -848,12 +857,11 @@ public class TruffleSafepointTest {
     public void testCountedSumLoop() {
         final int loopCount = 1024;
         int[] values = new int[loopCount];
-        Semaphore awaitSubmit = new Semaphore(0);
+        CountDownLatch await = new CountDownLatch(2);
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
-            acquireBoundary(awaitSubmit);
+            countDownAndAwait(await);
             int sum = 0;
             for (int i = 0; i < loopCount; i++) {
-                // perform an escaping allocation
                 sum += values[i];
             }
             // escape sum value
@@ -863,7 +871,7 @@ public class TruffleSafepointTest {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
 
-            awaitSubmit.release();
+            countDownAndAwait(await);
 
             setup.stopAndAwait();
             int count = counter.counter.get();
@@ -875,11 +883,11 @@ public class TruffleSafepointTest {
     }
 
     @TruffleBoundary
-    private static void acquireBoundary(Semaphore awaitSubmit) {
+    private static void countDownAndAwait(CountDownLatch await) {
+        await.countDown();
         try {
-            awaitSubmit.acquire();
+            await.await();
         } catch (InterruptedException e) {
-            // not expected to interrupt
             throw new AssertionError(e);
         }
     }
@@ -982,28 +990,30 @@ public class TruffleSafepointTest {
         }
 
         // asynchronous execution of all configs
-        List<Future<?>> futures = new ArrayList<>();
-        for (int threadConfig = 0; threadConfig < THREAD_CONFIGS.length; threadConfig++) {
-            int threads = THREAD_CONFIGS[threadConfig];
-            for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
-                int events = ITERATION_CONFIGS[iterationConfig];
-                try {
-                    if (futures.size() >= 64) {
-                        for (Future<?> future : futures) {
-                            waitOrFail(future);
+        if (RERUN_THREAD_CONFIG_ASYNC) {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int threadConfig = 0; threadConfig < THREAD_CONFIGS.length; threadConfig++) {
+                int threads = THREAD_CONFIGS[threadConfig];
+                for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
+                    int events = ITERATION_CONFIGS[iterationConfig];
+                    try {
+                        if (futures.size() >= 64) {
+                            for (Future<?> future : futures) {
+                                waitOrFail(future);
+                            }
+                            futures.clear();
                         }
-                        futures.clear();
+                        futures.add(service.submit(() -> run.run(threads, events)));
+                    } catch (AssertionError e) {
+                        throw e;
+                    } catch (Throwable e) {
+                        throw new RuntimeException(e);
                     }
-                    futures.add(service.submit(() -> run.run(threads, events)));
-                } catch (AssertionError e) {
-                    throw e;
-                } catch (Throwable e) {
-                    throw new RuntimeException(e);
                 }
             }
-        }
-        for (Future<?> future : futures) {
-            waitOrFail(future);
+            for (Future<?> future : futures) {
+                waitOrFail(future);
+            }
         }
     }
 

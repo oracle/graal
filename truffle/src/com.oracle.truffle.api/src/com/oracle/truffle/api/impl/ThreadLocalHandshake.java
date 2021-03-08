@@ -252,8 +252,9 @@ public abstract class ThreadLocalHandshake {
         private boolean sideEffectsEnabled = true;
         private Interrupter blockedAction;
         private boolean interrupted;
-        private HandshakeEntry sideEffectHandshakes;
-        private HandshakeEntry allHandshakes;
+        private HandshakeEntry handshakes;
+        private boolean hasSideEffects;
+        private boolean hasNonSideEffects;
 
         TruffleSafepointImpl(ThreadLocalHandshake handshake) {
             super(DefaultRuntimeAccessor.ENGINE);
@@ -263,10 +264,9 @@ public abstract class ThreadLocalHandshake {
         void putHandshake(Thread t, Handshake<?> handshake) {
             lock.lock();
             try {
-                if (!handshake.sideEffecting) {
-                    sideEffectHandshakes = new HandshakeEntry(handshake, sideEffectHandshakes);
-                }
-                allHandshakes = new HandshakeEntry(handshake, allHandshakes);
+                handshakes = new HandshakeEntry(handshake, handshakes);
+                hasSideEffects = hasSideEffects || handshake.sideEffecting;
+                hasNonSideEffects = hasNonSideEffects || !handshake.sideEffecting;
 
                 if (isPending() && !fastPendingSet) {
                     fastPendingSet = true;
@@ -298,12 +298,42 @@ public abstract class ThreadLocalHandshake {
 
                     HandshakeEntry taken;
                     if (sideEffectsEnabled) {
-                        taken = this.allHandshakes;
-                        this.allHandshakes = null;
+                        // just take them all -> fast-path
+                        taken = this.handshakes;
+                        this.handshakes = null;
+                        this.hasSideEffects = false;
+                        this.hasNonSideEffects = false;
                     } else {
-                        taken = this.sideEffectHandshakes;
+                        if (hasSideEffects) {
+                            assert this.hasNonSideEffects : "isPending() should not have returned true";
+
+                            // we have side-effects and we don't process them
+                            // so we need to split them into two lists
+                            HandshakeEntry unprocessed = null;
+                            HandshakeEntry processing = null;
+                            HandshakeEntry current = this.handshakes;
+                            while (current != null) {
+                                if (current.handshake.sideEffecting) {
+                                    // do not process side-effecting events
+                                    unprocessed = new HandshakeEntry(current.handshake, unprocessed);
+                                } else {
+                                    processing = new HandshakeEntry(current.handshake, processing);
+                                }
+                                current = current.next;
+                            }
+                            taken = processing;
+                            this.handshakes = unprocessed;
+                            this.hasNonSideEffects = false;
+                            assert this.hasSideEffects;
+                        } else {
+                            // no side-effects scheduled just process
+                            taken = this.handshakes;
+                            this.handshakes = null;
+                            this.hasNonSideEffects = false;
+                            assert !this.hasSideEffects;
+                        }
                     }
-                    this.sideEffectHandshakes = null;
+                    assert taken != null;
 
                     if (this.interrupted) {
                         this.interrupted = false;
@@ -339,8 +369,15 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
+        /**
+         * Is a handshake really pending?
+         */
         private boolean isPending() {
-            return (sideEffectsEnabled && allHandshakes != null) || (!sideEffectsEnabled && sideEffectHandshakes != null);
+            if (sideEffectsEnabled) {
+                return hasNonSideEffects || hasSideEffects;
+            } else {
+                return hasNonSideEffects;
+            }
         }
 
         @Override
@@ -370,7 +407,6 @@ public abstract class ThreadLocalHandshake {
                     impl.clearFastPending();
                 }
             }
-
         }
     }
 }
