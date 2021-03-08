@@ -45,6 +45,7 @@ import java.lang.ref.WeakReference;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -97,6 +98,7 @@ final class PolyglotReferences {
         return new MultiLanguageSupplier(language);
     }
 
+    @TruffleBoundary
     static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
         Exception e = new Exception();
         StringBuilder stack = new StringBuilder();
