@@ -380,7 +380,7 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     private ObjectFile.Symbol defineDataSymbol(String name, Element section, long position) {
-        return objectFile.createDefinedSymbol(name, section, position, wordSize, false, true);
+        return objectFile.createDefinedSymbol(name, section, position, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
     }
 
     private ObjectFile.Symbol defineRelocationForSymbol(String name, long position) {
@@ -429,7 +429,7 @@ public abstract class NativeImage extends AbstractImage {
 
             // Define symbols for the sections.
             objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false);
-            objectFile.createDefinedSymbol("__svm_text_end", textSection, textSectionSize, 0, false, true);
+            objectFile.createDefinedSymbol("__svm_text_end", textSection, textSectionSize, 0, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
             objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection, 0, 0, false, false);
             objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection, 0, 0, false, false);
 
@@ -441,8 +441,9 @@ public abstract class NativeImage extends AbstractImage {
             codeCache.writeConstants(writer, roDataBuffer);
             // - Non-heap global data goes at the beginning of the read-write data section.
             cGlobals.writeData(rwDataBuffer,
-                            (offset, symbolName) -> defineDataSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET),
-                            (offset, symbolName) -> defineRelocationForSymbol(symbolName, offset));
+                            (offset, symbolName, isGlobalSymbol) -> objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false,
+                                            isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
+                            (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
             /*

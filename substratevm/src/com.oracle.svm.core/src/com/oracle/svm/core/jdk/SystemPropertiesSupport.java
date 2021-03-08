@@ -102,6 +102,7 @@ public abstract class SystemPropertiesSupport {
 
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", "Oracle Corporation");
+        initializeProperty("java.vm.version", VM.VERSION);
         initializeProperty("java.vendor", "Oracle Corporation");
         initializeProperty("java.vendor.url", "https://www.graalvm.org/");
 
@@ -126,7 +127,6 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.dir", this::userDir);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpDir);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
-        lazyRuntimeValues.put("java.vm.version", VM::getVersion);
 
         String targetName = System.getProperty("svm.targetName");
         if (targetName != null) {

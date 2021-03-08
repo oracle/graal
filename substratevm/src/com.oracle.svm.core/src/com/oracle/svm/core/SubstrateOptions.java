@@ -379,6 +379,7 @@ public class SubstrateOptions {
                  * functions makes it incoherent with the executable.
                  */
                 RemoveUnusedSymbols.update(values, false);
+                InternalSymbolsAreGlobal.update(values, true);
                 /*
                  * The LLVM backend doesn't support speculative execution attack mitigation
                  */
@@ -399,6 +400,10 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+    @Option(help = "Compatibility option to make symbols used for the image heap global. " +
+                    "Using global symbols is problematic for shared libraries because the loader implicitly changes the value when the symbol is already defined in the executable loading the library. " +
+                    "Setting this option to true preserves the broken behavior of old Native Image versions.")//
+    public static final HostedOptionKey<Boolean> InternalSymbolsAreGlobal = new HostedOptionKey<>(true);
 
     @Option(help = "Common prefix used by method symbols in image.")//
     public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
