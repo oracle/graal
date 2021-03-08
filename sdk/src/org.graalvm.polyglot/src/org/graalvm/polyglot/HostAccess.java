@@ -191,8 +191,8 @@ public final class HostAccess {
         this.allowListAccess = allowListAccess;
         this.allowBufferAccess = allowBufferAccess;
         this.allowIterableAccess = allowListAccess || allowIterableAccess;
-        this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowIteratorAccess;
         this.allowMapAccess = allowMapAccess;
+        this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowMapAccess || allowIteratorAccess;
     }
 
     /**
