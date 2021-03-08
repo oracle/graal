@@ -57,6 +57,7 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleSafepointInsertionPhase;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
@@ -94,6 +95,9 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
     /**
      * Snippet that does the same as
      * {@code org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.poll()}.
+     *
+     * This condition cannot be hoisted out of loops as it is introduced in a phase late enough. See
+     * {@link TruffleSafepointInsertionPhase}.
      */
     @Snippet
     private static void pollSnippet(Object node) {

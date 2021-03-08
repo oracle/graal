@@ -271,13 +271,13 @@ public abstract class TruffleSafepoint {
     }
 
     /**
-     * Allows to temporarily disable side-effecting thread local notifications on this thread. It is
-     * recommended to disable side-effecting actions only for a short and constant period of time.
-     * While safe-points are disabled it is guaranteed that:
-     * <ul>
-     * <li>No guest language objects are modified or other guest language code is running.
-     * <li>No guest language exceptions are thrown. Note that internal errors might be thrown.
-     * </ul>
+     * Allows to temporarily delay side-effecting thread local actions on this thread. It is
+     * recommended to delay side-effecting actions only for a short and constant period of time.
+     * <p>
+     * While side-effecting thread local actions are delayed on this thread, only non-side-effecting
+     * thread local actions will be scheduled in this thread. Non-side-effecting thread local
+     * actions do not mutate guest objects, run guest code or throw guest exceptions, but they might
+     * still throw internal errors.
      * <p>
      * Example usage:
      *

@@ -1,11 +1,11 @@
 # Truffle Language Safepoint Tutorial
 
-Since 21.1 Truffle has support for guest language safepoints. 
+As of 21.1 Truffle has support for guest language safepoints. 
 Truffle safepoints allow to interrupt the guest language execution to perform thread local actions submitted by a language or tool. 
 A safepoint is a location during the guest language execution where the state is consistent and other operations can read its state.
 
 This replaces previous instrumentation or assumption-based approaches to safepoints, which required the code to be invalidated for a thread local action to be performed.
-The new implementation uses fast thread local access checks and the callee register saved stub calls to optimize for performance and keep the overhead minimal.
+The new implementation uses fast thread local checks and callee register saved stub calls to optimize for performance and keep the overhead minimal.
 This means that for every loop back-edge and method exit we perform an additional non-volatile read which can potentially lead to slight slow-downs.
 
 ## Use Cases
@@ -53,7 +53,7 @@ Read more in the [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/tr
 
 ## Current Limitations
 
-There is currently no way to run thread local actions while the a thread is executing in boundary annotated methods unless the method cooperatively polls safepoints or uses the blocking API. 
+There is currently no way to run thread local actions while the thread is executing in boundary annotated methods unless the method cooperatively polls safepoints or uses the blocking API. 
 Unfortunately it is not always possible to cooperatively poll safepoints, for example, if the code currently executes third party native code. 
 A future improvement will allow to run code for other threads while they are blocked. 
 This is one of the reasons why it is recommended to use `ThreadLocalAction.Access.getThread()` instead of directly using `Thread.currentThread()`.
