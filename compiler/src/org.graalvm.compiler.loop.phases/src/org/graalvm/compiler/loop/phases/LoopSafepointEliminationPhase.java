@@ -24,9 +24,12 @@
  */
 package org.graalvm.compiler.loop.phases;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
@@ -56,12 +59,28 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     protected void onSafepointDisabledLoopBegin(LoopEx loop) {
     }
 
+    private static boolean loopIsIn32BitRange(LoopEx loop) {
+        if (loop.counted().getStamp().getBits() <= 32) {
+            return true;
+        }
+        Stamp s = loop.counted().getLimit().stamp(NodeView.DEFAULT);
+        if (s instanceof IntegerStamp) {
+            IntegerStamp i = (IntegerStamp) s;
+            final long lowerBound = i.lowerBound();
+            final long upperBound = i.upperBound();
+            if (lowerBound >= Integer.MIN_VALUE && upperBound <= Integer.MAX_VALUE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     protected final void run(StructuredGraph graph, MidTierContext context) {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
         loops.detectedCountedLoops();
         for (LoopEx loop : loops.countedLoops()) {
-            if (loop.loop().getChildren().isEmpty() && (loop.counted().getStamp().getBits() <= 32 || loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop())) {
+            if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop))) {
                 boolean hasSafepoint = false;
                 for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                     hasSafepoint |= loopEnd.canSafepoint();
