@@ -9,4 +9,6 @@ public interface AOTSamplingData {
     void addMethodName(long address, String name);
 
     void dump();
+
+    String findMethodName(long address);
 }

@@ -77,14 +77,16 @@ public class SamplingData {
         CodePointer ip = WordFactory.pointer(address);
         CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
         CodeInfo codeInfo = codeInfo(ip);
-        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), result);
+        long relativeIP = CodeInfoAccess.relativeIP(codeInfo, ip);
+        CodeInfoAccess.lookupCodeInfo(codeInfo, relativeIP, result);
         FrameInfoQueryResult frameInfo = result.getFrameInfo();
         while (frameInfo.getCaller() != null) {
             frameInfo = frameInfo.getCaller();
         }
-        int methodId = aotSamplingData.findMethod(address);
+        int methodId = aotSamplingData.findMethod(relativeIP);
+        String methodName = aotSamplingData.findMethodName(relativeIP);
         int bci = frameInfo.getBci();
-        return methodId + ":" + bci;
+        return methodName + ":" + bci;
     }
 
     static void dumpFromTree(BufferedWriter writer) throws IOException {
