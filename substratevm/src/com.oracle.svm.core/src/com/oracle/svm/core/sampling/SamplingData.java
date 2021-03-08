@@ -6,10 +6,19 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
 import org.graalvm.collections.PrefixTree;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.ProfilingSampler;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 public class SamplingData {
 
@@ -51,14 +60,37 @@ public class SamplingData {
         }
     }
 
+    @Uninterruptible(reason = "Called by uninterruptible code.")
+    private static CodeInfo codeInfo(CodePointer ip) {
+        UntetheredCodeInfo untetheredCodeInfo = CodeInfoTable.lookupCodeInfo(ip);
+        assert untetheredCodeInfo.isNonNull();
+        Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
+        try {
+            return CodeInfoAccess.convert(untetheredCodeInfo, tether);
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
+        }
+        // return CodeInfoAccess.convert(untetheredCodeInfo);
+    }
+
+    static String decodeMethod(long address, AOTSamplingData aotSamplingData) {
+        int methodId = aotSamplingData.findMethod(address);
+        CodePointer ip = WordFactory.pointer(address);
+        CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
+        CodeInfo codeInfo = codeInfo(ip);
+        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), result);
+        int bci = result.getFrameInfo().getBci();
+        // result.getFrameInfo().getCaller()
+        // Thread.currentThread().getStackTrace();
+        return methodId + ":" + bci;
+    }
+
     static void dumpFromTree(BufferedWriter writer) throws IOException {
         PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
         AOTSamplingData aotSamplingData = ImageSingletons.lookup(AOTSamplingData.class);
+        aotSamplingData.dump();
 
-        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> {
-            // int methodId = aotSamplingData.findMethod(address);
-            return new CallFrame(String.valueOf(address), context);
-        }, (context, value) -> {
+        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> new CallFrame(decodeMethod(address, aotSamplingData), context), (context, value) -> {
             try {
                 StringBuilder contextChain = new StringBuilder(context.name);
                 CallFrame elem = context.tail;
@@ -77,5 +109,13 @@ public class SamplingData {
                 e.printStackTrace();
             }
         });
+    }
+
+    static class AOTCodeInfoQueryResult extends CodeInfoQueryResult {
+
+        AOTCodeInfoQueryResult(CodePointer ip) {
+            super();
+            this.ip = ip;
+        }
     }
 }

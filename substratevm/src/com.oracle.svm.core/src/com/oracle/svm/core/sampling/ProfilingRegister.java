@@ -20,16 +20,16 @@ public class ProfilingRegister implements ProfilingSampler {
         this.collectingActive = collectingActive;
     }
 
-    public int sampleThreadStack() {
+    public void sampleThreadStack() {
         // System.out.println("start: " + System.nanoTime());
         SamplingStackVisitor visitor = new SamplingStackVisitor();
         SamplingStackVisitor.SamplingStackTrace data = new SamplingStackVisitor.SamplingStackTrace(prefixTree().root());
         walkCurrentThread(data, visitor);
         data.node.incValue();
         // prefixTree().topDown(null);
-        // System.out.println(Thread.currentThread().getName() + " ... " + System.identityHashCode(data.node));
+        // System.out.println(Thread.currentThread().getName() + " ... " +
+        // System.identityHashCode(data.node));
         System.out.println("--- end: " + System.nanoTime());
-        return 0;
     }
 
     @NeverInline("")
@@ -41,7 +41,7 @@ public class ProfilingRegister implements ProfilingSampler {
     @Override
     public void registerSampler() {
         if (collectingActive) {
-            Threading.registerRecurringCallback(50, TimeUnit.MILLISECONDS, (access) -> {
+            Threading.registerRecurringCallback(10, TimeUnit.MILLISECONDS, (access) -> {
                 sampleThreadStack();
             });
         }

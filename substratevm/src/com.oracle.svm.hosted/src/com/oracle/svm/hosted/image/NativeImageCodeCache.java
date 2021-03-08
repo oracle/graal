@@ -415,64 +415,69 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean shouldInclude(ResolvedJavaMethod method, Infopoint infopoint) {
-            CompilationInfo compilationInfo = ((HostedMethod) method).compilationInfo;
-            BytecodeFrame topFrame = infopoint.debugInfo.frame();
-
-            if (isDeoptEntry(method, infopoint)) {
-                /* Collect number of entry points for later printing of statistics. */
-                if (infopoint instanceof DeoptEntryInfopoint) {
-                    numDeoptEntryPoints++;
-                } else if (infopoint instanceof Call) {
-                    numDuringCallEntryPoints++;
-                } else {
-                    throw shouldNotReachHere();
-                }
-
-                return true;
-            }
-            BytecodeFrame rootFrame = topFrame;
-            while (rootFrame.caller() != null) {
-                rootFrame = rootFrame.caller();
-            }
-            assert rootFrame.getMethod().equals(method);
-
-            boolean isDeoptEntry = compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
-            if (infopoint instanceof DeoptEntryInfopoint) {
-                assert isDeoptEntry;
-                assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
-
-                numDeoptEntryPoints++;
-                return true;
-
-            }
-
-            if (isDeoptEntry && topFrame.duringCall) {
-                assert infopoint instanceof Call;
-                assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
-
-                numDuringCallEntryPoints++;
-                return true;
-            }
-
-            for (BytecodeFrame frame = topFrame; frame != null; frame = frame.caller()) {
-                if (CompilationInfoSupport.singleton().isFrameInformationRequired(frame.getMethod())) {
-                    /*
-                     * Somewhere in the inlining hierarchy is a method for which frame information
-                     * was explicitly requested. For simplicity, we output frame information for all
-                     * methods in the inlining chain.
-                     *
-                     * We require frame information, for example, for frames that must be visible to
-                     * SubstrateStackIntrospection.
-                     */
-                    return true;
-                }
-            }
-
-            if (compilationInfo.canDeoptForTesting()) {
-                return true;
-            }
-
-            return false;
+            return true;
+            // CompilationInfo compilationInfo = ((HostedMethod) method).compilationInfo;
+            // BytecodeFrame topFrame = infopoint.debugInfo.frame();
+            //
+            // if (isDeoptEntry(method, infopoint)) {
+            // /* Collect number of entry points for later printing of statistics. */
+            // if (infopoint instanceof DeoptEntryInfopoint) {
+            // numDeoptEntryPoints++;
+            // } else if (infopoint instanceof Call) {
+            // numDuringCallEntryPoints++;
+            // } else {
+            // throw shouldNotReachHere();
+            // }
+            //
+            // return true;
+            // }
+            // BytecodeFrame rootFrame = topFrame;
+            // while (rootFrame.caller() != null) {
+            // rootFrame = rootFrame.caller();
+            // }
+            // assert rootFrame.getMethod().equals(method);
+            //
+            // boolean isDeoptEntry = compilationInfo.isDeoptEntry(rootFrame.getBCI(),
+            // rootFrame.duringCall, rootFrame.rethrowException);
+            // if (infopoint instanceof DeoptEntryInfopoint) {
+            // assert isDeoptEntry;
+            // assert topFrame == rootFrame : "Deoptimization target has inlined frame: " +
+            // topFrame;
+            //
+            // numDeoptEntryPoints++;
+            // return true;
+            //
+            // }
+            //
+            // if (isDeoptEntry && topFrame.duringCall) {
+            // assert infopoint instanceof Call;
+            // assert topFrame == rootFrame : "Deoptimization target has inlined frame: " +
+            // topFrame;
+            //
+            // numDuringCallEntryPoints++;
+            // return true;
+            // }
+            //
+            // for (BytecodeFrame frame = topFrame; frame != null; frame = frame.caller()) {
+            // if (CompilationInfoSupport.singleton().isFrameInformationRequired(frame.getMethod()))
+            // {
+            // /*
+            // * Somewhere in the inlining hierarchy is a method for which frame information
+            // * was explicitly requested. For simplicity, we output frame information for all
+            // * methods in the inlining chain.
+            // *
+            // * We require frame information, for example, for frames that must be visible to
+            // * SubstrateStackIntrospection.
+            // */
+            // return true;
+            // }
+            // }
+            //
+            // if (compilationInfo.canDeoptForTesting()) {
+            // return true;
+            // }
+            //
+            // return false;
         }
 
         @Override

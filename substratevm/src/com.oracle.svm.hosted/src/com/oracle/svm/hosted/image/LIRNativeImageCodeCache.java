@@ -104,6 +104,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 method.setCodeAddressOffset(codeCacheSize);
                 // map the method address to the method analysis id
                 aotSamplingData.addEntry(codeCacheSize, method.wrapped.getId());
+                aotSamplingData.addMethodName(codeCacheSize, method.wrapped.getQualifiedName());
                 codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), SubstrateOptions.codeAlignment());
             }
 
