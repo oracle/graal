@@ -6,19 +6,19 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.oracle.svm.core.code.FrameInfoQueryResult;
+import org.graalvm.collections.PrefixTree;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.ProfilingSampler;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
-import org.graalvm.collections.PrefixTree;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.ProfilingSampler;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 public class SamplingData {
 
@@ -74,14 +74,16 @@ public class SamplingData {
     }
 
     static String decodeMethod(long address, AOTSamplingData aotSamplingData) {
-        int methodId = aotSamplingData.findMethod(address);
         CodePointer ip = WordFactory.pointer(address);
         CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
         CodeInfo codeInfo = codeInfo(ip);
         CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), result);
-        int bci = result.getFrameInfo().getBci();
-        // result.getFrameInfo().getCaller()
-        // Thread.currentThread().getStackTrace();
+        FrameInfoQueryResult frameInfo = result.getFrameInfo();
+        while (frameInfo.getCaller() != null) {
+            frameInfo = frameInfo.getCaller();
+        }
+        int methodId = aotSamplingData.findMethod(address);
+        int bci = frameInfo.getBci();
         return methodId + ":" + bci;
     }
 
