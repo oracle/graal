@@ -136,11 +136,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
         setPending(JavaThreads.fromJavaThread(t), 1);
     }
 
-    private static int setPending(IsolateThread t, int value) {
-        int prev;
-        do {
-            prev = PENDING.getVolatile(t);
-        } while (!PENDING.compareAndSet(t, prev, value));
-        return prev;
+    private static void setPending(IsolateThread t, int value) {
+        PENDING.setVolatile(t, value);
     }
 }

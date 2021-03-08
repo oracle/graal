@@ -74,13 +74,9 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
         setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
     }
 
-    private static int setVolatile(Thread t, int offset, int value) {
+    private static void setVolatile(Thread t, int offset, int value) {
         long eetop = UNSAFE.getLong(t, THREAD_EETOP_OFFSET);
-        int prev;
-        do {
-            prev = UNSAFE.getIntVolatile(null, eetop + offset);
-        } while (!UNSAFE.compareAndSwapInt(null, eetop + offset, prev, value));
-        return prev;
+        UNSAFE.putIntVolatile(null, eetop + offset, value);
     }
 
 }
