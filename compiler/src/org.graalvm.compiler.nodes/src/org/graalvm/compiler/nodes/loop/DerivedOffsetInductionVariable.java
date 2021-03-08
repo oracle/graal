@@ -54,10 +54,11 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public Direction direction() {
-        if (value instanceof SubNode && base.valueNode() == value.getY()) {
-            return base.direction().opposite();
+        Direction baseDirection = base.direction();
+        if (baseDirection != null && value instanceof SubNode && base.valueNode() == value.getY()) {
+            return baseDirection.opposite();
         }
-        return base.direction();
+        return baseDirection;
     }
 
     @Override
