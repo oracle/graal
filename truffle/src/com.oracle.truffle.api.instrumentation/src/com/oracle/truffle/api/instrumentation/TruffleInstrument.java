@@ -1379,8 +1379,8 @@ public abstract class TruffleInstrument {
          * waiting. The returned {@link Future#get()} method can be used as
          * {@link ThreadInterruptible}.
          *
-         * @param context the context in which the action should be performed. Non
-         *            <code>null</code>.
+         * @param context the context in which the action should be performed. Non <code>null</code>
+         *            .
          * @param threads the threads to execute the action on. <code>null</code> for all threads
          * @param action the action to perform on that thread.
          * @see ThreadLocalAction
