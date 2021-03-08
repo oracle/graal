@@ -292,6 +292,7 @@ public final class HeapVerifier {
         Pointer objPointer = Word.objectToUntrackedPointer(obj);
         trace.string("  objPointer: ").hex(objPointer);
 
+        noReferencesOutsideHeapVisitor.initialize(obj);
         boolean result = InteriorObjRefWalker.walkObject(obj, noReferencesOutsideHeapVisitor);
         if (!result) {
             Log witness = getWitnessLog();
@@ -306,6 +307,12 @@ public final class HeapVerifier {
 
     /** An ObjectReferenceVisitor to check for references outside of the heap. */
     private static class NoReferencesOutsideHeapVisitor implements ObjectReferenceVisitor {
+        private Object parentObject;
+
+        public void initialize(Object parentObj) {
+            this.parentObject = parentObj;
+        }
+
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the heap.")
         public boolean visitObjectReference(Pointer objRef, boolean compressed) {
@@ -318,12 +325,15 @@ public final class HeapVerifier {
                 Log witness = verifier.getWitnessLog();
                 witness.string("[HeapVerifier.NoReferencesOutsideHeapVisitor:").string("  cause: ").string(verifier.getCurrentCause());
                 witness.string("  contains zapped field Pointer: ").hex(objPointer).string("  at: ").hex(objRef).string("]").newline();
+                witness.string("Parent object: ").object(parentObject).newline();
                 return false;
             }
             if (!HeapVerifier.slowlyFindPointer(objPointer)) {
                 Log witness = verifier.getWitnessLog();
                 witness.string("[HeapVerifier.NoReferencesOutsideHeapVisitor:").string("  cause: ").string(verifier.getCurrentCause());
                 witness.string("  at: ").hex(objRef).string("  contains fieldPointer: ").hex(objPointer).string("  that is not a reference to the heap").newline();
+                witness.string("Parent object: ").object(parentObject).newline();
+
                 witness.string("    Foolishly trying to look at the object pointed to by the fieldPointer:");
                 UnsignedWord fieldHeader = ObjectHeaderImpl.readHeaderFromPointerCarefully(objPointer);
                 witness.string("  fieldHeader: ").hex(fieldHeader);
@@ -337,6 +347,7 @@ public final class HeapVerifier {
                 Log witness = verifier.getWitnessLog();
                 witness.string("[HeapVerifier.NoReferencesOutsideHeapVisitor:").string("  cause: ").string(verifier.getCurrentCause());
                 witness.string("  contains fieldPointer: ").hex(objPointer).string("  to zapped memory: ").hex(readWord).string("  at: ").hex(objRef).string("]").newline();
+                witness.string("Parent object: ").object(parentObject).newline();
                 return false;
             }
             return true;

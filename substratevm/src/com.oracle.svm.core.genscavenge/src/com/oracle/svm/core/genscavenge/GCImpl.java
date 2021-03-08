@@ -29,7 +29,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.heap.ReferenceMapIndex;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -73,6 +72,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
