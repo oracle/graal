@@ -51,7 +51,7 @@ import java.util.function.Consumer;
  */
 public final class HeapDump {
     // constants for the Java Profiler Heap Dump Format
-    private static final String MAGIC_WITH_SEGMENTS = "JAVA PROFILE 1.0.1";
+    private static final String MAGIC = "JAVA PROFILE 1.0.1";
     private static final int TAG_STRING = 0x01;
     private static final int TAG_LOAD_CLASS = 0x02;
     private static final int TAG_STACK_FRAME = 0x04;
@@ -160,7 +160,7 @@ public final class HeapDump {
         }
 
         private void dumpPrologue(Identifiers ids1, final long millis) throws IOException {
-            whole.write(MAGIC_WITH_SEGMENTS.getBytes());
+            whole.write(MAGIC.getBytes());
             whole.write(0); // null terminated string
             whole.writeInt(ids1.sizeOf());
             whole.writeLong(millis);
