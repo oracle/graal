@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -189,7 +189,7 @@ public abstract class TruffleSafepoint {
      * Example usage:
      * <p>
      * Note there is a short-cut method to achieve a the same behavior as in this example
-     * {@link #setBlockedInterruptable(Node, ThreadInterruptable, Object)}.
+     * {@link #setBlockedInterruptible(Node, ThreadInterruptible, Object)}.
      *
      * <pre>
      * Lock lock = new ReentrantLock();
@@ -221,7 +221,7 @@ public abstract class TruffleSafepoint {
      * <p>
      *
      * <pre>
-     * TruffleSafepoint.setBlockedInterruptable(location, Lock::lockInterruptibly, lock);
+     * TruffleSafepoint.setBlockedInterruptible(location, Lock::lockInterruptibly, lock);
      * </pre>
      *
      * This method is short-hand for:
@@ -246,19 +246,19 @@ public abstract class TruffleSafepoint {
      *
      *
      * @param location the location with which the safepoint should be polled.
-     * @param interruptable the thread interruptable method to use for locking the object
+     * @param interruptible the thread interruptable method to use for locking the object
      * @param object the instance to use the interruptable method with.
      *
      * @since 21.1
      */
     @TruffleBoundary
-    public static <T> void setBlockedInterruptable(Node location, ThreadInterruptable<T> interruptable, T object) {
+    public static <T> void setBlockedInterruptible(Node location, ThreadInterruptible<T> interruptible, T object) {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         Interrupter prev = safepoint.setBlocked(Interrupter.THREAD_INTERRUPT);
         try {
             while (true) {
                 try {
-                    interruptable.apply(object);
+                    interruptible.apply(object);
                     break;
                 } catch (InterruptedException e) {
                     TruffleSafepoint.poll(location);
@@ -314,11 +314,11 @@ public abstract class TruffleSafepoint {
      * {@link Lock#lockInterruptibly() Lock::lockInterruptibly} or {@link Semaphore#acquire()
      * Semaphore::acquire}.
      *
-     * @see TruffleSafepoint#setBlockedInterruptable(Node, ThreadInterruptable, Object)
+     * @see TruffleSafepoint#setBlockedInterruptible(Node, ThreadInterruptible, Object)
      * @since 21.1
      */
     @FunctionalInterface
-    public interface ThreadInterruptable<T> {
+    public interface ThreadInterruptible<T> {
 
         /**
          * Runs the interruptable method for a given object.

@@ -89,6 +89,12 @@ import com.oracle.truffle.api.nodes.Node;
  *     protected void perform(Access access) {
  *         assert access.getThread() == Thread.currentThread();
  *     }
+ *
+ *     &#64;Override
+ *     protected String name() {
+ *        return "MyAction"
+ *     }
+ *
  * });
  *
  * </pre>

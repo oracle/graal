@@ -87,7 +87,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile.FileSystemContext;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleSafepoint.ThreadInterruptable;
+import com.oracle.truffle.api.TruffleSafepoint.ThreadInterruptible;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -3486,10 +3486,10 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlockedInterruptable(Node, ThreadInterruptable, Object)} can
+         * {@link TruffleSafepoint#setBlockedInterruptible(Node, ThreadInterruptible, Object)} can
          * be used to allow other thread local actions to be processed while the current thread is
          * waiting. The returned {@link Future#get()} method can be used as
-         * {@link ThreadInterruptable}.
+         * {@link ThreadInterruptible}.
          *
          * @param threads the threads to execute the action on. <code>null</code> for all threads
          * @param action the action to perform on that thread.

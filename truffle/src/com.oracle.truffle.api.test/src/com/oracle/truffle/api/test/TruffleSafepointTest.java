@@ -532,7 +532,7 @@ public class TruffleSafepointTest {
         forEachConfig((threads, events) -> {
             Semaphore semaphore = new Semaphore(threads);
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
-                TruffleSafepoint.setBlockedInterruptable(node, Semaphore::acquire, semaphore);
+                TruffleSafepoint.setBlockedInterruptible(node, Semaphore::acquire, semaphore);
                 releaseSemaphore(semaphore);
                 assert !Thread.interrupted() : "invalid trailing interrupted state";
                 return false;
