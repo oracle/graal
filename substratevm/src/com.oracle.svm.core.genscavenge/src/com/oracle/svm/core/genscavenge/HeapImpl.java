@@ -713,19 +713,20 @@ public final class HeapImpl extends Heap {
 
     private static class HeapDiagnosticsPrinter implements DiagnosticThunk {
         @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void invokeWithoutAllocation(Log log) {
             HeapImpl heap = HeapImpl.getHeapImpl();
             GCImpl gc = GCImpl.getGCImpl();
 
             log.string("[Heap settings and statistics: ").indent(true);
-            log.string("  supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
-            log.string("  object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
+            log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
+            log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
 
             GCAccounting accounting = gc.getAccounting();
-            log.string("  incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();
-            log.string("  complete collections: ").unsigned(accounting.getCompleteCollectionCount()).newline();
+            log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();
+            log.string("Complete collections: ").unsigned(accounting.getCompleteCollectionCount());
             log.redent(false).string("]").newline();
+            log.newline();
 
             heap.logImageHeapPartitionBoundaries(log).newline();
             zapValuesToLog(log).newline();

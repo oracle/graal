@@ -95,6 +95,7 @@ public final class VMOperationControl {
     private final WorkQueues mainQueues;
     private final WorkQueues immediateQueues;
     private final OpInProgress inProgress;
+    private final VMOpHistory history;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     VMOperationControl() {
@@ -102,6 +103,7 @@ public final class VMOperationControl {
         this.mainQueues = new WorkQueues("main", true);
         this.immediateQueues = new WorkQueues("immediate", false);
         this.inProgress = new OpInProgress();
+        this.history = new VMOpHistory();
     }
 
     @Fold
@@ -200,10 +202,13 @@ public final class VMOperationControl {
             log.string("No VMOperation in progress").newline();
         } else {
             log.string("VMOperation in progress: ").string(op.getName()).newline();
-            log.string("  causesSafepoint: ").bool(op.getCausesSafepoint()).newline();
+            log.string("  safepoint: ").bool(op.getCausesSafepoint()).newline();
             log.string("  queuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
             log.string("  executingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
         }
+        log.newline();
+
+        control.history.print(log);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -212,8 +217,20 @@ public final class VMOperationControl {
     }
 
     @Uninterruptible(reason = "Set the current VM operation as atomically as possible - this is mainly relevant for deopt test cases")
-    void setInProgress(VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
-        assert operation != null && executingThread.isNonNull() || operation == null && queueingThread.isNull() && executingThread.isNull();
+    void setInProgress(VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread, boolean started) {
+        assert operation != null && executingThread.isNonNull() || operation == null && queueingThread.isNull() && executingThread.isNull() && !started;
+
+        if (started) {
+            history.add(VMOpStatus.Started, operation, queueingThread, executingThread);
+        } else {
+            if (inProgress.operation != null) {
+                history.add(VMOpStatus.Finished, inProgress.operation, inProgress.executingThread, inProgress.queueingThread);
+            }
+            if (operation != null) {
+                history.add(VMOpStatus.Continued, operation, queueingThread, executingThread);
+            }
+        }
+
         inProgress.executingThread = executingThread;
         inProgress.operation = operation;
         inProgress.queueingThread = queueingThread;
@@ -834,6 +851,92 @@ public final class VMOperationControl {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public IsolateThread getExecutingThread() {
             return executingThread;
+        }
+    }
+
+    /**
+     * This code is used for printing a VM operation history when printing diagnostics. As other
+     * threads may still execute VM operations and as we don't want to use any locks (we don't know
+     * the state the VM is in when printing diagnostics), all the logic in here is racy by design.
+     * It can happen that the races cause an inconsistent output but the races must not result in
+     * any crashes.
+     */
+    private static class VMOpHistory {
+        private final VMOpStatusChange[] history;
+        private int pos;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        VMOpHistory() {
+            history = new VMOpStatusChange[10];
+            for (int i = 0; i < history.length; i++) {
+                history[i] = new VMOpStatusChange();
+            }
+
+            pos = history.length;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void add(VMOpStatus started, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
+            pos = nextPos();
+            VMOpStatusChange entry = history[pos];
+            entry.timestamp = System.currentTimeMillis();
+            entry.status = started;
+            entry.operation = operation.getName();
+            entry.causesSafepoint = operation.getCausesSafepoint();
+            entry.queueingThread = queueingThread;
+            entry.executingThread = executingThread;
+        }
+
+        public void print(Log log) {
+            log.string("The ").signed(history.length).string(" most recent VM operation status changes:").indent(true);
+            // Read pos once before the loop as other threads may modify pos in the meanwhile.
+            int startPos = pos;
+            for (int i = 0; i < history.length; i++) {
+                int index = (startPos + i) % history.length;
+                history[index].print(log);
+            }
+            log.indent(false);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        private int nextPos() {
+            assert pos >= 0;
+            if (pos == 0) {
+                return history.length - 1;
+            }
+            return pos - 1;
+        }
+    }
+
+    private enum VMOpStatus {
+        Started,
+        Continued,
+        Finished
+    }
+
+    /**
+     * Holds information about a VM operation status change. We must not store any reference to the
+     * {@link VMOperation} as this could be a memory leak (some VM operations may reference large
+     * data structures).
+     */
+    private static class VMOpStatusChange {
+        long timestamp;
+        VMOpStatus status;
+        String operation;
+        boolean causesSafepoint;
+        IsolateThread queueingThread;
+        IsolateThread executingThread;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        VMOpStatusChange() {
+        }
+
+        void print(Log log) {
+            VMOpStatus localStatus = status;
+            if (localStatus != null) {
+                log.unsigned(timestamp).string(" - ").string(localStatus.name()).string(" ").string(operation).string(" (safepoint: ").bool(causesSafepoint).string(", queueingThread: ")
+                                .zhex(queueingThread.rawValue()).string(", executingThread: ").zhex(executingThread.rawValue()).string(")").newline();
+            }
         }
     }
 }
