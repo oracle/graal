@@ -39,12 +39,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Extends the default Graal loop safepoint elimination phase and adds logic to disable Truffle
+ * Extends the default Graal loop safepoint elimination phase and adds logic to disable guest
  * safepoints when the loop contains truffle calls or when there is a plain counted loop without
- * allocations. Truffle safepoints are not implied by allocations as is the case with host
- * safepoints.
+ * allocations.
  *
- * @see LoopEndNode#canTruffleSafepoint
+ * @see LoopEndNode#canGuestSafepoint
  */
 public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEliminationPhase {
 
@@ -65,14 +64,14 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
                 return;
             }
         }
-        loop.loopBegin().disableTruffleSafepoint();
+        loop.loopBegin().disableGuestSafepoint();
     }
 
     @Override
     protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
         if (currentCallNode instanceof Invoke && isTruffleCall((Invoke) currentCallNode)) {
             // only truffle calls imply a truffle safepoint at method exits
-            loopEnd.disableTruffleSafepoint();
+            loopEnd.disableGuestSafepoint();
             return true;
         }
         return false;

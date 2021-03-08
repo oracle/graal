@@ -75,23 +75,22 @@ public final class LoopEndNode extends AbstractEndNode {
     boolean canSafepoint;
 
     /**
-     * As with host safepoints most loops need Truffle safepoints in order to allow the guest
-     * language execution to be interrupted. Unlike host safepoints Truffle safepoints are not used
-     * by garbage collectors but require a constant time interview between safepoint polls.
+     * If Graal is used as a compiler for a guest language then in addition to host safepoints there
+     * is also a need for guest safepoints. Unlike host safepoints, guest safepoints are not needed
+     * to support garbage collectors but to support features like cancellation or reading stack
+     * frames from other threads.
      * <p>
-     * Truffle safepoints can be disabled if either there is a tight loop without any allocations or
-     * if there is a Truffle call in the loop body. Regular foreign calls and invokes do not disable
-     * Truffle safepoints as they do not automatically poll Truffle safeopints, only Truffle guest
-     * language calls do.
+     * This flag is used to store the information whether safepoints can be disabled for this loop
+     * end. It depends on the guest language implementation framework whether this flag may ever
+     * become <code>false</code>.
      * <p>
-     * If Truffle is not in use then this flag will be always be <code>true</code>.
+     * If Graal is not used to compile a guest language then this flag will be always return
+     * <code>true</code>.
      * <p>
-     * More information on Truffle safepoints can be found
+     * More information on the guest safepoint implementation in Truffle can be found
      * <a href="http://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md">here</a>.
      */
-    boolean canTruffleSafepoint;
-
-    boolean guaranteedSafepoint;
+    boolean canGuestSafepoint;
 
     public LoopEndNode(LoopBeginNode begin) {
         super(TYPE);
@@ -100,7 +99,7 @@ public final class LoopEndNode extends AbstractEndNode {
         this.endIndex = idx;
         this.loopBegin = begin;
         this.canSafepoint = begin.canEndsSafepoint;
-        this.canTruffleSafepoint = begin.canEndsTruffleSafepoint;
+        this.canGuestSafepoint = begin.canEndsGuestSafepoint;
     }
 
     @Override
@@ -125,13 +124,13 @@ public final class LoopEndNode extends AbstractEndNode {
         this.canSafepoint = false;
     }
 
-    public void disableTruffleSafepoint() {
-        this.canTruffleSafepoint = false;
+    public void disableGuestSafepoint() {
+        this.canGuestSafepoint = false;
     }
 
-    public boolean canTruffleSafepoint() {
-        assert !canTruffleSafepoint || loopBegin().canEndsTruffleSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
-        return this.canTruffleSafepoint;
+    public boolean canGuestSafepoint() {
+        assert !canGuestSafepoint || loopBegin().canEndsGuestSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
+        return this.canGuestSafepoint;
     }
 
     public boolean canSafepoint() {

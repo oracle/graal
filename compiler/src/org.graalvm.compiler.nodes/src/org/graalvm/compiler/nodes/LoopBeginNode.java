@@ -82,8 +82,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     /** See {@link LoopEndNode#canSafepoint} for more information. */
     boolean canEndsSafepoint;
 
-    /** See {@link LoopEndNode#canTruffleSafepoint} for more information. */
-    boolean canEndsTruffleSafepoint;
+    /** See {@link LoopEndNode#canGuestSafepoint} for more information. */
+    boolean canEndsGuestSafepoint;
 
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
@@ -99,7 +99,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         unswitches = 0;
         splits = 0;
         this.canEndsSafepoint = true;
-        this.canEndsTruffleSafepoint = true;
+        this.canEndsGuestSafepoint = true;
         loopType = LoopType.SIMPLE_LOOP;
         unrollFactor = 1;
     }
@@ -179,12 +179,12 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         }
     }
 
-    public void disableTruffleSafepoint() {
+    public void disableGuestSafepoint() {
         /* Store flag locally in case new loop ends are created later on. */
-        this.canEndsTruffleSafepoint = false;
+        this.canEndsGuestSafepoint = false;
         /* Propagate flag to all existing loop ends. */
         for (LoopEndNode loopEnd : loopEnds()) {
-            loopEnd.disableTruffleSafepoint();
+            loopEnd.disableGuestSafepoint();
         }
     }
 
