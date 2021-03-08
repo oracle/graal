@@ -115,8 +115,7 @@ public final class HeapDump {
     HeapDump(OutputStream out, final Builder builder) throws IOException {
         this.builder = builder;
         this.heap = new DataOutputStream(out);
-        int classId = builder.writeLoadClass("java.lang.Object");
-        this.typeObject = new ClassBuilder(classId, 0).dumpClass();
+        this.typeObject = new ClassBuilder("java.lang.Object", 0).dumpClass();
         newClass("char[]").dumpClass();
         this.typeString = newClass("java.lang.String").field("value", char[].class).field("hash", Integer.TYPE).dumpClass();
         this.typeThread = newClass("java.lang.Thread").field("daemon", Boolean.TYPE).field("name", String.class).field("priority", Integer.TYPE).dumpClass();
@@ -153,6 +152,7 @@ public final class HeapDump {
         private int stackFrameCounter;
         private int stackTraceCounter;
         private int classCounter;
+        private int threadCounter;
 
         private Builder(Identifiers ids, OutputStream os) {
             this.whole = new DataOutputStream(os);
@@ -230,7 +230,7 @@ public final class HeapDump {
             os.writeInt(defaultStackTrace);
         }
 
-        int writeStackFrame(HeapDump thiz, ClassInstance language, String rootName, String sourceFile, int lineNumber) throws IOException {
+        int writeStackFrame(HeapDump thiz, ClassInstance clazz, String rootName, String sourceFile, int lineNumber) throws IOException {
             int id = ++stackFrameCounter;
             int rootNameId = writeString(rootName);
             int signatureId = writeString("");
@@ -242,18 +242,18 @@ public final class HeapDump {
             ids.writeID(whole, rootNameId);
             ids.writeID(whole, signatureId);
             ids.writeID(whole, sourceFileId);
-            whole.writeInt(language.id(thiz));
+            whole.writeInt(clazz.serialId(thiz));
             whole.writeInt(lineNumber);
             return id;
         }
 
-        int writeStackTrace(int threadId, int... frames) throws IOException {
+        int writeStackTrace(int threadSerialId, int... frames) throws IOException {
             int id = ++stackTraceCounter;
             whole.writeByte(TAG_STACK_TRACE);
             whole.writeInt(0); // microseconds
             whole.writeInt(12 + ids.sizeOf() * frames.length); // size of following entries
             whole.writeInt(id); // stack trace serial number
-            whole.writeInt(threadId); // thread serial number
+            whole.writeInt(threadSerialId); // thread serial number
             whole.writeInt(frames.length);
             for (int fId : frames) {
                 ids.writeID(whole, fId);
@@ -261,8 +261,7 @@ public final class HeapDump {
             return id;
         }
 
-        int writeLoadClass(String className) throws IOException {
-            int classSerial = ++classCounter;
+        int writeLoadClass(String className, int classSerial) throws IOException {
             int classId = ++objectCounter;
             int classNameId = writeString(className);
             whole.writeByte(TAG_LOAD_CLASS);
@@ -327,10 +326,7 @@ public final class HeapDump {
                 return false;
             }
             final ObjectInstance other = (ObjectInstance) obj;
-            if (this.id != other.id) {
-                return false;
-            }
-            return true;
+            return this.id == other.id;
         }
 
         int id(HeapDump requestor) {
@@ -349,11 +345,13 @@ public final class HeapDump {
      * @since 21.1
      */
     public final class ClassInstance {
+        private final int serialId;
         private final int id;
         private final int fieldBytes;
         private final TreeMap<String, Class<?>> fieldNamesAndTypes;
 
-        private ClassInstance(int id, TreeMap<String, Class<?>> fieldNamesAndTypes, int fieldBytes) {
+        private ClassInstance(int serialId, int id, TreeMap<String, Class<?>> fieldNamesAndTypes, int fieldBytes) {
+            this.serialId = serialId;
             this.id = id;
             this.fieldBytes = fieldBytes;
             this.fieldNamesAndTypes = fieldNamesAndTypes;
@@ -376,6 +374,13 @@ public final class HeapDump {
             return id;
         }
 
+        int serialId(HeapDump requestor) {
+            if (requestor != HeapDump.this) {
+                throw new IllegalStateException();
+            }
+            return serialId;
+        }
+
     }
 
     /**
@@ -387,13 +392,7 @@ public final class HeapDump {
      * @since 21.1
      */
     public ClassBuilder newClass(String name) throws UncheckedIOException {
-        int classId;
-        try {
-            classId = builder.writeLoadClass(name);
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
-        return new ClassBuilder(classId, typeObject.id(HeapDump.this));
+        return new ClassBuilder(name, typeObject.id(HeapDump.this));
     }
 
     /**
@@ -548,6 +547,7 @@ public final class HeapDump {
 
         private ObjectInstance dumpThreadImpl() throws IOException {
             ObjectInstance nameId = dumpString(name);
+            int threadSerialId = ++builder.threadCounter;
             ObjectInstance threadId = newInstance(typeThread).putBoolean("daemon", false).put("name", nameId).putInt("priority", 0).dumpInstance();
             int[] frameIds = new int[stacks.size()];
             int cnt = 0;
@@ -558,7 +558,7 @@ public final class HeapDump {
                 final int lineNumber = (Integer) frame[2];
                 frameIds[cnt++] = builder.writeStackFrame(HeapDump.this, language, rootName, sourceFile, lineNumber);
             }
-            int stackTraceId = builder.writeStackTrace(threadId.id(HeapDump.this), frameIds);
+            int stackTraceId = builder.writeStackTrace(threadSerialId, frameIds);
             heap.writeByte(HEAP_ROOT_THREAD_OBJECT);
             builder.ids.writeID(heap, threadId.id(HeapDump.this));
             heap.writeInt(threadId.id(HeapDump.this)); // serial #
@@ -570,7 +570,7 @@ public final class HeapDump {
                     int objId = localObjects[i].id(HeapDump.this);
                     heap.writeByte(HEAP_ROOT_JAVA_FRAME); // frame GC root
                     builder.ids.writeID(heap, objId);
-                    heap.writeInt(threadId.id(HeapDump.this)); // thread serial #
+                    heap.writeInt(threadSerialId); // thread serial #
                     heap.writeInt(cnt); // frame number
                 }
                 cnt++;
@@ -588,13 +588,12 @@ public final class HeapDump {
      * @see HeapDump#newClass(java.lang.String)
      */
     public final class ClassBuilder {
-
-        private final int classId;
+        private final String name;
         private final int superId;
         private TreeMap<String, Class<?>> fieldNamesAndTypes = new TreeMap<>();
 
-        private ClassBuilder(int id, int superId) {
-            this.classId = id;
+        private ClassBuilder(String name, int superId) {
+            this.name = name;
             this.superId = superId;
         }
 
@@ -654,6 +653,8 @@ public final class HeapDump {
         }
 
         private ClassInstance dumpClassImpl() throws IOException {
+            final int classSerialId = ++builder.classCounter;
+            int classId = builder.writeLoadClass(name, classSerialId);
             heap.writeByte(HEAP_CLASS_DUMP);
             builder.ids.writeID(heap, classId);
             builder.writeDefaultStackTraceSerialNumber(heap);
@@ -678,7 +679,7 @@ public final class HeapDump {
                 final Class<?> type = entry.getValue();
                 heap.writeByte(switchOnType(type, builder.ids)[0]);
             }
-            ClassInstance inst = new ClassInstance(classId, fieldNamesAndTypes, instanceSize);
+            ClassInstance inst = new ClassInstance(classSerialId, classId, fieldNamesAndTypes, instanceSize);
             fieldNamesAndTypes = new TreeMap<>();
             return inst;
         }
