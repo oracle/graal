@@ -188,7 +188,7 @@ public abstract class TruffleSafepoint {
      * <p>
      * Example usage:
      * <p>
-     * Note there is a short-cut method to achieve a the same behavior as in this example
+     * Note there is a short-cut method to achieve the same behavior as in this example
      * {@link #setBlockedInterruptible(Node, ThreadInterruptible, Object)}.
      *
      * <pre>

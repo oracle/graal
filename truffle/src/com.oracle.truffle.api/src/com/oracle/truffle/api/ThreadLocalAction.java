@@ -174,7 +174,9 @@ public abstract class ThreadLocalAction {
 
         /**
          * Returns the thread where this thread local action is running on. Currently this always
-         * returns {@link Thread#currentThread()}.
+         * returns {@link Thread#currentThread()}. See the
+         * <a href="http://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md">safepoint
+         * tutorial</a> for further details on our plans.
          *
          * @since 21.1
          */
