@@ -566,11 +566,8 @@ public final class HeapDump {
             cnt = 0;
             for (Object[] frame : stacks) {
                 ObjectInstance[] localObjects = (ObjectInstance[]) frame[3];
-                int[] locals = new int[localObjects.length];
                 for (int i = 0; i < localObjects.length; i++) {
-                    locals[i] = localObjects[i].id(HeapDump.this);
-                }
-                for (int objId : locals) {
+                    int objId = localObjects[i].id(HeapDump.this);
                     heap.writeByte(HEAP_ROOT_JAVA_FRAME); // frame GC root
                     builder.ids.writeID(heap, objId);
                     heap.writeInt(threadId.id(HeapDump.this)); // thread serial #
