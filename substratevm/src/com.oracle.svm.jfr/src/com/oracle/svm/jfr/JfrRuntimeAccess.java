@@ -26,16 +26,13 @@
 
 package com.oracle.svm.jfr;
 
-import java.util.List;
-import java.util.Set;
-
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
-import jdk.internal.event.Event;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 public interface JfrRuntimeAccess {
-    List<Class<? extends Event>> getEventClasses();
-    void addEventClass(Class<? extends Event> eventClass);
     JfrTraceIdMap getTraceIdMap();
-    Set<ClassLoader> getReachableClassloaders();
-    void addClassloader(ClassLoader c);
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void setTraceIdMap(JfrTraceIdMap map);
 }

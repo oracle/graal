@@ -26,31 +26,61 @@
 
 package com.oracle.svm.jfr.traceid;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.jdk.Target_java_lang_Module;
+import com.oracle.svm.core.jdk.Target_java_lang_Package;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 public class JfrTraceIdMap {
-    private final HashMap<Object, Long> map = new HashMap<>();
-    private final HashMap<String, Long> packageMap = new HashMap<>();
+    @UnknownObjectField
+    private final long[] traceIDs;
 
-    synchronized long getId(Object key) {
-        Long id = map.get(key);
-        if (id != null) {
-            return id;
-        } else {
-            return -1;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrTraceIdMap(int size) {
+        traceIDs = new long[size];
+        for (int i = 0; i < size; i++) {
+            traceIDs[i] = -1;
         }
     }
 
-    synchronized void setId(Object key, long id) {
-        this.map.put(key, id);
+    private int getIndex(Object key) {
+        int index;
+        if (key instanceof Class<?>) {
+            DynamicHub hub = DynamicHub.fromClass((Class<?>) key);
+            index = hub.getTypeID();
+        } else if (key instanceof ClassLoader) {
+            Target_java_lang_ClassLoader classLoader = SubstrateUtil.cast(key, Target_java_lang_ClassLoader.class);
+            index = classLoader.jfrID;
+        } else if (key instanceof Package) {
+            Target_java_lang_Package pkg = SubstrateUtil.cast(key, Target_java_lang_Package.class);
+            index = pkg.jfrID;
+        } else if (key instanceof Module) {
+            Target_java_lang_Module module = SubstrateUtil.cast(key, Target_java_lang_Module.class);
+            index = module.jfrID;
+        } else {
+            throw new IllegalArgumentException("Unexpected type: " + key.getClass());
+        }
+        return index;
     }
 
-    synchronized void clearId(Object key) {
-        this.map.remove(key);
+    long getId(Object key) {
+        return traceIDs[getIndex(key)];
     }
 
-    synchronized Map<String, Long> getPackageMap() {
-        return this.packageMap;
+    long getId(int index) {
+        return traceIDs[index];
+    }
+
+    void setId(Object key, long id) {
+        traceIDs[getIndex(key)] = id;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void setId(int index, long id) {
+        traceIDs[index] = id;
     }
 }

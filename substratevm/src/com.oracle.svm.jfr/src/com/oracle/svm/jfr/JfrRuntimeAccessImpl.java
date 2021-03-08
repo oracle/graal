@@ -26,32 +26,19 @@
 
 package com.oracle.svm.jfr;
 
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
-import jdk.internal.event.Event;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 class JfrRuntimeAccessImpl implements JfrRuntimeAccess {
 
-    private final List<Class<? extends Event>> eventClasses = new ArrayList<>();
+    @UnknownObjectField
+    private JfrTraceIdMap traceIdMap;
 
-    private final Set<ClassLoader> reachableClassloaders = new HashSet<>();
-    private final JfrTraceIdMap traceIdMap = new JfrTraceIdMap();
-
-    @Override
-    public List<Class<? extends Event>> getEventClasses() {
-        return new ArrayList<>(eventClasses);
-    }
-
-    @Override
-    public void addEventClass(Class<? extends Event> eventClass) {
-        if (!Modifier.isAbstract(eventClass.getModifiers())) {
-            eventClasses.add(eventClass);
-        }
+    @Platforms(Platform.HOSTED_ONLY.class)
+    JfrRuntimeAccessImpl() {
+        traceIdMap = null;
     }
 
     @Override
@@ -59,13 +46,9 @@ class JfrRuntimeAccessImpl implements JfrRuntimeAccess {
         return traceIdMap;
     }
 
+    //@Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public Set<ClassLoader> getReachableClassloaders() {
-        return reachableClassloaders;
-    }
-
-    @Override
-    public void addClassloader(ClassLoader c) {
-        this.reachableClassloaders.add(c);
+    public void setTraceIdMap(JfrTraceIdMap map) {
+        this.traceIdMap = map;
     }
 }

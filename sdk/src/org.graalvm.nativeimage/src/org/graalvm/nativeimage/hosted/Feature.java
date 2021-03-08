@@ -43,6 +43,7 @@ package org.graalvm.nativeimage.hosted;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -286,6 +287,7 @@ public interface Feature {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterAnalysisAccess extends QueryReachabilityAccess {
+        Collection<Class<?>> reachableTypes();
     }
 
     /**
@@ -356,6 +358,10 @@ public interface Feature {
     interface BeforeUniverseBuildingAccess extends FeatureAccess {
     }
 
+    public interface CompiledTypesVisitor {
+        void visitCompiledType(Class<?> clazz, int typeID);
+    }
+
     /**
      * Access methods available for {@link Feature#beforeCompilation} and
      * {@link Feature#afterCompilation}.
@@ -388,6 +394,8 @@ public interface Feature {
          * @since 19.0
          */
         void registerAsImmutable(Object root, Predicate<Object> includeObject);
+
+        void compiledTypes(CompiledTypesVisitor v);
     }
 
     /**
