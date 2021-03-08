@@ -112,7 +112,7 @@ public final class HeapDump {
         this.typeThread = null;
     }
 
-    HeapDump(OutputStream out, final Builder builder) throws IOException {
+    HeapDump(OutputStream out, final Builder builder) {
         this.builder = builder;
         this.heap = new DataOutputStream(out);
         this.typeObject = new ClassBuilder("java.lang.Object", 0).dumpClass();
@@ -592,12 +592,12 @@ public final class HeapDump {
      * @see HeapDump#newClass(java.lang.String)
      */
     public final class ClassBuilder {
-        private final String name;
+        private final String className;
         private final int superId;
         private TreeMap<String, Class<?>> fieldNamesAndTypes = new TreeMap<>();
 
         private ClassBuilder(String name, int superId) {
-            this.name = name;
+            this.className = name;
             this.superId = superId;
         }
 
@@ -658,7 +658,7 @@ public final class HeapDump {
 
         private ClassInstance dumpClassImpl() throws IOException {
             final int classSerialId = builder.classCounter.next();
-            int classId = builder.writeLoadClass(name, classSerialId);
+            int classId = builder.writeLoadClass(className, classSerialId);
             heap.writeByte(HEAP_CLASS_DUMP);
             builder.ids.writeID(heap, classId);
             builder.writeDefaultStackTraceSerialNumber(heap);
