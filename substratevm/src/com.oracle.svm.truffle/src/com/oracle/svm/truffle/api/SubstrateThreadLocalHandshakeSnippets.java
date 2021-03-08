@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -55,7 +54,7 @@ import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
-    private static void pollSnippet(@ConstantParameter com.oracle.truffle.api.nodes.Node location) {
+    private static void pollSnippet(com.oracle.truffle.api.nodes.Node location) {
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,
                         SubstrateThreadLocalHandshake.PENDING.get() != 0)) {
             foreignPoll(SubstrateThreadLocalHandshake.FOREIGN_POLL, location);
