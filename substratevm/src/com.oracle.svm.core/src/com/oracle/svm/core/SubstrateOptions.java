@@ -403,7 +403,7 @@ public class SubstrateOptions {
     @Option(help = "Compatibility option to make symbols used for the image heap global. " +
                     "Using global symbols is problematic for shared libraries because the loader implicitly changes the value when the symbol is already defined in the executable loading the library. " +
                     "Setting this option to true preserves the broken behavior of old Native Image versions.")//
-    public static final HostedOptionKey<Boolean> InternalSymbolsAreGlobal = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> InternalSymbolsAreGlobal = new HostedOptionKey<>(false);
 
     @Option(help = "Common prefix used by method symbols in image.")//
     public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
