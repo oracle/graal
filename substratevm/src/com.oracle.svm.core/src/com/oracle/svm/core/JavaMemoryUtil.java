@@ -107,7 +107,7 @@ public final class JavaMemoryUtil {
      * required for the operation and the caller must be {@linkplain Uninterruptible
      * uninterruptible} or otherwise ensure that objects cannot move or be collected.
      *
-     * When using this method to copy memory of Java objects, the address and size must align to
+     * When using this method to copy memory of Java objects, the addresses and size must align to
      * object field boundaries or array element boundaries in order to ensure access atomicity
      * according to the Java memory model (Java Language Specification, 17.6).
      */
@@ -127,7 +127,7 @@ public final class JavaMemoryUtil {
      * required for the operation and the caller must be {@linkplain Uninterruptible
      * uninterruptible} or otherwise ensure that objects cannot move or be collected.
      *
-     * When using this method to copy memory of Java objects, the address and size must align to
+     * When using this method to copy memory of Java objects, the addresses and size must align to
      * object field boundaries or array element boundaries in order to ensure access atomicity
      * according to the Java memory model (Java Language Specification, 17.6).
      */
@@ -260,7 +260,7 @@ public final class JavaMemoryUtil {
      * required for the operation and the caller must be {@linkplain Uninterruptible
      * uninterruptible} or otherwise ensure that objects cannot move or be collected.
      *
-     * When using this method to copy memory of Java objects, the address and size must align to
+     * When using this method to copy memory of Java objects, the addresses and size must align to
      * object field boundaries or array element boundaries in order to ensure access atomicity
      * according to the Java memory model (Java Language Specification, 17.6).
      */
@@ -314,6 +314,7 @@ public final class JavaMemoryUtil {
 
     /** Implementation of {@code Unsafe.copyMemory}. */
     public static void unsafeCopyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
+        // Stricter about access atomicity than required by Unsafe.copyMemory Javadoc
         if (srcBase != null || destBase != null) {
             copyOnHeap(srcBase, srcOffset, destBase, destOffset, bytes);
         } else {
@@ -339,7 +340,7 @@ public final class JavaMemoryUtil {
      * object field boundaries or array element boundaries in order to ensure access atomicity
      * according to the Java memory model (Java Language Specification, 17.6).
      */
-    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void fill(Pointer to, UnsignedWord size, byte value) {
         long v = value & 0xffL;
         v = (v << 8) | v;
@@ -367,7 +368,7 @@ public final class JavaMemoryUtil {
     }
 
     @IntrinsicCandidate
-    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void fillLongsAligned(Pointer to, UnsignedWord size, long longValue) {
         UnsignedWord offset = WordFactory.zero();
         for (UnsignedWord next = offset.add(32); next.belowOrEqual(size); next = offset.add(32)) {
@@ -383,7 +384,7 @@ public final class JavaMemoryUtil {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void fillUnalignedLower(Pointer to, long value, UnsignedWord length) {
         UnsignedWord offset = WordFactory.zero();
         if (length.and(1).notEqual(0)) {
@@ -400,7 +401,7 @@ public final class JavaMemoryUtil {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void fillUnalignedUpper(Pointer to, long value, UnsignedWord upperSize) {
         UnsignedWord offset = WordFactory.zero();
         if (upperSize.and(4).notEqual(0)) {
@@ -439,7 +440,7 @@ public final class JavaMemoryUtil {
      * required for the operation and the caller must be {@linkplain Uninterruptible
      * uninterruptible} or otherwise ensure that objects cannot move or be collected.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void copySwap(Pointer from, Pointer to, UnsignedWord size, UnsignedWord elementSize) {
         assert from.isNonNull() : "address must not be NULL";
         assert to.isNonNull() : "address must not be NULL";

@@ -108,8 +108,8 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             int entryCount = NonmovableByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex);
             assert entryCount >= 0;
 
-            // As the UniverseBuilder actively groups object references together, this loop will
-            // typically be only executed for 1 iteration.
+            // The UniverseBuilder actively groups object references together. So, this loop will
+            // typically be only executed for a very small number of iterations.
             long entryStart = referenceMapIndex + InstanceReferenceMapEncoder.MAP_HEADER_SIZE;
             for (long idx = entryStart; idx < entryStart + entryCount * InstanceReferenceMapEncoder.MAP_ENTRY_SIZE; idx += InstanceReferenceMapEncoder.MAP_ENTRY_SIZE) {
                 int objectOffset = NonmovableByteArrayReader.getS4(referenceMapEncoding, idx);
