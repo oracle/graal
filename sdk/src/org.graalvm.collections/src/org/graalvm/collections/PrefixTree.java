@@ -324,7 +324,7 @@ public class PrefixTree {
                 if (child != null) {
                     long key = keysSnapshot[i];
                     C extendedContext = createContext.apply(currentContext, key);
-                    topDown(extendedContext, createContext, consumeValue);
+                    child.topDown(extendedContext, createContext, consumeValue);
                 }
             }
         }
