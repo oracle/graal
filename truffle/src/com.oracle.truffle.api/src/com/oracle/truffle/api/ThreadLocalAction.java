@@ -50,7 +50,7 @@ import com.oracle.truffle.api.nodes.Node;
  * Represents an action that is executed at a {@link TruffleSafepoint safepoint} location of the
  * guest language execution. Thread local actions can be submitted by
  * {@link TruffleLanguage.Env#submitThreadLocal(Thread[], ThreadLocalAction) languages} or
- * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#submitThreadLocal(TruffleContext, Thread[], ThreadLocalAction, boolean)
+ * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#submitThreadLocal(TruffleContext, Thread[], ThreadLocalAction)
  * instruments}. When an action is submitted it will be {@link #perform(Access) performed} locally
  * on the threads they are submitted to. After submitting a thread local action a {@link Future} is
  * returned that allows to wait for and cancel the submitted action.
