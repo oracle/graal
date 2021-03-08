@@ -33,7 +33,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.ClassRule;
@@ -58,7 +60,10 @@ public class InteropTestBase {
 
     public static Context.Builder getContextBuilder() {
         String lib = System.getProperty("test.sulongtest.lib.path");
-        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option(SulongEngineOption.LIBRARY_PATH_NAME, lib).option(SulongEngineOption.CXX_INTEROP_NAME, "true");
+        Map<String, String> options = TestEngineConfig.getInstance().getContextOptions();
+        options.put(SulongEngineOption.LIBRARY_PATH_NAME, lib);
+        options.put(SulongEngineOption.CXX_INTEROP_NAME, "true");
+        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).options(options);
     }
 
     protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
