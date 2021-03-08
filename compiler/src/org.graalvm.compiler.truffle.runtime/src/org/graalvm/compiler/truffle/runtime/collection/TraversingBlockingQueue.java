@@ -51,7 +51,7 @@ public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     @Override
-    public synchronized E poll(long timeout, TimeUnit unit) throws InterruptedException {
+    public E poll(long timeout, TimeUnit unit) throws InterruptedException {
         E max = takeMax();
         if (max != null) {
             return max;
@@ -60,7 +60,7 @@ public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     @Override
-    public synchronized E poll() {
+    public E poll() {
         E max = takeMax();
         if (max != null) {
             return max;
@@ -68,7 +68,7 @@ public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
         return entries.poll();
     }
 
-    private E takeMax() {
+    private synchronized E takeMax() {
         if (entries.isEmpty()) {
             return null;
         }
