@@ -204,6 +204,9 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         ObjectStamp stamp;
         if (truffleNode) {
             rootNode = getRootNode(javaConstant);
+            if (rootNode == null) {
+                return null;
+            }
             stamp = StampFactory.object(TypeReference.createExactTrusted(rootNodeType));
         } else {
             // we did not find a truffle node but we arrived at executeRootNode of the call target

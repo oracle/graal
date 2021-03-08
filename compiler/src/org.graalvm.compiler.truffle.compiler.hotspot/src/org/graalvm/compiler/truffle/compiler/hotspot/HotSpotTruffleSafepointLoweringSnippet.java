@@ -170,8 +170,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                         GraalHotSpotVMConfig config,
                         HotSpotHostForeignCallsProvider foreignCalls,
                         Iterable<DebugHandlersFactory> factories) {
-
-            GraalError.guarantee(templates == null, "cannot re-initialize " + this);
+            GraalError.guarantee(templates == null, "cannot re-initialize %s", this);
             GraalError.guarantee(config.invokeJavaMethodAddress != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", TruffleSafepointNode.class);
             this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget());
             this.deferredInit = () -> {
