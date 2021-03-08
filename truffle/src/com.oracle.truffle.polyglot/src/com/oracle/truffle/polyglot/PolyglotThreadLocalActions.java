@@ -437,27 +437,35 @@ final class PolyglotThreadLocalActions {
                 thread = context.getCachedThreadInfo();
             }
             awaitLatch.countDown();
-
-            try {
-                awaitLatch.await();
-            } catch (InterruptedException e1) {
-            }
+            awaitUninterruptibly(awaitLatch);
             thread.setSafepointActive(true);
             try {
                 EngineAccessor.LANGUAGE.performTLAction(action, access);
             } finally {
                 thread.setSafepointActive(false);
                 doneLatch.countDown();
-                while (true) {
-                    try {
-                        doneLatch.await();
-                        break;
-                    } catch (InterruptedException e1) {
-                    }
-                }
+                awaitUninterruptibly(doneLatch);
             }
         }
 
+    }
+
+    private static void awaitUninterruptibly(CountDownLatch latch) {
+        boolean wasInterrupted = false;
+        try {
+            while (true) {
+                try {
+                    latch.await();
+                    return;
+                } catch (InterruptedException e) {
+                    wasInterrupted = true;
+                }
+            }
+        } finally {
+            if (wasInterrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private static final class PolyglotStatisticsAction extends ThreadLocalAction {
