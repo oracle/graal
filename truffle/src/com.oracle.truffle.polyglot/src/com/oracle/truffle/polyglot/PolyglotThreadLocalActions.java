@@ -192,7 +192,7 @@ final class PolyglotThreadLocalActions {
             // send enter/leave to slow-path
             context.setCachedThreadInfo(PolyglotThreadInfo.NULL);
 
-            if (!!context.closed) {
+            if (context.closed) {
                 throw new IllegalStateException("Thread local actions can no longer be submitted for this context as it is already closed.");
             }
 
