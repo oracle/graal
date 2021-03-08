@@ -172,6 +172,11 @@ public final class SulongEngineOption {
                    "Files with a relative path will be looked up relative to llvm.libraryPath. " +
                    "Libraries are delimited by a colon \'" + OPTION_ARRAY_SEPARATOR + "\'.")
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
+
+    public static final String VERIFY_BITCODE_NAME = "llvm.verifyBitcode";
+    @Option(name = VERIFY_BITCODE_NAME, category = OptionCategory.EXPERT,
+            help = "Sanity check whether loaded bitcode files are compiled correctly.")
+    public static final OptionKey<Boolean> VERIFY_BITCODE = new OptionKey<>(true);
     // @formatter:on
 
     public static List<OptionDescriptor> describeOptions() {

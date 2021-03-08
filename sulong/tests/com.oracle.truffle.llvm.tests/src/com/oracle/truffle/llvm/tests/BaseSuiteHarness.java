@@ -113,7 +113,7 @@ public abstract class BaseSuiteHarness {
      * 
      * <pre>
      *   &#64;RunWith(Parameterized.class)
-     *   &#64;Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ParametersFactory.class)
+     *   &#64;Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
      *   public final class MyTestSuite extends BaseSuiteHarness { ... }
      * </pre>
      *

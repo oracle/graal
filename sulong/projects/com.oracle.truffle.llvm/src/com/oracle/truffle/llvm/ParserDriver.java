@@ -29,10 +29,23 @@
  */
 package com.oracle.truffle.llvm;
 
+import java.io.IOException;
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+import org.graalvm.polyglot.io.ByteSequence;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -71,17 +84,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import org.graalvm.polyglot.io.ByteSequence;
-
-import java.io.IOException;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 
 /**
  * Drives a parsing request.
@@ -157,7 +160,7 @@ final class ParserDriver {
             // Add the file scope of the source to the language
             language.addInternalFileScope(libraryName, result.getRuntime().getFileScope());
             if (libraryName.equals("libsulong")) {
-                context.addLibsulongDataLayout(result.getDataLayout());
+                language.setDefaultBitcode(result.getDataLayout(), TargetTriple.create(result.getTargetTriple().toString()));
             }
             // renaming is attempted only for internal libraries.
             resolveRenamedSymbols(result);
@@ -339,9 +342,8 @@ final class ParserDriver {
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source);
         TargetDataLayout layout = module.getTargetDataLayout();
         DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
-        if (targetDataLayout.getByteOrder() != ByteOrder.LITTLE_ENDIAN) {
-            throw new LLVMParserException("Byte order " + targetDataLayout.getByteOrder() + " of file " + source.getPath() + " is not supported");
-        }
+        TargetTriple targetTriple = TargetTriple.create(module.getTargetInformation(com.oracle.truffle.llvm.parser.model.target.TargetTriple.class).toString());
+        verifyBitcodeSource(source, targetDataLayout, targetTriple);
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         LLVMScope fileScope = new LLVMScope();
         int bitcodeID = nextFreeBitcodeID.getAndIncrement();
@@ -350,6 +352,30 @@ final class ParserDriver {
         LLVMParserResult result = parser.parse(module, targetDataLayout);
         createDebugInfo(module, new LLVMSymbolReadResolver(runtime, new FrameDescriptor(), GetStackSpaceFactory.createAllocaFactory(), targetDataLayout, false));
         return result;
+    }
+
+    private void verifyBitcodeSource(Source source, DataLayout targetDataLayout, TargetTriple targetTriple) {
+        if (targetDataLayout.getByteOrder() != ByteOrder.LITTLE_ENDIAN) {
+            throw new LLVMParserException("Byte order " + targetDataLayout.getByteOrder() + " of file " + source.getPath() + " is not supported");
+        }
+        boolean verifyBitcode = context.getEnv().getOptions().get(SulongEngineOption.VERIFY_BITCODE);
+        TargetTriple defaultTargetTriple = language.getDefaultTargetTriple();
+        if (defaultTargetTriple == null && !context.isInternalLibraryPath(Paths.get(source.getPath()))) {
+            // some internal libraries (libsulong++) might be loaded before libsulong
+            throw new IllegalStateException("No default target triple.");
+        }
+        if (defaultTargetTriple != null && targetTriple != null && !defaultTargetTriple.matches(targetTriple)) {
+            TruffleLogger logger = TruffleLogger.getLogger(LLVMLanguage.ID, "BitcodeVerifier");
+            String exceptionMessage = "Mismatching target triple (expected " + defaultTargetTriple + ", got " + targetTriple + ')';
+            logger.severe(exceptionMessage);
+            logger.severe("Source " + source.getPath());
+            logger.severe("See https://www.graalvm.org/reference-manual/llvm/Compiling/ for more details");
+            logger.severe("To silence this message, set --log." + logger.getName() + ".level=OFF");
+            if (verifyBitcode) {
+                logger.severe("To make this error non-fatal, set --" + SulongEngineOption.VERIFY_BITCODE_NAME + "=false");
+                throw new LLVMParserException(exceptionMessage);
+            }
+        }
     }
 
     private static List<LLVMSourceFileReference> getSourceFilesWithChecksums(TruffleLanguage.Env env, ModelModule module) {
