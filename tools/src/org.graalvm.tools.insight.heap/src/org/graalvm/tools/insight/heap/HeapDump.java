@@ -148,11 +148,11 @@ public final class HeapDump {
         private final DataOutputStream whole;
         private int defaultStackTrace;
         private Long timeBase;
-        int objectCounter;
-        private int stackFrameCounter;
-        private int stackTraceCounter;
-        private int classCounter;
-        private int threadCounter;
+        final Counter objectCounter = new Counter("object");
+        private final Counter stackFrameCounter = new Counter("stackFrame");
+        private final Counter stackTraceCounter = new Counter("stackTrace");
+        private final Counter classCounter = new Counter("class");
+        private final Counter threadCounter = new Counter("thread");
 
         private Builder(Identifiers ids, OutputStream os) {
             this.whole = new DataOutputStream(os);
@@ -231,7 +231,7 @@ public final class HeapDump {
         }
 
         int writeStackFrame(HeapDump thiz, ClassInstance clazz, String rootName, String sourceFile, int lineNumber) throws IOException {
-            int id = ++stackFrameCounter;
+            int id = stackFrameCounter.next();
             int rootNameId = writeString(rootName);
             int signatureId = writeString("");
             int sourceFileId = writeString(sourceFile);
@@ -248,7 +248,7 @@ public final class HeapDump {
         }
 
         int writeStackTrace(int threadSerialId, int... frames) throws IOException {
-            int id = ++stackTraceCounter;
+            int id = stackTraceCounter.next();
             whole.writeByte(TAG_STACK_TRACE);
             whole.writeInt(0); // microseconds
             whole.writeInt(12 + ids.sizeOf() * frames.length); // size of following entries
@@ -262,7 +262,7 @@ public final class HeapDump {
         }
 
         int writeLoadClass(String className, int classSerial) throws IOException {
-            int classId = ++objectCounter;
+            int classId = objectCounter.next();
             int classNameId = writeString(className);
             whole.writeByte(TAG_LOAD_CLASS);
             whole.writeInt(0); // microseconds
@@ -282,7 +282,7 @@ public final class HeapDump {
             if (prevId != null) {
                 return prevId;
             }
-            int stringId = ++objectCounter;
+            int stringId = objectCounter.next();
             whole.writeByte(TAG_STRING);
             whole.writeInt(0); // microseconds
             byte[] utf8 = text.getBytes(StandardCharsets.UTF_8);
@@ -417,7 +417,11 @@ public final class HeapDump {
      * @since 21.1
      */
     public InstanceBuilder newInstance(ClassInstance clazz) {
-        return new InstanceBuilder(clazz, ++builder.objectCounter);
+        try {
+            return new InstanceBuilder(clazz, builder.objectCounter.next());
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
     }
 
     void flush() throws IOException {
@@ -451,7 +455,7 @@ public final class HeapDump {
         if (id != null) {
             return id;
         }
-        int instanceId = ++builder.objectCounter;
+        int instanceId = builder.objectCounter.next();
         heap.writeByte(HEAP_PRIMITIVE_ARRAY_DUMP);
         builder.ids.writeID(heap, instanceId);
         builder.writeDefaultStackTraceSerialNumber(heap);
@@ -547,7 +551,7 @@ public final class HeapDump {
 
         private ObjectInstance dumpThreadImpl() throws IOException {
             ObjectInstance nameId = dumpString(name);
-            int threadSerialId = ++builder.threadCounter;
+            int threadSerialId = builder.threadCounter.next();
             ObjectInstance threadId = newInstance(typeThread).putBoolean("daemon", false).put("name", nameId).putInt("priority", 0).dumpInstance();
             int[] frameIds = new int[stacks.size()];
             int cnt = 0;
@@ -653,7 +657,7 @@ public final class HeapDump {
         }
 
         private ClassInstance dumpClassImpl() throws IOException {
-            final int classSerialId = ++builder.classCounter;
+            final int classSerialId = builder.classCounter.next();
             int classId = builder.writeLoadClass(name, classSerialId);
             heap.writeByte(HEAP_CLASS_DUMP);
             builder.ids.writeID(heap, classId);
@@ -991,4 +995,19 @@ public final class HeapDump {
         return primitiveType;
     }
 
+    private static final class Counter {
+        private final String name;
+        private int value;
+
+        Counter(String name) {
+            this.name = name;
+        }
+
+        int next() throws IOException {
+            if (value == Integer.MAX_VALUE) {
+                throw new IOException("Overflow of " + name + "counter");
+            }
+            return ++value;
+        }
+    }
 }
