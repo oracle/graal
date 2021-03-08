@@ -75,6 +75,13 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     private static void setVolatile(Thread t, int offset, int value) {
+        /*
+         * The thread will not go away here because the Truffle implementation ensures that this
+         * method is no longer used if the thread is no longer active. It only sets this state for
+         * contexts that are currently entered on a thread. Being entered implies that the thread is
+         * active.
+         */
+        assert t.isAlive() : "thread must remain alive while setting fast pending";
         long eetop = UNSAFE.getLong(t, THREAD_EETOP_OFFSET);
         UNSAFE.putIntVolatile(null, eetop + offset, value);
     }

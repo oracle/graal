@@ -132,6 +132,12 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     protected void setFastPending(Thread t) {
+        /*
+         * The thread will not go away here because the Truffle implementation ensures that this
+         * method is no longer used if the thread is no longer active. It only sets this state for
+         * contexts that are currently entered on a thread. Being entered implies that the thread is
+         * active.
+         */
         assert t.isAlive() : "thread must remain alive while setting fast pending";
         setPending(JavaThreads.fromJavaThread(t), 1);
     }
