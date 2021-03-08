@@ -196,10 +196,9 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     // Used by the traversing queue to pick the best task
-    public boolean betterThan(CompilationTask other) {
+    public boolean isHigherPriorityThan(CompilationTask other) {
         int tier = tier();
         if (traversingFirstTierPriority && tier != other.tier()) {
-            // Lower tier tasks are better
             return tier < other.tier();
         }
         int otherCompileTier = other.targetHighestCompiledTier();
