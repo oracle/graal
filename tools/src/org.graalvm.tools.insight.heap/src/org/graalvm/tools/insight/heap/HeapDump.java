@@ -565,7 +565,7 @@ public final class HeapDump {
             int stackTraceId = builder.writeStackTrace(threadSerialId, frameIds);
             heap.writeByte(HEAP_ROOT_THREAD_OBJECT);
             builder.ids.writeID(heap, threadId.id(HeapDump.this));
-            heap.writeInt(threadId.id(HeapDump.this)); // serial #
+            heap.writeInt(threadSerialId);
             heap.writeInt(stackTraceId); // stacktrace #
             cnt = 0;
             for (Object[] frame : stacks) {
