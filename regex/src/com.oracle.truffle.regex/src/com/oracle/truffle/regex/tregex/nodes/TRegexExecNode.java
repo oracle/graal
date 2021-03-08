@@ -285,6 +285,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                     switchToEagerDFA(null);
                 }
             }
+        } else if (!backtrackingMode) {
+            TRegexNFAExecutorNode nfaExecutorNode = (TRegexNFAExecutorNode) ((NFARegexSearchNode) runnerNode).getExecutor();
+            nfaExecutorNode.notifyDfaGeneratorBailedOut();
         }
     }
 

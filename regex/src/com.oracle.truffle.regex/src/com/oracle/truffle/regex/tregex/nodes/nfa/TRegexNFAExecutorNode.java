@@ -42,6 +42,7 @@
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
@@ -61,6 +62,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     private final NFA nfa;
     private final boolean searching;
+    private boolean dfaGeneratorBailedOut;
 
     public TRegexNFAExecutorNode(NFA nfa) {
         this.nfa = nfa;
@@ -75,6 +77,10 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     public NFA getNFA() {
         return nfa;
+    }
+
+    public void notifyDfaGeneratorBailedOut() {
+        dfaGeneratorBailedOut = true;
     }
 
     @Override
@@ -110,6 +116,9 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
             return null;
         }
         while (true) {
+            if (dfaGeneratorBailedOut) {
+                LoopNode.reportLoopCount(this, 1);
+            }
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }
