@@ -59,7 +59,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
     public static final SubstrateForeignCallDescriptor FOREIGN_POLL = SnippetRuntime.findForeignCall(SubstrateThreadLocalHandshake.class, "pollStub", false, TLAB_LOCATIONS);
 
-    static final SubstrateThreadLocalHandshake INSTANCE = new SubstrateThreadLocalHandshake();
+    static final SubstrateThreadLocalHandshake SINGLETON = new SubstrateThreadLocalHandshake();
 
     static final FastThreadLocalInt PENDING = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
     static final FastThreadLocalObject<TruffleSafepointImpl> STATE = FastThreadLocalFactory.createObject(TruffleSafepointImpl.class).setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
@@ -106,7 +106,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     @Uninterruptible(reason = "Used both from uninterruptable stub.", calleeMustBe = false)
     @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
     private static void invokeProcessHandshake(Node enclosingNode) {
-        INSTANCE.processHandshake(enclosingNode);
+        SINGLETON.processHandshake(enclosingNode);
     }
 
     @Override

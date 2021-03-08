@@ -120,7 +120,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public ThreadLocalHandshake getThreadLocalHandshake() {
-        return SubstrateThreadLocalHandshake.INSTANCE;
+        return SubstrateThreadLocalHandshake.SINGLETON;
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {

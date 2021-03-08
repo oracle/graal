@@ -886,7 +886,7 @@ public abstract class Accessor {
         }
 
         public ThreadLocalHandshake getThreadLocalHandshake() {
-            return DefaultThreadLocalHandshake.INSTANCE;
+            return DefaultThreadLocalHandshake.SINGLETON;
         }
 
         /**

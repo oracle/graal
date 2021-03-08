@@ -32,8 +32,8 @@ import com.oracle.truffle.api.nodes.Node;
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     private static final sun.misc.Unsafe UNSAFE = AbstractHotSpotTruffleRuntime.UNSAFE;
-    static final HotSpotThreadLocalHandshake INSTANCE = new HotSpotThreadLocalHandshake();
-    private static final ThreadLocal<TruffleSafepointImpl> STATE = ThreadLocal.withInitial(() -> INSTANCE.getThreadState(Thread.currentThread()));
+    static final HotSpotThreadLocalHandshake SINGLETON = new HotSpotThreadLocalHandshake();
+    private static final ThreadLocal<TruffleSafepointImpl> STATE = ThreadLocal.withInitial(() -> SINGLETON.getThreadState(Thread.currentThread()));
 
     private static final int PENDING_OFFSET = AbstractHotSpotTruffleRuntime.getRuntime().getThreadLocalPendingHandshakeOffset();
     private static final long THREAD_EETOP_OFFSET;
@@ -55,7 +55,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     static void doHandshake(Object node) {
-        INSTANCE.processHandshake((Node) node);
+        SINGLETON.processHandshake((Node) node);
     }
 
     @Override

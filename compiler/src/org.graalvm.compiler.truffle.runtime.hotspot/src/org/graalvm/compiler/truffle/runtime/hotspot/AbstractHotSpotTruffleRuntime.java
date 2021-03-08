@@ -188,7 +188,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
     @Override
     public final ThreadLocalHandshake getThreadLocalHandshake() {
-        return HotSpotThreadLocalHandshake.INSTANCE;
+        return HotSpotThreadLocalHandshake.SINGLETON;
     }
 
     @Override

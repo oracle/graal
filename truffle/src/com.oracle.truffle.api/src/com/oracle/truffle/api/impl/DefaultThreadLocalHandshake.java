@@ -46,8 +46,8 @@ import com.oracle.truffle.api.nodes.Node;
 
 final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
 
-    static final DefaultThreadLocalHandshake INSTANCE = new DefaultThreadLocalHandshake();
-    private static final ThreadLocal<TruffleSafepointImpl> STATE = ThreadLocal.withInitial(() -> INSTANCE.getThreadState(Thread.currentThread()));
+    static final DefaultThreadLocalHandshake SINGLETON = new DefaultThreadLocalHandshake();
+    private static final ThreadLocal<TruffleSafepointImpl> STATE = ThreadLocal.withInitial(() -> SINGLETON.getThreadState(Thread.currentThread()));
 
     /*
      * Number of active pending threads. Allows to check the active threads more efficiently.
@@ -62,7 +62,7 @@ final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
         int count = PENDING_COUNT.get();
         assert count >= 0 : "inconsistent pending state";
         if (count > 0) {
-            INSTANCE.processHandshake(enclosingNode);
+            SINGLETON.processHandshake(enclosingNode);
         }
     }
 
