@@ -54,8 +54,8 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 /**
  * This regex executor matches a given expression by calculating DFA states from the NFA on the fly,
  * without any caching. It is used as a placeholder for {@link TRegexDFAExecutorNode} until the
- * expression is executed {@link TRegexOptions#TRegexGenerateDFAThreshold} times, in order to avoid
- * the costly DFA generation on all expressions that are not on any hot code paths.
+ * expression is executed {@link TRegexOptions#TRegexGenerateDFAThresholdCalls} times, in order to
+ * avoid the costly DFA generation on all expressions that are not on any hot code paths.
  */
 public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
