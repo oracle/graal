@@ -87,7 +87,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
             try {
                 Pointer sp = KnownIntrinsics.readCallerStackPointer();
                 if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
-                    Log.log().string("trace deopt enabled ").bool(Deoptimizer.Options.TraceDeoptimization.getValue()).newline().flush();
+                    Log.log().string("trace deopt enabled ").newline().flush();
                     CodePointer ip = KnownIntrinsics.readReturnAddress();
                     long reason = Deoptimizer.encodeDeoptActionAndReasonToLong(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter, 0);
                     DeoptimizationRuntime.traceDeoptimization(reason, SpeculationLog.NO_SPECULATION.getReason(), DeoptimizationAction.None, sp, ip);
