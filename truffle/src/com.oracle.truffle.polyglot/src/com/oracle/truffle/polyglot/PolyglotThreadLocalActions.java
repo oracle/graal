@@ -134,9 +134,6 @@ final class PolyglotThreadLocalActions {
         if (intervalTimer != null) {
             intervalTimer.cancel();
         }
-        if (statistics != null) {
-            logStatistics();
-        }
         for (AbstractTLHandshake handshake : activeEvents.keySet()) {
             Future<?> future = handshake.future;
             if (!future.isDone()) {
@@ -151,6 +148,10 @@ final class PolyglotThreadLocalActions {
             }
         }
         activeEvents.clear();
+
+        if (statistics != null) {
+            logStatistics();
+        }
     }
 
     private void logStatistics() {
@@ -387,23 +388,6 @@ final class PolyglotThreadLocalActions {
         }
 
         protected abstract void acceptImpl(PolyglotTLAccess access);
-    }
-
-    @SuppressWarnings("serial")
-    static class ExpectedException extends RuntimeException {
-
-        final Throwable inner;
-
-        ExpectedException(Throwable inner) {
-            this.inner = inner;
-        }
-
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
-        }
-
     }
 
     private static final class AsyncEvent extends AbstractTLHandshake {
