@@ -56,16 +56,20 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     };
     final WeakReference<OptimizedCallTarget> targetRef;
     private final BackgroundCompileQueue.Priority priority;
-    private final boolean multiTier;
-    private final boolean priorityQueue;
     private final long id;
     private final Consumer<CompilationTask> action;
-    private int lastCount;
-    private long lastTime;
-    private double lastWeight;
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
+    // Default queue related
+    private final boolean multiTier;
+    private final boolean priorityQueue;
+    // Traversing queue related
+    private final boolean traversingBothTiers;
+    private final boolean traversingFirstTierPriority;
+    private int lastCount;
+    private long lastTime;
+    private double lastWeight;
 
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
@@ -78,6 +82,9 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastWeight = target != null ? target.getCallAndLoopCount() : -1;
         priorityQueue = target != null && target.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
         multiTier = target != null && target.getOptionValue(PolyglotCompilerOptions.MultiTier);
+        traversingBothTiers = target != null && target.getOptionValue(PolyglotCompilerOptions.TraversingQueueBothTiersRate);
+        traversingFirstTierPriority = target != null && target.getOptionValue(PolyglotCompilerOptions.TraversingQueueFirstTierPriority);
+
     }
 
     static CompilationTask createInitializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
@@ -188,9 +195,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return null;
     }
 
+    // Used by the traversing queue to pick the best task
     public boolean betterThan(CompilationTask other) {
         int tier = tier();
-        if (tier != other.tier()) {
+        if (traversingFirstTierPriority && tier != other.tier()) {
             // Lower tier tasks are better
             return tier < other.tier();
         }
@@ -200,7 +208,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             // tasks previously compiled with higher tier are better
             return compiledTier > otherCompileTier;
         }
-        return lastWeight > other.lastWeight;
+        if (traversingBothTiers || isFirstTier()) {
+            return lastWeight > other.lastWeight;
+        }
+        return false;
     }
 
     public double updateWeight(long currentTime) {

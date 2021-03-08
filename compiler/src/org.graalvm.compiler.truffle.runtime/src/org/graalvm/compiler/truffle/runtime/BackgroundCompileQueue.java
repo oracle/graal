@@ -153,7 +153,7 @@ public class BackgroundCompileQueue {
     }
 
     private void initQueue(OptimizedCallTarget callTarget) {
-        if (callTarget.getOptionValue(PolyglotCompilerOptions.ConfigurableCompilationQueue)) {
+        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraversingCompilationQueue)) {
             this.compilationQueue = new TraversingBlockingQueue<>();
         } else {
             this.compilationQueue = new IdlingPriorityBlockingQueue<>();
