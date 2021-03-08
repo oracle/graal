@@ -64,7 +64,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
                 return result;
             }
         }
-        String errorMessage = "Resource bundle not found " + baseName + ", locale + " + locale + ". " +
+        String errorMessage = "Resource bundle not found " + baseName + ", locale " + locale + ". " +
                         "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
         throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
 

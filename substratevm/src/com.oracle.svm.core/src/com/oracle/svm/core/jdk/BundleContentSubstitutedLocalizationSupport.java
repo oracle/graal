@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,10 +45,11 @@ import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.GraalError;
+
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 // Checkstyle: stop
 import sun.util.resources.OpenListResourceBundle;
@@ -108,7 +112,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         Map<String, Object> content = extractContent(bundle);
         boolean isInDefaultLocale = bundle.getLocale().equals(defaultLocale);
         if (!isInDefaultLocale) {
-            StoredBundle compressed = compressBundle(content);
+            StoredBundle compressed = compressBundle(bundle, content);
             if (compressed != null) {
                 return compressed;
             }
@@ -123,6 +127,10 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
             try {
                 return bundle.getContent();
             } catch (Exception ex) {
+                // todo remove
+                System.err.println("!!!" + bundleClass);
+                ex.printStackTrace();
+                System.exit(1);
                 throw GraalError.shouldNotReachHere(ex, "Decompressing a resource bundle " + bundleClass.getName() + " failed.");
             }
         }
@@ -153,7 +161,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         throw VMError.shouldNotReachHere("Failed to extract content for " + bundle + " of type " + bundle.getClass());
     }
 
-    private static CompressedBundle compressBundle(Map<String, Object> content) {
+    private static CompressedBundle compressBundle(ResourceBundle bundle, Map<String, Object> content) {
+        // todo put compression into a separate class
         Pair<String, int[]> input = serializeContent(content);
         if (input == null) {
             return null;
@@ -161,10 +170,14 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         String text = input.getLeft();
         int[] indices = input.getRight();
         try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(byteStream)) {
-            out.write(text.getBytes(StandardCharsets.UTF_8));
+            byte[] indicesInBytes = intToBytes(indices);
+            writeInt(out, indicesInBytes.length);
+            out.write(indicesInBytes);
+            final byte[] textBytes = text.getBytes(StandardCharsets.UTF_8);
+            writeInt(out, textBytes.length);
+            out.write(textBytes);
             out.finish();
-            // todo compress the indices as well?
-            return new CompressedBundle(byteStream.toByteArray(), data -> decompressBundle(data, indices));
+            return new CompressedBundle(byteStream.toByteArray(), BundleContentSubstitutedLocalizationSupport::decompressBundle);
         } catch (IOException ex) {
             // if the compression fails for some reason, the bundle can still be saved uncompressed
             // todo log this as a warning?
@@ -172,10 +185,60 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         }
     }
 
-    private static Map<String, Object> decompressBundle(byte[] data, int[] indices) {
+    private static byte[] intToBytes(int[] data) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(data.length * 4);
+        IntBuffer intBuffer = byteBuffer.asIntBuffer();
+        intBuffer.put(data);
+        return byteBuffer.array();
+    }
+
+    private static int[] bytesToInt(byte[] data) {
+        IntBuffer intBuf = ByteBuffer.wrap(data)
+                        .order(ByteOrder.BIG_ENDIAN)
+                        .asIntBuffer();
+        int[] array = new int[intBuf.remaining()];
+        intBuf.get(array);
+        return array;
+    }
+
+    private static int readInt(InputStream stream) throws IOException {
+        return stream.read() << 24 | stream.read() << 16 | stream.read() << 8 | stream.read();
+    }
+
+    private static void writeInt(OutputStream stream, int value) throws IOException {
+        stream.write((byte) (value >>> 24));
+        stream.write((byte) (value >>> 16));
+        stream.write((byte) (value >>> 8));
+        stream.write((byte) value);
+    }
+
+    private static int readNBytes(InputStream input, byte[] dst) throws IOException {
+        int remaining = dst.length;
+        int allBytesRead = 0;
+        int bytesRead = input.read(dst, 0, remaining);
+        while (bytesRead > 0) {
+            allBytesRead += bytesRead;
+            remaining -= bytesRead;
+            bytesRead = input.read(dst, allBytesRead, remaining);
+        }
+        return allBytesRead;
+    }
+
+    private static Map<String, Object> decompressBundle(byte[] data) {
         Map<String, Object> content = new HashMap<>();
-        try (BufferedReader input = new BufferedReader(new InputStreamReader(new GZIPInputStream(new ByteArrayInputStream(data))))) {
-            String decompressed = input.readLine();
+        try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(data))) {
+            int indicesInBytesLen = readInt(input);
+            byte[] indicesInBytes = new byte[indicesInBytesLen];
+            int realIntsRead = readNBytes(input, indicesInBytes);
+            GraalError.guarantee(realIntsRead == indicesInBytesLen, "Not enough indices bytes read");
+            int[] indices = bytesToInt(indicesInBytes);
+            int remainingBytesSize = readInt(input);
+            byte[] stringBytes = new byte[remainingBytesSize];
+            int allBytesRead = readNBytes(input, stringBytes);
+            if (allBytesRead != remainingBytesSize) {
+                System.err.println("err 2 " + allBytesRead + " vs expected " + remainingBytesSize);
+            }
+            String decompressed = new String(stringBytes, StandardCharsets.UTF_8);
             int i = 0;
             int offset = 0;
             while (i < indices.length) {
@@ -232,6 +295,10 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
                 return null;
             }
         }
-        return Pair.create(builder.toString(), indices.stream().mapToInt(i -> i).toArray());
+        int[] res = new int[indices.size()];
+        for (int i = 0; i < indices.size(); i++) {
+            res[i] = indices.get(i);
+        }
+        return Pair.create(builder.toString(), res);
     }
 }
