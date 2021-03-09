@@ -2019,7 +2019,7 @@ def _gen_gu_manifest(components, formatter, bundled=False):
     if post_install_msg:
         manifest["x-GraalVM-Message-PostInst"] = post_install_msg.replace("\\", "\\\\").replace("\n", "\\n")
     if bundled:
-        manifest["x-GraalVM-Component-Distribution"]="bundled"
+        manifest["x-GraalVM-Component-Distribution"] = "bundled"
 
     return formatter(manifest)
 
