@@ -667,7 +667,7 @@ public final class Symbol<T> extends ByteSequence {
         // Shutdown is not public.
         public static final Symbol<Type> java_lang_Shutdown = StaticSymbols.putType("Ljava/lang/Shutdown;");
 
-        public static final Symbol<Type> sun_launcher_LauncherHelper = StaticSymbols.putType(sun.launcher.LauncherHelper.class);
+        public static final Symbol<Type> sun_launcher_LauncherHelper = StaticSymbols.putType("Lsun/launcher/LauncherHelper;");
 
         // Finalizer is not public.
         public static final Symbol<Type> java_lang_ref_Finalizer = StaticSymbols.putType("Ljava/lang/ref/Finalizer;");
