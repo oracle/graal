@@ -580,17 +580,6 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-java11-linux-amd64
   }
-  ${vm_java_16} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
-    run: [
-      [set-export, VM_ENV, "${VM_ENV}-complete"]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
-    ]
-    targets: [on-demand]
-    timelimit: "1:30:00"
-    name: deploy-vm-no-fastr-java16-linux-amd64
-  }
 
   # Darwin/AMD64
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
@@ -603,16 +592,5 @@ builds += [
     ]
     timelimit: "2:30:00"
     name: deploy-vm-no-fastr-java11-darwin-amd64
-  }
-  ${vm_java_16} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
-    run: [
-      [set-export, VM_ENV, "${VM_ENV}-complete"]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
-    ]
-    targets: [on-demand]
-    timelimit: "2:30:00"
-    name: deploy-vm-no-fastr-java16-darwin-amd64
   }
 ]
