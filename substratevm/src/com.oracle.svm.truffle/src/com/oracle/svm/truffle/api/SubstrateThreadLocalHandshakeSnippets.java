@@ -56,10 +56,10 @@ import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
-    private static void pollSnippet(Object location) {
+    private static void pollSnippet(Object node) {
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,
                         SubstrateThreadLocalHandshake.PENDING.get() != 0)) {
-            foreignPoll(SubstrateThreadLocalHandshake.FOREIGN_POLL, location);
+            foreignPoll(SubstrateThreadLocalHandshake.FOREIGN_POLL, node);
         }
     }
 
@@ -86,9 +86,11 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
         @Override
         public void lower(TruffleSafepointNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
-                Arguments args = new Arguments(pollSnippet, node.graph().getGuardsStage(), tool.getLoweringStage());
-                args.addConst("location", node.location().asConstant());
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                StructuredGraph graph = node.graph();
+                Arguments args = new Arguments(pollSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("node", node.location());
+                SnippetTemplate template = template(node, args);
+                template.instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
             }
         }
     }
