@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -139,7 +140,7 @@ public class PointsToStats {
 
     }
 
-    private static List<TypeFlowBuilder<?>> typeFlowBuilders = new ArrayList<>();
+    private static List<TypeFlowBuilder<?>> typeFlowBuilders = new CopyOnWriteArrayList<>();
 
     public static void registerTypeFlowBuilder(BigBang bb, TypeFlowBuilder<?> builder) {
         if (!bb.reportAnalysisStatistics()) {
@@ -190,15 +191,15 @@ public class PointsToStats {
 
         final TypeFlow<?> flow;
 
-        final ArrayList<TypeState> allUpdates;
-        final ArrayList<TypeState> successfulUpdates;
+        final List<TypeState> allUpdates;
+        final List<TypeState> successfulUpdates;
         final AtomicInteger queuedUpdates;
 
         TypeFlowStats(TypeFlow<?> flow) {
             this.retainReason = "";
             this.flow = flow;
-            this.allUpdates = new ArrayList<>();
-            this.successfulUpdates = new ArrayList<>();
+            this.allUpdates = new CopyOnWriteArrayList<>();
+            this.successfulUpdates = new CopyOnWriteArrayList<>();
             this.queuedUpdates = new AtomicInteger(0);
         }
 
@@ -586,7 +587,7 @@ public class PointsToStats {
         } else if (flow instanceof ActualReturnTypeFlow) {
             ActualReturnTypeFlow ret = (ActualReturnTypeFlow) flow;
             InvokeTypeFlow invoke = ret.invokeFlow();
-            return "ActualReturn(" + formatMethod(invoke.getTargetMethod()) + ")@ " + formatSource(flow);
+            return "ActualReturn(" + (invoke == null ? "null" : formatMethod(invoke.getTargetMethod())) + ")@ " + formatSource(flow);
         } else if (flow instanceof MergeTypeFlow) {
             return "Merge @ " + formatSource(flow);
         } else if (flow instanceof SourceTypeFlow) {
