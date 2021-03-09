@@ -60,7 +60,6 @@ This is one of the reasons why it is recommended to use `ThreadLocalAction.Acces
 When the native call returns it needs to wait for any thread local action that is currently executing for this thread. 
 This will enable to collect guest language stack traces from other threads while they are blocked by uncooperative native code.
 Currently the action will be performed on the next safepoint location when the native code returns.
-It is recommended to poll safepoints right after a native call returns to improve its accuracy.
 
 ## Tooling for Debugging
 
