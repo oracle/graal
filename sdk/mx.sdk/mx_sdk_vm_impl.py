@@ -1981,8 +1981,21 @@ def _gen_gu_manifest(components, formatter, bundled=False):
     manifest["x-GraalVM-Polyglot-Part"] = str(isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
                                               and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
 
-    if main_component.stability:
-        manifest["x-GraalVM-Stability-Level"] = main_component.stability
+    if main_component.supported is not None:
+        if main_component.supported:
+            if main_component.early_adopter:
+                stability_level = "earlyadopter"
+            else:
+                stability_level = "supported"
+        else:
+            if main_component.early_adopter:
+                stability_level = "experimental-earlyadopter"
+            else:
+                stability_level = "experimental"
+        manifest["x-GraalVM-Stability-Level"] = stability_level
+        if stability_level != "experimental-earlyadopter":
+            # set x-GraalVM-Stability for backward compatibility when possible
+            manifest["x-GraalVM-Stability"] = stability_level
 
     dependencies = set()
     for comp in components:

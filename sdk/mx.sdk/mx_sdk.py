@@ -105,7 +105,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dependencies=[],
     jar_distributions=['sdk:LAUNCHER_COMMON'],
     boot_jars=['sdk:GRAAL_SDK'],
-    stability="supported",
+    supported=True,
 ))
 
 
@@ -120,7 +120,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
     dependencies=[],
     support_distributions=['LLVM_TOOLCHAIN'],
-    stability="supported",
+    supported=True,
 ))
 
 

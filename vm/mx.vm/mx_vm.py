@@ -70,7 +70,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
             custom_launcher_script="mx.vm/gu.cmd" if mx.is_windows() else None,
         ),
     ],
-    stability="supported",
+    supported=True,
 ))
 
 
@@ -83,7 +83,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
     third_party_license_files=['THIRD_PARTY_LICENSE.txt'],
     dependencies=[],
     support_distributions=['vm:VM_GRAALVM_SUPPORT'],
-    stability="supported",
+    supported=True,
 ))
 
 
