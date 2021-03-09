@@ -82,7 +82,7 @@ public class JfrFeature implements Feature {
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.singletonList(ThreadListenerFeature.class);
     }
-    private JfrRuntimeAccess runtimeAccess;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.jfr", false);
@@ -94,8 +94,7 @@ public class JfrFeature implements Feature {
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM());
         ImageSingletons.add(JfrManager.class, new JfrManager());
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
-        runtimeAccess = new JfrRuntimeAccessImpl();
-        ImageSingletons.add(JfrRuntimeAccess.class, runtimeAccess);
+        ImageSingletons.add(JfrRuntimeAccess.class, new JfrRuntimeAccessImpl());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
@@ -125,80 +124,43 @@ public class JfrFeature implements Feature {
         runtime.addShutdownHook(manager::teardown);
     }
 
-    private Set<Class<?>> analysisClasses = new HashSet<>();
-    public void afterAnalysis(Feature.AfterAnalysisAccess access) {
-        Collection<Class<?>> types = access.reachableTypes();
-        int numClasses = 0;
-        int numPkgs = 0;
-        int numMods = 0;
-        int numCls = 0;
-        Set<Package> pkgs = new HashSet<>();
-        Set<Module> mods = new HashSet<>();
-        Set<ClassLoader> cls = new HashSet<>();
-        for (Class<?> clazz : types) {
-            numClasses++;
-            analysisClasses.add(clazz);
-            if (clazz.getPackage() != null && !pkgs.contains(clazz.getPackage())) {
-                pkgs.add(clazz.getPackage());
-                numPkgs++;
-            }
-            if (clazz.getModule() != null && !mods.contains(clazz.getModule())) {
-                mods.add(clazz.getModule());
-                numMods++;
-            }
-            if (clazz.getClassLoader() != null && !cls.contains(clazz.getClassLoader())) {
-                cls.add(clazz.getClassLoader());
-                numCls++;
-            }
-        }
-        // java.lang.invoke.LambdaForm.BasicType seems not be found by analysis, but is present before compilation
-        numClasses++;
-
-        // TODO: Normally I would expect that the number of reachable classes here matches the number of
-        // compiled classes in beforeCompilation() (modulo the BasicType above, which also seems strange).
-        // However, beforeCompilation() seems to see all classes.
-        // See: AfterAnalysisAccessImpl.reachableTypes() and CompilationAccessImpl.compiledTypes().
-        // Maybe I'm doing something wrong.
-        System.out.println("afterAnalysis: numClasses: " + numClasses + ", numPkgs: " + numPkgs + ", numMods: " + numMods + ", numCls: " + numCls);
-        JfrTraceIdMap map = new JfrTraceIdMap(numClasses + numPkgs + numMods + numCls);
-        runtimeAccess.setTraceIdMap(map);
-    }
-
-    Set<Package> packages = new HashSet<>();
-    Set<Module> modules = new HashSet<>();
-    Set<ClassLoader> classLoaders = new HashSet<>();
-
     private Map<Class<?>, Integer> classToIndex = new HashMap<>();
+    private Set<Package> packages = new HashSet<>();
+    private Set<Module> modules = new HashSet<>();
+    private Set<ClassLoader> classLoaders = new HashSet<>();
+    private int mapSize = 0;
+
     private void assignClass(Class<?> clazz, int id) {
-        if (!analysisClasses.contains(clazz)) {
-            System.out.println("newly found class: " + clazz.getCanonicalName());
-        }
         classToIndex.put(clazz, id);
+        mapSize++;
         Package pkg = clazz.getPackage();
         if (pkg != null && !packages.contains(pkg)) {
             packages.add(pkg);
+            mapSize++;
         }
         Module module = clazz.getModule();
         if (module != null && !modules.contains(module)) {
             modules.add(module);
+            mapSize++;
         }
         ClassLoader cl = clazz.getClassLoader();
         if (cl != null && !classLoaders.contains(cl)) {
             classLoaders.add(cl);
+            mapSize++;
         }
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
 
-        a.compiledTypes(new CompiledTypesVisitor() {
-            @Override
-            public void visitCompiledType(Class<?> clazz, int typeID) {
-                assignClass(clazz, typeID);
-            }
-        });
-        // See comment in afterAnalysis()
-        System.out.println("beforeCompilation: numClasses: " + classToIndex.size() + ", numPkgs: " + packages.size() + ", numMods: " + modules.size() + ", numCls: " + classLoaders.size());
+        // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
+        a.compiledTypes(this::assignClass);
+
+        // Create trace-ID map with fixed size.
+        JfrTraceIdMap map = new JfrTraceIdMap(mapSize);
+        ImageSingletons.lookup(JfrRuntimeAccess.class).setTraceIdMap(map);
+
+        // Assign each class, package, module and class-loader a unique index.
         int idx = classToIndex.size();
         for (Class<?> clazz : classToIndex.keySet()) {
             if (!clazz.isPrimitive()) {
@@ -209,12 +171,15 @@ public class JfrFeature implements Feature {
             }
         }
         for (Package pkg : packages) {
+            Target_java_lang_Package.setJfrID(pkg, idx);
             JfrTraceId.assign(pkg, idx++);
         }
         for (Module module : modules) {
+            Target_java_lang_Module.setJfrID(module, idx);
             JfrTraceId.assign(module, idx++);
         }
         for (ClassLoader cl : classLoaders) {
+            Target_java_lang_ClassLoader.setJfrID(cl, idx);
             JfrTraceId.assign(cl, idx++);
         }
 

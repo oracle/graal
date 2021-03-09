@@ -56,11 +56,17 @@ public final class Target_java_lang_Package {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    class PackageJfrIDRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    static class PackageJfrIDRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Package cl = (Package) receiver;
-            return jfrIdsMap.get(cl);
+            Package pkg = (Package) receiver;
+            Integer val = jfrIdsMap.get(pkg);
+            if (val == null) {
+                // Why are some items not registered?
+                return Integer.valueOf(-1);
+            } else {
+                return val;
+            }
         }
     }
 
