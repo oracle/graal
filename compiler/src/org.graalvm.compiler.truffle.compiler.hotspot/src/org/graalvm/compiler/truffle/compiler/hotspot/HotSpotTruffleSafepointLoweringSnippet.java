@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
@@ -152,7 +153,9 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                 if (templates != null) {
                     templates.lower((TruffleSafepointNode) n, tool);
                 } else {
-                    // safepoints disabled nothing to lower to
+                    // safepoints should not have usages.
+                    GraphUtil.unlinkFixedNode((TruffleSafepointNode) n);
+                    n.safeDelete();
                 }
             }
         }
