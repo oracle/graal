@@ -457,13 +457,6 @@ public class FeatureImpl {
         AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
         }
-
-        @Override
-        public Collection<Class<?>> reachableTypes() {
-            List<AnalysisType> result = new ArrayList<>(getUniverse().getTypes());
-            //result.removeIf(t -> !isReachable(t));
-            return result.stream().map(AnalysisType::getJavaClass).collect(Collectors.toList());
-        }
     }
 
     public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements Feature.OnAnalysisExitAccess {
@@ -483,6 +476,10 @@ public class FeatureImpl {
         public HostedMetaAccess getMetaAccess() {
             return hMetaAccess;
         }
+    }
+
+    public interface CompiledTypesVisitor {
+        void visitCompiledType(Class<?> clazz, int typeID);
     }
 
     public static class CompilationAccessImpl extends FeatureAccessImpl implements Feature.CompilationAccess {
@@ -586,7 +583,7 @@ public class FeatureImpl {
             return hUniverse.getMethods();
         }
 
-        public void compiledTypes(Feature.CompiledTypesVisitor v) {
+        public void compiledTypes(FeatureImpl.CompiledTypesVisitor v) {
             Collection<? extends SharedType> types = getTypes();
             for (SharedType type : types) {
                 DynamicHub hub = type.getHub();

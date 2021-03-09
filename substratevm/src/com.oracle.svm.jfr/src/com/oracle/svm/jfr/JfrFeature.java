@@ -27,7 +27,6 @@ package com.oracle.svm.jfr;
 import static com.oracle.svm.jfr.PredefinedJFCSubstitition.DEFAULT_JFC;
 import static com.oracle.svm.jfr.PredefinedJFCSubstitition.PROFILE_JFC;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.jdk.Target_java_lang_Package;
@@ -124,10 +121,10 @@ public class JfrFeature implements Feature {
         runtime.addShutdownHook(manager::teardown);
     }
 
-    private Map<Class<?>, Integer> classToIndex = new HashMap<>();
-    private Set<Package> packages = new HashSet<>();
-    private Set<Module> modules = new HashSet<>();
-    private Set<ClassLoader> classLoaders = new HashSet<>();
+    private final Map<Class<?>, Integer> classToIndex = new HashMap<>();
+    private final Set<Package> packages = new HashSet<>();
+    private final Set<Module> modules = new HashSet<>();
+    private final Set<ClassLoader> classLoaders = new HashSet<>();
     private int mapSize = 0;
 
     private void assignClass(Class<?> clazz, int id) {
@@ -154,7 +151,7 @@ public class JfrFeature implements Feature {
     public void beforeCompilation(BeforeCompilationAccess a) {
 
         // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
-        a.compiledTypes(this::assignClass);
+        ((FeatureImpl.CompilationAccessImpl)a).compiledTypes(this::assignClass);
 
         // Create trace-ID map with fixed size.
         JfrTraceIdMap map = new JfrTraceIdMap(mapSize);
