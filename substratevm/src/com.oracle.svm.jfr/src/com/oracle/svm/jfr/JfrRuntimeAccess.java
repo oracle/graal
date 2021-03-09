@@ -26,13 +26,27 @@
 
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-public interface JfrRuntimeAccess {
-    JfrTraceIdMap getTraceIdMap();
+public class JfrRuntimeAccess {
+
+    @UnknownObjectField(types = {JfrTraceIdMap.class})
+    private JfrTraceIdMap traceIdMap;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    void setTraceIdMap(JfrTraceIdMap map);
+    JfrRuntimeAccess() {
+        traceIdMap = null;
+    }
+
+    public JfrTraceIdMap getTraceIdMap() {
+        return traceIdMap;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setTraceIdMap(JfrTraceIdMap map) {
+        this.traceIdMap = map;
+    }
 }

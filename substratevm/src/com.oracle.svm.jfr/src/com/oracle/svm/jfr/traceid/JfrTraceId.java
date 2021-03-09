@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.svm.jfr.JfrRuntimeAccess;
-import jdk.jfr.Event;
 import jdk.jfr.internal.JVM;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
