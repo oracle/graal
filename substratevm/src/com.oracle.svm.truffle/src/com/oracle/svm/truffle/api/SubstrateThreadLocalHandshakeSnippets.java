@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -54,7 +55,7 @@ import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
-    private static void pollSnippet(com.oracle.truffle.api.nodes.Node location) {
+    private static void pollSnippet(@ConstantParameter Object location) {
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY,
                         SubstrateThreadLocalHandshake.PENDING.get() != 0)) {
             foreignPoll(SubstrateThreadLocalHandshake.FOREIGN_POLL, location);
@@ -62,7 +63,7 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor, com.oracle.truffle.api.nodes.Node location);
+    private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object location);
 
     public SubstrateThreadLocalHandshakeSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {

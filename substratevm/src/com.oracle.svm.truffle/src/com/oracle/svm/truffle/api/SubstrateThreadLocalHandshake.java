@@ -75,7 +75,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     @Uninterruptible(reason = "Must not contain safepoint checks", calleeMustBe = false)
     @NeverInline("Reads stack pointer")
-    private static void pollStub(Node location) throws Throwable {
+    private static void pollStub(Object location) throws Throwable {
         try {
             invokeProcessHandshake(location);
         } catch (Throwable t) {
@@ -105,8 +105,8 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Uninterruptible(reason = "Used both from uninterruptable stub.", calleeMustBe = false)
     @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
-    private static void invokeProcessHandshake(Node enclosingNode) {
-        SINGLETON.processHandshake(enclosingNode);
+    private static void invokeProcessHandshake(Object enclosingNode) {
+        SINGLETON.processHandshake((Node) enclosingNode);
     }
 
     @Override
