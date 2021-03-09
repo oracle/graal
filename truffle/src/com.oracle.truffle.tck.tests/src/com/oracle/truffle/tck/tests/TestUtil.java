@@ -54,6 +54,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
@@ -70,6 +72,16 @@ final class TestUtil {
 
     private TestUtil() {
         throw new IllegalStateException("No instance allowed.");
+    }
+
+    static void assertNoCurrentContext() {
+        try {
+            Context ctx = Context.getCurrent();
+            throw new AssertionError(String.format(
+                            "Context cannot be explicitly entered while running TCK tests. Entered context: 0x%x", ctx.hashCode()));
+        } catch (IllegalStateException e) {
+            // No context entered.
+        }
     }
 
     static Set<? extends String> getRequiredLanguages(final TestContext context) {

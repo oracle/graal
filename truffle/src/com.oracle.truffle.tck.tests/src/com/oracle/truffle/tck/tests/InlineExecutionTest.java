@@ -49,6 +49,7 @@ import java.util.TreeSet;
 
 import org.junit.AfterClass;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -73,6 +74,11 @@ public class InlineExecutionTest {
             }
         }
         return res;
+    }
+
+    @BeforeClass
+    public static void setUpClass() {
+        TestUtil.assertNoCurrentContext();
     }
 
     @AfterClass
