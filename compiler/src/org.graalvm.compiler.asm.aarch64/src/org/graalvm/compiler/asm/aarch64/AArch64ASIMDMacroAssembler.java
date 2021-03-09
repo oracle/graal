@@ -45,7 +45,7 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      */
     private static long replicateValueToImm64(ElementSize eSize, long val) {
         int elementWidth = eSize.bits();
-        assert elementWidth == 64 || NumUtil.isUnsignedNbit(elementWidth, val);
+        assert elementWidth == 64 || NumUtil.isSignedNbit(elementWidth, val);
 
         long eVal = val & NumUtil.getNbitNumberLong(elementWidth);
         switch (eSize) {
@@ -230,13 +230,15 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      * @param index lane position of element to copy.
      */
     public void moveFromIndex(ElementSize eSize, Register dst, Register src, int index) {
-        if (index == 0) {
-            masm.fmov(eSize.bits(), dst, src);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        int nBits = eSize.bits();
+        if (index == 0 && (nBits == 32 || nBits == 64)) {
+            masm.fmov(nBits, dst, src);
         } else if (dst.getRegisterCategory().equals(CPU)) {
-            assert src.getRegisterCategory().equals(SIMD);
             umovGX(eSize, dst, src, index);
         } else {
-            assert src.getRegisterCategory().equals(SIMD) && dst.getRegisterCategory().equals(SIMD);
+            assert dst.getRegisterCategory().equals(SIMD);
             dupSX(eSize, dst, src, index);
         }
     }
