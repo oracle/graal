@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.vm;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
 /**
  * A cookie to be inserted into a {@link com.oracle.truffle.api.frame.Frame}. Espresso currently
@@ -37,7 +36,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
  * <li>extend this class functionality to support multi-cookies.
  * 
  * @see VM#JVM_DoPrivileged(StaticObject, StaticObject, StaticObject, boolean, DirectCallNode, Meta,
- *      SubstitutionProfiler)
+ *      com.oracle.truffle.espresso.substitutions.SubstitutionProfiler)
  * @see StackWalk.FrameWalker#doStackWalk(com.oracle.truffle.espresso.runtime.StaticObject)
  */
 public final class FrameCookie {
