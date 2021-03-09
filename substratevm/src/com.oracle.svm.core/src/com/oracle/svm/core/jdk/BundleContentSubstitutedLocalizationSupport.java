@@ -112,7 +112,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         Map<String, Object> content = extractContent(bundle);
         boolean isInDefaultLocale = bundle.getLocale().equals(defaultLocale);
         if (!isInDefaultLocale) {
-            StoredBundle compressed = compressBundle(bundle, content);
+            StoredBundle compressed = compressBundle(content);
             if (compressed != null) {
                 return compressed;
             }
@@ -128,8 +128,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
                 return bundle.getContent();
             } catch (Exception ex) {
                 // todo remove
-                System.err.println("!!!" + bundleClass);
-                ex.printStackTrace();
+// System.err.println("!!!" + bundleClass);
+// ex.printStackTrace();
                 System.exit(1);
                 throw GraalError.shouldNotReachHere(ex, "Decompressing a resource bundle " + bundleClass.getName() + " failed.");
             }
@@ -161,7 +161,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         throw VMError.shouldNotReachHere("Failed to extract content for " + bundle + " of type " + bundle.getClass());
     }
 
-    private static CompressedBundle compressBundle(ResourceBundle bundle, Map<String, Object> content) {
+    private static CompressedBundle compressBundle(Map<String, Object> content) {
         // todo put compression into a separate class
         Pair<String, int[]> input = serializeContent(content);
         if (input == null) {
@@ -230,14 +230,13 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
             int indicesInBytesLen = readInt(input);
             byte[] indicesInBytes = new byte[indicesInBytesLen];
             int realIntsRead = readNBytes(input, indicesInBytes);
-            GraalError.guarantee(realIntsRead == indicesInBytesLen, "Not enough indices bytes read");
+            assert realIntsRead == indicesInBytesLen : "Not enough indices bytes read";
             int[] indices = bytesToInt(indicesInBytes);
             int remainingBytesSize = readInt(input);
             byte[] stringBytes = new byte[remainingBytesSize];
             int allBytesRead = readNBytes(input, stringBytes);
-            if (allBytesRead != remainingBytesSize) {
-                System.err.println("err 2 " + allBytesRead + " vs expected " + remainingBytesSize);
-            }
+            assert allBytesRead == remainingBytesSize : "Not enough indices bytes read";
+            assert input.available() == 0 : "Input not fully consumed";
             String decompressed = new String(stringBytes, StandardCharsets.UTF_8);
             int i = 0;
             int offset = 0;
