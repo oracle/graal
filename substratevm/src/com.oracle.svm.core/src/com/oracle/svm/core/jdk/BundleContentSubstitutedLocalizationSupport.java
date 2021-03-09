@@ -222,13 +222,13 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
             }
         }
 
-        private void writeIndices(int[] indices, GZIPOutputStream out) throws IOException {
+        private static void writeIndices(int[] indices, GZIPOutputStream out) throws IOException {
             byte[] indicesInBytes = intsToBytes(indices);
             writeInt(out, indicesInBytes.length);
             out.write(indicesInBytes);
         }
 
-        private void writeText(String text, GZIPOutputStream out) throws IOException {
+        private static void writeText(String text, GZIPOutputStream out) throws IOException {
             byte[] textBytes = text.getBytes(StandardCharsets.UTF_8);
             writeInt(out, textBytes.length);
             out.write(textBytes);
