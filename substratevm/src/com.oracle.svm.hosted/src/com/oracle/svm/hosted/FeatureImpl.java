@@ -582,14 +582,6 @@ public class FeatureImpl {
         public Collection<? extends SharedMethod> getMethods() {
             return hUniverse.getMethods();
         }
-
-        public void compiledTypes(FeatureImpl.CompiledTypesVisitor v) {
-            Collection<? extends SharedType> types = getTypes();
-            for (SharedType type : types) {
-                DynamicHub hub = type.getHub();
-                v.visitCompiledType(hub.getHostedJavaClass(), hub.getTypeID());
-            }
-        }
     }
 
     public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess {

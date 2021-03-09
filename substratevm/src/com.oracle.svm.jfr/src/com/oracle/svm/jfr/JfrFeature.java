@@ -27,6 +27,7 @@ package com.oracle.svm.jfr;
 import static com.oracle.svm.jfr.PredefinedJFCSubstitition.DEFAULT_JFC;
 import static com.oracle.svm.jfr.PredefinedJFCSubstitition.PROFILE_JFC;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,9 +35,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.jdk.Target_java_lang_Package;
+import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -155,7 +158,11 @@ public class JfrFeature implements Feature {
         final JfrMetadataCollection metadata = new JfrMetadataCollection();
 
         // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
-        ((FeatureImpl.CompilationAccessImpl)a).compiledTypes((clazz, typeID) -> assignClass(metadata, clazz, typeID));
+        Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl)a).getTypes();
+        for (SharedType type : types) {
+            DynamicHub hub = type.getHub();
+            assignClass(metadata, hub.getHostedJavaClass(), hub.getTypeID());
+        }
 
         // Create trace-ID map with fixed size.
         JfrTraceIdMap map = new JfrTraceIdMap(metadata.mapSize);
