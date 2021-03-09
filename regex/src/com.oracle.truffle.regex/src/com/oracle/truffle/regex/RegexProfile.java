@@ -61,6 +61,7 @@ public final class RegexProfile {
     private final Counter.ThreadSafeCounter calls = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter matches = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter captureGroupAccesses = new Counter.ThreadSafeCounter();
+    private final Counter.ThreadSafeCounter processedCharacters = new Counter.ThreadSafeCounter();
     private double avgMatchLength = 0;
     private double avgMatchedPortionOfSearchSpace = 0;
 
@@ -118,11 +119,16 @@ public final class RegexProfile {
     }
 
     /**
-     * Decides whether the regular expression was executed often enough to warrant the costly
-     * generation of a fully expanded DFA.
+     * Decides whether the regular expression was executed often enough or would process enough
+     * characters to warrant the costly generation of a fully expanded DFA.
      */
-    public boolean shouldGenerateDFA() {
-        return calls.getCount() >= TRegexOptions.TRegexGenerateDFAThreshold;
+    public boolean shouldGenerateDFA(int inputLength) {
+        return calls.getCount() >= TRegexOptions.TRegexGenerateDFAThresholdCalls ||
+                        Integer.toUnsignedLong(processedCharacters.getCount() + inputLength) >= TRegexOptions.TRegexGenerateDFAThresholdCharacters;
+    }
+
+    public void incProcessedCharacters(int numberOfCharacters) {
+        processedCharacters.inc(numberOfCharacters);
     }
 
     /**
