@@ -68,6 +68,15 @@ public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
         return entries.poll();
     }
 
+    /*
+     * This method traverses the entries and picks the best task according to {@link
+     * CompilationTask#isHigherPriorityThan(CompilationTask)}. The method is synchronized to ensure
+     * that only 1 thread at a time traverses and picks the max entry. It is still possible that the
+     * {@link #entries} gets modified during the execution of this method (e.g. add, but that's
+     * fine, because the iterator is weakly consistent). This allows the queue to not block
+     * interpreter threads from adding entries to the queue while a compiler thread is looking for
+     * the best task.
+     */
     private synchronized E takeMax() {
         if (entries.isEmpty()) {
             return null;
@@ -78,6 +87,7 @@ public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
         while (it.hasNext()) {
             E entry = it.next();
             CompilationTask task = task(entry);
+            // updateWeight returns a negative number only if the task's target does not exist
             if (task.isCancelled() || task.updateWeight(time) < 0) {
                 it.remove();
                 continue;
@@ -90,13 +100,16 @@ public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     private E removeAndReturn(E max) {
-        entries.remove(max);
-        return max;
+        if (entries.remove(max)) {
+            return max;
+        } else {
+            return null;
+        }
     }
 
     @Override
     public boolean offer(E e) {
-        return add(e);
+        return entries.offer(e);
     }
 
     @Override
