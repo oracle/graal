@@ -118,7 +118,7 @@ final class Target_java_util_ListResourceBundle {
         if (lookup != null) {
             return;
         }
-        lookup = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentFor(getClass());
+        lookup = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentOf(getClass());
     }
 }
 
@@ -131,7 +131,7 @@ final class Target_sun_util_resources_OpenListResourceBundle {
     @Substitute
     private void loadLookup() {
         LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
-        Map<String, Object> content = support.getBundleContentFor(getClass());
+        Map<String, Object> content = support.getBundleContentOf(getClass());
         // use the supplied map implementation specified by the factory method
         Map<String, Object> tmp = createMap(content.size());
         tmp.putAll(content);
@@ -167,7 +167,7 @@ final class Target_sun_util_resources_ParallelListResourceBundle {
         LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
         synchronized (this) {
             if (lookup == null) {
-                lookup = new ConcurrentHashMap<>(support.getBundleContentFor(getClass()));
+                lookup = new ConcurrentHashMap<>(support.getBundleContentOf(getClass()));
             }
         }
     }

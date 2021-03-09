@@ -92,6 +92,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
+    private final BundleCompressionAlgorithm compressionAlgorithm = new GzipBundleCompressionAlgorithm();
+
     public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, List<Locale> locales) {
         super(defaultLocale, locales);
     }
@@ -109,19 +111,19 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     private StoredBundle processBundle(ResourceBundle bundle) {
-        Map<String, Object> content = extractContent(bundle);
         boolean isInDefaultLocale = bundle.getLocale().equals(defaultLocale);
         if (!isInDefaultLocale) {
-            StoredBundle compressed = compressBundle(content);
+            StoredBundle compressed = compressionAlgorithm.compress(bundle);
             if (compressed != null) {
                 return compressed;
             }
         }
+        Map<String, Object> content = extractContent(bundle);
         return new ExtractedBundle(content);
     }
 
     @Override
-    public Map<String, Object> getBundleContentFor(Class<?> bundleClass) {
+    public Map<String, Object> getBundleContentOf(Class<?> bundleClass) {
         StoredBundle bundle = storedBundles.get(bundleClass);
         if (bundle != null) {
             try {
@@ -134,7 +136,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
                 throw GraalError.shouldNotReachHere(ex, "Decompressing a resource bundle " + bundleClass.getName() + " failed.");
             }
         }
-        return super.getBundleContentFor(bundleClass);
+        return super.getBundleContentOf(bundleClass);
     }
 
     public boolean isBundleSupported(ResourceBundle bundle) {
@@ -161,143 +163,169 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         throw VMError.shouldNotReachHere("Failed to extract content for " + bundle + " of type " + bundle.getClass());
     }
 
-    private static CompressedBundle compressBundle(Map<String, Object> content) {
-        // todo put compression into a separate class
-        Pair<String, int[]> input = serializeContent(content);
-        if (input == null) {
-            return null;
+    private abstract static class BundleCompressionAlgorithm {
+        public abstract CompressedBundle compress(ResourceBundle bundle);
+
+        protected Pair<String, int[]> serializeContent(Map<String, Object> content) {
+            List<Integer> indices = new ArrayList<>();
+            StringBuilder builder = new StringBuilder();
+            for (Map.Entry<String, Object> entry : content.entrySet()) {
+                String key = entry.getKey();
+                builder.append(key);
+                Object value = entry.getValue();
+                if (value instanceof String) {
+                    builder.append(value);
+                    indices.add(-1);
+                    indices.add(key.length());
+                    indices.add(((String) value).length());
+                } else if (value instanceof Object[]) {
+                    Object[] arr = (Object[]) value;
+                    indices.add(arr.length);
+                    indices.add(key.length());
+                    for (Object o : arr) {
+                        if (!(o instanceof String)) {
+                            return null;
+                        }
+                        builder.append(o);
+                        indices.add(((String) o).length());
+                    }
+                } else {
+                    return null;
+                }
+            }
+            int[] res = new int[indices.size()];
+            for (int i = 0; i < indices.size(); i++) {
+                res[i] = indices.get(i);
+            }
+            return Pair.create(builder.toString(), res);
         }
-        String text = input.getLeft();
-        int[] indices = input.getRight();
-        try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(byteStream)) {
-            byte[] indicesInBytes = intToBytes(indices);
+    }
+
+    static class GzipBundleCompressionAlgorithm extends BundleCompressionAlgorithm {
+        @Override
+        public CompressedBundle compress(ResourceBundle bundle) {
+            final Map<String, Object> content = extractContent(bundle);
+            Pair<String, int[]> input = serializeContent(content);
+            if (input == null) {
+                return null;
+            }
+            try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(byteStream)) {
+                writeIndices(input.getRight(), out);
+                writeText(input.getLeft(), out);
+                out.finish();
+                return new CompressedBundle(byteStream.toByteArray(), GzipBundleCompressionAlgorithm::decompressBundle);
+            } catch (IOException ex) {
+                // if the compression fails for some reason, the bundle can still be saved
+                // uncompressed
+                // todo log this as a warning?
+                return null;
+            }
+        }
+
+        private void writeIndices(int[] indices, GZIPOutputStream out) throws IOException {
+            byte[] indicesInBytes = intsToBytes(indices);
             writeInt(out, indicesInBytes.length);
             out.write(indicesInBytes);
-            final byte[] textBytes = text.getBytes(StandardCharsets.UTF_8);
+        }
+
+        private void writeText(String text, GZIPOutputStream out) throws IOException {
+            byte[] textBytes = text.getBytes(StandardCharsets.UTF_8);
             writeInt(out, textBytes.length);
             out.write(textBytes);
-            out.finish();
-            return new CompressedBundle(byteStream.toByteArray(), BundleContentSubstitutedLocalizationSupport::decompressBundle);
-        } catch (IOException ex) {
-            // if the compression fails for some reason, the bundle can still be saved uncompressed
-            // todo log this as a warning?
-            return null;
         }
-    }
 
-    private static byte[] intToBytes(int[] data) {
-        ByteBuffer byteBuffer = ByteBuffer.allocate(data.length * 4);
-        IntBuffer intBuffer = byteBuffer.asIntBuffer();
-        intBuffer.put(data);
-        return byteBuffer.array();
-    }
-
-    private static int[] bytesToInt(byte[] data) {
-        IntBuffer intBuf = ByteBuffer.wrap(data)
-                        .order(ByteOrder.BIG_ENDIAN)
-                        .asIntBuffer();
-        int[] array = new int[intBuf.remaining()];
-        intBuf.get(array);
-        return array;
-    }
-
-    private static int readInt(InputStream stream) throws IOException {
-        return stream.read() << 24 | stream.read() << 16 | stream.read() << 8 | stream.read();
-    }
-
-    private static void writeInt(OutputStream stream, int value) throws IOException {
-        stream.write((byte) (value >>> 24));
-        stream.write((byte) (value >>> 16));
-        stream.write((byte) (value >>> 8));
-        stream.write((byte) value);
-    }
-
-    private static int readNBytes(InputStream input, byte[] dst) throws IOException {
-        int remaining = dst.length;
-        int allBytesRead = 0;
-        int bytesRead = input.read(dst, 0, remaining);
-        while (bytesRead > 0) {
-            allBytesRead += bytesRead;
-            remaining -= bytesRead;
-            bytesRead = input.read(dst, allBytesRead, remaining);
+        private static Map<String, Object> decompressBundle(byte[] data) {
+            try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(data))) {
+                int[] indices = readIndices(input);
+                String decompressed = readText(input);
+                assert input.available() == 0 : "Input not fully consumed";
+                return deserializeContent(indices, decompressed);
+            } catch (IOException e) {
+                throw GraalError.shouldNotReachHere(e, "Decompressing a resource bundle failed.");
+            }
         }
-        return allBytesRead;
-    }
 
-    private static Map<String, Object> decompressBundle(byte[] data) {
-        Map<String, Object> content = new HashMap<>();
-        try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(data))) {
-            int indicesInBytesLen = readInt(input);
-            byte[] indicesInBytes = new byte[indicesInBytesLen];
-            int realIntsRead = readNBytes(input, indicesInBytes);
-            assert realIntsRead == indicesInBytesLen : "Not enough indices bytes read";
-            int[] indices = bytesToInt(indicesInBytes);
-            int remainingBytesSize = readInt(input);
-            byte[] stringBytes = new byte[remainingBytesSize];
-            int allBytesRead = readNBytes(input, stringBytes);
-            assert allBytesRead == remainingBytesSize : "Not enough indices bytes read";
-            assert input.available() == 0 : "Input not fully consumed";
-            String decompressed = new String(stringBytes, StandardCharsets.UTF_8);
+        private static Map<String, Object> deserializeContent(int[] indices, String text) {
+            Map<String, Object> content = new HashMap<>();
             int i = 0;
             int offset = 0;
             while (i < indices.length) {
-                int len = indices[i++];
-                boolean isArray = len != -1;
+                int valueCnt = indices[i++];
                 int keyLen = indices[i++];
-                String key = decompressed.substring(offset, offset + keyLen);
+                String key = text.substring(offset, offset + keyLen);
                 offset += keyLen;
+                boolean isArray = valueCnt != -1;
                 if (isArray) {
-                    Object[] values = new String[len];
-                    for (int j = 0; j < len; j++) {
+                    Object[] values = new String[valueCnt];
+                    for (int j = 0; j < valueCnt; j++) {
                         int valueLen = indices[i++];
-                        values[j] = decompressed.substring(offset, offset + valueLen);
+                        values[j] = text.substring(offset, offset + valueLen);
                         offset += valueLen;
                     }
                     content.put(key, values);
                 } else {
                     int valueLen = indices[i++];
-                    String value = decompressed.substring(offset, offset + valueLen);
+                    String value = text.substring(offset, offset + valueLen);
                     offset += valueLen;
                     content.put(key, value);
                 }
             }
-        } catch (IOException e) {
-            GraalError.shouldNotReachHere(e, "Decompressing a resource bundle failed.");
+            return content;
         }
-        return content;
-    }
 
-    private static Pair<String, int[]> serializeContent(Map<String, Object> content) {
-        List<Integer> indices = new ArrayList<>();
-        StringBuilder builder = new StringBuilder();
-        for (Map.Entry<String, Object> entry : content.entrySet()) {
-            String key = entry.getKey();
-            builder.append(key);
-            Object value = entry.getValue();
-            if (value instanceof String) {
-                builder.append(value);
-                indices.add(-1);
-                indices.add(key.length());
-                indices.add(((String) value).length());
-            } else if (value instanceof Object[]) {
-                Object[] arr = (Object[]) value;
-                indices.add(arr.length);
-                indices.add(key.length());
-                for (Object o : arr) {
-                    if (!(o instanceof String)) {
-                        return null;
-                    }
-                    builder.append(o);
-                    indices.add(((String) o).length());
-                }
-            } else {
-                return null;
+        private static int[] readIndices(GZIPInputStream input) throws IOException {
+            int indicesInBytesLen = readInt(input);
+            byte[] indicesInBytes = new byte[indicesInBytesLen];
+            int realIntsRead = readNBytes(input, indicesInBytes);
+            assert realIntsRead == indicesInBytesLen : "Not enough indices bytes read";
+            return bytesToInts(indicesInBytes);
+        }
+
+        private static String readText(GZIPInputStream input) throws IOException {
+            int remainingBytesSize = readInt(input);
+            byte[] stringBytes = new byte[remainingBytesSize];
+            int allBytesRead = readNBytes(input, stringBytes);
+            assert allBytesRead == remainingBytesSize : "Not enough indices bytes read";
+            return new String(stringBytes, StandardCharsets.UTF_8);
+        }
+
+        private static byte[] intsToBytes(int[] data) {
+            ByteBuffer byteBuffer = ByteBuffer.allocate(data.length * 4);
+            IntBuffer intBuffer = byteBuffer.asIntBuffer();
+            intBuffer.put(data);
+            return byteBuffer.array();
+        }
+
+        private static int[] bytesToInts(byte[] data) {
+            IntBuffer intBuf = ByteBuffer.wrap(data)
+                            .order(ByteOrder.BIG_ENDIAN)
+                            .asIntBuffer();
+            int[] array = new int[intBuf.remaining()];
+            intBuf.get(array);
+            return array;
+        }
+
+        private static int readInt(InputStream stream) throws IOException {
+            return stream.read() << 24 | stream.read() << 16 | stream.read() << 8 | stream.read();
+        }
+
+        private static void writeInt(OutputStream stream, int value) throws IOException {
+            stream.write((byte) (value >>> 24));
+            stream.write((byte) (value >>> 16));
+            stream.write((byte) (value >>> 8));
+            stream.write((byte) value);
+        }
+
+        private static int readNBytes(InputStream input, byte[] dst) throws IOException {
+            int remaining = dst.length;
+            int offset = 0;
+            int bytesRead = input.read(dst, 0, remaining);
+            while (bytesRead > 0) {
+                offset += bytesRead;
+                remaining -= bytesRead;
+                bytesRead = input.read(dst, offset, remaining);
             }
+            return offset;
         }
-        int[] res = new int[indices.size()];
-        for (int i = 0; i < indices.size(); i++) {
-            res[i] = indices.get(i);
-        }
-        return Pair.create(builder.toString(), res);
     }
 }
