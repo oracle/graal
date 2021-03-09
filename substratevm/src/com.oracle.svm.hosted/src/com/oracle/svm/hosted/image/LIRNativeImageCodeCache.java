@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.core.sampling.AOTSamplingData;
+import com.oracle.svm.core.sampling.SamplingMethodData;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -91,7 +91,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             // Assign a location to all methods.
             assert codeCacheSize == 0;
             HostedMethod firstMethod = null;
-            AOTSamplingData aotSamplingData = ImageSingletons.lookup(AOTSamplingData.class);
+            SamplingMethodData samplingMethodData = ImageSingletons.lookup(SamplingMethodData.class);
             for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
 
                 HostedMethod method = entry.getKey();
@@ -103,8 +103,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 compilationsByStart.put(codeCacheSize, compilation);
                 method.setCodeAddressOffset(codeCacheSize);
                 // map the method address to the method analysis id
-                aotSamplingData.addEntry(codeCacheSize, method.wrapped.getId());
-                aotSamplingData.addMethodName(codeCacheSize, method.wrapped.getQualifiedName());
+                samplingMethodData.addEntry(codeCacheSize, method.wrapped.getId());
+                samplingMethodData.addMethodName(codeCacheSize, method.wrapped.getQualifiedName());
                 codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), SubstrateOptions.codeAlignment());
             }
 

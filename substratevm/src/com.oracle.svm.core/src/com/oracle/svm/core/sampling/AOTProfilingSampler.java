@@ -11,12 +11,12 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 
-public class ProfilingRegister implements ProfilingSampler {
+public class AOTProfilingSampler implements ProfilingSampler {
 
     private final boolean collectingActive;
     private PrefixTree prefixTree;
 
-    public ProfilingRegister(boolean collectingActive) {
+    public AOTProfilingSampler(boolean collectingActive) {
         this.collectingActive = collectingActive;
     }
 

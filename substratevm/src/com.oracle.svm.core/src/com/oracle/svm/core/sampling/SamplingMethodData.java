@@ -1,6 +1,6 @@
 package com.oracle.svm.core.sampling;
 
-public interface AOTSamplingData {
+public interface SamplingMethodData {
 
     void addEntry(long adr, int methodId);
 

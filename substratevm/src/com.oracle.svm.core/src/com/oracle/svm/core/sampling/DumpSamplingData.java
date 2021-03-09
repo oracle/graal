@@ -5,6 +5,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import org.graalvm.collections.PrefixTree;
@@ -20,9 +22,9 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 
-public class SamplingData {
+public class DumpSamplingData {
 
-    private static class CallFrame {
+    private static final class CallFrame {
         final String name;
         final CallFrame tail;
 
@@ -32,9 +34,18 @@ public class SamplingData {
         }
     }
 
-    public Runnable dumpToFile() {
+    public Runnable dumpSamplingProfilesToFile() {
         try {
-            return SamplingData::dumpProfiles;
+            return DumpSamplingData::dumpProfiles;
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return null;
+        }
+    }
+
+    public Runnable dumpCompilationUnitsToFile() {
+        try {
+            return DumpSamplingData::dumpCompilationUnits;
         } catch (Throwable t) {
             t.printStackTrace();
             return null;
@@ -42,17 +53,36 @@ public class SamplingData {
     }
 
     public static void dumpProfiles() {
-        BufferedWriter writer = null;
+        BufferedWriter profilesWriter = null;
         try {
-            Path path = Paths.get("sampling.iprof").toAbsolutePath();
-            writer = new BufferedWriter(new FileWriter(path.toFile()));
-            dumpFromTree(writer);
+            Path pathProfiles = Paths.get("sampling-profiles.iprof").toAbsolutePath();
+            profilesWriter = new BufferedWriter(new FileWriter(pathProfiles.toFile()));
+            dumpFromTree(profilesWriter, true);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (writer != null) {
+            if (profilesWriter != null) {
                 try {
-                    writer.close();
+                    profilesWriter.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    public static void dumpCompilationUnits() {
+        BufferedWriter flameWriter = null;
+        try {
+            Path path = Paths.get("sampling-flame.iprof").toAbsolutePath();
+            flameWriter = new BufferedWriter(new FileWriter(path.toFile()));
+            dumpFromTree(flameWriter, false);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (flameWriter != null) {
+                try {
+                    flameWriter.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -73,7 +103,7 @@ public class SamplingData {
         // return CodeInfoAccess.convert(untetheredCodeInfo);
     }
 
-    static String decodeMethod(long address, AOTSamplingData aotSamplingData) {
+    static String decodeMethod(long address, SamplingMethodData samplingMethodData, boolean dumpProfiles) {
         CodePointer ip = WordFactory.pointer(address);
         CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
         CodeInfo codeInfo = codeInfo(ip);
@@ -83,18 +113,37 @@ public class SamplingData {
         while (frameInfo.getCaller() != null) {
             frameInfo = frameInfo.getCaller();
         }
-        int methodId = aotSamplingData.findMethod(relativeIP);
-        String methodName = aotSamplingData.findMethodName(relativeIP);
+        int methodId = samplingMethodData.findMethod(relativeIP);
+        String methodName = samplingMethodData.findMethodName(relativeIP);
         int bci = frameInfo.getBci();
         return methodName + ":" + bci;
     }
 
-    static void dumpFromTree(BufferedWriter writer) throws IOException {
-        PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
-        AOTSamplingData aotSamplingData = ImageSingletons.lookup(AOTSamplingData.class);
-        aotSamplingData.dump();
+    private static String createDecodedMethodEntry(FrameInfoQueryResult frameInfo, long relativeIP, SamplingMethodData samplingMethodData, boolean dumpProfiles) {
+        if (dumpProfiles) {
+            List<FrameInfoQueryResult> frames = new ArrayList<>();
+            frames.add(frameInfo);
+            while (frameInfo.getCaller() != null) {
+                frameInfo = frameInfo.getCaller();
+                frames.add(frameInfo);
+            }
+            // TODO
+            return "";
+        } else {
+            while (frameInfo.getCaller() != null) {
+                frameInfo = frameInfo.getCaller();
+            }
+            String methodName = samplingMethodData.findMethodName(relativeIP);
+            int bci = frameInfo.getBci();
+            return methodName + ":" + bci;
+        }
+    }
 
-        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> new CallFrame(decodeMethod(address, aotSamplingData), context), (context, value) -> {
+    static void dumpFromTree(BufferedWriter writer, boolean dumpProfiles) throws IOException {
+        PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
+        SamplingMethodData samplingMethodData = ImageSingletons.lookup(SamplingMethodData.class);
+
+        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> new CallFrame(decodeMethod(address, samplingMethodData, dumpProfiles), context), (context, value) -> {
             try {
                 StringBuilder contextChain = new StringBuilder(context.name);
                 CallFrame elem = context.tail;
