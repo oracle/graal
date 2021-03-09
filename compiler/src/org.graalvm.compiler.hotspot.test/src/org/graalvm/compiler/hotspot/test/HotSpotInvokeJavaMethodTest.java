@@ -30,6 +30,8 @@ import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -113,6 +115,11 @@ public class HotSpotInvokeJavaMethodTest extends HotSpotGraalCompilerTest {
         }, HotSpotInvokeJavaMethodTest.class, "objectReturnsObject", Object.class);
 
         super.registerInvocationPlugins(invocationPlugins);
+    }
+
+    @Before
+    public void before() {
+        Assume.assumeTrue("Invoke stub helper is missing", runtime().getVMConfig().invokeJavaMethodAddress != 0);
     }
 
     static boolean[] booleanValues = new boolean[]{Boolean.TRUE, Boolean.FALSE};
