@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.TruffleReturnBoxedParameterTestFactory.IntNodeFactory;
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
@@ -146,7 +145,12 @@ public class TruffleReturnBoxedParameterTest extends PartialEvaluationTest {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(node);
         StructuredGraph g = partialEval(callTarget, new Object[]{1});
         compile(callTarget, g);
-        // no slowpath call to allocation snippet after box optimization
-        Assert.assertEquals(0, g.getNodes().filter(ForeignCallNode.class).count());
+        // no box foreign call to allocation snippet after box optimization
+        for (ForeignCallNode call : g.getNodes().filter(ForeignCallNode.class)) {
+            // plain methods contain a safepoint
+            if (!call.getDescriptor().getName().equals("HotSpotThreadLocalHandshake.doHandshake")) {
+                throw new AssertionError("Unexpected foreign call:" + call.getDescriptor().getName());
+            }
+        }
     }
 }

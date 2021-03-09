@@ -292,7 +292,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
             Assert.assertTrue(executionFails);
             return;
         }
-        graph = partialEval((OptimizedCallTarget) callTarget, args, CompilationIdentifier.INVALID_COMPILATION_ID);
+        graph = partialEval((OptimizedCallTarget) callTarget, args, getCompilationId(callTarget));
         graphChecker.accept(graph);
         new PartialEscapePhase(true, this.createCanonicalizerPhase(), graph.getOptions()).apply(graph, getDefaultHighTierContext());
         graphChecker.accept(graph);

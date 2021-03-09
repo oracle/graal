@@ -47,21 +47,21 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
     public void catchControlFlowException() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new CatchControlFlowExceptionTestNode(new ThrowControlFlowExceptionTestNode());
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "catchControlFlowException", result));
+        assertPartialEvalEquals(ControlFlowExceptionPartialEvaluationTest::constant42, new RootTestNode(fd, "catchControlFlowException", result));
     }
 
     @Test
     public void catchSlowPathAndControlFlowException() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new CatchSlowPathAndControlFlowExceptionTestNode(new ThrowControlFlowExceptionTestNode());
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "catchSlowPathAndControlFlowException", result));
+        assertPartialEvalEquals(ControlFlowExceptionPartialEvaluationTest::constant42, new RootTestNode(fd, "catchSlowPathAndControlFlowException", result));
     }
 
     @Test
     public void catchControlFlowExceptionWithLoopExplosion() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new CatchControlFlowExceptionTestNode(new BlockTestNode(new ThrowControlFlowExceptionTestNode()));
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "catchControlFlowExceptionWithLoopExplosion", result));
+        assertPartialEvalEquals(ControlFlowExceptionPartialEvaluationTest::constant42, new RootTestNode(fd, "catchControlFlowExceptionWithLoopExplosion", result));
     }
 
     @Test
@@ -69,7 +69,7 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").build());
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()));
         AbstractTestNode result = new CatchControlFlowExceptionTestNode(new CallTestNode(callTarget));
-        assertPartialEvalEquals("constant42", new RootTestNode(new FrameDescriptor(), "catchControlFlowExceptionFromCall", result));
+        assertPartialEvalEquals(ControlFlowExceptionPartialEvaluationTest::constant42, new RootTestNode(new FrameDescriptor(), "catchControlFlowExceptionFromCall", result));
     }
 
     public static class ThrowControlFlowExceptionTestNode extends AbstractTestNode {

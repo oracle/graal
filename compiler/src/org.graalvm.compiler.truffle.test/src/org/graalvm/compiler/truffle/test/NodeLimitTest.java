@@ -142,7 +142,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     private int getBaselineGraphNodeCount(RootNode rootNode) {
         final OptimizedCallTarget baselineGraphTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
-        final StructuredGraph baselineGraph = partialEval(baselineGraphTarget, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
+        final StructuredGraph baselineGraph = partialEval(baselineGraphTarget, new Object[]{}, getCompilationId(baselineGraphTarget));
         return baselineGraph.getNodeCount();
     }
 
@@ -151,7 +151,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalNodeCount", Integer.toString(nodeLimit)).build());
         RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
         final Object[] arguments = {1};
-        partialEval((OptimizedCallTarget) target, arguments, CompilationIdentifier.INVALID_COMPILATION_ID);
+        partialEval((OptimizedCallTarget) target, arguments, getCompilationId(target));
     }
 
 }

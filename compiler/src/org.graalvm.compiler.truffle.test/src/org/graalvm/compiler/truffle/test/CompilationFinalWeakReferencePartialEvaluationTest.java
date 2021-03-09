@@ -131,7 +131,7 @@ public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialE
         IntSupplier data = generateTestData();
         AbstractTestNode result = new CompilationFinalWeakReferenceTestNode(data);
         RootTestNode rootNode = new RootTestNode(fd, name, result);
-        assertPartialEvalEquals("constant42", rootNode);
+        assertPartialEvalEquals(CompilationFinalPartialEvaluationTest::constant42, rootNode);
 
         OptimizedCallTarget callTarget = compileHelper(name, rootNode, new Object[0]);
         Assert.assertEquals(42, (int) callTarget.call(new Object[0]));

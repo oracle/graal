@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
@@ -104,40 +105,40 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
 
     @Test
     public void testOnEnterCompilation() {
-        testListener(null, "return42", new Return42Node());
+        testListener(null, ExecutionListenerCompilerTest::return42, new Return42Node());
 
         testListener(ExecutionListener.newBuilder().onEnter(empty).expressions(true),
-                        "return42", //
+                        ExecutionListenerCompilerTest::return42, //
                         new Return42Node());
 
         testListener(ExecutionListener.newBuilder().onEnter(counting).expressions(true),
-                        "return42AndIncrement", //
+                        ExecutionListenerCompilerTest::return42AndIncrement, //
                         new Return42Node());
     }
 
     @Test
     public void testOnReturnCompilation() {
-        testListener(null, "return42", new Return42Node());
+        testListener(null, ExecutionListenerCompilerTest::return42, new Return42Node());
 
         testListener(ExecutionListener.newBuilder().onReturn(empty).expressions(true),
-                        "return42",
+                        ExecutionListenerCompilerTest::return42,
                         new Return42Node());
 
         testListener(ExecutionListener.newBuilder().onReturn(counting).expressions(true),
-                        "return42AndIncrement", //
+                        ExecutionListenerCompilerTest::return42AndIncrement, //
                         new Return42Node());
     }
 
     @Test
     public void testOnErrorCompilation() {
-        testListener(null, "throwError", new ThrowErrorNode());
+        testListener(null, ExecutionListenerCompilerTest::throwError, new ThrowErrorNode());
 
         testListener(ExecutionListener.newBuilder().onReturn(empty).expressions(true),
-                        "throwError", //
+                        ExecutionListenerCompilerTest::throwError, //
                         new ThrowErrorNode());
 
         testListener(ExecutionListener.newBuilder().onReturn(counting).expressions(true),
-                        "throwErrorAndIncrement", //
+                        ExecutionListenerCompilerTest::throwErrorAndIncrement, //
                         new ThrowErrorNode());
     }
 
@@ -147,33 +148,33 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
      */
     @Test
     public void testOnErrorNoException() {
-        testListener(null, "returnNull", new ReturnNullNode());
+        testListener(null, ExecutionListenerCompilerTest::returnNull, new ReturnNullNode());
 
         testListener(ExecutionListener.newBuilder().onEnter(empty).onReturn(empty).expressions(true).collectReturnValue(true).collectInputValues(true), //
-                        "returnNull",
+                        ExecutionListenerCompilerTest::returnNull,
                         new ReturnNullNode());
 
         testListener(ExecutionListener.newBuilder().onEnter(empty).onReturn(counting).expressions(true).collectReturnValue(true).collectInputValues(true), //
-                        "returnNullAndIncrement",
+                        ExecutionListenerCompilerTest::returnNullAndIncrement,
                         new ReturnNullNode());
 
     }
 
     @Test
     public void testMultipleCounts() {
-        testListener(null, "return84", new ExecuteTwoChildrenNode(new Return42Node(), new Return42Node()));
+        testListener(null, ExecutionListenerCompilerTest::return84, new ExecuteTwoChildrenNode(new Return42Node(), new Return42Node()));
 
         testListener(ExecutionListener.newBuilder().onEnter(counting).expressions(true),
-                        "return84AndIncrementThrice",
+                        ExecutionListenerCompilerTest::return84AndIncrementThrice,
                         new ExecuteTwoChildrenNode(new Return42Node(), new Return42Node()));
     }
 
-    private void testListener(ExecutionListener.Builder builder, String expectedMethodName, BaseNode baseNode) {
+    private void testListener(ExecutionListener.Builder builder, Supplier<Object> expectedMethod, BaseNode baseNode) {
         ExecutionListener listener = null;
         if (builder != null) {
             listener = builder.attach(getContext().getEngine());
         }
-        assertPartialEvalEquals(expectedMethodName, createRoot(baseNode));
+        assertPartialEvalEquals(expectedMethod, createRoot(baseNode));
         if (listener != null) {
             listener.close();
         }
