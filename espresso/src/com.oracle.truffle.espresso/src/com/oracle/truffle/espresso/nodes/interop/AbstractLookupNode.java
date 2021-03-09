@@ -62,7 +62,7 @@ public abstract class AbstractLookupNode extends Node {
     }
 
     private static boolean matchMethod(Method m, String methodName, String signature, boolean isStatic, boolean publicOnly) {
-        return m.isPublic() == publicOnly && m.isStatic() == isStatic && !m.isSignaturePolymorphicDeclared() &&
+        return (!publicOnly || m.isPublic()) && m.isStatic() == isStatic && !m.isSignaturePolymorphicDeclared() &&
                         m.getName().toString().equals(methodName) && (signature == null || m.getSignatureAsString().equals(signature));
     }
 
