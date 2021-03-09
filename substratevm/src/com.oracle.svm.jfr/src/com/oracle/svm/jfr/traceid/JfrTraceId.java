@@ -60,9 +60,6 @@ public class JfrTraceId {
     private static final long JDK_JFR_EVENT_KLASS = 32;
     private static final long EVENT_HOST_KLASS = 64;
 
-    private static final AtomicLong classLoaderCounter = new AtomicLong(1);
-    private static final AtomicLong packageCounter = new AtomicLong(1);
-    private static final AtomicLong moduleCounter = new AtomicLong(1);
     private static final AtomicLong threadCounter = new AtomicLong(1);
 
     private static JfrTraceIdMap getTraceIdMap() {
@@ -166,22 +163,19 @@ public class JfrTraceId {
         }
     }
 
-    public static void assign(ClassLoader classLoader, int index) {
+    public static void assign(ClassLoader classLoader, int index, long traceId) {
         assert classLoader != null;
-        long nextId = classLoaderCounter.getAndIncrement();
-        getTraceIdMap().setId(index, nextId << TRACE_ID_SHIFT);
+        getTraceIdMap().setId(index, traceId << TRACE_ID_SHIFT);
     }
 
-    public static void assign(Package pkg, int index) {
+    public static void assign(Package pkg, int index, long traceId) {
         assert pkg != null;
-        long nextId = packageCounter.getAndIncrement();
-        getTraceIdMap().setId(index, nextId << TRACE_ID_SHIFT);
+        getTraceIdMap().setId(index, traceId << TRACE_ID_SHIFT);
     }
 
-    public static void assign(Module module, int index) {
+    public static void assign(Module module, int index, long traceId) {
         assert module != null;
-        long nextId = moduleCounter.getAndIncrement();
-        getTraceIdMap().setId(index, nextId << TRACE_ID_SHIFT);
+        getTraceIdMap().setId(index, traceId << TRACE_ID_SHIFT);
     }
 
     public static long load(ClassLoader classLoader) {
