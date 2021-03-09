@@ -47,7 +47,6 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyHashEntry;
 import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyIterable;
 import org.graalvm.polyglot.proxy.ProxyIterator;
@@ -193,10 +192,8 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                         TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).build());
 
         // Hash Entries
-        result.add(Snippet.newBuilder("Map.Entry<int,string>", export(context, new ValueSupplier<>(Collections.singletonMap(1, "string"))),
-                        TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).build());
-        result.add(Snippet.newBuilder("Proxy<Map.Entry<int,string>>", export(context, new ValueSupplier<>(ProxyHashEntry.from(new AbstractMap.SimpleEntry<>(1, "string")))),
-                        TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).build());
+        result.add(Snippet.newBuilder("Map.Entry<int,string>", export(context, new ValueSupplier<>(new AbstractMap.SimpleEntry<>(1, "string"))),
+                        TypeDescriptor.array(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING))).build());
 
         // Buffers
         result.add(Snippet.newBuilder("HeapByteBuffer", export(context, new ValueSupplier<>(ByteBuffer.wrap(new byte[]{1, 2, 3}))), TypeDescriptor.OBJECT).build());

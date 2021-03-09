@@ -121,8 +121,6 @@ public final class TypeDescriptor {
 
     public static final TypeDescriptor HASH = new TypeDescriptor(new HashImpl(null, null));
 
-    public static final TypeDescriptor HASH_ENTRY = new TypeDescriptor(new HashEntryImpl(null, null));
-
     /**
      * Represents an object created by a guest language.
      *
@@ -271,11 +269,11 @@ public final class TypeDescriptor {
      */
     public static final TypeDescriptor ANY = new TypeDescriptor(new UnionImpl(new HashSet<>(Arrays.asList(
                     NOTYPE.impl, NULL.impl, BOOLEAN.impl, NUMBER.impl, STRING.impl, HOST_OBJECT.impl, NATIVE_POINTER.impl, OBJECT.impl, ARRAY.impl, EXECUTABLE_ANY.impl, INSTANTIABLE_ANY.impl,
-                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, META_OBJECT.impl, ITERABLE.impl, ITERATOR.impl, EXCEPTION.impl, HASH.impl, HASH_ENTRY.impl))));
+                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, META_OBJECT.impl, ITERABLE.impl, ITERATOR.impl, EXCEPTION.impl, HASH.impl))));
 
     private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
                     NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, DATE, TIME, TIME_ZONE, DURATION, META_OBJECT, EXCEPTION, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY,
-                    INSTANTIABLE, ITERABLE, ITERATOR, HASH, HASH_ENTRY,
+                    INSTANTIABLE, ITERABLE, ITERATOR, HASH,
                     INSTANTIABLE_ANY, ANY
     };
 
@@ -403,8 +401,7 @@ public final class TypeDescriptor {
             if (isArray(part)) {
                 List<TypeDescriptorImpl> arrays = parameterizedTypesByClz.computeIfAbsent(ArrayImpl.class, (k) -> new ArrayList<>());
                 arrays.add(part);
-            } else if (part.getClass() == IterableImpl.class || part.getClass() == IteratorImpl.class ||
-                            part.getClass() == HashImpl.class || part.getClass() == HashEntryImpl.class) {
+            } else if (part.getClass() == IterableImpl.class || part.getClass() == IteratorImpl.class || part.getClass() == HashImpl.class) {
                 Class<ParameterizedTypeDescriptorImpl> clz = (Class<ParameterizedTypeDescriptorImpl>) part.getClass();
                 List<TypeDescriptorImpl> parameterized = parameterizedTypesByClz.computeIfAbsent(clz, (k) -> new ArrayList<>());
                 parameterized.add(part);
@@ -552,8 +549,7 @@ public final class TypeDescriptor {
                                     (wildCards.get(2) && isIncludedInWildCard(td, ITERATOR.impl)) ||
                                     (wildCards.get(3) && isIncludedInWildCard(td, EXECUTABLE.impl)) ||
                                     (wildCards.get(4) && isIncludedInWildCard(td, INSTANTIABLE.impl)) ||
-                                    (wildCards.get(5) && isIncludedInWildCard(td, HASH.impl)) ||
-                                    (wildCards.get(6) && isIncludedInWildCard(td, HASH_ENTRY.impl))) {
+                                    (wildCards.get(5) && isIncludedInWildCard(td, HASH.impl))) {
                         it.remove();
                     }
                 }
@@ -581,8 +577,6 @@ public final class TypeDescriptor {
             wildcards.set(4);
         } else if (component.equals(HASH.impl)) {
             wildcards.set(5);
-        } else if (component.equals(HASH_ENTRY.impl)) {
-            wildcards.set(6);
         }
     }
 
@@ -672,16 +666,6 @@ public final class TypeDescriptor {
             return HASH;
         } else {
             return new TypeDescriptor(new HashImpl(keyType.impl, valueType.impl));
-        }
-    }
-
-    public static TypeDescriptor hashEntry(TypeDescriptor keyType, TypeDescriptor valueType) {
-        Objects.requireNonNull(keyType, "Key type must be non null");
-        Objects.requireNonNull(valueType, "Value type must be non null");
-        if (isAny(keyType.impl) && isAny(valueType.impl)) {
-            return HASH_ENTRY;
-        } else {
-            return new TypeDescriptor(new HashEntryImpl(keyType.impl, valueType.impl));
         }
     }
 
@@ -816,13 +800,9 @@ public final class TypeDescriptor {
             descs.add(ITERATOR);
         }
         if (value.hasHashEntries()) {
-            TypeDescriptor keyType = detectContentType(new HashKeysIterator(value));
-            TypeDescriptor valueType = detectContentType(new HashValuesIterator(value));
+            TypeDescriptor keyType = detectContentType(new HashIterator(value, HashIterator.Kind.KEY));
+            TypeDescriptor valueType = detectContentType(new HashIterator(value, HashIterator.Kind.VALUE));
             descs.add(hash(keyType, valueType));
-        }
-        if (value.isHashEntry()) {
-            descs.add(hashEntry(detectContentType(Collections.singleton(value.getHashEntryKey()).iterator()),
-                            detectContentType(Collections.singleton(value.getHashEntryValue()).iterator())));
         }
         switch (descs.size()) {
             case 1:
@@ -844,7 +824,7 @@ public final class TypeDescriptor {
             case 0:
                 return intersection(NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT,
                                 ARRAY, EXECUTABLE, INSTANTIABLE, ITERABLE, ITERATOR, DATE, TIME, TIME_ZONE, DURATION,
-                                META_OBJECT, EXCEPTION, HASH, HASH_ENTRY);
+                                META_OBJECT, EXCEPTION, HASH);
             case 1:
                 return contentTypes.iterator().next();
             default:
@@ -910,34 +890,32 @@ public final class TypeDescriptor {
         }
     }
 
-    private static final class HashValuesIterator extends IteratorValueIterator {
+    private static final class HashIterator extends IteratorValueIterator {
 
-        HashValuesIterator(Value hash) {
+        private final Kind kind;
+
+        HashIterator(Value hash, Kind kind) {
             super(hash.getHashEntriesIterator());
+            this.kind = kind;
         }
 
         @Override
         protected Value map(Value value) {
-            if (value.isHashEntry()) {
-                return value.getHashEntryValue();
+            if (value.hasArrayElements()) {
+                return value.getArrayElement(kind.index);
             } else {
-                throw new AssertionError("Must be hash entry.");
+                throw new AssertionError("Must have array elements.");
             }
         }
-    }
 
-    private static final class HashKeysIterator extends IteratorValueIterator {
+        enum Kind {
+            KEY(0),
+            VALUE(1);
 
-        HashKeysIterator(Value hash) {
-            super(hash.getHashEntriesIterator());
-        }
+            private final long index;
 
-        @Override
-        protected Value map(Value value) {
-            if (value.isHashEntry()) {
-                return value.getHashEntryKey();
-            } else {
-                throw new AssertionError("Must be hash entry.");
+            Kind(long index) {
+                this.index = index;
             }
         }
     }
@@ -1339,26 +1317,6 @@ public final class TypeDescriptor {
                 throw new IllegalArgumentException("Hash has two type parameters, given: " + typeParams);
             }
             return isAny(typeParams.get(0)) && isAny(typeParams.get(1)) ? HASH.impl : hash(new TypeDescriptor(typeParams.get(0)), new TypeDescriptor(typeParams.get(1))).impl;
-        }
-    }
-
-    private static final class HashEntryImpl extends ParameterizedTypeDescriptorImpl {
-
-        HashEntryImpl(TypeDescriptorImpl keyType, TypeDescriptorImpl valueType) {
-            super(Arrays.asList(keyType, valueType), Arrays.asList(ArrayImpl.class, IterableImpl.class, IteratorImpl.class, HashImpl.class));
-        }
-
-        @Override
-        String getName() {
-            return "HashEntry";
-        }
-
-        @Override
-        TypeDescriptorImpl create(List<TypeDescriptorImpl> typeParams) {
-            if (typeParams.size() != 2) {
-                throw new IllegalArgumentException("Hash entry has two type parameters, given: " + typeParams);
-            }
-            return isAny(typeParams.get(0)) && isAny(typeParams.get(1)) ? HASH_ENTRY.impl : hashEntry(new TypeDescriptor(typeParams.get(0)), new TypeDescriptor(typeParams.get(1))).impl;
         }
     }
 

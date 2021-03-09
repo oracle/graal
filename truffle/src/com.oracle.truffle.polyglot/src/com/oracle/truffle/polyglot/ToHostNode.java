@@ -412,8 +412,6 @@ abstract class ToHostNode extends Node {
                 return asJavaObject(value, Iterable.class, null, false, languageContext);
             } else if (interop.isIterator(value)) {
                 return asJavaObject(value, Iterator.class, null, false, languageContext);
-            } else if (interop.isHashEntry(value)) {
-                return asJavaObject(value, Map.Entry.class, null, false, languageContext);
             } else if (interop.isExecutable(value) || interop.isInstantiable(value)) {
                 return asJavaObject(value, Function.class, null, false, languageContext);
             }
@@ -478,13 +476,13 @@ abstract class ToHostNode extends Node {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members, array elements or hash entries.");
             }
         } else if (targetType == Map.Entry.class) {
-            TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
-            TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
-            if (interop.isHashEntry(value)) {
+            if (interop.hasArrayElements(value)) {
+                TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
+                TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 obj = PolyglotMapEntry.create(languageContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be hash entry.");
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Function.class) {
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);

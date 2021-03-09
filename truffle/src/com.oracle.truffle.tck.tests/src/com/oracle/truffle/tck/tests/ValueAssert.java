@@ -79,7 +79,6 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HASH;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HASH_ENTRY;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
@@ -481,12 +480,6 @@ public class ValueAssert {
                         }
                     }
                     break;
-                case HASH_ENTRY:
-                    assertFalse(value.isHashEntry());
-                    assertFails(() -> value.getHashEntryKey(), UnsupportedOperationException.class);
-                    assertFails(() -> value.getHashEntryValue(), UnsupportedOperationException.class);
-                    assertFails(() -> value.setHashEntryValue(1), UnsupportedOperationException.class);
-                    break;
                 default:
                     throw new AssertionError();
             }
@@ -703,10 +696,6 @@ public class ValueAssert {
                     assertTrue(msg, value.hasHashEntries());
                     assertValueHash(value, depth, hasHostAccess);
                     break;
-                case HASH_ENTRY:
-                    assertTrue(msg, value.isHashEntry());
-                    assertValueHashEntry(value, depth, hasHostAccess);
-                    break;
                 default:
                     throw new AssertionError();
             }
@@ -908,8 +897,8 @@ public class ValueAssert {
         Value iterator = value.getHashEntriesIterator();
         while (iterator.hasIteratorNextElement()) {
             Value element = iterator.getIteratorNextElement();
-            assertTrue(element.isHashEntry());
-            receivedObjects.put(element.getHashEntryKey().as(Object.class), element.getHashEntryValue().as(Object.class));
+            assertTrue(element.hasArrayElements());
+            receivedObjects.put(element.getArrayElement(0).as(Object.class), element.getArrayElement(1).as(Object.class));
             assertValueImpl(element, depth + 1, hasHostAccess, detectSupportedTypes(element));
         }
         Map<Object, Object> objectMap = value.as(OBJECT_OBJECT_MAP);
@@ -926,15 +915,6 @@ public class ValueAssert {
             assertEqualValues(expected.getValue(), actual.getValue());
         }
         assertFalse(objectIterator1.hasNext() || receivedIterator.hasNext());
-    }
-
-    private static void assertValueHashEntry(Value value, int depth, boolean hasHostAccess) {
-        assertTrue(value.isHashEntry());
-        Value entryKey = value.getHashEntryKey();
-        Value entryValue = value.getHashEntryValue();
-        assertNotNull(value.as(Map.Entry.class));
-        assertValueImpl(entryKey, depth + 1, hasHostAccess, detectSupportedTypes(entryKey));
-        assertValueImpl(entryValue, depth + 1, hasHostAccess, detectSupportedTypes(entryValue));
     }
 
     @SafeVarargs
@@ -1148,9 +1128,6 @@ public class ValueAssert {
         if (value.hasHashEntries()) {
             valueTypes.add(HASH);
         }
-        if (value.isHashEntry()) {
-            valueTypes.add(HASH_ENTRY);
-        }
         return valueTypes.toArray(new Trait[0]);
     }
 
@@ -1176,8 +1153,7 @@ public class ValueAssert {
         META,
         ITERABLE,
         ITERATOR,
-        HASH,
-        HASH_ENTRY
+        HASH
     }
 
 }

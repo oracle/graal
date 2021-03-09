@@ -922,26 +922,6 @@ public abstract class InteropLibrary extends Library {
         throw UnsupportedMessageException.create();
     }
 
-    @Abstract(ifExported = {"getHashEntryKey", "getHashEntryValue", "setHashEntryValue"})
-    public boolean isHashEntry(Object receiver) {
-        return false;
-    }
-
-    @Abstract(ifExported = {"isHashEntry"})
-    public Object getHashEntryKey(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @Abstract(ifExported = {"isHashEntry"})
-    public Object getHashEntryValue(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @Abstract(ifExported = {"isHashEntry"})
-    public void setHashEntryValue(Object receiver, Object value) throws UnsupportedMessageException, UnsupportedTypeException {
-        throw UnsupportedMessageException.create();
-    }
-
     // Array Messages
 
     /**
@@ -3532,66 +3512,6 @@ public abstract class InteropLibrary extends Library {
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
                 assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
-                throw e;
-            }
-        }
-
-        @Override
-        public boolean isHashEntry(Object receiver) {
-            assert preCondition(receiver);
-            boolean result = delegate.isHashEntry(receiver);
-            return result;
-        }
-
-        @Override
-        public Object getHashEntryKey(Object receiver) throws UnsupportedMessageException {
-            if (CompilerDirectives.inCompiledCode()) {
-                return delegate.getHashEntryKey(receiver);
-            }
-            assert preCondition(receiver);
-            try {
-                Object result = delegate.getHashEntryKey(receiver);
-                assert delegate.isHashEntry(receiver) : violationInvariant(receiver);
-                assert validReturn(receiver, result);
-                return result;
-            } catch (InteropException e) {
-                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
-                assert !delegate.isHashEntry(receiver) : violationInvariant(receiver);
-                throw e;
-            }
-        }
-
-        @Override
-        public Object getHashEntryValue(Object receiver) throws UnsupportedMessageException {
-            if (CompilerDirectives.inCompiledCode()) {
-                return delegate.getHashEntryValue(receiver);
-            }
-            assert preCondition(receiver);
-            try {
-                Object result = delegate.getHashEntryValue(receiver);
-                assert delegate.isHashEntry(receiver) : violationInvariant(receiver);
-                assert validReturn(receiver, result);
-                return result;
-            } catch (InteropException e) {
-                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
-                assert !delegate.isHashEntry(receiver) : violationInvariant(receiver);
-                throw e;
-            }
-        }
-
-        @Override
-        public void setHashEntryValue(Object receiver, Object value) throws UnsupportedMessageException, UnsupportedTypeException {
-            if (CompilerDirectives.inCompiledCode()) {
-                delegate.setHashEntryValue(receiver, value);
-                return;
-            }
-            assert preCondition(receiver);
-            assert validArgument(receiver, value);
-            try {
-                delegate.setHashEntryValue(receiver, value);
-                assert delegate.isHashEntry(receiver) : violationInvariant(receiver, value);
-            } catch (InteropException e) {
-                assert e instanceof UnsupportedMessageException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
                 throw e;
             }
         }

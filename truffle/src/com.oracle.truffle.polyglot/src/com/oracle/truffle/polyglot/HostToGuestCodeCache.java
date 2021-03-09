@@ -57,7 +57,6 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyHashEntry;
 import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
@@ -445,35 +444,6 @@ final class HostToGuestCodeCache {
         @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
             return ((ProxyHashMap) receiver).getEntriesIterator();
-        }
-    });
-
-    final CallTarget getHashEntryKey = createGuestToHost(new GuestToHostRootNode(ProxyHashEntry.class, "getKey") {
-        @Override
-        @TruffleBoundary
-        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
-            return ((ProxyHashEntry) receiver).getKey();
-        }
-    });
-
-    final CallTarget getHashEntryValue = createGuestToHost(new GuestToHostRootNode(ProxyHashEntry.class, "getValue") {
-        @Override
-        @TruffleBoundary
-        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
-            return ((ProxyHashEntry) receiver).getValue();
-        }
-    });
-
-    final CallTarget setHashEntryValue = createGuestToHost(new GuestToHostRootNode(ProxyHashEntry.class, "setValue") {
-        @Override
-        @TruffleBoundary
-        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
-            try {
-                ((ProxyHashEntry) receiver).setValue((Value) arguments[ARGUMENT_OFFSET]);
-                return null;
-            } catch (UnsupportedOperationException e) {
-                throw UnsupportedMessageException.create();
-            }
         }
     });
 }

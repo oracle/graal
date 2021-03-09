@@ -441,9 +441,8 @@ final class HostObject implements TruffleObject {
         throw UnknownIdentifierException.create(name);
     }
 
-    @ExportMessage(name = "isArrayElementReadable")
-    @ExportMessage(name = "isArrayElementModifiable")
-    static class IsArrayElementExisting {
+    @ExportMessage
+    static class IsArrayElementReadable {
 
         @Specialization(guards = "isArray.execute(receiver)", limit = "1")
         static boolean doArray(HostObject receiver, long index,
@@ -459,10 +458,49 @@ final class HostObject implements TruffleObject {
             return index >= 0 && index < size;
         }
 
-        @Specialization(guards = {"!isList.execute(receiver)", "!isArray.execute(receiver)"}, limit = "1")
+        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
+        static boolean doMapEntry(HostObject receiver, long index,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
+            return index >= 0 && index < 2;
+        }
+
+        @Specialization(guards = {"!isList.execute(receiver)", "!isArray.execute(receiver)", "!isMapEntry.execute(receiver)"}, limit = "1")
         static boolean doNotArrayOrList(HostObject receiver, long index,
                         @Shared("isList") @Cached IsListNode isList,
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    static class IsArrayElementModifiable {
+
+        @Specialization(guards = "isArray.execute(receiver)", limit = "1")
+        static boolean doArray(HostObject receiver, long index,
                         @Shared("isArray") @Cached IsArrayNode isArray) {
+            long size = Array.getLength(receiver.obj);
+            return index >= 0 && index < size;
+        }
+
+        @Specialization(guards = "isList.execute(receiver)", limit = "1")
+        static boolean doList(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList) {
+            long size = receiver.getListSize();
+            return index >= 0 && index < size;
+        }
+
+        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
+        static boolean doMapEntry(HostObject receiver, long index,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
+            return index == 1;
+        }
+
+        @Specialization(guards = {"!isList.execute(receiver)", "!isArray.execute(receiver)", "!isMapEntry.execute(receiver)"}, limit = "1")
+        static boolean doNotArrayOrList(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList,
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
             return false;
         }
     }
@@ -542,11 +580,37 @@ final class HostObject implements TruffleObject {
             }
         }
 
+        @Specialization(guards = {"isMapEntry.execute(receiver)"}, limit = "1")
+        @SuppressWarnings("unchecked")
+        static void doMapEntry(HostObject receiver, long index, Object value,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
+                        @Shared("toHost") @Cached ToHostNode toHostNode,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index == 1) {
+                Object hostValue;
+                try {
+                    hostValue = toHostNode.execute(value, Object.class, null, receiver.languageContext, true);
+                } catch (PolyglotEngineException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+                }
+                setMapEntryValueImpl((Map.Entry<Object, Object>) receiver.obj, hostValue);
+            } else {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @TruffleBoundary
+        private static Object setMapEntryValueImpl(Map.Entry<Object, Object> entry, Object value) {
+            return entry.setValue(value);
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isList.execute(receiver)", "!isArray.execute(receiver)"}, limit = "1")
+        @Specialization(guards = {"!isList.execute(receiver)", "!isArray.execute(receiver)", "!isMapEntry.execute(receiver)"}, limit = "1")
         static void doNotArrayOrList(HostObject receiver, long index, Object value,
                         @Shared("isList") @Cached IsListNode isList,
-                        @Shared("isArray") @Cached IsArrayNode isArray) throws UnsupportedMessageException {
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
@@ -607,8 +671,9 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean hasArrayElements(@Shared("isList") @Cached IsListNode isList,
-                    @Shared("isArray") @Cached IsArrayNode isArray) {
-        return isList.execute(this) || isArray.execute(this);
+                    @Shared("isArray") @Cached IsArrayNode isArray,
+                    @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
+        return isList.execute(this) || isArray.execute(this) || isMapEntry.execute(this);
     }
 
     @ExportMessage
@@ -653,11 +718,39 @@ final class HostObject implements TruffleObject {
             }
         }
 
+        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
+        protected static Object doMapEntry(HostObject receiver, long index,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            Object hostResult;
+            if (index == 0L) {
+                hostResult = getMapEntryKeyImpl((Map.Entry<?, ?>) receiver.obj);
+            } else if (index == 1L) {
+                hostResult = getMapEntryValueImpl((Map.Entry<?, ?>) receiver.obj);
+            } else {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            return toGuest.execute(receiver.languageContext, hostResult);
+        }
+
+        @TruffleBoundary
+        private static Object getMapEntryKeyImpl(Map.Entry<?, ?> entry) {
+            return entry.getKey();
+        }
+
+        @TruffleBoundary
+        private static Object getMapEntryValueImpl(Map.Entry<?, ?> entry) {
+            return entry.getValue();
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isArray.execute(receiver)", "!isList.execute(receiver)"}, limit = "1")
+        @Specialization(guards = {"!isArray.execute(receiver)", "!isList.execute(receiver)", "!isMapEntry.execute(receiver)"}, limit = "1")
         protected static Object doNotArrayOrList(HostObject receiver, long index,
                         @Shared("isArray") @Cached IsArrayNode isArray,
-                        @Shared("isList") @Cached IsListNode isList) throws UnsupportedMessageException {
+                        @Shared("isList") @Cached IsListNode isList,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
@@ -678,10 +771,17 @@ final class HostObject implements TruffleObject {
             return receiver.getListSize();
         }
 
-        @Specialization(guards = {"!isArray.execute(receiver)", "!isList.execute(receiver)"}, limit = "1")
+        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
+        protected static long doMapEntry(HostObject receiver,
+                         @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
+            return 2;
+        }
+
+        @Specialization(guards = {"!isArray.execute(receiver)", "!isList.execute(receiver)", "!isMapEntry.execute(receiver)"}, limit = "1")
         protected static long doNotArrayOrList(HostObject receiver,
                         @Shared("isArray") @Cached IsArrayNode isArray,
-                        @Shared("isList") @Cached IsListNode isList) throws UnsupportedMessageException {
+                        @Shared("isList") @Cached IsListNode isList,
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
@@ -1938,88 +2038,6 @@ final class HostObject implements TruffleObject {
         @SuppressWarnings("unused")
         @Specialization(guards = "!isMap.execute(receiver)", limit = "1")
         protected static Object doNotMap(HostObject receiver, @Shared("isMap") @Cached IsMapNode isMap) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    boolean isHashEntry(@Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
-        return isMapEntry.execute(this);
-    }
-
-    @ExportMessage
-    abstract static class GetHashEntryKey {
-
-        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
-        protected static Object doMapEntry(HostObject receiver,
-                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
-                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
-            Object hostResult = getKeyImpl((Map.Entry<?, ?>) receiver.obj);
-            return toGuest.execute(receiver.languageContext, hostResult);
-        }
-
-        @TruffleBoundary
-        private static Object getKeyImpl(Map.Entry<?, ?> entry) {
-            return entry.getKey();
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isMapEntry.execute(receiver)", limit = "1")
-        protected static Object doNotMapEntry(HostObject receiver, @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    abstract static class GetHashEntryValue {
-
-        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
-        protected static Object doMapEntry(HostObject receiver,
-                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
-                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) {
-            Object hostResult = getValueImpl((Map.Entry<?, ?>) receiver.obj);
-            return toGuest.execute(receiver.languageContext, hostResult);
-        }
-
-        @TruffleBoundary
-        private static Object getValueImpl(Map.Entry<?, ?> entry) {
-            return entry.getValue();
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isMapEntry.execute(receiver)", limit = "1")
-        protected static Object doNotMapEntry(HostObject receiver, @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    abstract static class SetHashEntryValue {
-
-        @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
-        @SuppressWarnings("unchecked")
-        protected static void doMapEntry(HostObject receiver, Object value,
-                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
-                        @Shared("toHost") @Cached ToHostNode toHost,
-                        @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException {
-            Object hostValue;
-            try {
-                hostValue = toHost.execute(value, Object.class, null, receiver.languageContext, true);
-            } catch (PolyglotEngineException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
-            }
-            setValueImpl((Map.Entry<Object, Object>) receiver.obj, hostValue);
-        }
-
-        @TruffleBoundary
-        private static Object setValueImpl(Map.Entry<Object, Object> entry, Object value) {
-            return entry.setValue(value);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isMapEntry.execute(receiver)", limit = "1")
-        protected static void doNotMapEntry(HostObject receiver, Object value, @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
     }

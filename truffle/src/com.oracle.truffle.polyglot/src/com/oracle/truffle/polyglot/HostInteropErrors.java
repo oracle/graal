@@ -171,10 +171,10 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException invalidMapEntryValue(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, Object value) {
+    static RuntimeException invalidMapEntryArrayIndex(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, long index) {
         throw PolyglotEngineException.classCast(
-                        String.format("Invalid value %s for Map.Entry<%s, %s> %s.",
-                                        getValueInfo(context, value), formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver)));
+                        String.format("Invalid index %d for Map.Entry<%s, %s> %s.",
+                                        index, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver)));
     }
 
     @TruffleBoundary

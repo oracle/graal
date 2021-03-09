@@ -120,13 +120,48 @@ final class ProxyHashMapImpl implements ProxyHashMap {
 
             @Override
             public Object getNext() throws NoSuchElementException, UnsupportedOperationException {
-                Map.Entry<Object, Object> entry = entryIterator.next();
-                return ProxyHashEntry.from(entry);
+                return new ProxyEntryImpl(entryIterator.next());
             }
         };
     }
 
     private static Object unboxKey(Value key) {
         return key.as(Object.class);
+    }
+
+    private class ProxyEntryImpl implements ProxyArray {
+
+        private Map.Entry<Object, Object> mapEntry;
+
+        ProxyEntryImpl(Map.Entry<Object, Object> mapEntry) {
+            this.mapEntry = mapEntry;
+        }
+
+        @Override
+        public Object get(long index) {
+            if (index == 0L) {
+                return mapEntry.getKey();
+            } else if (index == 1L) {
+                return mapEntry.getValue();
+            } else {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+        }
+
+        @Override
+        public void set(long index, Value value) {
+            if (index == 0L) {
+                throw new UnsupportedOperationException();
+            } else if (index == 1L) {
+                ProxyHashMapImpl.this.values.put(mapEntry.getKey(), value.isHostObject() ? value.asHostObject() : value);
+            } else {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+        }
+
+        @Override
+        public long getSize() {
+            return 2;
+        }
     }
 }

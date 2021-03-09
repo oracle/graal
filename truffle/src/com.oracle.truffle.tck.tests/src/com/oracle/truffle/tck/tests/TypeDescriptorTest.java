@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -51,7 +50,6 @@ import java.util.function.Function;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
-import org.graalvm.polyglot.proxy.ProxyHashEntry;
 import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyIterable;
 import org.graalvm.polyglot.proxy.ProxyIterator;
@@ -78,7 +76,6 @@ public class TypeDescriptorTest {
                     TypeDescriptor.ITERATOR,
                     TypeDescriptor.ITERABLE,
                     TypeDescriptor.HASH,
-                    TypeDescriptor.HASH_ENTRY,
     };
 
     @Test
@@ -260,51 +257,6 @@ public class TypeDescriptorTest {
     }
 
     @Test
-    public void testHashEntry() {
-        final TypeDescriptor numStrHashEntry = TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING);
-        final TypeDescriptor numNumHashEntry = TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
-        final TypeDescriptor strStrHashEntry = TypeDescriptor.hashEntry(TypeDescriptor.STRING, TypeDescriptor.STRING);
-        final TypeDescriptor strNumHashEntry = TypeDescriptor.hashEntry(TypeDescriptor.STRING, TypeDescriptor.NUMBER);
-
-        for (TypeDescriptor td : PREDEFINED) {
-            Assert.assertFalse(numStrHashEntry.isAssignable(td));
-            Assert.assertFalse(numNumHashEntry.isAssignable(td));
-            Assert.assertFalse(strStrHashEntry.isAssignable(td));
-            Assert.assertFalse(strNumHashEntry.isAssignable(td));
-        }
-
-        for (TypeDescriptor td : PREDEFINED) {
-            Assert.assertFalse(td != TypeDescriptor.HASH_ENTRY && td.isAssignable(numStrHashEntry));
-            Assert.assertFalse(td != TypeDescriptor.HASH_ENTRY && td.isAssignable(numNumHashEntry));
-            Assert.assertFalse(td != TypeDescriptor.HASH_ENTRY && td.isAssignable(strStrHashEntry));
-            Assert.assertFalse(td != TypeDescriptor.HASH_ENTRY && td.isAssignable(strNumHashEntry));
-        }
-        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(numStrHashEntry));
-        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(numNumHashEntry));
-        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(strStrHashEntry));
-        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(strNumHashEntry));
-        Assert.assertTrue(numStrHashEntry.isAssignable(numStrHashEntry));
-        Assert.assertFalse(numStrHashEntry.isAssignable(numNumHashEntry));
-        Assert.assertFalse(numStrHashEntry.isAssignable(strStrHashEntry));
-        Assert.assertFalse(numStrHashEntry.isAssignable(strNumHashEntry));
-        Assert.assertFalse(numNumHashEntry.isAssignable(numStrHashEntry));
-        Assert.assertTrue(numNumHashEntry.isAssignable(numNumHashEntry));
-        Assert.assertFalse(numNumHashEntry.isAssignable(strStrHashEntry));
-        Assert.assertFalse(numNumHashEntry.isAssignable(strNumHashEntry));
-        Assert.assertFalse(strStrHashEntry.isAssignable(numStrHashEntry));
-        Assert.assertFalse(strStrHashEntry.isAssignable(numNumHashEntry));
-        Assert.assertTrue(strStrHashEntry.isAssignable(strStrHashEntry));
-        Assert.assertFalse(strStrHashEntry.isAssignable(strNumHashEntry));
-        Assert.assertFalse(strNumHashEntry.isAssignable(numStrHashEntry));
-        Assert.assertFalse(strNumHashEntry.isAssignable(numNumHashEntry));
-        Assert.assertFalse(strNumHashEntry.isAssignable(strStrHashEntry));
-        Assert.assertTrue(strNumHashEntry.isAssignable(strNumHashEntry));
-        TypeDescriptor objOrNumNumHashEntry = TypeDescriptor.union(TypeDescriptor.OBJECT, numNumHashEntry);
-        Assert.assertFalse(numNumHashEntry.isAssignable(objOrNumNumHashEntry));
-        Assert.assertTrue(objOrNumNumHashEntry.isAssignable(numNumHashEntry));
-    }
-
-    @Test
     public void testUnion() {
         final TypeDescriptor numOrBool = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN);
         final TypeDescriptor numOrBoolOrStr = TypeDescriptor.union(numOrBool, TypeDescriptor.STRING);
@@ -424,30 +376,6 @@ public class TypeDescriptorTest {
         TypeDescriptor boolOrHashNumToStr = TypeDescriptor.union(TypeDescriptor.BOOLEAN, hashNumToStr);
         Assert.assertFalse(numOrBoolOrHashNumBoolToStr.isAssignable(objOrHashNumToStr));
         Assert.assertTrue(numOrBoolOrHashNumBoolToStr.isAssignable(boolOrHashNumToStr));
-        TypeDescriptor hashEntryNumToStrOrBool = TypeDescriptor.union(
-                        TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING),
-                        TypeDescriptor.BOOLEAN);
-        TypeDescriptor hashEntryNumToStrOrString = TypeDescriptor.union(
-                        TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING),
-                        TypeDescriptor.STRING);
-        TypeDescriptor hashEntryBoolToStrOrString = TypeDescriptor.union(
-                        TypeDescriptor.hashEntry(TypeDescriptor.BOOLEAN, TypeDescriptor.STRING),
-                        TypeDescriptor.STRING);
-        TypeDescriptor hashEntryNumToStrOrBoolOrStr = TypeDescriptor.union(
-                        TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING),
-                        TypeDescriptor.BOOLEAN,
-                        TypeDescriptor.STRING);
-        Assert.assertFalse(hashEntryNumToStrOrBool.isAssignable(hashEntryNumToStrOrString));
-        Assert.assertFalse(hashEntryNumToStrOrBool.isAssignable(hashEntryBoolToStrOrString));
-        Assert.assertTrue(hashEntryNumToStrOrBoolOrStr.isAssignable(hashEntryNumToStrOrString));
-        TypeDescriptor hashEntryNumBoolToStr = TypeDescriptor.hashEntry(numOrBool, TypeDescriptor.STRING);
-        TypeDescriptor hashEntryNumToStr = TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING);
-        TypeDescriptor numOrBoolOrHashEntryNumBoolToStr = TypeDescriptor.union(numOrBool, hashEntryNumBoolToStr);
-        Assert.assertTrue(numOrBoolOrHashEntryNumBoolToStr.isAssignable(hashEntryNumToStr));
-        TypeDescriptor objOrHashEntryNumToStr = TypeDescriptor.union(TypeDescriptor.OBJECT, hashEntryNumToStr);
-        TypeDescriptor boolOrHashEntryNumToStr = TypeDescriptor.union(TypeDescriptor.BOOLEAN, hashEntryNumToStr);
-        Assert.assertFalse(numOrBoolOrHashEntryNumBoolToStr.isAssignable(objOrHashEntryNumToStr));
-        Assert.assertTrue(numOrBoolOrHashEntryNumBoolToStr.isAssignable(boolOrHashEntryNumToStr));
 
         TypeDescriptor arrString = TypeDescriptor.array(TypeDescriptor.STRING);
         TypeDescriptor arrBool = TypeDescriptor.array(TypeDescriptor.BOOLEAN);
@@ -464,10 +392,6 @@ public class TypeDescriptorTest {
         TypeDescriptor hashStringToNumber = TypeDescriptor.hash(TypeDescriptor.STRING, TypeDescriptor.NUMBER);
         TypeDescriptor hashBoolToString = TypeDescriptor.hash(TypeDescriptor.BOOLEAN, TypeDescriptor.STRING);
         union = TypeDescriptor.union(hashStringToNumber, hashBoolToString);
-        Assert.assertFalse(union.toString(), union.isUnion());
-        TypeDescriptor hashEntryStringToNumber = TypeDescriptor.hashEntry(TypeDescriptor.STRING, TypeDescriptor.NUMBER);
-        TypeDescriptor hashEntryBoolToString = TypeDescriptor.hashEntry(TypeDescriptor.BOOLEAN, TypeDescriptor.STRING);
-        union = TypeDescriptor.union(hashEntryStringToNumber, hashEntryBoolToString);
         Assert.assertFalse(union.toString(), union.isUnion());
     }
 
@@ -803,21 +727,6 @@ public class TypeDescriptorTest {
         Assert.assertFalse(hashNumToStr.isAssignable(hashNumToAny));
         Assert.assertTrue(hashNumToAny.isAssignable(hashNumToStr));
         Assert.assertFalse(hashNumToAny.isAssignable(hashAnyToAny));
-        TypeDescriptor hashEntryNumToStr = TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING);
-        TypeDescriptor hashEntryAnyToAny = TypeDescriptor.hashEntry(TypeDescriptor.ANY, TypeDescriptor.ANY);
-        TypeDescriptor hashEntryNumToAny = TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.ANY);
-        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(hashEntryNumToStr));
-        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(hashEntryAnyToAny));
-        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(hashEntryNumToAny));
-        Assert.assertFalse(hashEntryNumToStr.isAssignable(TypeDescriptor.ANY));
-        Assert.assertFalse(hashEntryAnyToAny.isAssignable(TypeDescriptor.ANY));
-        Assert.assertFalse(hashEntryNumToAny.isAssignable(TypeDescriptor.ANY));
-        Assert.assertTrue(hashEntryAnyToAny.isAssignable(hashEntryNumToStr));
-        Assert.assertTrue(hashEntryAnyToAny.isAssignable(hashEntryNumToAny));
-        Assert.assertFalse(hashEntryNumToStr.isAssignable(hashEntryAnyToAny));
-        Assert.assertFalse(hashEntryNumToStr.isAssignable(hashEntryNumToAny));
-        Assert.assertTrue(hashEntryNumToAny.isAssignable(hashEntryNumToStr));
-        Assert.assertFalse(hashEntryNumToAny.isAssignable(hashEntryAnyToAny));
     }
 
     @Test
@@ -955,21 +864,6 @@ public class TypeDescriptorTest {
         Assert.assertTrue(hashAnyToAnyAndHashNumStr.isAssignable(TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
         Assert.assertTrue(TypeDescriptor.HASH.isAssignable(hashAnyToAnyAndHashNumStr));
         Assert.assertFalse(TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.STRING).isAssignable(hashAnyToAnyAndHashNumStr));
-        TypeDescriptor numAndEntryNumToStr = TypeDescriptor.intersection(
-                        TypeDescriptor.NUMBER,
-                        TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING));
-        Assert.assertFalse(numAndEntryNumToStr.isAssignable(TypeDescriptor.NUMBER));
-        Assert.assertFalse(numAndEntryNumToStr.isAssignable(TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
-        Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(numAndEntryNumToStr));
-        Assert.assertTrue(TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING).isAssignable(numAndEntryNumToStr));
-        Assert.assertTrue(TypeDescriptor.union(TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING), TypeDescriptor.OBJECT).isAssignable(numAndEntryNumToStr));
-        TypeDescriptor entryAnyToAnyAndEntryNumToStr = TypeDescriptor.intersection(
-                        TypeDescriptor.HASH_ENTRY,
-                        TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING));
-        Assert.assertTrue(entryAnyToAnyAndEntryNumToStr.isAssignable(TypeDescriptor.HASH_ENTRY));
-        Assert.assertTrue(entryAnyToAnyAndEntryNumToStr.isAssignable(TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
-        Assert.assertTrue(TypeDescriptor.HASH_ENTRY.isAssignable(entryAnyToAnyAndEntryNumToStr));
-        Assert.assertFalse(TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING).isAssignable(entryAnyToAnyAndEntryNumToStr));
         final TypeDescriptor numAndStr = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING);
         final TypeDescriptor numAndStrAndBool = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.BOOLEAN);
         final TypeDescriptor numAndStrAndObj = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
@@ -1069,10 +963,6 @@ public class TypeDescriptorTest {
             Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(TypeDescriptor.forValue(v)));
             v = ctx.asValue(ProxyIterator.from(Collections.emptySet().iterator()));
             Assert.assertTrue(TypeDescriptor.ITERATOR.isAssignable(TypeDescriptor.forValue(v)));
-            v = ctx.asValue(ProxyHashEntry.from(new AbstractMap.SimpleEntry<>(1, "str")));
-            Assert.assertTrue(TypeDescriptor.hashEntry(TypeDescriptor.NUMBER, TypeDescriptor.STRING).isAssignable(TypeDescriptor.forValue(v)));
-            v = ctx.asValue(ProxyHashEntry.from(new AbstractMap.SimpleEntry<>("str", 1)));
-            Assert.assertTrue(TypeDescriptor.hashEntry(TypeDescriptor.STRING, TypeDescriptor.NUMBER).isAssignable(TypeDescriptor.forValue(v)));
             v = ctx.asValue(ProxyHashMap.from(Collections.emptyMap()));
             Assert.assertTrue(TypeDescriptor.hash(all, all).isAssignable(TypeDescriptor.forValue(v)));
             v = ctx.asValue(ProxyHashMap.from(Collections.singletonMap("str", 1)));

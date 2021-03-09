@@ -474,9 +474,9 @@ public class HostAccessTest {
         assertTrue(entriesIteratorIterator.isIterator());
         assertTrue(entriesIteratorIterator.hasIteratorNextElement());
         Value entry = entriesIteratorIterator.getIteratorNextElement();
-        assertTrue(entry.isHashEntry());
-        assertEquals(1, entry.getHashEntryKey().asInt());
-        assertEquals(Integer.toBinaryString(1), entry.getHashEntryValue().asString());
+        assertTrue(entry.hasArrayElements());
+        assertEquals(1, entry.getArrayElement(0).asInt());
+        assertEquals(Integer.toBinaryString(1), entry.getArrayElement(1).asString());
         assertEquals(0, value.getMemberKeys().size());
         ValueAssert.assertValue(value, false, Trait.HASH, Trait.MEMBERS, Trait.HOST_OBJECT);
         assertArrayAccessDisabled(context);

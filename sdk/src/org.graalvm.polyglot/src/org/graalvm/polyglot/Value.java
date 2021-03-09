@@ -1882,22 +1882,6 @@ public final class Value {
         return impl.getHashEntriesIterator(receiver);
     }
 
-    public boolean isHashEntry() {
-        return impl.isHashEntry(receiver);
-    }
-
-    public Value getHashEntryKey() throws UnsupportedOperationException {
-        return impl.getHashEntryKey(receiver);
-    }
-
-    public Value getHashEntryValue() throws UnsupportedOperationException {
-        return impl.getHashEntryValue(receiver);
-    }
-
-    public void setHashEntryValue(Object value) throws IllegalArgumentException, UnsupportedOperationException {
-        impl.setHashEntryValue(receiver, value);
-    }
-
     /**
      * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
      * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.

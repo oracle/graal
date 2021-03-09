@@ -865,11 +865,9 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     try {
                         Object iterator = interop.getHashEntriesIterator(receiver);
                         Type genericType;
-                        if (cache.keyType != null && cache.valueType != null) {
-                            genericType = new ParameterizedTypeImpl(Iterator.class, new ParameterizedTypeImpl(Map.Entry.class, cache.keyType, cache.valueType));
-                        } else {
-                            genericType = null;
-                        }
+                        Type useKeyType = cache.keyType != null ? cache.keyType : Object.class;
+                        Type useValueType = cache.valueType != null ? cache.valueType : Object.class;
+                        genericType = new ParameterizedTypeImpl(Iterator.class, new ParameterizedTypeImpl(Map.Entry.class, useKeyType, useValueType));
                         return toHost.execute(iterator, Iterator.class, genericType, languageContext, true);
                     } catch (UnsupportedMessageException e) {
                         error.enter();

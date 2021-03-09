@@ -54,7 +54,6 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -1107,71 +1106,6 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class HashEntryTest implements TruffleObject {
-
-        interface EntryValue<T> {
-            T get();
-
-            void set(T newValue) throws UnsupportedTypeException;
-
-            static <T> EntryValue<T> create(T value) {
-                return new EntryValue<T>() {
-                    T v = value;
-
-                    @Override
-                    public T get() {
-                        return v;
-                    }
-
-                    @Override
-                    public void set(T newValue) {
-                        v = newValue;
-                    }
-                };
-            }
-        }
-
-        boolean isHashEntry;
-        Supplier<Object> key;
-        EntryValue<Object> value;
-
-        HashEntryTest(Object key, Object value) {
-            this.isHashEntry = true;
-            this.key = () -> key;
-            this.value = EntryValue.create(value);
-        }
-
-        @ExportMessage
-        boolean isHashEntry() {
-            return isHashEntry;
-        }
-
-        @ExportMessage
-        Object getHashEntryKey() throws UnsupportedMessageException {
-            if (key == null) {
-                throw UnsupportedMessageException.create();
-            }
-            return key.get();
-        }
-
-        @ExportMessage
-        Object getHashEntryValue() throws UnsupportedMessageException {
-            if (value == null) {
-                throw UnsupportedMessageException.create();
-            }
-            return value.get();
-        }
-
-        @ExportMessage
-        public void setHashEntryValue(Object newValue) throws UnsupportedMessageException, UnsupportedTypeException {
-            if (value == null) {
-                throw UnsupportedMessageException.create();
-            }
-            value.set(newValue);
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
     static final class HashTest implements TruffleObject {
 
         boolean hasHashEntries;
@@ -1501,71 +1435,5 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         hashTest.iterator = () -> new TruffleObject() {
         };
         assertFails(() -> hashLib.getHashEntriesIterator(hashTest), AssertionError.class);
-    }
-
-    @Test
-    public void testGetHashEntryKey() throws UnsupportedMessageException {
-        HashEntryTest hashEntryTest = new HashEntryTest(1, -1);
-        InteropLibrary hashEntryLib = createLibrary(InteropLibrary.class, hashEntryTest);
-        assertEquals(hashEntryTest.key.get(), hashEntryLib.getHashEntryKey(hashEntryTest));
-        hashEntryTest.isHashEntry = false;
-        assertFails(() -> hashEntryLib.getHashEntryKey(hashEntryTest), AssertionError.class);
-        hashEntryTest.isHashEntry = true;
-        hashEntryTest.key = null;
-        assertFails(() -> hashEntryLib.getHashEntryKey(hashEntryTest), AssertionError.class);
-        hashEntryTest.key = () -> null;
-        assertFails(() -> hashEntryLib.getHashEntryKey(hashEntryTest), AssertionError.class);
-    }
-
-    @Test
-    public void testGetHashEntryValue() throws UnsupportedMessageException {
-        HashEntryTest hashEntryTest = new HashEntryTest(1, -1);
-        InteropLibrary hashEntryLib = createLibrary(InteropLibrary.class, hashEntryTest);
-        assertEquals(hashEntryTest.value.get(), hashEntryLib.getHashEntryValue(hashEntryTest));
-        hashEntryTest.isHashEntry = false;
-        assertFails(() -> hashEntryLib.getHashEntryValue(hashEntryTest), AssertionError.class);
-        hashEntryTest.isHashEntry = true;
-        hashEntryTest.value = null;
-        assertFails(() -> hashEntryLib.getHashEntryValue(hashEntryTest), AssertionError.class);
-        hashEntryTest.value = HashEntryTest.EntryValue.create(null);
-        assertFails(() -> hashEntryLib.getHashEntryValue(hashEntryTest), AssertionError.class);
-    }
-
-    @Test
-    public void testSetHashEntryValue() throws UnsupportedTypeException, UnsupportedMessageException {
-        HashEntryTest hashEntryTest = new HashEntryTest(1, -1);
-        InteropLibrary hashEntryLib = createLibrary(InteropLibrary.class, hashEntryTest);
-        hashEntryLib.setHashEntryValue(hashEntryTest, 0);
-        assertEquals(0, hashEntryLib.getHashEntryValue(hashEntryTest));
-        assertFails(() -> {
-            hashEntryLib.setHashEntryValue(hashEntryTest, null);
-            return null;
-        }, NullPointerException.class);
-        hashEntryTest.isHashEntry = false;
-        assertFails(() -> {
-            hashEntryLib.setHashEntryValue(hashEntryTest, 2);
-            return null;
-        }, AssertionError.class);
-        hashEntryTest.isHashEntry = true;
-        hashEntryTest.value = null;
-        assertFails(() -> {
-            hashEntryLib.setHashEntryValue(hashEntryTest, 2);
-            return null;
-        }, UnsupportedMessageException.class);
-        hashEntryTest.value = new HashEntryTest.EntryValue<Object>() {
-            @Override
-            public Object get() {
-                return 1;
-            }
-
-            @Override
-            public void set(Object value) throws UnsupportedTypeException {
-                throw UnsupportedTypeException.create(new Object[]{value});
-            }
-        };
-        assertFails(() -> {
-            hashEntryLib.setHashEntryValue(hashEntryTest, 2);
-            return null;
-        }, UnsupportedTypeException.class);
     }
 }
