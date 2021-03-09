@@ -34,10 +34,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
+import org.graalvm.polyglot.Context;
+import org.junit.rules.TestRule;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.tck.TruffleRunner;
 
 public abstract class CommonTestUtils {
 
@@ -61,5 +72,46 @@ public abstract class CommonTestUtils {
 
     public static String getFileEnding(String s) {
         return s.substring(s.lastIndexOf('.') + 1);
+    }
+
+    public static class RunWithTestEngineConfigRule implements TestRule {
+
+        private final TruffleRunner.RunWithPolyglotRule rule;
+
+        public RunWithTestEngineConfigRule() {
+            this(c -> {
+            });
+        }
+
+        public RunWithTestEngineConfigRule(Consumer<Context.Builder> contextBuilderUpdater) {
+            rule = new TruffleRunner.RunWithPolyglotRule(updateContext(getContextBuilder(), contextBuilderUpdater));
+        }
+
+        private static Context.Builder updateContext(Context.Builder contextBuilder, Consumer<Context.Builder> contextBuilderUpdater) {
+            contextBuilderUpdater.accept(contextBuilder);
+            return contextBuilder;
+        }
+
+        private static Context.Builder getContextBuilder() {
+            Map<String, String> options = TestEngineConfig.getInstance().getContextOptions();
+            return Context.newBuilder().allowAllAccess(true).options(options);
+        }
+
+        @Override
+        public Statement apply(Statement stmt, Description description) {
+            return rule.apply(stmt, description);
+        }
+
+        public Context getPolyglotContext() {
+            return rule.getPolyglotContext();
+        }
+
+        public TruffleLanguage.Env getTruffleTestEnv() {
+            return rule.getTruffleTestEnv();
+        }
+
+        public TruffleLanguage<?> getTestLanguage() {
+            return rule.getTestLanguage();
+        }
     }
 }
