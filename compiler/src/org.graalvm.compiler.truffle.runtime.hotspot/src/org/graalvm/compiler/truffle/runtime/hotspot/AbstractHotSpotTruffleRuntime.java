@@ -55,7 +55,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -170,15 +169,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         setDontInlineCallBoundaryMethod(boundaryMethods);
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
 
-        int offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, -1, new String[]{"intptr_t*"});
-        if (offset == -1) {
-            throw new InternalError("Failed to initialize the HotSpot Truffle runtime. " +
-                            "The optimized Truffle runtime can no longer be used with an older version of JVMCI. " +
-                            "Upgrade the JVMCI version in use or switch the Truffle runtime to the default runtime with -Dtruffle.TruffleRuntime=" +
-                            DefaultTruffleRuntime.class.getName() + ".");
-        }
-        assert offset != -1 : "unexpected offset value";
-        this.threadLocalPendingHandshakeOffset = offset;
+        this.threadLocalPendingHandshakeOffset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, -1, new String[]{"intptr_t*"});
     }
 
     @Override

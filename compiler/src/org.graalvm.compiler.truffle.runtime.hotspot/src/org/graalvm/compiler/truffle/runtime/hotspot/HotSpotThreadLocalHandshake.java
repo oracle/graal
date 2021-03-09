@@ -46,21 +46,36 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
+    protected boolean isSupported() {
+        return handshakeSupported();
+    }
+
+    static boolean handshakeSupported() {
+        return PENDING_OFFSET != -1;
+    }
+
+    @Override
     public void poll(Node enclosingNode) {
-        long eetop = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY,
-                        UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0)) {
-            processHandshake(enclosingNode);
+        if (handshakeSupported()) {
+            long eetop = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY,
+                            UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0)) {
+                processHandshake(enclosingNode);
+            }
         }
     }
 
     static void doHandshake(Object node) {
+        assert handshakeSupported() : "must not call doHandshake if handshake is not supported.";
         SINGLETON.processHandshake((Node) node);
     }
 
     @Override
     protected void setFastPending(Thread t) {
-        setVolatile(t, PENDING_OFFSET, 1);
+        assert handshakeSupported() : "must not call setFastPending if handshake is not supported.";
+        if (handshakeSupported()) {
+            setVolatile(t, PENDING_OFFSET, 1);
+        }
     }
 
     @Override
@@ -71,7 +86,10 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     protected void clearFastPending() {
-        setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
+        assert handshakeSupported() : "must not call clearFastPending if handshake is not supported.";
+        if (handshakeSupported()) {
+            setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
+        }
     }
 
     private static void setVolatile(Thread t, int offset, int value) {

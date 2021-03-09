@@ -75,12 +75,20 @@ public abstract class ThreadLocalHandshake {
 
     public abstract TruffleSafepointImpl getCurrent();
 
+    protected boolean isSupported() {
+        return true;
+    }
+
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
      */
     @TruffleBoundary
     public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting) {
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("Thread local handshakes are not supported on this platform. " +
+                            "A possible reason may be that the underlying JVMCI version is too old.");
+        }
         Handshake<T> handshake = new Handshake<>(onThread, onDone, sideEffecting, threads.length);
         for (int i = 0; i < threads.length; i++) {
             Thread t = threads[i];

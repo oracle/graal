@@ -149,7 +149,11 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
         public void lower(Node n, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 doDeferredInit();
-                templates.lower((TruffleSafepointNode) n, tool);
+                if (templates != null) {
+                    templates.lower((TruffleSafepointNode) n, tool);
+                } else {
+                    // safepoints disabled nothing to lower to
+                }
             }
         }
 
@@ -171,7 +175,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                         HotSpotHostForeignCallsProvider foreignCalls,
                         Iterable<DebugHandlersFactory> factories) {
             GraalError.guarantee(templates == null, "cannot re-initialize %s", this);
-            if (config.invokeJavaMethodAddress != 0) {
+            if (config.invokeJavaMethodAddress != 0 && pendingHandshakeOffset() != -1) {
                 this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget());
                 this.deferredInit = () -> {
                     long address = config.invokeJavaMethodAddress;
