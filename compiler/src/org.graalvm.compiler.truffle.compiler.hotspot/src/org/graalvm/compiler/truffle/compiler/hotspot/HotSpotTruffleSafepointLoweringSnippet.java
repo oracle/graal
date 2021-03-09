@@ -89,8 +89,12 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     @Fold
     public static int pendingHandshakeOffset() {
-        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
-        return runtime.getThreadLocalPendingHandshakeOffset();
+        TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
+        if (runtime instanceof HotSpotTruffleCompilerRuntime) {
+            return ((HotSpotTruffleCompilerRuntime) runtime).getThreadLocalPendingHandshakeOffset();
+        } else {
+            return -1;
+        }
     }
 
     /**
