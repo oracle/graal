@@ -266,6 +266,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
+    name='Insight Heap',
+    short_name='insightheap',
+    dir_name='insightheap',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle', 'insight'],
+    truffle_jars=['tools:INSIGHT_HEAP'],
+    support_distributions=['tools:INSIGHT_HEAP_GRAALVM_SUPPORT'],
+    priority=10,
+    include_by_default=True,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
+    suite=_suite,
     name='GraalVM Profiler',
     short_name='pro',
     dir_name='profiler',

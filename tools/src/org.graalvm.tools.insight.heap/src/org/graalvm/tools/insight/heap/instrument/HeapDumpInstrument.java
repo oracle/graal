@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,52 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.tools.insight.test;
+package org.graalvm.tools.insight.heap.instrument;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import java.util.Collections;
-import java.util.Map;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.tools.insight.Insight;
 
-// @formatter:off
-@TruffleInstrument.Registration(
-    id = "count",
-    name = "count",
-    version = "testing",
-    services = { Insight.SymbolProvider.class }
-)
-// @formatter:on
-public class TestinsightInstrument extends TruffleInstrument {
-    @Option(stability = OptionStability.STABLE, name = "", help = "Initial value of Insight's count variable", category = OptionCategory.INTERNAL) //
-    static final OptionKey<Integer> COUNT = new OptionKey<>(-1);
-
-    @Override
-    protected OptionDescriptors getOptionDescriptors() {
-        return new TestinsightInstrumentOptionDescriptors();
-    }
+@TruffleInstrument.Registration(id = "heap", internal = false, services = Insight.SymbolProvider.class)
+public final class HeapDumpInstrument extends TruffleInstrument {
+    @Option(stability = OptionStability.STABLE, name = "dump", help = "Output file to ", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> DUMP = new OptionKey<>("");
 
     @Override
     protected void onCreate(Env env) {
-        Integer initialCount = env.getOptions().get(COUNT);
-        if (initialCount != null && initialCount > 0) {
-            env.registerService(new Insight.SymbolProvider() {
-                @Override
-                public Map<String, Object> symbolsWithValues() throws Exception {
-                    return Collections.singletonMap("count", initialCount);
-                }
-            });
+        if (DUMP.hasBeenSet(env.getOptions())) {
+            env.registerService(new HeapObject(env, DUMP.getValue(env.getOptions())));
         } else {
-            env.registerService(new Insight.SymbolProvider() {
-                @Override
-                public Map<String, ? extends Object> symbolsWithValues() throws Exception {
-                    return Collections.emptyMap();
-                }
-            });
+            env.registerService(new HeapObject(env, null));
         }
     }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new HeapDumpInstrumentOptionDescriptors();
+    }
+
 }

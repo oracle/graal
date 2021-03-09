@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,13 @@
 
 /*
  @ApiInfo(
- group="Tools"
+ group="Insight"
  )
  */
 
 /**
- * Package containing classes implementing the Truffle Code Coverage Tracker.
- *
- * @since 19.3.0
+ * Support for generating {@code .hprof} files in <a target="_blank" href=
+ * "http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/manual.html">
+ * Java Profiler Heap Dump Format</a>.
  */
-package com.oracle.truffle.tools.coverage;
+package org.graalvm.tools.insight.heap;
