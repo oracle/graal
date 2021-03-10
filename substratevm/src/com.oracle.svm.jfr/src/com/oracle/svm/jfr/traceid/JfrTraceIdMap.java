@@ -35,6 +35,8 @@ import com.oracle.svm.core.jdk.Target_java_lang_Package;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import java.util.Arrays;
+
 public class JfrTraceIdMap {
     @UnknownObjectField(types = {long[].class})
     private final long[] traceIDs;
@@ -42,9 +44,7 @@ public class JfrTraceIdMap {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTraceIdMap(int size) {
         traceIDs = new long[size];
-        for (int i = 0; i < size; i++) {
-            traceIDs[i] = -1;
-        }
+        Arrays.fill(traceIDs, -1);
     }
 
     private int getIndex(Object key) {
