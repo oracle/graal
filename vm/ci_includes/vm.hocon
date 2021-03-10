@@ -22,12 +22,12 @@ vm_java_16: ${labsjdk-ce-16} {
 vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
 
 svm_suite: /substratevm
-vm_extra_suites: "truffleruby,graalpython,fastr,/wasm,/espresso"
-vm_extra_suites_aarch64: "/wasm,/espresso"
-vm_extra_suites_windows: "/wasm,/espresso"
-vm_extra_suites_java16: "truffleruby,graalpython,fastr,/wasm"
-vm_extra_suites_aarch64_java16: "/wasm"
-vm_extra_suites_windows_java16: "/wasm"
+vm_extra_suites: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm,/espresso"
+vm_extra_suites_aarch64: "/graal-nodejs,/wasm,/espresso"
+vm_extra_suites_windows: "/graal-nodejs,/wasm,/espresso"
+vm_extra_suites_java16: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm"
+vm_extra_suites_aarch64_java16: "/graal-nodejs,/wasm"
+vm_extra_suites_windows_java16: "/graal-nodejs,/wasm"
 custom_vm_linux: {}
 custom_vm_darwin: {}
 vm_profiles: []
