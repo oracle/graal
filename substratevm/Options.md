@@ -39,7 +39,6 @@ The following options are equally supported with both GraalVM Communty and Enter
 * `--help-extra`: print help on non-standard options.
 * `--allow-incomplete-classpath`: allow the image build with an incomplete class path. Report type resolution errors at runtime when they are accessed the first time, instead of during the image build.
 * `--auto-fallback`: build a standalone image if possible.
-* `--enable-all-security-services`: add all security service classes to a generated image.
 * `--enable-http`: enable http support in a generated image.
 * `--enable-https`: enable https support in a generated image.
 * `--enable-url-protocols`: list comma-separated URL protocols to enable.
