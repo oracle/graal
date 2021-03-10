@@ -820,7 +820,8 @@ public final class HostAccess {
 
         /**
          * Allows the guest application to access {@link Map map} as {@link Value#hasHashEntries()
-         * hash} values. By default no map access is allowed.
+         * hash} values. By default no map access is allowed. Allowing map access implies also
+         * allowing of {@link #allowIteratorAccess(boolean) iterators}.
          *
          * @see Value#hasHashEntries()
          * @since 21.1

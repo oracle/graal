@@ -18,6 +18,17 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added `HostAccess.Builder.allowIterableAccess()` to allow the guest application to access Java `Iterables` as values with iterators (true by default for `HostAccess.ALL` and `HostAccess.Builder.allowListAccess(true)`, false otherwise).
 * Added `HostAccess.Builder.allowIteratorAccess()` to allow the guest application to access Java `Iterators` (true by default for `HostAccess.ALL`, `HostAccess.Builder.allowListAccess(true)` and `HostAccess.Builder.allowIterableAccess(true)`,  false otherwise).
 * Added `ProxyIterable` and `ProxyIterator` to proxy iterable and iterator guest values.
+* Added `Value` methods supporting hash maps:
+    * Added `hasHashEntries()` specifying that the `Value` provides hash entries.
+    * Added `getHashSize()` to return hash entries count.
+    * Added `hasHashEntry(Object)` specifying that the mapping for the specified key exists.
+    * Added `getHashValue(Object)` returning the value for the specified key.
+    * Added `putHashEntry(Object, Object)` associating the specified value with the specified key.
+    * Added `removeHashEntry(Object)` removing the mapping for a given key.
+    * Added `getHashEntriesIterator()` returning a hash entries iterator.
+* Added `HostAccess.Builder.allowMapAccess(boolean)` to allow the guest application to access Java `Map` as values with hash entries (true by default for `HostAccess.ALL`, false otherwise).
+* Added `ProxyHashMap` to proxy map guest values.
+* When `HostAccess.Builder.allowMapAccess(boolean)` is enabled the Java `HashMap.Entry` is interpreted as a guest value with with two array elements.
 
 ## Version 21.0.0
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).

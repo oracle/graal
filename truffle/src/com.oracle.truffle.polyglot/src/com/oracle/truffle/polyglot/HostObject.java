@@ -773,7 +773,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "isMapEntry.execute(receiver)", limit = "1")
         protected static long doMapEntry(HostObject receiver,
-                         @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
+                        @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry) {
             return 2;
         }
 

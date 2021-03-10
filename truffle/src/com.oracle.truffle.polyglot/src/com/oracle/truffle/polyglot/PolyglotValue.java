@@ -1260,14 +1260,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidHashEntryValue(PolyglotLanguageContext context, Object receiver, Object value) {
-        String message = String.format("Invalid hash entry value %s for object %s.",
-                        getValueInfo(context, value),
-                        getValueInfo(context, receiver));
-        throw PolyglotEngineException.illegalArgument(message);
-    }
-
-    @TruffleBoundary
     protected static RuntimeException invalidExecuteArgumentType(PolyglotLanguageContext context, Object receiver, UnsupportedTypeException e) {
         String originalMessage = e.getMessage() == null ? "" : e.getMessage() + " ";
         String[] formattedArgs = formatArgs(context, e.getSuppliedValues());
@@ -3683,22 +3675,19 @@ abstract class PolyglotValue extends AbstractValueImpl {
                             @Cached BranchProfile invalidKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
                 Object key = toGuestKey.execute(context, hostKey);
-                Value value;
                 try {
-                    value = toHost.execute(context, hashes.readHashValue(receiver, key));
+                    return toHost.execute(context, hashes.readHashValue(receiver, key));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    if (hashes.hasHashEntries(receiver)) {
-                        // Todo: Shouldn't we rather throw UnsupportedOperationException
-                        value = null;
-                    } else {
-                        throw getHashValueUnsupported(context, receiver, key);
-                    }
+                    throw getHashValueUnsupported(context, receiver, key);
                 } catch (UnknownKeyException e) {
                     invalidKey.enter();
-                    throw invalidHashKey(context, receiver, key);
+                    if (hashes.isHashEntryExisting(receiver, key)) {
+                        throw getHashValueUnsupported(context, receiver, key);
+                    } else {
+                        throw invalidHashKey(context, receiver, key);
+                    }
                 }
-                return value;
             }
         }
 
@@ -3732,12 +3721,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 Object value = toGuestValue.execute(context, hostValue);
                 try {
                     hashes.writeHashEntry(receiver, key, value);
-                } catch (UnsupportedMessageException e) {
+                } catch (UnsupportedMessageException | UnknownKeyException e) {
                     unsupported.enter();
                     throw putHashEntryUnsupported(context, receiver, key, value);
-                } catch (UnknownKeyException e) {
-                    invalidKey.enter();
-                    throw invalidHashKey(context, receiver, key);
                 } catch (UnsupportedTypeException e) {
                     invalidValue.enter();
                     throw invalidHashValue(context, receiver, key, value);

@@ -119,6 +119,16 @@ public final class TypeDescriptor {
      */
     public static final TypeDescriptor ITERATOR = new TypeDescriptor(new IteratorImpl(null));
 
+    /**
+     * Represents a hash map with any key type and any value type. Any hash map type, including
+     * those with specified key and value types, is assignable to this type. This hash map type is
+     * not assignable to any hash map type with specified key or value types.
+     *
+     * @see #isAssignable(org.graalvm.polyglot.tck.TypeDescriptor).
+     * @see #hash(TypeDescriptor, TypeDescriptor).
+     * @see Value#hasHashEntries()
+     * @since 21.1
+     */
     public static final TypeDescriptor HASH = new TypeDescriptor(new HashImpl(null, null));
 
     /**
@@ -659,6 +669,14 @@ public final class TypeDescriptor {
         }
     }
 
+    /**
+     * Creates a new hash map type with given key type and value type.
+     *
+     * @param keyType the required key type.
+     * @param valueType the required value type.
+     * @return a new hash map type with given key and value types
+     * @since 21.1
+     */
     public static TypeDescriptor hash(TypeDescriptor keyType, TypeDescriptor valueType) {
         Objects.requireNonNull(keyType, "Key type must be non null");
         Objects.requireNonNull(valueType, "Value type must be non null");

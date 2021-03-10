@@ -26,7 +26,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `DebugScope.convertRawValue(Class<? extends TruffleLanguage<?>>, Object)` to enable wrapping a raw guest language object into a DebugValue.
 * Added new messages to the `InteropLibrary` to support iterables and iterators:
 	* Added `hasIterator(Object)` that allows to specify that the receiver is an iterable.
-    * Added `getIterator(Object)` to return the iterator for an interable receiver.
+    * Added `getIterator(Object)` to return the iterator for an iterable receiver.
     * Added `isIterator(Object)` that allows to specify that the receiver is an iterator.
     * Added `hasIteratorNextElement(Object)`  that allows to specify that the iterator receiver has element(s) to return by calling the `getIteratorNextElement(Object)` method.
     * Added `getIteratorNextElement(Object)` to return the current iterator element.
@@ -38,6 +38,20 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `allowUncached` and `uncached` attributes to allow using `@NodeChild` with `@GenerateUncached`.
 * Added `TruffleLanguage.Env#getTruffleFileInternal(String, Predicate<TruffleFile>)` and `TruffleLanguage.Env#getTruffleFileInternal(URI, Predicate<TruffleFile>)` methods performing the guest language standard libraries check using a supplied predicate. These methods have a better performance compared to the `TruffleLanguage.Env#getInternalTruffleFile(String)` and `TruffleLanguage.Env#getInternalTruffleFile(URI)` as the guest language standard libraries check is performed only for files in the language home when IO is not enabled by the Context.
 * Added `TruffleLanguage.Env.getLogger(String)` and `TruffleLanguage.Env.getLogger(Class<?>)` creating a context-bound logger. The returned `TruffleLogger` always uses a logging handler and options from Env's context and does not depend on being entered on any thread.
+* Added new messages to the `InteropLibrary` to support hash maps:
+	* Added `hasHashEntries(Object)` that allows to specify that the receiver provides hash entries.
+	* Added `getHashSize(Object)` to return hash entries count.
+	* Added `isHashValueReadable(Object, Object)` that allows to specify that mapping for the given key exists and is readable.
+	* Added `readHashValue(Object, Object)` to read the value for the specified key.
+	* Added `readHashValueOrDefault(Object, Object, Object)` to read the value for the specified key or to return the default value when the mapping for the specified key does not exist.
+	* Added `isHashEntryModifiable(Object, Object)` that allows to specify that mapping for the specified key exists and is writable.
+	* Added `isHashEntryInsertable(Object, Object)` that allows to specify that mapping for the specified key does not exist and is writable.
+	* Added `isHashEntryWritable(Object, Object)` that allows to specify that mapping is either modifiable or insertable.
+	* Added `writeHashEntry(Object, Object, Object)` associating the specified value with the specified key.
+	* Added `isHashEntryRemovable(Object, Object)` that allows to specify that mapping for the specified key exists and is removable.
+	* Added `removeHashEntry(Object, Object)` removing the mapping for a given key.
+	* Added `isHashEntryExisting(Object, Object)` that allows to specify that that mapping for a given key is existing.
+	* Added `getHashEntriesIterator(Object)` to return the hash entries iterator.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the exception interop messages are executed without a context being entered. The event listeners called during the context enter are:
