@@ -510,7 +510,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraversingCompilationQueue = new OptionKey<>(false);
 
     @Option(help = "Traversing queue uses rate as priority for both tier.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraversingQueueBothTiersRate= new OptionKey<>(false);
+    public static final OptionKey<Boolean> TraversingQueueBothTiersRate= new OptionKey<>(true);
 
     @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
