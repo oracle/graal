@@ -40,6 +40,9 @@ import com.oracle.svm.core.jdk.localization.LocalizationFeature;
 import sun.text.spi.JavaTimeDateTimePatternProvider;
 //Checkstyle: resume
 
+/**
+ * @see LocalizationFeature
+ */
 @AutomaticFeature
 final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
 

@@ -22,30 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.localization;
+package com.oracle.svm.core.jdk.localization.substitutions.modes;
+
+import com.oracle.svm.core.jdk.localization.LocalizationFeature;
 
 import java.util.function.BooleanSupplier;
 
-class OptimizedLocaleMode implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return LocalizationFeature.optimizedMode();
-    }
-}
-
-class SubstituteLoadLookup implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return LocalizationFeature.optimizedMode() || LocalizationFeature.Options.LocalizationSubstituteLoadLookup.getValue();
-    }
-}
-
-class JvmLocaleMode implements BooleanSupplier {
+public class JvmLocaleMode implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
         return LocalizationFeature.jvmMode();
     }
-}
-
-public class OnlyWithSuppliers {
 }

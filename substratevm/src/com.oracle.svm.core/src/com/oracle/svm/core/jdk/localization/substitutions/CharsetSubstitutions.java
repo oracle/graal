@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.localization;
+package com.oracle.svm.core.jdk.localization.substitutions;
 
 // Checkstyle: allow reflection
 
@@ -33,6 +33,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 

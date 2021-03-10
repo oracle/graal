@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk.localization;
 
 // Checkstyle: stop
-
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
@@ -51,6 +50,8 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
+import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
+import com.oracle.svm.core.jdk.localization.substitutions.OptimizedModeOnlySubstitutions;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -75,9 +76,42 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
-
 // Checkstyle: resume
 
+/**
+ * LocalizationFeature is the core class of SVM localization support. It contains all the options
+ * that can be used to configure how localization in the resulting image should work. One can
+ * specify what charsets, locales and resource bundles should be accessible. The runtime data for
+ * localization is stored in an image singleton of type {@link LocalizationSupport} or one of its
+ * subtypes.
+ *
+ * In case of ResourceBundles, one can also specify how bundles should be handled, because currently
+ * there are two different modes.
+ *
+ * The first approach is using a simple in memory map instead of the original JDK lookup. This
+ * simpler implementation leads to image size savings for smaller images such as hello world, but
+ * could cause compatibility issues and maintenance overhead. It is implemented in
+ * {@link OptimizedLocalizationSupport}.
+ * 
+ * The second approach removes some of our substitutions and relies on the original JVM
+ * implementation instead. This approach is consistent by design, which solves compatibility issues
+ * and reduces maintenance overhead. Unfortunately, the default way of storing bundle data in
+ * getContents methods, see {@link sun.text.resources.FormatData} for example, is not very AOT
+ * friendly. Compiling these methods is time consuming and results in a bloated image (190 MB
+ * HelloWorld with all locales). Therefore, the bundle content itself is again stored in the image
+ * heap by default and is even compressed to reduce the image size, see
+ * {@link BundleContentSubstitutedLocalizationSupport} and {@link GzipBundleCompression}.
+ * 
+ * HelloWorld substituted single locale: 8458456B HelloWorld substituted all locales: 79456312B
+ * HelloWorld JVM_compressed single locale: 11362256B HelloWorld JVM_compressed all locales:
+ * 19632496B HelloWorld JVM_pure single locale: 13229920B HelloWorld JVM_pure all locales:
+ * 192024848B
+ *
+ * @author d-kozak
+ * @see LocalizationSupport
+ * @see OptimizedLocalizationSupport
+ * @see BundleContentSubstitutedLocalizationSupport
+ */
 public abstract class LocalizationFeature implements Feature {
 
     protected final boolean optimizedMode = optimizedMode();

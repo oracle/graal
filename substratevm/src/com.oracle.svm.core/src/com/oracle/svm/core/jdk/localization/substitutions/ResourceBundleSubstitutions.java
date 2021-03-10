@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.localization;
+package com.oracle.svm.core.jdk.localization.substitutions;
 
 //Checkstyle: allow reflection
 //Checkstyle: allow synchronization
@@ -36,6 +36,9 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;

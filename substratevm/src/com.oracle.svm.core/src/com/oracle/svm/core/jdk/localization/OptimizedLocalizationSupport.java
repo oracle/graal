@@ -40,9 +40,10 @@ import sun.util.locale.provider.LocaleProviderAdapter;
 //Checkstyle: resume
 
 public class OptimizedLocalizationSupport extends LocalizationSupport {
-    final Map<Pair<Class<? extends LocaleServiceProvider>, Locale>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
-    final Map<LocaleProviderAdapter.Type, LocaleProviderAdapter> adaptersByType = new HashMap<>();
-    final Map<Class<? extends LocaleServiceProvider>, Object> providerPools = new HashMap<>();
+    public final Map<Pair<Class<? extends LocaleServiceProvider>, Locale>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
+    public final Map<LocaleProviderAdapter.Type, LocaleProviderAdapter> adaptersByType = new HashMap<>();
+    public final Map<Class<? extends LocaleServiceProvider>, Object> providerPools = new HashMap<>();
+
     final Map<Pair<String, Locale>, ResourceBundle> resourceBundles = new HashMap<>();
 
     private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");

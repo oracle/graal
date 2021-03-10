@@ -44,22 +44,24 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 /**
  * Holder for localization information that is computed during image generation and used at run
  * time.
+ *
+ * @see LocalizationFeature
  */
 public class LocalizationSupport {
 
-    final Map<String, Charset> charsets = new HashMap<>();
+    public final Map<String, Charset> charsets = new HashMap<>();
 
-    final Locale defaultLocale;
+    public final Locale defaultLocale;
     /**
      * All available locales configured during image build time.
      */
-    final Locale[] allLocales;
+    public final Locale[] allLocales;
 
-    final Set<String> supportedLanguageTags;
+    public final Set<String> supportedLanguageTags;
 
-    final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
+    public final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
-    protected LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
+    public LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());

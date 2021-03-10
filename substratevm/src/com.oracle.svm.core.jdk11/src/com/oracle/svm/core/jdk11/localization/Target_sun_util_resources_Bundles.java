@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
@@ -38,7 +39,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.jdk.localization.OptimizedLocaleMode;
 
 //Checkstyle: stop
 import sun.util.resources.Bundles.Strategy;

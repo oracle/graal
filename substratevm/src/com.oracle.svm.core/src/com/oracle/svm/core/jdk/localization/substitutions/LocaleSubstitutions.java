@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.localization;
+package com.oracle.svm.core.jdk.localization.substitutions;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
@@ -32,35 +32,26 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.spi.LocaleServiceProvider;
 
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK11To14;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.JvmLocaleMode;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 //Checkstyle: allow reflection
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.util.locale.provider.JRELocaleProviderAdapter;
-import sun.util.locale.provider.LocaleProviderAdapter;
-import sun.util.locale.provider.LocaleProviderAdapter.Type;
 import sun.util.locale.provider.LocaleResources;
-import sun.util.locale.provider.LocaleServiceProviderPool;
-import sun.util.locale.provider.LocaleServiceProviderPool.LocalizedObjectGetter;
 
 @TargetClass(java.util.Locale.class)
 final class Target_java_util_Locale {
@@ -179,119 +170,19 @@ final class Util_java_text_BreakIterator {
     static final BreakIterator SENTENCE_INSTANCE = BreakIterator.getSentenceInstance();
 }
 
-class OptimizedModeOnlySubstitutions {
-    @TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = OptimizedLocaleMode.class)
-    static final class Target_sun_util_locale_provider_LocaleProviderAdapter {
-
-        @Substitute
-        @SuppressWarnings({"unused"})
-        public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
-            OptimizedLocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport();
-            for (Locale candidateLocale : support.control.getCandidateLocales("", locale)) {
-                LocaleProviderAdapter result = support.adaptersByClass.get(Pair.create(providerClass, candidateLocale));
-                if (result != null) {
-                    return result;
-                }
-            }
-            throw VMError.unsupportedFeature("LocaleProviderAdapter.getAdapter:  providerClass: " + providerClass.getName() + ", locale: " + locale);
-        }
-
-        @Substitute
-        public static LocaleProviderAdapter forType(Type type) {
-            final LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().adaptersByType.get(type);
-            if (result != null) {
-                return result;
-            }
-            throw VMError.unsupportedFeature("LocaleProviderAdapter.forType:  type: " + type.toString());
-        }
+@SuppressWarnings({"static-method"})
+@TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = JvmLocaleMode.class)
+final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
+    @Substitute
+    private static Locale[] getAllAvailableLocales() {
+        return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
     }
 
     @Substitute
-    @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = OptimizedLocaleMode.class)
-    @SuppressWarnings({"static-method"})
-    static final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
-
-        private final LocaleServiceProvider cachedProvider;
-
-        Target_sun_util_locale_provider_LocaleServiceProviderPool(LocaleServiceProvider cachedProvider) {
-            this.cachedProvider = cachedProvider;
-        }
-
-        @Substitute
-        private static LocaleServiceProviderPool getPool(Class<? extends LocaleServiceProvider> providerClass) {
-            LocaleServiceProviderPool result = (LocaleServiceProviderPool) ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().providerPools.get(providerClass);
-            if (result == null) {
-                throw VMError.unsupportedFeature("LocaleServiceProviderPool.getPool " + providerClass.getName());
-            }
-            return result;
-        }
-
-        @Substitute
-        @TargetElement(onlyWith = JDK8OrEarlier.class)
-        private boolean hasProviders() {
-            return false;
-        }
-
-        @KeepOriginal
-        private native <P extends LocaleServiceProvider, S> S getLocalizedObject(LocalizedObjectGetter<P, S> getter, Locale locale, Object... params);
-
-        @KeepOriginal
-        private native <P extends LocaleServiceProvider, S> S getLocalizedObject(LocalizedObjectGetter<P, S> getter, Locale locale, String key, Object... params);
-
-        @SuppressWarnings({"unused", "unchecked"})
-        @Substitute
-        private <P extends LocaleServiceProvider, S> S getLocalizedObjectImpl(LocalizedObjectGetter<P, S> getter, Locale locale, boolean isObjectProvider, String key, Object... params) {
-            if (locale == null) {
-                throw new NullPointerException();
-            }
-            return getter.getObject((P) cachedProvider, locale, key, params);
-        }
-
-        @KeepOriginal //
-        @TargetElement(onlyWith = JDK11OrLater.class) //
-        public native <P extends LocaleServiceProvider, S> S getLocalizedObject(LocalizedObjectGetter<P, S> getter,
-                        Locale locale,
-                        Boolean isObjectProvider,
-                        String key,
-                        Object... params);
-
-        @KeepOriginal //
-        @TargetElement(onlyWith = JDK11To14.class) //
-        static native void config(Class<? extends Object> caller, String message);
-
-        @Substitute
-        private static Locale[] getAllAvailableLocales() {
-            return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
-        }
-
-        @Substitute
-        private Locale[] getAvailableLocales() {
-            return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
-        }
-    }
-
-    @Delete
-    @TargetClass(value = sun.util.locale.provider.AuxLocaleProviderAdapter.class, onlyWith = OptimizedLocaleMode.class)
-    static final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter {
+    private Locale[] getAvailableLocales() {
+        return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
     }
 }
-
-class JvmModeOnlySubstitutions {
-    @SuppressWarnings({"static-method"})
-    @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = JvmLocaleMode.class)
-    static final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
-        @Substitute
-        private static Locale[] getAllAvailableLocales() {
-            return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
-        }
-
-        @Substitute
-        private Locale[] getAvailableLocales() {
-            return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
-        }
-    }
-}
-
 
 /** Dummy class to have a class with the file's name. */
 public final class LocaleSubstitutions {
