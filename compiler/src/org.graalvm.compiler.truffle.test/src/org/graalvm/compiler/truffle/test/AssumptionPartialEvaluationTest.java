@@ -51,7 +51,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assumption assumption = Truffle.getRuntime().createAssumption();
         AbstractTestNode result = new ConstantWithAssumptionTestNode(assumption, 42);
         RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "constantValue", result);
-        OptimizedCallTarget callTarget = assertPartialEvalEquals("constant42", rootNode);
+        OptimizedCallTarget callTarget = assertPartialEvalEquals(AssumptionPartialEvaluationTest::constant42, rootNode);
         Assert.assertTrue(callTarget.isValid());
         assertDeepEquals(42, callTarget.call());
         Assert.assertTrue(callTarget.isValid());

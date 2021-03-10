@@ -105,6 +105,7 @@ final class PolyglotThreadInfo {
      * Not to be used directly. Use
      * {@link PolyglotEngineImpl#enter(PolyglotContextImpl, Node, boolean)} instead.
      */
+    @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
     PolyglotContextImpl enterInternal() {
         PolyglotContextImpl prev = PolyglotContextImpl.getSingleContextState().getContextThreadLocal().setReturnParent(context);
         enteredCount++;
@@ -116,6 +117,7 @@ final class PolyglotThreadInfo {
      * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl, com.oracle.truffle.api.nodes.Node, boolean)}
      * instead.
      */
+    @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
     void leaveInternal(PolyglotContextImpl prev) {
         enteredCount--;
         PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
@@ -177,10 +179,6 @@ final class PolyglotThreadInfo {
             statistics.leave(entry.statistics);
             this.executionStatisticsEntry = entry.next;
         }
-    }
-
-    boolean isLastActive() {
-        return getThread() != null && enteredCount == 1 && !cancelled;
     }
 
     boolean isActiveNotCancelled() {

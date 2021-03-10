@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,15 +61,15 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <h3>Supporting Safepoints in a Language</h3>
  *
  * Safepoints are explicitly polled by invoking the {@link #poll(Node)} method. Safepoints are
- * {@link #poll(Node) polled} with loose location or with {@link #pollHere(Node) exact location}. A
- * poll with a loose location is significantly more efficient than a poll with a precise location as
- * the compiler is able to move and combine the poll requests during compilation. A Truffle guest
- * language implementation must ensure that a safepoint is polled repeatedly within a constant time
- * interval. For example, a single arithmetic expression completes within a constant number of CPU
- * cycles. However, a loop that summarizes values over an array uses a non-constant time dependent
- * on the array size. This typically means that safepoints are best polled at the end of loops and
- * at the end of function or method calls to cover recursion. In addition, any guest language code
- * that blocks the execution, like guest language locks, need to use the
+ * {@link #poll(Node) polled} with relaxed location or with {@link #pollHere(Node) exact location}.
+ * A poll with a relaxed location is significantly more efficient than a poll with a precise
+ * location as the compiler is able to move and combine the poll requests during compilation. A
+ * Truffle guest language implementation must ensure that a safepoint is polled repeatedly within a
+ * constant time interval. For example, a single arithmetic expression completes within a constant
+ * number of CPU cycles. However, a loop that summarizes values over an array uses a non-constant
+ * time dependent on the array size. This typically means that safepoints are best polled at the end
+ * of loops and at the end of function or method calls to cover recursion. In addition, any guest
+ * language code that blocks the execution, like guest language locks, need to use the
  * {@link #setBlocked(Interrupter) blocking API} to allow polling of safepoints while the thread is
  * waiting.
  * <p>
@@ -152,10 +152,10 @@ public abstract class TruffleSafepoint {
     }
 
     /**
-     * Similar to {@link #poll(Node)} but with exact location. A poll with {@link #poll(Node) loose
-     * location} is significantly more efficient than a poll with precise location as the compiler
-     * is able to move and combine the poll requests during compilation. This method is safe to be
-     * used on compiled code paths.
+     * Similar to {@link #poll(Node)} but with exact location. A poll with {@link #poll(Node)
+     * relaxed location} is significantly more efficient than a poll with precise location as the
+     * compiler is able to move and combine the poll requests during compilation. This method is
+     * safe to be used on compiled code paths.
      * <p>
      * Usage example:
      *
@@ -188,8 +188,8 @@ public abstract class TruffleSafepoint {
      * <p>
      * Example usage:
      * <p>
-     * Note there is a short-cut method to achieve a the same behavior as in this example
-     * {@link #setBlockedInterruptable(Node, ThreadInterruptable, Object)}.
+     * Note there is a short-cut method to achieve the same behavior as in this example
+     * {@link #setBlockedInterruptible(Node, ThreadInterruptible, Object)}.
      *
      * <pre>
      * Lock lock = new ReentrantLock();
@@ -221,7 +221,7 @@ public abstract class TruffleSafepoint {
      * <p>
      *
      * <pre>
-     * TruffleSafepoint.setBlockedInterruptable(location, Lock::lockInterruptibly, lock);
+     * TruffleSafepoint.setBlockedInterruptible(location, Lock::lockInterruptibly, lock);
      * </pre>
      *
      * This method is short-hand for:
@@ -246,19 +246,19 @@ public abstract class TruffleSafepoint {
      *
      *
      * @param location the location with which the safepoint should be polled.
-     * @param interruptable the thread interruptable method to use for locking the object
+     * @param interruptible the thread interruptable method to use for locking the object
      * @param object the instance to use the interruptable method with.
      *
      * @since 21.1
      */
     @TruffleBoundary
-    public static <T> void setBlockedInterruptable(Node location, ThreadInterruptable<T> interruptable, T object) {
+    public static <T> void setBlockedInterruptible(Node location, ThreadInterruptible<T> interruptible, T object) {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         Interrupter prev = safepoint.setBlocked(Interrupter.THREAD_INTERRUPT);
         try {
             while (true) {
                 try {
-                    interruptable.apply(object);
+                    interruptible.apply(object);
                     break;
                 } catch (InterruptedException e) {
                     TruffleSafepoint.poll(location);
@@ -271,13 +271,13 @@ public abstract class TruffleSafepoint {
     }
 
     /**
-     * Allows to temporarily disable side-effecting thread local notifications on this thread. It is
-     * recommended to disable side-effecting actions only for a short and constant period of time.
-     * While safe-points are disabled it is guaranteed that:
-     * <ul>
-     * <li>No guest language objects are modified or other guest language code is running.
-     * <li>No guest language exceptions are thrown. Note that internal errors might be thrown.
-     * </ul>
+     * Allows to temporarily delay side-effecting thread local actions on this thread. It is
+     * recommended to delay side-effecting actions only for a short and constant period of time.
+     * <p>
+     * While side-effecting thread local actions are delayed on this thread, only non-side-effecting
+     * thread local actions will be scheduled in this thread. Non-side-effecting thread local
+     * actions do not mutate guest objects, run guest code or throw guest exceptions, but they might
+     * still throw internal errors.
      * <p>
      * Example usage:
      *
@@ -314,11 +314,11 @@ public abstract class TruffleSafepoint {
      * {@link Lock#lockInterruptibly() Lock::lockInterruptibly} or {@link Semaphore#acquire()
      * Semaphore::acquire}.
      *
-     * @see TruffleSafepoint#setBlockedInterruptable(Node, ThreadInterruptable, Object)
+     * @see TruffleSafepoint#setBlockedInterruptible(Node, ThreadInterruptible, Object)
      * @since 21.1
      */
     @FunctionalInterface
-    public interface ThreadInterruptable<T> {
+    public interface ThreadInterruptible<T> {
 
         /**
          * Runs the interruptable method for a given object.
@@ -331,7 +331,7 @@ public abstract class TruffleSafepoint {
 
     /**
      * An interrupter allows a foreign thread to interrupt the execution on a separate thread. Used
-     * to allo the Truffle safepoint mechanism to interrupt a blocked thread and schedule a
+     * to allow the Truffle safepoint mechanism to interrupt a blocked thread and schedule a
      * safepoint.
      *
      * @see TruffleSafepoint#setBlocked(Interrupter)

@@ -87,7 +87,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile.FileSystemContext;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleSafepoint.ThreadInterruptable;
+import com.oracle.truffle.api.TruffleSafepoint.ThreadInterruptible;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -3461,11 +3461,10 @@ public abstract class TruffleLanguage<C> {
         /**
          * Submits a thread local action to be performed at the next guest language safepoint on a
          * provided set of threads, once for each thread. If the threads array is <code>null</code>
-         * then the thread local action will be performed on all alive threads. If a thread is no
-         * longer alive for this context then no thread local action will be submitted and the
-         * action will immediately complete The submitted actions are processed in the same order as
-         * they are submitted in. . The action can be synchronous or asynchronous, side-effecting or
-         * non-sideeffecting. Please see {@link ThreadLocalAction} for details.
+         * then the thread local action will be performed on all alive threads. The submitted
+         * actions are processed in the same order as they are submitted in. The action can be
+         * synchronous or asynchronous, side-effecting or non-side-effecting. Please see
+         * {@link ThreadLocalAction} for details.
          * <p>
          * The method returns a {@link Future} instance that allows to wait for the thread local
          * action to complete or to cancel a currently performed event.
@@ -3486,10 +3485,10 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlockedInterruptable(Node, ThreadInterruptable, Object)} can
+         * {@link TruffleSafepoint#setBlockedInterruptible(Node, ThreadInterruptible, Object)} can
          * be used to allow other thread local actions to be processed while the current thread is
          * waiting. The returned {@link Future#get()} method can be used as
-         * {@link ThreadInterruptable}.
+         * {@link ThreadInterruptible}.
          *
          * @param threads the threads to execute the action on. <code>null</code> for all threads
          * @param action the action to perform on that thread.
@@ -3498,9 +3497,16 @@ public abstract class TruffleLanguage<C> {
          * @since 21.1
          */
         public Future<Void> submitThreadLocal(Thread[] threads, ThreadLocalAction action) {
+            return submitThreadLocalInternal(threads, action, true);
+        }
+
+        /*
+         * For reflective use in tests.
+         */
+        Future<Void> submitThreadLocalInternal(Thread[] threads, ThreadLocalAction action, boolean needsEnter) {
             checkDisposed();
             try {
-                return LanguageAccessor.ENGINE.submitThreadLocal(LanguageAccessor.ENGINE.getContext(polyglotLanguageContext), threads, action);
+                return LanguageAccessor.ENGINE.submitThreadLocal(LanguageAccessor.ENGINE.getContext(polyglotLanguageContext), polyglotLanguageContext, threads, action, needsEnter);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

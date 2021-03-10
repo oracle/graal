@@ -506,10 +506,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             }
         });
 
-
         if (reason != ParsingReason.JITCompilation) {
-             r = new Registration(invocationPlugins, CompilerDirectives.class);
-             /*
+            r = new Registration(invocationPlugins, CompilerDirectives.class);
+            /*
              * For AOT compilation and static analysis, we intrinsify CompilerDirectives.castExact
              * with explicit exception edges. For runtime compilation, TruffleGraphBuilderPlugins
              * registers a plugin that uses deoptimization.

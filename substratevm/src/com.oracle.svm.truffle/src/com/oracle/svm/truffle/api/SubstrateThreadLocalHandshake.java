@@ -28,10 +28,12 @@ import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLA
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -59,15 +61,27 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
     public static final SubstrateForeignCallDescriptor FOREIGN_POLL = SnippetRuntime.findForeignCall(SubstrateThreadLocalHandshake.class, "pollStub", false, TLAB_LOCATIONS);
 
-    static final SubstrateThreadLocalHandshake INSTANCE = new SubstrateThreadLocalHandshake();
+    static final SubstrateThreadLocalHandshake SINGLETON = new SubstrateThreadLocalHandshake();
 
     static final FastThreadLocalInt PENDING = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
     static final FastThreadLocalObject<TruffleSafepointImpl> STATE = FastThreadLocalFactory.createObject(TruffleSafepointImpl.class).setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    static final ThreadLocal<Boolean> HOSTED_PENDING = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private static final ThreadLocal<TruffleSafepointImpl> HOSTED_STATE = ThreadLocal.withInitial(() -> SINGLETON.getThreadState(Thread.currentThread()));
+
     @Override
     public void poll(Node location) {
-        if (PENDING.get() != 0) {
-            invokeProcessHandshake(location);
+        if (SubstrateUtil.HOSTED) {
+            if (HOSTED_PENDING.get()) {
+                invokeProcessHandshake(location);
+            }
+        } else {
+            if (PENDING.get() != 0) {
+                invokeProcessHandshake(location);
+            }
         }
     }
 
@@ -75,7 +89,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     @Uninterruptible(reason = "Must not contain safepoint checks", calleeMustBe = false)
     @NeverInline("Reads stack pointer")
-    private static void pollStub(Node location) throws Throwable {
+    private static void pollStub(Object location) throws Throwable {
         try {
             invokeProcessHandshake(location);
         } catch (Throwable t) {
@@ -87,7 +101,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
             try {
                 Pointer sp = KnownIntrinsics.readCallerStackPointer();
                 if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
-                    Log.log().string("trace deopt enabled ").bool(Deoptimizer.Options.TraceDeoptimization.getValue()).newline().flush();
+                    Log.log().string("trace deopt enabled ").newline().flush();
                     CodePointer ip = KnownIntrinsics.readReturnAddress();
                     long reason = Deoptimizer.encodeDeoptActionAndReasonToLong(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter, 0);
                     DeoptimizationRuntime.traceDeoptimization(reason, SpeculationLog.NO_SPECULATION.getReason(), DeoptimizationAction.None, sp, ip);
@@ -105,42 +119,55 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Uninterruptible(reason = "Used both from uninterruptable stub.", calleeMustBe = false)
     @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
-    private static void invokeProcessHandshake(Node enclosingNode) {
-        INSTANCE.processHandshake(enclosingNode);
+    private static void invokeProcessHandshake(Object enclosingNode) {
+        SINGLETON.processHandshake((Node) enclosingNode);
     }
 
     @Override
     public void ensureThreadInitialized() {
-        STATE.set(getThreadState(Thread.currentThread()));
+        if (!SubstrateUtil.HOSTED) {
+            STATE.set(getThreadState(Thread.currentThread()));
+        }
     }
 
     @Override
     public TruffleSafepointImpl getCurrent() {
-        TruffleSafepointImpl state = STATE.get();
-        assert state != null;
-        if (state == null) {
-            throw shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
-                            "Did you call getCurrent() outside while a polyglot context not entered?");
+        if (SubstrateUtil.HOSTED) {
+            return HOSTED_STATE.get();
+        } else {
+            TruffleSafepointImpl state = STATE.get();
+            assert state != null;
+            if (state == null) {
+                throw shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
+                                "Did you call getCurrent() outside while a polyglot context not entered?");
+            }
+            return state;
         }
-        return state;
     }
 
     @Override
     protected void clearFastPending() {
-        setPending(CurrentIsolate.getCurrentThread(), 0);
+        if (SubstrateUtil.HOSTED) {
+            HOSTED_PENDING.set(Boolean.FALSE);
+        } else {
+            PENDING.setVolatile(CurrentIsolate.getCurrentThread(), 0);
+        }
     }
 
     @Override
     protected void setFastPending(Thread t) {
-        assert t.isAlive() : "thread must remain alive while setting fast pending";
-        setPending(JavaThreads.fromJavaThread(t), 1);
-    }
+        if (SubstrateUtil.HOSTED) {
+            HOSTED_PENDING.set(Boolean.TRUE);
+        } else {
+            /*
+             * The thread will not go away here because the Truffle implementation ensures that this
+             * method is no longer used if the thread is no longer active. It only sets this state
+             * for contexts that are currently entered on a thread. Being entered implies that the
+             * thread is active.
+             */
+            assert t.isAlive() : "thread must remain alive while setting fast pending";
+            PENDING.setVolatile(JavaThreads.fromJavaThread(t), 1);
+        }
 
-    private static int setPending(IsolateThread t, int value) {
-        int prev;
-        do {
-            prev = PENDING.getVolatile(t);
-        } while (!PENDING.compareAndSet(t, prev, value));
-        return prev;
     }
 }

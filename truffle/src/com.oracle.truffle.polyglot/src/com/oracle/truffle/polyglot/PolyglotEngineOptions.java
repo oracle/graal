@@ -76,7 +76,7 @@ final class PolyglotEngineOptions {
     static final OptionKey<Boolean> SpecializationStatistics = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Traces thread local events and when they are processed on the individual threads." +
-                    "Prints messages with the [engine] [tl] prefix.")//
+                    "Prints messages with the [engine] [tl] prefix. ")//
     static final OptionKey<Boolean> TraceThreadLocalActions = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +

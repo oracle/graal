@@ -41,13 +41,13 @@ public class TruffleLoggerPartialEvaluationTest extends PartialEvaluationTest {
     public void logBelowLevel() {
         final LoggingNode result = new LoggingNode(Level.FINE, "Logging", 42);
         final RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "log", result);
-        assertPartialEvalEquals("constant42", rootNode);
+        assertPartialEvalEquals(TruffleLoggerPartialEvaluationTest::constant42, rootNode);
     }
 
     @Test
     public void isLoggableBelowLevel() {
         final IsLoggableNode result = new IsLoggableNode(Level.FINE, 42);
         final RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "isLoggable", result);
-        assertPartialEvalEquals("constant42", rootNode);
+        assertPartialEvalEquals(TruffleLoggerPartialEvaluationTest::constant42, rootNode);
     }
 }

@@ -207,7 +207,7 @@ public abstract class JavaThreads {
      * <li>The thread is not stopped and remains alive while this method is executed.
      * <ul>
      */
-    @Uninterruptible(reason = "Calls uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Calls uninterruptible code.")
     public static IsolateThread fromJavaThread(Thread t) {
         if (t == Thread.currentThread()) {
             return CurrentIsolate.getCurrentThread();

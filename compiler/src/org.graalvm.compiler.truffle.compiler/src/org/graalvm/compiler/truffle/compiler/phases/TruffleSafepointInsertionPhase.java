@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -92,8 +93,12 @@ public final class TruffleSafepointInsertionPhase extends Phase {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph) {
         if (!allowsSafepoints(graph)) {
+            /*
+             * This filters HotSpot call stubs and SVM method typed signatures.
+             */
             return;
         }
 
@@ -104,9 +109,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         }
         for (LoopBeginNode loopBeginNode : graph.getNodes(LoopBeginNode.TYPE)) {
             for (LoopEndNode loopEndNode : loopBeginNode.loopEnds()) {
-                // Invokes inside truffle compilations do not have a guaranteed truffle safepoint so
-                // we cannot elide them when Graal thinks it is safe to do so.
-                if (loopEndNode.canSafepoint() || loopEndNode.guaranteedSafepoint()) {
+                if (loopEndNode.canGuestSafepoint()) {
                     try (DebugCloseable s = loopEndNode.withNodeSourcePosition()) {
                         insertSafepoint(graph, loopEndNode);
                     }
@@ -115,7 +118,9 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         }
 
         for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            insertSafepoint(graph, (FixedNode) callTarget.invoke());
+            try (DebugCloseable s = callTarget.withNodeSourcePosition()) {
+                insertSafepoint(graph, (FixedNode) callTarget.invoke());
+            }
         }
     }
 
@@ -201,23 +206,25 @@ public final class TruffleSafepointInsertionPhase extends Phase {
             assert false : "unexpected case";
             return null;
         }
+        JavaConstant rootNode;
+        ObjectStamp stamp;
         if (truffleNode) {
-            if (!isAdoptedTruffleNode(javaConstant)) {
+            rootNode = getRootNode(javaConstant);
+            if (rootNode == null) {
                 return null;
             }
-            // success the receiver in the frame state is a truffle node
-            // and it is adopted by a root node
-            return (ConstantNode) value;
+            stamp = StampFactory.object(TypeReference.createExactTrusted(rootNodeType));
         } else {
             // we did not find a truffle node but we arrived at executeRootNode of the call target
             // this is common if the truffle safepoint was inserted into a method end.
-            JavaConstant constant = providers.getConstantReflection().readFieldValue(rootNodeField, javaConstant);
-            return new ConstantNode(constant, StampFactory.object(TypeReference.createExactTrusted(rootNodeField.getType().resolve(callTargetClass))));
+            rootNode = providers.getConstantReflection().readFieldValue(rootNodeField, javaConstant);
+            stamp = StampFactory.object(TypeReference.createExactTrusted(rootNodeField.getType().resolve(callTargetClass)));
         }
+        return new ConstantNode(rootNode, stamp);
     }
 
-    private boolean isAdoptedTruffleNode(JavaConstant javaConstant) {
-        JavaConstant current = javaConstant;
+    private JavaConstant getRootNode(JavaConstant node) {
+        JavaConstant current = node;
         JavaConstant parent = current;
         do {
             // traversing the parent pointer must always be cycle free
@@ -227,10 +234,14 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
         // not a RootNode instance at the end of the parent chain -> not adopted
         // not adopted means this node will not have a valid source location
-        return rootNodeType.isInstance(current);
+        ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(current);
+        if (rootNodeType.isAssignableFrom(type)) {
+            return current;
+        }
+        return null;
     }
 
-    private static ResolvedJavaMethod findMethod(ResolvedJavaType type, String name) {
+    static ResolvedJavaMethod findMethod(ResolvedJavaType type, String name) {
         for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
             if (m.getName().equals(name)) {
                 return m;
@@ -239,7 +250,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         throw GraalError.shouldNotReachHere("Required method " + name + " not found in " + type);
     }
 
-    private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
+    static ResolvedJavaField findField(ResolvedJavaType type, String name) {
         for (ResolvedJavaField field : type.getInstanceFields(false)) {
             if (field.getName().equals(name)) {
                 return field;

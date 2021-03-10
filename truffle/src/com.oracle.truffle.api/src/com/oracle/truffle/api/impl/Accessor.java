@@ -551,7 +551,7 @@ public abstract class Accessor {
 
         public abstract long calculateContextHeapSize(Object polyglotContext, long stopAtBytes, AtomicBoolean cancelled);
 
-        public abstract Future<Void> submitThreadLocal(Object polyglotLanguageContext, Thread[] threads, ThreadLocalAction action);
+        public abstract Future<Void> submitThreadLocal(Object polyglotLanguageContext, Object sourcePolyglotObject, Thread[] threads, ThreadLocalAction action, boolean needsEnter);
 
         public abstract Object getContext(Object polyglotLanguageContext);
     }
@@ -886,7 +886,7 @@ public abstract class Accessor {
         }
 
         public ThreadLocalHandshake getThreadLocalHandshake() {
-            return DefaultThreadLocalHandshake.INSTANCE;
+            return DefaultThreadLocalHandshake.SINGLETON;
         }
 
         /**

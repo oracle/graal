@@ -25,6 +25,8 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -35,11 +37,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 public class DFAPartialEvaluationTest extends PartialEvaluationTest {
 
@@ -316,7 +313,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
     private void assertPartialEvalEqualsAndRunsCorrect(RootNode program, String input) {
         assertMatches(program, input);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(program);
-        partialEval(compilable, new Object[]{input}, INVALID_COMPILATION_ID);
+        partialEval(compilable, new Object[]{input}, getCompilationId(compilable));
         // fail on Exceptions only for now
     }
 

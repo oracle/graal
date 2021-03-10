@@ -74,7 +74,23 @@ public final class LoopEndNode extends AbstractEndNode {
      */
     boolean canSafepoint;
 
-    boolean guaranteedSafepoint;
+    /**
+     * If Graal is used as a compiler for a guest language then in addition to host safepoints there
+     * is also a need for guest safepoints. Unlike host safepoints, guest safepoints are not needed
+     * to support garbage collectors but to support features like cancellation or reading stack
+     * frames from other threads.
+     * <p>
+     * This flag is used to store the information whether safepoints can be disabled for this loop
+     * end. It depends on the guest language implementation framework whether this flag may ever
+     * become <code>false</code>.
+     * <p>
+     * If Graal is not used to compile a guest language then this flag will be always return
+     * <code>true</code>.
+     * <p>
+     * More information on the guest safepoint implementation in Truffle can be found
+     * <a href="http://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md">here</a>.
+     */
+    boolean canGuestSafepoint;
 
     public LoopEndNode(LoopBeginNode begin) {
         super(TYPE);
@@ -83,6 +99,7 @@ public final class LoopEndNode extends AbstractEndNode {
         this.endIndex = idx;
         this.loopBegin = begin;
         this.canSafepoint = begin.canEndsSafepoint;
+        this.canGuestSafepoint = begin.canEndsGuestSafepoint;
     }
 
     @Override
@@ -107,21 +124,13 @@ public final class LoopEndNode extends AbstractEndNode {
         this.canSafepoint = false;
     }
 
-    /**
-     * Disables the safepoint and marks the loop and as guaranteed by an inner method call.
-     */
-    public void garanteeSafepoint() {
-        disableSafepoint();
-        guaranteedSafepoint = true;
+    public void disableGuestSafepoint() {
+        this.canGuestSafepoint = false;
     }
 
-    /**
-     * Returns true if the safepoint was disabled due to a method invocation or a node that implied
-     * a guaranteed safepoint.
-     */
-    public boolean guaranteedSafepoint() {
-        assert !guaranteedSafepoint || !canSafepoint;
-        return guaranteedSafepoint;
+    public boolean canGuestSafepoint() {
+        assert !canGuestSafepoint || loopBegin().canEndsGuestSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
+        return this.canGuestSafepoint;
     }
 
     public boolean canSafepoint() {

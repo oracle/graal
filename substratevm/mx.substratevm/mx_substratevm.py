@@ -426,7 +426,7 @@ def svm_gate_body(args, tasks):
             build()
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task()
-                
+
     with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
             build()

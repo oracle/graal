@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test;
 
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -49,6 +50,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -79,31 +82,44 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class TruffleSafepointTest extends AbstractPolyglotTest {
+public class TruffleSafepointTest {
+
+    private static final Method SUBMIT_INTERNAL = ReflectionUtils.requireDeclaredMethod(TruffleLanguage.Env.class, "submitThreadLocalInternal", null);
 
     private static final int[] THREAD_CONFIGS = new int[]{1, 4, 16};
     private static final int[] ITERATION_CONFIGS = new int[]{1, 8, 32};
     private static ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
 
-    private static final int TIMEOUT_SECONDS = 10;
+    private static final int TIMEOUT_SECONDS = 60;
     private static final boolean VERBOSE = false;
+    /*
+     * Rerun all thread configurations asynchronously. This flag is intended to be used for
+     * debugging failures in this class.
+     */
+    private static final boolean RERUN_THREAD_CONFIG_ASYNC = true;
 
     @Rule public TestName name = new TestName();
 
@@ -134,7 +150,6 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                 return true;
             }
         });
-        enterContext = false;
         if (VERBOSE) {
             System.out.println();
             System.out.print(name.getMethodName() + ":");
@@ -152,19 +167,22 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
     @Test
     public void testNullArgs() {
-        setupEnv();
-
-        assertFails(() -> languageEnv.submitThreadLocal(new Thread[]{null}, new ThreadLocalAction(true, true) {
-            @Override
-            protected void perform(Access access) {
-            }
-        }), NullPointerException.class);
-        assertFails(() -> languageEnv.submitThreadLocal(null, null), NullPointerException.class);
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            TruffleSafepoint.poll(node);
+            return false;
+        })) {
+            assertFails(() -> setup.env.submitThreadLocal(new Thread[]{null}, new ThreadLocalAction(true, true) {
+                @Override
+                protected void perform(Access access) {
+                }
+            }), NullPointerException.class);
+            assertFails(() -> setup.env.submitThreadLocal(null, null), NullPointerException.class);
+        }
     }
 
     @Test
     public void testSynchronousRecursiveError() throws InterruptedException, AssertionError, ExecutionException {
-        try (TestSetup setup = setupSafepointLoop(1, (node) -> {
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
         })) {
@@ -200,7 +218,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     @Test
     public void testSynchronous() {
         forEachConfig((threads, events) -> {
-            TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             });
@@ -248,7 +266,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     @Test
     public void testAsynchronous() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -298,7 +316,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             AtomicBoolean stopped = new AtomicBoolean(false);
             AtomicBoolean allowSideEffects = new AtomicBoolean(true);
 
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint config = TruffleSafepoint.getCurrent();
                 boolean prev = config.setAllowSideEffects(false);
                 try {
@@ -335,7 +353,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     @Test
     public void testStackTrace() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -379,34 +397,44 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
             AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(null);
             List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             }, (e) -> {
                 exceptions.add(e);
                 latchRef.get().countDown();
             })) {
+
                 for (int i = 0; i < events; i++) {
                     CountDownLatch latch = new CountDownLatch(threads);
                     latchRef.set(latch);
 
                     String testId = "test " + i + " of " + events;
-                    setup.env.submitThreadLocal(null,
+                    AtomicInteger counter = new AtomicInteger();
+                    Future<?> await = setup.env.submitThreadLocal(null,
                                     new ThreadLocalAction(true, false) {
 
                                         @Override
                                         protected void perform(Access access) {
+                                            counter.incrementAndGet();
                                             throw new RuntimeException(testId);
                                         }
                                     });
+                    // wait until all tasks on all threads are done
+                    waitOrFail(await);
+
+                    // make sure we thrown the exception for all events
+                    assertEquals(threads, counter.get());
 
                     try {
+                        // wait until all exceptions are reported
                         if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                             throw failTimeout(null);
                         }
                     } catch (InterruptedException e) {
                         fail();
                     }
+
                     assertEquals(threads, exceptions.size());
                     for (Throwable t : exceptions) {
                         assertTrue(t instanceof RuntimeException);
@@ -429,7 +457,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     public void testBlockedAndSafepoints() {
         forEachConfig((threads, events) -> {
             Semaphore semaphore = new Semaphore(threads);
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
                 lockCooperativelySafepoint(semaphore, node, safepoint);
                 return false;
@@ -451,7 +479,9 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                         // after half of the events we let them run into the semaphore
                         // this encourages race conditions between setting blocked and unlocking
                         if (i == Math.floorDiv(events, 2)) {
-                            semaphore.acquireUninterruptibly(threads);
+                            for (int j = 0; j < threads; j++) {
+                                acquire(semaphore);
+                            }
                         }
                     }
 
@@ -511,8 +541,8 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     public void testBlocked() {
         forEachConfig((threads, events) -> {
             Semaphore semaphore = new Semaphore(threads);
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
-                TruffleSafepoint.setBlockedInterruptable(node, Semaphore::acquire, semaphore);
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint.setBlockedInterruptible(node, Semaphore::acquire, semaphore);
                 releaseSemaphore(semaphore);
                 assert !Thread.interrupted() : "invalid trailing interrupted state";
                 return false;
@@ -524,11 +554,13 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                 for (int i = 0; i < events; i++) {
                     threadLocals.add(setup.env.submitThreadLocal(null, runnable));
 
-                    // after half of the events we let them run into the semaphore
-                    // this encourages contention conditions between setting blocked and
-                    // unlocking
                     if (i == Math.floorDiv(events, 2)) {
-                        semaphore.acquireUninterruptibly(threads);
+                        // after half of the events we let them run into the semaphore
+                        // this encourages contention conditions between setting blocked and
+                        // unlocking
+                        for (int j = 0; j < threads; j++) {
+                            acquire(semaphore);
+                        }
                     }
                 }
 
@@ -550,14 +582,26 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     }
 
     /*
+     * Non public version that can conifgure whether to enter.
+     */
+    private static Future<?> submitThreadLocalInternal(Env env, Thread[] threads, ThreadLocalAction action, boolean needEnter) {
+        try {
+            return (Future<?>) SUBMIT_INTERNAL.invoke(env, threads, action, needEnter);
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    /*
      * First submit a synchronous safepoint and then reschedule an event until the context was left
      * for the last time on a thread. This simulates how we do cancellation and/or interrupt in a
-     * polyglot context.
+     * polyglot context. Note that this test cannot be used via public API and is designed as
+     * whitebox test for context cancellation.
      */
     @Test
     public void testContextAlive() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -571,27 +615,34 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                             noLongerAlive.computeIfAbsent(Thread.currentThread(), (k) -> new ArrayList<>()).add(b);
                             return b;
                         });
-                        threadLocals.add(setup.env.submitThreadLocal(null, new ThreadLocalAction(true, true) {
+
+                        threadLocals.add(submitThreadLocalInternal(setup.env, null, new ThreadLocalAction(true, true) {
                             @Override
                             protected void perform(Access access) {
-                                final Thread[] currentThread = new Thread[]{access.getThread()};
-                                setup.env.submitThreadLocal(currentThread, new ThreadLocalAction(true, false) {
-
-                                    @Override
-                                    protected void perform(Access innerAccess) {
-                                        assertSame(currentThread[0], innerAccess.getThread());
-                                        // context is no longer alive only once when we leave the
-                                        // context
-                                        assertFalse(localBoolean.get().get());
-                                        if (innerAccess.isContextActive()) {
-                                            setup.env.submitThreadLocal(currentThread, this);
-                                        } else {
-                                            localBoolean.get().set(true);
+                                assertFalse(localBoolean.get().get());
+                                if (setup.env.getContext().isActive()) {
+                                    final Thread[] currentThread = new Thread[]{access.getThread()};
+                                    submitThreadLocalInternal(setup.env, currentThread, new ThreadLocalAction(true, false) {
+                                        @Override
+                                        protected void perform(Access innerAccess) {
+                                            assertSame(currentThread[0], innerAccess.getThread());
+                                            // context is no longer alive only once when we leave
+                                            // the
+                                            // context
+                                            assertFalse(localBoolean.get().get());
+                                            if (setup.env.getContext().isActive()) {
+                                                submitThreadLocalInternal(setup.env, currentThread, this, false);
+                                            } else {
+                                                localBoolean.get().set(true);
+                                            }
                                         }
-                                    }
-                                });
+                                    }, false);
+                                } else {
+                                    localBoolean.get().set(true);
+                                }
                             }
-                        }));
+                        }, false));
+
                     }
                     // wait for all events to complete so we can reliably assert the events
                     for (Future<?> f : threadLocals) {
@@ -613,6 +664,97 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         });
     }
 
+    private static Semaphore[] createSemaphores(int count, int permits) {
+        Semaphore[] semaphores = new Semaphore[count];
+        for (int i = 0; i < semaphores.length; i++) {
+            semaphores[i] = new Semaphore(permits);
+        }
+        return semaphores;
+    }
+
+    private static AtomicBoolean[] createBooleans(int count) {
+        AtomicBoolean[] b = new AtomicBoolean[count];
+        for (int i = 0; i < b.length; i++) {
+            b[i] = new AtomicBoolean();
+        }
+        return b;
+    }
+
+    @Test
+    public void testRecursiveBlockingProcessing() throws InterruptedException {
+        /*
+         * Specfies the number of recursive blocking actions.
+         */
+        int[] tests = new int[]{1, 2, 3, 7, 16, 128, 256};
+        for (int blockingActions : tests) {
+            Semaphore waitForSafepoint = new Semaphore(0);
+            Semaphore[] leaveBlocked = createSemaphores(blockingActions, 0);
+
+            try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+                acquire(waitForSafepoint);
+                TruffleSafepoint.poll(node);
+                return false;
+            })) {
+
+                AtomicBoolean performed = new AtomicBoolean();
+                AtomicBoolean[] inBlockingAction = createBooleans(blockingActions);
+                Semaphore[] awaitBlocked = createSemaphores(blockingActions, 0);
+                Future<?>[] blockingFutures = new Future<?>[blockingActions];
+
+                for (int i = 0; i < blockingActions; i++) {
+                    final int actionIndex = i;
+                    blockingFutures[actionIndex] = setup.env.submitThreadLocal(null, new ThreadLocalAction(true, false) {
+                        @Override
+                        protected void perform(Access access) {
+                            if (actionIndex > 0) {
+                                assertTrue(inBlockingAction[actionIndex - 1].get());
+                            }
+                            inBlockingAction[actionIndex].set(true);
+                            try {
+                                awaitBlocked[actionIndex].release();
+                                TruffleSafepoint.setBlockedInterruptible(access.getLocation(), (e) -> {
+                                    leaveBlocked[actionIndex].acquire();
+                                }, null);
+                            } finally {
+                                inBlockingAction[actionIndex].set(false);
+                            }
+                        }
+                    });
+                }
+
+                Future<?> f = setup.env.submitThreadLocal(null, new ThreadLocalAction(true, false) {
+                    @Override
+                    protected void perform(Access innerAccess) {
+                        assertTrue(inBlockingAction[blockingActions - 1].get());
+                        if (performed.get()) {
+                            throw new AssertionError("already performed");
+                        }
+                        performed.set(true);
+                    }
+                });
+
+                // start processing safepoints now
+                waitForSafepoint.release(Integer.MAX_VALUE);
+
+                for (int actionIndex = 0; actionIndex < blockingActions; actionIndex++) {
+                    awaitBlocked[actionIndex].acquire();
+                }
+
+                for (int actionIndex = 0; actionIndex < blockingActions; actionIndex++) {
+                    leaveBlocked[actionIndex].release();
+                }
+                waitOrFail(f);
+                assertTrue(performed.get());
+
+            }
+        }
+    }
+
+    @TruffleBoundary
+    private static void acquire(Semaphore waitForSafepoint) {
+        waitForSafepoint.acquireUninterruptibly();
+    }
+
     /*
      * All events are cancelled or performed as soon as the context is closed, otherwise the context
      * close throws an error.
@@ -620,7 +762,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     @Test
     public void testContextCancellation() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -644,7 +786,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
                         }
                     }));
                 }
-                awaitClosing.acquireUninterruptibly();
+                acquire(awaitClosing);
 
                 // we need to allow threads to complete before we cancel
                 // this is necessary because we still use instrumentation for cancel and we are
@@ -662,7 +804,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     @Test
     public void testEventCancellation() {
         forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -696,7 +838,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean();
 
-            try (TestSetup setup = setupSafepointLoop(threads, (node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 while (!isStopped(stopped)) {
                     contextSafepoint();
                 }
@@ -731,7 +873,7 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
     @Test
     public void testNonSideEffectInvalidErrorThrown() throws InterruptedException {
-        try (TestSetup setup = setupSafepointLoop(1, (node) -> {
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
         })) {
@@ -750,9 +892,178 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         }
     }
 
+    /*
+     * This needs to be higher than graal.MaximumEscapeAnalysisArrayLength. However in this truffle
+     * test the value is not easily accessible.
+     */
+    static int nonConstantValue = 1024;
+
+    @Test
+    public void testBigAllocationInLoop() {
+        final int loopCount = 1024;
+        Object[] values = new Object[loopCount];
+        CountDownLatch await = new CountDownLatch(2);
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            countDownAndAwait(await);
+            for (int i = 0; i < loopCount; i++) {
+                // perform an escaping allocation
+                values[i] = new Object[nonConstantValue];
+                TruffleSafepoint.poll(node);
+            }
+            return false;
+        })) {
+            SafepointCounter counter = new SafepointCounter(setup);
+            setup.env.submitThreadLocal(null, counter);
+
+            countDownAndAwait(await);
+
+            // now the loop runs and we should get at least one safepoint invocation for each loop
+            // invocation. otherwise something is wrong with safepoint elimination
+
+            setup.stopAndAwait();
+            int count = counter.counter.get();
+            assertTrue(String.valueOf(count), count >= loopCount);
+        }
+    }
+
+    @Test
+    public void testSimpleAllocationInLoop() {
+        final int loopCount = 1024;
+        Object[] values = new Object[loopCount];
+        CountDownLatch await = new CountDownLatch(2);
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            countDownAndAwait(await);
+            for (int i = 0; i < loopCount; i++) {
+                // perform an escaping allocation
+                values[i] = new Object();
+                TruffleSafepoint.poll(node);
+            }
+            return false;
+        })) {
+            SafepointCounter counter = new SafepointCounter(setup);
+            setup.env.submitThreadLocal(null, counter);
+
+            countDownAndAwait(await);
+
+            // now the loop runs and we should get at least one safepoint invocation for each loop
+            // invocation. otherwise something is wrong with safepoint elimination
+
+            setup.stopAndAwait();
+            int count = counter.counter.get();
+            assertTrue(String.valueOf(count), count >= loopCount);
+        }
+    }
+
+    @Test
+    public void testCountedSumLoop() {
+        final int loopCount = 1024;
+        int[] values = new int[loopCount];
+        CountDownLatch await = new CountDownLatch(2);
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            countDownAndAwait(await);
+            int sum = 0;
+            for (int i = 0; i < loopCount; i++) {
+                sum += values[i];
+            }
+            // escape sum value
+            values[0] = sum;
+            return false;
+        })) {
+            SafepointCounter counter = new SafepointCounter(setup);
+            setup.env.submitThreadLocal(null, counter);
+
+            countDownAndAwait(await);
+
+            setup.stopAndAwait();
+            int count = counter.counter.get();
+
+            // for a sum loop the number of notifications should be below 1024
+            // otherwise truffle loop safepoint elimination did not work.
+            assertTrue(String.valueOf(count), count < loopCount);
+        }
+    }
+
+    @TruffleBoundary
+    private static void countDownAndAwait(CountDownLatch await) {
+        await.countDown();
+        try {
+            await.await();
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    static class CallInLoopNode extends Node implements NodeCallable {
+
+        @Child IndirectCallNode indirectCall = IndirectCallNode.create();
+
+        static final int LOOP_COUNT = 1024;
+
+        CallTarget target;
+        Semaphore awaitSubmit = new Semaphore(0);
+        Object[] values = new Object[LOOP_COUNT];
+
+        public boolean call(TestSetup setup, TestRootNode node) {
+            initialize();
+            for (int i = 0; i < LOOP_COUNT; i++) {
+                // perform an escaping allocation
+                values[i] = indirectCall.call(target);
+            }
+            return false;
+        }
+
+        @TruffleBoundary
+        private void initialize() {
+            target = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            try {
+                awaitSubmit.acquire();
+            } catch (InterruptedException e) {
+                // not expected to interrupt
+                throw new AssertionError(e);
+            }
+        }
+    }
+
+    @Test
+    public void testTruffleCallInLoop() {
+        CallInLoopNode callInLoop = new CallInLoopNode();
+        try (TestSetup setup = setupSafepointLoop(1, callInLoop)) {
+            SafepointCounter counter = new SafepointCounter(setup);
+            setup.env.submitThreadLocal(null, counter);
+
+            callInLoop.awaitSubmit.release();
+
+            setup.stopAndAwait();
+            int count = counter.counter.get();
+
+            // if there is an indirect truffle call in the loop
+            // we can omit the safepoint. if that safepoint would
+            // therefore we expect a safepoint count around 1024 but definitely less than 1024 * 2
+            assertTrue(String.valueOf(count), count < CallInLoopNode.LOOP_COUNT * 2);
+        }
+    }
+
     @SuppressWarnings("serial")
     static class GuestException extends AbstractTruffleException {
 
+    }
+
+    @Test
+    public void testSubmitAsInstrument() {
+        forEachConfig((threads, events) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint.poll(node);
+                return false;
+            })) {
+                AtomicInteger eventCounter = new AtomicInteger();
+                ActionCollector runnable = new ActionCollector(setup, eventCounter, true, false);
+                for (int i = 0; i < events; i++) {
+                    setup.instrumentEnv.submitThreadLocal(setup.env.getContext(), null, runnable);
+                }
+                setup.stopAndAwait();
+                assertActionsAnyOrder(threads, events, runnable);
+            }
+        });
     }
 
     @FunctionalInterface
@@ -780,28 +1091,30 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         }
 
         // asynchronous execution of all configs
-        List<Future<?>> futures = new ArrayList<>();
-        for (int threadConfig = 0; threadConfig < THREAD_CONFIGS.length; threadConfig++) {
-            int threads = THREAD_CONFIGS[threadConfig];
-            for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
-                int events = ITERATION_CONFIGS[iterationConfig];
-                try {
-                    if (futures.size() >= 64) {
-                        for (Future<?> future : futures) {
-                            waitOrFail(future);
+        if (RERUN_THREAD_CONFIG_ASYNC) {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int threadConfig = 0; threadConfig < THREAD_CONFIGS.length; threadConfig++) {
+                int threads = THREAD_CONFIGS[threadConfig];
+                for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
+                    int events = ITERATION_CONFIGS[iterationConfig];
+                    try {
+                        if (futures.size() >= 64) {
+                            for (Future<?> future : futures) {
+                                waitOrFail(future);
+                            }
+                            futures.clear();
                         }
-                        futures.clear();
+                        futures.add(service.submit(() -> run.run(threads, events)));
+                    } catch (AssertionError e) {
+                        throw e;
+                    } catch (Throwable e) {
+                        throw new RuntimeException(e);
                     }
-                    futures.add(service.submit(() -> run.run(threads, events)));
-                } catch (AssertionError e) {
-                    throw e;
-                } catch (Throwable e) {
-                    throw new RuntimeException(e);
                 }
             }
-        }
-        for (Future<?> future : futures) {
-            waitOrFail(future);
+            for (Future<?> future : futures) {
+                waitOrFail(future);
+            }
         }
     }
 
@@ -831,90 +1144,122 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         return setupSafepointLoop(threads, callable, null);
     }
 
+    static class TestRootNode extends RootNode {
+
+        final AtomicBoolean stopped;
+        final TestSetup setup;
+        final CountDownLatch latch;
+        @CompilationFinal NodeCallable callable;
+
+        TestRootNode(TruffleLanguage<?> language, AtomicBoolean stopped, TestSetup setup, CountDownLatch latch, NodeCallable callable) {
+            super(language);
+            this.stopped = stopped;
+            this.setup = setup;
+            this.latch = latch;
+            if (callable instanceof Node) {
+                this.callable = (NodeCallable) insert((Node) callable);
+            } else {
+                this.callable = callable;
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object execute(VirtualFrame frame) {
+            waitForLatch(latch);
+            do {
+                Boolean result = callable.call(setup, this);
+                if (result) {
+                    return result;
+                }
+                // we want to call at least once
+            } while (!stopped.get());
+            return null;
+        }
+
+        @Override
+        public boolean isInternal() {
+            return false;
+        }
+
+        @Override
+        public String getName() {
+            return "org.graalvm.TestRoot";
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private TestSetup setupSafepointLoop(int threads, NodeCallable callable, Consumer<Throwable> exHandler) {
         Context c = createTestContext();
-        c.enter();
-        c.initialize(ProxyLanguage.ID);
-        ProxyLanguage proxyLanguage = ProxyLanguage.getCurrentLanguage();
-        Env env = ProxyLanguage.getCurrentContext().getEnv();
-        c.leave();
-        CountDownLatch latch = new CountDownLatch(threads);
-        Object targetEnter = env.getContext().enter(null);
-        AtomicBoolean stopped = new AtomicBoolean();
-        RootCallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(proxyLanguage) {
-            @SuppressWarnings("unchecked")
-            @Override
-            public Object execute(VirtualFrame frame) {
-                waitForLatch(latch);
-                while (true) {
-                    if (stopped.get()) {
-                        return null;
+        TestSetup setup = null;
+        try {
+            c.enter();
+            c.initialize(ProxyLanguage.ID);
+            ProxyLanguage proxyLanguage = ProxyLanguage.getCurrentLanguage();
+            Env env = ProxyLanguage.getCurrentContext().getEnv();
+            TruffleInstrument.Env instrument = c.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class).getEnv();
+            c.leave();
+            CountDownLatch latch = new CountDownLatch(threads);
+            Object targetEnter = env.getContext().enter(null);
+            AtomicBoolean stopped = new AtomicBoolean();
+
+            TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped);
+            setup.root = new TestRootNode(proxyLanguage, stopped, setup, latch, callable);
+            setup.target = Truffle.getRuntime().createCallTarget(setup.root);
+            env.getContext().leave(null, targetEnter);
+            setup.futures = new ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                setup.futures.add(service.submit(() -> {
+                    Object prev = env.getContext().enter(finalSetup.target.getRootNode());
+                    try {
+                        do {
+                            try {
+                                return (Boolean) finalSetup.target.call(latch);
+                            } catch (Throwable t) {
+                                if (exHandler != null) {
+                                    exHandler.accept(t);
+                                } else {
+                                    throw t;
+                                }
+                            }
+                        } while (!stopped.get());
+                        return true;
+                    } finally {
+                        env.getContext().leave(finalSetup.target.getRootNode(), prev);
                     }
-                    Boolean result = callable.call(this);
-                    if (result) {
-                        return result;
-                    }
-                }
+                }));
             }
-
-            @Override
-            public boolean isInternal() {
-                return false;
-            }
-
-            @Override
-            public String getName() {
-                return "org.graalvm.TestRoot";
-            }
-
-        });
-        env.getContext().leave(null, targetEnter);
-        List<Future<Boolean>> futures = new ArrayList<>();
-        for (int i = 0; i < threads; i++) {
-            futures.add(service.submit(() -> {
-                Object prev = env.getContext().enter(target.getRootNode());
-                try {
-                    while (!stopped.get()) {
-                        try {
-                            return (Boolean) target.call(latch);
-                        } catch (Throwable t) {
-                            if (exHandler != null) {
-                                exHandler.accept(t);
-                            } else {
-                                throw t;
+            try {
+                if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    for (Future<Boolean> future : setup.futures) {
+                        if (future.isDone()) {
+                            try {
+                                future.get();
+                            } catch (ExecutionException e) {
+                                throw new AssertionError(e.getCause());
                             }
                         }
                     }
-                    return true;
-                } finally {
-                    env.getContext().leave(target.getRootNode(), prev);
+                    throw new AssertionError();
                 }
-            }));
-        }
-        try {
-            if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                for (Future<Boolean> future : futures) {
-                    if (future.isDone()) {
-                        try {
-                            future.get();
-                        } catch (ExecutionException e) {
-                            throw new AssertionError(e.getCause());
-                        }
-                    }
-                }
-                throw new AssertionError();
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
             }
-        } catch (InterruptedException e) {
-            throw new AssertionError(e);
+            return setup;
+        } catch (Throwable t) {
+            if (setup != null && setup.futures != null) {
+                setup.close();
+            } else {
+                c.close();
+            }
+            throw t;
         }
-        return new TestSetup(c, env, futures, target, stopped);
     }
 
     @FunctionalInterface
-    interface NodeCallable {
+    interface NodeCallable extends NodeInterface {
 
-        boolean call(Node node);
+        boolean call(TestSetup setup, TestRootNode node);
 
     }
 
@@ -922,15 +1267,16 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
 
         final Context context;
         final Env env;
-        final List<Future<Boolean>> futures;
-        final RootCallTarget target;
+        final TruffleInstrument.Env instrumentEnv;
+        List<Future<Boolean>> futures;
+        @CompilationFinal RootCallTarget target;
+        @CompilationFinal TestRootNode root;
         final AtomicBoolean stopped;
 
-        TestSetup(Context context, Env env, List<Future<Boolean>> futures, RootCallTarget target, AtomicBoolean stopped) {
+        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, AtomicBoolean stopped) {
             this.context = context;
             this.env = env;
-            this.futures = futures;
-            this.target = target;
+            this.instrumentEnv = instrumentEnv;
             this.stopped = stopped;
         }
 
@@ -946,10 +1292,14 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
         }
     }
 
+    static boolean isGraalRuntime() {
+        return Truffle.getRuntime().getName().contains("Graal");
+    }
+
     protected Context createTestContext() {
         Context.Builder b = Context.newBuilder();
         b.allowExperimentalOptions(true);
-        if (Truffle.getRuntime().getName().contains("Graal")) {
+        if (isGraalRuntime()) {
             b.option("engine.CompileImmediately", "true");
             b.option("engine.BackgroundCompilation", "false");
         }
@@ -993,6 +1343,26 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
     static class SafepointPerformed extends RuntimeException {
     }
 
+    static class SafepointCounter extends ThreadLocalAction {
+
+        private final TestSetup setup;
+
+        final AtomicInteger counter = new AtomicInteger();
+
+        protected SafepointCounter(TestSetup setup) {
+            super(false, false);
+            this.setup = setup;
+        }
+
+        @Override
+        protected void perform(Access access) {
+            counter.incrementAndGet();
+
+            // resubmit
+            setup.env.submitThreadLocal(new Thread[]{Thread.currentThread()}, this);
+        }
+    }
+
     static class ActionCollector extends ThreadLocalAction {
         final List<Thread> actions = Collections.synchronizedList(new ArrayList<>());
         final List<Integer> ids = Collections.synchronizedList(new ArrayList<>());
@@ -1019,8 +1389,6 @@ public class TruffleSafepointTest extends AbstractPolyglotTest {
             } else {
                 assertNotNull(access.getLocation());
             }
-
-            assertTrue(access.isContextActive());
             actions.add(access.getThread());
             ids.add(counter.incrementAndGet());
         }

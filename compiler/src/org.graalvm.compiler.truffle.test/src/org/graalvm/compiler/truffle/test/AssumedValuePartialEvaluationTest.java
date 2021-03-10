@@ -46,7 +46,7 @@ public class AssumedValuePartialEvaluationTest extends PartialEvaluationTest {
         AssumedValue<Integer> value = new AssumedValue<>(42);
 
         RootTestNode root = new RootTestNode(new FrameDescriptor(), "assumedValue", new ReadConstantAssumedValueNode(value));
-        OptimizedCallTarget target = assertPartialEvalEquals("constant42", root);
+        OptimizedCallTarget target = assertPartialEvalEquals(AssumedValuePartialEvaluationTest::constant42, root);
 
         Assert.assertTrue("CallTarget is valid", target.isValid());
         Assert.assertEquals(42, target.call());
@@ -57,7 +57,7 @@ public class AssumedValuePartialEvaluationTest extends PartialEvaluationTest {
         AssumedValue<Integer> value = new AssumedValue<>(42);
 
         RootTestNode root = new RootTestNode(new FrameDescriptor(), "assumedValue", new ReadConstantAssumedValueNode(value));
-        OptimizedCallTarget target = assertPartialEvalEquals("constant42", root);
+        OptimizedCallTarget target = assertPartialEvalEquals(AssumedValuePartialEvaluationTest::constant42, root);
 
         Assert.assertTrue("CallTarget is valid", target.isValid());
         Assert.assertEquals(42, target.call());

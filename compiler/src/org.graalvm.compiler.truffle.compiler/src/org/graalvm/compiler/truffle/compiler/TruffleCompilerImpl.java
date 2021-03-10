@@ -501,7 +501,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
             TruffleTierConfiguration tier;
-            if (task.isLastTier()) {
+            if (task == null || task.isLastTier()) {
                 tier = config.lastTier();
             } else {
                 tier = config.firstTier();

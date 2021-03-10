@@ -89,6 +89,12 @@ import com.oracle.truffle.api.nodes.Node;
  *     protected void perform(Access access) {
  *         assert access.getThread() == Thread.currentThread();
  *     }
+ *
+ *     &#64;Override
+ *     protected String name() {
+ *        return "MyAction"
+ *     }
+ *
  * });
  *
  * </pre>
@@ -168,22 +174,13 @@ public abstract class ThreadLocalAction {
 
         /**
          * Returns the thread where this thread local action is running on. Currently this always
-         * returns {@link Thread#currentThread()}.
+         * returns {@link Thread#currentThread()}. See the
+         * <a href="http://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md">safepoint
+         * tutorial</a> for further details on our plans.
          *
          * @since 21.1
          */
         public abstract Thread getThread();
-
-        /**
-         * Returns <code>true</code> if the context is currently active on that thread. A thread can
-         * only be non-active if the thread has just been left. Checking on the result value of this
-         * method allows running an action just before a context becomes inactive on a thread. This
-         * can be useful to detect threads becoming inactive and stop submitting thread-local
-         * actions when they need to be performed repeatedly.
-         *
-         * @since 21.1
-         */
-        public abstract boolean isContextActive();
 
     }
 

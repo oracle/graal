@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -55,6 +57,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * Implementation class for thread local handshakes. Contains the parts that can be shared between
+ * runtimes.
+ */
 public abstract class ThreadLocalHandshake {
 
     /*
@@ -71,15 +77,20 @@ public abstract class ThreadLocalHandshake {
 
     public abstract TruffleSafepointImpl getCurrent();
 
+    protected boolean isSupported() {
+        return true;
+    }
+
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
-     *
-     * @param threads
-     * @param run
      */
     @TruffleBoundary
     public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting) {
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("Thread local handshakes are not supported on this platform. " +
+                            "A possible reason may be that the underlying JVMCI version is too old.");
+        }
         Handshake<T> handshake = new Handshake<>(onThread, onDone, sideEffecting, threads.length);
         for (int i = 0; i < threads.length; i++) {
             Thread t = threads[i];
@@ -97,17 +108,21 @@ public abstract class ThreadLocalHandshake {
     protected abstract void setFastPending(Thread t);
 
     @TruffleBoundary
-    protected final void processHandshake(Node node) {
+    protected final void processHandshake(Node location) {
         Throwable ex = null;
         TruffleSafepointImpl s = getCurrent();
         HandshakeEntry handshake = null;
         if (s.fastPendingSet) {
-            handshake = s.takeHandshake();
+            handshake = s.takeHandshake(location);
         }
         if (handshake != null) {
-            ex = combineThrowable(ex, handshake.process(node));
-            if (ex != null) {
-                throw sneakyThrow(ex);
+            try {
+                ex = combineThrowable(ex, handshake.process(location));
+                if (ex != null) {
+                    throw sneakyThrow(ex);
+                }
+            } finally {
+                s.doneProcessing(handshake, location);
             }
         }
     }
@@ -204,6 +219,7 @@ public abstract class ThreadLocalHandshake {
         final HandshakeEntry next;
 
         private volatile HandshakeEntry prev;
+        boolean processed;
 
         HandshakeEntry(Handshake<?> handshake, HandshakeEntry next) {
             this.handshake = handshake;
@@ -213,7 +229,7 @@ public abstract class ThreadLocalHandshake {
             this.next = next;
         }
 
-        Throwable process(Node enclosingNode) {
+        Throwable process(Node location) {
             /*
              * Retain schedule order and process next first. Schedule order is important for events
              * that perform synchronization between multiple threads to avoid deadlocks.
@@ -229,7 +245,10 @@ public abstract class ThreadLocalHandshake {
             Throwable ex = null;
             while (current != null) {
                 try {
-                    current.handshake.perform(enclosingNode);
+                    if (!current.processed) {
+                        current.processed = true;
+                        current.handshake.perform(location);
+                    }
                 } catch (Throwable e) {
                     ex = combineThrowable(ex, e);
                 } finally {
@@ -252,8 +271,11 @@ public abstract class ThreadLocalHandshake {
         private boolean sideEffectsEnabled = true;
         private Interrupter blockedAction;
         private boolean interrupted;
-        private HandshakeEntry sideEffectHandshakes;
-        private HandshakeEntry allHandshakes;
+        private HandshakeEntry handshakes;
+        private boolean hasSideEffects;
+        private boolean hasNonSideEffects;
+        private final ArrayDeque<HandshakeEntry> recursiveHandshakes = new ArrayDeque<>();
+        private final ArrayDeque<Node> recursiveLocations = new ArrayDeque<>();
 
         TruffleSafepointImpl(ThreadLocalHandshake handshake) {
             super(DefaultRuntimeAccessor.ENGINE);
@@ -263,10 +285,9 @@ public abstract class ThreadLocalHandshake {
         void putHandshake(Thread t, Handshake<?> handshake) {
             lock.lock();
             try {
-                if (!handshake.sideEffecting) {
-                    sideEffectHandshakes = new HandshakeEntry(handshake, sideEffectHandshakes);
-                }
-                allHandshakes = new HandshakeEntry(handshake, allHandshakes);
+                handshakes = new HandshakeEntry(handshake, handshakes);
+                hasSideEffects = hasSideEffects || handshake.sideEffecting;
+                hasNonSideEffects = hasNonSideEffects || !handshake.sideEffecting;
 
                 if (isPending() && !fastPendingSet) {
                     fastPendingSet = true;
@@ -287,7 +308,7 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        HandshakeEntry takeHandshake() {
+        HandshakeEntry takeHandshake(Node location) {
             lock.lock();
             try {
                 if (isPending()) {
@@ -296,25 +317,78 @@ public abstract class ThreadLocalHandshake {
                     fastPendingSet = false;
                     impl.clearFastPending();
 
-                    HandshakeEntry taken;
-                    if (sideEffectsEnabled) {
-                        taken = this.allHandshakes;
-                        this.allHandshakes = null;
-                    } else {
-                        taken = this.sideEffectHandshakes;
-                    }
-                    this.sideEffectHandshakes = null;
+                    HandshakeEntry taken = takeHandshakeImpl();
+                    assert taken != null;
+
+                    /*
+                     * We need to remember the currently being processed handshake in case we end up
+                     * in a setBlocked call inside of an action. If an event is blocking we need to
+                     * continue the currently activly processed events.
+                     *
+                     * HandshakeEntry remembers whether it was already processed or not.
+                     */
+                    recursiveHandshakes.push(taken);
+                    recursiveLocations.push(location);
 
                     if (this.interrupted) {
                         this.interrupted = false;
                         this.blockedAction.resetInterrupted();
                     }
+
                     return taken;
                 }
                 return null;
             } finally {
                 lock.unlock();
             }
+        }
+
+        private HandshakeEntry takeHandshakeImpl() {
+            HandshakeEntry taken;
+            if (sideEffectsEnabled) {
+                // just take them all -> fast-path
+                taken = this.handshakes;
+                this.handshakes = null;
+                this.hasSideEffects = false;
+                this.hasNonSideEffects = false;
+            } else {
+                if (hasSideEffects) {
+                    assert this.hasNonSideEffects : "isPending() should not have returned true";
+
+                    // we have side-effects and we don't process them
+                    // so we need to split them into two lists
+                    HandshakeEntry unprocessed = null;
+                    HandshakeEntry processing = null;
+                    HandshakeEntry current = this.handshakes;
+                    while (current != null) {
+                        if (current.handshake.sideEffecting) {
+                            // do not process side-effecting events
+                            unprocessed = new HandshakeEntry(current.handshake, unprocessed);
+                        } else {
+                            processing = new HandshakeEntry(current.handshake, processing);
+                        }
+                        current = current.next;
+                    }
+                    taken = processing;
+                    this.handshakes = unprocessed;
+                    this.hasNonSideEffects = false;
+                    assert this.hasSideEffects;
+                } else {
+                    // no side-effects scheduled just process
+                    taken = this.handshakes;
+                    this.handshakes = null;
+                    this.hasNonSideEffects = false;
+                    assert !this.hasSideEffects;
+                }
+            }
+            return taken;
+        }
+
+        void doneProcessing(HandshakeEntry handshake, Node location) {
+            HandshakeEntry done = recursiveHandshakes.pop();
+            assert done == handshake : "illegal state";
+            Node doneLocation = recursiveLocations.pop();
+            assert doneLocation == location;
         }
 
         @Override
@@ -336,11 +410,35 @@ public abstract class ThreadLocalHandshake {
                 return prev;
             } finally {
                 lock.unlock();
+
+                /*
+                 * We try to process all recursive currently processing handshakes here as the
+                 * current action seems to block. This allows other currently processing handshakes
+                 * to complete independently.
+                 */
+                if (!recursiveHandshakes.isEmpty()) {
+                    flushRecursiveHandshakes();
+                }
             }
         }
 
+        protected void flushRecursiveHandshakes() {
+            Iterator<HandshakeEntry> entries = recursiveHandshakes.iterator();
+            Iterator<Node> locations = recursiveLocations.iterator();
+            while (entries.hasNext() && locations.hasNext()) {
+                entries.next().process(locations.next());
+            }
+        }
+
+        /**
+         * Is a handshake really pending?
+         */
         private boolean isPending() {
-            return (sideEffectsEnabled && allHandshakes != null) || (!sideEffectsEnabled && sideEffectHandshakes != null);
+            if (sideEffectsEnabled) {
+                return hasNonSideEffects || hasSideEffects;
+            } else {
+                return hasNonSideEffects;
+            }
         }
 
         @Override
@@ -370,7 +468,7 @@ public abstract class ThreadLocalHandshake {
                     impl.clearFastPending();
                 }
             }
-
         }
     }
+
 }

@@ -75,7 +75,7 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @Override
         public ThreadLocalHandshake getThreadLocalHandshake() {
-            return DefaultThreadLocalHandshake.INSTANCE;
+            return DefaultThreadLocalHandshake.SINGLETON;
         }
 
         @Override

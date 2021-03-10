@@ -639,7 +639,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                      * again.
                      */
                     if (enteredThread != null) {
-                        enteredThread.leaveInternal(prev);
+                        engine.leave(prev, this, safepointLocation, pollSafepoint);
                     }
                     throw t;
                 }
@@ -704,16 +704,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             assert threadInfo != null;
             info = threadInfo;
 
-            if (cancelling && info.isLastActive()) {
-                notifyThreadClosed();
-            }
-
             if (entered) {
                 try {
                     info.notifyLeave(engine, this);
                 } finally {
                     info.leaveInternal(prev);
                 }
+            }
+            if (cancelling && !info.isActiveNotCancelled()) {
+                notifyThreadClosed();
             }
 
             if (!closed && !cancelling && !invalid && !interrupting) {
@@ -969,11 +968,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     void initializeInnerContextLanguage(String languageId) {
         PolyglotLanguage language = engine.idToLanguage.get(languageId);
         assert language != null : "language creating the inner context not be found";
-        Object prev = engine.enterIfNeeded(this);
+        Object prev = engine.enterIfNeeded(this, true);
         try {
             initializeLanguage(language);
         } finally {
-            engine.leaveIfNeeded(prev, this);
+            engine.leaveIfNeeded(prev, this, true);
         }
     }
 

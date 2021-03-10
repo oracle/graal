@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
@@ -57,6 +58,7 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleSafepointInsertionPhase;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
@@ -87,13 +89,20 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     @Fold
     public static int pendingHandshakeOffset() {
-        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
-        return runtime.getThreadLocalPendingHandshakeOffset();
+        TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntimeIfAvailable();
+        if (runtime instanceof HotSpotTruffleCompilerRuntime) {
+            return ((HotSpotTruffleCompilerRuntime) runtime).getThreadLocalPendingHandshakeOffset();
+        } else {
+            return -1;
+        }
     }
 
     /**
      * Snippet that does the same as
      * {@code org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.poll()}.
+     *
+     * This condition cannot be hoisted out of loops as it is introduced in a phase late enough. See
+     * {@link TruffleSafepointInsertionPhase}.
      */
     @Snippet
     private static void pollSnippet(Object node) {
@@ -145,7 +154,12 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
         public void lower(Node n, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 doDeferredInit();
-                templates.lower((TruffleSafepointNode) n, tool);
+                if (templates != null) {
+                    templates.lower((TruffleSafepointNode) n, tool);
+                } else {
+                    GraphUtil.unlinkFixedNode((TruffleSafepointNode) n);
+                    n.safeDelete();
+                }
             }
         }
 
@@ -166,19 +180,20 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                         GraalHotSpotVMConfig config,
                         HotSpotHostForeignCallsProvider foreignCalls,
                         Iterable<DebugHandlersFactory> factories) {
-
-            GraalError.guarantee(templates == null, "cannot re-initialize " + this);
-            GraalError.guarantee(config.invokeJavaMethodAddress != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", TruffleSafepointNode.class);
-            this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget());
-            this.deferredInit = () -> {
-                long address = config.invokeJavaMethodAddress;
-                GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);
-                ResolvedJavaType handshakeType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
-                HotSpotSignature sig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "(Ljava/lang/Object;)V");
-                ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", sig);
-                assert staticMethod != null;
-                foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
-            };
+            GraalError.guarantee(templates == null, "cannot re-initialize %s", this);
+            if (config.invokeJavaMethodAddress != 0 && config.jvmciReserved0Offset != -1) {
+                this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget());
+                this.deferredInit = () -> {
+                    long address = config.invokeJavaMethodAddress;
+                    GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);
+                    ResolvedJavaType handshakeType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(),
+                                    "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
+                    HotSpotSignature sig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "(Ljava/lang/Object;)V");
+                    ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", sig);
+                    assert staticMethod != null;
+                    foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
+                };
+            }
         }
     }
 }

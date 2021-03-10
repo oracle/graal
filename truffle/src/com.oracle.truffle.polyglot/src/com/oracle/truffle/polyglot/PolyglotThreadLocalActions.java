@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ final class PolyglotThreadLocalActions {
     private final TruffleLogger logger;
     private long idCounter;
     private final boolean traceActions;
-    private final List<StatisticsThreadLocalAction> statistics;
+    private final List<PolyglotStatisticsAction> statistics;
     private final Timer intervalTimer;
 
     PolyglotThreadLocalActions(PolyglotContextImpl context) {
@@ -104,7 +104,7 @@ final class PolyglotThreadLocalActions {
         intervalTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                submit(null, new PrintStackTraceAction(false, false));
+                submit(null, PolyglotEngineImpl.ENGINE_ID, new PrintStackTraceAction(false, false), true);
             }
         }, interval, interval);
     }
@@ -122,9 +122,9 @@ final class PolyglotThreadLocalActions {
         TL_HANDSHAKE.ensureThreadInitialized();
 
         if (statistics != null) {
-            StatisticsThreadLocalAction collector = new StatisticsThreadLocalAction(this, Thread.currentThread());
+            PolyglotStatisticsAction collector = new PolyglotStatisticsAction(this, Thread.currentThread());
             statistics.add(collector);
-            submit(new Thread[]{Thread.currentThread()}, collector);
+            submit(new Thread[]{Thread.currentThread()}, PolyglotEngineImpl.ENGINE_ID, collector, false);
         }
     }
 
@@ -133,9 +133,6 @@ final class PolyglotThreadLocalActions {
         assert !context.isActive() : "context is still active, cannot flush safepoints";
         if (intervalTimer != null) {
             intervalTimer.cancel();
-        }
-        if (statistics != null) {
-            logStatistics();
         }
         for (AbstractTLHandshake handshake : activeEvents.keySet()) {
             Future<?> future = handshake.future;
@@ -151,6 +148,10 @@ final class PolyglotThreadLocalActions {
             }
         }
         activeEvents.clear();
+
+        if (statistics != null) {
+            logStatistics();
+        }
     }
 
     private void logStatistics() {
@@ -161,7 +162,7 @@ final class PolyglotThreadLocalActions {
         s.append(String.format("   Thread Name         Safepoints | Interval     Avg              Min              Max %n"));
         s.append(String.format("  -------------------------------------------------------------------------------------- %n"));
 
-        for (StatisticsThreadLocalAction statistic : statistics) {
+        for (PolyglotStatisticsAction statistic : statistics) {
             all.combine(statistic.intervalStatistics);
             formatStatisticLine(s, "  " + statistic.threadName, statistic.intervalStatistics);
         }
@@ -179,7 +180,7 @@ final class PolyglotThreadLocalActions {
                         statistics.getMax() / 1000d));
     }
 
-    Future<Void> submit(Thread[] threads, ThreadLocalAction action) {
+    Future<Void> submit(Thread[] threads, String originId, ThreadLocalAction action, boolean needsEnter) {
         Objects.requireNonNull(action);
         if (threads != null) {
             for (int i = 0; i < threads.length; i++) {
@@ -191,7 +192,7 @@ final class PolyglotThreadLocalActions {
             // send enter/leave to slow-path
             context.setCachedThreadInfo(PolyglotThreadInfo.NULL);
 
-            if (!!context.closed) {
+            if (context.closed) {
                 throw new IllegalStateException("Thread local actions can no longer be submitted for this context as it is already closed.");
             }
 
@@ -219,9 +220,9 @@ final class PolyglotThreadLocalActions {
             Thread[] activeThreads = activePolyglotThreads.toArray(new Thread[0]);
             AbstractTLHandshake handshake;
             if (sync) {
-                handshake = new SyncEvent(context, activeThreads, action);
+                handshake = new SyncEvent(context, threads, activeThreads, originId, action, needsEnter);
             } else {
-                handshake = new AsyncEvent(context, action);
+                handshake = new AsyncEvent(context, threads, originId, action, needsEnter);
             }
 
             if (traceActions) {
@@ -249,8 +250,10 @@ final class PolyglotThreadLocalActions {
     private void log(String action, AbstractTLHandshake handshake, String details) {
         if (traceActions) {
             logger.log(Level.INFO,
-                            String.format("[tl] %-18s %8d  %-30s %-30s %s", action, handshake.debugId,
+                            String.format("[tl] %-18s %8d  %-30s %-10s %-30s %s", action,
+                                            handshake.debugId,
                                             "thread[" + Thread.currentThread().getName() + "]",
+                                            handshake.originId,
                                             "action[" + handshake.action.toString() + "]", details));
         }
     }
@@ -287,19 +290,11 @@ final class PolyglotThreadLocalActions {
         final Thread thread;
         final Node location;
         volatile boolean invalid;
-        final boolean wasActive;
 
-        PolyglotTLAccess(Thread thread, Node location, boolean wasActive) {
+        PolyglotTLAccess(Thread thread, Node location) {
             super(PolyglotImpl.getInstance());
             this.thread = thread;
             this.location = location;
-            this.wasActive = wasActive;
-        }
-
-        @Override
-        public boolean isContextActive() {
-            checkInvalid();
-            return wasActive;
         }
 
         @Override
@@ -323,27 +318,35 @@ final class PolyglotThreadLocalActions {
         }
     }
 
-    private abstract static class AbstractTLHandshake implements Consumer<Node> {
+    abstract static class AbstractTLHandshake implements Consumer<Node> {
 
+        private final String originId;
         final ThreadLocalAction action;
         long debugId;
         protected final PolyglotContextImpl context;
+        private final boolean needsEnter;
+        final Thread[] threads;
         Future<Void> future;
 
-        AbstractTLHandshake(PolyglotContextImpl context, ThreadLocalAction action) {
+        AbstractTLHandshake(PolyglotContextImpl context, Thread[] threads, String originId, ThreadLocalAction action, boolean needsEnter) {
             this.action = action;
+            this.originId = originId;
             this.context = context;
+            this.threads = threads;
+            this.needsEnter = needsEnter;
         }
 
         public final void accept(Node location) {
-            boolean isActive = context.isActive(Thread.currentThread());
-            if (!isActive && context.closed) {
+            if (context.closed) {
                 return;
             }
-            Object prev = context.engine.enterIfNeeded(context, false);
+            Object prev = null;
+            if (needsEnter) {
+                prev = context.engine.enterIfNeeded(context, false);
+            }
             try {
                 notifyStart();
-                PolyglotTLAccess access = new PolyglotTLAccess(Thread.currentThread(), location, isActive);
+                PolyglotTLAccess access = new PolyglotTLAccess(Thread.currentThread(), location);
                 try {
                     acceptImpl(access);
                 } finally {
@@ -362,7 +365,9 @@ final class PolyglotThreadLocalActions {
                 notifyFailed(t);
                 throw t;
             } finally {
-                context.engine.leaveIfNeeded(prev, context, false);
+                if (needsEnter) {
+                    context.engine.leaveIfNeeded(prev, context, false);
+                }
             }
         }
 
@@ -387,27 +392,10 @@ final class PolyglotThreadLocalActions {
         protected abstract void acceptImpl(PolyglotTLAccess access);
     }
 
-    @SuppressWarnings("serial")
-    static class ExpectedException extends RuntimeException {
-
-        final Throwable inner;
-
-        ExpectedException(Throwable inner) {
-            this.inner = inner;
-        }
-
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
-        }
-
-    }
-
     private static final class AsyncEvent extends AbstractTLHandshake {
 
-        AsyncEvent(PolyglotContextImpl context, ThreadLocalAction action) {
-            super(context, action);
+        AsyncEvent(PolyglotContextImpl context, Thread[] threads, String originId, ThreadLocalAction action, boolean needsEnter) {
+            super(context, threads, originId, action, needsEnter);
         }
 
         @Override
@@ -422,10 +410,10 @@ final class PolyglotThreadLocalActions {
         private final CountDownLatch doneLatch;
         private final CountDownLatch awaitLatch;
 
-        SyncEvent(PolyglotContextImpl context, Thread[] threads, ThreadLocalAction action) {
-            super(context, action);
-            this.doneLatch = new CountDownLatch(threads.length);
-            this.awaitLatch = new CountDownLatch(threads.length);
+        SyncEvent(PolyglotContextImpl context, Thread[] threads, Thread[] activeThreads, String originId, ThreadLocalAction action, boolean needsEnter) {
+            super(context, threads, originId, action, needsEnter);
+            this.doneLatch = new CountDownLatch(activeThreads.length);
+            this.awaitLatch = new CountDownLatch(activeThreads.length);
         }
 
         @Override
@@ -435,30 +423,38 @@ final class PolyglotThreadLocalActions {
                 thread = context.getCachedThreadInfo();
             }
             awaitLatch.countDown();
-
-            try {
-                awaitLatch.await();
-            } catch (InterruptedException e1) {
-            }
+            awaitUninterruptibly(awaitLatch);
             thread.setSafepointActive(true);
             try {
                 EngineAccessor.LANGUAGE.performTLAction(action, access);
             } finally {
                 thread.setSafepointActive(false);
                 doneLatch.countDown();
-                while (true) {
-                    try {
-                        doneLatch.await();
-                        break;
-                    } catch (InterruptedException e1) {
-                    }
-                }
+                awaitUninterruptibly(doneLatch);
             }
         }
 
     }
 
-    private static final class StatisticsThreadLocalAction extends ThreadLocalAction {
+    private static void awaitUninterruptibly(CountDownLatch latch) {
+        boolean wasInterrupted = false;
+        try {
+            while (true) {
+                try {
+                    latch.await();
+                    return;
+                } catch (InterruptedException e) {
+                    wasInterrupted = true;
+                }
+            }
+        } finally {
+            if (wasInterrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private static final class PolyglotStatisticsAction extends ThreadLocalAction {
 
         private static volatile ThreadMXBean threadBean;
 
@@ -467,7 +463,7 @@ final class PolyglotThreadLocalActions {
         private final LongSummaryStatistics intervalStatistics = new LongSummaryStatistics();
         private final String threadName;
 
-        StatisticsThreadLocalAction(PolyglotThreadLocalActions actions, Thread thread) {
+        PolyglotStatisticsAction(PolyglotThreadLocalActions actions, Thread thread) {
             super(false, false);
             this.actions = actions;
             this.threadName = thread.getName();
@@ -480,7 +476,7 @@ final class PolyglotThreadLocalActions {
                 long now = System.nanoTime();
                 intervalStatistics.accept(now - prev);
             }
-            actions.submit(new Thread[]{access.getThread()}, this);
+            actions.submit(new Thread[]{access.getThread()}, PolyglotEngineImpl.ENGINE_ID, this, false);
             this.prevTime = System.nanoTime();
         }
 
@@ -499,7 +495,7 @@ final class PolyglotThreadLocalActions {
 
         @Override
         public String toString() {
-            return "StatisticsAction@" + Integer.toHexString(hashCode());
+            return "PolyglotStatisticsAction@" + Integer.toHexString(hashCode());
         }
 
     }

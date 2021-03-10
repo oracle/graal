@@ -164,12 +164,37 @@ public class ReflectionUtils {
 
     public static Object invoke(Object object, String name, Class<?>[] argTypes, Object... args) {
         try {
-            Method m = object.getClass().getDeclaredMethod(name, argTypes);
-            setAccessible(m, true);
-            return m.invoke(object, args);
+            return requireDeclaredMethod(object.getClass(), name, argTypes).invoke(object, args);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    public static Method requireDeclaredMethod(Class<?> clazz, String name, Class<?>[] argTypes) {
+        try {
+            Method found = null;
+            if (argTypes == null) {
+                // search just by name
+                for (Method search : clazz.getDeclaredMethods()) {
+                    if (search.getName().equals(name)) {
+                        if (found != null) {
+                            throw new AssertionError("Ambiguous method name " + search + " " + found + ". Use argTypes to disamgbiguate.");
+                        }
+                        found = search;
+                    }
+                }
+                if (found == null) {
+                    throw new NoSuchMethodException(name);
+                }
+            } else {
+                found = clazz.getDeclaredMethod(name, argTypes);
+            }
+            setAccessible(found, true);
+            return found;
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+
     }
 
     public static Object invoke(Object object, String name, Object... args) {
