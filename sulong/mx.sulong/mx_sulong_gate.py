@@ -73,7 +73,7 @@ class UnittestTaskFactory(object):
         self.build_tasks = []
         self.test_tasks = []
 
-    def add(self, title, test_suite, args, tags=None, testClasses=None, unittestArgs=None, description=None):
+    def add(self, title, test_suite, args, tags=None, testClasses=None, unittestArgs=None, extraUnittestArgs=None, description=None):
         if tags is None:
             tags = [test_suite]
         if testClasses is None:
@@ -84,6 +84,7 @@ class UnittestTaskFactory(object):
         run_tags = ['run_' + t for t in tags]
         if not unittestArgs:
             unittestArgs = ['--very-verbose', '--enable-timing']
+        unittestArgs += extraUnittestArgs or []
         unittestArgs += args.extra_llvm_arguments
 
         def _sulong_gate_format_description(testClasses, description=None):

@@ -37,6 +37,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -1677,7 +1678,7 @@ public class LLVMInteropTest {
     public static final String FILENAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = TestEngineConfig.getInstance().getContextOptions();
         String lib = System.getProperty("test.sulongtest.lib.path");
         map.put("llvm.libraryPath", lib);
         return map;

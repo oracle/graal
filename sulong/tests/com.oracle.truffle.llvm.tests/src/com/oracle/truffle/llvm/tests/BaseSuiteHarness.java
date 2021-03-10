@@ -37,7 +37,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +47,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
@@ -58,17 +58,17 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.Description;
 import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.model.FrameworkMethod;
+import org.junit.runners.model.InitializationError;
+import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
+import org.junit.runners.parameterized.ParametersRunnerFactory;
+import org.junit.runners.parameterized.TestWithParameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
-import org.junit.runners.model.FrameworkMethod;
-import org.junit.runners.model.InitializationError;
-import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
-import org.junit.runners.parameterized.ParametersRunnerFactory;
-import org.junit.runners.parameterized.TestWithParameters;
 
 /**
  * Base class for parameterized tests that run a {@link #getIsExecutableFilter() reference
@@ -247,7 +247,7 @@ public abstract class BaseSuiteHarness {
     }
 
     protected Map<String, String> getContextOptions() {
-        return Collections.emptyMap();
+        return TestEngineConfig.getInstance().getContextOptions();
     }
 
     /**
@@ -362,7 +362,7 @@ public abstract class BaseSuiteHarness {
     }
 
     protected Predicate<? super Path> getIsSulongFilter() {
-        return CommonTestUtils.isSulong;
+        return p -> CommonTestUtils.isSulong.test(p) && TestEngineConfig.getInstance().canExecute(p);
     }
 
     protected Predicate<? super Path> getIsExecutableFilter() {

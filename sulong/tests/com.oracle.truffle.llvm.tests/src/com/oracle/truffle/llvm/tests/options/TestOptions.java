@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests.options;
 
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.junit.Assume;
 
 public final class TestOptions {
@@ -40,14 +41,17 @@ public final class TestOptions {
     public static final String CONFIG_ROOT = System.getProperty("sulongtest.configRoot");
 
     /**
-     * Gets the path of an mx test distribution.
+     * Gets the path of an mx test distribution. The
+     * {@link TestEngineConfig#getDistributionSuffix()} is added to the provided
+     * {@code distribution} name.
      * 
      * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
      */
     public static String getTestDistribution(String distribution) {
-        String property = System.getProperty("sulongtest.path." + distribution);
+        TestEngineConfig config = TestEngineConfig.getInstance();
+        String property = System.getProperty("sulongtest.path." + distribution + config.getDistributionSuffix());
         if (property == null) {
-            throw new RuntimeException("Test distribution does not exist: " + distribution);
+            throw new RuntimeException("Test distribution " + distribution + " does not exist for configuration " + config);
         }
         return property;
     }
