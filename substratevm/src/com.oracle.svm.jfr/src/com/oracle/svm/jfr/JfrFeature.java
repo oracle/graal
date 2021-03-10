@@ -37,9 +37,6 @@ import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JfrIDRecomputation;
-import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
-import com.oracle.svm.core.jdk.Target_java_lang_Module;
-import com.oracle.svm.core.jdk.Target_java_lang_Package;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;

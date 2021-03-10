@@ -25,7 +25,6 @@
 package com.oracle.svm.jfr;
 
 import java.io.IOException;
-import java.util.function.Consumer;
 
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
