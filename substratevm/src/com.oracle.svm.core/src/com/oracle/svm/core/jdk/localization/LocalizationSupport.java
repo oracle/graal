@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.localization;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;

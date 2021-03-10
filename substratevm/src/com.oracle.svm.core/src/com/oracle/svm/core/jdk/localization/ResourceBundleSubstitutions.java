@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.localization;
 
 //Checkstyle: allow reflection
 //Checkstyle: allow synchronization
@@ -34,6 +34,8 @@ import java.util.ResourceBundle.Control;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk11.localization;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -37,8 +37,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.LocalizationSupport;
-import com.oracle.svm.core.jdk.OptimizedLocaleMode;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.OptimizedLocaleMode;
 
 //Checkstyle: stop
 import sun.util.resources.Bundles.Strategy;

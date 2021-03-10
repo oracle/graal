@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.localization;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
@@ -34,6 +34,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.spi.LocaleServiceProvider;
 
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK11To14;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 

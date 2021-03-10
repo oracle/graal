@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.localization;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import org.graalvm.collections.Pair;
