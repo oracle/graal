@@ -2509,8 +2509,8 @@ final class JDWP {
                     switch (tag) {
                         case BOOLEAN:
                             boolean bool = input.readBoolean();
-                            boolean[] boolArray = context.getUnboxedArray(array);
-                            boolArray[i] = bool;
+                            byte[] boolArray = context.getUnboxedArray(array);
+                            boolArray[i] = bool ? (byte) 1 : (byte) 0;
                             break;
                         case TagConstants.BYTE:
                             byte b = input.readByte();

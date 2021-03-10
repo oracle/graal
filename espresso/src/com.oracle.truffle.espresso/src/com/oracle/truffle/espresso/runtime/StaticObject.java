@@ -668,7 +668,7 @@ public final class StaticObject implements TruffleObject {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
-                return receiver.<boolean[]> unwrap()[(int) index];
+                return receiver.<byte[]> unwrap()[(int) index] != 0;
             } catch (IndexOutOfBoundsException outOfBounds) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
@@ -820,7 +820,7 @@ public final class StaticObject implements TruffleObject {
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
-                receiver.<boolean[]> unwrap()[(int) index] = boolValue;
+                receiver.<byte[]> unwrap()[(int) index] = boolValue ? (byte) 1 : (byte) 0;
             } catch (IndexOutOfBoundsException outOfBounds) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
@@ -1789,7 +1789,7 @@ public final class StaticObject implements TruffleObject {
 
     public void setArrayByte(byte value, int index, Meta meta, BytecodeNode bytecodeNode) {
         checkNotForeign();
-        assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
+        assert isArray() && fields instanceof byte[];
         if (index >= 0 && index < length()) {
             UNSAFE.putByte(fields, getByteArrayOffset(index), value);
         } else {
@@ -1806,7 +1806,7 @@ public final class StaticObject implements TruffleObject {
 
     public byte getArrayByte(int index, Meta meta, BytecodeNode bytecodeNode) {
         checkNotForeign();
-        assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
+        assert isArray() && fields instanceof byte[];
         if (index >= 0 && index < length()) {
             return UNSAFE.getByte(fields, getByteArrayOffset(index));
         } else {
@@ -1826,9 +1826,6 @@ public final class StaticObject implements TruffleObject {
     private Object cloneWrappedArray() {
         checkNotForeign();
         assert isArray();
-        if (fields instanceof boolean[]) {
-            return this.<boolean[]> unwrap().clone();
-        }
         if (fields instanceof byte[]) {
             return this.<byte[]> unwrap().clone();
         }
@@ -1866,7 +1863,11 @@ public final class StaticObject implements TruffleObject {
     }
 
     public static StaticObject wrap(boolean[] array, Meta meta) {
-        return createArray(meta._boolean_array, array);
+        byte[] byteArray = new byte[array.length];
+        for (int i = 0; i < array.length; i++) {
+            byteArray[i] = array[i] ? (byte) 1 : (byte) 0;
+        }
+        return createArray(meta._boolean_array, byteArray);
     }
 
     public static StaticObject wrap(char[] array, Meta meta) {
