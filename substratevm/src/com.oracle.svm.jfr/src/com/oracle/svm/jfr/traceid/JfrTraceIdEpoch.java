@@ -25,6 +25,8 @@
 
 package com.oracle.svm.jfr.traceid;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 public class JfrTraceIdEpoch {
     public static final long BIT = 1;
     public static final long METHOD_BIT = (BIT << 2);
@@ -81,6 +83,7 @@ public class JfrTraceIdEpoch {
         return epoch ? EPOCH_1_BIT : EPOCH_0_BIT;
     }
 
+    @Uninterruptible(reason = "Called by uninterruptible code")
     public static boolean currentEpoch() {
         return epoch;
     }

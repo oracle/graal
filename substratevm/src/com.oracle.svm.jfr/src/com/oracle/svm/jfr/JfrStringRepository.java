@@ -26,6 +26,7 @@ package com.oracle.svm.jfr;
 
 import java.io.IOException;
 
+import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -46,7 +47,7 @@ public class JfrStringRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public boolean add(boolean expectedEpoch, long id, String value) {
-        boolean currentEpoch = SubstrateJVM.get().getEpoch();
+        boolean currentEpoch = JfrTraceIdEpoch.currentEpoch();
         if (currentEpoch == expectedEpoch) {
             // TODO: uninterruptibly insert the string into a datastructure.
         }
