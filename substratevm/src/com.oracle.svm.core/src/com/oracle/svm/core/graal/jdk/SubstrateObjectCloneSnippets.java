@@ -104,6 +104,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             int curOffset = firstFieldOffset;
 
             NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
+            int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             int referenceMapIndex = hub.getReferenceMapIndex();
             int entryCount = NonmovableByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex);
             assert entryCount >= 0;
@@ -127,6 +128,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 assert curOffset >= 0;
                 assert count >= 0;
                 JavaMemoryUtil.copyObjectsForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(count));
+                curOffset += count * referenceSize;
             }
 
             // copy remaining non-object data
