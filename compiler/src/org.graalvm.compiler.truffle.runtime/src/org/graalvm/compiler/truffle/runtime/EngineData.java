@@ -34,17 +34,18 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PriorityQueue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
@@ -60,6 +61,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueWeightingBothTiers;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierPriority;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.getRuntime;
 
 import java.util.ArrayList;
@@ -133,6 +136,11 @@ public final class EngineData {
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
     @CompilationFinal public boolean compileAOTOnCreate;
+
+    // compilation queue options
+    @CompilationFinal public boolean priorityQueue;
+    @CompilationFinal public boolean weightingBothTiers;
+    @CompilationFinal public boolean traversingFirstTierPriority;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -254,6 +262,11 @@ public final class EngineData {
         this.compileImmediately = options.get(CompileImmediately);
         this.multiTier = !compileImmediately && options.get(MultiTier);
         this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
+
+        // compilation queue options
+        priorityQueue = options.get(PriorityQueue);
+        weightingBothTiers = options.get(TraversingQueueWeightingBothTiers);
+        traversingFirstTierPriority = options.get(TraversingQueueFirstTierPriority);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);

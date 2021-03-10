@@ -34,7 +34,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import com.oracle.truffle.api.Truffle;
 
@@ -58,15 +57,11 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private final BackgroundCompileQueue.Priority priority;
     private final long id;
     private final Consumer<CompilationTask> action;
+    private final EngineData engineData;
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
-    // Default queue related
-    private final boolean multiTier;
-    private final boolean priorityQueue;
     // Traversing queue related
-    private final boolean traversingBothTiers;
-    private final boolean traversingFirstTierPriority;
     private int lastCount;
     private long lastTime;
     private double lastWeight;
@@ -80,10 +75,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastCount = target != null ? target.getCallAndLoopCount() : Integer.MIN_VALUE;
         lastTime = System.nanoTime();
         lastWeight = target != null ? target.getCallAndLoopCount() : -1;
-        priorityQueue = target != null && target.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
-        multiTier = target != null && target.getOptionValue(PolyglotCompilerOptions.MultiTier);
-        traversingBothTiers = target != null && target.getOptionValue(PolyglotCompilerOptions.TraversingQueueBothTiersRate);
-        traversingFirstTierPriority = target != null && target.getOptionValue(PolyglotCompilerOptions.TraversingQueueFirstTierPriority);
+        engineData = target != null ? target.engine : null;
 
     }
 
@@ -171,7 +163,11 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
      * enabled, that means *only* first tier compilations, otherwise it means last tier.
      */
     private boolean priorityQueueEnabled() {
-        return priorityQueue && ((multiTier && priority.tier == BackgroundCompileQueue.Priority.Tier.FIRST) || (!multiTier && priority.tier == BackgroundCompileQueue.Priority.Tier.LAST));
+        if (engineData == null) {
+            return false;
+        }
+        return engineData.priorityQueue && ((engineData.multiTier && priority.tier == BackgroundCompileQueue.Priority.Tier.FIRST) ||
+                        (!engineData.multiTier && priority.tier == BackgroundCompileQueue.Priority.Tier.LAST));
     }
 
     @Override
@@ -202,7 +198,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
      */
     public boolean isHigherPriorityThan(CompilationTask other) {
         int tier = tier();
-        if (traversingFirstTierPriority && tier != other.tier()) {
+        if (engineData.traversingFirstTierPriority && tier != other.tier()) {
             return tier < other.tier();
         }
         int otherCompileTier = other.targetHighestCompiledTier();
@@ -211,7 +207,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             // tasks previously compiled with higher tier are better
             return compiledTier > otherCompileTier;
         }
-        if (traversingBothTiers || isFirstTier()) {
+        if (engineData.weightingBothTiers || isFirstTier()) {
             return lastWeight > other.lastWeight;
         }
         return false;
