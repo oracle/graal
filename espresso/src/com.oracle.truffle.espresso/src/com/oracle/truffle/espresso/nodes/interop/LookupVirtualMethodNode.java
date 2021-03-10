@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -37,7 +38,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 public abstract class LookupVirtualMethodNode extends AbstractLookupNode {
     static final int LIMIT = 2;
 
-    public abstract Method execute(Klass klass, String methodName, int arity);
+    public abstract Method execute(Klass klass, String methodName, int arity) throws ArityException;
 
     public boolean isInvocable(Klass klass, String member) {
         return isInvocable(klass, member, true, false);
@@ -67,7 +68,7 @@ public abstract class LookupVirtualMethodNode extends AbstractLookupNode {
     @Specialization(replaces = "doArrayCached")
     Method doArrayGeneric(ArrayKlass klass,
                     String methodName,
-                    int arity) {
+                    int arity) throws ArityException {
         return doGeneric(getJLObject(klass.getMeta()), methodName, arity);
     }
 
@@ -87,7 +88,7 @@ public abstract class LookupVirtualMethodNode extends AbstractLookupNode {
     }
 
     @Specialization(replaces = "doCached")
-    Method doGeneric(ObjectKlass klass, String key, int arity) {
+    Method doGeneric(ObjectKlass klass, String key, int arity) throws ArityException {
         return doLookup(klass, key, true, false, arity);
     }
 

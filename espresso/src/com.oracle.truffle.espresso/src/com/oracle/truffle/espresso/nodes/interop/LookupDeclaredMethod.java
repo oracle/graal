@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 
@@ -33,7 +34,7 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     static final int LIMIT = 2;
 
-    public abstract Method.MethodVersion execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity);
+    public abstract Method.MethodVersion execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException;
 
     public boolean isInvocable(Klass klass, String key, boolean isStatic) {
         return isInvocable(klass, key, true, isStatic);
@@ -62,7 +63,7 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
     }
 
     @Specialization(replaces = "doCached")
-    Method.MethodVersion doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) {
+    Method.MethodVersion doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
         Method method = doLookup(klass, key, publicOnly, isStatic, arity);
         return method == null ? null : method.getMethodVersion();
     }
