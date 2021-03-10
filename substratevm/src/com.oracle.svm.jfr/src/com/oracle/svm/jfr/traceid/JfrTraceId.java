@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -136,7 +136,9 @@ public class JfrTraceId {
     public static void assign(Class<?> clazz, Map<Class<?>, Integer> classToIndex) {
         assert clazz != null;
         int index = classToIndex.get(clazz) + 1; // Off-set by one for error-catcher
-        if (getTraceIdMap().getId(index) != -1) return;
+        if (getTraceIdMap().getId(index) != -1) {
+            return;
+        }
         long typeId = JVM.getJVM().getTypeId(clazz);
         getTraceIdMap().setId(index, typeId << TRACE_ID_SHIFT);
         if (!setSystemEventClass(clazz, index)) {

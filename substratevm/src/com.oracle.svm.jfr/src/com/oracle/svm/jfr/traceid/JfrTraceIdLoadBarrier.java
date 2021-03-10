@@ -28,9 +28,7 @@ package com.oracle.svm.jfr.traceid;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 import java.util.function.Consumer;
 
 public class JfrTraceIdLoadBarrier {

@@ -156,7 +156,7 @@ public class JfrFeature implements Feature {
         final JfrMetadataCollection metadata = new JfrMetadataCollection();
 
         // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
-        Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl)a).getTypes();
+        Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl) a).getTypes();
         for (SharedType type : types) {
             DynamicHub hub = type.getHub();
             assignClass(metadata, hub.getHostedJavaClass(), hub.getTypeID());
