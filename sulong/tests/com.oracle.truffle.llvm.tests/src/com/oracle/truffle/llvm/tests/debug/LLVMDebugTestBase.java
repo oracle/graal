@@ -65,12 +65,18 @@ public abstract class LLVMDebugTestBase {
     private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";
 
     LLVMDebugTestBase(String testName, String configuration) {
+        this(testName, configuration, null);
+    }
+
+    LLVMDebugTestBase(String testName, String configuration, String exclusionReason) {
         this.testName = testName;
         this.configuration = configuration;
+        this.exclusionReason = exclusionReason;
     }
 
     private final String testName;
     private final String configuration;
+    @SuppressWarnings("unused") private final String exclusionReason;
 
     private DebuggerTester tester;
 
