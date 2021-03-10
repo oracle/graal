@@ -44,7 +44,7 @@ public abstract class TestEngineConfigBase implements TestEngineConfig {
         private static TestEngineConfig getInstance() {
             final TestEngineConfig config;
             TestEngineConfig[] configs = StreamSupport.stream(ServiceLoader.load(TestEngineConfig.class).spliterator(), false).toArray(TestEngineConfig[]::new);
-            String configName = System.getProperty("sulongtest.config");
+            String configName = System.getProperty(TestEngineConfig.TEST_ENGINE_CONFIG_PROPERTY_NAME);
             if (configName != null) {
                 try {
                     config = Arrays.stream(configs).filter(c -> configName.equals(c.getName())).findFirst().get();

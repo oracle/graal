@@ -41,7 +41,9 @@ public final class TestOptions {
     public static final String CONFIG_ROOT = System.getProperty("sulongtest.configRoot");
 
     /**
-     * Gets the path of an mx test distribution.
+     * Gets the path of an mx test distribution. The
+     * {@link TestEngineConfig#getDistributionSuffix()} is added to the provided
+     * {@code distribution} name.
      * 
      * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
      */
