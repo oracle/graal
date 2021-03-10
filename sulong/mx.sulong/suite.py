@@ -1028,7 +1028,7 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
-    "other" : {
+    "com.oracle.truffle.llvm.tests.standalone.other.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O1"],
@@ -1584,7 +1584,7 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./" : [
-          "dependency:other/*",
+          "dependency:com.oracle.truffle.llvm.tests.standalone.other.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
