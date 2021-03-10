@@ -478,10 +478,6 @@ public class FeatureImpl {
         }
     }
 
-    public interface CompiledTypesVisitor {
-        void visitCompiledType(Class<?> clazz, int typeID);
-    }
-
     public static class CompilationAccessImpl extends FeatureAccessImpl implements Feature.CompilationAccess {
 
         protected final AnalysisUniverse aUniverse;
