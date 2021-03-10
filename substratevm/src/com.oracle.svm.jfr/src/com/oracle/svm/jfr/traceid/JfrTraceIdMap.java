@@ -51,7 +51,7 @@ public class JfrTraceIdMap {
         int index;
         if (key instanceof Class<?>) {
             DynamicHub hub = DynamicHub.fromClass((Class<?>) key);
-            index = hub.getTypeID();
+            index = hub.getTypeID() + 1; // Off-set by 1 for error-catcher
         } else if (key instanceof ClassLoader) {
             Target_java_lang_ClassLoader classLoader = SubstrateUtil.cast(key, Target_java_lang_ClassLoader.class);
             index = classLoader.jfrID;
@@ -64,6 +64,7 @@ public class JfrTraceIdMap {
         } else {
             throw new IllegalArgumentException("Unexpected type: " + key.getClass());
         }
+        assert index > 0;
         return index;
     }
 

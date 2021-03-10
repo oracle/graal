@@ -129,7 +129,7 @@ public class JfrFeature implements Feature {
         final Set<Package> packages = new HashSet<>();
         final Set<Module> modules = new HashSet<>();
         final Set<ClassLoader> classLoaders = new HashSet<>();
-        int mapSize = 0;
+        int mapSize = 1; // First field is error-catcher
     }
 
     private void assignClass(JfrMetadataCollection metadata, Class<?> clazz, int id) {
@@ -169,13 +169,13 @@ public class JfrFeature implements Feature {
         ImageSingletons.lookup(JfrRuntimeAccess.class).setTraceIdMap(map);
 
         // Assign each class, package, module and class-loader a unique index.
-        int idx = metadata.classToIndex.size();
+        int idx = metadata.classToIndex.size() + 1;
         for (Class<?> clazz : metadata.classToIndex.keySet()) {
+            if (metadata.classToIndex.get(clazz) + 1 >= idx) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
             if (!clazz.isPrimitive()) {
                 JfrTraceId.assign(clazz, metadata.classToIndex);
-            }
-            if (metadata.classToIndex.get(clazz) >= idx) {
-                throw new ArrayIndexOutOfBoundsException();
             }
         }
         long traceId = 0;

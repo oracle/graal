@@ -144,14 +144,14 @@ public class JfrTraceId {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void assign(Class<?> clazz, Map<Class<?>, Integer> classToIndex) {
         assert clazz != null;
-        int index = classToIndex.get(clazz);
+        int index = classToIndex.get(clazz) + 1; // Off-set by one for error-catcher
         if (getTraceIdMap().getId(index) != -1) return;
         long typeId = JVM.getJVM().getTypeId(clazz);
         getTraceIdMap().setId(index, typeId << TRACE_ID_SHIFT);
         if (!setSystemEventClass(clazz, index)) {
             Class<?> superClazz = clazz.getSuperclass();
             if (superClazz != null) {
-                int superIndex = classToIndex.get(superClazz);
+                int superIndex = classToIndex.get(superClazz) + 1;
                 if (getTraceIdMap().getId(superIndex) != -1) {
                     assign(superClazz, classToIndex);
                 }

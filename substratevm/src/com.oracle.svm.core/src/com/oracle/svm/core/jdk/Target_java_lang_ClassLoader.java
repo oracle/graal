@@ -237,8 +237,7 @@ public final class Target_java_lang_ClassLoader {
             ClassLoader cl = (ClassLoader) receiver;
             Integer val = jfrIdsMap.get(cl);
             if (val == null) {
-                // Why are some items not registered?
-                return Integer.valueOf(-1);
+                return Integer.valueOf(0);
             } else {
                 return val;
             }
