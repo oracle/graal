@@ -74,6 +74,11 @@ public abstract class CommonTestUtils {
         return s.substring(s.lastIndexOf('.') + 1);
     }
 
+    /**
+     * A {@link TestRule} similar to
+     * {@link com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule} that respects the current
+     * {@link TestEngineConfig}.
+     */
     public static class RunWithTestEngineConfigRule implements TestRule {
 
         private final TruffleRunner.RunWithPolyglotRule rule;
