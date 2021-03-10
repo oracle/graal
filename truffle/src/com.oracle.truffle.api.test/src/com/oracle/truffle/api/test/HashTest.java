@@ -120,7 +120,7 @@ public class HashTest extends AbstractPolyglotTest {
             if ((i & 1) == 0) {
                 Object expectedValue = i;
                 assertExisting(hash, key, interop);
-                assertEquals(expectedValue, interop.readHashValue(hash, key));
+                assertEquals(expectedValue, interop.readHashValueOrDefault(hash, key, "failure"));
             } else {
                 assertNonExisting(hash, key, interop);
             }

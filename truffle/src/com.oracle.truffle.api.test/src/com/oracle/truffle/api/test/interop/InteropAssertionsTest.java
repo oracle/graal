@@ -1166,6 +1166,17 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
+        Object readHashValueOrDefault(Object key, Object defaultValue) throws UnsupportedMessageException {
+            if (data == null) {
+                throw UnsupportedMessageException.create();
+            } else if (!data.containsKey(key)) {
+                return defaultValue;
+            } else {
+                return data.get(key);
+            }
+        }
+
+        @ExportMessage
         boolean isHashEntryModifiable(Object key) {
             if (modifiable != null) {
                 return modifiable.test(key);
@@ -1300,6 +1311,26 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         hashTest.readable = null;
         hashTest.data = Collections.singletonMap(1, -1);
         assertFails(() -> hashLib.readHashValue(hashTest, 2), UnknownKeyException.class);
+    }
+
+    @Test
+    public void testReadHashValueOrDefault() throws UnsupportedMessageException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        hashTest.writeHashEntry(1, -1);
+        assertEquals(-1, hashLib.readHashValueOrDefault(hashTest, 1, 0));
+        assertEquals(-2, hashLib.readHashValueOrDefault(hashTest, 2, -2));
+        assertFails(() -> hashLib.readHashValueOrDefault(hashTest, null, 0), NullPointerException.class);
+        assertFails(() -> hashLib.readHashValueOrDefault(hashTest, 1, null), NullPointerException.class);
+        hashTest.hasHashEntries = false;
+        assertFails(() -> hashLib.readHashValueOrDefault(hashTest, 1, 0), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.data.put(1, new Object());
+        assertFails(() -> hashLib.readHashValueOrDefault(hashTest, 1, 0), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.data = null;
+        assertFails(() -> hashLib.readHashValue(hashTest, 1), UnsupportedMessageException.class);
     }
 
     @Test

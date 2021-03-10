@@ -862,9 +862,9 @@ public abstract class InteropLibrary extends Library {
     }
 
     // Hashes
-    @Abstract(ifExported = {"getHashSize", "isHashValueReadable", "readHashValue", "isHashEntryModifiable",
-                    "isHashEntryInsertable", "writeHashEntry", "isHashEntryRemovable", "removeHashEntry",
-                    "getHashEntriesIterator"})
+    @Abstract(ifExported = {"getHashSize", "isHashValueReadable", "readHashValue", "readHashValueOrDefault",
+                    "isHashEntryModifiable", "isHashEntryInsertable", "writeHashEntry", "isHashEntryRemovable",
+                    "removeHashEntry", "getHashEntriesIterator"})
     public boolean hasHashEntries(Object receiver) {
         return false;
     }
@@ -882,6 +882,14 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = "isHashValueReadable")
     public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
         throw UnsupportedMessageException.create();
+    }
+
+    public Object readHashValueOrDefault(Object receiver, Object key, Object defaultValue) throws UnsupportedMessageException {
+        try {
+            return readHashValue(receiver, key);
+        } catch (UnknownKeyException e) {
+            return defaultValue;
+        }
     }
 
     @Abstract(ifExported = {"writeHashEntry"})
@@ -3426,6 +3434,25 @@ public abstract class InteropLibrary extends Library {
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException : violationPost(receiver, e);
                 assert !(e instanceof UnsupportedMessageException) || !wasReadable : violationInvariant(receiver, key);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object readHashValueOrDefault(Object receiver, Object key, Object defaultValue) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.readHashValueOrDefault(receiver, key, defaultValue);
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            assert validArgument(receiver, defaultValue);
+            try {
+                Object result = delegate.readHashValueOrDefault(receiver, key, defaultValue);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
                 throw e;
             }
         }
