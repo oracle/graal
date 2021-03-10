@@ -793,7 +793,7 @@ final class EngineAccessor extends Accessor {
                 impl.initializeContextLocals();
                 impl.engine.initializeMultiContext(creator.context);
                 impl.notifyContextCreated();
-                impl.initializeLanguage(creator.language.getId());
+                impl.initializeInnerContextLanguage(creator.language.getId());
             }
             return impl.creatorTruffleContext;
         }
