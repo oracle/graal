@@ -58,8 +58,6 @@ from mx_renamegraalpackages import renamegraalpackages
 from mx_sdk_vm import jlink_new_jdk
 import mx_sdk_vm_impl
 
-import mx_jaotc
-
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
 
@@ -604,14 +602,9 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsImmutableCode', _defaultFlags + _assertionFlags + _immutableCodeFlags + ['-Dgraal.VerifyPhases=true'] + _graalErrorFlags, tags=GraalTags.bootstrap)
 ]
 
-def _is_jaotc_supported():
-    return exists(jdk.exe_path('jaotc'))
-
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
     compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
-    if _is_jaotc_supported():
-        mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -1404,7 +1397,7 @@ def _jvmci_jars():
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
         'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-    ] + (['compiler:JAOTC'] if not isJDK8 and _is_jaotc_supported() else [])
+    ]
 
 # The community compiler component
 cmp_ce_components = [
@@ -1451,8 +1444,6 @@ def print_graaljdk_home(args):
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
-    'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
-    'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],

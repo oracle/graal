@@ -152,15 +152,6 @@ gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
 
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
-gateJAOTC : {
-  environment : {
-    EXTRA_VM_ARGS : ""
-  }
-  run : [
-    ${gateCmd} ["build,jaotc"]
-  ]
-}
-
 # This task listens to the hotspot math stubs changes. In case of failure, please check if the hotspot changes affect the
 # emitted stub code in C2, and update corresponding recasts in the org.graalvm.compiler.lir.amd64 package accordingly.
 gateMathStubsListener: ${linux-amd64} {

@@ -121,10 +121,6 @@ def updategraalinopenjdk(args):
             GraalJDKModule('jdk.internal.vm.compiler.management',
                 # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
                 [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
-            # JDK module jdk.aot is composed of sources from:
-            GraalJDKModule('jdk.aot',
-                # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
-                [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
         ]
     else:
         if args.version < 15:
@@ -143,10 +139,6 @@ def updategraalinopenjdk(args):
             GraalJDKModule('jdk.internal.vm.compiler.management',
                 # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
                 [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
-            # JDK module jdk.aot is composed of sources from:
-            GraalJDKModule('jdk.aot',
-                # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
-                [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
         ]
 
 
@@ -399,25 +391,10 @@ def updategraalinopenjdk(args):
     new_line = '    uses org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;\n'
     replace_line(compiler_module_info, old_line, new_line)
 
-    if args.version == 11:
-        # add aot exclude
-        out = run_output(['grep', 'jdk.aot_EXCLUDES', CompileJavaModules_gmk], cwd=jdkrepo)
-        if out:
-            # replace existing exclude setting
-            begin_lines = ['jdk.aot_EXCLUDES += \\']
-            end_line = '#'
-            new_lines = ['jdk.tools.jaotc.test \\\n']
-            replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
-        else:
-            # append exclude setting after jdk.internal.vm.compiler_EXCLUDES
-            new_lines = ['\n', 'jdk.aot_EXCLUDES += \\\n', '    jdk.tools.jaotc.test \\\n', '    #\n', '\n']  # indent is inlined
-            replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
-
     # Update 'SRC' in the 'Compile graalunit tests' section of make/test/JtregGraalUnit.gmk
     # to include all test packages.
     JtregGraalUnit_gmk = join(jdkrepo, 'make', 'test', 'JtregGraalUnit.gmk') # pylint: disable=invalid-name
     new_lines = []
-    jdk_internal_vm_compiler_test_SRC.discard('jdk.tools.jaotc.test')
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.microbenchmarks')
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.virtual.bench')
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.micro.benchmarks')
