@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.function.Consumer;
 
 import com.oracle.svm.jfr.traceid.JfrTraceId;
+import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.jfr.traceid.JfrTraceIdLoadBarrier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -52,10 +53,10 @@ public class JfrTypeRepository implements JfrRepository {
     public void write(JfrChunkWriter writer) throws IOException {
         assert VMOperation.isInProgressAtSafepoint();
         writer.writeCompressedLong(JfrTypes.Class.getId());
-        writer.writeCompressedLong(JfrTraceIdLoadBarrier.klassCount(true));
+        writer.writeCompressedLong(JfrTraceIdLoadBarrier.classCount(JfrTraceIdEpoch.previousEpoch()));
 
-        Consumer<Class<?>> kc = aClass -> writeKlass(aClass, writer);
-        JfrTraceIdLoadBarrier.doKlasses(kc, true);
+        JfrTraceIdLoadBarrier.ClassConsumer kc = aClass -> writeKlass(aClass, writer);
+        JfrTraceIdLoadBarrier.doClasses(kc, JfrTraceIdEpoch.previousEpoch());
     }
 
     private void writeKlass(Class<?> clazz, JfrChunkWriter writer) {

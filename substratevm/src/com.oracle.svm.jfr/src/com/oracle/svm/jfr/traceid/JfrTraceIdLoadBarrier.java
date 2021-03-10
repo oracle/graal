@@ -25,13 +25,18 @@
 
 package com.oracle.svm.jfr.traceid;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
+
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
 
 public class JfrTraceIdLoadBarrier {
-    private static Queue<Class<?>> klassQueueOne = null;
-    private static Queue<Class<?>> klassQueueTwo = null;
+    private static Class<?>[] allClasses;
+    private static int classCount0;
+    private static int classCount1;
 
     private static boolean isNotTagged(long value) {
         long thisEpochBit = JfrTraceIdEpoch.thisEpochBit();
@@ -41,11 +46,6 @@ public class JfrTraceIdLoadBarrier {
     private static boolean shouldTag(Object obj) {
         assert obj != null;
         return isNotTagged(JfrTraceId.getTraceIdRaw(obj));
-    }
-
-    private static void enqueue(Class<?> clazz) {
-        assert (JfrTraceId.isUsedThisEpoch(clazz));
-        klassQueue().add(clazz);
     }
 
     private static long setUsedAndGet(Object obj) {
@@ -59,67 +59,86 @@ public class JfrTraceIdLoadBarrier {
     }
 
     public static void clear() {
-        getKlassQueue(JfrTraceIdEpoch.previousEpoch()).clear();
+        clearClassCount(JfrTraceIdEpoch.previousEpoch());
     }
 
+    private static void clearClassCount(boolean epoch) {
+        if (epoch) {
+            classCount1 = 0;
+        } else {
+            classCount0 = 0;
+        }
+    }
+
+    private static void increaseClassCount(boolean epoch) {
+        if (epoch) {
+            classCount1++;
+        } else {
+            classCount0++;
+        }
+    }
+
+    @Uninterruptible(reason = "Called by uninterruptible code")
+    public static long classCount(boolean epoch) {
+        return epoch ? classCount1 : classCount0;
+    }
+
+    @Uninterruptible(reason = "Called by uninterruptible code")
     public static long load(Class<?> clazz) {
         assert clazz != null;
         if (shouldTag(clazz)) {
             JfrTraceId.setUsedThisEpoch(clazz);
-            enqueue(clazz);
+            increaseClassCount(JfrTraceIdEpoch.currentEpoch());
             JfrTraceIdEpoch.setChangedTag();
         }
         assert JfrTraceId.isUsedThisEpoch(clazz);
         return JfrTraceId.getTraceId(clazz);
     }
 
+    @Uninterruptible(reason = "Called by uninterruptible code")
     public static long load(ClassLoader classLoader) {
         assert classLoader != null;
         return setUsedAndGet(classLoader);
     }
 
+    @Uninterruptible(reason = "Called by uninterruptible code")
     public static long load(Package pkg) {
         assert pkg != null;
         return setUsedAndGet(pkg);
     }
 
+    @Uninterruptible(reason = "Called by uninterruptible code")
     public static long load(Module module) {
         assert module != null;
         return setUsedAndGet(module);
     }
 
     public static boolean initialize() {
-        klassQueueOne = new LinkedList<>();
-        klassQueueTwo = new LinkedList<>();
+        classCount0 = 0;
+        classCount1 = 0;
+        allClasses = new Class<?>[Heap.getHeap().getClassCount()];
+        List<Class<?>> classes = Heap.getHeap().getClassList();
+        int idx = 0;
+        for (Class<?> clazz : classes) {
+            allClasses[idx++] = clazz;
+        }
         return true;
     }
 
-    private static Queue<Class<?>> klassQueue() {
-        return klassQueue(false);
-    }
+    // Note: Using Consumer<Class<?>> directly drags in other implementations which are not uninterruptible.
+    public interface ClassConsumer extends Consumer<Class<?>> {}
 
-    private static Queue<Class<?>> klassQueue(boolean previousEpoch) {
-        if (previousEpoch) {
-            return getKlassQueue(JfrTraceIdEpoch.previousEpoch());
+    @Uninterruptible(reason = "Called by uninterruptible code")
+    public static void doClasses(ClassConsumer kc, boolean epoch) {
+        long predicate = JfrTraceId.TRANSIENT_BIT;
+        predicate |= epoch ? JfrTraceIdEpoch.EPOCH_1_BIT : JfrTraceIdEpoch.EPOCH_0_BIT;
+        int usedClassCount = 0;
+        for (Class<?> clazz : allClasses) {
+            if (JfrTraceId.predicate(clazz, predicate)) {
+                kc.accept(clazz);
+                usedClassCount++;
+            }
         }
-        return getKlassQueue(JfrTraceIdEpoch.currentEpoch());
-    }
-
-    private static Queue<Class<?>> getKlassQueue(boolean epoch) {
-        if (epoch) {
-            return klassQueueOne;
-        } else {
-            return klassQueueTwo;
-        }
-    }
-
-    public static void doKlasses(Consumer<Class<?>> kc, boolean previousEpoch) {
-        for (Class<?> c : klassQueue(previousEpoch)) {
-            kc.accept(c);
-        }
-    }
-
-    public static long klassCount(boolean previousEpoch) {
-        return klassQueue(previousEpoch).size();
+        assert usedClassCount == classCount(epoch);
     }
 }
