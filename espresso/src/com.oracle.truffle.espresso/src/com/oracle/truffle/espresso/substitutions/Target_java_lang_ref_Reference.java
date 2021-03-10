@@ -88,7 +88,7 @@ public class Target_java_lang_ref_Reference {
             } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
-        } else if (HostJavaVersionUtil.JAVA_SPEC == 11 /* removal of sun.misc.Unsafe#defineClass */) {
+        } else if (HostJavaVersionUtil.JAVA_SPEC >= 11 /* removal of sun.misc.Unsafe#defineClass */) {
             // Inject class via j.l.ClassLoader#defineClass1.
             try {
                 java.lang.reflect.Method defineClass1 = ClassLoader.class.getDeclaredMethod("defineClass1",
