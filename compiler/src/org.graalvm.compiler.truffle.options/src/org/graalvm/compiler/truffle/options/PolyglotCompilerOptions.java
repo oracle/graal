@@ -254,7 +254,8 @@ public final class PolyglotCompilerOptions {
             "Select '0' to never terminate the Truffle compiler thread. " +
             "The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect.",
             category = OptionCategory.EXPERT)
-    public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(1000L);
+    // TODO: GR-29949
+    public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(10000L);
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.",
                     category = OptionCategory.EXPERT)
