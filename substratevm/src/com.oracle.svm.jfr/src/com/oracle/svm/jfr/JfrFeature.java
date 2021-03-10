@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.JfrIDRecomputation;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.jdk.Target_java_lang_Package;
@@ -180,17 +181,17 @@ public class JfrFeature implements Feature {
         }
         long traceId = 0;
         for (Package pkg : metadata.packages) {
-            Target_java_lang_Package.setJfrID(pkg, idx);
+            JfrIDRecomputation.setJfrID(pkg, idx);
             JfrTraceId.assign(pkg, idx++, traceId++);
         }
         traceId = 0;
         for (Module module : metadata.modules) {
-            Target_java_lang_Module.setJfrID(module, idx);
+            JfrIDRecomputation.setJfrID(module, idx);
             JfrTraceId.assign(module, idx++, traceId++);
         }
         traceId = 0;
         for (ClassLoader cl : metadata.classLoaders) {
-            Target_java_lang_ClassLoader.setJfrID(cl, idx);
+            JfrIDRecomputation.setJfrID(cl, idx);
             JfrTraceId.assign(cl, idx++, traceId++);
         }
 

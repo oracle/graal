@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.List;
 
 import com.oracle.svm.core.annotate.Delete;
@@ -35,40 +34,13 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 @TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module {
 
     @Inject
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = Target_java_lang_Module.ModuleJfrIDRecomputation.class)
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JfrIDRecomputation.class)
     public int jfrID;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static HashMap<Module, Integer> jfrIdsMap = new HashMap<>();
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setJfrID(Module pkg, Integer id) {
-        jfrIdsMap.put(pkg, id);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static class ModuleJfrIDRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Module mod = (Module) receiver;
-            Integer val = jfrIdsMap.get(mod);
-            if (val == null) {
-                return Integer.valueOf(0);
-            } else {
-                return val;
-            }
-        }
-    }
-
 
     @SuppressWarnings("static-method")
     @Substitute

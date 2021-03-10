@@ -32,42 +32,15 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import java.net.URL;
-import java.util.HashMap;
 
 @TargetClass(java.lang.Package.class)
 public final class Target_java_lang_Package {
 
     @Inject
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = Target_java_lang_Package.PackageJfrIDRecomputation.class)
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JfrIDRecomputation.class)
     public int jfrID;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static HashMap<Package, Integer> jfrIdsMap = new HashMap<>();
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setJfrID(Package pkg, Integer id) {
-        jfrIdsMap.put(pkg, id);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static class PackageJfrIDRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Package pkg = (Package) receiver;
-            Integer val = jfrIdsMap.get(pkg);
-            if (val == null) {
-                return Integer.valueOf(0);
-            } else {
-                return val;
-            }
-        }
-    }
 
     @Alias
     @SuppressWarnings({"unused"})

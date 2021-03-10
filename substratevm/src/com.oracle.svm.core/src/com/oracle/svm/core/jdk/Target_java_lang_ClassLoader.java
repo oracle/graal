@@ -55,8 +55,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 @TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath")
 @SuppressWarnings("static-method")
@@ -219,30 +217,8 @@ public final class Target_java_lang_ClassLoader {
     private static ClassLoader scl;
 
     @Inject
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = ClassLoaderJfrIDRecomputation.class)
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = JfrIDRecomputation.class)
     public int jfrID;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static HashMap<ClassLoader, Integer> jfrIdsMap = new HashMap<>();
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setJfrID(ClassLoader cl, Integer id) {
-        jfrIdsMap.put(cl, id);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static class ClassLoaderJfrIDRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            ClassLoader cl = (ClassLoader) receiver;
-            Integer val = jfrIdsMap.get(cl);
-            if (val == null) {
-                return Integer.valueOf(0);
-            } else {
-                return val;
-            }
-        }
-    }
 
     @Substitute
     public static ClassLoader getSystemClassLoader() {
