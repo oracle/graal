@@ -551,6 +551,7 @@ suite = {
                     "jdk.vm.ci.meta"
                 ],
                 "java.base": [
+                    "jdk.internal.event",
                     "jdk.internal.misc",
                     "jdk.internal.util.xml",
                     "jdk.internal.util.xml.impl",

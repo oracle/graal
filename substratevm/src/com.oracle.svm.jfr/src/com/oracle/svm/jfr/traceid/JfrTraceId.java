@@ -124,15 +124,8 @@ public class JfrTraceId {
     }
 
     private static boolean setSystemEventClass(Class<?> clazz, int index) {
-        String className = clazz.getCanonicalName();
-        if (className != null && className.equals("jdk.internal.event.Event")
-                && clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader()) {
-            tagAsJdkJfrEvent(index);
-            return true;
-        }
-
-        if (className != null && className.equals("jdk.jfr.Event")
-                && clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader()) {
+        if ((clazz == jdk.internal.event.Event.class || clazz == jdk.jfr.Event.class) &&
+            (clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader())) {
             tagAsJdkJfrEvent(index);
             return true;
         }
