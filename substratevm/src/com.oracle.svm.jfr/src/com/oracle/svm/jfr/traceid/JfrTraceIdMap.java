@@ -70,7 +70,9 @@ public class JfrTraceIdMap {
     }
 
     long getId(Object key) {
-        return traceIDs[getIndex(key)];
+        long id = traceIDs[getIndex(key)];
+        assert id != -1;
+        return id;
     }
 
     long getId(int index) {
@@ -83,6 +85,7 @@ public class JfrTraceIdMap {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void setId(int index, long id) {
+        assert traceIDs[index] == -1;
         traceIDs[index] = id;
     }
 }

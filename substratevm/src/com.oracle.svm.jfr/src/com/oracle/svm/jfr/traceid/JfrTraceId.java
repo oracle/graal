@@ -68,14 +68,12 @@ public class JfrTraceId {
     public static void tag(Object obj, long bits) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(obj);
-        assert id != -1;
         map.setId(obj, (id & ~0xff) | (bits & 0xff));
     }
 
     public static boolean predicate(Object obj, long bits) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(obj);
-        assert id != -1;
         return (id & bits) != 0;
     }
 
@@ -198,13 +196,11 @@ public class JfrTraceId {
 
     public static void setSerialized(Object obj) {
         long id = getTraceIdMap().getId(obj);
-        assert (id != -1);
         getTraceIdMap().setId(obj, id | SERIALIZED_BIT);
     }
 
     public static void clearSerialized(Object obj) {
         long id = getTraceIdMap().getId(obj);
-        assert (id != -1);
         if (isSerialized(obj)) {
             getTraceIdMap().setId(obj, id ^ SERIALIZED_BIT);
         }
