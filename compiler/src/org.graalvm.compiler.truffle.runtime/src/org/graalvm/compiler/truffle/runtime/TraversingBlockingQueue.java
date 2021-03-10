@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.collection;
+package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -30,18 +30,16 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.compiler.truffle.runtime.CompilationTask;
-
-public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
-    final BlockingQueue<E> entries = new LinkedBlockingDeque<>();
+public final class TraversingBlockingQueue implements BlockingQueue<Runnable> {
+    final BlockingQueue<Runnable> entries = new LinkedBlockingDeque<>();
 
     @SuppressWarnings("unchecked")
-    private CompilationTask task(E entry) {
+    private static CompilationTask task(Runnable entry) {
         return ((CompilationTask.ExecutorServiceWrapper) entry).getCompileTask();
     }
 
     @Override
-    public boolean add(E e) {
+    public boolean add(Runnable e) {
         return entries.add(e);
     }
 
@@ -51,8 +49,8 @@ public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     @Override
-    public E poll(long timeout, TimeUnit unit) throws InterruptedException {
-        E max = takeMax();
+    public Runnable poll(long timeout, TimeUnit unit) throws InterruptedException {
+        Runnable max = takeMax();
         if (max != null) {
             return max;
         }
@@ -60,8 +58,8 @@ public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     @Override
-    public E poll() {
-        E max = takeMax();
+    public Runnable poll() {
+        Runnable max = takeMax();
         if (max != null) {
             return max;
         }
@@ -77,15 +75,19 @@ public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
      * interpreter threads from adding entries to the queue while a compiler thread is looking for
      * the best task.
      */
-    private synchronized E takeMax() {
+    private synchronized Runnable takeMax() {
         if (entries.isEmpty()) {
             return null;
         }
         long time = System.nanoTime();
-        Iterator<E> it = entries.iterator();
-        E max = null;
+        Iterator<Runnable> it = entries.iterator();
+        Runnable max = null;
         while (it.hasNext()) {
-            E entry = it.next();
+            Runnable entry = it.next();
+            if (!(entry instanceof CompilationTask.ExecutorServiceWrapper)) {
+                // Any non compilation task (e.g. init tasks) has priority
+                removeAndReturn(entry);
+            }
             CompilationTask task = task(entry);
             // updateWeight returns a negative number only if the task's target does not exist
             if (task.isCancelled() || task.updateWeight(time) < 0) {
@@ -99,7 +101,8 @@ public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
         return removeAndReturn(max);
     }
 
-    private E removeAndReturn(E max) {
+    private Runnable removeAndReturn(Runnable max) {
+        // entries.remove can only return false if a sleeping thread takes the only element
         if (entries.remove(max)) {
             return max;
         } else {
@@ -108,37 +111,37 @@ public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     @Override
-    public boolean offer(E e) {
+    public boolean offer(Runnable e) {
         return entries.offer(e);
     }
 
     @Override
-    public E remove() {
+    public Runnable remove() {
         return entries.remove();
     }
 
     @Override
-    public E element() {
+    public Runnable element() {
         return entries.element();
     }
 
     @Override
-    public E peek() {
+    public Runnable peek() {
         return entries.peek();
     }
 
     @Override
-    public void put(E e) throws InterruptedException {
+    public void put(Runnable e) throws InterruptedException {
         entries.put(e);
     }
 
     @Override
-    public boolean offer(E e, long timeout, TimeUnit unit) throws InterruptedException {
+    public boolean offer(Runnable e, long timeout, TimeUnit unit) throws InterruptedException {
         return entries.offer(e, timeout, unit);
     }
 
     @Override
-    public E take() throws InterruptedException {
+    public Runnable take() throws InterruptedException {
         return entries.take();
     }
 
@@ -158,7 +161,7 @@ public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     @Override
-    public boolean addAll(Collection<? extends E> c) {
+    public boolean addAll(Collection<? extends Runnable> c) {
         return entries.addAll(c);
     }
 
@@ -188,7 +191,7 @@ public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     @Override
-    public Iterator<E> iterator() {
+    public Iterator<Runnable> iterator() {
         return entries.iterator();
     }
 
@@ -203,12 +206,12 @@ public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     }
 
     @Override
-    public int drainTo(Collection<? super E> c) {
+    public int drainTo(Collection<? super Runnable> c) {
         return entries.drainTo(c);
     }
 
     @Override
-    public int drainTo(Collection<? super E> c, int maxElements) {
+    public int drainTo(Collection<? super Runnable> c, int maxElements) {
         return entries.drainTo(c, maxElements);
     }
 }

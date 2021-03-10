@@ -196,7 +196,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
      * use this method, because the weight is dynamic, and relying on it in the ordering could
      * corrupt a queue data structure.
      */
-    public boolean isHigherPriorityThan(CompilationTask other) {
+    boolean isHigherPriorityThan(CompilationTask other) {
         int tier = tier();
         if (engineData.traversingFirstTierPriority && tier != other.tier()) {
             return tier < other.tier();
@@ -213,7 +213,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return false;
     }
 
-    public double updateWeight(long currentTime) {
+    double updateWeight(long currentTime) {
         OptimizedCallTarget target = targetRef.get();
         if (target == null) {
             return -1.0;
