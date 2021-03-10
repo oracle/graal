@@ -30,9 +30,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.localization.LocalizationFeature;
 
-/**
- * @see com.oracle.svm.core.jdk.localization.substitutions.LocalizationFeature
- */
 @AutomaticFeature
 final class LocalizationFeatureJDK8 extends LocalizationFeature {
 
