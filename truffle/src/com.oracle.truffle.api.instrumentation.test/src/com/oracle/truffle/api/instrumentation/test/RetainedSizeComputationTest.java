@@ -144,15 +144,32 @@ public class RetainedSizeComputationTest {
             List<Future<?>> futures = new ArrayList<>();
             Object waiter = new Object();
             AtomicInteger defineCount = new AtomicInteger();
+            int targetDefineCount = 1000000;
+            int notificationStep = 1000;
             for (int i = 0; i < 100; i++) {
                 int taskId = i;
                 futures.add(executor.submit(() -> {
                     synchronized (waiter) {
-                        while (defineCount.get() < taskId * 10000) {
+                        while (defineCount.get() < taskId * notificationStep * 10) {
                             try {
                                 waiter.wait();
                             } catch (InterruptedException ie) {
                             }
+                        }
+                        /*
+                         * Wait until at least 1000 further define calls.
+                         */
+                        int currentDefineCount = defineCount.get();
+                        if (currentDefineCount <= (targetDefineCount - 2 * notificationStep)) {
+                            int waitUntilDefineCount = ((currentDefineCount + notificationStep - 1) / notificationStep) * notificationStep + notificationStep;
+                            while (defineCount.get() < waitUntilDefineCount) {
+                                try {
+                                    waiter.wait();
+                                } catch (InterruptedException ie) {
+                                }
+                            }
+                        } else {
+                            return;
                         }
                     }
                     context.enter();
@@ -170,10 +187,10 @@ public class RetainedSizeComputationTest {
              * computation should start as soon as it is allowed to start and don't take longer than
              * the computation started after it.
              */
-            for (int i = 0; i < 1000000; i++) {
+            for (int i = 0; i < targetDefineCount; i++) {
                 defineFoobarFunction(context, i);
                 defineCount.incrementAndGet();
-                if (i % 10000 == 0) {
+                if (i % notificationStep == 0) {
                     synchronized (waiter) {
                         waiter.notifyAll();
                     }
@@ -210,15 +227,32 @@ public class RetainedSizeComputationTest {
             AtomicBoolean cancelled = new AtomicBoolean();
             Object waiter = new Object();
             AtomicInteger defineCount = new AtomicInteger();
+            int targetDefineCount = 1000000;
+            int notificationStep = 1000;
             for (int i = 0; i < 100; i++) {
                 int taskId = i;
                 futures.add(executor.submit(() -> {
                     synchronized (waiter) {
-                        while (defineCount.get() < taskId * 10000) {
+                        while (defineCount.get() < taskId * notificationStep * 10) {
                             try {
                                 waiter.wait();
                             } catch (InterruptedException ie) {
                             }
+                        }
+                        /*
+                         * Wait until at least 1000 further define calls.
+                         */
+                        int currentDefineCount = defineCount.get();
+                        if (currentDefineCount <= (targetDefineCount - 2 * notificationStep)) {
+                            int waitUntilDefineCount = ((currentDefineCount + notificationStep - 1) / notificationStep) * notificationStep + notificationStep;
+                            while (defineCount.get() < waitUntilDefineCount) {
+                                try {
+                                    waiter.wait();
+                                } catch (InterruptedException ie) {
+                                }
+                            }
+                        } else {
+                            return;
                         }
                     }
                     context.enter();
@@ -242,15 +276,15 @@ public class RetainedSizeComputationTest {
              * soon as it is allowed to start and don't take longer than the computation started
              * after it unless the next computation is cancelled.
              */
-            for (int i = 0; i < 1000000; i++) {
+            for (int i = 0; i < targetDefineCount; i++) {
                 defineFoobarFunction(context, i);
                 defineCount.incrementAndGet();
-                if (i % 10000 == 0) {
+                if (i % notificationStep == 0) {
                     synchronized (waiter) {
                         waiter.notifyAll();
                     }
                 }
-                if (i == 505000) {
+                if (i == targetDefineCount / 2 + notificationStep / 2) {
                     cancelled.set(true);
                 }
             }
@@ -260,7 +294,7 @@ public class RetainedSizeComputationTest {
             long previousResult = 0;
             for (long calculationResult : retainedSizesList) {
                 if (previousResult > 1024L * 1024L || previousResult == -1L) {
-                    Assert.assertTrue(String.format("previousCalculationResult = %d, calculationResult = %d", previousResult, previousResult),
+                    Assert.assertTrue(String.format("previousCalculationResult = %d, calculationResult = %d", previousResult, calculationResult),
                                     previousResult > 16L * 1024 * 1024L || previousResult <= calculationResult ||
                                                     (previousResult >= 0 && calculationResult == -1L));
                 }

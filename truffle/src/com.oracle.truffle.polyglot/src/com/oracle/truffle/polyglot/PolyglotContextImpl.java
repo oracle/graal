@@ -1407,14 +1407,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return heapRoots.toArray();
     }
 
-    private synchronized void addRootPointersForStackFrames(List<Object> heapRoots) {
-        Thread[] seenThreads = getSeenThreads().keySet().toArray(new Thread[0]);
-        if (seenThreads.length > 0) {
-            FrameInstance[][] frameInstances = PolyglotStackFramesRetriever.getStackFrames(seenThreads, -1);
-            for (int i = 0; i < frameInstances.length; i++) {
-                for (int j = 0; j < frameInstances[i].length; j++) {
-                    heapRoots.add(frameInstances[i][j].getFrame(FrameInstance.FrameAccess.READ_ONLY));
-                }
+    private void addRootPointersForStackFrames(List<Object> heapRoots) {
+        FrameInstance[][] frameInstances = PolyglotStackFramesRetriever.getStackFrames(this);
+        for (int i = 0; i < frameInstances.length; i++) {
+            for (int j = 0; j < frameInstances[i].length; j++) {
+                heapRoots.add(frameInstances[i][j].getFrame(FrameInstance.FrameAccess.READ_ONLY));
             }
         }
     }

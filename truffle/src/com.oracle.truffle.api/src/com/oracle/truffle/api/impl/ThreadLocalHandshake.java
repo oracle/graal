@@ -214,6 +214,9 @@ public abstract class ThreadLocalHandshake {
 
         void deactivateThread() {
             phaser.arriveAndDeregister();
+            if (phaser.getUnarrivedParties() == 0) {
+                onDone.accept(action);
+            }
         }
 
         @Override
@@ -317,6 +320,8 @@ public abstract class ThreadLocalHandshake {
                     assert current.active;
                     current.active = false;
                     handshake.deactivateThread();
+                    claimEntry(current);
+                    resetPending();
                 }
 
             } finally {
