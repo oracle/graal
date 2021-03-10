@@ -231,6 +231,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastTime = currentTime;
         lastCount = count;
         lastWeight = weight;
+        assert weight >= 0.0 : "weight must be positive";
         return weight;
     }
 
