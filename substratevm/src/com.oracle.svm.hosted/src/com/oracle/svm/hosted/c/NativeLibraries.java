@@ -63,6 +63,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
@@ -395,7 +396,9 @@ public final class NativeLibraries {
         } else if (type.getAnnotation(RawStructure.class) != null) {
             context.appendRawStructType(type);
         } else if (type.getAnnotation(CPointerTo.class) != null) {
-            context.appendPointerToType(type);
+            context.appendCPointerToType(type);
+        } else if (type.getAnnotation(RawPointerTo.class) != null) {
+            context.appendRawPointerToType(type);
         } else if (type.getAnnotation(CEnum.class) != null) {
             context.appendEnumType(type);
         } else {
