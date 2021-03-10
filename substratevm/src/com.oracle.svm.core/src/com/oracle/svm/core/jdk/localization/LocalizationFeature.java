@@ -36,6 +36,7 @@ import java.text.spi.DecimalFormatSymbolsProvider;
 import java.text.spi.NumberFormatProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
@@ -394,8 +395,21 @@ public abstract class LocalizationFeature implements Feature {
             return;
         }
 
+        List<Locale> wantedLocales = locales;
+        int splitIndex = bundleName.indexOf('_');
+        if (splitIndex != -1) {
+            Locale locale = splitIndex + 1 < bundleName.length() ? parseLocaleFromTag(bundleName.substring(splitIndex + 1)) : Locale.ROOT;
+            if (locale == null) {
+                trace("Cannot parse wanted locale " + bundleName.substring(splitIndex + 1) + ", default will be used instead.");
+                locale = defaultLocale;
+            }
+            /*- Get rid of locale specific substring. */
+            bundleName = bundleName.substring(0, splitIndex);
+            wantedLocales = Collections.singletonList(locale);
+        }
+
         boolean somethingFound = false;
-        for (Locale locale : locales) {
+        for (Locale locale : wantedLocales) {
             ResourceBundle resourceBundle;
             try {
                 resourceBundle = ModuleSupport.getResourceBundle(bundleName, locale, Thread.currentThread().getContextClassLoader());
