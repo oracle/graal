@@ -380,7 +380,7 @@ public class SubstrateGraphBuilderPlugins {
                      * DynamicHub returned for a Class.class constant. Get the target class of the
                      * substitution class.
                      */
-                    classList.add(annotationSubstitutions.getTargetClass(clazz));
+                    classList.add(annotationSubstitutions == null ? clazz : annotationSubstitutions.getTargetClass(clazz));
                 } else {
                     /* If not all classes are non-null constants we bail out. */
                     classList = null;
