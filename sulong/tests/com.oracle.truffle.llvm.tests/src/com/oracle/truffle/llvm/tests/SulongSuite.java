@@ -36,6 +36,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -65,7 +66,7 @@ public class SulongSuite extends BaseSuiteHarness {
         return f -> {
             boolean isBC = f.getFileName().toString().endsWith(".bc");
             boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isBC || (isOut && !Platform.isDarwin());
+            return TestEngineConfig.getInstance().canExecute(f) && (isBC || (isOut && !Platform.isDarwin()));
         };
     }
 }
