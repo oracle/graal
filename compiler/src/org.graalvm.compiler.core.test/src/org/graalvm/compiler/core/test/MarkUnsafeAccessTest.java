@@ -120,7 +120,7 @@ public class MarkUnsafeAccessTest extends GraalCompilerTest {
         Assume.assumeFalse("Crashes on AArch64 (GR-8351)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
         ResolvedJavaMethod getMethod = asResolvedJavaMethod(getMethod(ByteBuffer.class, "get", new Class<?>[]{}));
         ResolvedJavaType mbbClass = getMetaAccess().lookupJavaType(MappedByteBuffer.class);
-        if (mbbClass.findUniqueConcreteMethod(getMethod) == null || mbbClass.findUniqueConcreteMethod(getMethod).getResult()== null) {
+        if (mbbClass.findUniqueConcreteMethod(getMethod) == null || mbbClass.findUniqueConcreteMethod(getMethod).getResult() == null) {
             return; // JDK-8259360
         }
         ResolvedJavaMethod getMethodImpl = mbbClass.findUniqueConcreteMethod(getMethod).getResult();

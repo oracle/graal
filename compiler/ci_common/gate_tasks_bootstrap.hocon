@@ -9,6 +9,4 @@ builds += [
   ${gateBootstrapFullVerify} ${oraclejdk8}     ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap}           ${labsjdk-ee-11}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk-ee-11-linux-amd64"}
 
-  # Solaris SPARC
-  ${gateBootstrap}           ${oraclejdk8Only} ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"}
 ]

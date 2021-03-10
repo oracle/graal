@@ -42,7 +42,6 @@ builds += [
   ${gateMathStubsListener}                                                {name: "daily-hotspot-mathstubs-listener"}
 
   # Solaris SPARC
-  ${gateTest}          ${oraclejdk8Only}      ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                     timelimit: "1:00:00"}
   ${gateTestCTW}       ${oraclejdk8Only}      ${gateSolarisSPARC} {name: "daily-compiler-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"} ${graalDaily}
   ${gateTest}          ${oraclejdk8OnlyDebug} ${gateSolarisSPARC} {name: "weekly-test-compiler-test-8-solaris-sparcv9-fastdebug",    timelimit: "1:50:00"} ${graalWeekly}
   ${gateTestBenchmark} ${oraclejdk8Only}      ${gateSolarisSPARC} {name: "daily-compiler-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"} ${graalDaily}
