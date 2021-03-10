@@ -32,6 +32,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.jdk.Target_java_lang_Package;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -62,7 +63,7 @@ public class JfrTraceIdMap {
             Target_java_lang_Module module = SubstrateUtil.cast(key, Target_java_lang_Module.class);
             index = module.jfrID;
         } else {
-            throw new IllegalArgumentException("Unexpected type: " + key.getClass());
+            throw VMError.shouldNotReachHere("Unexpected type: " + key.getClass());
         }
         assert index > 0;
         return index;
