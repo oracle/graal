@@ -29,5 +29,8 @@ import java.util.ResourceBundle;
 import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
 
 public interface BundleCompressionAlgorithm {
+    /**
+     * @return compressed bundle or null if compression failed
+     */
     CompressedBundle compress(ResourceBundle bundle);
 }

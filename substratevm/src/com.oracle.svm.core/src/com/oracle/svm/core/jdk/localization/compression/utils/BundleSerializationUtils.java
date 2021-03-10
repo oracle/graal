@@ -34,6 +34,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 
+/**
+ * Utilities for extracting the content of a resource bundle, their serialization and
+ * deserialization. Only bundles whose values are strings or arrays of strings are supported. While
+ * in theory the bundles can contain any objects, in practise it is rarely the case.
+ * 
+ * The serialization format is the following:
+ * 
+ * LEN1 INDICES LEN2 TEXT
+ * 
+ * where LEN1 and LEN2 are the lengths of byte arrays, TEXT is the actual serialized content of all
+ * keys and values merged into a single string and INDICES describe how to deserialize the content
+ * back into a map. The format of indices is the following:
+ * 
+ * ( ARR_LEN KEY_LEN VALUE_LEN{ARR_LEN} )*
+ * 
+ * It is a variable length list of entries. Each entry starts with ARR_LEN, which indicates the
+ * length of the value array or -1 for simple string values. KEY_LEN and VALUE_LEN should be
+ * self-explanatory.
+ *
+ */
 public class BundleSerializationUtils {
 
     /**
@@ -56,6 +76,10 @@ public class BundleSerializationUtils {
         throw VMError.shouldNotReachHere("Failed to extract content for " + bundle + " of type " + bundle.getClass());
     }
 
+    /**
+     * @param content content of the bundle to be serialized
+     * @return serialized bundle or null if the bundle contains non-string values
+     */
     public static Pair<String, int[]> serializeContent(Map<String, Object> content) {
         List<Integer> indices = new ArrayList<>();
         StringBuilder builder = new StringBuilder();

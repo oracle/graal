@@ -97,15 +97,10 @@ import sun.util.resources.LocaleData;
  * implementation instead. This approach is consistent by design, which solves compatibility issues
  * and reduces maintenance overhead. Unfortunately, the default way of storing bundle data in
  * getContents methods, see {@link sun.text.resources.FormatData} for example, is not very AOT
- * friendly. Compiling these methods is time consuming and results in a bloated image (190 MB
+ * friendly. Compiling these methods is time consuming and results in a bloated image (183 MB
  * HelloWorld with all locales). Therefore, the bundle content itself is again stored in the image
- * heap by default and is even compressed to reduce the image size, see
+ * heap by default and furthermore is compressed to reduce the image size, see
  * {@link BundleContentSubstitutedLocalizationSupport} and {@link GzipBundleCompression}.
- * 
- * HelloWorld substituted single locale: 8458456B HelloWorld substituted all locales: 79456312B
- * HelloWorld JVM_compressed single locale: 11362256B HelloWorld JVM_compressed all locales:
- * 19632496B HelloWorld JVM_pure single locale: 13229920B HelloWorld JVM_pure all locales:
- * 192024848B
  *
  * @author d-kozak
  * @see LocalizationSupport
@@ -140,7 +135,6 @@ public abstract class LocalizationFeature implements Feature {
     protected LocalizationSupport support;
 
     public static class Options {
-        // todo support per bundle locale decisions?
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
@@ -231,7 +225,7 @@ public abstract class LocalizationFeature implements Feature {
         addCharsets();
         if (optimizedMode) {
             /*
-             * Providers are only preprocessed in the optimized mode. TODO refactor into strategy?
+             * Providers are only preprocessed in the optimized mode.
              */
             addProviders();
         }
@@ -363,7 +357,6 @@ public abstract class LocalizationFeature implements Feature {
 
     protected void addResourceBundles() {
         for (Locale locale : locales) {
-            // todo refactor ?
             prepareBundle(localeData(java.util.spi.CalendarDataProvider.class, locale).getCalendarData(locale), locale);
             prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class, locale).getCurrencyNames(locale), locale);
             prepareBundle(localeData(java.util.spi.LocaleNameProvider.class, locale).getLocaleNames(locale), locale);

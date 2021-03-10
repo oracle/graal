@@ -52,9 +52,7 @@ public class LocalizationSupport {
     public final Map<String, Charset> charsets = new HashMap<>();
 
     public final Locale defaultLocale;
-    /**
-     * All available locales configured during image build time.
-     */
+
     public final Locale[] allLocales;
 
     public final Set<String> supportedLanguageTags;
@@ -88,7 +86,7 @@ public class LocalizationSupport {
     }
 
     /**
-     * Template method for subclasses to do perform additional tasks.
+     * Template method for subclasses to perform additional tasks.
      */
     protected void onBundlePrepared(@SuppressWarnings("unused") ResourceBundle bundle) {
 

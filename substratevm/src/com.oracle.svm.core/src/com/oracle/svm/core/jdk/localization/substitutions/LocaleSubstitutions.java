@@ -91,7 +91,6 @@ final class Target_sun_util_locale_provider_TimeZoneNameUtility {
     static Map<String, SoftReference<Map<Locale, String[]>>> cachedDisplayNames = new ConcurrentHashMap<>();
 }
 
-// todo put into locale support
 @TargetClass(java.text.BreakIterator.class)
 final class Target_java_text_BreakIterator {
 

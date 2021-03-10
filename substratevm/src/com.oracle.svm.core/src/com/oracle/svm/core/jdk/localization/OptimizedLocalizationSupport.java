@@ -58,7 +58,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
      * @param locale this parameter is not currently used.
      */
     public ResourceBundle getCached(String baseName, Locale locale) throws MissingResourceException {
-        // todo optimize the map into a trie-like structure instead instead of linear search?
+        /*- Try out the whole candidate chain as JVM does */
         for (Locale candidateLocale : control.getCandidateLocales(baseName, locale)) {
             ResourceBundle result = resourceBundles.get(Pair.create(baseName, candidateLocale));
             if (result != null) {

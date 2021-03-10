@@ -62,9 +62,7 @@ public class GzipBundleCompression implements BundleCompressionAlgorithm {
             out.finish();
             return new CompressedBundle(byteStream.toByteArray(), GzipBundleCompression::decompressBundle);
         } catch (IOException ex) {
-            // if the compression fails for some reason, the bundle can still be saved
-            // uncompressed
-            // todo log this as a warning?
+            /*- If the compression fails for some reason, the bundle can still be saved uncompressed. */
             return null;
         }
     }
