@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 
-public class TraversingBlockingQueue<E> implements BlockingQueue<E> {
+public final class TraversingBlockingQueue<E> implements BlockingQueue<E> {
     final BlockingQueue<E> entries = new LinkedBlockingDeque<>();
 
     @SuppressWarnings("unchecked")
