@@ -390,21 +390,22 @@ public abstract class LocalizationFeature implements Feature {
         prepareBundle(bundle.getBaseBundleName(), bundle, locale);
     }
 
-    public void prepareBundle(String bundleName) {
-        if (bundleName.isEmpty()) {
+    public void prepareBundle(String fullBundleName) {
+        if (fullBundleName.isEmpty()) {
             return;
         }
 
+        String baseName = fullBundleName;
         List<Locale> wantedLocales = locales;
-        int splitIndex = bundleName.indexOf('_');
+        int splitIndex = baseName.indexOf('_');
         if (splitIndex != -1) {
-            Locale locale = splitIndex + 1 < bundleName.length() ? parseLocaleFromTag(bundleName.substring(splitIndex + 1)) : Locale.ROOT;
+            Locale locale = splitIndex + 1 < baseName.length() ? parseLocaleFromTag(baseName.substring(splitIndex + 1)) : Locale.ROOT;
             if (locale == null) {
-                trace("Cannot parse wanted locale " + bundleName.substring(splitIndex + 1) + ", default will be used instead.");
+                trace("Cannot parse wanted locale " + baseName.substring(splitIndex + 1) + ", default will be used instead.");
                 locale = defaultLocale;
             }
             /*- Get rid of locale specific substring. */
-            bundleName = bundleName.substring(0, splitIndex);
+            baseName = baseName.substring(0, splitIndex);
             wantedLocales = Collections.singletonList(locale);
         }
 
@@ -412,9 +413,9 @@ public abstract class LocalizationFeature implements Feature {
         for (Locale locale : wantedLocales) {
             ResourceBundle resourceBundle;
             try {
-                resourceBundle = ModuleSupport.getResourceBundle(bundleName, locale, Thread.currentThread().getContextClassLoader());
+                resourceBundle = ModuleSupport.getResourceBundle(baseName, locale, Thread.currentThread().getContextClassLoader());
             } catch (MissingResourceException mre) {
-                if (!bundleName.contains("/")) {
+                if (!baseName.contains("/")) {
                     // fallthrough
                     continue;
                 }
@@ -423,7 +424,7 @@ public abstract class LocalizationFeature implements Feature {
                 // need to be
                 // converted to fully qualified class names before loading can succeed.
                 // see GR-24211
-                String dotBundleName = bundleName.replace("/", ".");
+                String dotBundleName = baseName.replace("/", ".");
                 try {
                     resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, locale, Thread.currentThread().getContextClassLoader());
                 } catch (MissingResourceException ex) {
@@ -432,11 +433,11 @@ public abstract class LocalizationFeature implements Feature {
                 }
             }
             somethingFound = true;
-            prepareBundle(bundleName, resourceBundle, locale);
+            prepareBundle(baseName, resourceBundle, locale);
         }
 
         if (!somethingFound) {
-            String errorMessage = "The bundle named: " + bundleName + ", has not been found. " +
+            String errorMessage = "The bundle named: " + baseName + ", has not been found. " +
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
             trace(errorMessage);
