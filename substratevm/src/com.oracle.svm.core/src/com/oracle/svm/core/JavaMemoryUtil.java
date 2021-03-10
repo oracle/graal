@@ -208,7 +208,6 @@ public final class JavaMemoryUtil {
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copyAlignedLongsForward(Pointer from, Pointer to, UnsignedWord size) {
-        assert from.aboveOrEqual(to);
         UnsignedWord offset = WordFactory.zero();
         for (UnsignedWord next = offset.add(32); next.belowOrEqual(size); next = offset.add(32)) {
             Pointer src = from.add(offset);
@@ -232,7 +231,6 @@ public final class JavaMemoryUtil {
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copyAlignedLongsBackward(Pointer from, Pointer to, UnsignedWord size) {
-        assert from.belowOrEqual(to);
         UnsignedWord offset = size;
         while (offset.aboveOrEqual(32)) {
             offset = offset.subtract(32);
