@@ -885,7 +885,7 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"getHashSize", "isHashValueReadable", "readHashValue", "readHashValueOrDefault",
                     "isHashEntryModifiable", "isHashEntryInsertable", "writeHashEntry", "isHashEntryRemovable",
-                    "removeHashEntry", "getHashEntriesIterator"})
+                    "removeHashEntry", "getHashEntriesIterator", "getHashKeysIterator", "getHashValuesIterator"})
     public boolean hasHashEntries(Object receiver) {
         return false;
     }
@@ -1074,6 +1074,32 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = "hasHashEntries")
     public Object getHashEntriesIterator(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the hash keys iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    public Object getHashKeysIterator(Object receiver) throws UnsupportedMessageException {
+        Object entriesIterator = getHashEntriesIterator(receiver);
+        return HashIterator.keys(entriesIterator);
+    }
+
+    /**
+     * Returns the hash values iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    public Object getHashValuesIterator(Object receiver) throws UnsupportedMessageException {
+        Object entriesIterator = getHashEntriesIterator(receiver);
+        return HashIterator.values(entriesIterator);
     }
 
     // Array Messages
@@ -3679,6 +3705,42 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             try {
                 Object result = delegate.getHashEntriesIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashKeysIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashKeysIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashKeysIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashValuesIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashValuesIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashValuesIterator(receiver);
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
                 assert assertIterator(receiver, result);
                 return result;

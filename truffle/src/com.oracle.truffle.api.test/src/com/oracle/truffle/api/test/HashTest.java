@@ -57,13 +57,16 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
@@ -149,6 +152,8 @@ public class HashTest extends AbstractPolyglotTest {
             expected2.put(key, newValue);
         }
         assertTrue(expected.isEmpty());
+        Set<Object> expectedKeys = new HashSet<>(expected2.keySet());
+        Collection<Integer> expectedValues = new ArrayList<>(expected2.values());
         iterator = interop.getHashEntriesIterator(hash);
         while (interop.hasIteratorNextElement(iterator)) {
             Object entry = interop.getIteratorNextElement(iterator);
@@ -158,6 +163,18 @@ public class HashTest extends AbstractPolyglotTest {
             assertEquals(expectedValue, value);
         }
         assertTrue(expected2.isEmpty());
+        iterator = interop.getHashKeysIterator(hash);
+        while (interop.hasIteratorNextElement(iterator)) {
+            Object key = interop.getIteratorNextElement(iterator);
+            assertTrue(expectedKeys.remove(key));
+        }
+        assertTrue(expectedKeys.isEmpty());
+        iterator = interop.getHashValuesIterator(hash);
+        while (interop.hasIteratorNextElement(iterator)) {
+            Object value = interop.getIteratorNextElement(iterator);
+            assertTrue(expectedValues.remove(value));
+        }
+        assertTrue(expectedValues.isEmpty());
 
         for (int i = 0; i < count; i += inc) {
             Object key = keyFactory.create(i);

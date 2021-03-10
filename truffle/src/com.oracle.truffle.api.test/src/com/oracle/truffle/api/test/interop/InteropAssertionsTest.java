@@ -1241,6 +1241,24 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
+        public Object getHashKeysIterator() throws UnsupportedMessageException {
+            if (iterator == null) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return iterator.get();
+            }
+        }
+
+        @ExportMessage
+        public Object getHashValuesIterator() throws UnsupportedMessageException {
+            if (iterator == null) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return iterator.get();
+            }
+        }
+
+        @ExportMessage
         @SuppressWarnings("static-method")
         boolean hasLanguage() {
             return true;
@@ -1466,5 +1484,41 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         hashTest.iterator = () -> new TruffleObject() {
         };
         assertFails(() -> hashLib.getHashEntriesIterator(hashTest), AssertionError.class);
+    }
+
+    @Test
+    public void testGetHashKeysIterator() throws UnsupportedMessageException {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        hashLib.getHashKeysIterator(hashTest);
+        hashTest.hasHashEntries = false;
+        assertFails(() -> hashLib.getHashKeysIterator(hashTest), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.iterator = null;
+        assertFails(() -> hashLib.getHashKeysIterator(hashTest), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.iterator = () -> null;
+        assertFails(() -> hashLib.getHashKeysIterator(hashTest), AssertionError.class);
+        hashTest.iterator = () -> new TruffleObject() {
+        };
+        assertFails(() -> hashLib.getHashKeysIterator(hashTest), AssertionError.class);
+    }
+
+    @Test
+    public void testGetHashValuesIterator() throws UnsupportedMessageException {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        hashLib.getHashValuesIterator(hashTest);
+        hashTest.hasHashEntries = false;
+        assertFails(() -> hashLib.getHashValuesIterator(hashTest), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.iterator = null;
+        assertFails(() -> hashLib.getHashValuesIterator(hashTest), AssertionError.class);
+        hashTest.hasHashEntries = true;
+        hashTest.iterator = () -> null;
+        assertFails(() -> hashLib.getHashValuesIterator(hashTest), AssertionError.class);
+        hashTest.iterator = () -> new TruffleObject() {
+        };
+        assertFails(() -> hashLib.getHashValuesIterator(hashTest), AssertionError.class);
     }
 }
