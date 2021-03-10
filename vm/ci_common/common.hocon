@@ -274,8 +274,7 @@ weekly_vm_darwin: ${vm_darwin} {
   targets: [weekly]
 }
 
-mx_vm_default_cmd_args: ["--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
-mx_vm_common: [mx, --strip-jars] ${mx_vm_default_cmd_args}
+mx_vm_common: [mx, --strip-jars, "--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
 mx_vm_installables: ${mx_vm_common}
 
 maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata]
@@ -411,7 +410,7 @@ builds += [
   ${vm_java_16} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-16"]
-    ] ${collect_profiles_16} [
+    ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
@@ -442,7 +441,7 @@ builds += [
   ${vm_java_16} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-16"]
-    ] ${collect_profiles_16} [
+    ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
@@ -489,7 +488,7 @@ builds += [
   ${vm_java_16} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-16"]
-    ] ${collect_profiles_16} [
+    ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}

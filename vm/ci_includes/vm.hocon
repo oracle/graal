@@ -33,7 +33,6 @@ custom_vm_linux: {}
 custom_vm_darwin: {}
 vm_profiles: []
 collect_profiles: []
-collect_profiles_16: []
 
 non-product-vm-components: "nju,nic,dis,pbm,llmulrl,elau"
 non-product-vm-components-windows: ${non-product-vm-components}",llp"
