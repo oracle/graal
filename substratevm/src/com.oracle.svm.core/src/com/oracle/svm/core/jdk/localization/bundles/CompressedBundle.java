@@ -22,27 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.localization;
+package com.oracle.svm.core.jdk.localization.bundles;
 
-import java.util.function.BooleanSupplier;
+import java.util.Map;
+import java.util.function.Function;
 
-public class OptimizedLocaleMode implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return LocalizationFeature.optimizedMode();
+public final class CompressedBundle implements StoredBundle {
+    private final byte[] content;
+    private final Function<byte[], Map<String, Object>> decompressionAlgorithm;
+
+    public CompressedBundle(byte[] content, Function<byte[], Map<String, Object>> decompressionAlgorithm) {
+        this.content = content;
+        this.decompressionAlgorithm = decompressionAlgorithm;
     }
-}
 
-class SubstituteLoadLookup implements BooleanSupplier {
     @Override
-    public boolean getAsBoolean() {
-        return LocalizationFeature.optimizedMode() || LocalizationFeature.Options.LocalizationSubstituteLoadLookup.getValue();
-    }
-}
-
-class FallbackLocaleMode implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return LocalizationFeature.fallbackMode();
+    public Map<String, Object> getContent() {
+        return decompressionAlgorithm.apply(content);
     }
 }

@@ -90,7 +90,7 @@ public abstract class LocalizationFeature implements Feature {
         return Options.LocalizationOptimizedMode.getValue();
     }
 
-    public static boolean fallbackMode() {
+    public static boolean jvmMode() {
         return !optimizedMode();
     }
 
@@ -310,7 +310,7 @@ public abstract class LocalizationFeature implements Feature {
         for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
             LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
             LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
-            optimizedLocalizationSupport.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
+            optimizedLocalizationSupport.providerPools.put(providerClass, new OptimizedModeOnlySubstitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
         }
 
         for (Locale locale : locales) {
