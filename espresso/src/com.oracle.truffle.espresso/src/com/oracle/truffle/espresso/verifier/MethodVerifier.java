@@ -757,22 +757,19 @@ public final class MethodVerifier implements ContextAccess {
         }
         if (frameType < CHOP_BOUND) {
             Operand[] newLocals = previous.locals.clone();
-            int actualLocalOffset = 0;
+            int pos = previous.lastLocal;
             for (int i = 0; i < smf.getChopped(); i++) {
-                Operand op = newLocals[previous.lastLocal - actualLocalOffset];
-                if (op.isTopOperand() && (previous.lastLocal - actualLocalOffset - 1 > 0)) {
-                    if (isType2(newLocals[previous.lastLocal - actualLocalOffset - 1])) {
-                        actualLocalOffset++;
+                Operand op = newLocals[pos];
+                if (op.isTopOperand() && (pos > 0)) {
+                    if (isType2(newLocals[pos - 1])) {
+                        pos--;
                     }
                 }
-                newLocals[previous.lastLocal - actualLocalOffset] = Invalid;
-                actualLocalOffset++;
+                newLocals[pos] = Invalid;
+                pos--;
             }
             StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
-            res.lastLocal = previous.lastLocal - actualLocalOffset;
-            if (res.lastLocal > 0 && newLocals[res.lastLocal].isTopOperand() && res.lastLocal - 1 > 0 && isType2(newLocals[res.lastLocal - 1])) {
-                res.lastLocal = res.lastLocal - 1;
-            }
+            res.lastLocal = pos;
             return res;
         }
         if (frameType == SAME_FRAME_EXTENDED) {
@@ -784,34 +781,20 @@ public final class MethodVerifier implements ContextAccess {
             return res;
         }
         if (frameType < APPEND_FRAME_BOUND) {
-            Operand[] newLocals = previous.locals.clone();
-            Operand[] appends = new Operand[smf.getLocals().length];
-            int i = 0;
-            for (VerificationTypeInfo vti : smf.getLocals()) {
-                appends[i++] = getOperandFromVerificationType(vti);
-            }
-            i = previous.lastLocal;
-            Operand op = null;
-            if (i >= 0) {
-                op = newLocals[i];
-                if (isType2(op)) {
-                    newLocals[++i] = Invalid;
-                }
-            }
-            i++;
-            int j;
-            for (j = 0; j < appends.length; j++) {
-                op = appends[j];
-                newLocals[i++] = op;
-                if (isType2(op)) {
-                    newLocals[i++] = Invalid;
-                }
-            }
-            if (j == 0) {
+            if (smf.getLocals().length == 0) {
                 throw new VerifyError("Empty Append Frame in the StackmapTable");
             }
+            Operand[] newLocals = previous.locals.clone();
+            int pos = previous.lastLocal;
+            for (VerificationTypeInfo vti : smf.getLocals()) {
+                Operand op = getOperandFromVerificationType(vti);
+                newLocals[++pos] = op;
+                if (isType2(op)) {
+                    newLocals[++pos] = Invalid;
+                }
+            }
             StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
-            res.lastLocal = i - (isType2(op) ? 2 : 1);
+            res.lastLocal = pos;
             return res;
         }
         if (frameType == FULL_FRAME) {
@@ -821,24 +804,16 @@ public final class MethodVerifier implements ContextAccess {
             }
             Operand[] locals = new Operand[maxLocals];
             Arrays.fill(locals, Invalid);
-            int pos = 0;
+            int pos = -1;
             for (VerificationTypeInfo vti : smf.getLocals()) {
                 Operand op = getOperandFromVerificationType(vti);
-                locals[pos++] = op;
+                locals[++pos] = op;
                 if (isType2(op)) {
-                    locals[pos++] = Invalid;
+                    locals[++pos] = Invalid;
                 }
             }
             StackFrame res = new StackFrame(fullStack, locals);
-            if (pos == 0) {
-                res.lastLocal = -1;
-                return res;
-            }
-            if (locals[pos - 1].isTopOperand() && pos - 2 > 0 && isType2(locals[pos - 2])) {
-                res.lastLocal = pos - 2;
-                return res;
-            }
-            res.lastLocal = pos - 1;
+            res.lastLocal = pos;
             return res;
 
         }
