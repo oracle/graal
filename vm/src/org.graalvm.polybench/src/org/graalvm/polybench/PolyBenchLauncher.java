@@ -208,15 +208,14 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     }
 
     private EvalResult evalSource(Context context, String path) {
+        final File file = new File(path);
         if ("jar".equals(getExtension(path))) {
             // Espresso cannot eval .jar files, instead we load the JAR's main class.
-            Value helper = context.getBindings("java").getMember("sun.laucher.LauncherHelper");
+            Value helper = context.getBindings("java").getMember("sun.launcher.LauncherHelper");
             Value mainClass = helper.invokeMember("checkAndLoadMain", true, 2 /* LM_JAR */, path);
-            File file = new File(path);
-            Value result = mainClass.getMember("static"); // Klass
+            Value result = mainClass.getMember("static"); // Class -> Klass
             return new EvalResult("java", file.getName(), true, file.length(), result);
         } else {
-            final File file = new File(path);
             Source source;
             String language;
             try {
@@ -299,23 +298,6 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private String findSourceName(String path) {
-        final File file = new File(path);
-        if ("jar".equals(getExtension(path))) {
-            return file.getName();
-        }
-        try {
-            String language = Source.findLanguage(file);
-            if (language == null) {
-                throw abort("Could not determine the language for file " + file);
-            }
-            Source source = Source.newBuilder(language, file).build();
-            return source.getName();
-        } catch (IOException e) {
-            throw abort(e);
-        }
-    }
-
     private static void log(String msg) {
         System.out.println(msg);
     }
@@ -336,7 +318,8 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 config.metric.beforeIteration(warmup, i, config);
 
                 if ("java".equals(languageId)) {
-                    // Espresso can only invoke methods from the declaring class.
+                    // Espresso doesn't provide methods as executable values.
+                    // It can only invoke methods from the declaring class or receiver.
                     evalSource.invokeMember("main", ProxyArray.fromArray(/* empty */));
                 } else {
                     // The executeVoid method is the fastest way to do the transition to guest.
@@ -373,7 +356,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 result = context.getBindings(languageId).getMember("main").getMember(memberName);
                 break;
             case "java":
-                throw abort("Espresso doesn't support methods as values. It can only invoke methods from the declaring class or receiver.");
+                throw abort("Espresso doesn't provide methods as executable values. It can only invoke methods from the declaring class or receiver.");
             default:
                 result = context.getBindings(languageId).getMember(memberName);
                 break;

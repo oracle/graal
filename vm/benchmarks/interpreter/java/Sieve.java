@@ -24,7 +24,7 @@
  */
 
 public class Sieve {
-  
+
   public static int run() {
     int i;
     int number = 600000;
@@ -54,5 +54,9 @@ public class Sieve {
       }
     }
     return count;
+  }
+
+  public static void main(String[] args) {
+    run();
   }
 }
