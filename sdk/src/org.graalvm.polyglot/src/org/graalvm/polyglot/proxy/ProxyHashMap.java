@@ -121,7 +121,7 @@ public interface ProxyHashMap extends Proxy {
      * <li>A guest language object representing an iterator
      * </ul>
      * <p>
-     * Examples for valid iterator element are:
+     * Examples for valid iterator elements are:
      * <ul>
      * <li>{@link ProxyArray}
      * <li>{@link List}, requires {@link Builder#allowListAccess(boolean) host list access}

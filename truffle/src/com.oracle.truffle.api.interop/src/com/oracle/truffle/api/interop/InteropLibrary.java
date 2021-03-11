@@ -938,7 +938,7 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Reads the value for the specified key or returns the {@code defaultValue} when the mapping
-     * for the specified key does not exist.
+     * for the specified key does not exist or is not readable.
      * 
      * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
      *             receiver with no readable hash entries supports the read operation (even though

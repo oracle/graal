@@ -1864,7 +1864,8 @@ public final class Value {
 
     /**
      * Returns <code>true</code> if this polyglot value represents a map. In this case map entries
-     * can be accessed using {@link #getHashValue(Object)}, {@link #putHashEntry(Object, Object)},
+     * can be accessed using {@link #getHashValue(Object)},
+     * {@link #getHashValueOrDefault(Object, Object)}, {@link #putHashEntry(Object, Object)},
      * {@link #removeHashEntry(Object)}, {@link #getHashEntriesIterator()} and the map size can be
      * queried using {@link #getHashSize()}.
      *
@@ -1919,8 +1920,8 @@ public final class Value {
     }
 
     /**
-     * Returns the value for the specified key or {@code null} if the mapping for the specified key
-     * does not exist or is not readable. The key and the default value are subject to polyglot
+     * Returns the value for the specified key or the default value if the mapping for the specified
+     * key does not exist or is not readable. The key and the default value are subject to polyglot
      * value mapping rules as described in {@link Context#asValue(Object)}.
      *
      * @throws UnsupportedOperationException if the value has no {@link #hasHashEntries() hash
@@ -1968,7 +1969,7 @@ public final class Value {
 
     /**
      * Creates a new hash entries iterator that allows read each map entry. The return value is
-     * always an {@link #isIterator() iterator} of {@link #hasArrayElements() array} elements. The
+     * always an {@link #isIterator() iterator} of {@link #hasArrayElements() array elements}. The
      * first array element is a key, the second array element is an associated value. Even if the
      * value array element is {@link #setArrayElement(long, Object) modifiable} writing to array may
      * not update the mapping, always use {@link #putHashEntry(Object, Object)} to update the

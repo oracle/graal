@@ -31,7 +31,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
     * Added `getHashValuesIterator()` returning a hash values iterator.
 * Added `HostAccess.Builder.allowMapAccess(boolean)` to allow the guest application to access Java `Map` as values with hash entries (true by default for `HostAccess.ALL`, false otherwise).
 * Added `ProxyHashMap` to proxy map guest values.
-* When `HostAccess.Builder.allowMapAccess(boolean)` is enabled the Java `HashMap.Entry` is interpreted as a guest value with with two array elements.
+* When `HostAccess.Builder.allowMapAccess(boolean)` is enabled the Java `HashMap.Entry` is interpreted as a guest value with two array elements.
 
 ## Version 21.0.0
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).

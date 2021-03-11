@@ -187,13 +187,14 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
 
         // HashMaps
         result.add(Snippet.newBuilder("Map<int,string>", export(context, new ValueSupplier<>(Collections.singletonMap(1, "string"))),
-                        TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).build());
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.STRING))).build());
         result.add(Snippet.newBuilder("Proxy<HashMap<int,string>>", export(context, new ValueSupplier<>(ProxyHashMap.from(Collections.singletonMap(1, "string")))),
                         TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).build());
 
         // Hash Entries
         result.add(Snippet.newBuilder("Map.Entry<int,string>", export(context, new ValueSupplier<>(new AbstractMap.SimpleEntry<>(1, "string"))),
-                        TypeDescriptor.array(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING))).build());
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT,
+                                        TypeDescriptor.array(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING)))).build());
 
         // Buffers
         result.add(Snippet.newBuilder("HeapByteBuffer", export(context, new ValueSupplier<>(ByteBuffer.wrap(new byte[]{1, 2, 3}))), TypeDescriptor.OBJECT).build());

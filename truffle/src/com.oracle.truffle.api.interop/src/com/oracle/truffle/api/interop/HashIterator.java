@@ -75,10 +75,10 @@ final class HashIterator implements TruffleObject {
 
     @ExportMessage
     Object getIteratorNextElement(
-                    @CachedLibrary("this.entriesIterator") InteropLibrary iterators) throws UnsupportedMessageException, StopIterationException {
+                    @CachedLibrary("this.entriesIterator") InteropLibrary iterators,
+                    @CachedLibrary(limit = "1") InteropLibrary arrays) throws UnsupportedMessageException, StopIterationException {
         try {
             Object entry = iterators.getIteratorNextElement(entriesIterator);
-            InteropLibrary arrays = InteropLibrary.getUncached(entry);
             return arrays.readArrayElement(entry, index);
         } catch (InvalidArrayIndexException e) {
             throw CompilerDirectives.shouldNotReachHere("Hash entry must have two array elements.", e);
