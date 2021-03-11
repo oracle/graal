@@ -502,6 +502,11 @@ public class NativeImageGenerator {
             ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"),
                             writer -> buildArtifacts.forEach((artifactType, paths) -> {
                                 writer.println("[" + artifactType + "]");
+                                if (artifactType == ArtifactType.JDK_LIB_SHIM) {
+                                    writer.println("# Note that shim JDK libraries depend on this");
+                                    writer.println("# particular native image (including its name)");
+                                    writer.println("# and therefore cannot be used with others.");
+                                }
                                 paths.stream().map(buildDir::relativize).forEach(writer::println);
                                 writer.println();
                             }));
@@ -509,14 +514,16 @@ public class NativeImageGenerator {
             System.out.println("Interrupted!");
             throw new InterruptImageBuilding(e);
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
-            } else if (e.getCause() instanceof Error) {
-                throw (Error) e.getCause();
-            }
+            rethrow(e.getCause());
         } finally {
             shutdownBuildExecutor();
         }
+    }
+
+    /** A version of "sneaky throw" to relay exceptions. */
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void rethrow(Throwable t) throws T {
+        throw (T) t;
     }
 
     protected static void setSystemPropertiesForImageEarly() {

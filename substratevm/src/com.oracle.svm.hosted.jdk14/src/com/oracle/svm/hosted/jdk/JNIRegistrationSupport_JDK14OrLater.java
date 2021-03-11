@@ -32,10 +32,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.c.NativeLibraries;
 
 import jdk.internal.loader.BootLoader;
 
@@ -43,12 +39,11 @@ import jdk.internal.loader.BootLoader;
  * Registration of native JDK libraries for JDK 14 and later that are loaded via
  * jdk.internal.loader.BootLoader
  */
-@Platforms({InternalPlatform.PLATFORM_JNI.class})
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
-class JNIRegistrationJava_JDK14OrLater extends JNIRegistrationUtil implements GraalFeature {
-
+class JNIRegistrationSupport_JDK14OrLater implements GraalFeature {
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        JNIRegistrationSupport.singleton().registerNativeLibrary(providers, plugins, BootLoader.class, "loadLibrary");
+        JNIRegistrationSupport.singleton().registerLoadLibraryPlugin(plugins, BootLoader.class);
     }
 }
