@@ -76,6 +76,7 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -143,13 +144,47 @@ public class TruffleSafepointTest {
     private long testStarted;
 
     @Before
-    public void before() {
+    public void before() throws ExecutionException, InterruptedException {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
                 return true;
             }
         });
+
+        boolean handshakesSupported = true;
+
+        Future<Void> future = null;
+        try (Context c = createTestContext()) {
+            c.enter();
+            try {
+                c.initialize(ProxyLanguage.ID);
+                Env env = ProxyLanguage.getCurrentContext().getEnv();
+                try {
+                    future = env.submitThreadLocal(null, new ThreadLocalAction(false, false) {
+                        @Override
+                        protected void perform(Access access) {
+
+                        }
+                    });
+                } catch (UnsupportedOperationException e) {
+                    if ("Thread local handshakes are not supported on this platform. A possible reason may be that the underlying JVMCI version is too old.".equals(e.getMessage())) {
+                        handshakesSupported = false;
+                    } else {
+                        throw e;
+                    }
+                }
+            } finally {
+                c.leave();
+            }
+        }
+
+        if (future != null) {
+            future.get();
+        }
+
+        Assume.assumeTrue(handshakesSupported);
+
         if (VERBOSE) {
             System.out.println();
             System.out.print(name.getMethodName() + ":");
