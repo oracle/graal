@@ -71,7 +71,9 @@ import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.Platform;
+import org.junit.runner.RunWith;
 
+@RunWith(CommonTestUtils.ExcludingRunner.class)
 public class LLVMInteropTest {
     @Test
     public void test001() {
