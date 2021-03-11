@@ -512,6 +512,12 @@ final class Target_sun_security_provider_PolicyFile {
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderConfig {
 
+    @Alias @TargetElement(onlyWith = JDK11OrLater.class) //
+    private String provName;
+
+    @Alias @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    private String className;
+
     /**
      * All security providers used in a native-image must be registered during image build time. At
      * runtime, we shouldn't have a call to doLoadProvider. However, this method is still reachable
@@ -523,10 +529,16 @@ final class Target_sun_security_jca_ProviderConfig {
      * {@link org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
      */
     @Substitute
-    private Provider doLoadProvider() {
-        throw VMError.unsupportedFeature("Cannot load new security provider at runtime.");
+    @TargetElement(name = "doLoadProvider", onlyWith = JDK11OrLater.class)
+    private Provider doLoadProviderJDK11OrLater() {
+        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + provName + ".");
     }
 
+    @Substitute
+    @TargetElement(name = "doLoadProvider", onlyWith = JDK8OrEarlier.class)
+    private Provider doLoadProviderJDK8OrEarlier() {
+        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + className + ".");
+    }
 }
 
 @SuppressWarnings("unused")
