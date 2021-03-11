@@ -65,7 +65,6 @@ import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
@@ -213,7 +212,7 @@ public abstract class BaseSuiteHarness {
     private static final int MAX_RETRIES = 3;
 
     protected Function<Context.Builder, CaptureOutput> getCaptureOutput() {
-        return c -> new CaptureNativeOutput();
+        return TestEngineConfig.getInstance().getCaptureOutput();
     }
 
     /**
