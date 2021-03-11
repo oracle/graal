@@ -1354,6 +1354,15 @@ public abstract class TruffleInstrument {
          * synchronous or asynchronous, side-effecting or non-sideeffecting. Please see
          * {@link ThreadLocalAction} for details.
          * <p>
+         * It is ensured that a thread local action will get processed as long as the thread stays
+         * active for this context. If a thread becomes inactive before the action can get processed
+         * then the action will not be performed for this thread. If a thread becomes active while
+         * the action is being processed then the action will be performed for that thread as long
+         * as the thread filter includes the thread or <code>null</code> was passed. Already started
+         * synchronous actions will block on activation of a new thread. If the synchronous action
+         * was not yet started on any thread, then the synchronous action will also be performed for
+         * the newly activated thread.
+         * <p>
          * The method returns a {@link Future} instance that allows to wait for the thread local
          * action to complete or to cancel a currently performed event.
          * <p>

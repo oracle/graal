@@ -90,6 +90,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
@@ -153,7 +154,6 @@ public class TruffleSafepointTest {
         });
 
         boolean handshakesSupported = true;
-
         Future<Void> future = null;
         try (Context c = createTestContext()) {
             c.enter();
@@ -217,6 +217,9 @@ public class TruffleSafepointTest {
 
     @Test
     public void testSynchronousRecursiveError() throws InterruptedException, AssertionError, ExecutionException {
+        // GR-29896 does not yet work on SVM.
+        Assume.assumeFalse(TruffleOptions.AOT);
+
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
@@ -428,6 +431,9 @@ public class TruffleSafepointTest {
 
     @Test
     public void testException() {
+        // GR-29896 does not yet work on SVM.
+        Assume.assumeFalse(TruffleOptions.AOT);
+
         forEachConfig((threads, events) -> {
 
             AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(null);
@@ -908,6 +914,9 @@ public class TruffleSafepointTest {
 
     @Test
     public void testNonSideEffectInvalidErrorThrown() throws InterruptedException {
+        // GR-29896 does not yet work on SVM.
+        Assume.assumeFalse(TruffleOptions.AOT);
+
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;

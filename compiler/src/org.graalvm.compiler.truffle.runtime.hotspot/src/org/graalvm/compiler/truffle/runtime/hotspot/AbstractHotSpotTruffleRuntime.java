@@ -172,7 +172,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         int offset;
         try {
             offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1);
-        } catch (AbstractMethodError error) {
+        } catch (NoSuchMethodError error) {
             // jvmci is too old to have this overload of getFieldOffset
             offset = -1;
         }

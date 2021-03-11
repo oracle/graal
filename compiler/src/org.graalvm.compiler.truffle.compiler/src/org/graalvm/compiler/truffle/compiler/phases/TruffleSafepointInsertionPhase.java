@@ -126,14 +126,18 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
     private void insertSafepoint(StructuredGraph graph, FixedNode returnNode) {
         ConstantNode node = findTruffleNode(returnNode);
-        if (node != null) {
-            assert node.asJavaConstant() != null : "must be a java constant";
-            assert nodeType.isAssignableFrom(node.stamp(NodeView.DEFAULT).javaType(providers.getMetaAccess())) : "must be a truffle node";
-            node = graph.maybeAddOrUnique(node);
-        } else {
-            // we always must find a node location for truffle safepoints
-            throw GraalError.shouldNotReachHere("No Truffle node found in frame state of " + returnNode);
+        if (node == null) {
+            // we did not found a truffle node in any frame state so we need to use the root node of
+            // the compilation unit
+            JavaConstant javaConstant = ((TruffleCompilationIdentifier) graph.compilationId()).getCompilable().asJavaConstant();
+            JavaConstant rootNode = providers.getConstantReflection().readFieldValue(rootNodeField, javaConstant);
+            ObjectStamp stamp = StampFactory.object(TypeReference.createExactTrusted(rootNodeField.getType().resolve(callTargetClass)));
+            node = new ConstantNode(rootNode, stamp);
         }
+
+        assert node.asJavaConstant() != null : "must be a java constant";
+        assert nodeType.isAssignableFrom(node.stamp(NodeView.DEFAULT).javaType(providers.getMetaAccess())) : "must be a truffle node";
+        node = graph.maybeAddOrUnique(node);
         graph.addBeforeFixed(returnNode, graph.add(new TruffleSafepointNode(node)));
     }
 

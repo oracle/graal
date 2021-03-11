@@ -328,7 +328,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return cache;
     }
 
-    public Node getUncachedLocation() {
+    Node getUncachedLocation() {
         Node location = this.noLocation;
         if (location == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

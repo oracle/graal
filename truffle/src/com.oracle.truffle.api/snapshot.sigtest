@@ -669,6 +669,7 @@ cons protected init(com.oracle.truffle.api.impl.Accessor$EngineSupport)
 innr public abstract interface static Interrupter
 innr public abstract interface static ThreadInterruptible
 meth public abstract boolean setAllowSideEffects(boolean)
+meth public abstract boolean hasPendingSideEffectingActions()
 meth public abstract com.oracle.truffle.api.TruffleSafepoint$Interrupter setBlocked(com.oracle.truffle.api.TruffleSafepoint$Interrupter)
 meth public static <%0 extends java.lang.Object> void setBlockedInterruptible(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$ThreadInterruptible<{%%0}>,{%%0})
 meth public static com.oracle.truffle.api.TruffleSafepoint getCurrent()

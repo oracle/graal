@@ -606,6 +606,16 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 }
                 enteredThread = threadInfo;
 
+                if (needsInitialization) {
+                    this.threadLocalActions.notifyEnterCreatedThread();
+                }
+
+                // new thread became active so we need to check potential active thread local
+                // actions and process them.
+                if (enteredThread.getEnteredCount() == 1) {
+                    threadLocalActions.notifyThreadActivation(threadInfo, true);
+                }
+
                 if (transitionToMultiThreading) {
                     // we need to verify that all languages give access
                     // to all threads in multi-threaded mode.
@@ -711,6 +721,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     info.leaveInternal(prev);
                 }
             }
+            if (threadInfo.getEnteredCount() == 0) {
+                threadLocalActions.notifyThreadActivation(threadInfo, false);
+            }
+
             if (cancelling && !info.isActiveNotCancelled()) {
                 notifyThreadClosed();
             }
@@ -732,7 +746,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 LANGUAGE.initializeThread(context.env, thread);
             }
         }
-        this.threadLocalActions.notifyEnterCreatedThread();
     }
 
     long getStatementsExecuted() {

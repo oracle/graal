@@ -1319,12 +1319,20 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withFullInfopoints(true));
     }
 
+    protected CompilationIdentifier createCompilationId() {
+        return null;
+    }
+
     @SuppressWarnings("try")
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
         builder.speculationLog(getSpeculationLog());
         if (builder.getCancellable() == null) {
             builder.cancellable(getCancellable(javaMethod));
+        }
+        CompilationIdentifier id = createCompilationId();
+        if (id != null) {
+            builder.compilationId(id);
         }
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         StructuredGraph graph = builder.build();

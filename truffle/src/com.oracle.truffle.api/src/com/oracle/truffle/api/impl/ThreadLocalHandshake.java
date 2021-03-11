@@ -41,13 +41,16 @@
 package com.oracle.truffle.api.impl;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
@@ -86,12 +89,12 @@ public abstract class ThreadLocalHandshake {
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
      */
     @TruffleBoundary
-    public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting) {
+    public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting, boolean sync) {
         if (!isSupported()) {
             throw new UnsupportedOperationException("Thread local handshakes are not supported on this platform. " +
                             "A possible reason may be that the underlying JVMCI version is too old.");
         }
-        Handshake<T> handshake = new Handshake<>(onThread, onDone, sideEffecting, threads.length);
+        Handshake<T> handshake = new Handshake<>(threads, onThread, onDone, sideEffecting, threads.length, sync);
         for (int i = 0; i < threads.length; i++) {
             Thread t = threads[i];
             if (!t.isAlive()) {
@@ -100,6 +103,16 @@ public abstract class ThreadLocalHandshake {
             getThreadState(t).putHandshake(t, handshake);
         }
         return handshake;
+    }
+
+    @SuppressWarnings("static-method")
+    public final void activateThread(TruffleSafepoint s, Future<?> f) {
+        ((TruffleSafepointImpl) s).activateThread((Handshake<?>) f);
+    }
+
+    @SuppressWarnings("static-method")
+    public final void deactivateThread(TruffleSafepoint s, Future<?> f) {
+        ((TruffleSafepointImpl) s).deactivateThread((Handshake<?>) f);
     }
 
     public void ensureThreadInitialized() {
@@ -147,20 +160,25 @@ public abstract class ThreadLocalHandshake {
         throw (T) ex;
     }
 
-    static final class Handshake<T extends Consumer<Node>> implements Future<Void> {
+    public static final class Handshake<T extends Consumer<Node>> implements Future<Void> {
 
         private final boolean sideEffecting;
-        private final CountDownLatch remainingThreads;
+        private final Phaser phaser;
         private volatile boolean cancelled;
         private final T action;
         private final Consumer<T> onDone;
+        private final boolean sync;
+        // avoid rescheduling on the same thread again
+        private final Set<Thread> threads;
 
         @SuppressWarnings("unchecked")
-        Handshake(T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads) {
+        Handshake(Thread[] initialThreads, T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads, boolean sync) {
             this.action = action;
             this.onDone = onDone;
             this.sideEffecting = sideEffecting;
-            this.remainingThreads = new CountDownLatch(numberOfThreads);
+            this.sync = sync;
+            this.phaser = new Phaser(numberOfThreads);
+            this.threads = Collections.synchronizedSet(new HashSet<>(Arrays.asList(initialThreads)));
         }
 
         boolean isSideEffecting() {
@@ -174,20 +192,54 @@ public abstract class ThreadLocalHandshake {
 
         void perform(Node node) {
             try {
+                if (sync) {
+                    phaser.arriveAndAwaitAdvance();
+                }
                 if (!cancelled) {
                     action.accept(node);
                 }
             } finally {
-                remainingThreads.countDown();
-                if (remainingThreads.getCount() == 0L) {
-                    onDone.accept(action);
+                if (sync) {
+                    phaser.arriveAndDeregister();
+                    phaser.awaitAdvance(1);
+                } else {
+                    phaser.arriveAndDeregister();
                 }
+                onDone.accept(action);
             }
+        }
+
+        boolean activateThread() {
+            int result = phaser.register();
+            if (result != 0) {
+                // did not activate on time.
+                phaser.arriveAndDeregister();
+                return false;
+            }
+            return true;
+        }
+
+        void deactivateThread() {
+            phaser.arriveAndDeregister();
+        }
+
+        @Override
+        public Void get() throws InterruptedException, ExecutionException {
+            if (sync) {
+                this.phaser.awaitAdvance(1);
+            } else {
+                this.phaser.awaitAdvance(0);
+            }
+            return null;
+        }
+
+        public boolean isDone() {
+            return cancelled || phaser.getUnarrivedParties() == 0;
         }
 
         @SuppressWarnings("unchecked")
         public boolean cancel(boolean mayInterruptIfRunning) {
-            if (remainingThreads.getCount() > 0) {
+            if (phaser.getUnarrivedParties() > 0) {
                 cancelled = true;
                 return true;
             } else {
@@ -195,22 +247,11 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        @Override
-        public Void get() throws InterruptedException, ExecutionException {
-            this.remainingThreads.await();
-            return null;
-        }
-
         public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-            if (!this.remainingThreads.await(timeout, unit)) {
-                throw new TimeoutException("Timeout for waiting for thread local action exceeded.");
-            }
+            this.phaser.awaitAdvanceInterruptibly(0, timeout, unit);
             return null;
         }
 
-        public boolean isDone() {
-            return cancelled || this.remainingThreads.getCount() == 0;
-        }
     }
 
     static final class HandshakeEntry {
@@ -220,6 +261,7 @@ public abstract class ThreadLocalHandshake {
 
         private volatile HandshakeEntry prev;
         boolean processed;
+        boolean active = true;
 
         HandshakeEntry(Handshake<?> handshake, HandshakeEntry next) {
             this.handshake = handshake;
@@ -245,7 +287,7 @@ public abstract class ThreadLocalHandshake {
             Throwable ex = null;
             while (current != null) {
                 try {
-                    if (!current.processed) {
+                    if (!current.processed && current.active) {
                         current.processed = true;
                         current.handshake.perform(location);
                     }
@@ -282,20 +324,82 @@ public abstract class ThreadLocalHandshake {
             this.impl = handshake;
         }
 
-        void putHandshake(Thread t, Handshake<?> handshake) {
+        public void deactivateThread(Handshake<?> handshake) {
             lock.lock();
             try {
-                handshakes = new HandshakeEntry(handshake, handshakes);
-                hasSideEffects = hasSideEffects || handshake.sideEffecting;
-                hasNonSideEffects = hasNonSideEffects || !handshake.sideEffecting;
+                HandshakeEntry current = this.handshakes;
+                while (current != null) {
+                    if (current.handshake == handshake) {
+                        if (current.active) {
+                            // already active
+                            return;
+                        }
+                        break;
+                    }
+                    current = current.next;
+                }
 
-                if (isPending() && !fastPendingSet) {
-                    fastPendingSet = true;
-                    setFastPendingAndInterrupt(t);
+                if (current != null) {
+                    // still active
+                    assert current.active;
+                    current.active = false;
+                    handshake.deactivateThread();
                 }
             } finally {
                 lock.unlock();
             }
+        }
+
+        public void activateThread(Handshake<?> handshake) {
+            if (handshake.isDone()) {
+                return;
+            }
+            lock.lock();
+            try {
+                HandshakeEntry current = this.handshakes;
+                while (current != null) {
+                    if (current.handshake == handshake) {
+                        if (current.active) {
+                            // already active
+                            return;
+                        }
+                        break;
+                    }
+                    current = current.next;
+                }
+                // not yet put?
+                if (current == null) {
+                    if (!handshake.threads.add(Thread.currentThread())) {
+                        // already processed on that thread, we don't want to process twice.
+                        return;
+                    }
+                    current = putHandshakeImpl(Thread.currentThread(), handshake);
+                }
+                current.active = handshake.activateThread();
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        void putHandshake(Thread t, Handshake<?> handshake) {
+            lock.lock();
+            try {
+                putHandshakeImpl(t, handshake);
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        private HandshakeEntry putHandshakeImpl(Thread t, Handshake<?> handshake) {
+            handshakes = new HandshakeEntry(handshake, handshakes);
+            hasSideEffects = hasSideEffects || handshake.sideEffecting;
+            hasNonSideEffects = hasNonSideEffects || !handshake.sideEffecting;
+
+            if (isPending() && !fastPendingSet) {
+                fastPendingSet = true;
+                setFastPendingAndInterrupt(t);
+            }
+            return handshakes;
         }
 
         private void setFastPendingAndInterrupt(Thread t) {
@@ -364,6 +468,7 @@ public abstract class ThreadLocalHandshake {
                         if (current.handshake.sideEffecting) {
                             // do not process side-effecting events
                             unprocessed = new HandshakeEntry(current.handshake, unprocessed);
+                            unprocessed.active = current.active;
                         } else {
                             processing = new HandshakeEntry(current.handshake, processing);
                         }

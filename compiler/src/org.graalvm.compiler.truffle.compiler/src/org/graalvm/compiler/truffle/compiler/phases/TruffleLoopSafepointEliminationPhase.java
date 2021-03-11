@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.compiler.phases;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopEndNode;
@@ -78,7 +79,15 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
     }
 
     private boolean isTruffleCall(Invoke call) {
-        return call.callTarget().targetMethod().equals(callBoundary);
+        CallTargetNode target = call.callTarget();
+        if (target == null) {
+            return false;
+        }
+        ResolvedJavaMethod method = target.targetMethod();
+        if (method == null) {
+            return false;
+        }
+        return method.equals(callBoundary);
     }
 
 }

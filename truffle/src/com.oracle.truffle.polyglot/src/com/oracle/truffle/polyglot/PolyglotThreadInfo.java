@@ -112,6 +112,11 @@ final class PolyglotThreadInfo {
         return prev;
     }
 
+    int getEnteredCount() {
+        assert Thread.currentThread() == thread.get();
+        return enteredCount;
+    }
+
     /**
      * Not to be used directly. Use
      * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl, com.oracle.truffle.api.nodes.Node, boolean)}
