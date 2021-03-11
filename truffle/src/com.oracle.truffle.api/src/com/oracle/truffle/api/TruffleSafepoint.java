@@ -296,6 +296,14 @@ public abstract class TruffleSafepoint {
     public abstract boolean setAllowSideEffects(boolean enabled);
 
     /**
+     * Returns whether there is any pending side-effecting thread local actions on this thread, due
+     * to using {@link #setAllowSideEffects(boolean)}.
+     *
+     * @since 21.1
+     */
+    public abstract boolean isPending();
+
+    /**
      * Returns the current safepoint configuration for the current thread. This method is useful to
      * access configuration methods like {@link #setBlocked(Interrupter)} or
      * {@link #setAllowSideEffects(boolean)}.

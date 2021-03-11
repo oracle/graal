@@ -289,7 +289,7 @@ public abstract class ThreadLocalHandshake {
                 hasSideEffects = hasSideEffects || handshake.sideEffecting;
                 hasNonSideEffects = hasNonSideEffects || !handshake.sideEffecting;
 
-                if (isPending() && !fastPendingSet) {
+                if (isPendingAlreadyLocked() && !fastPendingSet) {
                     fastPendingSet = true;
                     setFastPendingAndInterrupt(t);
                 }
@@ -311,7 +311,7 @@ public abstract class ThreadLocalHandshake {
         HandshakeEntry takeHandshake(Node location) {
             lock.lock();
             try {
-                if (isPending()) {
+                if (isPendingAlreadyLocked()) {
                     assert fastPendingSet : "invalid state";
 
                     fastPendingSet = false;
@@ -398,7 +398,7 @@ public abstract class ThreadLocalHandshake {
             lock.lock();
             try {
                 Interrupter prev = this.blockedAction;
-                if (interruptable != null && isPending()) {
+                if (interruptable != null && isPendingAlreadyLocked()) {
                     interruptable.interrupt(Thread.currentThread());
                     interrupted = true;
                 }
@@ -433,7 +433,8 @@ public abstract class ThreadLocalHandshake {
         /**
          * Is a handshake really pending?
          */
-        private boolean isPending() {
+        private boolean isPendingAlreadyLocked() {
+            assert lock.isHeldByCurrentThread();
             if (sideEffectsEnabled) {
                 return hasNonSideEffects || hasSideEffects;
             } else {
@@ -456,8 +457,20 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
+        @Override
+        @TruffleBoundary
+        public boolean isPending() {
+            assert impl.getCurrent() == this : "Cannot be used from a different thread.";
+            lock.lock();
+            try {
+                return isPendingAlreadyLocked();
+            } finally {
+                lock.unlock();
+            }
+        }
+
         private void updateFastPending() {
-            if (isPending()) {
+            if (isPendingAlreadyLocked()) {
                 if (!fastPendingSet) {
                     fastPendingSet = true;
                     setFastPendingAndInterrupt(Thread.currentThread());
