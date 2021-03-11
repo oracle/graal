@@ -49,6 +49,7 @@ meth public boolean hasExceptionCause(java.lang.Object)
 meth public boolean hasExceptionMessage(java.lang.Object)
 meth public boolean hasExceptionStackTrace(java.lang.Object)
 meth public boolean hasExecutableName(java.lang.Object)
+meth public boolean hasHashEntries(java.lang.Object)
 meth public boolean hasIterator(java.lang.Object)
 meth public boolean hasIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public boolean hasLanguage(java.lang.Object)
@@ -69,6 +70,10 @@ meth public boolean isDuration(java.lang.Object)
 meth public boolean isException(java.lang.Object)
 meth public boolean isExceptionIncompleteSource(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public boolean isExecutable(java.lang.Object)
+meth public boolean isHashEntryInsertable(java.lang.Object,java.lang.Object)
+meth public boolean isHashEntryModifiable(java.lang.Object,java.lang.Object)
+meth public boolean isHashEntryReadable(java.lang.Object,java.lang.Object)
+meth public boolean isHashEntryRemovable(java.lang.Object,java.lang.Object)
 meth public boolean isIdentical(java.lang.Object,java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary)
 meth public boolean isInstantiable(java.lang.Object)
 meth public boolean isIterator(java.lang.Object)
@@ -96,6 +101,8 @@ meth public double readBufferDouble(java.lang.Object,java.nio.ByteOrder,long) th
 meth public final boolean hasIdentity(java.lang.Object)
 meth public final boolean isArrayElementExisting(java.lang.Object,long)
 meth public final boolean isArrayElementWritable(java.lang.Object,long)
+meth public final boolean isHashEntryExisting(java.lang.Object,java.lang.Object)
+meth public final boolean isHashEntryWritable(java.lang.Object,java.lang.Object)
 meth public final boolean isInstant(java.lang.Object)
 meth public final boolean isMemberExisting(java.lang.Object,java.lang.String)
 meth public final boolean isMemberWritable(java.lang.Object,java.lang.String)
@@ -113,6 +120,9 @@ meth public java.lang.Object getExceptionCause(java.lang.Object) throws com.orac
 meth public java.lang.Object getExceptionMessage(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExceptionStackTrace(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExecutableName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getHashEntriesIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getHashKeysIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getHashValuesIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.StopIterationException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMembers(java.lang.Object,boolean) throws com.oracle.truffle.api.interop.UnsupportedMessageException
@@ -121,6 +131,8 @@ meth public java.lang.Object getMetaQualifiedName(java.lang.Object) throws com.o
 meth public java.lang.Object getMetaSimpleName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getScopeParent(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readArrayElement(java.lang.Object,long) throws com.oracle.truffle.api.interop.InvalidArrayIndexException,com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object readHashValue(java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownKeyException,com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object readHashValueOrDefault(java.lang.Object,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readMember(java.lang.Object,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object toDisplayString(java.lang.Object,boolean)
 meth public java.lang.RuntimeException throwException(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
@@ -134,6 +146,7 @@ meth public long asLong(java.lang.Object) throws com.oracle.truffle.api.interop.
 meth public long asPointer(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public long getArraySize(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public long getBufferSize(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public long getHashSize(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public long readBufferLong(java.lang.Object,java.nio.ByteOrder,long) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public short asShort(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public short readBufferShort(java.lang.Object,java.nio.ByteOrder,long) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
@@ -141,6 +154,7 @@ meth public static com.oracle.truffle.api.interop.InteropLibrary getUncached()
 meth public static com.oracle.truffle.api.interop.InteropLibrary getUncached(java.lang.Object)
 meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truffle.api.interop.InteropLibrary> getFactory()
 meth public void removeArrayElement(java.lang.Object,long) throws com.oracle.truffle.api.interop.InvalidArrayIndexException,com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public void removeHashEntry(java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownKeyException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public void removeMember(java.lang.Object,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public void toNative(java.lang.Object)
 meth public void writeArrayElement(java.lang.Object,long,java.lang.Object) throws com.oracle.truffle.api.interop.InvalidArrayIndexException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
@@ -150,6 +164,7 @@ meth public void writeBufferFloat(java.lang.Object,java.nio.ByteOrder,long,float
 meth public void writeBufferInt(java.lang.Object,java.nio.ByteOrder,long,int) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public void writeBufferLong(java.lang.Object,java.nio.ByteOrder,long,long) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public void writeBufferShort(java.lang.Object,java.nio.ByteOrder,long,short) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public void writeHashEntry(java.lang.Object,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownKeyException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public void writeMember(java.lang.Object,java.lang.String,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 supr com.oracle.truffle.api.library.Library
 hfds FACTORY,UNCACHED
@@ -204,6 +219,14 @@ meth public static com.oracle.truffle.api.interop.UnknownIdentifierException cre
 meth public static com.oracle.truffle.api.interop.UnknownIdentifierException create(java.lang.String,java.lang.Throwable)
 supr com.oracle.truffle.api.interop.InteropException
 hfds serialVersionUID,unknownIdentifier
+
+CLSS public final com.oracle.truffle.api.interop.UnknownKeyException
+meth public java.lang.Object getUnknownKey()
+meth public java.lang.String getMessage()
+meth public static com.oracle.truffle.api.interop.UnknownKeyException create(java.lang.Object)
+meth public static com.oracle.truffle.api.interop.UnknownKeyException create(java.lang.Object,java.lang.Throwable)
+supr com.oracle.truffle.api.interop.InteropException
+hfds serialVersionUID,unknownKey
 
 CLSS public final com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.String getMessage()

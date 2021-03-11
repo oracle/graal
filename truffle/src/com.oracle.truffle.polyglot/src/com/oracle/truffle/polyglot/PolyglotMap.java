@@ -801,9 +801,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         if (isObjectKey(key)) {
                             String member = (String) key;
                             Object readValue = interop.readMember(receiver, member);
-                            if (!equalsBoundary(expectedValue, readValue)) {    // Todo: Should be
-                                                                                // toGuest(expectedValue)
-                                                                                // add test and fix
+                            if (!equalsBoundary(expectedValue, readValue)) {
                                 return false;
                             }
                             interop.removeMember(receiver, ((String) key));
@@ -814,9 +812,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         if (isArrayKey(key)) {
                             int index = intValue(key);
                             Object readValue = interop.readArrayElement(receiver, index);
-                            if (!equalsBoundary(expectedValue, readValue)) {    // Todo: Should be
-                                                                                // toGuest(expectedValue)
-                                                                                // add test and fix
+                            if (!equalsBoundary(expectedValue, readValue)) {
                                 return false;
                             }
                             interop.removeArrayElement(receiver, index);

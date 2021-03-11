@@ -41,7 +41,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new messages to the `InteropLibrary` to support hash maps:
 	* Added `hasHashEntries(Object)` that allows to specify that the receiver provides hash entries.
 	* Added `getHashSize(Object)` to return hash entries count.
-	* Added `isHashValueReadable(Object, Object)` that allows to specify that mapping for the given key exists and is readable.
+	* Added `isHashEntryReadable(Object, Object)` that allows to specify that mapping for the given key exists and is readable.
 	* Added `readHashValue(Object, Object)` to read the value for the specified key.
 	* Added `readHashValueOrDefault(Object, Object, Object)` to read the value for the specified key or to return the default value when the mapping for the specified key does not exist.
 	* Added `isHashEntryModifiable(Object, Object)` that allows to specify that mapping for the specified key exists and is writable.

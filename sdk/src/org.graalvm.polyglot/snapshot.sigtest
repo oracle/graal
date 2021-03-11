@@ -232,7 +232,7 @@ meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder(org.graalvm.polyglot.HostAccess)
 supr java.lang.Object
-hfds EMPTY,accessAnnotations,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowPublic,excludeTypes,impl,implementableAnnotations,implementableTypes,members,name,targetMappings
+hfds EMPTY,accessAnnotations,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowPublic,excludeTypes,impl,implementableAnnotations,implementableTypes,members,name,targetMappings
 
 CLSS public final org.graalvm.polyglot.HostAccess$Builder
  outer org.graalvm.polyglot.HostAccess
@@ -251,11 +251,12 @@ meth public org.graalvm.polyglot.HostAccess$Builder allowImplementationsAnnotate
 meth public org.graalvm.polyglot.HostAccess$Builder allowIterableAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowIteratorAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowListAccess(boolean)
+meth public org.graalvm.polyglot.HostAccess$Builder allowMapAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowPublicAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder denyAccess(java.lang.Class<?>)
 meth public org.graalvm.polyglot.HostAccess$Builder denyAccess(java.lang.Class<?>,boolean)
 supr java.lang.Object
-hfds accessAnnotations,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowPublic,excludeTypes,implementableTypes,implementationAnnotations,members,name,targetMappings
+hfds accessAnnotations,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowPublic,excludeTypes,implementableTypes,implementationAnnotations,members,name,targetMappings
 
 CLSS public abstract interface static !annotation org.graalvm.polyglot.HostAccess$Export
  outer org.graalvm.polyglot.HostAccess
@@ -492,6 +493,8 @@ meth public boolean fitsInLong()
 meth public boolean fitsInShort()
 meth public boolean hasArrayElements()
 meth public boolean hasBufferElements()
+meth public boolean hasHashEntries()
+meth public boolean hasHashEntry(java.lang.Object)
 meth public boolean hasIterator()
 meth public boolean hasIteratorNextElement()
 meth public boolean hasMember(java.lang.String)
@@ -514,6 +517,7 @@ meth public boolean isString()
 meth public boolean isTime()
 meth public boolean isTimeZone()
 meth public boolean removeArrayElement(long)
+meth public boolean removeHashEntry(java.lang.Object)
 meth public boolean removeMember(java.lang.String)
 meth public byte asByte()
 meth public byte readBufferByte(long)
@@ -539,10 +543,16 @@ meth public long asLong()
 meth public long asNativePointer()
 meth public long getArraySize()
 meth public long getBufferSize()
+meth public long getHashSize()
 meth public long readBufferLong(java.nio.ByteOrder,long)
 meth public org.graalvm.polyglot.Context getContext()
 meth public org.graalvm.polyglot.SourceSection getSourceLocation()
 meth public org.graalvm.polyglot.Value getArrayElement(long)
+meth public org.graalvm.polyglot.Value getHashEntriesIterator()
+meth public org.graalvm.polyglot.Value getHashKeysIterator()
+meth public org.graalvm.polyglot.Value getHashValue(java.lang.Object)
+meth public org.graalvm.polyglot.Value getHashValueOrDefault(java.lang.Object,java.lang.Object)
+meth public org.graalvm.polyglot.Value getHashValuesIterator()
 meth public org.graalvm.polyglot.Value getIterator()
 meth public org.graalvm.polyglot.Value getIteratorNextElement()
 meth public org.graalvm.polyglot.Value getMember(java.lang.String)
@@ -550,6 +560,7 @@ meth public org.graalvm.polyglot.Value getMetaObject()
 meth public short asShort()
 meth public short readBufferShort(java.nio.ByteOrder,long)
 meth public static org.graalvm.polyglot.Value asValue(java.lang.Object)
+meth public void putHashEntry(java.lang.Object,java.lang.Object)
 meth public void putMember(java.lang.String,java.lang.Object)
 meth public void setArrayElement(long,java.lang.Object)
 meth public void writeBufferByte(long,byte)
@@ -703,6 +714,16 @@ CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyExecutable
  anno 0 java.lang.FunctionalInterface()
 intf org.graalvm.polyglot.proxy.Proxy
 meth public abstract !varargs java.lang.Object execute(org.graalvm.polyglot.Value[])
+
+CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyHashMap
+intf org.graalvm.polyglot.proxy.Proxy
+meth public abstract boolean hasEntry(org.graalvm.polyglot.Value)
+meth public abstract java.lang.Object getEntriesIterator()
+meth public abstract java.lang.Object getValue(org.graalvm.polyglot.Value)
+meth public abstract long getSize()
+meth public abstract void putEntry(org.graalvm.polyglot.Value,org.graalvm.polyglot.Value)
+meth public boolean removeEntry(org.graalvm.polyglot.Value)
+meth public static org.graalvm.polyglot.proxy.ProxyHashMap from(java.util.Map<java.lang.Object,java.lang.Object>)
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyInstant
 intf org.graalvm.polyglot.proxy.ProxyDate
