@@ -43,20 +43,22 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.graalvm.polyglot.Context;
 import org.junit.Ignore;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
+import org.junit.runner.Runner;
+import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
-
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.tck.TruffleRunner;
 import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
 import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
+import com.oracle.truffle.tck.TruffleRunner;
 
 public abstract class CommonTestUtils {
 
@@ -209,17 +211,85 @@ public abstract class CommonTestUtils {
             return super.describeChild(method);
         }
 
-        private static Annotation[] getAnnotations(FrameworkMethod method, Ignore injectedIgnore) {
-            Annotation[] annotations = method.getAnnotations();
-            for (Annotation annotation : annotations) {
-                if (annotation instanceof Ignore) {
-                    // already ignored - no need to ignore even more
-                    return annotations;
-                }
+    }
+
+    private static Annotation[] getAnnotations(FrameworkMethod method, Ignore injectedIgnore) {
+        Annotation[] annotations = method.getAnnotations();
+        for (Annotation annotation : annotations) {
+            if (annotation instanceof Ignore) {
+                // already ignored - no need to ignore even more
+                return annotations;
             }
-            Annotation[] newAnnotations = Arrays.copyOf(annotations, annotations.length + 1);
-            newAnnotations[newAnnotations.length - 1] = injectedIgnore;
-            return newAnnotations;
+        }
+        Annotation[] newAnnotations = Arrays.copyOf(annotations, annotations.length + 1);
+        newAnnotations[newAnnotations.length - 1] = injectedIgnore;
+        return newAnnotations;
+    }
+
+    /**
+     * A {@link Runner} that will ignore runs where test method is in the
+     * {@link TestCaseCollector#getExcludedTests exclusion list}.
+     *
+     * Example Usage:
+     *
+     * <pre>
+     *   &#64;RunWith(CommonTestUtils.ExcludingRunner.class)
+     *   public final class MyTestSuite { ... }
+     * </pre>
+     */
+    public static class ExcludingRunner extends BlockJUnit4ClassRunner {
+
+        private final Map<String, String> excludes;
+
+        public ExcludingRunner(Class<?> klass) throws InitializationError {
+            super(klass);
+            excludes = TestCaseCollector.getExcludedTests(klass);
+        }
+
+        @Override
+        protected boolean isIgnored(FrameworkMethod method) {
+            if (excludes.containsKey(method.getName())) {
+                return true;
+            }
+            return super.isIgnored(method);
+        }
+
+        @Override
+        protected Description describeChild(FrameworkMethod method) {
+            String exclusionReason = excludes.get(method.getName());
+            if (exclusionReason != null) {
+                InjectedIgnore ignore = new InjectedIgnore(exclusionReason);
+                return Description.createTestDescription(getTestClass().getJavaClass(), testName(method), getAnnotations(method, ignore));
+            }
+            return super.describeChild(method);
+        }
+    }
+
+    public static class ExcludingTruffleRunner extends TruffleRunner {
+
+        private final TestCaseCollector.ExcludeMap excludes;
+
+        public ExcludingTruffleRunner(Class<?> klass) throws InitializationError {
+            super(klass);
+            excludes = TestCaseCollector.getExcludedTests(klass);
+        }
+
+        @Override
+        protected boolean isIgnored(FrameworkMethod method) {
+            if (excludes.get(method.getName()) != null) {
+                return true;
+            }
+            return super.isIgnored(method);
+        }
+
+        @Override
+        protected Description describeChild(FrameworkMethod method) {
+            String exclusionReason = excludes.get(method.getName());
+            if (exclusionReason != null) {
+                InjectedIgnore ignore = new InjectedIgnore(exclusionReason);
+                return Description.createTestDescription(getTestClass().getJavaClass(), testName(method), getAnnotations(method, ignore));
+            }
+            return super.describeChild(method);
         }
     }
 }
