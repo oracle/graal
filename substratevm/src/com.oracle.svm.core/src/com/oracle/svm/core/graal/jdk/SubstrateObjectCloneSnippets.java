@@ -72,7 +72,6 @@ import com.oracle.svm.core.util.NonmovableByteArrayReader;
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
     private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CLONE};
-    private static final CloneNotSupportedException CLONE_NOT_SUPPORTED_EXCEPTION = new CloneNotSupportedException("Object is not instance of Cloneable.");
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(providers, FOREIGN_CALLS);
@@ -83,7 +82,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         if (original == null) {
             throw new NullPointerException();
         } else if (!(original instanceof Cloneable)) {
-            throw CLONE_NOT_SUPPORTED_EXCEPTION;
+            throw new CloneNotSupportedException("Object is no instance of Cloneable.");
         }
 
         DynamicHub hub = KnownIntrinsics.readHub(original);

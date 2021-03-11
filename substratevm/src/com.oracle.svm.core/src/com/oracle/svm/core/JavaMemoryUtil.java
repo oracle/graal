@@ -153,7 +153,7 @@ public final class JavaMemoryUtil {
         UnsignedWord offset = lowerSize;
         UnsignedWord alignedSize = size.subtract(lowerSize).and(alignBits.not());
         if (alignment.equal(8)) {
-            copyAlignedLongsForward(from.add(offset), to.add(offset), alignedSize);
+            UnmanagedMemoryUtil.copyLongsForward(from.add(offset), to.add(offset), alignedSize);
             offset = offset.add(alignedSize);
         } else {
             UnsignedWord alignedEndOffset = offset.add(alignedSize);
@@ -205,52 +205,6 @@ public final class JavaMemoryUtil {
         }
     }
 
-    @IntrinsicCandidate
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void copyAlignedLongsForward(Pointer from, Pointer to, UnsignedWord size) {
-        UnsignedWord offset = WordFactory.zero();
-        for (UnsignedWord next = offset.add(32); next.belowOrEqual(size); next = offset.add(32)) {
-            Pointer src = from.add(offset);
-            Pointer dst = to.add(offset);
-            long l0 = src.readLong(0);
-            long l8 = src.readLong(8);
-            long l16 = src.readLong(16);
-            long l24 = src.readLong(24);
-            dst.writeLong(0, l0);
-            dst.writeLong(8, l8);
-            dst.writeLong(16, l16);
-            dst.writeLong(24, l24);
-            offset = next;
-        }
-        while (offset.belowThan(size)) {
-            to.writeLong(offset, from.readLong(offset));
-            offset = offset.add(8);
-        }
-    }
-
-    @IntrinsicCandidate
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void copyAlignedLongsBackward(Pointer from, Pointer to, UnsignedWord size) {
-        UnsignedWord offset = size;
-        while (offset.aboveOrEqual(32)) {
-            offset = offset.subtract(32);
-            Pointer src = from.add(offset);
-            Pointer dst = to.add(offset);
-            long l24 = src.readLong(24);
-            long l16 = src.readLong(16);
-            long l8 = src.readLong(8);
-            long l0 = src.readLong(0);
-            dst.writeLong(24, l24);
-            dst.writeLong(16, l16);
-            dst.writeLong(8, l8);
-            dst.writeLong(0, l0);
-        }
-        while (offset.aboveOrEqual(8)) {
-            offset = offset.subtract(8);
-            to.writeLong(offset, from.readLong(offset));
-        }
-    }
-
     /**
      * Copy bytes from one memory area to another.
      *
@@ -291,7 +245,7 @@ public final class JavaMemoryUtil {
         UnsignedWord alignedSize = offset.and(alignBits.not());
         if (alignment.equal(8)) {
             offset = offset.subtract(alignedSize);
-            copyAlignedLongsBackward(from.add(offset), to.add(offset), alignedSize);
+            UnmanagedMemoryUtil.copyLongsBackward(from.add(offset), to.add(offset), alignedSize);
         } else {
             if (alignment.equal(4)) {
                 while (offset.aboveOrEqual(4)) {
@@ -356,29 +310,12 @@ public final class JavaMemoryUtil {
 
         UnsignedWord offset = lowerSize;
         UnsignedWord alignedSize = size.subtract(offset).and(alignMask.not());
-        fillLongsAligned(to.add(offset), alignedSize, v);
+        UnmanagedMemoryUtil.fillLongs(to.add(offset), alignedSize, v);
         offset = offset.add(alignedSize);
 
         UnsignedWord upperSize = size.subtract(offset);
         if (upperSize.aboveThan(0)) {
             fillUnalignedUpper(to.add(offset), v, upperSize);
-        }
-    }
-
-    @IntrinsicCandidate
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void fillLongsAligned(Pointer to, UnsignedWord size, long longValue) {
-        UnsignedWord offset = WordFactory.zero();
-        for (UnsignedWord next = offset.add(32); next.belowOrEqual(size); next = offset.add(32)) {
-            Pointer p = to.add(offset);
-            p.writeLong(0, longValue);
-            p.writeLong(8, longValue);
-            p.writeLong(16, longValue);
-            p.writeLong(24, longValue);
-            offset = next;
-        }
-        for (; offset.belowThan(size); offset = offset.add(8)) {
-            to.writeLong(offset, longValue);
         }
     }
 
