@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import org.graalvm.polyglot.Context;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -50,7 +51,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import com.oracle.truffle.llvm.tests.TestCaseCollector;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
@@ -59,7 +59,7 @@ import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(Parameterized.class)
-@Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
+@Parameterized.UseParametersRunnerFactory(CommonTestUtils.ExcludingParametersFactory.class)
 public class BitcodeFormatTest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
