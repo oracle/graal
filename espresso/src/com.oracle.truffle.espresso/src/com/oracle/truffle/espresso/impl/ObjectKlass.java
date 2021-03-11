@@ -334,7 +334,7 @@ public final class ObjectKlass extends Klass {
                     StaticObject cause = e.getExceptionObject();
                     Meta meta = getMeta();
                     if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                        throw Meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
+                        throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
                     } else {
                         throw e;
                     }
@@ -541,7 +541,8 @@ public final class ObjectKlass extends Klass {
                 Klass host = thisPool.resolvedKlassAt(this, nestHost.hostClassIndex);
 
                 if (!host.nestMembersCheck(this)) {
-                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    Meta meta = getMeta();
+                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
                 }
                 nest = host;
             }
@@ -626,7 +627,8 @@ public final class ObjectKlass extends Klass {
         try {
             return getItable()[fastLookup(interfKlass, getiKlassTable())][index];
         } catch (IndexOutOfBoundsException e) {
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError, "Class " + getName() + " does not implement interface " + interfKlass.getName());
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class " + getName() + " does not implement interface " + interfKlass.getName());
         }
     }
 
@@ -822,7 +824,7 @@ public final class ObjectKlass extends Klass {
             if (mode == VerifyMode.ALL || !StaticObject.isNull(getDefiningClassLoader())) {
                 Meta meta = getMeta();
                 if (getSuperKlass() != null && getSuperKlass().isFinalFlagSet()) {
-                    throw Meta.throwException(meta.java_lang_VerifyError);
+                    throw meta.throwException(meta.java_lang_VerifyError);
                 }
                 if (getSuperKlass() != null) {
                     getSuperKlass().verify();
@@ -851,13 +853,13 @@ public final class ObjectKlass extends Klass {
                         // VerifyError/ClassFormatError to be thrown by the host itself (at this
                         // point, or even ever at all).
                     } catch (VerifyError e) {
-                        throw Meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
+                        throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
                     } catch (ClassFormatError e) {
-                        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+                        throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
                     } catch (IncompatibleClassChangeError e) {
-                        throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
+                        throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
                     } catch (NoClassDefFoundError e) {
-                        throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
+                        throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
                     }
                 }
             }
@@ -920,7 +922,8 @@ public final class ObjectKlass extends Klass {
 
     private void checkErroneousInitialization() {
         if (initState == ERRONEOUS) {
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
         }
     }
 

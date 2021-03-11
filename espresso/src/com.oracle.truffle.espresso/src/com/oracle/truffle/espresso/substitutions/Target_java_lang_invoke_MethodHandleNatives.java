@@ -95,7 +95,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(self)) {
             profiler.profile(0);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "MemberName is null");
+            throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "MemberName is null");
         }
         boolean haveClazz = !StaticObject.isNull(meta.java_lang_invoke_MemberName_clazz.getObject(self));
         boolean haveName = !StaticObject.isNull(meta.java_lang_invoke_MemberName_name.getObject(self));
@@ -108,7 +108,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 Method m = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(self);
                 if (m == null) {
                     profiler.profile(2);
-                    throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
+                    throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
                 }
                 if (!haveClazz) {
                     meta.java_lang_invoke_MemberName_clazz.setObject(self, m.getDeclaringKlass().mirror());
@@ -125,7 +125,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 StaticObject clazz = meta.java_lang_invoke_MemberName_clazz.getObject(self);
                 if (StaticObject.isNull(clazz)) {
                     profiler.profile(3);
-                    throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
+                    throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
                 }
                 Klass holder = clazz.getMirrorKlass();
                 int slot = (int) (((long) meta.HIDDEN_VMINDEX.getHiddenObject(self)) - Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
@@ -142,7 +142,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
                 if (f == null) {
                     profiler.profile(4);
-                    throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
+                    throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
                 }
                 if (!haveName) {
                     meta.java_lang_invoke_MemberName_name.setObject(self, meta.toGuestString(f.getName()));
@@ -159,7 +159,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             }
             default:
                 profiler.profile(1);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "MemberName is null");
+                throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "MemberName is null");
         }
     }
 
@@ -349,9 +349,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (methodName == null) {
             profiler.profile(0);
             if ((flags & ALL_KINDS) == MN_IS_FIELD) {
-                throw Meta.throwException(meta.java_lang_NoSuchFieldException);
+                throw meta.throwException(meta.java_lang_NoSuchFieldException);
             } else {
-                throw Meta.throwException(meta.java_lang_NoSuchMethodException);
+                throw meta.throwException(meta.java_lang_NoSuchMethodException);
             }
         }
 
@@ -413,7 +413,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 plantFieldMemberName(memberName, t, defKlass, methodName, refKind, meta);
                 break;
             default:
-                throw Meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Member name resolution failed");
+                throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Member name resolution failed");
         }
 
         return memberName;
@@ -431,7 +431,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, int refKind, Meta meta) {
         Method target = defKlass.lookupMethod(name, sig, callerKlass);
         if (target == null) {
-            throw Meta.throwException(meta.java_lang_NoSuchMethodError);
+            throw meta.throwException(meta.java_lang_NoSuchMethodError);
         }
         plantResolvedMethod(memberName, target, refKind, meta);
     }
@@ -445,7 +445,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, int refKind, Meta meta) {
         Field field = defKlass.lookupField(name, type);
         if (field == null) {
-            throw Meta.throwException(meta.java_lang_NoSuchFieldError);
+            throw meta.throwException(meta.java_lang_NoSuchFieldError);
         }
         plantResolvedField(memberName, field, refKind, meta);
     }

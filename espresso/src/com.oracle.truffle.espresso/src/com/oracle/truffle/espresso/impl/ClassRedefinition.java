@@ -639,12 +639,12 @@ public final class ClassRedefinition {
             Method replacementMethod = resolutionSeed.getDeclaringKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
             Meta meta = resolutionSeed.getMeta();
             if (replacementMethod == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
+                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
                                 meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()) +
                                                 " was removed by class redefinition");
             } else if (resolutionSeed.isStatic() != replacementMethod.isStatic()) {
                 String message = resolutionSeed.isStatic() ? "expected static method: " : "expected non-static method:" + replacementMethod.getName();
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, message);
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, message);
             } else {
                 // Update to the latest version of the replacement method
                 return replacementMethod;

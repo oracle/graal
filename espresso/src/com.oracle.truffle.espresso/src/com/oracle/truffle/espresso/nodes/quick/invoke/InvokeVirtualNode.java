@@ -70,7 +70,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         if (!target.getMethod().hasCode()) {
             enterExceptionProfile();
             Meta meta = receiver.getKlass().getMeta();
-            throw Meta.throwException(meta.java_lang_AbstractMethodError);
+            throw meta.throwException(meta.java_lang_AbstractMethodError);
         }
         return indirectCallNode.call(target.getCallTarget(), arguments);
     }

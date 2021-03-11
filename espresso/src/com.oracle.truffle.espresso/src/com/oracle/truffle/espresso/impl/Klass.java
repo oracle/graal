@@ -186,7 +186,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @ExportMessage
     final boolean isMemberInvocable(String member,
                     @Exclusive @Cached LookupDeclaredMethod lookupMethod) {
-        return lookupMethod.isInvocable(this, member, true, true);
+        return lookupMethod.isInvocable(this, member, true);
     }
 
     @ExportMessage
@@ -940,7 +940,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             StaticObject cause = e.getExceptionObject();
             Meta meta = getMeta();
             if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                throw Meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
+                throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
             } else {
                 throw e;
             }

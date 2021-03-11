@@ -71,7 +71,7 @@ public final class Target_sun_misc_Signal {
             Signal.raise(hostSignal);
         } catch (IllegalArgumentException e) {
             logger.fine(() -> "failed to raise " + hostSignal + ": " + e.getMessage());
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, meta.toGuestString(e.getMessage()));
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, meta.toGuestString(e.getMessage()));
         }
     }
 
@@ -96,7 +96,7 @@ public final class Target_sun_misc_Signal {
         }
         if (!meta.getContext().EnableSignals) {
             logger.fine(() -> "failed to setup handler for " + asHostSignal(signal, meta) + ": signal handling is disabled ");
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Signal API is disabled");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Signal API is disabled");
         }
         Signal hostSignal = asHostSignal(signal, meta);
         SignalHandler hostHandler = asHostHandler(handler, meta);
@@ -106,7 +106,7 @@ public final class Target_sun_misc_Signal {
             return asGuestHandler(oldHandler, meta);
         } catch (IllegalArgumentException e) {
             logger.fine(() -> "failed to setup handler for " + hostSignal + ": " + e.getMessage());
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, meta.toGuestString(e.getMessage()));
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, meta.toGuestString(e.getMessage()));
         }
     }
 
@@ -135,7 +135,7 @@ public final class Target_sun_misc_Signal {
             } else if (rawHandler == 1) {
                 return SignalHandler.SIG_IGN;
             } else {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, meta.toGuestString("Unsupported: arbitrary native signal handlers"));
+                throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, meta.toGuestString("Unsupported: arbitrary native signal handlers"));
             }
         }
         return HostSignalHandler.get(meta, handler);

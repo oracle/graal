@@ -135,11 +135,11 @@ public interface DynamicConstant extends PoolConstant {
             try {
                 return makeResolved(fieldType, (StaticObject) result);
             } catch (ClassCastException | NullPointerException e) {
-                throw Meta.throwException(meta.java_lang_BootstrapMethodError);
+                throw meta.throwException(meta.java_lang_BootstrapMethodError);
             } catch (EspressoException e) {
                 if (meta.java_lang_NullPointerException.isAssignableFrom(e.getExceptionObject().getKlass()) ||
                                 meta.java_lang_ClassCastException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                    throw Meta.throwExceptionWithCause(meta.java_lang_BootstrapMethodError, e.getExceptionObject());
+                    throw meta.throwExceptionWithCause(meta.java_lang_BootstrapMethodError, e.getExceptionObject());
                 }
                 throw e;
             }

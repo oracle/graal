@@ -1052,7 +1052,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case NEWARRAY    : putObject(refs, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(primitives, top - 1), getMeta())); break;
                     case ANEWARRAY   : putObject(refs, top - 1, allocateArray(resolveType(curOpcode, readCPI(curBCI)), popInt(primitives, top - 1))); break;
                     case ARRAYLENGTH : arrayLength(frame, primitives, refs, top, curBCI); break;
-                    case ATHROW      : throw Meta.throwException(nullCheck(popObject(refs, top - 1)));
+                    case ATHROW      : throw getMeta().throwException(nullCheck(popObject(refs, top - 1)));
 
                     case CHECKCAST   : top += quickenCheckCast(frame, primitives, refs, top, curBCI, curOpcode); break;
                     case INSTANCEOF  : top += quickenInstanceOf(frame, primitives, refs, top, curBCI, curOpcode); break;
@@ -1157,7 +1157,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         wrappedException = (EspressoException) e;
                     } else if (getContext().Polyglot && e instanceof AbstractTruffleException) {
                         wrappedException = EspressoException.wrap(
-                                        StaticObject.createForeignException(getMeta(), e, InteropLibrary.getUncached(e)));
+                                        StaticObject.createForeignException(getMeta(), e, InteropLibrary.getUncached(e)), getMeta());
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
@@ -1274,6 +1274,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         return toReturn;
     }
 
+    @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         InstrumentationSupport info = this.instrumentation;
         if (info == null && materializedTags.contains(StatementTag.class)) {
@@ -1774,7 +1775,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
                     CompilerDirectives.transferToInterpreter();
-                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    Meta meta = getMeta();
+                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKEINTERFACE:
@@ -1783,7 +1785,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                 if (resolved.isStatic() ||
                                 (getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
                     CompilerDirectives.transferToInterpreter();
-                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    Meta meta = getMeta();
+                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKEVIRTUAL:
@@ -1791,7 +1794,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     CompilerDirectives.transferToInterpreter();
-                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    Meta meta = getMeta();
+                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKESPECIAL:
@@ -1801,15 +1805,17 @@ public final class BytecodeNode extends EspressoMethodNode {
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(cpi).getHolderKlassName(getConstantPool())) {
                         CompilerDirectives.transferToInterpreter();
-                        throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError,
-                                        getContext().getMeta().toGuestString(resolved.getDeclaringKlass().getNameAsString() + "." + resolved.getName() + resolved.getRawSignature()));
+                        Meta meta = getMeta();
+                        throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
+                                        meta.toGuestString(resolved.getDeclaringKlass().getNameAsString() + "." + resolved.getName() + resolved.getRawSignature()));
                     }
                 }
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     CompilerDirectives.transferToInterpreter();
-                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    Meta meta = getMeta();
+                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
                 }
                 // If all of the following are true, let C be the direct superclass of the current
                 // class:
@@ -2093,7 +2099,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             return value;
         }
         enterImplicitExceptionProfile();
-        throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArithmeticException, "/ by zero");
     }
 
     private long checkNonZero(long value) {
@@ -2101,7 +2108,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             return value;
         }
         enterImplicitExceptionProfile();
-        throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArithmeticException, "/ by zero");
     }
 
     // endregion Misc. checks
@@ -2132,7 +2140,8 @@ public final class BytecodeNode extends EspressoMethodNode {
          */
         if (field.isStatic() != (opcode == PUTSTATIC)) {
             CompilerDirectives.transferToInterpreter();
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError,
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError,
                             String.format("Expected %s field %s.%s",
                                             (opcode == PUTSTATIC) ? "static" : "non-static",
                                             field.getDeclaringKlass().getNameAsString(),
@@ -2151,7 +2160,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (field.isFinalFlagSet()) {
             if (field.getDeclaringKlass() != getMethod().getDeclaringKlass()) {
                 CompilerDirectives.transferToInterpreter();
-                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalAccessError,
+                Meta meta = getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError,
                                 String.format("Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                                                 (opcode == PUTSTATIC) ? "static" : "non-static",
                                                 field.getDeclaringKlass().getNameAsString(),
@@ -2167,7 +2177,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                             ((opcode == PUTFIELD && !getMethod().isConstructor()) ||
                                             (opcode == PUTSTATIC && !getMethod().isClassInitializer()))) {
                 CompilerDirectives.transferToInterpreter();
-                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalAccessError,
+                Meta meta = getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError,
                                 String.format("Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
                                                 (opcode == PUTSTATIC) ? "static" : "non-static",
                                                 field.getDeclaringKlass().getNameAsString(),
@@ -2288,7 +2299,8 @@ public final class BytecodeNode extends EspressoMethodNode {
          */
         if (field.isStatic() != (opcode == GETSTATIC)) {
             CompilerDirectives.transferToInterpreter();
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError,
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError,
                             String.format("Expected %s field %s.%s",
                                             (opcode == GETSTATIC) ? "static" : "non-static",
                                             field.getDeclaringKlass().getNameAsString(),
