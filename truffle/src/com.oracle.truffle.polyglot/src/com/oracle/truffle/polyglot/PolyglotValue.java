@@ -73,8 +73,11 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetArraySizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetBufferSizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashEntriesIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashKeysIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashValuesIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashSizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashValueNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetHashValueOrDefaultNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetIteratorNextElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMemberKeysNodeGen;
@@ -1018,6 +1021,24 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @Override
+    public Value getHashValueOrDefault(Object receiver, Object key, Object defaultValue) {
+        Object prev = hostEnter(languageContext);
+        try {
+            throw getHashValueOrDefaultUnsupported(languageContext, receiver, key, defaultValue);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    static final RuntimeException getHashValueOrDefaultUnsupported(PolyglotLanguageContext context, Object receiver, Object key, Object defaultValue) {
+        throw unsupported(context, receiver, "getHashValueOrDefault(Object, Object)", "hasHashEntries()");
+    }
+
+    @Override
     public void putHashEntry(Object receiver, Object key, Object value) {
         Object prev = hostEnter(languageContext);
         try {
@@ -1067,6 +1088,40 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @TruffleBoundary
     static final RuntimeException getHashEntriesIteratorUnsupported(PolyglotLanguageContext context, Object receiver) {
         throw unsupported(context, receiver, "getHashEntriesIterator()", "hasHashEntries()");
+    }
+
+    @Override
+    public Value getHashKeysIterator(Object receiver) {
+        Object prev = hostEnter(languageContext);
+        try {
+            throw getHashKeysIteratorUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static final RuntimeException getHashKeysIteratorUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getHashKeysIterator()", "hasHashEntries()");
+    }
+
+    @Override
+    public Value getHashValuesIterator(Object receiver) {
+        Object prev = hostEnter(languageContext);
+        try {
+            throw getHashValuesIteratorUnsupported(languageContext, receiver);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static final RuntimeException getHashValuesIteratorUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getHashValuesIterator()", "hasHashEntries()");
     }
 
     protected Value getMetaObjectImpl(Object receiver) {
@@ -1242,12 +1297,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @TruffleBoundary
     protected static RuntimeException nonReadableIteratorElement() {
         throw PolyglotEngineException.unsupported("Iterator element is not readable.");
-    }
-
-    @TruffleBoundary
-    protected static RuntimeException invalidHashKey(PolyglotLanguageContext context, Object receiver, Object key) {
-        String message = String.format("Invalid hash key %s for object %s.", getValueInfo(context, key), getValueInfo(context, receiver));
-        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
@@ -1529,9 +1578,12 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget getHashSize;
         final CallTarget hasHashEntry;
         final CallTarget getHashValue;
+        final CallTarget getHashValueOrDefault;
         final CallTarget putHashEntry;
         final CallTarget removeHashEntry;
         final CallTarget getHashEntriesIterator;
+        final CallTarget getHashKeysIterator;
+        final CallTarget getHashValuesIterator;
 
         final boolean isProxy;
         final boolean isHost;
@@ -1612,9 +1664,12 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.getHashSize = createTarget(GetHashSizeNodeGen.create(this));
             this.hasHashEntry = createTarget(HasHashEntryNodeGen.create(this));
             this.getHashValue = createTarget(GetHashValueNodeGen.create(this));
+            this.getHashValueOrDefault = createTarget(GetHashValueOrDefaultNodeGen.create(this));
             this.putHashEntry = createTarget(PutHashEntryNodeGen.create(this));
             this.removeHashEntry = createTarget(RemoveHashEntryNodeGen.create(this));
             this.getHashEntriesIterator = createTarget(GetHashEntriesIteratorNodeGen.create(this));
+            this.getHashKeysIterator = createTarget(GetHashKeysIteratorNodeGen.create(this));
+            this.getHashValuesIterator = createTarget(GetHashValuesIteratorNodeGen.create(this));
         }
 
         abstract static class IsDateNode extends InteropNode {
@@ -3685,8 +3740,45 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     if (hashes.isHashEntryExisting(receiver, key)) {
                         throw getHashValueUnsupported(context, receiver, key);
                     } else {
-                        throw invalidHashKey(context, receiver, key);
+                        return null;
                     }
+                }
+            }
+        }
+
+        abstract static class GetHashValueOrDefaultNode extends InteropNode {
+
+            protected GetHashValueOrDefaultNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class, Object.class};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getHashValueOrDefault";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary hashes,
+                            @Cached ToGuestValueNode toGuestKey,
+                            @Cached ToGuestValueNode toGuestDefaultValue,
+                            @Cached("createToHost()") ToHostValueNode toHost,
+                            @Cached BranchProfile unsupported,
+                            @Cached BranchProfile invalidKey) {
+                Object hostKey = args[ARGUMENT_OFFSET];
+                Object hostDefaultValue = args[ARGUMENT_OFFSET + 1];
+                Object key = toGuestKey.execute(context, hostKey);
+                Object defaultValue = toGuestDefaultValue.execute(context, hostDefaultValue);
+                try {
+                    return toHost.execute(context, hashes.readHashValueOrDefault(receiver, key, hostDefaultValue));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw getHashValueUnsupported(context, receiver, key);
                 }
             }
         }
@@ -3798,6 +3890,66 @@ abstract class PolyglotValue extends AbstractValueImpl {
                             @Cached BranchProfile unsupported) {
                 try {
                     return toHost.execute(context, hashes.getHashEntriesIterator(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw getHashEntriesIteratorUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class GetHashKeysIteratorNode extends InteropNode {
+
+            GetHashKeysIteratorNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getHashKeysIterator";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary hashes,
+                            @Cached("createToHost()") ToHostValueNode toHost,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return toHost.execute(context, hashes.getHashKeysIterator(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw getHashEntriesIteratorUnsupported(context, receiver);
+                }
+            }
+        }
+
+        abstract static class GetHashValuesIteratorNode extends InteropNode {
+
+            GetHashValuesIteratorNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getHashValuesIterator";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary hashes,
+                            @Cached("createToHost()") ToHostValueNode toHost,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return toHost.execute(context, hashes.getHashValuesIterator(receiver));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     throw getHashEntriesIteratorUnsupported(context, receiver);
@@ -4713,6 +4865,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
 
         @Override
+        public Value getHashValueOrDefault(Object receiver, Object key, Object defaultValue) {
+            return (Value) RUNTIME.callProfiled(cache.getHashValueOrDefault, languageContext, receiver, key, defaultValue);
+        }
+
+        @Override
         public void putHashEntry(Object receiver, Object key, Object value) {
             RUNTIME.callProfiled(cache.putHashEntry, languageContext, receiver, key, value);
         }
@@ -4725,6 +4882,16 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public Value getHashEntriesIterator(Object receiver) {
             return (Value) RUNTIME.callProfiled(cache.getHashEntriesIterator, languageContext, receiver);
+        }
+
+        @Override
+        public Value getHashKeysIterator(Object receiver) {
+            return (Value) RUNTIME.callProfiled(cache.getHashKeysIterator, languageContext, receiver);
+        }
+
+        @Override
+        public Value getHashValuesIterator(Object receiver) {
+            return (Value) RUNTIME.callProfiled(cache.getHashValuesIterator, languageContext, receiver);
         }
 
         private final class MemberSet extends AbstractSet<String> {

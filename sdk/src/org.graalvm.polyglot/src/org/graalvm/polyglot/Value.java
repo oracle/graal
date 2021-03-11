@@ -1895,6 +1895,7 @@ public final class Value {
      * {@code false}. The key is subject to polyglot value mapping rules as described in
      * {@link Context#asValue(Object)}.
      *
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @since 21.1
      */
@@ -1903,18 +1904,33 @@ public final class Value {
     }
 
     /**
-     * Returns the value for the specified key or throws {@link IllegalArgumentException} if the
-     * mapping for the specified key does not exist. The key is subject to polyglot value mapping
-     * rules as described in {@link Context#asValue(Object)}.
+     * Returns the value for the specified key or {@code null} if the mapping for the specified key
+     * does not exist. The key is subject to polyglot value mapping rules as described in
+     * {@link Context#asValue(Object)}.
      *
      * @throws UnsupportedOperationException if the value has no {@link #hasHashEntries() hash
      *             entries} or the mapping for given key exists but is not readable.
-     * @throws IllegalArgumentException if the mapping for the specified key does not exist.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @since 21.1
      */
     public Value getHashValue(Object key) throws IllegalArgumentException, UnsupportedOperationException {
         return impl.getHashValue(receiver, key);
+    }
+
+    /**
+     * Returns the value for the specified key or {@code null} if the mapping for the specified key
+     * does not exist or is not readable. The key and the default value are subject to polyglot
+     * value mapping rules as described in {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value has no {@link #hasHashEntries() hash
+     *             entries} at all.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public Value getHashValueOrDefault(Object key, Object defaultValue) {
+        return impl.getHashValueOrDefault(receiver, key, defaultValue);
     }
 
     /**
@@ -1967,6 +1983,36 @@ public final class Value {
      */
     public Value getHashEntriesIterator() throws UnsupportedOperationException {
         return impl.getHashEntriesIterator(receiver);
+    }
+
+    /**
+     * Creates a new hash keys iterator that allows read each map key. The return value is always an
+     * {@link #isIterator() iterator}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @since 21.1
+     */
+    public Value getHashKeysIterator() throws UnsupportedOperationException {
+        return impl.getHashKeysIterator(receiver);
+    }
+
+    /**
+     * Creates a new hash values iterator that allows read each map value. The return value is
+     * always an {@link #isIterator() iterator}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @since 21.1
+     */
+    public Value getHashValuesIterator() throws UnsupportedOperationException {
+        return impl.getHashValuesIterator(receiver);
     }
 
     /**
