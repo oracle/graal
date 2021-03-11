@@ -141,6 +141,22 @@ public final class TestCaseCollector {
         }
     }
 
+    private static final class ExcludeAllMap extends ExcludeMap {
+
+        private static final String EXCLUDE_ALL_PATTERN = "*";
+
+        private final String reason;
+
+        private ExcludeAllMap(String reason) {
+            this.reason = reason;
+        }
+
+        @Override
+        public String get(String key) {
+            return reason;
+        }
+    }
+
     private static final class MapBasedExcludeMap extends ExcludeMap {
 
         private final Map<String, String> map;
@@ -178,7 +194,12 @@ public final class TestCaseCollector {
             // walk <ROOT><testSuiteClass>/"runtimeConfig"/<LLVMRuntimeConfig>/os_arch/
             walkOsArch(visitors, configOsArchDirectory);
 
-            return new MapBasedExcludeMap(visitors.getExcludeMap());
+            Map<String, String> excludeMap = visitors.getExcludeMap();
+            String excludeAllReason = excludeMap.get(ExcludeAllMap.EXCLUDE_ALL_PATTERN);
+            if (excludeAllReason != null) {
+                return new ExcludeAllMap(excludeAllReason);
+            }
+            return new MapBasedExcludeMap(excludeMap);
         } catch (IOException e) {
             return EmptyExcludeMap.EMPTY;
         }
