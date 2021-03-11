@@ -37,13 +37,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.llvm.tests.CommonTestUtils;
-import com.oracle.truffle.llvm.tests.TestCaseCollector;
-import com.oracle.truffle.llvm.tests.options.TestOptions;
 import org.graalvm.polyglot.Context;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
+import com.oracle.truffle.llvm.tests.TestCaseCollector;
+import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(CommonTestUtils.ExcludingParametersFactory.class)
@@ -82,7 +83,7 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
         configs.put("testObjectPointer.cpp", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testBooleans.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testLoop.c", new String[]{BC_O0, BC_MEM2REG});
-        Map<String, String> excludes = TestCaseCollector.getExcludedTests(LLVMDebugTest.class);
+        TestCaseCollector.ExcludeMap excludes = TestCaseCollector.getExcludedTests(LLVMDebugTest.class);
         return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v, excludes.get(e.getKey())})).collect(Collectors.toSet());
     }
 
