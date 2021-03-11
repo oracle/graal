@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULEPointer;
 
@@ -50,6 +51,10 @@ public class LibLoaderAPI {
     /** Retrieves the fully qualified path of the file that contains the specified module. */
     @CFunction(transition = NO_TRANSITION)
     public static native int GetModuleFileNameA(HMODULE hModule, CCharPointer lpFilename, int nSize);
+
+    /** Retrieves the fully qualified path of the file that contains the specified module. */
+    @CFunction(transition = NO_TRANSITION)
+    public static native int GetModuleFileNameW(HMODULE hModule, WCharPointer lpFilename, int nSize);
 
     /** Retrieves a module handle for the specified module. */
     @CFunction(transition = NO_TRANSITION)
