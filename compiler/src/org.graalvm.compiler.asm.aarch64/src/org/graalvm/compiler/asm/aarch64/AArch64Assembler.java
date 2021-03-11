@@ -464,7 +464,7 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int LoadLiteralImmOffset = 5;
     private static final int LoadFlag = 0b1 << 22;
 
-    private static final int LoadStorePairOp = 0b101_0_000 << 23;
+    private static final int LoadStorePairSignedOffsetOp = 0b101_0_010 << 23;
     private static final int LoadStorePairPostIndexOp = 0b101_0_001 << 23;
     private static final int LoadStorePairPreIndexOp = 0b101_0_011 << 23;
     private static final int LoadStorePairImm7Offset = 15;
@@ -1316,7 +1316,7 @@ public abstract class AArch64Assembler extends Assembler {
         int memOp = transferSizeEncoding | instr.encoding | floatFlag | offset << LoadStorePairImm7Offset | rt2(rt2) | rn(address.getBase()) | rt(rt);
         switch (address.getAddressingMode()) {
             case IMMEDIATE_PAIR_SIGNED_SCALED:
-                return (memOp | LoadStorePairOp);
+                return (memOp | LoadStorePairSignedOffsetOp);
             case IMMEDIATE_PAIR_POST_INDEXED:
                 return (memOp | LoadStorePairPostIndexOp);
             case IMMEDIATE_PAIR_PRE_INDEXED:
