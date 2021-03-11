@@ -285,7 +285,7 @@ public abstract class TruffleSafepoint {
      * TruffleSafepoint sp = TruffleSafepoint.getCurrent();
      * boolean prev = sp.setAllowSideEffects(false);
      * try {
-     *     // criticial section
+     *     // critical section
      * } finally {
      *     sp.setAllowSideEffects(prev);
      * }
@@ -296,12 +296,16 @@ public abstract class TruffleSafepoint {
     public abstract boolean setAllowSideEffects(boolean enabled);
 
     /**
-     * Returns whether there is any pending side-effecting thread local actions on this thread, due
-     * to using {@link #setAllowSideEffects(boolean)}.
+     * Returns whether there is any pending side-effecting thread local action on this thread, due
+     * to being in a critical section using {@link #setAllowSideEffects(boolean)}. When
+     * side-effecting actions are allowed, this method always returns {@code false}.
+     * <p>
+     * This is useful if the language exposes a way to know if there are any pending side-effecting
+     * thread local action due to using {@link #setAllowSideEffects(boolean)}.
      *
      * @since 21.1
      */
-    public abstract boolean isPending();
+    public abstract boolean hasPendingSideEffectingActions();
 
     /**
      * Returns the current safepoint configuration for the current thread. This method is useful to
