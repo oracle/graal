@@ -531,7 +531,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                             @Cached ToGuestValueNode toGuest) {
                 Object key = args[ARGUMENT_OFFSET];
                 if (interop.hasHashEntries(receiver)) {
-                    return interop.isHashValueReadable(receiver, toGuest.execute(languageContext, key));
+                    return interop.isHashEntryReadable(receiver, toGuest.execute(languageContext, key));
                 }
                 if (cache.memberKey && interop.hasMembers(receiver)) {
                     if (isObjectKey(key)) {

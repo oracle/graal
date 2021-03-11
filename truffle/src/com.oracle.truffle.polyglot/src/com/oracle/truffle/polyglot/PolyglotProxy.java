@@ -655,7 +655,7 @@ final class PolyglotProxy implements TruffleObject {
         }
     }
 
-    @ExportMessage(name = "isHashValueReadable")
+    @ExportMessage(name = "isHashEntryReadable")
     @ExportMessage(name = "isHashEntryModifiable")
     @ExportMessage(name = "isHashEntryRemovable")
     @TruffleBoundary

@@ -1144,7 +1144,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
-        boolean isHashValueReadable(Object key) {
+        boolean isHashEntryReadable(Object key) {
             if (readable != null) {
                 return readable.test(key);
             } else if (data != null) {
@@ -1291,17 +1291,17 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @Test
-    public void testIsHashValueReadable() {
+    public void testIsHashEntryReadable() {
         HashTest hashTest = new HashTest();
         InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
-        assertFalse(hashLib.isHashValueReadable(hashTest, 1));
+        assertFalse(hashLib.isHashEntryReadable(hashTest, 1));
         hashTest.hasHashEntries = false;
         hashTest.readable = (k) -> true;
-        assertFails(() -> hashLib.isHashValueReadable(hashTest, 1), AssertionError.class);
+        assertFails(() -> hashLib.isHashEntryReadable(hashTest, 1), AssertionError.class);
         hashTest.hasHashEntries = true;
         hashTest.readable = (k) -> true;
         hashTest.insertable = (k) -> true;
-        assertFails(() -> hashLib.isHashValueReadable(hashTest, 1), AssertionError.class);
+        assertFails(() -> hashLib.isHashEntryReadable(hashTest, 1), AssertionError.class);
     }
 
     @Test

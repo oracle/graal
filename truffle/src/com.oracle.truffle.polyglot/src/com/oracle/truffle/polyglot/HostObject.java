@@ -1885,10 +1885,10 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @ExportMessage(name = "isHashValueReadable")
+    @ExportMessage(name = "isHashEntryReadable")
     @ExportMessage(name = "isHashEntryModifiable")
     @ExportMessage(name = "isHashEntryRemovable")
-    boolean isHashValueReadable(Object key,
+    boolean isHashEntryReadable(Object key,
                     @Shared("isMap") @Cached IsMapNode isMap,
                     @Shared("containsKey") @Cached ContainsKeyNode containsKey) {
         return isMap.execute(this) && containsKey.execute(this, key);

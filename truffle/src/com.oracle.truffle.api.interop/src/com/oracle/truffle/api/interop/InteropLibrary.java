@@ -873,7 +873,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #getHashEntriesIterator(Object)
      * @see #getHashSize(Object)
-     * @see #isHashValueReadable(Object, Object)
+     * @see #isHashEntryReadable(Object, Object)
      * @see #isHashEntryWritable(Object, Object)
      * @see #isHashEntryInsertable(Object, Object)
      * @see #isHashEntryRemovable(Object, Object)
@@ -883,7 +883,7 @@ public abstract class InteropLibrary extends Library {
      * @see #removeHashEntry(Object, Object)
      * @since 21.1
      */
-    @Abstract(ifExported = {"getHashSize", "isHashValueReadable", "readHashValue", "readHashValueOrDefault",
+    @Abstract(ifExported = {"getHashSize", "isHashEntryReadable", "readHashValue", "readHashValueOrDefault",
                     "isHashEntryModifiable", "isHashEntryInsertable", "writeHashEntry", "isHashEntryRemovable",
                     "removeHashEntry", "getHashEntriesIterator", "getHashKeysIterator", "getHashValuesIterator"})
     public boolean hasHashEntries(Object receiver) {
@@ -913,7 +913,7 @@ public abstract class InteropLibrary extends Library {
      * @since 21.1
      */
     @Abstract(ifExported = "readHashValue")
-    public boolean isHashValueReadable(Object receiver, Object key) {
+    public boolean isHashEntryReadable(Object receiver, Object key) {
         return false;
     }
 
@@ -925,13 +925,13 @@ public abstract class InteropLibrary extends Library {
      *             there is nothing to read), therefore it throws {@link UnknownKeyException} for
      *             all arguments instead.
      * @throws UnknownKeyException if mapping for the specified key is not
-     *             {@link #isHashValueReadable(Object, Object) readable}, e.g. when the hash does
+     *             {@link #isHashEntryReadable(Object, Object) readable}, e.g. when the hash does
      *             not contain specified key.
-     * @see #isHashValueReadable(Object, Object)
+     * @see #isHashEntryReadable(Object, Object)
      * @see #readHashValueOrDefault(Object, Object, Object)
      * @since 21.1
      */
-    @Abstract(ifExported = "isHashValueReadable")
+    @Abstract(ifExported = "isHashEntryReadable")
     public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
         throw UnsupportedMessageException.create();
     }
@@ -944,7 +944,7 @@ public abstract class InteropLibrary extends Library {
      *             receiver with no readable hash entries supports the read operation (even though
      *             there is nothing to read), therefore it returns the {@code defaultValue} for all
      *             arguments instead.
-     * @see #isHashValueReadable(Object, Object)
+     * @see #isHashEntryReadable(Object, Object)
      * @see #readHashValue(Object, Object)
      * @since 21.1
      */
@@ -1050,13 +1050,13 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns {@code true} if mapping for a given key is existing. The mapping is existing if it is
      * {@link #isHashEntryModifiable(Object, Object) modifiable},
-     * {@link #isHashValueReadable(Object, Object) readable} or
+     * {@link #isHashEntryReadable(Object, Object) readable} or
      * {@link #isHashEntryRemovable(Object, Object) removable}.
      *
      * @since 21.1
      */
     public final boolean isHashEntryExisting(Object receiver, Object key) {
-        return isHashValueReadable(receiver, key) || isHashEntryModifiable(receiver, key) || isHashEntryRemovable(receiver, key);
+        return isHashEntryReadable(receiver, key) || isHashEntryModifiable(receiver, key) || isHashEntryRemovable(receiver, key);
     }
 
     /**
@@ -3581,10 +3581,10 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public boolean isHashValueReadable(Object receiver, Object key) {
+        public boolean isHashEntryReadable(Object receiver, Object key) {
             assert preCondition(receiver);
             assert validArgument(receiver, key);
-            boolean result = delegate.isHashValueReadable(receiver, key);
+            boolean result = delegate.isHashEntryReadable(receiver, key);
             assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
             return result;
         }
@@ -3596,7 +3596,7 @@ public abstract class InteropLibrary extends Library {
             }
             assert preCondition(receiver);
             assert validArgument(receiver, key);
-            boolean wasReadable = delegate.isHashValueReadable(receiver, key);
+            boolean wasReadable = delegate.isHashEntryReadable(receiver, key);
             try {
                 Object result = delegate.readHashValue(receiver, key);
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);

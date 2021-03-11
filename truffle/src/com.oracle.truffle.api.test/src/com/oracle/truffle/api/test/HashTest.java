@@ -539,7 +539,7 @@ public class HashTest extends AbstractPolyglotTest {
             return size;
         }
 
-        @ExportMessage(name = "isHashValueReadable")
+        @ExportMessage(name = "isHashEntryReadable")
         @ExportMessage(name = "isHashEntryModifiable")
         @ExportMessage(name = "isHashEntryRemovable")
         boolean isHashEntryExisting(Object key) {
