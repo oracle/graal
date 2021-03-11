@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
@@ -75,7 +76,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      * this map the first time information was queried and used during image building. This is the
      * ground truth about what got initialized during image building.
      */
-    private final Map<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
     /*
      * These two are intentionally static to keep the reference to objects and classes that were
@@ -559,8 +560,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      * Also defines class initialization based on a policy of the subclass.
      */
     private InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz, boolean memoize) {
-        if (classInitKinds.containsKey(clazz)) {
-            return classInitKinds.get(clazz);
+        InitKind existing = classInitKinds.get(clazz);
+        if (existing != null) {
+            return existing;
         }
 
         /* Without doubt initialize all annotations. */
@@ -606,8 +608,19 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             if (!result.isRunTime()) {
                 result = result.max(ensureClassInitialized(clazz, false));
             }
-            InitKind previous = classInitKinds.put(clazz, result);
-            assert previous == null || previous == result : "Overwriting existing value: previous " + previous + " new " + result;
+
+            /*
+             * Unfortunately, the computation of canInitializeWithoutSideEffects is not completely
+             * deterministic: Consider a class A whose class initializer depends on class B. Assume
+             * class B has no other dependencies and can therefore be initialized at build time.
+             * When class A is analyzed after class B has been initialized, it can also be
+             * initialized at build time. But when class A is analyzed before class B has been
+             * initialized, it cannot. Since two threads can analyze class A at the same time (there
+             * is no per-class locking) and another thread can initialize B at the same time, we can
+             * have a conflicting initialization status. In that case, BUILD_TIME must win over
+             * RUN_TIME because one thread has already initialized class A.
+             */
+            result = classInitKinds.merge(clazz, result, InitKind::min);
         }
         return result;
     }
