@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -71,14 +71,14 @@ __POLYGLOT_DECLARE_GENERIC_ARRAY(double, double)
         return (typedecl *) ret;                                                                                                                     \
     }                                                                                                                                                \
                                                                                                                                                      \
-    __attribute__((always_inline)) static inline void *polyglot_from_##typename(typedecl * s) {                                                    \
+    __attribute__((always_inline)) static inline void *polyglot_from_##typename(typedecl * s) {                                                      \
         return polyglot_from_typed(s, polyglot_##typename##_typeid());                                                                               \
     }                                                                                                                                                \
                                                                                                                                                      \
-    void throw_##typename(typedecl *s) {                                                                                                             \
-    	if(polyglot_from_##typename(s)) {                                                                                                            \
-    		throw s;                                                                                                                                 \
-    	}                                                                                                                                            \
+    void throw_##typename(typedecl * s) {                                                                                                            \
+        if (polyglot_from_##typename(s)) {                                                                                                           \
+            throw s;                                                                                                                                 \
+        }                                                                                                                                            \
     }
 #else
 #define __POLYGLOT_DECLARE_GENERIC_TYPE(typedecl, typename)                                                                                          \
@@ -89,8 +89,7 @@ __POLYGLOT_DECLARE_GENERIC_ARRAY(double, double)
         return (typedecl *) ret;                                                                                                                     \
     }                                                                                                                                                \
                                                                                                                                                      \
-    __attribute__((always_inline)) static inline void *polyglot_from_##typename(typedecl * s) {                                                    \
+    __attribute__((always_inline)) static inline void *polyglot_from_##typename(typedecl * s) {                                                      \
         return polyglot_from_typed(s, polyglot_##typename##_typeid());                                                                               \
     }
 #endif
-
