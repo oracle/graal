@@ -1862,14 +1862,6 @@ public final class StaticObject implements TruffleObject {
         return createArray(meta._byte_array, array);
     }
 
-    public static StaticObject wrap(boolean[] array, Meta meta) {
-        byte[] byteArray = new byte[array.length];
-        for (int i = 0; i < array.length; i++) {
-            byteArray[i] = array[i] ? (byte) 1 : (byte) 0;
-        }
-        return createArray(meta._boolean_array, byteArray);
-    }
-
     public static StaticObject wrap(char[] array, Meta meta) {
         return createArray(meta._char_array, array);
     }
@@ -1898,7 +1890,7 @@ public final class StaticObject implements TruffleObject {
         assert array != null;
         assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
         if (array instanceof boolean[]) {
-            return wrap((boolean[]) array, meta);
+            throw EspressoError.shouldNotReachHere("Cannot wrap a boolean[]. Create a byte[] wrap that.");
         }
         if (array instanceof byte[]) {
             return wrap((byte[]) array, meta);
