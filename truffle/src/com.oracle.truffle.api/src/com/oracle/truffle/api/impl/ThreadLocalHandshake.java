@@ -529,8 +529,12 @@ public abstract class ThreadLocalHandshake {
         protected void flushRecursiveHandshakes() {
             Iterator<HandshakeEntry> entries = recursiveHandshakes.iterator();
             Iterator<Node> locations = recursiveLocations.iterator();
+            Throwable t = null;
             while (entries.hasNext() && locations.hasNext()) {
-                entries.next().process(locations.next());
+                t = combineThrowable(entries.next().process(locations.next()), t);
+            }
+            if (t != null) {
+                sneakyThrow(t);
             }
         }
 
