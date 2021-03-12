@@ -29,5 +29,6 @@ public enum ParsingReason {
     PointsToAnalysis,
     AOTCompilation,
     JITCompilation,
+    EarlyClassInitializerAnalysis,
     UnsafeSubstitutionAnalysis;
 }

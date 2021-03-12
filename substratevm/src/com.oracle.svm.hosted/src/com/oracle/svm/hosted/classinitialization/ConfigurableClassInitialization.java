@@ -87,7 +87,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     private boolean configurationSealed;
 
-    private final ImageClassLoader loader;
+    final ImageClassLoader loader;
 
     /**
      * Non-null while the static analysis is running to allow reporting of class initialization
@@ -96,11 +96,12 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private UnsupportedFeatures unsupportedFeatures;
     protected MetaAccessProvider metaAccess;
 
-    static EarlyClassInitializerAnalysis earlyClassInitializerAnalysis = new EarlyClassInitializerAnalysis();
+    private final EarlyClassInitializerAnalysis earlyClassInitializerAnalysis;
 
     public ConfigurableClassInitialization(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         this.metaAccess = metaAccess;
         this.loader = loader;
+        this.earlyClassInitializerAnalysis = new EarlyClassInitializerAnalysis(this);
     }
 
     @Override
@@ -125,7 +126,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     private InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz) {
-        return computeInitKindAndMaybeInitializeClass(clazz, true);
+        return computeInitKindAndMaybeInitializeClass(clazz, true, null);
     }
 
     @Override
@@ -217,7 +218,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                         " to explicitly request delayed initialization of this class.";
     }
 
-    private static Class<?> getJavaClass(ResolvedJavaType type) {
+    static Class<?> getJavaClass(ResolvedJavaType type) {
         return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
     }
 
@@ -275,7 +276,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
          * Propagate possible existing RUN_TIME registration from a superclass, so that we can check
          * for user errors below.
          */
-        computeInitKindAndMaybeInitializeClass(clazz, false);
+        computeInitKindAndMaybeInitializeClass(clazz, false, null);
 
         InitKind previousKind = classInitKinds.put(clazz, InitKind.RUN_TIME);
         if (previousKind == InitKind.BUILD_TIME) {
@@ -394,7 +395,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
          * Propagate possible existing RUN_TIME registration from a superclass, so that we can check
          * for user errors below.
          */
-        computeInitKindAndMaybeInitializeClass(clazz, false);
+        computeInitKindAndMaybeInitializeClass(clazz, false, null);
 
         InitKind previousKind = classInitKinds.put(clazz, InitKind.RERUN);
         if (previousKind != null) {
@@ -563,7 +564,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      *
      * Also defines class initialization based on a policy of the subclass.
      */
-    private InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz, boolean memoize) {
+    InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz, boolean memoize, Set<Class<?>> earlyClassInitializerAnalyzedClasses) {
         InitKind existing = classInitKinds.get(clazz);
         if (existing != null) {
             return existing;
@@ -587,16 +588,16 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
         InitKind superResult = InitKind.BUILD_TIME;
         if (clazz.getSuperclass() != null) {
-            superResult = superResult.max(computeInitKindAndMaybeInitializeClass(clazz.getSuperclass(), memoize));
+            superResult = superResult.max(computeInitKindAndMaybeInitializeClass(clazz.getSuperclass(), memoize, earlyClassInitializerAnalyzedClasses));
         }
-        superResult = superResult.max(processInterfaces(clazz, memoize));
+        superResult = superResult.max(processInterfaces(clazz, memoize, earlyClassInitializerAnalyzedClasses));
 
-        if (memoize && superResult == InitKind.BUILD_TIME && clazzResult == InitKind.RUN_TIME && canBeProvenSafe(clazz)) {
+        if (memoize && superResult != InitKind.RUN_TIME && clazzResult == InitKind.RUN_TIME && canBeProvenSafe(clazz)) {
             /*
              * Check if the class initializer is side-effect free using a simple intraprocedural
              * analysis.
              */
-            if (earlyClassInitializerAnalysis.canInitializeWithoutSideEffects(clazz)) {
+            if (earlyClassInitializerAnalysis.canInitializeWithoutSideEffects(clazz, earlyClassInitializerAnalyzedClasses)) {
                 /*
                  * Note that even if the class initializer is side-effect free, running it can still
                  * fail with an exception. In that case we ignore the exception and initialize the
@@ -629,7 +630,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         return result;
     }
 
-    private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager) {
+    private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager, Set<Class<?>> earlyClassInitializerAnalyzedClasses) {
         /*
          * Note that we do not call computeInitKindForClass(clazz) on purpose: if clazz is the root
          * class or an interface declaring default methods, then
@@ -647,14 +648,14 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                  * implementing it is initialized. So we need to inherit the InitKind from such an
                  * interface.
                  */
-                result = result.max(computeInitKindAndMaybeInitializeClass(iface, memoizeEager));
+                result = result.max(computeInitKindAndMaybeInitializeClass(iface, memoizeEager, earlyClassInitializerAnalyzedClasses));
             } else {
                 /*
                  * An interface that does not declare default methods is independent from a class
                  * that implements it, i.e., the interface can still be uninitialized even when the
                  * class is initialized.
                  */
-                result = result.max(processInterfaces(iface, memoizeEager));
+                result = result.max(processInterfaces(iface, memoizeEager, earlyClassInitializerAnalyzedClasses));
             }
         }
         return result;
