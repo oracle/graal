@@ -43,7 +43,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -187,7 +186,7 @@ final class Target_jdk_internal_loader_Loader {
 
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
-public final class Target_java_lang_ClassLoader {
+final class Target_java_lang_ClassLoader {
 
     /**
      * This field can be safely deleted, but that would require substituting the entire constructor
@@ -215,10 +214,6 @@ public final class Target_java_lang_ClassLoader {
 
     @Alias //
     private static ClassLoader scl;
-
-    @Inject
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = JfrIDRecomputation.class)
-    public int jfrID;
 
     @Substitute
     public static ClassLoader getSystemClassLoader() {

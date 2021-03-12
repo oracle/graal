@@ -29,19 +29,12 @@ import java.io.InputStream;
 import java.util.List;
 
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Inject;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module {
-
-    @Inject
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JfrIDRecomputation.class)
-    public int jfrID;
-
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(name = "getResourceAsStream")
@@ -96,4 +89,5 @@ public final class Target_java_lang_Module {
     @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
     public static final class ReflectionData {
     }
+
 }

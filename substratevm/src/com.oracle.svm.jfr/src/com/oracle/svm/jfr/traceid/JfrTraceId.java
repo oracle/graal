@@ -67,34 +67,34 @@ public class JfrTraceId {
         return ImageSingletons.lookup(JfrRuntimeAccess.class).getTraceIdMap();
     }
 
-    public static void tag(Object obj, long bits) {
+    public static void tag(Class<?> clazz, long bits) {
         JfrTraceIdMap map = getTraceIdMap();
-        long id = map.getId(obj);
-        map.setId(obj, (id & ~0xff) | (bits & 0xff));
+        long id = map.getId(clazz);
+        map.setId(clazz, (id & ~0xff) | (bits & 0xff));
     }
 
-    public static boolean predicate(Object obj, long bits) {
+    public static boolean predicate(Class<?> clazz, long bits) {
         JfrTraceIdMap map = getTraceIdMap();
-        long id = map.getId(obj);
+        long id = map.getId(clazz);
         return (id & bits) != 0;
     }
 
-    public static void setUsedThisEpoch(Object obj) {
-        tag(obj, JfrTraceIdEpoch.thisEpochBit());
+    public static void setUsedThisEpoch(Class<?> clazz) {
+        tag(clazz, JfrTraceIdEpoch.thisEpochBit());
     }
 
-    public static boolean isUsedThisEpoch(Object obj) {
-        return predicate(obj, TRANSIENT_BIT | JfrTraceIdEpoch.thisEpochBit());
+    public static boolean isUsedThisEpoch(Class<?> clazz) {
+        return predicate(clazz, TRANSIENT_BIT | JfrTraceIdEpoch.thisEpochBit());
     }
 
-    public static long getTraceIdRaw(Object key) {
+    public static long getTraceIdRaw(Class<?> clazz) {
         JfrTraceIdMap map = getTraceIdMap();
         assert map != null;
-        return getTraceIdMap().getId(key);
+        return getTraceIdMap().getId(clazz);
     }
 
-    public static long getTraceId(Object key) {
-        long traceid = getTraceIdRaw(key);
+    public static long getTraceId(Class<?> clazz) {
+        long traceid = getTraceIdRaw(clazz);
         return traceid >>> TRACE_ID_SHIFT;
     }
 
@@ -155,57 +155,20 @@ public class JfrTraceId {
         }
     }
 
-    public static void assign(ClassLoader classLoader, int index, long traceId) {
-        assert classLoader != null;
-        getTraceIdMap().setId(index, traceId << TRACE_ID_SHIFT);
+    public static boolean isSerialized(Class<?> clazz) {
+        return predicate(clazz, SERIALIZED_BIT);
     }
 
-    public static void assign(Package pkg, int index, long traceId) {
-        assert pkg != null;
-        getTraceIdMap().setId(index, traceId << TRACE_ID_SHIFT);
+    public static void setSerialized(Class<?> clazz) {
+        long id = getTraceIdMap().getId(clazz);
+        getTraceIdMap().setId(clazz, id | SERIALIZED_BIT);
     }
 
-    public static void assign(Module module, int index, long traceId) {
-        assert module != null;
-        getTraceIdMap().setId(index, traceId << TRACE_ID_SHIFT);
-    }
-
-    public static long load(ClassLoader classLoader) {
-        return JfrTraceIdLoadBarrier.load(classLoader);
-    }
-
-    public static long load(Package pkg) {
-        return JfrTraceIdLoadBarrier.load(pkg);
-    }
-
-    public static long load(Module module) {
-        return JfrTraceIdLoadBarrier.load(module);
-    }
-
-    public static void setTransient(ClassLoader classLoader) {
-        long id = getTraceIdMap().getId(classLoader);
-        getTraceIdMap().setId(classLoader, id | TRANSIENT_BIT);
-    }
-
-    public static void setTransient(Module m) {
-        long id = getTraceIdMap().getId(m);
-        getTraceIdMap().setId(m, id | TRANSIENT_BIT);
-    }
-
-    public static boolean isSerialized(Object obj) {
-        return predicate(obj, SERIALIZED_BIT);
-    }
-
-    public static void setSerialized(Object obj) {
-        long id = getTraceIdMap().getId(obj);
-        getTraceIdMap().setId(obj, id | SERIALIZED_BIT);
-    }
-
-    public static void clearSerialized(Object obj) {
-        long id = getTraceIdMap().getId(obj);
-        if (isSerialized(obj)) {
-            getTraceIdMap().setId(obj, id ^ SERIALIZED_BIT);
+    public static void clearSerialized(Class<?> clazz) {
+        long id = getTraceIdMap().getId(clazz);
+        if (isSerialized(clazz)) {
+            getTraceIdMap().setId(clazz, id ^ SERIALIZED_BIT);
         }
-        assert (!isSerialized(obj));
+        assert (!isSerialized(clazz));
     }
 }

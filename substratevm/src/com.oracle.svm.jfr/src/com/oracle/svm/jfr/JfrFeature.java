@@ -30,13 +30,10 @@ import static com.oracle.svm.jfr.PredefinedJFCSubstitition.PROFILE_JFC;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JfrIDRecomputation;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
@@ -122,74 +119,33 @@ public class JfrFeature implements Feature {
         runtime.addShutdownHook(manager::teardown);
     }
 
-    private static class JfrMetadataCollection {
-        final Map<Class<?>, Integer> classToIndex = new HashMap<>();
-        final Set<Package> packages = new HashSet<>();
-        final Set<Module> modules = new HashSet<>();
-        final Set<ClassLoader> classLoaders = new HashSet<>();
-        int mapSize = 1; // First field is error-catcher
-    }
-
-    private void assignClass(JfrMetadataCollection metadata, Class<?> clazz, int id) {
-        metadata.classToIndex.put(clazz, id);
-        metadata.mapSize++;
-        Package pkg = clazz.getPackage();
-        if (pkg != null && !metadata.packages.contains(pkg)) {
-            metadata.packages.add(pkg);
-            metadata.mapSize++;
-        }
-        Module module = clazz.getModule();
-        if (module != null && !metadata.modules.contains(module)) {
-            metadata.modules.add(module);
-            metadata.mapSize++;
-        }
-        ClassLoader cl = clazz.getClassLoader();
-        if (cl != null && !metadata.classLoaders.contains(cl)) {
-            metadata.classLoaders.add(cl);
-            metadata.mapSize++;
-        }
-    }
-
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
 
-        final JfrMetadataCollection metadata = new JfrMetadataCollection();
+        Map<Class<?>, Integer> classToIndex = new HashMap<>();
 
         // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
         Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl) a).getTypes();
+        int mapSize = 1; // Reserve slot 0 for error-catcher.
         for (SharedType type : types) {
             DynamicHub hub = type.getHub();
-            assignClass(metadata, hub.getHostedJavaClass(), hub.getTypeID());
+            classToIndex.put(hub.getHostedJavaClass(), hub.getTypeID());
+            mapSize++;
         }
 
         // Create trace-ID map with fixed size.
-        JfrTraceIdMap map = new JfrTraceIdMap(metadata.mapSize);
+        JfrTraceIdMap map = new JfrTraceIdMap(mapSize);
         ImageSingletons.lookup(JfrRuntimeAccess.class).setTraceIdMap(map);
 
         // Assign each class, package, module and class-loader a unique index.
-        int idx = metadata.classToIndex.size() + 1;
-        for (Class<?> clazz : metadata.classToIndex.keySet()) {
-            if (metadata.classToIndex.get(clazz) + 1 >= idx) {
+        int idx = classToIndex.size() + 1;
+        for (Class<?> clazz : classToIndex.keySet()) {
+            if (classToIndex.get(clazz) + 1 >= idx) {
                 throw new ArrayIndexOutOfBoundsException();
             }
             if (!clazz.isPrimitive()) {
-                JfrTraceId.assign(clazz, metadata.classToIndex);
+                JfrTraceId.assign(clazz, classToIndex);
             }
-        }
-        long traceId = 0;
-        for (Package pkg : metadata.packages) {
-            JfrIDRecomputation.setJfrID(pkg, idx);
-            JfrTraceId.assign(pkg, idx++, traceId++);
-        }
-        traceId = 0;
-        for (Module module : metadata.modules) {
-            JfrIDRecomputation.setJfrID(module, idx);
-            JfrTraceId.assign(module, idx++, traceId++);
-        }
-        traceId = 0;
-        for (ClassLoader cl : metadata.classLoaders) {
-            JfrIDRecomputation.setJfrID(cl, idx);
-            JfrTraceId.assign(cl, idx++, traceId++);
         }
 
         // TODO: get the method count

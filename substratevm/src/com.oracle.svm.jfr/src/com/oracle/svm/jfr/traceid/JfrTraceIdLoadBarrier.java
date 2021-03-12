@@ -41,12 +41,12 @@ public class JfrTraceIdLoadBarrier {
         return ((value & ((thisEpochBit << JfrTraceId.META_SHIFT) | thisEpochBit)) != thisEpochBit);
     }
 
-    private static boolean shouldTag(Object obj) {
+    private static boolean shouldTag(Class<?> obj) {
         assert obj != null;
         return isNotTagged(JfrTraceId.getTraceIdRaw(obj));
     }
 
-    private static long setUsedAndGet(Object obj) {
+    private static long setUsedAndGet(Class<?> obj) {
         assert obj != null;
         if (shouldTag(obj)) {
             JfrTraceId.setUsedThisEpoch(obj);
@@ -91,24 +91,6 @@ public class JfrTraceIdLoadBarrier {
         }
         assert JfrTraceId.isUsedThisEpoch(clazz);
         return JfrTraceId.getTraceId(clazz);
-    }
-
-    @Uninterruptible(reason = "Called by uninterruptible code")
-    public static long load(ClassLoader classLoader) {
-        assert classLoader != null;
-        return setUsedAndGet(classLoader);
-    }
-
-    @Uninterruptible(reason = "Called by uninterruptible code")
-    public static long load(Package pkg) {
-        assert pkg != null;
-        return setUsedAndGet(pkg);
-    }
-
-    @Uninterruptible(reason = "Called by uninterruptible code")
-    public static long load(Module module) {
-        assert module != null;
-        return setUsedAndGet(module);
     }
 
     public static boolean initialize() {

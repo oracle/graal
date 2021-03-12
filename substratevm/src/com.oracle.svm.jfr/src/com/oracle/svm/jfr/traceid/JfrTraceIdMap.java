@@ -26,13 +26,8 @@
 
 package com.oracle.svm.jfr.traceid;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
-import com.oracle.svm.core.jdk.Target_java_lang_Module;
-import com.oracle.svm.core.jdk.Target_java_lang_Package;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -48,29 +43,13 @@ public class JfrTraceIdMap {
         Arrays.fill(traceIDs, -1);
     }
 
-    private int getIndex(Object key) {
-        int index;
-        if (key instanceof Class<?>) {
-            DynamicHub hub = DynamicHub.fromClass((Class<?>) key);
-            index = hub.getTypeID() + 1; // Off-set by 1 for error-catcher
-        } else if (key instanceof ClassLoader) {
-            Target_java_lang_ClassLoader classLoader = SubstrateUtil.cast(key, Target_java_lang_ClassLoader.class);
-            index = classLoader.jfrID;
-        } else if (key instanceof Package) {
-            Target_java_lang_Package pkg = SubstrateUtil.cast(key, Target_java_lang_Package.class);
-            index = pkg.jfrID;
-        } else if (key instanceof Module) {
-            Target_java_lang_Module module = SubstrateUtil.cast(key, Target_java_lang_Module.class);
-            index = module.jfrID;
-        } else {
-            throw VMError.shouldNotReachHere("Unexpected type: " + key.getClass());
-        }
-        assert index > 0;
-        return index;
+    private int getIndex(Class<?> clazz) {
+        DynamicHub hub = DynamicHub.fromClass((Class<?>) clazz);
+        return hub.getTypeID() + 1; // Off-set by 1 for error-catcher
     }
 
-    long getId(Object key) {
-        long id = traceIDs[getIndex(key)];
+    long getId(Class<?> clazz) {
+        long id = traceIDs[getIndex(clazz)];
         assert id != -1;
         return id;
     }
@@ -79,8 +58,8 @@ public class JfrTraceIdMap {
         return traceIDs[index];
     }
 
-    void setId(Object key, long id) {
-        traceIDs[getIndex(key)] = id;
+    void setId(Class<?> clazz, long id) {
+        traceIDs[getIndex(clazz)] = id;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

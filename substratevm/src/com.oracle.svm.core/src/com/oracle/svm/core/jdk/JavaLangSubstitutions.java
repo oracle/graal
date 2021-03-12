@@ -46,6 +46,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.annotate.Inject;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
@@ -787,6 +788,26 @@ class Util_java_lang_ApplicationShutdownHooks {
     @SuppressFBWarnings(value = {"RU_INVOKE_RUN"}, justification = "Do not start a new thread, just call the run method.")
     static void callRunnableOfThread(Thread thread) {
         thread.run();
+    }
+}
+
+@TargetClass(java.lang.Package.class)
+final class Target_java_lang_Package {
+
+    @Alias
+    @SuppressWarnings({"unused"})
+    Target_java_lang_Package(String name,
+                             String spectitle, String specversion, String specvendor,
+                             String impltitle, String implversion, String implvendor,
+                             URL sealbase, ClassLoader loader) {
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static Package getSystemPackage(String name) {
+        Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                null, null, null, null, null);
+        return SubstrateUtil.cast(pkg, Package.class);
     }
 }
 
