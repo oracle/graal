@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.redefinition;
+
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ParserMethod;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,25 +35,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-final class DetectedChange {
+public final class DetectedChange {
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
     private final Set<Method> removedMethods = new HashSet<>();
     private final List<Field> outerFields = new ArrayList<>();
+    private boolean clinitChanged;
 
     void addMethodBodyChange(Method oldMethod, ParserMethod newMethod) {
         changedMethodBodies.put(oldMethod, newMethod);
+        if (oldMethod.getName() == Symbol.Name._clinit_) {
+            clinitChanged = true;
+        }
     }
 
-    Map<Method, ParserMethod> getChangedMethodBodies() {
+    public Map<Method, ParserMethod> getChangedMethodBodies() {
         return Collections.unmodifiableMap(changedMethodBodies);
     }
 
-    List<ParserMethod> getAddedMethods() {
+    public List<ParserMethod> getAddedMethods() {
         return Collections.unmodifiableList(addedMethods);
     }
 
-    Set<Method> getRemovedMethods() {
+    public Set<Method> getRemovedMethods() {
         return Collections.unmodifiableSet(removedMethods);
     }
 
@@ -74,5 +83,9 @@ final class DetectedChange {
 
     public List<Field> getOuterFields() {
         return Collections.unmodifiableList(outerFields);
+    }
+
+    public boolean clinitChanged() {
+        return clinitChanged;
     }
 }

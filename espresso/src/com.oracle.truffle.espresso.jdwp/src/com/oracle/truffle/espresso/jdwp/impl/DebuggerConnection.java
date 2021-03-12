@@ -607,6 +607,7 @@ public final class DebuggerConnection implements Commands {
                 JDWPLogger.throwing(JDWPLogger.LogLevel.ALL, t);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.errorCode(ErrorCodes.INTERNAL);
+                t.printStackTrace();
                 handleReply(packet, new CommandResult(reply));
             } finally {
                 if (entered) {

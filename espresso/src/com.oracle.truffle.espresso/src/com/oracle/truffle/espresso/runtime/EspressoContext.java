@@ -307,6 +307,10 @@ public final class EspressoContext {
         return multiThreadingDisabled;
     }
 
+    public JDWPContextImpl getJdwpContext() {
+        return jdwpContext;
+    }
+
     /**
      * @return The {@link String}[] array passed to the main function.
      */
@@ -352,7 +356,10 @@ public final class EspressoContext {
         spawnVM();
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);
-        this.eventListener = jdwpContext.jdwpInit(env, getMainThread());
+        // enable JDWP instrumenter only if options are set (assumed valid if non-null)
+        if (JDWPOptions != null) {
+            this.eventListener = jdwpContext.jdwpInit(env, getMainThread());
+        }
         referenceDrainer.startReferenceDrain();
     }
 
@@ -639,7 +646,9 @@ public final class EspressoContext {
     }
 
     public void prepareDispose() {
-        jdwpContext.finalizeContext();
+        if (jdwpContext != null) {
+            jdwpContext.finalizeContext();
+        }
     }
 
     // region Agents

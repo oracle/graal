@@ -33,19 +33,26 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public final class VMEventListenerImpl implements VMEventListener {
+
+    public static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
 
     private final Ids<Object> ids;
     private final JDWPContext context;
@@ -145,13 +152,65 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @TruffleBoundary
+    public boolean onMethodEntry(MethodRef method, Object scope) {
+        boolean active = false;
+        // collect variable information from scope
+        List<MethodVariable> variables = new ArrayList<>(1);
+        try {
+            if (UNCACHED.hasMembers(scope)) {
+                Object identifiers = UNCACHED.getMembers(scope);
+                if (UNCACHED.hasArrayElements(identifiers)) {
+                    long size = UNCACHED.getArraySize(identifiers);
+                    for (long i = 0; i < size; i++) {
+                        String identifier = (String) UNCACHED.readArrayElement(identifiers, i);
+                        Object value = UNCACHED.readMember(scope, identifier);
+                        variables.add(new MethodVariable(identifier, value));
+                    }
+                }
+            }
+        } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
+            // not able to fetch locals, so leave variables list empty
+        }
+
+        for (MethodHook hook : method.getMethodHooks()) {
+            // pass on the variables to the method entry hook
+            if (hook.onMethodEnter(method, variables.toArray(new MethodVariable[variables.size()]))) {
+                // OK, tell the Debug API to suspend the thread now
+                debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, null));
+                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                active = true;
+            }
+            switch (hook.getKind()) {
+                case ONE_TIME:
+                    method.removedMethodHook(-1);
+                    break;
+                case INDEFINITE:
+                    // leave the hook active
+                    break;
+            }
+        }
+        return active;
+    }
+
+    @Override
+    @TruffleBoundary
     public boolean onMethodReturn(MethodRef method, Object returnValue) {
         boolean active = false;
-        for (MethodBreakpoint info : method.getMethodBreakpointInfos()) {
-            // OK, tell the Debug API to suspend the thread now
-            debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) info, returnValue));
-            debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
-            active = true;
+        for (MethodHook hook : method.getMethodHooks()) {
+            if (hook.onMethodExit(method, returnValue)) {
+                // OK, tell the Debug API to suspend the thread now
+                debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, returnValue));
+                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                active = true;
+            }
+            switch (hook.getKind()) {
+                case ONE_TIME:
+                    method.removedMethodHook(-1);
+                    break;
+                case INDEFINITE:
+                    // leave the hook active
+                    break;
+            }
         }
         return active;
     }

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.redefinition;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,10 +46,20 @@ import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.ParserField;
+import com.oracle.truffle.espresso.impl.ParserKlass;
+import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefineListener;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -64,6 +74,14 @@ public final class ClassRedefinition {
     private static final Object redefineLock = new Object();
     private static volatile boolean locked = false;
     private static Thread redefineThread = null;
+
+    private final EspressoContext context;
+    private final Ids<Object> ids;
+    private final RedefineListener redefineListener;
+
+    public void addExtraReloadClasses(List<RedefineInfo> redefineInfos, List<RedefineInfo> additional) {
+        redefineListener.addExtraReloadClasses(redefineInfos, additional);
+    }
 
     private enum RedefinitionSupport {
         METHOD_BODY,
@@ -84,6 +102,12 @@ public final class ClassRedefinition {
         CONSTANT_POOL_CHANGE,
         NEW_CLASS,
         INVALID;
+    }
+
+    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener) {
+        this.context = context;
+        this.ids = ids;
+        this.redefineListener = listener;
     }
 
     public static void lock() {
@@ -126,6 +150,10 @@ public final class ClassRedefinition {
         }
     }
 
+    public void runPostRedefintionListeners(ObjectKlass[] changedKlasses) {
+        redefineListener.postRedefition(changedKlasses);
+    }
+
     private static class RedefineAssumption {
         private final Assumption assumption = Truffle.getRuntime().createAssumption();
     }
@@ -153,7 +181,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public static List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos, EspressoContext context) {
+    public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
         for (HotSwapClassInfo hotSwapInfo : classInfos) {
             KlassRef klass = hotSwapInfo.getKlass();
@@ -185,40 +213,46 @@ public final class ClassRedefinition {
         return result;
     }
 
-    public static int redefineClass(ChangePacket packet, Ids<Object> ids, EspressoContext context, List<ObjectKlass> refreshSubClasses) {
+    public int redefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses) {
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
                 case CONSTANT_POOL_CHANGE:
                 case CLASS_NAME_CHANGED:
-                    return doRedefineClass(packet, ids, context, refreshSubClasses);
+                    doRedefineClass(packet, refreshSubClasses);
+                    return 0;
                 case ADD_METHOD:
                     if (isAddMethodSupported()) {
-                        return doRedefineClass(packet, ids, context, refreshSubClasses);
+                        doRedefineClass(packet, refreshSubClasses);
+                        return 0;
                     } else {
                         return ErrorCodes.ADD_METHOD_NOT_IMPLEMENTED;
                     }
                 case REMOVE_METHOD:
                     if (isRemoveMethodSupported()) {
-                        return doRedefineClass(packet, ids, context, refreshSubClasses);
+                        doRedefineClass(packet, refreshSubClasses);
+                        return 0;
                     } else {
                         return ErrorCodes.DELETE_METHOD_NOT_IMPLEMENTED;
                     }
                 case SCHEMA_CHANGE:
                     if (isArbitraryChangesSupported()) {
-                        return doRedefineClass(packet, ids, context, refreshSubClasses);
+                        doRedefineClass(packet, refreshSubClasses);
+                        return 0;
                     } else {
                         return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
                     }
                 case CLASS_MODIFIERS_CHANGE:
                     if (isArbitraryChangesSupported()) {
-                        return doRedefineClass(packet, ids, context, refreshSubClasses);
+                        doRedefineClass(packet, refreshSubClasses);
+                        return 0;
                     } else {
                         return ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED;
                     }
                 case HIERARCHY_CHANGE:
                     if (isArbitraryChangesSupported()) {
-                        return doRedefineClass(packet, ids, context, refreshSubClasses);
+                        doRedefineClass(packet, refreshSubClasses);
+                        return 0;
                     } else {
                         return ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED;
                     }
@@ -263,7 +297,7 @@ public final class ClassRedefinition {
 
     // detect all types of class changes, but return early when a change that require arbitrary
     // changes
-    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass) {
+    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass) throws RedefintionNotSupportedException {
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;
@@ -605,7 +639,7 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private static int doRedefineClass(ChangePacket packet, Ids<Object> ids, EspressoContext context, List<ObjectKlass> refreshSubClasses) {
+    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses) {
         ObjectKlass oldKlass = packet.info.getKlass();
         ClassRegistry classRegistry = context.getRegistries().getClassRegistry(packet.info.getClassLoader());
         if (packet.info.isRenamed()) {
@@ -629,7 +663,9 @@ public final class ClassRedefinition {
             context.getRegistries().recordConstraint(type, oldKlass, oldKlass.getDefiningClassLoader());
         }
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
-        return 0;
+        if (redefineListener.rerunClinit(oldKlass, packet.detectedChange.clinitChanged())) {
+            oldKlass.reRunClinit();
+        }
     }
 
     @TruffleBoundary

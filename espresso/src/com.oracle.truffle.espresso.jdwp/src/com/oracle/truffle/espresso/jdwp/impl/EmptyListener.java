@@ -60,6 +60,11 @@ public final class EmptyListener implements VMListener {
     }
 
     @Override
+    public boolean onMethodEntry(MethodRef method, Object scope) {
+        return false;
+    }
+
+    @Override
     public boolean onMethodReturn(MethodRef method, Object returnValue) {
         return false;
     }

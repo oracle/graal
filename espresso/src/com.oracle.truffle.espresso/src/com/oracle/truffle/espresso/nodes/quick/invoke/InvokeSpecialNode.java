@@ -27,7 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;

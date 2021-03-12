@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.redefinition.ClassLoadListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -60,6 +61,8 @@ public final class ClassRegistries {
     // Used as a volatile field. All accesses are done in synchronized blocks, so we do not need to
     // specify it as volatile.
     private int totalClassLoadersSet = 0;
+
+    private ClassLoadListener classLoadListener;
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
@@ -231,14 +234,14 @@ public final class ClassRegistries {
         }
     }
 
-    void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
+    public void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
         assert !Types.isArray(type);
         if (!Types.isPrimitive(type)) {
             constraints.recordConstraint(type, klass, loader);
         }
     }
 
-    void removeUnloadedKlassConstraint(Klass klass, Symbol<Type> type) {
+    public void removeUnloadedKlassConstraint(Klass klass, Symbol<Type> type) {
         assert klass.isInstanceClass();
         constraints.removeUnloadedKlassConstraint(klass, type);
     }
@@ -296,6 +299,16 @@ public final class ClassRegistries {
             loaders[i++] = INVALID_LOADER_ID;
         }
         return loaders;
+    }
+
+    public void registerListener(ClassLoadListener listener) {
+        this.classLoadListener = listener;
+    }
+
+    public void onKlassDefined(ObjectKlass klass) {
+        if (classLoadListener != null) {
+            classLoadListener.onClassLoad(klass);
+        }
     }
 
     static class RegistryEntry {

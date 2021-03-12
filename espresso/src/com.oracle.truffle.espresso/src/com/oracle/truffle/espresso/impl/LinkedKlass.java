@@ -131,7 +131,7 @@ public final class LinkedKlass {
         return parserKlass.getName();
     }
 
-    ParserKlass getParserKlass() {
+    public ParserKlass getParserKlass() {
         return parserKlass;
     }
 
