@@ -178,6 +178,23 @@ final class Target_sun_util_resources_ParallelListResourceBundle {
     }
 }
 
+@TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control")
+@SuppressWarnings({"unused", "static-method"})
+final class Target_java_util_ResourceBundle_Control {
+
+    /**
+     * Bundles are baked into the image, therefore their source can't really be modified at runtime.
+     * Since their source can't be modified, there is no need to reload them.
+     */
+    @Substitute
+    public boolean needsReload(String baseName, Locale locale,
+                    String format, ClassLoader loader,
+                    ResourceBundle bundle, long loadTime) {
+
+        return false;
+    }
+}
+
 @TargetClass(java.text.DateFormatSymbols.class)
 final class Target_java_text_DateFormatSymbols {
 
