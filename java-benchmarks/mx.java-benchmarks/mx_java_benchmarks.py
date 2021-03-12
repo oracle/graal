@@ -172,6 +172,130 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
+class BasePetClinicBenchmarkSuite(object):
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def version(self):
+        return "0.0.1"
+
+    def validateReturnCode(self, retcode):
+        return retcode == 143
+
+    def applicationDist(self):
+        return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        raise NotImplementedError()
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        lib = self.applicationDist()
+        classpath = os.path.join(lib, "BOOT-INF/classes")
+        for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
+            if filename.endswith(".jar"):
+                classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
+        mainclass = "org.springframework.samples.petclinic.PetClinicApplication"
+        return self.vmArgs(bmSuiteArgs) + ["-cp", classpath, mainclass]
+
+    def applicationStartupRule(self, benchSuiteName, benchmark):
+        # Example of SpringBoot startup log:
+        # "2021-03-08 15:49:36.155  INFO 21174 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 4.367 seconds (JVM running for 4.812)"
+        return [
+            mx_benchmark.StdOutRule(
+                r"Started PetClinicApplication in (?P<appstartup>\d*[.,]?\d*) seconds \(JVM running for (?P<startup>\d*[.,]?\d*)\)$",
+                {
+                    "benchmark": benchmark,
+                    "bench-suite": benchSuiteName,
+                    "metric.name": "app-startup",
+                    "metric.value": ("<startup>", float),
+                    "metric.unit": "s",
+                    "metric.better": "lower",
+                }
+            )
+        ]
+
+    def skip_agent_assertions(self, benchmark, args):
+        # This method overrides NativeImageMixin.skip_agent_assertions
+        user_args = super(BasePetClinicBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def stages(self, args):
+        # This method overrides NativeImageMixin.stages
+        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.stages=', args)
+        if len(parsed_args) > 1:
+            mx.abort('Native Image benchmark stages should only be specified once.')
+        return parsed_args[0].split(',') if parsed_args else ['instrument-image', 'instrument-run', 'image', 'run']
+
+
+class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
+    """PetClinic benchmark suite that measures throughput using JMeter."""
+
+    def name(self):
+        return "petclinic-jmeter"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+
+mx_benchmark.add_bm_suite(PetClinicJMeterBenchmarkSuite())
+
+
+class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+    """PetClinic benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "petclinic-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
+
+
+class PetClinicWrk2BenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
+    """PetClinic benchmark suite that measures latency using Wrk2."""
+
+    def name(self):
+        return "petclinic-wrk2"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["read", "write"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(PetClinicWrk2BenchmarkSuite())
+
+
 class BaseShopCartBenchmarkSuite(object):
     def group(self):
         return "Graal"
@@ -229,9 +353,6 @@ class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.
     def name(self):
         return "shopcart-jmeter"
 
-    def benchSuiteName(self):
-        return self.name()
-
     def benchmarkList(self, bmSuiteArgs):
         return ["tiny", "small", "large"]
 
@@ -251,14 +372,8 @@ class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Bas
     def name(self):
         return "shopcart-wrk"
 
-    def benchSuiteName(self):
-        return self.name()
-
     def benchmarkList(self, bmSuiteArgs):
         return ["tiny"]
-
-    def targetHost(self):
-        return "localhost"
 
     def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
@@ -279,14 +394,8 @@ class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Ba
     def name(self):
         return "shopcart-wrk2"
 
-    def benchSuiteName(self):
-        return self.name()
-
     def benchmarkList(self, bmSuiteArgs):
         return ["read", "write"]
-
-    def targetHost(self):
-        return "localhost"
 
     def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")

@@ -43,7 +43,6 @@ from __future__ import print_function
 
 import os.path
 import time
-import subprocess
 import signal
 import threading
 import json
@@ -266,7 +265,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         jmeterCmd = [mx.get_jdk().java, "-jar", jmeterPath, "-n", "-t", self.workloadConfigurationPath(), "-j", "/dev/stdout"] # pylint: disable=line-too-long
         mx.log("Running JMeter: {0}".format(jmeterCmd))
         self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
-        mx.run(jmeterCmd, out=self.testerOutput, err=subprocess.PIPE)
+        mx.run(jmeterCmd, out=self.testerOutput, err=self.testerOutput)
 
     def tailDatapointsToSkip(self, results):
         return int(len(results) * .10)
@@ -281,7 +280,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
 class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     """Base class for Wrk based benchmark suites."""
 
-    def loadConfiguration(self):
+    def loadConfiguration(self, benchmarkName):
         """Returns a json object that describes the Wrk configuration. The following syntax is expected:
         {
           "connections" : <number of connections to keep open>,
@@ -315,8 +314,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         """
         raise NotImplementedError()
 
-    def setupWrkCmd(self, config):
-        cmd = []
+    def setupWrkCmd(self, config, cmd=[]): # pylint: disable=dangerous-default-value
         for optional in ["connections", "threads"]:
             if optional in config:
                 cmd += ["--" + optional, str(config[optional])]
@@ -334,7 +332,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         return cmd
 
     def runTester(self):
-        config = self.loadConfiguration()
+        config = self.loadConfiguration(self.benchmarkName())
         wrkDirectory = self.getLibraryDirectory()
         if mx.get_os() == "linux":
             distro = "linux"
@@ -344,7 +342,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             mx.abort("{0} not supported in {1}.".format(BaseWrkBenchmarkSuite.__name__, mx.get_os()))
 
         wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
-        wrkCmd = [wrkPath] + self.setupWrkCmd(config)
+        wrkFlags = self.setupWrkCmd(config)
 
         warmupDuration = None
         if self.inNativeMode():
@@ -352,16 +350,18 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         elif "warmup-duration" in config:
             warmupDuration = config["warmup-duration"]
         if warmupDuration:
-            mx.log("Warming up with Wrk: {0}".format(wrkCmd + ["--duration", str(warmupDuration)]))
+            warmupWrkCmd = [wrkPath] + ["--duration", str(warmupDuration)] + wrkFlags
+            mx.log("Warming up with Wrk: {0}".format(warmupWrkCmd))
             warmupOutput = mx.TeeOutputCapture(mx.OutputCapture())
-            mx.run(wrkCmd, out=warmupOutput, err=subprocess.PIPE)
+            mx.run(warmupWrkCmd, out=warmupOutput, err=warmupOutput)
 
         if "duration" in config:
-            wrkCmd += ["--duration", str(config["duration"])]
+            wrkFlags = ["--duration", str(config["duration"])] + wrkFlags
 
-        mx.log("Running Wrk: {0}".format(wrkCmd))
+        runWrkCmd = [wrkPath] + wrkFlags
+        mx.log("Running Wrk: {0}".format(runWrkCmd))
         self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
-        mx.run(wrkCmd, out=self.testerOutput, err=subprocess.PIPE)
+        mx.run(runWrkCmd, out=self.testerOutput, err=self.testerOutput)
 
 
 class BaseWrk1BenchmarkSuite(BaseWrkBenchmarkSuite):
@@ -419,9 +419,9 @@ class BaseWrk2BenchmarkSuite(BaseWrkBenchmarkSuite):
         return mx.library("WRK2", True).get_path(True)
 
     def setupWrkCmd(self, config):
-        cmd = super(BaseWrk2BenchmarkSuite, self).setupWrkCmd(config) + ["--latency"]
+        cmd = ["--latency"]
         if "rate" in config:
             cmd += ["--rate", str(config["rate"])]
         else:
             mx.abort("rate not specified in Wrk2 configuration.")
-        return cmd
+        return super(BaseWrk2BenchmarkSuite, self).setupWrkCmd(config, cmd)
