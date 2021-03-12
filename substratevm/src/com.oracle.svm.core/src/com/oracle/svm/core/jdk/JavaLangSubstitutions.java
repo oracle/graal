@@ -805,7 +805,7 @@ final class Target_java_lang_Package {
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private static Package getSystemPackage(String name) {
         Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
-                null, null, null, null, null);
+                        null, null, null, null, null);
         return SubstrateUtil.cast(pkg, Package.class);
     }
 }
