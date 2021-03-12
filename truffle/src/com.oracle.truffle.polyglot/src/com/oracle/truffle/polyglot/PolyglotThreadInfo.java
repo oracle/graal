@@ -119,8 +119,7 @@ final class PolyglotThreadInfo {
 
     /**
      * Not to be used directly. Use
-     * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl)}
-     * instead.
+     * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl)} instead.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
     void leaveInternal(PolyglotContextImpl prev) {
