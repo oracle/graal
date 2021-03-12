@@ -33,10 +33,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 /**
  * The methods in this class are mainly used to fill or copy unmanaged (i.e., <b>non</b>-Java heap)
  * memory. None of the methods cares about Java semantics like GC barriers or the Java memory model.
- * The only guarantee that the methods give is that the copying is done in the largest possible
- * units (e.g., if 15 bytes need be copied, the copying will be split into 4 operations, copying 8,
- * 4, 2, and 1 bytes).
- * <p>
  * The valid use cases are listed below. For all other use cases, use {@link JavaMemoryUtil}
  * instead.
  * <ul>
@@ -45,15 +41,22 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  * </ul>
  *
  * <p>
+ * All operations in this class that copy memory guarantee to always use the largest-possible data
+ * type for each individual read and write operation, e.g.:
+ * <ul>
+ * <li>Copying 60 bytes may be split into 7 operations that copy 8, 8, 8, 8, 8, 8 and 4 bytes.
+ * However, it is guaranteed that no operation will copy less than 4 bytes.</li>
+ * <li>Copying 15 bytes may be split into 4 operations that copy 8, 4, 2, and 1 bytes.</li>
+ * </ul>
+ * <p>
  * In some situations (e.g., during a serial GC or if it is guaranteed that all involved objects are
  * not yet visible to other threads), the methods in this class may also be used for objects the
  * live in the Java heap. However, those usages should be kept to a minimum.
  */
 public final class UnmanagedMemoryUtil {
     /**
-     * Copy bytes from one memory area to another. The memory areas may overlap. Guarantees that
-     * data is always copied in the largest possible units (e.g., if 15 bytes need be copied, the
-     * copying will be split into 4 operations, copying 8, 4, 2, and 1 bytes).
+     * Copy bytes from one memory area to another. The memory areas may overlap. Guarantees to use
+     * the largest-possible data type for each individual read and write operation.
      */
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -66,9 +69,8 @@ public final class UnmanagedMemoryUtil {
     }
 
     /**
-     * Copy bytes from one memory area to another. Guarantees that data is always copied in the
-     * largest possible units (e.g., if 15 bytes need be copied, the copying will be split into 4
-     * operations, copying 8, 4, 2, and 1 bytes).
+     * Copy bytes from one memory area to another. Guarantees to use the largest-possible data type
+     * for each individual read and write operation.
      */
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -96,9 +98,8 @@ public final class UnmanagedMemoryUtil {
     }
 
     /**
-     * Copy bytes from one memory area to another. Guarantees that data is always copied in the
-     * largest possible units (e.g., if 15 bytes need be copied, the copying will be split into 4
-     * operations, copying 8, 4, 2, and 1 bytes).
+     * Copy bytes from one memory area to another. Guarantees to use the largest-possible data type
+     * for each individual read and write operation.
      */
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -181,10 +182,11 @@ public final class UnmanagedMemoryUtil {
     }
 
     /**
-     * Set the bytes of a memory area to a given value.
+     * Set the bytes of a memory area to a given value. Does *NOT* guarantee any size for the
+     * individual read/write operations and therefore does not guarantee any atomicity.
      */
     @IntrinsicCandidate
-    @Uninterruptible(reason = "Called from uninterruptible code, but may be inlined.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void fill(Pointer to, UnsignedWord size, byte value) {
         long v = value & 0xffL;
         v = (v << 8) | v;

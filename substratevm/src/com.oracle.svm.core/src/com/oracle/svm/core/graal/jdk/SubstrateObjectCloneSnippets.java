@@ -126,7 +126,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 // copy object data
                 assert curOffset >= 0;
                 assert count >= 0;
-                JavaMemoryUtil.copyObjectsForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(count));
+                JavaMemoryUtil.copyReferencesForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(count));
                 curOffset += count * referenceSize;
             }
 
