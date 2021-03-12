@@ -131,7 +131,7 @@ public abstract class LocalizationFeature implements Feature {
      */
     protected Locale defaultLocale = Locale.getDefault();
 
-    protected List<Locale> locales;
+    protected List<Locale> allLocales;
 
     protected LocalizationSupport support;
 
@@ -213,11 +213,11 @@ public abstract class LocalizationFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess arg0) {
-        locales = processLocalesOption();
+        allLocales = processLocalesOption();
         defaultLocale = parseLocaleFromTag(Options.DefaultLocale.getValue());
         UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
-        if (!locales.contains(defaultLocale)) {
-            locales.add(defaultLocale);
+        if (!allLocales.contains(defaultLocale)) {
+            allLocales.add(defaultLocale);
         }
         support = selectLocalizationSupport();
         ImageSingletons.add(LocalizationSupport.class, support);
@@ -234,11 +234,11 @@ public abstract class LocalizationFeature implements Feature {
 
     private LocalizationSupport selectLocalizationSupport() {
         if (optimizedMode) {
-            return new OptimizedLocalizationSupport(defaultLocale, locales);
+            return new OptimizedLocalizationSupport(defaultLocale, allLocales);
         } else if (substituteLoadLookup) {
-            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, locales);
+            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales);
         }
-        return new LocalizationSupport(defaultLocale, locales);
+        return new LocalizationSupport(defaultLocale, allLocales);
     }
 
     @Override
@@ -342,7 +342,7 @@ public abstract class LocalizationFeature implements Feature {
             optimizedLocalizationSupport.providerPools.put(providerClass, new OptimizedModeOnlySubstitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
         }
 
-        for (Locale locale : locales) {
+        for (Locale locale : allLocales) {
             for (Locale candidateLocale : optimizedLocalizationSupport.control.getCandidateLocales("", locale)) {
                 for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
                     LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, candidateLocale));
@@ -357,7 +357,7 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     protected void addResourceBundles() {
-        for (Locale locale : locales) {
+        for (Locale locale : allLocales) {
             prepareBundle(localeData(java.util.spi.CalendarDataProvider.class, locale).getCalendarData(locale), locale);
             prepareBundle(localeData(java.util.spi.CurrencyNameProvider.class, locale).getCurrencyNames(locale), locale);
             prepareBundle(localeData(java.util.spi.LocaleNameProvider.class, locale).getLocaleNames(locale), locale);
@@ -378,7 +378,7 @@ public abstract class LocalizationFeature implements Feature {
         }
 
         for (String bundleName : OptionUtils.flatten(",", Options.IncludeResourceBundles.getValue())) {
-            prepareBundle(bundleName);
+            processRequestedBundle(bundleName);
         }
     }
 
@@ -386,27 +386,30 @@ public abstract class LocalizationFeature implements Feature {
         return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, locale)).getLocaleData();
     }
 
-    protected void prepareBundle(ResourceBundle bundle, Locale locale) {
-        prepareBundle(bundle.getBaseBundleName(), bundle, locale);
-    }
-
-    public void prepareBundle(String fullBundleName) {
-        if (fullBundleName.isEmpty()) {
+    private void processRequestedBundle(String input) {
+        int splitIndex = input.indexOf('_');
+        boolean specificLocaleRequested = splitIndex != -1;
+        if (!specificLocaleRequested) {
+            prepareBundle(input, allLocales);
             return;
         }
+        Locale locale = splitIndex + 1 < input.length() ? parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
+        if (locale == null) {
+            trace("Cannot parse wanted locale " + input.substring(splitIndex + 1) + ", default will be used instead.");
+            locale = defaultLocale;
+        }
+        /*- Get rid of locale specific suffix. */
+        String baseName = input.substring(0, splitIndex);
+        prepareBundle(baseName, Collections.singletonList(locale));
+    }
 
-        String baseName = fullBundleName;
-        List<Locale> wantedLocales = locales;
-        int splitIndex = baseName.indexOf('_');
-        if (splitIndex != -1) {
-            Locale locale = splitIndex + 1 < baseName.length() ? parseLocaleFromTag(baseName.substring(splitIndex + 1)) : Locale.ROOT;
-            if (locale == null) {
-                trace("Cannot parse wanted locale " + baseName.substring(splitIndex + 1) + ", default will be used instead.");
-                locale = defaultLocale;
-            }
-            /*- Get rid of locale specific substring. */
-            baseName = baseName.substring(0, splitIndex);
-            wantedLocales = Collections.singletonList(locale);
+    public void prepareBundle(String baseName) {
+        prepareBundle(baseName, allLocales);
+    }
+
+    public void prepareBundle(String baseName, List<Locale> wantedLocales) {
+        if (baseName.isEmpty()) {
+            return;
         }
 
         boolean somethingFound = false;
@@ -442,6 +445,10 @@ public abstract class LocalizationFeature implements Feature {
                             "verify the bundle path is accessible in the classpath.";
             trace(errorMessage);
         }
+    }
+
+    protected void prepareBundle(ResourceBundle bundle, Locale locale) {
+        prepareBundle(bundle.getBaseBundleName(), bundle, locale);
     }
 
     private void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
