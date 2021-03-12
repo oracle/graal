@@ -389,7 +389,7 @@ final class HostToGuestCodeCache {
         @Override
         @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
-            return ((ProxyHashMap) receiver).hasEntry((Value) arguments[ARGUMENT_OFFSET]);
+            return ((ProxyHashMap) receiver).hasHashEntry((Value) arguments[ARGUMENT_OFFSET]);
         }
     });
 
@@ -398,7 +398,7 @@ final class HostToGuestCodeCache {
         @Override
         @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
-            return ((ProxyHashMap) receiver).getSize();
+            return ((ProxyHashMap) receiver).getHashSize();
         }
     });
 
@@ -407,7 +407,7 @@ final class HostToGuestCodeCache {
         @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
             try {
-                return ((ProxyHashMap) receiver).getValue((Value) arguments[ARGUMENT_OFFSET]);
+                return ((ProxyHashMap) receiver).getHashValue((Value) arguments[ARGUMENT_OFFSET]);
             } catch (UnsupportedOperationException e) {
                 throw UnsupportedMessageException.create();
             }
@@ -419,7 +419,7 @@ final class HostToGuestCodeCache {
         @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
             try {
-                ((ProxyHashMap) receiver).putEntry((Value) arguments[ARGUMENT_OFFSET], (Value) arguments[ARGUMENT_OFFSET + 1]);
+                ((ProxyHashMap) receiver).putHashEntry((Value) arguments[ARGUMENT_OFFSET], (Value) arguments[ARGUMENT_OFFSET + 1]);
                 return null;
             } catch (UnsupportedOperationException e) {
                 throw UnsupportedMessageException.create();
@@ -432,7 +432,7 @@ final class HostToGuestCodeCache {
         @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
             try {
-                return ((ProxyHashMap) receiver).removeEntry((Value) arguments[ARGUMENT_OFFSET]);
+                return ((ProxyHashMap) receiver).removeHashEntry((Value) arguments[ARGUMENT_OFFSET]);
             } catch (UnsupportedOperationException e) {
                 throw UnsupportedMessageException.create();
             }
@@ -443,7 +443,7 @@ final class HostToGuestCodeCache {
         @Override
         @TruffleBoundary
         protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
-            return ((ProxyHashMap) receiver).getEntriesIterator();
+            return ((ProxyHashMap) receiver).getHashEntriesIterator();
         }
     });
 }

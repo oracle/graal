@@ -63,18 +63,18 @@ public interface ProxyHashMap extends Proxy {
      *
      * @since 21.1
      */
-    long getSize();
+    long getHashSize();
 
     /**
      * Returns {@code true} if the proxy object contains a mapping for the specified key, or else
-     * {@code false}. Every key which returns {@code true} for {@link #hasEntry(Value)} must be
-     * included in the {@link Value#isIterator() iterator} returned by {@link #getEntriesIterator()}
-     * to allow guest language to enumerate map entries.
+     * {@code false}. Every key which returns {@code true} for {@link #hasHashEntry(Value)} must be
+     * included in the {@link Value#isIterator() iterator} returned by
+     * {@link #getHashEntriesIterator()} to allow guest language to enumerate map entries.
      *
-     * @see #getEntriesIterator()
+     * @see #getHashEntriesIterator()
      * @since 21.1
      */
-    boolean hasEntry(Value key);
+    boolean hasHashEntry(Value key);
 
     /**
      * Returns the value for the specified key.
@@ -82,17 +82,17 @@ public interface ProxyHashMap extends Proxy {
      * @throws UnsupportedOperationException if the operation is unsupported
      * @since 21.1
      */
-    Object getValue(Value key);
+    Object getHashValue(Value key);
 
     /**
      * Associates the specified value with the specified key. If the mapping for the specified key
-     * does not {@link #hasEntry(Value) exist} then a new mapping is defined otherwise, an existing
-     * mapping is updated.
+     * does not {@link #hasHashEntry(Value) exist} then a new mapping is defined otherwise, an
+     * existing mapping is updated.
      *
      * @throws UnsupportedOperationException if the operation is unsupported
      * @since 21.1
      */
-    void putEntry(Value key, Value value);
+    void putHashEntry(Value key, Value value);
 
     /**
      * Removes the mapping for a given key. If the removal of existing mappings is not supported
@@ -103,8 +103,8 @@ public interface ProxyHashMap extends Proxy {
      * @throws UnsupportedOperationException if the operation is unsupported
      * @since 21.1
      */
-    default boolean removeEntry(@SuppressWarnings("unused") Value key) {
-        throw new UnsupportedOperationException("remove() not supported.");
+    default boolean removeHashEntry(@SuppressWarnings("unused") Value key) {
+        throw new UnsupportedOperationException("removeHashEntry() not supported.");
     }
 
     /**
@@ -133,7 +133,7 @@ public interface ProxyHashMap extends Proxy {
      * @see ProxyIterator
      * @since 21.1
      */
-    Object getEntriesIterator();
+    Object getHashEntriesIterator();
 
     /**
      * Creates a proxy hash map backed by a Java {@link Map}. The map keys are
@@ -156,30 +156,30 @@ final class ProxyHashMapImpl implements ProxyHashMap {
     }
 
     @Override
-    public long getSize() {
+    public long getHashSize() {
         return values.size();
     }
 
     @Override
-    public boolean hasEntry(Value key) {
+    public boolean hasHashEntry(Value key) {
         Object unboxedKey = unboxKey(key);
         return values.containsKey(unboxedKey);
     }
 
     @Override
-    public Object getValue(Value key) {
+    public Object getHashValue(Value key) {
         Object unboxedKey = unboxKey(key);
         return values.get(unboxedKey);
     }
 
     @Override
-    public void putEntry(Value key, Value value) {
+    public void putHashEntry(Value key, Value value) {
         Object unboxedKey = unboxKey(key);
         values.put(unboxedKey, value.isHostObject() ? value.asHostObject() : value);
     }
 
     @Override
-    public boolean removeEntry(Value key) {
+    public boolean removeHashEntry(Value key) {
         Object unboxedKey = unboxKey(key);
         if (values.containsKey(unboxedKey)) {
             values.remove(unboxedKey);
@@ -190,7 +190,7 @@ final class ProxyHashMapImpl implements ProxyHashMap {
     }
 
     @Override
-    public Object getEntriesIterator() {
+    public Object getHashEntriesIterator() {
         Iterator<Map.Entry<Object, Object>> entryIterator = values.entrySet().iterator();
         return new ProxyIterator() {
             @Override
