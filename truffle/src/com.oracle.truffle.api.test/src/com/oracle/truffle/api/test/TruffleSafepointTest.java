@@ -381,6 +381,9 @@ public class TruffleSafepointTest {
 
     @Test
     public void testHasPendingSideEffectingActions() {
+        // GR-29896 does not yet work on SVM.
+        Assume.assumeFalse(TruffleOptions.AOT);
+
         AtomicReference<Thread> thread = new AtomicReference<>();
         CountDownLatch waitSideEffectsDisabled = new CountDownLatch(1);
         CountDownLatch waitSubmitted = new CountDownLatch(1);
