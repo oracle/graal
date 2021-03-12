@@ -235,6 +235,7 @@ public class FrameInfoDecoder {
                     }
                 }
             }
+            cur.methodID = readBuffer.getUVInt();
         }
     }
 

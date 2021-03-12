@@ -31,6 +31,7 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.svm.core.sampling.CallStackFrameMethodData;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
@@ -278,6 +279,8 @@ public class FrameInfoEncoder {
         result.needLocalValues = needLocalValues;
 
         SharedMethod method = (SharedMethod) frame.getMethod();
+        result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).addMethodId(method);
+
         if (customization.shouldStoreMethod()) {
             result.deoptMethod = method;
             objectConstants.addObject(SubstrateObjectConstant.forObject(method));
@@ -306,7 +309,6 @@ public class FrameInfoEncoder {
             }
         }
         result.valueInfos = valueInfos;
-
         ImageSingletons.lookup(Counters.class).frameCount.inc();
 
         return result;
@@ -681,6 +683,7 @@ public class FrameInfoEncoder {
                     encodingBuffer.putUV(valueInfo.nameIndex);
                 }
             }
+            encodingBuffer.putUV(cur.methodID);
         }
         encodingBuffer.putSV(FrameInfoDecoder.NO_CALLER_BCI);
     }

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -110,32 +111,28 @@ public class DumpSamplingData {
         long relativeIP = CodeInfoAccess.relativeIP(codeInfo, ip);
         CodeInfoAccess.lookupCodeInfo(codeInfo, relativeIP, result);
         FrameInfoQueryResult frameInfo = result.getFrameInfo();
-        while (frameInfo.getCaller() != null) {
-            frameInfo = frameInfo.getCaller();
-        }
-        int methodId = samplingMethodData.findMethod(relativeIP);
-        String methodName = samplingMethodData.findMethodName(relativeIP);
-        int bci = frameInfo.getBci();
-        return methodName + ":" + bci;
+        return createDecodedMethodEntry(frameInfo, relativeIP, samplingMethodData, dumpProfiles);
     }
 
     private static String createDecodedMethodEntry(FrameInfoQueryResult frameInfo, long relativeIP, SamplingMethodData samplingMethodData, boolean dumpProfiles) {
         if (dumpProfiles) {
-            List<FrameInfoQueryResult> frames = new ArrayList<>();
-            frames.add(frameInfo);
+            List<String> frames = new ArrayList<>();
+            frames.add(frameInfo.methodID + ":" + frameInfo.getBci());
             while (frameInfo.getCaller() != null) {
                 frameInfo = frameInfo.getCaller();
-                frames.add(frameInfo);
+                frames.add(frameInfo.methodID + ":" + frameInfo.getBci());
             }
-            // TODO
-            return "";
+            Collections.reverse(frames);
+            return String.join(";", frames);
         } else {
             while (frameInfo.getCaller() != null) {
                 frameInfo = frameInfo.getCaller();
             }
             String methodName = samplingMethodData.findMethodName(relativeIP);
+            int methodId = samplingMethodData.findMethod(relativeIP);
             int bci = frameInfo.getBci();
-            return methodName + ":" + bci;
+            int frameInfoMethodId = frameInfo.methodID;
+            return methodName + " ( " + methodId + "," + frameInfoMethodId + " ) " + ":" + bci;
         }
     }
 

@@ -165,7 +165,7 @@ public class FrameInfoQueryResult {
     protected Class<?> sourceClass;
     protected String sourceMethodName;
     protected int sourceLineNumber;
-    protected int methodID;
+    public int methodID;
 
     // Index of sourceClass in CodeInfoDecoder.frameInfoSourceClasses
     protected int sourceClassIndex;

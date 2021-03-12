@@ -23,17 +23,21 @@ public class AOTProfilingSampler implements ProfilingSampler {
     public void sampleThreadStack() {
         // System.out.println("start: " + System.nanoTime());
         SamplingStackVisitor visitor = new SamplingStackVisitor();
-        SamplingStackVisitor.SamplingStackTrace data = new SamplingStackVisitor.SamplingStackTrace(prefixTree().root());
+        SamplingStackVisitor.StackTrace data = new SamplingStackVisitor.StackTrace();
         walkCurrentThread(data, visitor);
-        data.node.incValue();
-        // prefixTree().topDown(null);
-        // System.out.println(Thread.currentThread().getName() + " ... " +
+        long[] result = data.data;
+        PrefixTree.Node node = prefixTree().root();
+        for (int i = data.num - 1; i >= 0; i--) {
+            node = node.at(result[i]);
+        }
+        node.incValue();
         // System.identityHashCode(data.node));
         System.out.println("--- end: " + System.nanoTime());
     }
 
+
     @NeverInline("")
-    void walkCurrentThread(SamplingStackVisitor.SamplingStackTrace data, SamplingStackVisitor visitor) {
+    void walkCurrentThread(SamplingStackVisitor.StackTrace data, SamplingStackVisitor visitor) {
         Pointer sp = KnownIntrinsics.readStackPointer();
         JavaStackWalker.walkCurrentThread(sp, visitor, data);
     }
