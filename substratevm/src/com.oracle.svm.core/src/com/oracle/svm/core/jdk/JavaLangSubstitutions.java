@@ -46,7 +46,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.annotate.Inject;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
@@ -797,9 +796,9 @@ final class Target_java_lang_Package {
     @Alias
     @SuppressWarnings({"unused"})
     Target_java_lang_Package(String name,
-                             String spectitle, String specversion, String specvendor,
-                             String impltitle, String implversion, String implvendor,
-                             URL sealbase, ClassLoader loader) {
+                    String spectitle, String specversion, String specvendor,
+                    String impltitle, String implversion, String implvendor,
+                    URL sealbase, ClassLoader loader) {
     }
 
     @Substitute
