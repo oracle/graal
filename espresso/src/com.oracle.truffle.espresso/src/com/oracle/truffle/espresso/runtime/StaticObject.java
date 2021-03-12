@@ -1890,7 +1890,7 @@ public final class StaticObject implements TruffleObject {
         assert array != null;
         assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
         if (array instanceof boolean[]) {
-            throw EspressoError.shouldNotReachHere("Cannot wrap a boolean[]. Create a byte[] wrap that.");
+            throw EspressoError.shouldNotReachHere("Cannot wrap a boolean[]. Create a byte[] and call `StaticObject.createArray(meta._boolean_array, byteArray)`.");
         }
         if (array instanceof byte[]) {
             return wrap((byte[]) array, meta);
