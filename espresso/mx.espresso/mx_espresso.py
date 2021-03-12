@@ -196,6 +196,7 @@ Usage: java -truffle [-options] class [args...]
 
 To rebuild the polyglot library:
     gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
+    supported=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -210,6 +211,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
     priority=2,
+    supported=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(

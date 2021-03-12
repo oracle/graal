@@ -211,7 +211,9 @@ class GraalVmComponent(object):
                  installable=None,
                  post_install_msg=None,
                  installable_id=None,
-                 dependencies=None):
+                 dependencies=None,
+                 supported=None,
+                 early_adopter=False):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -242,6 +244,8 @@ class GraalVmComponent(object):
         :type installable: bool
         :type installable_id: str
         :type post_install_msg: str
+        :type supported: bool | None
+        :type early_adopter: bool
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -273,6 +277,8 @@ class GraalVmComponent(object):
         self.installable = installable
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
+        self.supported = supported
+        self.early_adopter = early_adopter
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
@@ -289,6 +295,8 @@ class GraalVmComponent(object):
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
+        assert not self.early_adopter or self.supported is not None
+
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
