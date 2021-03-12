@@ -497,7 +497,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public void setArrayValue(Object array, int index, Object value) {
         StaticObject arrayRef = (StaticObject) array;
-        arrayRef.putObject((StaticObject) value, index, context.getMeta());
+        context.getInterpreterToVM().setArrayObject((StaticObject) value, index, arrayRef);
     }
 
     @Override

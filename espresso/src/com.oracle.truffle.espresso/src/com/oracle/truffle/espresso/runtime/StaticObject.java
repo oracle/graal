@@ -50,8 +50,6 @@ import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
-import sun.misc.Unsafe;
-
 /**
  * Implementation of the Espresso object model.
  *
@@ -66,8 +64,6 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject();
     public static final String CLASS_TO_STATIC = "static";
 
-    private static final Unsafe UNSAFE = UnsafeAccess.get();
-
     private final Klass klass; // != PrimitiveKlass
 
     private final Object arrayOrForeignObject;
@@ -75,12 +71,6 @@ public class StaticObject implements TruffleObject, Cloneable {
     private final boolean isForeign;
 
     private volatile EspressoLock lock;
-
-    static {
-        // Assert a byte array has the same representation as a boolean array.
-        assert (Unsafe.ARRAY_BYTE_BASE_OFFSET == Unsafe.ARRAY_BOOLEAN_BASE_OFFSET &&
-                        Unsafe.ARRAY_BYTE_INDEX_SCALE == Unsafe.ARRAY_BOOLEAN_INDEX_SCALE);
-    }
 
     // region Constructors
 
@@ -119,14 +109,6 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     /**
      * Constructor for Array objects.
-     *
-     * Current implementation stores the array in lieu of fields. fields being an Object, a char
-     * array can be stored under it without any boxing happening. The array could have been stored
-     * in fields[0], but getting to the array would then require an additional indirection.
-     *
-     * Regular objects still always have an Object[] hiding under fields. In order to preserve the
-     * behavior and avoid casting to Object[] (a non-leaf cast), we perform field accesses with
-     * Unsafe operations.
      */
     private StaticObject(ArrayKlass klass, Object array) {
         this.klass = klass;
@@ -449,85 +431,6 @@ public class StaticObject implements TruffleObject, Cloneable {
         checkNotForeign();
         assert isArray();
         return this.<T[]> unwrap()[index];
-    }
-
-    public void putObjectUnsafe(StaticObject value, int index) {
-        UNSAFE.putObject(arrayOrForeignObject, (long) getObjectArrayOffset(index), value);
-    }
-
-    public void putObject(StaticObject value, int index, Meta meta) {
-        putObject(value, index, meta, null);
-    }
-
-    /**
-     * Workaround to avoid casting to Object[] in InterpreterToVM (non-leaf type check).
-     */
-    public void putObject(StaticObject value, int index, Meta meta, BytecodeNode bytecodeNode) {
-        checkNotForeign();
-        assert isArray();
-        if (index >= 0 && index < length()) {
-            // TODO(peterssen): Use different profiles for index-out-of-bounds and array-store
-            // exceptions.
-            putObjectUnsafe(arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta, bytecodeNode), index);
-        } else {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-        }
-    }
-
-    private static StaticObject arrayStoreExCheck(StaticObject value, Klass componentType, Meta meta, BytecodeNode bytecodeNode) {
-        if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
-            return value;
-        } else {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw meta.throwException(meta.java_lang_ArrayStoreException);
-        }
-    }
-
-    public static int getObjectArrayOffset(int index) {
-        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * index;
-    }
-
-    public static long getByteArrayOffset(int index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
-    }
-
-    public void setArrayByte(byte value, int index, Meta meta) {
-        setArrayByte(value, index, meta, null);
-    }
-
-    public void setArrayByte(byte value, int index, Meta meta, BytecodeNode bytecodeNode) {
-        checkNotForeign();
-        assert isArray() && arrayOrForeignObject instanceof byte[];
-        if (index >= 0 && index < length()) {
-            UNSAFE.putByte(arrayOrForeignObject, getByteArrayOffset(index), value);
-        } else {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-        }
-    }
-
-    public byte getArrayByte(int index, Meta meta) {
-        return getArrayByte(index, meta, null);
-    }
-
-    public byte getArrayByte(int index, Meta meta, BytecodeNode bytecodeNode) {
-        checkNotForeign();
-        assert isArray() && arrayOrForeignObject instanceof byte[];
-        if (index >= 0 && index < length()) {
-            return UNSAFE.getByte(arrayOrForeignObject, getByteArrayOffset(index));
-        } else {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-        }
     }
 
     public int length() {

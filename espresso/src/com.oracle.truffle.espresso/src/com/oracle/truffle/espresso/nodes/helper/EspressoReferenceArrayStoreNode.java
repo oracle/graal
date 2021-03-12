@@ -31,9 +31,12 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
+
 public class EspressoReferenceArrayStoreNode extends Node {
     @Child TypeCheckNode typeCheck;
-    @CompilationFinal boolean noOutOfBoundEx = true;
+    @CompilationFinal boolean noOutOfBoundEx1 = true;
+    @CompilationFinal boolean noOutOfBoundEx2 = true;
     @CompilationFinal boolean noArrayStoreEx = true;
 
     public EspressoReferenceArrayStoreNode(EspressoContext context) {
@@ -41,27 +44,39 @@ public class EspressoReferenceArrayStoreNode extends Node {
     }
 
     public void arrayStore(StaticObject value, int index, StaticObject array) {
-        assert !array.isForeignObject();
-        assert array.isArray();
-        if (index >= 0 && index < array.length()) {
-            if (StaticObject.isNull(value) || typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
-                array.putObjectUnsafe(value, index);
+        if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) array.getKlass()).getComponentType())) {
+            try {
+                (array.<Object[]>unwrap())[index] = value;
+            } catch (ArrayIndexOutOfBoundsException e) {
+                enterOutOfBound1();
+                Meta meta = typeCheck.getMeta();
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            // We must throw ArrayIndexOutOfBoundsException before ArrayStoreException
+            if (index < 0 || index >= array.length()) {
+                enterOutOfBound2();
+                Meta meta = typeCheck.getMeta();
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
             } else {
                 enterArrayStoreEx();
                 Meta meta = typeCheck.getMeta();
                 throw meta.throwException(meta.java_lang_ArrayStoreException);
             }
-        } else {
-            enterOutOfBound();
-            Meta meta = typeCheck.getMeta();
-            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
-    private void enterOutOfBound() {
-        if (noOutOfBoundEx) {
+    private void enterOutOfBound1() {
+        if (noOutOfBoundEx1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            noOutOfBoundEx = false;
+            noOutOfBoundEx1 = false;
+        }
+    }
+
+    private void enterOutOfBound2() {
+        if (noOutOfBoundEx2) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            noOutOfBoundEx2 = false;
         }
     }
 
