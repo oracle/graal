@@ -383,6 +383,57 @@ public class TruffleSafepointTest {
         });
     }
 
+    @Test
+    public void testHasPendingSideEffectingActions() {
+        Thread[] threads = new Thread[1];
+        CountDownLatch waitSideEffectsDisabled = new CountDownLatch(1);
+        CountDownLatch waitSubmitted = new CountDownLatch(1);
+
+        try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+
+            assertFalse(safepoint.hasPendingSideEffectingActions());
+
+            boolean prev = safepoint.setAllowSideEffects(false);
+            try {
+                threads[0] = Thread.currentThread();
+                waitSideEffectsDisabled.countDown();
+                try {
+                    waitSubmitted.await();
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                assertTrue(safepoint.hasPendingSideEffectingActions());
+            } finally {
+                safepoint.setAllowSideEffects(prev);
+            }
+
+            assertFalse("always false when side effects enabled", safepoint.hasPendingSideEffectingActions());
+
+            try {
+                    TruffleSafepoint.pollHere(node);
+                    fail();
+            } catch (RuntimeException e) {
+                assertEquals("interrupt", e.getMessage());
+                assertFalse(safepoint.hasPendingSideEffectingActions());
+            }
+            return true;
+        })) {
+            waitSideEffectsDisabled.await();
+            setup.env.submitThreadLocal(threads, new ThreadLocalAction(true, false) {
+                @Override
+                protected void perform(Access access) {
+                    throw new RuntimeException("interrupt");
+                }
+            });
+            waitSubmitted.countDown();
+
+            setup.stopAndAwait();
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     @TruffleBoundary
     private static boolean isStopped(AtomicBoolean stopped) {
         return stopped.get();
