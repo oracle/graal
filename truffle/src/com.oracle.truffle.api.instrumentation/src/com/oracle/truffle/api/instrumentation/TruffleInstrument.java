@@ -71,7 +71,6 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleSafepoint.ThreadInterruptible;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
@@ -83,6 +82,8 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
+import com.oracle.truffle.api.TruffleSafepoint.Interruptible;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -1383,10 +1384,10 @@ public abstract class TruffleInstrument {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlockedInterruptible(Node, ThreadInterruptible, Object)} can
-         * be used to allow other thread local actions to be processed while the current thread is
-         * waiting. The returned {@link Future#get()} method can be used as
-         * {@link ThreadInterruptible}.
+         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable)
+         * blocking API} can be used to allow other thread local actions to be processed while the
+         * current thread is waiting. The returned {@link Future#get()} method can be used as
+         * {@link Interruptible}.
          *
          * @param context the context in which the action should be performed. Non <code>null</code>
          *            .

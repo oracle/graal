@@ -600,36 +600,28 @@ public class TruffleSafepointTest {
     @TruffleBoundary
     private static void lockCooperativelySafepoint(Semaphore semaphore, Node node, TruffleSafepoint safepoint) {
         boolean prevEffects = safepoint.setAllowSideEffects(false);
-        Interrupter prevBlocked = safepoint.setBlocked(Interrupter.THREAD_INTERRUPT);
         try {
-            while (true) {
-                // No side-effecting events should happen here
-                TruffleSafepoint.pollHere(INVALID_NODE);
-
-                try {
-                    // allow side-effects trigger interruptions again
-                    boolean prevInner = safepoint.setAllowSideEffects(true);
-                    try {
-                        semaphore.acquire();
-                        break;
-                    } finally {
-                        safepoint.setAllowSideEffects(prevInner);
-                    }
-                } catch (InterruptedException e) {
-                    boolean condDisabled = safepoint.setAllowSideEffects(true);
-                    try {
-                        // All side-effecting events are forced to happen here.
-                        TruffleSafepoint.pollHere(node);
-                    } finally {
-                        safepoint.setAllowSideEffects(condDisabled);
-                    }
-                    continue;
-                }
-            }
+            TruffleSafepoint.getCurrent().setBlocked(node, Interrupter.THREAD_INTERRUPT,
+                            (s) -> {
+                                // we want to get woken up by side-effecting actions
+                                boolean prevInner = safepoint.setAllowSideEffects(true);
+                                try {
+                                    s.acquire();
+                                } finally {
+                                    safepoint.setAllowSideEffects(prevInner);
+                                }
+                            }, semaphore, () -> {
+                                boolean condDisabled = safepoint.setAllowSideEffects(true);
+                                try {
+                                    // All side-effecting events are forced to happen here.
+                                    TruffleSafepoint.pollHere(node);
+                                } finally {
+                                    safepoint.setAllowSideEffects(condDisabled);
+                                }
+                            });
             releaseSemaphore(semaphore);
         } finally {
             safepoint.setAllowSideEffects(prevEffects);
-            safepoint.setBlocked(prevBlocked);
         }
     }
 
@@ -638,7 +630,7 @@ public class TruffleSafepointTest {
         forEachConfig((threads, events) -> {
             Semaphore semaphore = new Semaphore(threads);
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
-                TruffleSafepoint.setBlockedInterruptible(node, Semaphore::acquire, semaphore);
+                TruffleSafepoint.setBlockedThreadInterruptible(node, Semaphore::acquire, semaphore);
                 releaseSemaphore(semaphore);
                 assert !Thread.interrupted() : "invalid trailing interrupted state";
                 return false;
@@ -708,7 +700,6 @@ public class TruffleSafepointTest {
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
-
                 AtomicBoolean performed = new AtomicBoolean();
                 AtomicBoolean[] inBlockingAction = createBooleans(blockingActions);
                 Semaphore[] awaitBlocked = createSemaphores(blockingActions, 0);
@@ -725,7 +716,7 @@ public class TruffleSafepointTest {
                             inBlockingAction[actionIndex].set(true);
                             try {
                                 awaitBlocked[actionIndex].release();
-                                TruffleSafepoint.setBlockedInterruptible(access.getLocation(), (e) -> {
+                                TruffleSafepoint.setBlockedThreadInterruptible(access.getLocation(), (e) -> {
                                     leaveBlocked[actionIndex].acquire();
                                 }, null);
                             } finally {
@@ -938,7 +929,7 @@ public class TruffleSafepointTest {
 
             setup.stopAndAwait();
             int count = counter.counter.get();
-            assertTrue(String.valueOf(count), count >= loopCount);
+            assertTrue(String.valueOf(count), count >= 10);
         }
     }
 
@@ -966,7 +957,7 @@ public class TruffleSafepointTest {
 
             setup.stopAndAwait();
             int count = counter.counter.get();
-            assertTrue(String.valueOf(count), count >= loopCount);
+            assertTrue(String.valueOf(count), count >= 10);
         }
     }
 
@@ -1054,7 +1045,6 @@ public class TruffleSafepointTest {
 
             // if there is an indirect truffle call in the loop
             // we can omit the safepoint. if that safepoint would
-            assertTrue(String.valueOf(count), count < CallInLoopNode.LOOP_COUNT * 2);
             if (!TruffleOptions.AOT) {
                 // TODO GR-29998 safepoint elimination not supported on SVM for now.
                 assertTrue(String.valueOf(count), count < CallInLoopNode.LOOP_COUNT * 2);

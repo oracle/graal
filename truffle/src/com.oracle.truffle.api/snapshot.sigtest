@@ -667,11 +667,11 @@ meth public int getPriority()
 CLSS public abstract com.oracle.truffle.api.TruffleSafepoint
 cons protected init(com.oracle.truffle.api.impl.Accessor$EngineSupport)
 innr public abstract interface static Interrupter
-innr public abstract interface static ThreadInterruptible
-meth public abstract boolean setAllowSideEffects(boolean)
+innr public abstract interface static Interruptible
+meth public abstract <%0 extends java.lang.Object> void setBlocked(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable)
 meth public abstract boolean hasPendingSideEffectingActions()
-meth public abstract com.oracle.truffle.api.TruffleSafepoint$Interrupter setBlocked(com.oracle.truffle.api.TruffleSafepoint$Interrupter)
-meth public static <%0 extends java.lang.Object> void setBlockedInterruptible(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$ThreadInterruptible<{%%0}>,{%%0})
+meth public abstract boolean setAllowSideEffects(boolean)
+meth public static <%0 extends java.lang.Object> void setBlockedThreadInterruptible(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0})
 meth public static com.oracle.truffle.api.TruffleSafepoint getCurrent()
 meth public static void poll(com.oracle.truffle.api.nodes.Node)
 meth public static void pollHere(com.oracle.truffle.api.nodes.Node)
@@ -684,10 +684,10 @@ fld public final static com.oracle.truffle.api.TruffleSafepoint$Interrupter THRE
 meth public abstract void interrupt(java.lang.Thread)
 meth public abstract void resetInterrupted()
 
-CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$ThreadInterruptible<%0 extends java.lang.Object>
+CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$Interruptible<%0 extends java.lang.Object>
  outer com.oracle.truffle.api.TruffleSafepoint
  anno 0 java.lang.FunctionalInterface()
-meth public abstract void apply({com.oracle.truffle.api.TruffleSafepoint$ThreadInterruptible%0}) throws java.lang.InterruptedException
+meth public abstract void apply({com.oracle.truffle.api.TruffleSafepoint$Interruptible%0}) throws java.lang.InterruptedException
 
 CLSS public final com.oracle.truffle.api.TruffleStackTrace
 meth public java.lang.String toString()
