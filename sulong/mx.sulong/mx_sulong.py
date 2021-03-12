@@ -256,7 +256,7 @@ def extract_bitcode(args=None, out=None):
     return mx.run_java(mx.get_runtime_jvm_args(["com.oracle.truffle.llvm.tools"]) + ["com.oracle.truffle.llvm.tools.ExtractBitcode"] + args, out=out)
 
 
-@mx.command(_suite.name, "lli-dis")
+@mx.command(_suite.name, "llvm-dis")
 def llvm_dis(args=None, out=None):
     """Disassemble (embedded) LLVM bitcode to LLVM assembly"""
     parser = ArgumentParser(prog='mx llvm-dis', description='Disassemble (embedded) LLVM bitcode to LLVM assembly.')

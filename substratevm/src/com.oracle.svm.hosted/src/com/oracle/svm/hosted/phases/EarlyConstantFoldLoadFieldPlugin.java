@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -38,6 +41,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Early constant folding for well-known static fields. These constant foldings do not require and
@@ -48,9 +52,18 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
     private final ResolvedJavaField isImageBuildTimeField;
     private final SnippetReflectionProvider snippetReflection;
 
+    private final Map<ResolvedJavaType, ResolvedJavaType> primitiveTypes;
+
     public EarlyConstantFoldLoadFieldPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
         isImageBuildTimeField = metaAccess.lookupJavaField(ReflectionUtil.lookupField(ClassInitializationTracking.class, "IS_IMAGE_BUILD_TIME"));
         this.snippetReflection = snippetReflection;
+
+        primitiveTypes = new HashMap<>();
+        for (JavaKind kind : JavaKind.values()) {
+            if (kind.toBoxedJavaClass() != null) {
+                primitiveTypes.put(metaAccess.lookupJavaType(kind.toBoxedJavaClass()), metaAccess.lookupJavaType(kind.toJavaClass()));
+            }
+        }
     }
 
     @Override
@@ -73,6 +86,19 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
             b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!assertionsEnabled));
             return true;
         }
+
+        /*
+         * Constant fold e.g. `Integer.TYPE`, which is accessed when using the literal `int.class`
+         * in Java code.
+         */
+        if (field.getName().equals("TYPE")) {
+            ResolvedJavaType primitiveType = primitiveTypes.get(field.getDeclaringClass());
+            if (primitiveType != null) {
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getConstantReflection().asJavaClass(primitiveType), b.getMetaAccess()));
+                return true;
+            }
+        }
+
         return false;
     }
 }

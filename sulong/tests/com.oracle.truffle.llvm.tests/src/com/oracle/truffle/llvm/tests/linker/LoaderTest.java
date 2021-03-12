@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -63,7 +63,7 @@ public class LoaderTest {
         }
     }
 
-    private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH).toPath();
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES")).toPath();
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
         Map<String, String> map = new HashMap<>();

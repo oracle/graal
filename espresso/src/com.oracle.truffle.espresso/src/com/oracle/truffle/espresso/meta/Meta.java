@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import java.util.logging.Level;
+import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -47,8 +47,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -75,16 +73,16 @@ public final class Meta implements ContextAccess {
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
 
         java_lang_Class = knownKlass(Type.java_lang_Class);
-        HIDDEN_MIRROR_KLASS = java_lang_Class.lookupHiddenField(Name.HIDDEN_MIRROR_KLASS);
-        HIDDEN_SIGNERS = java_lang_Class.lookupHiddenField(Name.HIDDEN_SIGNERS);
+        HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
+        HIDDEN_SIGNERS = java_lang_Class.requireHiddenField(Name.HIDDEN_SIGNERS);
         java_lang_String = knownKlass(Type.java_lang_String);
         java_lang_Class_array = java_lang_Class.array();
-        java_lang_Class_getName = java_lang_Class.lookupDeclaredMethod(Name.getName, Signature.String);
-        java_lang_Class_getSimpleName = java_lang_Class.lookupDeclaredMethod(Name.getSimpleName, Signature.String);
-        java_lang_Class_getTypeName = java_lang_Class.lookupDeclaredMethod(Name.getTypeName, Signature.String);
-        java_lang_Class_forName_String = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
-        java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
-        HIDDEN_PROTECTION_DOMAIN = java_lang_Class.lookupHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
+        java_lang_Class_getName = java_lang_Class.requireDeclaredMethod(Name.getName, Signature.String);
+        java_lang_Class_getSimpleName = java_lang_Class.requireDeclaredMethod(Name.getSimpleName, Signature.String);
+        java_lang_Class_getTypeName = java_lang_Class.requireDeclaredMethod(Name.getTypeName, Signature.String);
+        java_lang_Class_forName_String = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String);
+        java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
+        HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
 
         java_lang_Object_array = java_lang_Object.array();
 
@@ -143,53 +141,69 @@ public final class Meta implements ContextAccess {
                         java_lang_Void
         };
 
-        java_lang_Boolean_valueOf = java_lang_Boolean.lookupDeclaredMethod(Name.valueOf, Signature.Boolean_boolean);
-        java_lang_Byte_valueOf = java_lang_Byte.lookupDeclaredMethod(Name.valueOf, Signature.Byte_byte);
-        java_lang_Character_valueOf = java_lang_Character.lookupDeclaredMethod(Name.valueOf, Signature.Character_char);
-        java_lang_Short_valueOf = java_lang_Short.lookupDeclaredMethod(Name.valueOf, Signature.Short_short);
-        java_lang_Float_valueOf = java_lang_Float.lookupDeclaredMethod(Name.valueOf, Signature.Float_float);
-        java_lang_Integer_valueOf = java_lang_Integer.lookupDeclaredMethod(Name.valueOf, Signature.Integer_int);
-        java_lang_Double_valueOf = java_lang_Double.lookupDeclaredMethod(Name.valueOf, Signature.Double_double);
-        java_lang_Long_valueOf = java_lang_Long.lookupDeclaredMethod(Name.valueOf, Signature.Long_long);
+        java_lang_Boolean_valueOf = java_lang_Boolean.requireDeclaredMethod(Name.valueOf, Signature.Boolean_boolean);
+        java_lang_Byte_valueOf = java_lang_Byte.requireDeclaredMethod(Name.valueOf, Signature.Byte_byte);
+        java_lang_Character_valueOf = java_lang_Character.requireDeclaredMethod(Name.valueOf, Signature.Character_char);
+        java_lang_Short_valueOf = java_lang_Short.requireDeclaredMethod(Name.valueOf, Signature.Short_short);
+        java_lang_Float_valueOf = java_lang_Float.requireDeclaredMethod(Name.valueOf, Signature.Float_float);
+        java_lang_Integer_valueOf = java_lang_Integer.requireDeclaredMethod(Name.valueOf, Signature.Integer_int);
+        java_lang_Double_valueOf = java_lang_Double.requireDeclaredMethod(Name.valueOf, Signature.Double_double);
+        java_lang_Long_valueOf = java_lang_Long.requireDeclaredMethod(Name.valueOf, Signature.Long_long);
 
-        java_lang_Boolean_value = java_lang_Boolean.lookupDeclaredField(Name.value, Type._boolean);
-        java_lang_Byte_value = java_lang_Byte.lookupDeclaredField(Name.value, Type._byte);
-        java_lang_Character_value = java_lang_Character.lookupDeclaredField(Name.value, Type._char);
-        java_lang_Short_value = java_lang_Short.lookupDeclaredField(Name.value, Type._short);
-        java_lang_Float_value = java_lang_Float.lookupDeclaredField(Name.value, Type._float);
-        java_lang_Integer_value = java_lang_Integer.lookupDeclaredField(Name.value, Type._int);
-        java_lang_Double_value = java_lang_Double.lookupDeclaredField(Name.value, Type._double);
-        java_lang_Long_value = java_lang_Long.lookupDeclaredField(Name.value, Type._long);
+        java_lang_Boolean_value = java_lang_Boolean.requireDeclaredField(Name.value, Type._boolean);
+        java_lang_Byte_value = java_lang_Byte.requireDeclaredField(Name.value, Type._byte);
+        java_lang_Character_value = java_lang_Character.requireDeclaredField(Name.value, Type._char);
+        java_lang_Short_value = java_lang_Short.requireDeclaredField(Name.value, Type._short);
+        java_lang_Float_value = java_lang_Float.requireDeclaredField(Name.value, Type._float);
+        java_lang_Integer_value = java_lang_Integer.requireDeclaredField(Name.value, Type._int);
+        java_lang_Double_value = java_lang_Double.requireDeclaredField(Name.value, Type._double);
+        java_lang_Long_value = java_lang_Long.requireDeclaredField(Name.value, Type._long);
 
-        java_lang_String_value = lookupFieldDiffVersion(java_lang_String, Name.value, Type._char_array, Name.value, Type._byte_array);
-        java_lang_String_hash = java_lang_String.lookupDeclaredField(Name.hash, Type._int);
-        java_lang_String_coder = java_lang_String.lookupDeclaredField(Name.coder, Type._byte);
-        java_lang_String_COMPACT_STRINGS = java_lang_String.lookupDeclaredField(Name.COMPACT_STRINGS, Type._boolean);
-        java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
-        java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
-        java_lang_String_toCharArray = java_lang_String.lookupDeclaredMethod(Name.toCharArray, Signature._char_array);
-        java_lang_String_charAt = java_lang_String.lookupDeclaredMethod(Name.charAt, Signature._char);
-        java_lang_String_indexOf = java_lang_String.lookupDeclaredMethod(Name.indexOf, Signature._int_int_int);
-        java_lang_String_init_char_array = java_lang_String.lookupDeclaredMethod(Name._init_, Signature._void_char_array);
+        java_lang_String_value = requireFieldDiffVersion(java_lang_String, Name.value, Type._char_array, Name.value, Type._byte_array);
+        java_lang_String_hash = java_lang_String.requireDeclaredField(Name.hash, Type._int);
+        java_lang_String_hashCode = java_lang_String.requireDeclaredMethod(Name.hashCode, Signature._int);
+        java_lang_String_length = java_lang_String.requireDeclaredMethod(Name.length, Signature._int);
+        java_lang_String_toCharArray = java_lang_String.requireDeclaredMethod(Name.toCharArray, Signature._char_array);
+        java_lang_String_indexOf = java_lang_String.requireDeclaredMethod(Name.indexOf, Signature._int_int_int);
+        java_lang_String_init_char_array = java_lang_String.requireDeclaredMethod(Name._init_, Signature._void_char_array);
+        if (getJavaVersion().java9OrLater()) {
+            java_lang_String_coder = java_lang_String.requireDeclaredField(Name.coder, Type._byte);
+            java_lang_String_COMPACT_STRINGS = java_lang_String.requireDeclaredField(Name.COMPACT_STRINGS, Type._boolean);
+        } else {
+            java_lang_String_coder = null;
+            java_lang_String_COMPACT_STRINGS = null;
+        }
 
         java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
-        java_lang_Throwable_getStackTrace = java_lang_Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
-        HIDDEN_FRAMES = java_lang_Throwable.lookupHiddenField(Name.HIDDEN_FRAMES);
-        java_lang_Throwable_backtrace = java_lang_Throwable.lookupField(Name.backtrace, Type.java_lang_Object);
-        java_lang_Throwable_detailMessage = java_lang_Throwable.lookupField(Name.detailMessage, Type.java_lang_String);
-        java_lang_Throwable_cause = java_lang_Throwable.lookupField(Name.cause, Type.java_lang_Throwable);
-        java_lang_Throwable_depth = java_lang_Throwable.lookupField(Name.depth, Type._int);
+        java_lang_Throwable_getStackTrace = java_lang_Throwable.requireDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
+        HIDDEN_FRAMES = java_lang_Throwable.requireHiddenField(Name.HIDDEN_FRAMES);
+        HIDDEN_EXCEPTION_WRAPPER = java_lang_Throwable.requireHiddenField(Name.HIDDEN_EXCEPTION_WRAPPER);
+        java_lang_Throwable_backtrace = java_lang_Throwable.requireDeclaredField(Name.backtrace, Type.java_lang_Object);
+        java_lang_Throwable_detailMessage = java_lang_Throwable.requireDeclaredField(Name.detailMessage, Type.java_lang_String);
+        java_lang_Throwable_cause = java_lang_Throwable.requireDeclaredField(Name.cause, Type.java_lang_Throwable);
+        if (getJavaVersion().java9OrLater()) {
+            java_lang_Throwable_depth = java_lang_Throwable.requireDeclaredField(Name.depth, Type._int);
+        } else {
+            java_lang_Throwable_depth = null;
+        }
 
         java_lang_StackTraceElement = knownKlass(Type.java_lang_StackTraceElement);
-        java_lang_StackTraceElement_init = java_lang_StackTraceElement.lookupDeclaredMethod(Name._init_, Signature._void_String_String_String_int);
-        java_lang_StackTraceElement_declaringClassObject = java_lang_StackTraceElement.lookupDeclaredField(Name.declaringClassObject, Type.java_lang_Class);
-        java_lang_StackTraceElement_classLoaderName = java_lang_StackTraceElement.lookupDeclaredField(Name.classLoaderName, Type.java_lang_String);
-        java_lang_StackTraceElement_moduleName = java_lang_StackTraceElement.lookupDeclaredField(Name.moduleName, Type.java_lang_String);
-        java_lang_StackTraceElement_moduleVersion = java_lang_StackTraceElement.lookupDeclaredField(Name.moduleVersion, Type.java_lang_String);
-        java_lang_StackTraceElement_declaringClass = java_lang_StackTraceElement.lookupDeclaredField(Name.declaringClass, Type.java_lang_String);
-        java_lang_StackTraceElement_methodName = java_lang_StackTraceElement.lookupDeclaredField(Name.methodName, Type.java_lang_String);
-        java_lang_StackTraceElement_fileName = java_lang_StackTraceElement.lookupDeclaredField(Name.fileName, Type.java_lang_String);
-        java_lang_StackTraceElement_lineNumber = java_lang_StackTraceElement.lookupDeclaredField(Name.lineNumber, Type._int);
+        java_lang_StackTraceElement_init = java_lang_StackTraceElement.requireDeclaredMethod(Name._init_, Signature._void_String_String_String_int);
+        java_lang_StackTraceElement_declaringClass = java_lang_StackTraceElement.requireDeclaredField(Name.declaringClass, Type.java_lang_String);
+        java_lang_StackTraceElement_methodName = java_lang_StackTraceElement.requireDeclaredField(Name.methodName, Type.java_lang_String);
+        java_lang_StackTraceElement_fileName = java_lang_StackTraceElement.requireDeclaredField(Name.fileName, Type.java_lang_String);
+        java_lang_StackTraceElement_lineNumber = java_lang_StackTraceElement.requireDeclaredField(Name.lineNumber, Type._int);
+        if (getJavaVersion().java9OrLater()) {
+            java_lang_StackTraceElement_declaringClassObject = java_lang_StackTraceElement.requireDeclaredField(Name.declaringClassObject, Type.java_lang_Class);
+            java_lang_StackTraceElement_classLoaderName = java_lang_StackTraceElement.requireDeclaredField(Name.classLoaderName, Type.java_lang_String);
+            java_lang_StackTraceElement_moduleName = java_lang_StackTraceElement.requireDeclaredField(Name.moduleName, Type.java_lang_String);
+            java_lang_StackTraceElement_moduleVersion = java_lang_StackTraceElement.requireDeclaredField(Name.moduleVersion, Type.java_lang_String);
+        } else {
+            java_lang_StackTraceElement_declaringClassObject = null;
+            java_lang_StackTraceElement_classLoaderName = null;
+            java_lang_StackTraceElement_moduleName = null;
+            java_lang_StackTraceElement_moduleVersion = null;
+        }
 
         java_lang_Exception = knownKlass(Type.java_lang_Exception);
         java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
@@ -240,83 +254,88 @@ public final class Meta implements ContextAccess {
         this.dispatch = new ExceptionDispatch(this);
 
         java_security_PrivilegedActionException = knownKlass(Type.java_security_PrivilegedActionException);
-        java_security_PrivilegedActionException_init_Exception = java_security_PrivilegedActionException.lookupDeclaredMethod(Name._init_, Signature._void_Exception);
+        java_security_PrivilegedActionException_init_Exception = java_security_PrivilegedActionException.requireDeclaredMethod(Name._init_, Signature._void_Exception);
 
         java_lang_ClassLoader = knownKlass(Type.java_lang_ClassLoader);
         java_lang_ClassLoader$NativeLibrary = knownKlass(Type.java_lang_ClassLoader$NativeLibrary);
-        java_lang_ClassLoader_checkPackageAccess = java_lang_ClassLoader.lookupDeclaredMethod(Name.checkPackageAccess, Signature.Class_PermissionDomain);
-        java_lang_ClassLoader$NativeLibrary_getFromClass = java_lang_ClassLoader$NativeLibrary.lookupDeclaredMethod(Name.getFromClass, Signature.Class);
-        java_lang_ClassLoader_findNative = java_lang_ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
-        java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
-        java_lang_ClassLoader_parent = java_lang_ClassLoader.lookupDeclaredField(Name.parent, Type.java_lang_ClassLoader);
-        java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.lookupDeclaredField(Name.unnamedModule, Type.java_lang_Module);
-        java_lang_ClassLoader_name = java_lang_ClassLoader.lookupDeclaredField(Name.name, Type.java_lang_String);
-        HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
+        java_lang_ClassLoader_checkPackageAccess = java_lang_ClassLoader.requireDeclaredMethod(Name.checkPackageAccess, Signature.Class_PermissionDomain);
+        java_lang_ClassLoader$NativeLibrary_getFromClass = java_lang_ClassLoader$NativeLibrary.requireDeclaredMethod(Name.getFromClass, Signature.Class);
+        java_lang_ClassLoader_findNative = java_lang_ClassLoader.requireDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
+        java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.requireDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
+        java_lang_ClassLoader_parent = java_lang_ClassLoader.requireDeclaredField(Name.parent, Type.java_lang_ClassLoader);
+        HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.requireHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
+        if (getJavaVersion().java9OrLater()) {
+            java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.requireDeclaredField(Name.unnamedModule, Type.java_lang_Module);
+            java_lang_ClassLoader_name = java_lang_ClassLoader.requireDeclaredField(Name.name, Type.java_lang_String);
+        } else {
+            java_lang_ClassLoader_unnamedModule = null;
+            java_lang_ClassLoader_name = null;
+        }
 
-        java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.lookupMethod(Name.getResourceAsStream, Signature.InputStream_String);
-        java_lang_ClassLoader_loadClass = java_lang_ClassLoader.lookupMethod(Name.loadClass, Signature.Class_String);
+        java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.requireDeclaredMethod(Name.getResourceAsStream, Signature.InputStream_String);
+        java_lang_ClassLoader_loadClass = java_lang_ClassLoader.requireDeclaredMethod(Name.loadClass, Signature.Class_String);
         java_io_InputStream = knownKlass(Type.java_io_InputStream);
-        java_io_InputStream_read = java_io_InputStream.lookupMethod(Name.read, Signature._int_byte_array_int_int);
-        java_io_InputStream_close = java_io_InputStream.lookupMethod(Name.close, Signature._void);
+        java_io_InputStream_read = java_io_InputStream.requireDeclaredMethod(Name.read, Signature._int_byte_array_int_int);
+        java_io_InputStream_close = java_io_InputStream.requireDeclaredMethod(Name.close, Signature._void);
         java_io_PrintStream = knownKlass(Type.java_io_PrintStream);
-        java_io_PrintStream_println = java_io_PrintStream.lookupDeclaredMethod(Name.println, Signature._void_String);
+        java_io_PrintStream_println = java_io_PrintStream.requireDeclaredMethod(Name.println, Signature._void_String);
 
         sun_launcher_LauncherHelper = knownKlass(Type.sun_launcher_LauncherHelper);
-        sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.lookupDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
-        sun_launcher_LauncherHelper_ostream = sun_launcher_LauncherHelper.lookupDeclaredField(Name.ostream, Type.java_io_PrintStream);
+        sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.requireDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
+        sun_launcher_LauncherHelper_ostream = sun_launcher_LauncherHelper.requireDeclaredField(Name.ostream, Type.java_io_PrintStream);
 
         // Guest reflection.
         java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
         java_lang_reflect_Constructor = knownKlass(Type.java_lang_reflect_Constructor);
-        HIDDEN_CONSTRUCTOR_KEY = java_lang_reflect_Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
-        HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-        java_lang_reflect_Constructor_clazz = java_lang_reflect_Constructor.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
-        java_lang_reflect_Constructor_root = java_lang_reflect_Constructor.lookupDeclaredField(Name.root, Type.java_lang_reflect_Constructor);
-        java_lang_reflect_Constructor_parameterTypes = java_lang_reflect_Constructor.lookupDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
-        java_lang_reflect_Constructor_signature = java_lang_reflect_Constructor.lookupDeclaredField(Name.signature, Type.java_lang_String);
+        HIDDEN_CONSTRUCTOR_KEY = java_lang_reflect_Constructor.requireHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
+        HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Constructor.requireHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        java_lang_reflect_Constructor_clazz = java_lang_reflect_Constructor.requireDeclaredField(Name.clazz, Type.java_lang_Class);
+        java_lang_reflect_Constructor_root = java_lang_reflect_Constructor.requireDeclaredField(Name.root, Type.java_lang_reflect_Constructor);
+        java_lang_reflect_Constructor_parameterTypes = java_lang_reflect_Constructor.requireDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
+        java_lang_reflect_Constructor_signature = java_lang_reflect_Constructor.requireDeclaredField(Name.signature, Type.java_lang_String);
 
         java_lang_reflect_Method = knownKlass(Type.java_lang_reflect_Method);
-        HIDDEN_METHOD_KEY = java_lang_reflect_Method.lookupHiddenField(Name.HIDDEN_METHOD_KEY);
-        HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Method.lookupHiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-        java_lang_reflect_Method_root = java_lang_reflect_Method.lookupDeclaredField(Name.root, Type.java_lang_reflect_Method);
-        java_lang_reflect_Method_clazz = java_lang_reflect_Method.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
-        java_lang_reflect_Method_parameterTypes = java_lang_reflect_Method.lookupDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
+        HIDDEN_METHOD_KEY = java_lang_reflect_Method.requireHiddenField(Name.HIDDEN_METHOD_KEY);
+        HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Method.requireHiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        java_lang_reflect_Method_root = java_lang_reflect_Method.requireDeclaredField(Name.root, Type.java_lang_reflect_Method);
+        java_lang_reflect_Method_clazz = java_lang_reflect_Method.requireDeclaredField(Name.clazz, Type.java_lang_Class);
+        java_lang_reflect_Method_parameterTypes = java_lang_reflect_Method.requireDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
 
         java_lang_reflect_Parameter = knownKlass(Type.java_lang_reflect_Parameter);
 
         java_lang_reflect_Field = knownKlass(Type.java_lang_reflect_Field);
-        HIDDEN_FIELD_KEY = java_lang_reflect_Field.lookupHiddenField(Name.HIDDEN_FIELD_KEY);
-        HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Field.lookupHiddenField(Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-        java_lang_reflect_Field_root = java_lang_reflect_Field.lookupDeclaredField(Name.root, java_lang_reflect_Field.getType());
-        java_lang_reflect_Field_class = java_lang_reflect_Field.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
-        java_lang_reflect_Field_name = java_lang_reflect_Field.lookupDeclaredField(Name.name, Type.java_lang_String);
-        java_lang_reflect_Field_type = java_lang_reflect_Field.lookupDeclaredField(Name.type, Type.java_lang_Class);
+        HIDDEN_FIELD_KEY = java_lang_reflect_Field.requireHiddenField(Name.HIDDEN_FIELD_KEY);
+        HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Field.requireHiddenField(Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        java_lang_reflect_Field_root = java_lang_reflect_Field.requireDeclaredField(Name.root, java_lang_reflect_Field.getType());
+        java_lang_reflect_Field_class = java_lang_reflect_Field.requireDeclaredField(Name.clazz, Type.java_lang_Class);
+        java_lang_reflect_Field_name = java_lang_reflect_Field.requireDeclaredField(Name.name, Type.java_lang_String);
+        java_lang_reflect_Field_type = java_lang_reflect_Field.requireDeclaredField(Name.type, Type.java_lang_Class);
 
         java_lang_Shutdown = knownKlass(Type.java_lang_Shutdown);
-        java_lang_Shutdown_shutdown = java_lang_Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
+        java_lang_Shutdown_shutdown = java_lang_Shutdown.requireDeclaredMethod(Name.shutdown, Signature._void);
 
         java_nio_Buffer = knownKlass(Type.java_nio_Buffer);
         sun_nio_ch_DirectBuffer = knownKlass(Type.sun_nio_ch_DirectBuffer);
-        java_nio_Buffer_address = java_nio_Buffer.lookupDeclaredField(Name.address, Type._long);
-        java_nio_Buffer_capacity = java_nio_Buffer.lookupDeclaredField(Name.capacity, Type._int);
+        java_nio_Buffer_address = java_nio_Buffer.requireDeclaredField(Name.address, Type._long);
+        java_nio_Buffer_capacity = java_nio_Buffer.requireDeclaredField(Name.capacity, Type._int);
 
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
-        java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
+        java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
-        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.lookupDeclaredMethod(Name._init_, Signature._void_long_int);
+        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.requireDeclaredMethod(Name._init_, Signature._void_long_int);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
-        HIDDEN_HOST_THREAD = java_lang_Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
-        HIDDEN_IS_ALIVE = java_lang_Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
-        HIDDEN_INTERRUPTED = java_lang_Thread.lookupHiddenField(Name.HIDDEN_INTERRUPTED);
-        HIDDEN_DEATH = java_lang_Thread.lookupHiddenField(Name.HIDDEN_DEATH);
-        HIDDEN_DEATH_THROWABLE = java_lang_Thread.lookupHiddenField(Name.HIDDEN_DEATH_THROWABLE);
-        HIDDEN_SUSPEND_LOCK = java_lang_Thread.lookupHiddenField(Name.HIDDEN_SUSPEND_LOCK);
+        HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
+        HIDDEN_IS_ALIVE = java_lang_Thread.requireHiddenField(Name.HIDDEN_IS_ALIVE);
+        HIDDEN_INTERRUPTED = java_lang_Thread.requireHiddenField(Name.HIDDEN_INTERRUPTED);
+        HIDDEN_DEATH = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH);
+        HIDDEN_DEATH_THROWABLE = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH_THROWABLE);
+        HIDDEN_SUSPEND_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_SUSPEND_LOCK);
 
         if (context.EnableManagement) {
-            HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
-            HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
-            HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
+            HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
+            HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
+            HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
         } else {
             HIDDEN_THREAD_BLOCKED_OBJECT = null;
             HIDDEN_THREAD_BLOCKED_COUNT = null;
@@ -324,137 +343,145 @@ public final class Meta implements ContextAccess {
         }
 
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
-        java_lang_ThreadGroup_add = java_lang_ThreadGroup.lookupDeclaredMethod(Name.add, Signature._void_Thread);
-        java_lang_ThreadGroup_remove = java_lang_ThreadGroup.lookupDeclaredMethod(Name.remove, Signature._void_ThreadGroup);
-        java_lang_Thread_dispatchUncaughtException = java_lang_Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
-        java_lang_Thread_init_ThreadGroup_Runnable = java_lang_Thread.lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable);
-        java_lang_Thread_init_ThreadGroup_String = java_lang_Thread.lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String);
-        java_lang_Thread_exit = java_lang_Thread.lookupDeclaredMethod(Name.exit, Signature._void);
-        java_lang_Thread_run = java_lang_Thread.lookupDeclaredMethod(Name.run, Signature._void);
-        java_lang_Thread_threadStatus = java_lang_Thread.lookupDeclaredField(Name.threadStatus, Type._int);
-        java_lang_Thread_tid = java_lang_Thread.lookupDeclaredField(Name.tid, Type._long);
+        java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
+        java_lang_ThreadGroup_remove = java_lang_ThreadGroup.requireDeclaredMethod(Name.remove, Signature._void_ThreadGroup);
+        java_lang_Thread_dispatchUncaughtException = java_lang_Thread.requireDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
+        java_lang_Thread_init_ThreadGroup_Runnable = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable);
+        java_lang_Thread_init_ThreadGroup_String = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String);
+        java_lang_Thread_exit = java_lang_Thread.requireDeclaredMethod(Name.exit, Signature._void);
+        java_lang_Thread_run = java_lang_Thread.requireDeclaredMethod(Name.run, Signature._void);
+        java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
+        java_lang_Thread_tid = java_lang_Thread.requireDeclaredField(Name.tid, Type._long);
+        java_lang_Thread_contextClassLoader = java_lang_Thread.requireDeclaredField(Name.contextClassLoader, Type.java_lang_ClassLoader);
 
-        java_lang_Thread_group = java_lang_Thread.lookupDeclaredField(Name.group, java_lang_ThreadGroup.getType());
-        java_lang_Thread_name = java_lang_Thread.lookupDeclaredField(Name.name, java_lang_String.getType());
-        java_lang_Thread_priority = java_lang_Thread.lookupDeclaredField(Name.priority, _int.getType());
-        java_lang_Thread_blockerLock = java_lang_Thread.lookupDeclaredField(Name.blockerLock, java_lang_Object.getType());
-        java_lang_Thread_daemon = java_lang_Thread.lookupDeclaredField(Name.daemon, Type._boolean);
-        java_lang_Thread_inheritedAccessControlContext = java_lang_Thread.lookupDeclaredField(Name.inheritedAccessControlContext, Type.java_security_AccessControlContext);
-        java_lang_Thread_checkAccess = java_lang_Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
-        java_lang_Thread_stop = java_lang_Thread.lookupDeclaredMethod(Name.stop, Signature._void);
-        java_lang_ThreadGroup_maxPriority = java_lang_ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
+        java_lang_Thread_group = java_lang_Thread.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
+        java_lang_Thread_name = java_lang_Thread.requireDeclaredField(Name.name, java_lang_String.getType());
+        java_lang_Thread_priority = java_lang_Thread.requireDeclaredField(Name.priority, _int.getType());
+        java_lang_Thread_blockerLock = java_lang_Thread.requireDeclaredField(Name.blockerLock, java_lang_Object.getType());
+        java_lang_Thread_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
+        java_lang_Thread_inheritedAccessControlContext = java_lang_Thread.requireDeclaredField(Name.inheritedAccessControlContext, Type.java_security_AccessControlContext);
+        java_lang_Thread_checkAccess = java_lang_Thread.requireDeclaredMethod(Name.checkAccess, Signature._void);
+        java_lang_Thread_stop = java_lang_Thread.requireDeclaredMethod(Name.stop, Signature._void);
+        java_lang_ThreadGroup_maxPriority = java_lang_ThreadGroup.requireDeclaredField(Name.maxPriority, Type._int);
 
         java_lang_ref_Finalizer$FinalizerThread = knownKlass(Type.java_lang_ref_Finalizer$FinalizerThread);
         java_lang_ref_Reference$ReferenceHandler = knownKlass(Type.java_lang_ref_Reference$ReferenceHandler);
+        misc_InnocuousThread = knownKlassDiffVersion(Type.sun_misc_InnocuousThread, Type.jdk_internal_misc_InnocuousThread);
 
         java_lang_System = knownKlass(Type.java_lang_System);
-        java_lang_System_exit = java_lang_System.lookupDeclaredMethod(Name.exit, Signature._void_int);
-        java_lang_System_securityManager = java_lang_System.lookupDeclaredField(Name.security, Type.java_lang_SecurityManager);
+        java_lang_System_exit = java_lang_System.requireDeclaredMethod(Name.exit, Signature._void_int);
+        java_lang_System_securityManager = java_lang_System.requireDeclaredField(Name.security, Type.java_lang_SecurityManager);
 
         java_security_ProtectionDomain = knownKlass(Type.java_security_ProtectionDomain);
-        java_security_ProtectionDomain_impliesCreateAccessControlContext = java_security_ProtectionDomain.lookupDeclaredMethod(Name.impliesCreateAccessControlContext, Signature._boolean);
-        java_security_ProtectionDomain_init_CodeSource_PermissionCollection = java_security_ProtectionDomain.lookupDeclaredMethod(Name._init_, Signature._void_CodeSource_PermissionCollection);
+        java_security_ProtectionDomain_impliesCreateAccessControlContext = java_security_ProtectionDomain.requireDeclaredMethod(Name.impliesCreateAccessControlContext, Signature._boolean);
+        java_security_ProtectionDomain_init_CodeSource_PermissionCollection = java_security_ProtectionDomain.requireDeclaredMethod(Name._init_, Signature._void_CodeSource_PermissionCollection);
 
         java_security_AccessControlContext = knownKlass(Type.java_security_AccessControlContext);
-        java_security_AccessControlContext_context = java_security_AccessControlContext.lookupDeclaredField(Name.context, Type.java_security_ProtectionDomain_array);
-        java_security_AccessControlContext_privilegedContext = java_security_AccessControlContext.lookupDeclaredField(Name.privilegedContext, Type.java_security_AccessControlContext);
-        java_security_AccessControlContext_isPrivileged = java_security_AccessControlContext.lookupDeclaredField(Name.isPrivileged, Type._boolean);
-        java_security_AccessControlContext_isAuthorized = java_security_AccessControlContext.lookupDeclaredField(Name.isAuthorized, Type._boolean);
+        java_security_AccessControlContext_context = java_security_AccessControlContext.requireDeclaredField(Name.context, Type.java_security_ProtectionDomain_array);
+        java_security_AccessControlContext_privilegedContext = java_security_AccessControlContext.requireDeclaredField(Name.privilegedContext, Type.java_security_AccessControlContext);
+        java_security_AccessControlContext_isPrivileged = java_security_AccessControlContext.requireDeclaredField(Name.isPrivileged, Type._boolean);
+        java_security_AccessControlContext_isAuthorized = java_security_AccessControlContext.requireDeclaredField(Name.isAuthorized, Type._boolean);
         java_security_AccessController = knownKlass(Type.java_security_AccessController);
 
         java_lang_invoke_MethodType = knownKlass(Type.java_lang_invoke_MethodType);
-        java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
-        java_lang_invoke_MethodType_fromMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.MethodType_String_ClassLoader);
+        java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.requireDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
+        java_lang_invoke_MethodType_fromMethodDescriptorString = java_lang_invoke_MethodType.requireDeclaredMethod(Name.fromMethodDescriptorString, Signature.MethodType_String_ClassLoader);
 
         java_lang_invoke_MemberName = knownKlass(Type.java_lang_invoke_MemberName);
-        HIDDEN_VMINDEX = java_lang_invoke_MemberName.lookupHiddenField(Name.HIDDEN_VMINDEX);
-        HIDDEN_VMTARGET = java_lang_invoke_MemberName.lookupHiddenField(Name.HIDDEN_VMTARGET);
-        java_lang_invoke_MemberName_getSignature = java_lang_invoke_MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
-        java_lang_invoke_MemberName_clazz = java_lang_invoke_MemberName.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
-        java_lang_invoke_MemberName_name = java_lang_invoke_MemberName.lookupDeclaredField(Name.name, Type.java_lang_String);
-        java_lang_invoke_MemberName_type = java_lang_invoke_MemberName.lookupDeclaredField(Name.type, Type.java_lang_Object);
-        java_lang_invoke_MemberName_flags = java_lang_invoke_MemberName.lookupDeclaredField(Name.flags, Type._int);
+        HIDDEN_VMINDEX = java_lang_invoke_MemberName.requireHiddenField(Name.HIDDEN_VMINDEX);
+        HIDDEN_VMTARGET = java_lang_invoke_MemberName.requireHiddenField(Name.HIDDEN_VMTARGET);
+        java_lang_invoke_MemberName_getSignature = java_lang_invoke_MemberName.requireDeclaredMethod(Name.getSignature, Signature.String);
+        java_lang_invoke_MemberName_clazz = java_lang_invoke_MemberName.requireDeclaredField(Name.clazz, Type.java_lang_Class);
+        java_lang_invoke_MemberName_name = java_lang_invoke_MemberName.requireDeclaredField(Name.name, Type.java_lang_String);
+        java_lang_invoke_MemberName_type = java_lang_invoke_MemberName.requireDeclaredField(Name.type, Type.java_lang_Object);
+        java_lang_invoke_MemberName_flags = java_lang_invoke_MemberName.requireDeclaredField(Name.flags, Type._int);
 
         java_lang_invoke_MethodHandle = knownKlass(Type.java_lang_invoke_MethodHandle);
-        java_lang_invoke_MethodHandle_invokeExact = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_Object_array);
-        java_lang_invoke_MethodHandle_invoke = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.invoke, Signature.Object_Object_array);
-        java_lang_invoke_MethodHandle_invokeBasic = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.invokeBasic, Signature.Object_Object_array);
-        java_lang_invoke_MethodHandle_invokeWithArguments = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.invokeWithArguments, Signature.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToInterface = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.linkToInterface, Signature.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToSpecial = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToStatic = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToVirtual = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_Object_array);
-        java_lang_invoke_MethodHandle_type = java_lang_invoke_MethodHandle.lookupDeclaredField(Name.type, Type.java_lang_invoke_MethodType);
-        java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.lookupDeclaredField(Name.form, Type.java_lang_invoke_LambdaForm);
+        java_lang_invoke_MethodHandle_invokeExact = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.invokeExact, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_invoke = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.invoke, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_invokeBasic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.invokeBasic, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_invokeWithArguments = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.invokeWithArguments, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_linkToInterface = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.linkToInterface, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_linkToSpecial = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.linkToSpecial, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_linkToStatic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.linkToStatic, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_linkToVirtual = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.linkToVirtual, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_type = java_lang_invoke_MethodHandle.requireDeclaredField(Name.type, Type.java_lang_invoke_MethodType);
+        java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.requireDeclaredField(Name.form, Type.java_lang_invoke_LambdaForm);
 
         java_lang_invoke_MethodHandles = knownKlass(Type.java_lang_invoke_MethodHandles);
-        java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.MethodHandles$Lookup);
+        java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.requireDeclaredMethod(Name.lookup, Signature.MethodHandles$Lookup);
 
         java_lang_invoke_CallSite = knownKlass(Type.java_lang_invoke_CallSite);
-        java_lang_invoke_CallSite_target = java_lang_invoke_CallSite.lookupDeclaredField(Name.target, Type.java_lang_invoke_MethodHandle);
+        java_lang_invoke_CallSite_target = java_lang_invoke_CallSite.requireDeclaredField(Name.target, Type.java_lang_invoke_MethodHandle);
 
         java_lang_invoke_LambdaForm = knownKlass(Type.java_lang_invoke_LambdaForm);
-        java_lang_invoke_LambdaForm_vmentry = java_lang_invoke_LambdaForm.lookupDeclaredField(Name.vmentry, Type.java_lang_invoke_MemberName);
-        java_lang_invoke_LambdaForm_isCompiled = java_lang_invoke_LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
-        java_lang_invoke_LambdaForm_compileToBytecode = java_lang_invoke_LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.MemberName);
+        java_lang_invoke_LambdaForm_vmentry = java_lang_invoke_LambdaForm.requireDeclaredField(Name.vmentry, Type.java_lang_invoke_MemberName);
+        java_lang_invoke_LambdaForm_isCompiled = java_lang_invoke_LambdaForm.requireDeclaredField(Name.isCompiled, Type._boolean);
 
         java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
-        java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
-        java_lang_invoke_MethodHandleNatives_linkCallSite8 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
-                        Signature.MemberName_Object_Object_Object_Object_Object_Object_array);
-        java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant,
+        java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
+        java_lang_invoke_MethodHandleNatives_linkCallSite = requireMethodDiffVersion(java_lang_invoke_MethodHandleNatives,
+                        Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array,
+                        Name.linkCallSite, Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
+        java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethodHandleConstant,
                         Signature.MethodHandle_Class_int_Class_String_Object);
-        java_lang_invoke_MethodHandleNatives_findMethodHandleType = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_Class_Class);
+        java_lang_invoke_MethodHandleNatives_findMethodHandleType = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_Class_Class);
 
         java_lang_ref_Finalizer = knownKlass(Type.java_lang_ref_Finalizer);
-        java_lang_ref_Finalizer_register = java_lang_ref_Finalizer.lookupDeclaredMethod(Name.register, Signature._void_Object);
+        java_lang_ref_Finalizer_register = java_lang_ref_Finalizer.requireDeclaredMethod(Name.register, Signature._void_Object);
 
-        java_lang_Object_wait = java_lang_Object.lookupDeclaredMethod(Name.wait, Signature._void_long);
-        java_lang_Object_toString = java_lang_Object.lookupDeclaredMethod(Name.toString, Signature.String);
+        java_lang_Object_wait = java_lang_Object.requireDeclaredMethod(Name.wait, Signature._void_long);
+        java_lang_Object_toString = java_lang_Object.requireDeclaredMethod(Name.toString, Signature.String);
 
         // References
         java_lang_ref_Reference = knownKlass(Type.java_lang_ref_Reference);
-        java_lang_ref_Reference_referent = java_lang_ref_Reference.lookupDeclaredField(Name.referent, Type.java_lang_Object);
-        java_lang_ref_Reference_enqueue = java_lang_ref_Reference.lookupDeclaredMethod(Name.enqueue, Signature._boolean);
+        java_lang_ref_Reference_referent = java_lang_ref_Reference.requireDeclaredField(Name.referent, Type.java_lang_Object);
+        java_lang_ref_Reference_enqueue = java_lang_ref_Reference.requireDeclaredMethod(Name.enqueue, Signature._boolean);
 
-        java_lang_ref_Reference_discovered = java_lang_ref_Reference.lookupDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
-        java_lang_ref_Reference_next = java_lang_ref_Reference.lookupDeclaredField(Name.next, Type.java_lang_ref_Reference);
-        java_lang_ref_Reference_queue = java_lang_ref_Reference.lookupDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
+        java_lang_ref_Reference_discovered = java_lang_ref_Reference.requireDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
+        java_lang_ref_Reference_next = java_lang_ref_Reference.requireDeclaredField(Name.next, Type.java_lang_ref_Reference);
+        java_lang_ref_Reference_queue = java_lang_ref_Reference.requireDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
         java_lang_ref_ReferenceQueue = knownKlass(Type.java_lang_ref_ReferenceQueue);
-        java_lang_ref_ReferenceQueue_NULL = java_lang_ref_ReferenceQueue.lookupDeclaredField(Name.NULL, Type.java_lang_ref_ReferenceQueue);
+        java_lang_ref_ReferenceQueue_NULL = java_lang_ref_ReferenceQueue.requireDeclaredField(Name.NULL, Type.java_lang_ref_ReferenceQueue);
 
         java_lang_ref_WeakReference = knownKlass(Type.java_lang_ref_WeakReference);
         java_lang_ref_SoftReference = knownKlass(Type.java_lang_ref_SoftReference);
         java_lang_ref_PhantomReference = knownKlass(Type.java_lang_ref_PhantomReference);
         java_lang_ref_FinalReference = knownKlass(Type.java_lang_ref_FinalReference);
-        HIDDEN_HOST_REFERENCE = java_lang_ref_Reference.lookupHiddenField(Name.HIDDEN_HOST_REFERENCE);
+        HIDDEN_HOST_REFERENCE = java_lang_ref_Reference.requireHiddenField(Name.HIDDEN_HOST_REFERENCE);
 
         java_lang_AssertionStatusDirectives = knownKlass(Type.java_lang_AssertionStatusDirectives);
-        java_lang_AssertionStatusDirectives_classes = java_lang_AssertionStatusDirectives.lookupField(Name.classes, Type.java_lang_String_array);
-        java_lang_AssertionStatusDirectives_classEnabled = java_lang_AssertionStatusDirectives.lookupField(Name.classEnabled, Type._boolean_array);
-        java_lang_AssertionStatusDirectives_packages = java_lang_AssertionStatusDirectives.lookupField(Name.packages, Type.java_lang_String_array);
-        java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
-        java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
+        java_lang_AssertionStatusDirectives_classes = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.classes, Type.java_lang_String_array);
+        java_lang_AssertionStatusDirectives_classEnabled = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.classEnabled, Type._boolean_array);
+        java_lang_AssertionStatusDirectives_packages = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.packages, Type.java_lang_String_array);
+        java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.packageEnabled, Type._boolean_array);
+        java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.deflt, Type._boolean);
 
-        java_lang_Class_classRedefinedCount = java_lang_Class.lookupField(Name.classRedefinedCount, Type._int);
-        java_lang_Class_name = java_lang_Class.lookupField(Name.name, Type.java_lang_String);
+        java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Name.classRedefinedCount, Type._int);
+        java_lang_Class_name = java_lang_Class.requireDeclaredField(Name.name, Type.java_lang_String);
 
         // Classes and Members that differ from Java 8 to 11
 
-        java_lang_Class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
+        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
 
         if (getJavaVersion().java9OrLater()) {
+            java_lang_System_initializeSystemClass = null;
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
             java_lang_StackWalker = knownKlass(Type.java_lang_StackWalker);
             java_lang_AbstractStackWalker = knownKlass(Type.java_lang_AbstractStackWalker);
-            java_lang_AbstractStackWalker_doStackWalk = java_lang_AbstractStackWalker.lookupDeclaredMethod(Name.doStackWalk, Signature.Object_long_int_int_int_int);
+            java_lang_AbstractStackWalker_doStackWalk = java_lang_AbstractStackWalker.requireDeclaredMethod(Name.doStackWalk, Signature.Object_long_int_int_int_int);
 
             java_lang_StackStreamFactory = knownKlass(Type.java_lang_StackStreamFactory);
 
             java_lang_StackFrameInfo = knownKlass(Type.java_lang_StackFrameInfo);
-            java_lang_StackFrameInfo_memberName = java_lang_StackFrameInfo.lookupDeclaredField(Name.memberName, Type.java_lang_Object);
-            java_lang_StackFrameInfo_bci = java_lang_StackFrameInfo.lookupDeclaredField(Name.bci, Type._int);
+            java_lang_StackFrameInfo_memberName = java_lang_StackFrameInfo.requireDeclaredField(Name.memberName, Type.java_lang_Object);
+            java_lang_StackFrameInfo_bci = java_lang_StackFrameInfo.requireDeclaredField(Name.bci, Type._int);
+
+            java_lang_System_initPhase1 = java_lang_System.requireDeclaredMethod(Name.initPhase1, Signature._void);
+            java_lang_System_initPhase2 = java_lang_System.requireDeclaredMethod(Name.initPhase2, Signature._int_boolean_boolean);
+            java_lang_System_initPhase3 = java_lang_System.requireDeclaredMethod(Name.initPhase3, Signature._void);
         } else {
+            java_lang_System_initializeSystemClass = java_lang_System.requireDeclaredMethod(Name.initializeSystemClass, Signature._void);
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
             java_lang_StackWalker = null;
             java_lang_AbstractStackWalker = null;
@@ -465,15 +492,19 @@ public final class Meta implements ContextAccess {
             java_lang_StackFrameInfo = null;
             java_lang_StackFrameInfo_memberName = null;
             java_lang_StackFrameInfo_bci = null;
+
+            java_lang_System_initPhase1 = null;
+            java_lang_System_initPhase2 = null;
+            java_lang_System_initPhase3 = null;
         }
 
         if (getJavaVersion().modulesEnabled()) {
             java_lang_Module = knownKlass(Type.java_lang_Module);
-            java_lang_Module_name = java_lang_Module.lookupField(Name.name, Type.java_lang_String);
-            java_lang_Module_loader = java_lang_Module.lookupField(Name.loader, Type.java_lang_ClassLoader);
-            HIDDEN_MODULE_ENTRY = java_lang_Module.lookupHiddenField(Name.HIDDEN_MODULE_ENTRY);
+            java_lang_Module_name = java_lang_Module.requireDeclaredField(Name.name, Type.java_lang_String);
+            java_lang_Module_loader = java_lang_Module.requireDeclaredField(Name.loader, Type.java_lang_ClassLoader);
+            HIDDEN_MODULE_ENTRY = java_lang_Module.requireHiddenField(Name.HIDDEN_MODULE_ENTRY);
 
-            java_lang_Class_module = java_lang_Class.lookupField(Name.module, Type.java_lang_Module);
+            java_lang_Class_module = java_lang_Class.requireDeclaredField(Name.module, Type.java_lang_Module);
         } else {
             java_lang_Module = null;
             java_lang_Module_name = null;
@@ -483,83 +514,101 @@ public final class Meta implements ContextAccess {
             java_lang_Class_module = null;
         }
 
-        java_lang_System_initializeSystemClass = java_lang_System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
-        java_lang_System_initPhase1 = java_lang_System.lookupDeclaredMethod(Name.initPhase1, Signature._void);
-        java_lang_System_initPhase2 = java_lang_System.lookupDeclaredMethod(Name.initPhase2, Signature._int_boolean_boolean);
-        java_lang_System_initPhase3 = java_lang_System.lookupDeclaredMethod(Name.initPhase3, Signature._void);
-
         sun_reflect_MagicAccessorImpl = knownKlassDiffVersion(Type.sun_reflect_MagicAccessorImpl, Type.jdk_internal_reflect_MagicAccessorImpl);
         sun_reflect_DelegatingClassLoader = knownKlassDiffVersion(Type.sun_reflect_DelegatingClassLoader, Type.jdk_internal_reflect_DelegatingClassLoader);
 
-        java_lang_reflect_Method_override = java_lang_reflect_Method.lookupDeclaredField(Name.override, Type._boolean);
         sun_reflect_MethodAccessorImpl = knownKlassDiffVersion(Type.sun_reflect_MethodAccessorImpl, Type.jdk_internal_reflect_MethodAccessorImpl);
         sun_reflect_ConstructorAccessorImpl = knownKlassDiffVersion(Type.sun_reflect_ConstructorAccessorImpl, Type.jdk_internal_reflect_ConstructorAccessorImpl);
 
         sun_misc_VM = knownKlassDiffVersion(Type.sun_misc_VM, Type.jdk_internal_misc_VM);
-        sun_misc_VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
+        sun_misc_VM_toThreadState = sun_misc_VM.requireDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
+
+        sun_misc_Signal = knownKlassDiffVersion(Type.sun_misc_Signal, Type.jdk_internal_misc_Signal);
+        sun_misc_Signal_name = sun_misc_Signal.requireDeclaredField(Name.name, Type.java_lang_String);
+        sun_misc_Signal_init_String = sun_misc_Signal.requireDeclaredMethod(Name._init_, Signature._void_String);
+        sun_misc_NativeSignalHandler = knownKlassDiffVersion(Type.sun_misc_NativeSignalHandler, Type.jdk_internal_misc_Signal$NativeHandler);
+        sun_misc_NativeSignalHandler_handler = sun_misc_NativeSignalHandler.requireDeclaredField(Name.handler, Type._long);
+        sun_misc_SignalHandler = knownKlassDiffVersion(Type.sun_misc_SignalHandler, Type.jdk_internal_misc_Signal$Handler);
+        sun_misc_SignalHandler_handle = requireMethodDiffVersion(sun_misc_SignalHandler,
+                        Name.handle, Signature._void_sun_misc_Signal,
+                        Name.handle, Signature._void_jdk_internal_misc_Signal);
+        sun_misc_SignalHandler_SIG_DFL = requireFieldDiffVersion(sun_misc_SignalHandler,
+                        Name.SIG_DFL, Type.sun_misc_SignalHandler,
+                        Name.SIG_DFL, Type.jdk_internal_misc_Signal$Handler);
+        sun_misc_SignalHandler_SIG_IGN = requireFieldDiffVersion(sun_misc_SignalHandler,
+                        Name.SIG_IGN, Type.sun_misc_SignalHandler,
+                        Name.SIG_IGN, Type.jdk_internal_misc_Signal$Handler);
 
         sun_reflect_ConstantPool = knownKlassDiffVersion(Type.sun_reflect_ConstantPool, Type.jdk_internal_reflect_ConstantPool);
-        sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
+        sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.requireDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
 
         sun_misc_Cleaner = knownKlassDiffVersion(Type.sun_misc_Cleaner, Type.jdk_internal_ref_Cleaner);
 
-        java_lang_ref_Reference_pending = java_lang_ref_Reference.lookupDeclaredField(Name.pending, Type.java_lang_ref_Reference);
-        java_lang_ref_Reference_lock = lookupFieldDiffVersion(java_lang_ref_Reference, Name.lock, Type.java_lang_ref_Reference$Lock, Name.processPendingLock, Type.java_lang_Object);
+        if (getJavaVersion().java8OrEarlier()) {
+            java_lang_ref_Reference_pending = java_lang_ref_Reference.requireDeclaredField(Name.pending, Type.java_lang_ref_Reference);
+        } else {
+            java_lang_ref_Reference_pending = null;
+        }
+        java_lang_ref_Reference_lock = requireFieldDiffVersion(java_lang_ref_Reference,
+                        Name.lock, Type.java_lang_ref_Reference$Lock,
+                        Name.processPendingLock, Type.java_lang_Object);
 
-        sun_reflect_Reflection_getCallerClass = knownKlassDiffVersion(Type.sun_reflect_Reflection, Type.jdk_internal_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
+        sun_reflect_Reflection_getCallerClass = knownKlassDiffVersion(Type.sun_reflect_Reflection, Type.jdk_internal_reflect_Reflection).requireDeclaredMethod(Name.getCallerClass, Signature.Class);
 
-        java_lang_invoke_MethodHandleNatives_linkCallSite11 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
-                        Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
-        java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkDynamicConstant,
-                        Signature.Object_Object_int_Object_Object_Object_Object);
+        if (getJavaVersion().java11OrLater()) {
+            java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
+                            Signature.Object_Object_int_Object_Object_Object_Object);
+        } else {
+            java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
+        }
 
         // Interop
         java_time_Duration = knownKlass(Type.java_time_Duration);
-        java_time_Duration_seconds = java_time_Duration.lookupDeclaredField(Name.seconds, Type._long);
-        java_time_Duration_nanos = java_time_Duration.lookupDeclaredField(Name.nanos, Type._int);
+        java_time_Duration_seconds = java_time_Duration.requireDeclaredField(Name.seconds, Type._long);
+        java_time_Duration_nanos = java_time_Duration.requireDeclaredField(Name.nanos, Type._int);
 
         java_time_Instant = knownKlass(Type.java_time_Instant);
-        java_time_Instant_seconds = java_time_Instant.lookupDeclaredField(Name.seconds, Type._long);
-        java_time_Instant_nanos = java_time_Instant.lookupDeclaredField(Name.nanos, Type._int);
-        java_time_Instant_atZone = java_time_Instant.lookupDeclaredMethod(Name.atZone, Signature.ZonedDateTime_ZoneId);
+        java_time_Instant_seconds = java_time_Instant.requireDeclaredField(Name.seconds, Type._long);
+        java_time_Instant_nanos = java_time_Instant.requireDeclaredField(Name.nanos, Type._int);
+        java_time_Instant_atZone = java_time_Instant.requireDeclaredMethod(Name.atZone, Signature.ZonedDateTime_ZoneId);
         assert java_time_Instant_atZone.isFinalFlagSet() || java_time_Instant.isFinalFlagSet();
 
         java_time_LocalTime = knownKlass(Type.java_time_LocalTime);
-        java_time_LocalTime_hour = java_time_LocalTime.lookupDeclaredField(Name.hour, Type._byte);
-        java_time_LocalTime_minute = java_time_LocalTime.lookupDeclaredField(Name.minute, Type._byte);
-        java_time_LocalTime_second = java_time_LocalTime.lookupDeclaredField(Name.second, Type._byte);
-        java_time_LocalTime_nano = java_time_LocalTime.lookupDeclaredField(Name.nano, Type._int);
+        java_time_LocalTime_hour = java_time_LocalTime.requireDeclaredField(Name.hour, Type._byte);
+        java_time_LocalTime_minute = java_time_LocalTime.requireDeclaredField(Name.minute, Type._byte);
+        java_time_LocalTime_second = java_time_LocalTime.requireDeclaredField(Name.second, Type._byte);
+        java_time_LocalTime_nano = java_time_LocalTime.requireDeclaredField(Name.nano, Type._int);
 
         java_time_LocalDateTime = knownKlass(Type.java_time_LocalDateTime);
-        java_time_LocalDateTime_toLocalDate = java_time_LocalDateTime.lookupDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
-        java_time_LocalDateTime_toLocalTime = java_time_LocalDateTime.lookupDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
+        java_time_LocalDateTime_toLocalDate = java_time_LocalDateTime.requireDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
+        java_time_LocalDateTime_toLocalTime = java_time_LocalDateTime.requireDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
         assert java_time_LocalDateTime_toLocalTime.isFinalFlagSet() || java_time_LocalDateTime.isFinalFlagSet();
 
         java_time_LocalDate = knownKlass(Type.java_time_LocalDate);
-        java_time_LocalDate_year = java_time_LocalDate.lookupDeclaredField(Name.year, Type._int);
+        java_time_LocalDate_year = java_time_LocalDate.requireDeclaredField(Name.year, Type._int);
         assert java_time_LocalDate_year.getKind() == JavaKind.Int;
-        java_time_LocalDate_month = java_time_LocalDate.lookupDeclaredField(Name.month, Type._short);
+        java_time_LocalDate_month = java_time_LocalDate.requireDeclaredField(Name.month, Type._short);
         assert java_time_LocalDate_month.getKind() == JavaKind.Short;
-        java_time_LocalDate_day = java_time_LocalDate.lookupDeclaredField(Name.day, Type._short);
+        java_time_LocalDate_day = java_time_LocalDate.requireDeclaredField(Name.day, Type._short);
         assert java_time_LocalDate_day.getKind() == JavaKind.Short;
 
         java_time_ZonedDateTime = knownKlass(Type.java_time_ZonedDateTime);
-        java_time_ZonedDateTime_toLocalTime = java_time_ZonedDateTime.lookupDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
+        java_time_ZonedDateTime_toLocalTime = java_time_ZonedDateTime.requireDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
         assert java_time_ZonedDateTime_toLocalTime.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
 
-        java_time_ZonedDateTime_toLocalDate = java_time_ZonedDateTime.lookupDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
+        java_time_ZonedDateTime_toLocalDate = java_time_ZonedDateTime.requireDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
         assert java_time_ZonedDateTime_toLocalDate.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
 
-        java_time_ZonedDateTime_getZone = java_time_ZonedDateTime.lookupDeclaredMethod(Name.getZone, Signature.ZoneId);
+        java_time_ZonedDateTime_getZone = java_time_ZonedDateTime.requireDeclaredMethod(Name.getZone, Signature.ZoneId);
         assert java_time_ZonedDateTime_getZone.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
-        java_time_ZonedDateTime_toInstant = java_time_ZonedDateTime.lookupMethod(Name.toInstant, Signature.Instant); // default
+        java_time_ZonedDateTime_toInstant = java_time_ZonedDateTime.requireMethod(Name.toInstant, Signature.Instant); // default
         assert java_time_ZonedDateTime_toInstant.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
 
         java_util_Date = knownKlass(Type.java_util_Date);
-        java_util_Date_toInstant = java_util_Date.lookupDeclaredMethod(Name.toInstant, Signature.Instant);
+        java_util_Date_toInstant = java_util_Date.requireDeclaredMethod(Name.toInstant, Signature.Instant);
         java_time_ZoneId = knownKlass(Type.java_time_ZoneId);
-        java_time_ZoneId_getId = java_time_ZoneId.lookupDeclaredMethod(Name.getId, Signature.String);
-        java_time_ZoneId_of = java_time_ZoneId.lookupDeclaredMethod(Name.of, Signature.ZoneId_String);
+        java_time_ZoneId_getId = java_time_ZoneId.requireDeclaredMethod(Name.getId, Signature.String);
+        java_time_ZoneId_of = java_time_ZoneId.requireDeclaredMethod(Name.of, Signature.ZoneId_String);
         assert java_time_ZoneId_of.isStatic();
     }
 
@@ -571,18 +620,18 @@ public final class Meta implements ContextAccess {
      */
     public void postSystemInit() {
         // java.management
-        java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
+        java_lang_management_MemoryUsage = loadKlassWithBootClassLoader(Type.java_lang_management_MemoryUsage);
 
-        java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
+        java_lang_management_ThreadInfo = loadKlassWithBootClassLoader(Type.java_lang_management_ThreadInfo);
 
-        sun_management_ManagementFactory = knownKlassDiffVersion(Type.sun_management_ManagementFactory, Type.sun_management_ManagementFactoryHelper);
+        sun_management_ManagementFactory = loadKlassWithBootClassLoaderDiffVersion(Type.sun_management_ManagementFactory, Type.sun_management_ManagementFactoryHelper);
         if (sun_management_ManagementFactory != null) {
             // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
-            sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
+            sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.requireDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
             // MemoryManagerMXBean createMemoryManager(String var0)
-            sun_management_ManagementFactory_createMemoryManager = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryManager, Signature.MemoryManagerMXBean_String);
+            sun_management_ManagementFactory_createMemoryManager = sun_management_ManagementFactory.requireDeclaredMethod(Name.createMemoryManager, Signature.MemoryManagerMXBean_String);
             // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
-            sun_management_ManagementFactory_createGarbageCollector = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createGarbageCollector,
+            sun_management_ManagementFactory_createGarbageCollector = sun_management_ManagementFactory.requireDeclaredMethod(Name.createGarbageCollector,
                             Signature.GarbageCollectorMXBean_String_String);
         } else {
             // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
@@ -598,11 +647,21 @@ public final class Meta implements ContextAccess {
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
     }
 
-    private Field lookupFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
+    private Method requireMethodDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Signature> s1, Symbol<Name> n2, Symbol<Signature> s2) {
         if (getJavaVersion().java8OrEarlier()) {
-            return klass.lookupDeclaredField(n1, t1);
+            return klass.requireDeclaredMethod(n1, s1);
         } else if (getJavaVersion().java9OrLater()) {
-            return klass.lookupDeclaredField(n2, t2);
+            return klass.requireDeclaredMethod(n2, s2);
+        } else {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private Field requireFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
+        if (getJavaVersion().java8OrEarlier()) {
+            return klass.requireDeclaredField(n1, t1);
+        } else if (getJavaVersion().java9OrLater()) {
+            return klass.requireDeclaredField(n2, t2);
         } else {
             throw EspressoError.shouldNotReachHere();
         }
@@ -613,6 +672,16 @@ public final class Meta implements ContextAccess {
             return knownKlass(t1);
         } else if (getJavaVersion().java9OrLater()) {
             return knownKlass(t2);
+        } else {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private ObjectKlass loadKlassWithBootClassLoaderDiffVersion(Symbol<Type> t1, Symbol<Type> t2) {
+        if (getJavaVersion().java8OrEarlier()) {
+            return loadKlassWithBootClassLoader(t1);
+        } else if (getJavaVersion().java9OrLater()) {
+            return loadKlassWithBootClassLoader(t2);
         } else {
             throw EspressoError.shouldNotReachHere();
         }
@@ -698,7 +767,6 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
     public final Method java_lang_String_toCharArray;
-    public final Method java_lang_String_charAt;
     public final Method java_lang_String_indexOf;
     public final Method java_lang_String_init_char_array;
 
@@ -751,7 +819,6 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_METHOD_KEY;
     public final Field java_lang_reflect_Method_root;
     public final Field java_lang_reflect_Method_clazz;
-    public final Field java_lang_reflect_Method_override;
     public final Field java_lang_reflect_Method_parameterTypes;
 
     public final ObjectKlass sun_reflect_MethodAccessorImpl;
@@ -809,6 +876,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_Throwable;
     public final Method java_lang_Throwable_getStackTrace;
     public final Field HIDDEN_FRAMES;
+    public final Field HIDDEN_EXCEPTION_WRAPPER;
     public final Field java_lang_Throwable_backtrace;
     public final Field java_lang_Throwable_detailMessage;
     public final Field java_lang_Throwable_cause;
@@ -864,6 +932,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_Thread;
     public final Field java_lang_Thread_threadStatus;
     public final Field java_lang_Thread_tid;
+    public final Field java_lang_Thread_contextClassLoader;
     public final Method java_lang_Thread_init_ThreadGroup_Runnable;
     public final Method java_lang_Thread_init_ThreadGroup_String;
     public final Method java_lang_Thread_exit;
@@ -889,10 +958,21 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_ref_Finalizer$FinalizerThread;
     public final ObjectKlass java_lang_ref_Reference$ReferenceHandler;
+    public final ObjectKlass misc_InnocuousThread;
 
     public final ObjectKlass sun_misc_VM;
     public final Method sun_misc_VM_toThreadState;
     public final ObjectKlass sun_reflect_ConstantPool;
+
+    public final ObjectKlass sun_misc_Signal;
+    public final Field sun_misc_Signal_name;
+    public final Method sun_misc_Signal_init_String;
+    public final ObjectKlass sun_misc_NativeSignalHandler;
+    public final Field sun_misc_NativeSignalHandler_handler;
+    public final ObjectKlass sun_misc_SignalHandler;
+    public final Method sun_misc_SignalHandler_handle;
+    public final Field sun_misc_SignalHandler_SIG_DFL;
+    public final Field sun_misc_SignalHandler_SIG_IGN;
 
     public final ObjectKlass java_lang_System;
     public final Method java_lang_System_initializeSystemClass;
@@ -948,14 +1028,12 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_invoke_LambdaForm;
     public final Field java_lang_invoke_LambdaForm_vmentry;
     public final Field java_lang_invoke_LambdaForm_isCompiled;
-    public final Method java_lang_invoke_LambdaForm_compileToBytecode;
 
     public final ObjectKlass java_lang_invoke_MethodHandleNatives;
     public final Method java_lang_invoke_MethodHandleNatives_linkMethod;
     public final Method java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant;
     public final Method java_lang_invoke_MethodHandleNatives_findMethodHandleType;
-    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite8;
-    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite11;
+    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite;
     public final Method java_lang_invoke_MethodHandleNatives_linkDynamicConstant;
 
     public final Method java_lang_Object_wait;
@@ -1067,39 +1145,39 @@ public final class Meta implements ContextAccess {
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
-            EspressoError.guarantee(knownKlass(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
+            EspressoError.guarantee(loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
                             "polyglot.jar (Polyglot API) is not accessible");
             ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
-            ArityException_create_int_int = ArityException.lookupDeclaredMethod(Name.create, Signature.ArityException_int_int);
-            ArityException_create_int_int_Throwable = ArityException.lookupDeclaredMethod(Name.create, Signature.ArityException_int_int_Throwable);
+            ArityException_create_int_int = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int);
+            ArityException_create_int_int_Throwable = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_Throwable);
 
             UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
-            UnknownIdentifierException_create_String = UnknownIdentifierException.lookupDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String);
-            UnknownIdentifierException_create_String_Throwable = UnknownIdentifierException.lookupDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String_Throwable);
+            UnknownIdentifierException_create_String = UnknownIdentifierException.requireDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String);
+            UnknownIdentifierException_create_String_Throwable = UnknownIdentifierException.requireDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String_Throwable);
 
             UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
-            UnsupportedMessageException_create = UnsupportedMessageException.lookupDeclaredMethod(Name.create, Signature.UnsupportedMessageException);
-            UnsupportedMessageException_create_Throwable = UnsupportedMessageException.lookupDeclaredMethod(Name.create, Signature.UnsupportedMessageException_Throwable);
+            UnsupportedMessageException_create = UnsupportedMessageException.requireDeclaredMethod(Name.create, Signature.UnsupportedMessageException);
+            UnsupportedMessageException_create_Throwable = UnsupportedMessageException.requireDeclaredMethod(Name.create, Signature.UnsupportedMessageException_Throwable);
 
             UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
-            UnsupportedTypeException_create_Object_array_String = UnsupportedTypeException.lookupDeclaredMethod(Name.create, Signature.UnsupportedTypeException_Object_array_String);
-            UnsupportedTypeException_create_Object_array_String_Throwable = UnsupportedTypeException.lookupDeclaredMethod(Name.create,
+            UnsupportedTypeException_create_Object_array_String = UnsupportedTypeException.requireDeclaredMethod(Name.create, Signature.UnsupportedTypeException_Object_array_String);
+            UnsupportedTypeException_create_Object_array_String_Throwable = UnsupportedTypeException.requireDeclaredMethod(Name.create,
                             Signature.UnsupportedTypeException_Object_array_String_Throwable);
 
             InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
-            InvalidArrayIndexException_create_long = InvalidArrayIndexException.lookupDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long);
-            InvalidArrayIndexException_create_long_Throwable = InvalidArrayIndexException.lookupDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long_Throwable);
+            InvalidArrayIndexException_create_long = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long);
+            InvalidArrayIndexException_create_long_Throwable = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long_Throwable);
 
             ForeignException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
             ExceptionType = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
 
-            ExceptionType_EXIT = ExceptionType.lookupDeclaredField(Name.EXIT,
+            ExceptionType_EXIT = ExceptionType.requireDeclaredField(Name.EXIT,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            ExceptionType_INTERRUPT = ExceptionType.lookupDeclaredField(Name.INTERRUPT,
+            ExceptionType_INTERRUPT = ExceptionType.requireDeclaredField(Name.INTERRUPT,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            ExceptionType_RUNTIME_ERROR = ExceptionType.lookupDeclaredField(Name.RUNTIME_ERROR,
+            ExceptionType_RUNTIME_ERROR = ExceptionType.requireDeclaredField(Name.RUNTIME_ERROR,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
-            ExceptionType_PARSE_ERROR = ExceptionType.lookupDeclaredField(Name.PARSE_ERROR,
+            ExceptionType_PARSE_ERROR = ExceptionType.requireDeclaredField(Name.PARSE_ERROR,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
         }
     }
@@ -1220,7 +1298,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public static EspressoException throwException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
+    public EspressoException throwException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
         throw throwException(initException(exceptionKlass));
     }
 
@@ -1231,10 +1309,9 @@ public final class Meta implements ContextAccess {
      * The given instance must be a non-{@link StaticObject#NULL NULL}, guest
      * {@link #java_lang_Throwable Throwable}.
      */
-    public static EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
-        assert StaticObject.notNull(throwable);
+    public EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
         assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
-        throw EspressoException.wrap(throwable);
+        throw EspressoException.wrap(throwable, this);
     }
 
     /**
@@ -1248,7 +1325,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public static EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
+    public EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
         throw throwException(initExceptionWithMessage(exceptionKlass, message));
     }
 
@@ -1263,7 +1340,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public static EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, String message) {
+    public EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, String message) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
 
@@ -1275,7 +1352,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public static EspressoException throwExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+    public EspressoException throwExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
         throw throwException(initExceptionWithCause(exceptionKlass, cause));
     }
 
@@ -1295,8 +1372,7 @@ public final class Meta implements ContextAccess {
         assert !Types.isPrimitive(type);
         ObjectKlass k = loadKlassWithBootClassLoader(type);
         if (k == null) {
-            // TODO: rework loading of classes with differences according to version.
-            getContext().getLogger().log(Level.WARNING, "Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
+            throw EspressoError.shouldNotReachHere("Failed loading known class: ", type, ", discovered java version: ", getJavaVersion());
         }
         return k;
     }
@@ -1310,10 +1386,6 @@ public final class Meta implements ContextAccess {
      * This method is designed to fail if given the type symbol for primitives (eg: 'Z' for
      * booleans).
      *
-     * @param type The symbolic type.
-     * @param classLoader The class loader
-     * @param protectionDomain
-     * @return The asked Klass.
      * @throws NoClassDefFoundError guest exception is no representation of type can be found.
      */
     @TruffleBoundary
@@ -1380,9 +1452,6 @@ public final class Meta implements ContextAccess {
      * <li>If the symbol represents an array, resolves its elemental type, and returns the array
      * corresponding array Klass.
      *
-     * @param type The symbolic type
-     * @param classLoader The class loader of the constant pool holder.
-     * @param protectionDomain
      * @return The asked Klass, or null if no representation can be found.
      */
     public Klass resolveSymbolOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
@@ -1432,7 +1501,7 @@ public final class Meta implements ContextAccess {
         assert accessingKlass != null;
         Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError, accessingKlass.protectionDomain());
         if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
-            throw Meta.throwException(java_lang_IllegalAccessError);
+            throw throwException(java_lang_IllegalAccessError);
         }
         return klass;
     }

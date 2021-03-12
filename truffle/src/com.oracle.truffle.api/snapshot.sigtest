@@ -206,6 +206,7 @@ hfds RUNTIME
 CLSS public final com.oracle.truffle.api.TruffleContext
 innr public final Builder
 intf java.lang.AutoCloseable
+meth public <%0 extends java.lang.Object> {%%0} leaveAndEnter(com.oracle.truffle.api.nodes.Node,java.util.function.Supplier<{%%0}>)
 meth public boolean equals(java.lang.Object)
 meth public boolean isActive()
 meth public boolean isCancelling()
@@ -482,10 +483,10 @@ meth public com.oracle.truffle.api.TruffleFile getInternalTruffleFile(java.lang.
 meth public com.oracle.truffle.api.TruffleFile getInternalTruffleFile(java.net.URI)
 meth public com.oracle.truffle.api.TruffleFile getPublicTruffleFile(java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile getPublicTruffleFile(java.net.URI)
-meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.net.URI)
- anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.lang.String,java.util.function.Predicate<com.oracle.truffle.api.TruffleFile>)
+meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.net.URI,java.util.function.Predicate<com.oracle.truffle.api.TruffleFile>)
+meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)
+meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
@@ -522,6 +523,7 @@ meth public void registerService(java.lang.Object)
 meth public void setCurrentWorkingDirectory(com.oracle.truffle.api.TruffleFile)
 supr java.lang.Object
 hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,in,initialized,initializedUnchangedAssumption,languageServicesCollector,options,out,polyglotLanguageContext,services,spi,valid
+hcls TruffleFileFactory
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest
  outer com.oracle.truffle.api.TruffleLanguage

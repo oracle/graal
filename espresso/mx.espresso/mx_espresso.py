@@ -165,6 +165,8 @@ espresso_library_config = mx_sdk_vm.LibraryConfig(
     build_args=[
         '--language:java',
         '--tool:all',
+        '-H:+EnableSignalAPI',
+        '-R:+InstallSegfaultHandler',
     ],
     home_finder=True,
 )
@@ -194,6 +196,7 @@ Usage: java -truffle [-options] class [args...]
 
 To rebuild the polyglot library:
     gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
+    supported=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -208,6 +211,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
     priority=2,
+    supported=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -241,7 +245,7 @@ mx.update_commands(_suite, {
 
 # Build configs
 # pylint: disable=bad-whitespace
-tools = ['cov', 'dap', 'ins', 'insight', 'lsp', 'pro', 'vvm']
+tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'vvm']
 mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'                                 , 'elau'                                             ] + tools, _suite, env_file='jvm')
 mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ce')
 mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ee')

@@ -86,7 +86,7 @@ public final class Target_java_lang_Class {
             case "void":
                 return meta._void.mirror();
             default:
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
     }
 
@@ -115,7 +115,7 @@ public final class Target_java_lang_Class {
 
         String hostName = meta.toHostString(name);
         if (hostName.indexOf('/') >= 0) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
 
         hostName = hostName.replace('.', '/');
@@ -125,7 +125,7 @@ public final class Target_java_lang_Class {
         }
 
         if (!Validation.validTypeDescriptor(ByteSequence.create(hostName), false)) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
 
         Symbol<Type> type = meta.getTypes().fromClassGetName(hostName);
@@ -140,7 +140,7 @@ public final class Target_java_lang_Class {
             }
 
             if (klass == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
             }
 
             if (initialize) {

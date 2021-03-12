@@ -667,8 +667,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     // First pass - identifying capture groups
 
     private void scanForCaptureGroups() {
-        // character classes (where '(' stands for a literal '(') and any characters after the '('
-        // which might turn into a non-capturing group or a look-around assertion.
+        // We scan the source of the regex and search for '(' characters, which mark capture
+        // groups. However, we have to watch out for exceptions, e.g. character classes (where
+        // '(' stands for a literal '(') or syntax characters following a '(' which might turn
+        // it into a non-capturing group, a look-around assertion or some other construction.
         final int restorePosition = position;
         numberOfCaptureGroups = 0;
         int charClassDepth = 0;
@@ -692,6 +694,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     break;
                 case '[':
                     charClassDepth++;
+                    // Closing brackets are treated as literals if they are the first char
+                    // in a char class.
                     if (!match("]")) {
                         match("^]");
                     }
@@ -713,8 +717,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                                 }
                                 numberOfCaptureGroups++;
                                 namedCaptureGroups.put(groupName, numberOfCaptureGroups);
-                            } else {
-                                match("(");
+                            } else if (match("(")) {
                                 if (match("<")) {
                                     parseGroupReference('>', true, true, true, true);
                                 } else if (match("'")) {
@@ -727,6 +730,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                             if (namedCaptureGroups == null) {
                                 numberOfCaptureGroups++;
                             }
+                        }
+                    }
+                    break;
+                case '#':
+                    if (globalFlags.isExtended()) {
+                        int endOfLine = inPattern.indexOf('\n', position);
+                        if (endOfLine >= 0) {
+                            position = endOfLine + 1;
+                        } else {
+                            position = inPattern.length();
                         }
                     }
                     break;

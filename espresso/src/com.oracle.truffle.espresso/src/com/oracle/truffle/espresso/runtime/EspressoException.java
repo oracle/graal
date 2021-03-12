@@ -43,8 +43,20 @@ public final class EspressoException extends RuntimeException implements com.ora
         this.exception = throwable;
     }
 
-    public static EspressoException wrap(@Host(Throwable.class) StaticObject throwable) {
-        return new EspressoException(throwable);
+    public static EspressoException wrap(@Host(Throwable.class) StaticObject throwable, Meta meta) {
+        if (throwable.isForeignObject()) {
+            // We can't have hidden fields in foreign objects yet unfortunately.
+            return new EspressoException(throwable);
+        }
+        // we must only have one wrapper per thrown exception for truffle's stack trace
+        // mechanisms to work.
+        EspressoException wrapper = (EspressoException) meta.HIDDEN_EXCEPTION_WRAPPER.getHiddenObject(throwable);
+        if (wrapper != null) {
+            return wrapper;
+        }
+        wrapper = new EspressoException(throwable);
+        meta.HIDDEN_EXCEPTION_WRAPPER.setHiddenObject(throwable, wrapper);
+        return wrapper;
     }
 
     public static VM.StackTrace getFrames(StaticObject exception, Meta meta) {

@@ -40,9 +40,9 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Represents a native Java method.
@@ -124,11 +124,11 @@ public final class NativeMethodNode extends EspressoMethodNode {
     }
 
     private void maybeThrowAndClearPendingException(JniEnv jniEnv) {
-        StaticObject ex = jniEnv.getPendingException();
+        EspressoException ex = jniEnv.getPendingEspressoException();
         if (ex != null) {
             enterThrowsException();
             jniEnv.clearPendingException();
-            throw Meta.throwException(ex);
+            throw ex;
         }
     }
 

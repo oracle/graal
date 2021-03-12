@@ -69,7 +69,7 @@ public final class Target_java_lang_reflect_Array {
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         if (component.isPrimitive()) {
@@ -114,7 +114,7 @@ public final class Target_java_lang_reflect_Array {
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         final int[] dimensions = dimensionsArray.unwrap();
         int finalDimensions = dimensions.length;
@@ -122,11 +122,11 @@ public final class Target_java_lang_reflect_Array {
             finalDimensions += Types.getArrayDimensions(component.getType());
         }
         if (dimensions.length == 0 || finalDimensions > 255) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         for (int d : dimensions) {
             if (d < 0) {
-                throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
+                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
             }
         }
         if (dimensions.length == 1) {
@@ -240,11 +240,11 @@ public final class Target_java_lang_reflect_Array {
         }
         if (e instanceof ArrayIndexOutOfBoundsException) {
             profiler.profile(3);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
         if (e instanceof IllegalArgumentException) {
             profiler.profile(4);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, getMessageBoundary(e));
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, getMessageBoundary(e));
         }
         throw EspressoError.shouldNotReachHere(e);
     }
@@ -262,7 +262,7 @@ public final class Target_java_lang_reflect_Array {
         }
         if (!(array.isArray())) {
             profiler.profile(1);
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
@@ -402,7 +402,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
@@ -443,7 +443,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 

@@ -77,6 +77,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase.AnalysisBytecodeParser;
 import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingPlugin.CallSite;
@@ -154,11 +155,11 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
 
     }
 
-    private final boolean analysis;
+    private final ParsingReason reason;
     private final HostedProviders providers;
 
-    public ExperimentalNativeImageInlineDuringParsingPlugin(boolean analysis, HostedProviders providers) {
-        this.analysis = analysis;
+    public ExperimentalNativeImageInlineDuringParsingPlugin(ParsingReason reason, HostedProviders providers) {
+        this.reason = reason;
         this.providers = providers;
     }
 
@@ -172,7 +173,7 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
 
         InvocationResult inline = null;
         CallSite callSite = new CallSite(b.getCallingContext(), toAnalysisMethod(callee));
-        if (analysis) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             DebugContext debug = b.getDebug();
             try (DebugContext.Scope ignored = debug.scope("TrivialMethodDetectorAnalysis", this);
                             AutoCloseable ignored1 = ReflectionPlugins.ReflectionPluginRegistry.startThreadLocalRegistry();
@@ -195,7 +196,7 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
             InvocationResultInline inlineData = (InvocationResultInline) inline;
             VMError.guarantee(inlineData.callee.equals(toAnalysisMethod(callee)));
 
-            if (analysis) {
+            if (reason == ParsingReason.PointsToAnalysis) {
                 AnalysisMethod aMethod = (AnalysisMethod) callee;
                 aMethod.registerAsImplementationInvoked(null);
 

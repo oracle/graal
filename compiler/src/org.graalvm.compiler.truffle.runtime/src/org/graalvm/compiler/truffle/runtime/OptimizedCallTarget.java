@@ -134,19 +134,29 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * The call threshold is counted up for each real call until it reaches a
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#CompilationThreshold second tier} compilation threshold, and
-     * triggers a {@link #compile(boolean) compilation}. It is incremented for each real call to the
-     * call target. Reset by TruffleFeature after image generation.
+     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
+     * real call to the call target. Reset by TruffleFeature after image generation.
      */
     private int callCount;
+
     /**
      * The call and loop threshold is counted up for each real call until it reaches a
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#CompilationThreshold second tier} compilation threshold, and
-     * triggers a {@link #compile(boolean) compilation}. It is incremented for each real call to the
-     * call target. Reset by TruffleFeature after image generation.
+     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
+     * real call to the call target. Reset by TruffleFeature after image generation.
      */
     private int callAndLoopCount;
+    private int highestCompiledTier = 0;
+
+    public void compiledTier(int tier) {
+        highestCompiledTier = Math.max(highestCompiledTier, tier);
+    }
+
+    public int highestCompiledTier() {
+        return highestCompiledTier;
+    }
 
     /*
      * Profiling information (types and Assumption) are kept in 2-final-fields objects to ensure to

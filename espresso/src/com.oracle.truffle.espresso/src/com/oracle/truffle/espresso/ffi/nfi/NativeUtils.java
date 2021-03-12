@@ -28,6 +28,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -97,6 +99,53 @@ public final class NativeUtils {
     @TruffleBoundary
     public static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
         return directByteBuffer(interopAsPointer(addressPtr), capacity);
+    }
+
+    public static void writeToIntPointer(TruffleObject pointer, int value) {
+        writeToIntPointer(InteropLibrary.getUncached(), pointer, value);
+    }
+
+    @TruffleBoundary
+    public static void writeToIntPointer(InteropLibrary library, TruffleObject pointer, int value) {
+        if (library.isNull(pointer)) {
+            throw new NullPointerException();
+        }
+        IntBuffer resultPointer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Int).asIntBuffer();
+        resultPointer.put(value);
+    }
+
+    public static void writeToLongPointer(TruffleObject pointer, long value) {
+        writeToLongPointer(InteropLibrary.getUncached(), pointer, value);
+    }
+
+    @TruffleBoundary
+    public static void writeToLongPointer(InteropLibrary library, TruffleObject pointer, long value) {
+        if (library.isNull(pointer)) {
+            throw new NullPointerException();
+        }
+        LongBuffer resultPointer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Long).asLongBuffer();
+        resultPointer.put(value);
+    }
+
+    public static void writeToPointerPointer(TruffleObject pointer, TruffleObject value) {
+        writeToPointerPointer(InteropLibrary.getUncached(), pointer, value);
+    }
+
+    public static void writeToPointerPointer(InteropLibrary library, TruffleObject pointer, TruffleObject value) {
+        writeToLongPointer(library, pointer, NativeUtils.interopAsPointer(value));
+    }
+
+    public static TruffleObject dereferencePointerPointer(TruffleObject pointer) {
+        return dereferencePointerPointer(InteropLibrary.getUncached(), pointer);
+    }
+
+    @TruffleBoundary
+    public static TruffleObject dereferencePointerPointer(InteropLibrary library, TruffleObject pointer) {
+        if (library.isNull(pointer)) {
+            throw new NullPointerException();
+        }
+        LongBuffer buffer = NativeUtils.directByteBuffer(pointer, 1, JavaKind.Long).asLongBuffer();
+        return RawPointer.create(buffer.get());
     }
 
     @TruffleBoundary

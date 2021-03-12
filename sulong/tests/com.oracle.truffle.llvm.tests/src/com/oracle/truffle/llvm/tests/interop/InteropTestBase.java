@@ -33,6 +33,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -50,18 +52,20 @@ import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.tck.TruffleRunner;
 
 public class InteropTestBase {
 
-    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(getContextBuilder());
+    @ClassRule public static CommonTestUtils.RunWithTestEngineConfigRule runWithPolyglot = new CommonTestUtils.RunWithTestEngineConfigRule(InteropTestBase::updateContextBuilder);
 
-    public static Context.Builder getContextBuilder() {
+    public static void updateContextBuilder(Context.Builder builder) {
         String lib = System.getProperty("test.sulongtest.lib.path");
-        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option(SulongEngineOption.LIBRARY_PATH_NAME, lib).option(SulongEngineOption.CXX_INTEROP_NAME, "true");
+        Map<String, String> options = new HashMap<>();
+        options.put(SulongEngineOption.LIBRARY_PATH_NAME, lib);
+        options.put(SulongEngineOption.CXX_INTEROP_NAME, "true");
+        builder.allowAllAccess(true).allowExperimentalOptions(true).options(options);
     }
 
-    protected static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
+    protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
     public static final String TEST_FILE_NAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
 
     protected static Object loadTestBitcodeInternal(String name) {

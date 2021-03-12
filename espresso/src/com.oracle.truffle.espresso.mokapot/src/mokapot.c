@@ -1373,8 +1373,8 @@ JNIEXPORT jstring JNICALL JVM_GetSimpleBinaryName(JNIEnv *env, jclass ofClass) {
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_GetVmArguments);
-  return NULL;
+  IMPLEMENTED(JVM_GetVmArguments);
+  return (*getEnv())->JVM_GetVmArguments(env);
 }
 
 JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env) {

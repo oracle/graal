@@ -32,8 +32,8 @@ import java.util.function.Predicate;
 
 public class AArch64FloatSqrtTest extends AArch64MatchRuleTest {
 
-    private static final Predicate<LIRInstruction> p1 = op -> op.name().equals("SQRT");
-    private static final Predicate<LIRInstruction> p2 = op -> op.name().equals("AArch64FloatConvert");
+    private static final Predicate<LIRInstruction> p1 = op -> op.name().equals("FSQRT");
+    private static final Predicate<LIRInstruction> p2 = op -> op.name().equals("AArch64Convert$FloatConvertOp");
 
     public float floatSqrt(float f) {
         return (float) Math.sqrt(f);

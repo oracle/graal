@@ -59,7 +59,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   },
 
   // generic targets
-  gate:            {targets+: ['gate']},
+  gate:            {targets+: ['gate'], timelimit: "1:00:00"},
   postMerge:       {targets+: ['post-merge']},
   bench:           {targets+: ['bench', 'post-merge']},
   dailyBench:      {targets+: ['bench', 'daily']},
@@ -144,10 +144,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // shared functions
   _mx(env, args): ['mx', '--env', env] + args,
 
-  build_espresso(env): {
+  build_espresso(env, debug=false): {
     run+: [
       ['mx', 'sversions'],
-      that._mx(env, ['build']),
+      that._mx(env, (if debug then ['--debug-images'] else []) + ['build']),
     ],
   },
 

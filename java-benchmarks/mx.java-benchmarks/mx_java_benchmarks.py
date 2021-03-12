@@ -180,7 +180,7 @@ class BaseShopCartBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "0.3"
+        return "0.3.1"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -219,14 +219,12 @@ class BaseShopCartBenchmarkSuite(object):
 
     def stages(self, args):
         # This method overrides NativeImageMixin.stages
-        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.stages=', args)
-        if len(parsed_args) > 1:
-            mx.abort('Native Image benchmark stages should only be specified once.')
-        return parsed_args[0].split(',') if parsed_args else ['instrument-image', 'instrument-run', 'image', 'run']
+        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else ['instrument-image', 'instrument-run', 'image', 'run']
 
 
 class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
-    """Benchmark suite for the ShopCart benchmark using JMeter."""
+    """ShopCart benchmark suite that measures throughput using JMeter."""
 
     def name(self):
         return "shopcart-jmeter"
@@ -237,7 +235,7 @@ class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.
     def benchmarkList(self, bmSuiteArgs):
         return ["tiny", "small", "large"]
 
-    def jmeterWorkloadPath(self, benchmark):
+    def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
@@ -247,8 +245,36 @@ class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.
 mx_benchmark.add_bm_suite(ShopCartJMeterBenchmarkSuite())
 
 
+class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+    """ShopCart benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "shopcart-wrk"
+
+    def benchSuiteName(self):
+        return self.name()
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny"]
+
+    def targetHost(self):
+        return "localhost"
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
+
+
 class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
-    """Benchmark suite for the ShopCart benchmark using Wrk2."""
+    """ShopCart benchmark suite that measures latency using Wrk2."""
 
     def name(self):
         return "shopcart-wrk2"
@@ -262,7 +288,7 @@ class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Ba
     def targetHost(self):
         return "localhost"
 
-    def wrk2WorkloadPath(self, benchmark):
+    def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
@@ -273,19 +299,20 @@ class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Ba
 
     def loadConfiguration(self, benchmarkName):
         def postRequest(url, data):
-            req = urllib2.Request(url)
+            req = urllib.Request(url)
             req.add_header('Content-Type', 'application/json')
-            mx.log(urllib2.urlopen(req, json.dumps(data)).read())
+            mx.log(urllib.urlopen(req, str.encode(json.dumps(data))).read())
         try:
-            import urllib2
+            if sys.version_info < (3, 0):
+                import urllib2 as urllib
+            else:
+                import urllib.request as urllib
         except ImportError:
-            mx.abort("Failed to import {0} dependency module: urllib2".format(ShopCartWrk2BenchmarkSuite.__name__))
-        with open(self.wrk2WorkloadPath(benchmarkName)) as configFile:
-            config = json.load(configFile)
-            mx.log("Loading configuration file for {0}: {1}".format(ShopCartWrk2BenchmarkSuite.__name__, configFile.name))
-            for request in config["setup"]:
-                postRequest(config["target-url"] + request["path"], request["msg"])
-            return config
+            mx.abort("Failed to import {0} dependency module: urllib".format(ShopCartWrk2BenchmarkSuite.__name__))
+        config = super(ShopCartWrk2BenchmarkSuite, self).loadConfiguration(benchmarkName)
+        for request in config["setup"]:
+            postRequest(config["target-url"] + request["path"], request["msg"])
+        return config
 
 
 mx_benchmark.add_bm_suite(ShopCartWrk2BenchmarkSuite())

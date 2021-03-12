@@ -42,6 +42,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.tests.interop.values.StructObject;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.tck.TruffleRunner;
@@ -50,6 +51,8 @@ import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import static org.hamcrest.CoreMatchers.is;
@@ -70,7 +73,11 @@ public class MultiContextBuiltinsTest {
 
     @BeforeClass
     public static void createEngine() {
-        sharedEngine = Engine.newBuilder().allowExperimentalOptions(true).build();
+        sharedEngine = Engine.newBuilder().allowExperimentalOptions(true).options(getEngineOptions()).build();
+    }
+
+    private static Map<String, String> getEngineOptions() {
+        return TestEngineConfig.getInstance().getContextOptions();
     }
 
     @AfterClass

@@ -113,7 +113,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         /* We never have floating guards in AOT compiled code. */
         getGraph().setGuardsStage(GuardsStage.FIXED_DEOPTS);
 
-        assert !getMethod().isEntryPoint() : "Cannot directly use as entry point, create a call stub";
+        assert !getMethod().isEntryPoint() : "Cannot directly use as entry point, create a call stub ";
 
         if (getMethod().compilationInfo.isDeoptTarget()) {
             /*
@@ -366,7 +366,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
             endInstr.setNext(originalNext);
         }
 
-        if (instr.equals(lastInstr) && !instr.equals(endInstr)) {
+        if (instr == lastInstr && instr != endInstr) {
             assert originalNext == null;
             /*
              * Need to update last instruction if it changed.

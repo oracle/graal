@@ -145,7 +145,7 @@ public final class Target_java_lang_Thread {
                     }
                     // check if death cause throwable is set, if not throw ThreadDeath
                     StaticObject deathThrowable = (StaticObject) getDeathThrowable(thread);
-                    throw deathThrowable != null ? Meta.throwException(deathThrowable) : Meta.throwException(meta.java_lang_ThreadDeath);
+                    throw deathThrowable != null ? meta.throwException(deathThrowable) : meta.throwException(meta.java_lang_ThreadDeath);
                 case SHUTDOWN:
                     // This thread refuses to stop. Send a host exception.
                     // throw getMeta().throwEx(ThreadDeath.class);
@@ -174,7 +174,7 @@ public final class Target_java_lang_Thread {
             throw meta.throwNullPointerException();
         }
         if (threads.length() == 0) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         StaticObject trace = StaticObject.createArray(meta.java_lang_StackTraceElement.array(), StaticObject.EMPTY_ARRAY);
         StaticObject[] toWrap = new StaticObject[threads.length()];
@@ -255,17 +255,27 @@ public final class Target_java_lang_Thread {
         } else {
             String reason = context.getMultiThreadingDisabledReason();
             Klass threadKlass = self.getKlass();
-            if (threadKlass == meta.java_lang_ref_Finalizer$FinalizerThread || threadKlass == meta.java_lang_ref_Reference$ReferenceHandler) {
+            EspressoLanguage.getCurrentContext().getLogger().warning(() -> {
+                String guestName = Target_java_lang_Thread.getThreadName(meta, self);
+                String className = threadKlass.getExternalName();
+                return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
+            });
+            if (threadKlass == meta.java_lang_ref_Finalizer$FinalizerThread || threadKlass == meta.java_lang_ref_Reference$ReferenceHandler || isSystemInnocuousThread(self, meta)) {
                 // no exception: bootstrap code cannot recover from this
-                EspressoLanguage.getCurrentContext().getLogger().warning(() -> {
-                    String guestName = Target_java_lang_Thread.getThreadName(meta, self);
-                    String className = threadKlass.getExternalName();
-                    return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
-                });
             } else {
-                Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "Thread support is disabled: " + reason);
+                meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "Thread support is disabled: " + reason);
             }
         }
+    }
+
+    private static boolean isSystemInnocuousThread(StaticObject thread, Meta meta) {
+        if (!meta.misc_InnocuousThread.isAssignableFrom(thread.getKlass())) {
+            return false;
+        }
+        if (!StaticObject.isNull(meta.java_lang_Thread_contextClassLoader.getObject(thread))) {
+            return false;
+        }
+        return true;
     }
 
     public static void terminate(StaticObject thread, Meta meta) {
@@ -369,9 +379,9 @@ public final class Target_java_lang_Thread {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             setInterrupt(thread, false);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
         } catch (IllegalArgumentException e) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         } finally {
             toRunnable(thread, meta, State.RUNNABLE);
         }

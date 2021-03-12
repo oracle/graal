@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 //Checkstyle: allow reflection
 
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -239,7 +238,7 @@ class VarHandleFieldStaticBasePrimitiveAccessor {
 
     @SuppressWarnings("unused")
     static void set(Object varHandle, Object value) {
-        throw unimplemented("Setting fields through VarHandles not supported");
+        assert value == StaticFieldsSupport.getStaticPrimitiveFields();
     }
 }
 
@@ -250,7 +249,7 @@ class VarHandleFieldStaticBaseObjectAccessor {
 
     @SuppressWarnings("unused")
     static void set(Object varHandle, Object value) {
-        throw unimplemented("Setting fields through VarHandles not supported");
+        assert value == StaticFieldsSupport.getStaticObjectFields();
     }
 }
 

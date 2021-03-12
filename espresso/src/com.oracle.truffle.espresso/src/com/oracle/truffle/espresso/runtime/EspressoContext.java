@@ -33,14 +33,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -58,7 +61,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -66,6 +68,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -82,6 +85,8 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
+
+import sun.misc.SignalHandler;
 
 public final class EspressoContext {
 
@@ -101,6 +106,7 @@ public final class EspressoContext {
     private final TruffleLanguage.Env env;
 
     private String[] mainArguments;
+    private String[] vmArguments;
 
     // region Debug
     private final TimerCollection timers;
@@ -158,6 +164,7 @@ public final class EspressoContext {
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
     public final boolean Polyglot;
     public final boolean ExitHost;
+    public final boolean EnableSignals;
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
 
@@ -192,6 +199,7 @@ public final class EspressoContext {
     // endregion ThreadDeprecated
 
     @CompilationFinal private TruffleObject topBindings;
+    private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
 
     public TruffleLogger getLogger() {
         return logger;
@@ -235,6 +243,7 @@ public final class EspressoContext {
         this.InlineMethodHandle = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineMethodHandle);
         this.SplitMethodHandles = JDWPOptions == null && env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
+        this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
@@ -255,6 +264,8 @@ public final class EspressoContext {
         this.multiThreadingDisabled = multiThreadingDisabledReason;
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
+
+        this.vmArguments = buildVmArguments();
     }
 
     private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
@@ -320,6 +331,38 @@ public final class EspressoContext {
 
     public void setMainArguments(String[] mainArguments) {
         this.mainArguments = mainArguments;
+    }
+
+    public String[] getVmArguments() {
+        return vmArguments;
+    }
+
+    private String[] buildVmArguments() {
+        OptionMap<String> argsMap = getEnv().getOptions().get(EspressoOptions.VMArguments);
+        if (argsMap == null) {
+            return new String[0];
+        }
+        Set<Map.Entry<String, String>> set = argsMap.entrySet();
+        int length = set.size();
+        String[] array = new String[length];
+        for (Map.Entry<String, String> entry : set) {
+            try {
+                String key = entry.getKey();
+                int idx = Integer.parseInt(key.substring(key.lastIndexOf('.') + 1));
+                if (idx < 0 || idx >= length) {
+                    getLogger().severe("Unsupported use of the 'java.VMArguments' option: " +
+                                    "Declared index: " + idx + ", actual number of arguments: " + length + ".\n" +
+                                    "Please only declare positive index starting from 0, and growing by 1 each.");
+                    throw EspressoError.shouldNotReachHere();
+                }
+                array[idx] = entry.getValue();
+            } catch (NumberFormatException e) {
+                getLogger().warning("Unsupported use of the 'java.VMArguments' option: java.VMArguments." + entry.getKey() + "=" + entry.getValue() + "\n" +
+                                "Should be of the form: java.VMArguments.<int>=<value>");
+                throw EspressoError.shouldNotReachHere();
+            }
+        }
+        return array;
     }
 
     public Classpath getBootClasspath() {
@@ -409,14 +452,14 @@ public final class EspressoContext {
 
             // TODO: link libjimage
 
+            initializeAgents();
+
             try (DebugCloseable metaInit = META_INIT.scope(timers)) {
                 this.meta = new Meta(this);
             }
             this.metaInitialized = true;
 
             this.interpreterToVM = new InterpreterToVM(this);
-
-            initializeAgents();
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
                 initializeKnownClass(Type.java_lang_Object);
@@ -451,10 +494,15 @@ public final class EspressoContext {
                     if (e != 0) {
                         throw EspressoError.shouldNotReachHere();
                     }
+
+                    getVM().getJvmti().postVmStart();
+
                     modulesInitialized = true;
                     meta.java_lang_System_initPhase3.invokeDirect(null);
                 }
             }
+
+            getVM().getJvmti().postVmInit();
 
             meta.postSystemInit();
 
@@ -482,8 +530,8 @@ public final class EspressoContext {
             meta.HIDDEN_FRAMES.setHiddenObject(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
             meta.java_lang_Throwable_backtrace.setObject(outOfMemoryErrorInstance, outOfMemoryErrorInstance);
 
-            this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance);
-            this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance);
+            this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance, meta);
+            this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance, meta);
             meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
@@ -826,5 +874,8 @@ public final class EspressoContext {
         return topBindings;
     }
 
+    public WeakHashMap<StaticObject, SignalHandler> getHostSignalHandlers() {
+        return hostSignalHandlers;
+    }
     // endregion DebugAccess
 }

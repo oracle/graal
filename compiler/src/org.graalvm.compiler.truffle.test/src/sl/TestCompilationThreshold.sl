@@ -12,7 +12,7 @@ function test() {
 function main() {  
     /* TODO disableSplitting is required because otherwise it needs more calls to warm up. This still needs to be fixed. */
     disableSplitting(test); 
-    threshold = getOption("engine.CompilationThreshold");
+    threshold = getOption("engine.SingleTierCompilationThreshold");
     i = 0;
     while (i < threshold -1) {
         test();

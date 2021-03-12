@@ -43,24 +43,86 @@ import mx_sulong_suite_constituents
 _suite = mx.suite('sulong')
 
 def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
-    if tags is None:
-        tags = [test_suite]
-    if testClasses is None:
-        testClasses = [test_suite]
-    build_tags = ['build_' + t for t in tags]
-    run_tags = ['run_' + t for t in tags]
-    if not unittestArgs:
-        unittestArgs = ['--very-verbose', '--enable-timing']
-    unittestArgs += args.extra_llvm_arguments
-    with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_sulong_suite_constituents.compileTestSuite(test_suite, args.extra_build_args)
-    with Task('Test' + title, tasks, tags=tags + run_tags) as t:
-        if t: mx_sulong_suite_constituents.run(unittestArgs, testClasses)
+    f = UnittestTaskFactory()
+    f.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs)
+    f.execute(tasks)
 
 
-def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses=None):
-    test_suite = 'SULONG_TEST_SUITES'
-    _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
+class TestSuiteBuildTask(object):
+    def __init__(self, test_suite, tags, extra_build_args=None):
+        self.test_suite = test_suite
+        self.tags = tags
+        self.extra_build_args = extra_build_args
+
+    def execute(self, tasks):
+        with Task('Build_' + self.test_suite, tasks, tags=self.tags, description='Build ' + self.test_suite) as t:
+            if t:
+                mx_sulong_suite_constituents.compileTestSuite(self.test_suite, self.extra_build_args or [])
+
+    def merge(self, other):
+        assert self == other
+        self.tags.extend([x for x in other.tags if x not in self.tags])
+
+    def __eq__(self, other):
+        return isinstance(other, TestSuiteBuildTask) and self.test_suite == other.test_suite and self.extra_build_args == other.extra_build_args
+
+
+class UnittestTaskFactory(object):
+
+    def __init__(self):
+        self.build_tasks = []
+        self.test_tasks = []
+
+    def add(self, title, test_suite, args, tags=None, testClasses=None, unittestArgs=None, extraUnittestArgs=None, description=None):
+        if tags is None:
+            tags = [test_suite]
+        if testClasses is None:
+            testClasses = [test_suite]
+        elif not isinstance(testClasses, list):
+            testClasses = [testClasses]
+        build_tags = ['build_' + t for t in tags]
+        run_tags = ['run_' + t for t in tags]
+        if not unittestArgs:
+            unittestArgs = ['--very-verbose', '--enable-timing']
+        unittestArgs += extraUnittestArgs or []
+        unittestArgs += args.extra_llvm_arguments
+
+        def _sulong_gate_format_description(testClasses, description=None):
+            if description:
+                description += '  '
+            else:
+                description = ''
+            def _reduce_package_prefix(cls):
+                prefix = "com.oracle.truffle.llvm"
+                reduced_prefix = ".".join((x[0] for x in prefix.split(".")))
+                if cls and cls.startswith(prefix):
+                    return cls.replace(prefix, reduced_prefix, 1)
+                return cls
+            # add a "junit" prefix if the test class does not use a full package name (no '.') to make it obvious that it is a
+            # Java class
+            junit_prefix = "JUnit " if not any("." in x for x in testClasses) else ""
+            return '{description}({junit_prefix}{testClasses})'.format(description=description,
+                                                                       junit_prefix=junit_prefix,
+                                                                       testClasses=', '.join((_reduce_package_prefix(cls) for cls in testClasses)))
+
+        description = _sulong_gate_format_description(testClasses, description=description)
+
+        def _run_test_task(tasks):
+            with Task('Test' + title, tasks, tags=tags + run_tags, description=description) as t:
+                if t: mx_sulong_suite_constituents.run(unittestArgs, testClasses)
+
+        build_task = TestSuiteBuildTask(test_suite, tags + build_tags, args.extra_build_args)
+        if build_task in self.build_tasks:
+            self.build_tasks[self.build_tasks.index(build_task)].merge(build_task)
+        else:
+            self.build_tasks.append(build_task)
+        self.test_tasks.append(_run_test_task)
+
+    def execute(self, tasks):
+        for build_task in self.build_tasks:
+            build_task.execute(tasks)
+        for test_task in self.test_tasks:
+            test_task(tasks)
 
 
 _sulongTestConfigRoot = os.path.join(_suite.dir, "tests", "configs")
@@ -96,6 +158,11 @@ class SulongGateEnv(object):
 
 
 def _sulong_gate_runner(args, tasks):
+    _unittest_task_factory = UnittestTaskFactory()
+
+    def _unittest(title, test_suite, tags=None, testClasses=None, unittestArgs=None, description=None):
+        _unittest_task_factory.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs, description=description)
+
     with Task('CheckCopyright', tasks, tags=['style']) as t:
         if t:
             if mx.checkcopyrights(['--primary']) != 0:
@@ -106,27 +173,28 @@ def _sulong_gate_runner(args, tasks):
         if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: clangformat([])
-    _sulong_gate_unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', tasks, args, testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
-    _sulong_gate_unittest('Types', 'SULONG_TEST', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.types.floating'])
-    _sulong_gate_unittest('Pipe', 'SULONG_TEST', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
-    _sulong_gate_unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', tasks, args, testClasses=['LLVMSuite'], tags=['llvm', 'sulongCoverage'])
-    _sulong_gate_unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', tasks, args, testClasses=['NWCCSuite'], tags=['nwcc', 'sulongCoverage'])
-    _sulong_gate_unittest('GCCParserTorture', 'SULONG_PARSER_TORTURE', tasks, args, testClasses=['ParserTortureSuite'], tags=['parser', 'sulongCoverage'])
-    _sulong_gate_unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', tasks, args, testClasses=['GccCSuite'], tags=['gcc_c', 'sulongCoverage'])
-    _sulong_gate_unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', tasks, args, testClasses=['GccCppSuite'], tags=['gcc_cpp', 'sulongCoverage'])
-    _sulong_gate_unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', tasks, args, testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('Linker', tasks, args, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('BitcodeFormat', tasks, args, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('DebugExpr', tasks, args, testClasses='LLVMDebugExprParserTest', tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('OtherTests', tasks, args, testClasses=['com.oracle.truffle.llvm.tests.other', 'com.oracle.truffle.llvm.tests.bitcode.'], tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'])
-    _sulong_gate_unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'])
-    _sulong_gate_unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'])
-    with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
+    _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
+    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating'], tags=['type', 'sulongMisc', 'sulongCoverage'])
+    _unittest('Pipe', 'SULONG_TEST', description="Test output capturing", testClasses=['CaptureOutputTest'], tags=['pipe', 'sulongMisc', 'sulongCoverage'])
+    _unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', description="LLVM 3.2 test suite", testClasses=['LLVMSuite'], tags=['llvm', 'sulongCoverage'])
+    _unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', description="Test suite of the NWCC compiler v0.8.3", testClasses=['NWCCSuite'], tags=['nwcc', 'sulongCoverage'])
+    _unittest('GCCParserTorture', 'SULONG_PARSER_TORTURE', description="Parser test using GCC suite", testClasses=['ParserTortureSuite'], tags=['parser', 'sulongCoverage'])
+    _unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', description="GCC 5.2 test suite (C tests)", testClasses=['GccCSuite'], tags=['gcc_c', 'sulongCoverage'])
+    _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp', 'sulongCoverage'])
+    _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
+    _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
+    _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
+    _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
+    _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMDebugExprParserTest', tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
+    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.other', 'com.oracle.truffle.llvm.tests.bitcode.'], tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', description="Tests main args passing", testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'], tags=['args', 'sulongMisc', 'sulongCoverage'])
+    _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc', 'sulongCoverage'])
+    _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc', 'sulongCoverage'])
+    _unittest_task_factory.execute(tasks)
+    with Task('TestToolchain', description="build toolchain-launchers-tests project", tags=['toolchain', 'sulongMisc', 'sulongCoverage'], tasks=tasks) as t:
         if t:
             with SulongGateEnv():
                 mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
@@ -156,7 +224,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
         testName += '#test[' + test + ']'
     if unittestArgs is None:
         unittestArgs = []
-    test_suite = 'SULONG_TEST_SUITES'
+    test_suite = 'SULONG_STANDALONE_TEST_SUITES'
     mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
     mx_sulong_suite_constituents.run(args + unittestArgs, testName)
 
@@ -186,7 +254,7 @@ def runLLVMUnittests(unittest_runner):
     java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
     java_run_props += get_test_distribution_path_properties(_suite)
 
-    test_suite = 'SULONG_TEST_SUITES'
+    test_suite = 'SULONG_EMBEDDED_TEST_SUITES'
     mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
 
     run_args = [libpath, libs] + java_run_props

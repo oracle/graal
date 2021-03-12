@@ -262,7 +262,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         Klass maybeLoaded = findLoadedKlass(type);
         if (maybeLoaded != null) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
+            throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
         }
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
@@ -273,8 +273,9 @@ public abstract class ClassRegistry implements ContextAccess {
     private ParserKlass getParserKlass(byte[] bytes, String strType) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
         ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
-        if (!loaderIsBootOrPlatform(getClassLoader(), getMeta()) && parserKlass.getName().toString().startsWith("java/")) {
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
+        Meta meta = getMeta();
+        if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
         }
         return parserKlass;
     }
@@ -297,7 +298,7 @@ public abstract class ClassRegistry implements ContextAccess {
         try {
             if (superKlassType != null) {
                 if (chain.contains(superKlassType)) {
-                    throw Meta.throwException(meta.java_lang_ClassCircularityError);
+                    throw meta.throwException(meta.java_lang_ClassCircularityError);
                 }
                 superKlass = loadKlassRecursively(meta, superKlassType, true);
             }
@@ -314,7 +315,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
             for (int i = 0; i < superInterfacesTypes.length; ++i) {
                 if (chain.contains(superInterfacesTypes[i])) {
-                    throw Meta.throwException(meta.java_lang_ClassCircularityError);
+                    throw meta.throwException(meta.java_lang_ClassCircularityError);
                 }
                 ObjectKlass interf = loadKlassRecursively(meta, superInterfacesTypes[i], false);
                 superInterfaces[i] = interf;
@@ -332,12 +333,12 @@ public abstract class ClassRegistry implements ContextAccess {
         }
 
         if (superKlass != null && !Klass.checkAccess(superKlass, klass)) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superclass " + superKlassType);
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superclass " + superKlassType);
         }
 
         for (ObjectKlass interf : superInterfaces) {
             if (interf != null && !Klass.checkAccess(interf, klass)) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superinterface " + interf.getType());
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superinterface " + interf.getType());
             }
         }
 
@@ -363,12 +364,12 @@ public abstract class ClassRegistry implements ContextAccess {
                 // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
                 StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
                 meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
-                throw Meta.throwException(ncdfe);
+                throw meta.throwException(ncdfe);
             }
             throw e;
         }
         if (notInterface == klass.isInterface()) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Super interface of " + type + " is in fact not an interface.");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Super interface of " + type + " is in fact not an interface.");
         }
         return (ObjectKlass) klass;
     }

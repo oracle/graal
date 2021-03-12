@@ -377,6 +377,8 @@ public abstract class Accessor {
 
         public abstract boolean hasAllAccess(FileSystem fs);
 
+        public abstract boolean hasNoAccess(FileSystem fs);
+
         public abstract String getLanguageHome(Object engineObject);
 
         public abstract void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entries);
@@ -386,6 +388,8 @@ public abstract class Accessor {
         public abstract Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext);
 
         public abstract Object createDefaultLoggerCache();
+
+        public abstract Object getContextLoggerCache(Object polyglotLanguageContext);
 
         public abstract Handler getLogHandler(Object loggerCache);
 
@@ -643,6 +647,8 @@ public abstract class Accessor {
         public abstract Object getDefaultLoggers();
 
         public abstract Object createEngineLoggers(Object spi, Map<String, Level> logLevels);
+
+        public abstract Object getLoggersSPI(Object loggerCache);
 
         public abstract void closeEngineLoggers(Object loggers);
 

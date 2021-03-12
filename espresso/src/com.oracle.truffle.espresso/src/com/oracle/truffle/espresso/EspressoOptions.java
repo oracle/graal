@@ -437,9 +437,21 @@ public final class EspressoOptions {
                     category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> JavaAgent = new OptionKey<>("");
 
+    @Option(help = "Used internally to keep track of the command line arguments given to the vm in order to support VM.getRuntimeArguments().\\n" +
+                    "Setting this option is the responsibility of the context creator if such support is required.\\n" +
+                    "Usage:\\n" +
+                    "For each argument [arg<i>] passed to the context (excluding the main class args):\\n" +
+                    "    builder.option(java.VMArguments.<i>, [arg<i>]);", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
+    public static final OptionKey<OptionMap<String>> VMArguments = OptionKey.mapOf(String.class);
+
     @Option(help = "Native backend used by Espresso, if not specified, Espresso will pick one depending on the environment.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
+
+    @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> EnableSignals = new OptionKey<>(false);
 
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);

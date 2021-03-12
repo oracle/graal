@@ -138,6 +138,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -463,7 +464,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, ParsingReason reason) {
         /*
          * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so
          * that we get exact types for fields that store profiles.
@@ -483,7 +484,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             }
         });
 
-        if (analysis || hosted) {
+        if (reason != ParsingReason.JITCompilation) {
             /*
              * For AOT compilation and static analysis, we intrinsify CompilerDirectives.castExact
              * with explicit exception edges. For runtime compilation, TruffleGraphBuilderPlugins

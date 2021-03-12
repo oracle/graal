@@ -26,6 +26,7 @@
 package org.graalvm.compiler.asm.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.CPU;
+import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.rscratch1;
 import static jdk.vm.ci.aarch64.AArch64.rscratch2;
 import static jdk.vm.ci.aarch64.AArch64.sp;
@@ -39,6 +40,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
 
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
@@ -58,8 +60,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     private AArch64MemoryEncoding lastImmLoadStoreEncoding;
     private boolean isImmLoadStoreMerged = false;
 
+    public final AArch64ASIMDMacroAssembler neon;
+
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
+        this.neon = new AArch64ASIMDMacroAssembler(this);
     }
 
     public class ScratchRegister implements AutoCloseable {
@@ -1659,11 +1664,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void fmov(int size, Register dst, Register src) {
+        assert size == 32 || size == 64;
         assert !(dst.getRegisterCategory().equals(CPU) && src.getRegisterCategory().equals(CPU)) : "src and dst cannot both be integer registers.";
         if (dst.getRegisterCategory().equals(CPU)) {
-            super.fmovFpu2Cpu(size, dst, src);
+            fmovFpu2Cpu(size, dst, src);
         } else if (src.getRegisterCategory().equals(CPU)) {
-            super.fmovCpu2Fpu(size, dst, src);
+            fmovCpu2Fpu(size, dst, src);
         } else {
             super.fmov(size, dst, src);
         }
@@ -1680,9 +1686,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void fmov(int size, Register dst, double imm) {
+        assert size == 32 || size == 64;
         if (imm == 0.0) {
             assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is no valid immediate.";
-            super.fmovCpu2Fpu(size, dst, zr);
+            fmovCpu2Fpu(size, dst, zr);
         } else {
             super.fmov(size, dst, imm);
         }
@@ -2204,11 +2211,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void popcnt(int size, Register dst, Register src, Register vreg) {
         assert 32 == size || 64 == size : "Invalid data size";
+        assert dst.getRegisterCategory().equals(CPU);
+        assert src.getRegisterCategory().equals(CPU);
+        assert vreg.getRegisterCategory().equals(SIMD);
+
         fmov(size, vreg, src);
-        final int fixedSize = 64;
-        cnt(fixedSize, vreg, vreg);
-        addv(fixedSize, SIMDElementSize.Byte, vreg, vreg);
-        umov(fixedSize, dst, 0, vreg);
+        neon.cntVV(ASIMDSize.HalfReg, vreg, vreg);
+        neon.addvSV(ASIMDSize.HalfReg, AArch64ASIMDAssembler.ElementSize.Byte, vreg, vreg);
+        neon.umovGX(AArch64ASIMDAssembler.ElementSize.DoubleWord, dst, vreg, 0);
     }
 
     /**

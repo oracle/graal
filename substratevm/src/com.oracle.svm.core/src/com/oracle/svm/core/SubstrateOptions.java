@@ -46,12 +46,10 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.UserError;
@@ -243,32 +241,12 @@ public class SubstrateOptions {
     @APIOption(name = "enable-https", fixedValue = "https", customHelp = "enable https support in the generated image")//
     @APIOption(name = "enable-url-protocols")//
     @Option(help = "List of comma separated URL protocols to enable.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<LocatableMultiOptionValue.Strings>(new LocatableMultiOptionValue.Strings()) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, LocatableMultiOptionValue.Strings oldValue, LocatableMultiOptionValue.Strings newValue) {
-            for (String protocol : OptionUtils.flatten(",", newValue)) {
-                if (protocol.equals(JavaNetSubstitutions.HTTPS_PROTOCOL)) {
-                    EnableAllSecurityServices.update(values, true);
-                }
-            }
-        }
-    };
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
+    @SuppressWarnings("unused") //
     @APIOption(name = "enable-all-security-services")//
-    @Option(help = "Add all security service classes to the generated image.")//
-    public static final HostedOptionKey<Boolean> EnableAllSecurityServices = new HostedOptionKey<Boolean>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                /*
-                 * Some providers like SunEC and SunSASL are implemented in native libs. These
-                 * providers are added to the image when EnableAllSecurityServices is set. If they
-                 * are actually used at runtime the user must provide and load the native libs.
-                 */
-                JNI.update(values, true);
-            }
-        }
-    };
+    @Option(help = "Add all security service classes to the generated image.", deprecated = true)//
+    public static final HostedOptionKey<Boolean> EnableAllSecurityServices = new HostedOptionKey<>(false);
 
     @Option(help = "Enable Java Native Interface (JNI) support.")//
     public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(true);
@@ -379,6 +357,7 @@ public class SubstrateOptions {
                  * functions makes it incoherent with the executable.
                  */
                 RemoveUnusedSymbols.update(values, false);
+                InternalSymbolsAreGlobal.update(values, true);
                 /*
                  * The LLVM backend doesn't support speculative execution attack mitigation
                  */
@@ -399,6 +378,10 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+    @Option(help = "Compatibility option to make symbols used for the image heap global. " +
+                    "Using global symbols is problematic for shared libraries because the loader implicitly changes the value when the symbol is already defined in the executable loading the library. " +
+                    "Setting this option to true preserves the broken behavior of old Native Image versions.")//
+    public static final HostedOptionKey<Boolean> InternalSymbolsAreGlobal = new HostedOptionKey<>(false);
 
     @Option(help = "Common prefix used by method symbols in image.")//
     public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
@@ -531,4 +514,24 @@ public class SubstrateOptions {
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(false);
+
+    public static boolean areMethodHandlesSupported() {
+        return JavaVersionUtil.JAVA_SPEC >= 11;
+    }
+
+    @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal). Defaults to false for shared library and true for executables", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+    public static final HostedOptionKey<Boolean> EnableSignalAPI = new HostedOptionKey<Boolean>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (values.containsKey(this)) {
+                return (Boolean) values.get(this);
+            }
+            return !SharedLibrary.getValueOrDefault(values);
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
 }

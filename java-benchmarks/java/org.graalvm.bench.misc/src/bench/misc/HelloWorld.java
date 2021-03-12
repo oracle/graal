@@ -32,6 +32,5 @@ import org.openjdk.jmh.annotations.State;
 public class HelloWorld {
     @Benchmark
     public static void helloWorld() {
-        System.out.println("Hello, World!");
     }
 }

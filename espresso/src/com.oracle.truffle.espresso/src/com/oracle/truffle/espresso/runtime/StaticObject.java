@@ -1167,7 +1167,7 @@ public final class StaticObject implements TruffleObject {
         ObjectKlass k = getInteropKlass();
 
         for (Method m : k.getVTable()) {
-            if (LookupVirtualMethodNode.isCanditate(m)) {
+            if (LookupVirtualMethodNode.isCandidate(m)) {
                 // Note: If there are overloading, the same key may appear twice.
                 // TODO: Cache the keys array in the Klass.
                 members.add(m.getNameAsString());
@@ -1223,7 +1223,8 @@ public final class StaticObject implements TruffleObject {
     RuntimeException throwException(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         checkNotForeign();
         if (isException()) {
-            throw Meta.throwException(this);
+            Meta meta = getKlass().getMeta();
+            throw meta.throwException(this);
         }
         error.enter();
         throw UnsupportedMessageException.create();
@@ -1760,7 +1761,7 @@ public final class StaticObject implements TruffleObject {
             if (bytecodeNode != null) {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
-            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
@@ -1771,7 +1772,7 @@ public final class StaticObject implements TruffleObject {
             if (bytecodeNode != null) {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
-            throw Meta.throwException(meta.java_lang_ArrayStoreException);
+            throw meta.throwException(meta.java_lang_ArrayStoreException);
         }
     }
 
@@ -1796,7 +1797,7 @@ public final class StaticObject implements TruffleObject {
             if (bytecodeNode != null) {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
-            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
@@ -1813,7 +1814,7 @@ public final class StaticObject implements TruffleObject {
             if (bytecodeNode != null) {
                 bytecodeNode.enterImplicitExceptionProfile();
             }
-            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 

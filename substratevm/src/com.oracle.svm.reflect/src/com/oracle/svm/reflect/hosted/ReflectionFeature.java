@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
@@ -38,7 +38,6 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
@@ -51,14 +50,12 @@ public final class ReflectionFeature implements GraalFeature {
 
     private ReflectionDataBuilder reflectionData;
     private ImageClassLoader loader;
-    private SVMHost hostVM;
     private AnalysisUniverse aUniverse;
     private int loadedConfigurations;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        hostVM = access.getHostVM();
         aUniverse = access.getUniverse();
 
         ReflectionSubstitution subst = new ReflectionSubstitution(access.getMetaAccess().getWrapped(), access.getHostVM().getClassInitializationSupport(), access.getImageClassLoader());
@@ -103,11 +100,8 @@ public final class ReflectionFeature implements GraalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
-        /*
-         * The reflection invocation plugins need to be registered only when reflection is enabled
-         * since it adds Field and Method objects to the image heap which otherwise are not allowed.
-         */
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, invocationPlugins, hostVM, aUniverse, analysis, hosted);
+    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        ReflectionPlugins.registerInvocationPlugins(loader, providers.getSnippetReflection(), annotationSubstitutions, plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(),
+                        aUniverse, reason);
     }
 }

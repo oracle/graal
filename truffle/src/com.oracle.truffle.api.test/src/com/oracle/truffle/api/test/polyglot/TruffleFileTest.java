@@ -52,6 +52,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
+import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -92,12 +93,41 @@ import java.util.stream.Collectors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class TruffleFileTest extends AbstractPolyglotTest {
+
+    private static Path languageHome;
+    private static Path languageHomeFile;
+    private static Path stdLib;
+    private static Path stdLibFile;
+    private static Path nonLanguageHomeFile;
+
+    @BeforeClass
+    public static void setUpClass() throws Exception {
+        languageHome = Files.createTempDirectory(TruffleFileTest.class.getSimpleName());
+        languageHomeFile = languageHome.resolve("homeFile");
+        Files.write(languageHomeFile, Collections.singleton(languageHomeFile.getFileName().toString()));
+        stdLib = Files.createDirectory(languageHome.resolve("stdlib"));
+        stdLibFile = stdLib.resolve("stdLibFile");
+        Files.write(stdLibFile, Collections.singleton(stdLibFile.getFileName().toString()));
+        System.setProperty("org.graalvm.language.InternalTruffleFileTestLanguage.home", languageHome.toAbsolutePath().toString());
+        nonLanguageHomeFile = Files.createTempFile(TruffleFileTest.class.getSimpleName(), "");
+        Files.write(nonLanguageHomeFile, Collections.singleton(nonLanguageHomeFile.getFileName().toString()));
+    }
+
+    @AfterClass
+    public static void tearDownClass() throws Exception {
+        System.getProperties().remove("org.graalvm.language.InternalTruffleFileTestLanguage.home");
+        resetLanguageHomes();
+        delete(languageHome);
+        delete(nonLanguageHomeFile);
+    }
 
     private static final Predicate<TruffleFile> FAILING_RECOGNIZER = (tf) -> {
         throw silenceException(RuntimeException.class, new IOException());
@@ -508,6 +538,86 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
     }
 
+    @Test
+    public void testGetTruffleFileInternalAllowedIO() throws IOException {
+        setupEnv(Context.newBuilder().allowIO(true).build(), new InternalTruffleFileTestLanguage());
+        StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
+        TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(languageHomeFile.toString(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(stdLibFile.toString(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toUri(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(languageHomeFile.toUri(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(stdLibFile.toUri(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+    }
+
+    @Test
+    public void testGetTruffleFileInternalCustomFileSystem() throws IOException {
+        setupEnv(Context.newBuilder().allowIO(true).fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build(),
+                        new InternalTruffleFileTestLanguage());
+        StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
+        TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(languageHomeFile.toString(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(stdLibFile.toString(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toUri(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(languageHomeFile.toUri(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        res = languageEnv.getTruffleFileInternal(stdLibFile.toUri(), predicate);
+        assertFalse(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+    }
+
+    @Test
+    public void testGetTruffleFileInternalDeniedIO() throws IOException {
+        setupEnv(Context.create(), new InternalTruffleFileTestLanguage());
+        StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
+        TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
+        assertFalse(predicate.called);
+        TruffleFile finRes = res;
+        assertFails(() -> finRes.readAllBytes(), SecurityException.class);
+        res = languageEnv.getTruffleFileInternal(languageHomeFile.toString(), predicate);
+        assertTrue(predicate.called);
+        TruffleFile finRes2 = res;
+        assertFails(() -> finRes2.readAllBytes(), SecurityException.class);
+        predicate.called = false;
+        res = languageEnv.getTruffleFileInternal(stdLibFile.toString(), predicate);
+        assertTrue(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        predicate.called = false;
+        res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toUri(), predicate);
+        assertFalse(predicate.called);
+        TruffleFile finRes3 = res;
+        assertFails(() -> finRes3.readAllBytes(), SecurityException.class);
+        res = languageEnv.getTruffleFileInternal(languageHomeFile.toUri(), predicate);
+        assertTrue(predicate.called);
+        TruffleFile finRes4 = res;
+        assertFails(() -> finRes4.readAllBytes(), SecurityException.class);
+        predicate.called = false;
+        res = languageEnv.getTruffleFileInternal(stdLibFile.toString(), predicate);
+        assertTrue(predicate.called);
+        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+    }
+
     private static void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
@@ -641,6 +751,14 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     }
 
+    @TruffleLanguage.Registration(id = "InternalTruffleFileTestLanguage", name = "InternalTruffleFileTestLanguage", characterMimeTypes = "text/x-internal-file-test")
+    public static final class InternalTruffleFileTestLanguage extends ProxyLanguage {
+
+        public String getHome() {
+            return getLanguageHome();
+        }
+    }
+
     static final class EmptyPathTestFs implements FileSystem {
 
         @Override
@@ -764,6 +882,23 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
         private static RuntimeException fail() {
             throw new RuntimeException("Should not reach here.");
+        }
+    }
+
+    private static final class StdLibPredicate implements Predicate<TruffleFile> {
+
+        private final TruffleFile stdLibFolder;
+        boolean called;
+
+        StdLibPredicate(TruffleFile stdLibFolder) {
+            this.stdLibFolder = stdLibFolder;
+        }
+
+        @Override
+        public boolean test(TruffleFile truffleFile) {
+            called = true;
+            assertTrue(truffleFile.isAbsolute());
+            return truffleFile.startsWith(stdLibFolder);
         }
     }
 }

@@ -121,7 +121,7 @@ public class StackWalk {
         Integer decodedOrNull = fw.doStackWalk(frames);
         int decoded = decodedOrNull == null ? fw.decoded() : decodedOrNull;
         if (decoded < 1) {
-            throw Meta.throwException(meta.java_lang_InternalError);
+            throw meta.throwException(meta.java_lang_InternalError);
         }
         register(fw);
         Object result = meta.java_lang_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
@@ -144,7 +144,7 @@ public class StackWalk {
         assert synchronizedConstants(meta);
         FrameWalker fw = getAnchored(anchor);
         if (fw == null) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "doStackWalk: corrupted buffers");
+            throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "doStackWalk: corrupted buffers");
         }
         if (batchSize <= 0) {
             return startIndex;
@@ -330,7 +330,7 @@ public class StackWalk {
                 }
             }
             if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && ((m.getModifiers() & ACC_CALLER_SENSITIVE) != 0)) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
             }
             processFrame(frameInstance, m, index);
             decoded++;

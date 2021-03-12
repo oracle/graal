@@ -25,7 +25,7 @@
 
 /*
  @ApiInfo(
- group="Tools"
+ group="Insight"
  )
  */
 

@@ -539,11 +539,18 @@ public class LoopEx {
      */
     public boolean canDuplicateLoop() {
         for (Node node : inside().nodes()) {
+            /*
+             * Control flow anchored nodes must not be duplicated.
+             */
             if (node instanceof ControlFlowAnchored) {
                 return false;
             }
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
+                /*
+                 * Exception handling frame states can cause problems when they are duplicated and
+                 * one needs to create a framestate at the duplication merge.
+                 */
                 if (frameState.isExceptionHandlingBCI()) {
                     return false;
                 }

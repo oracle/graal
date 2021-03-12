@@ -67,7 +67,7 @@ import com.oracle.truffle.tck.DebuggerTester;
 @RunWith(Parameterized.class)
 public final class LLVMDebugExprParserTest {
 
-    private static final Path BC_DIR_PATH = Paths.get(TestOptions.TEST_SUITE_PATH, "debugexpr");
+    private static final Path BC_DIR_PATH = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "debugexpr");
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "debugexpr");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "testExpr");
 

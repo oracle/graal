@@ -220,6 +220,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     final AtomicLong volatileStatementCounter = new AtomicLong();
     long statementCounter;
     final long statementLimit;
+    private volatile Object contextBoundLoggers;
 
     /*
      * Initialized once per context.
@@ -283,7 +284,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
          * done after instruments are created.
          */
         if (!config.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers(engine));
+            EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers());
         }
 
         notifyContextCreated();
@@ -312,8 +313,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.invalid = this.parent.invalid;
         this.invalidMessage = this.parent.invalidMessage;
         this.cancelling = this.parent.cancelling;
+        this.contextBoundLoggers = this.parent.contextBoundLoggers;
         if (!parent.config.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers(engine));
+            EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers());
         }
         this.contextImpls = new Object[engine.contextLength];
         this.contexts = createContextArray();
@@ -914,23 +916,39 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return context;
     }
 
+    void initializeInnerContextLanguage(String languageId) {
+        PolyglotLanguage language = engine.idToLanguage.get(languageId);
+        assert language != null : "language creating the inner context not be found";
+        Object prev = engine.enterIfNeeded(this);
+        try {
+            initializeLanguage(language);
+        } finally {
+            engine.leaveIfNeeded(prev, this);
+        }
+    }
+
+    private boolean initializeLanguage(PolyglotLanguage language) {
+        PolyglotLanguageContext languageContext = getContext(language);
+        assert languageContext != null;
+        languageContext.checkAccess(null);
+        if (!languageContext.isInitialized()) {
+            return languageContext.ensureInitialized(null);
+        }
+        return false;
+    }
+
     @Override
     public boolean initializeLanguage(String languageId) {
         PolyglotLanguage language = requirePublicLanguage(languageId);
         PolyglotLanguageContext languageContext = getContext(language);
-        assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
-            languageContext.checkAccess(null);
-            if (!languageContext.isInitialized()) {
-                return languageContext.ensureInitialized(null);
-            }
+            return initializeLanguage(language);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(languageContext, t, true);
         } finally {
             hostLeave(languageContext, prev);
         }
-        return false;
     }
 
     @Override
@@ -1592,7 +1610,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
             if (parent == null) {
                 if (!this.config.logLevels.isEmpty()) {
-                    EngineAccessor.LANGUAGE.configureLoggers(this, null, getAllLoggers(engine));
+                    EngineAccessor.LANGUAGE.configureLoggers(this, null, getAllLoggers());
                 }
                 if (this.config.logHandler != null && !PolyglotLoggers.isSameLogSink(this.config.logHandler, engine.logHandler)) {
                     this.config.logHandler.close();
@@ -1928,7 +1946,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.config = newConfig;
         initializeStaticContext(this);
         if (!newConfig.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, newConfig.logLevels, getAllLoggers(engine));
+            EngineAccessor.LANGUAGE.configureLoggers(this, newConfig.logLevels, getAllLoggers());
         }
         final PolyglotContextImpl prev = engine.enter(this);
         try {
@@ -2062,15 +2080,38 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             internalFs.onPreInitializeContextEnd();
             FileSystems.resetDefaultFileSystemProvider();
             if (!config.logLevels.isEmpty()) {
-                EngineAccessor.LANGUAGE.configureLoggers(context, null, getAllLoggers(engine));
+                EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
             }
         }
     }
 
-    private static Object[] getAllLoggers(PolyglotEngineImpl engine) {
+    Object getOrCreateContextLoggers() {
+        Object res = contextBoundLoggers;
+        if (res == null) {
+            synchronized (this) {
+                res = contextBoundLoggers;
+                if (res == null) {
+                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.LoggerCache.newContextLoggerCache(this), config.logLevels);
+                    contextBoundLoggers = res;
+                }
+            }
+        }
+        return res;
+    }
+
+    private Object[] getAllLoggers() {
         Object defaultLoggers = EngineAccessor.LANGUAGE.getDefaultLoggers();
         Object engineLoggers = engine.getEngineLoggers();
-        return engineLoggers == null ? new Object[]{defaultLoggers} : new Object[]{defaultLoggers, engineLoggers};
+        Object contextLoggers = contextBoundLoggers;
+        List<Object> allLoggers = new ArrayList<>(3);
+        allLoggers.add(defaultLoggers);
+        if (engineLoggers != null) {
+            allLoggers.add(engineLoggers);
+        }
+        if (contextLoggers != null) {
+            allLoggers.add(contextLoggers);
+        }
+        return allLoggers.toArray(new Object[allLoggers.size()]);
     }
 
     static class ContextWeakReference extends WeakReference<PolyglotContextImpl> {

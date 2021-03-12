@@ -70,6 +70,10 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
         return create(assumptions, constantReflection, mirror, object, allowNull, false);
     }
 
+    public static LogicNode create(ValueNode mirror, ValueNode object) {
+        return new InstanceOfDynamicNode(mirror, object, false, false);
+    }
+
     protected InstanceOfDynamicNode(ValueNode mirror, ValueNode object, boolean allowNull, boolean exact) {
         super(TYPE, mirror, object);
         this.allowNull = allowNull;

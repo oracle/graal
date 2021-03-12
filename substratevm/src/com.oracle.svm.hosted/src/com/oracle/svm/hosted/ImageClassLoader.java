@@ -394,7 +394,7 @@ public final class ImageClassLoader {
      * Returns all annotations on classes, methods, and fields (enabled or disabled based on the
      * parameters) of the given annotation class.
      */
-    <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
+    public <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
         List<T> result = new ArrayList<>();
         for (Class<?> clazz : findAnnotatedClasses(annotationClass, false)) {
             result.add(clazz.getAnnotation(annotationClass));

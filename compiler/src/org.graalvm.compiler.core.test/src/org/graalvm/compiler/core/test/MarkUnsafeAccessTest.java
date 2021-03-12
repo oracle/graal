@@ -47,6 +47,7 @@ import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
@@ -122,7 +123,12 @@ public class MarkUnsafeAccessTest extends GraalCompilerTest {
         Assume.assumeTrue("JDK-8259360", JavaVersionUtil.JAVA_SPEC < 16);
         ResolvedJavaMethod getMethod = asResolvedJavaMethod(getMethod(ByteBuffer.class, "get", new Class<?>[]{}));
         ResolvedJavaType mbbClass = getMetaAccess().lookupJavaType(MappedByteBuffer.class);
-        ResolvedJavaMethod getMethodImpl = mbbClass.findUniqueConcreteMethod(getMethod).getResult();
+        AssumptionResult<ResolvedJavaMethod> answer = mbbClass.findUniqueConcreteMethod(getMethod);
+        if (answer == null) {
+            // JDK-8259360
+            return;
+        }
+        ResolvedJavaMethod getMethodImpl = answer.getResult();
         Assert.assertNotNull(getMethodImpl);
         StructuredGraph graph = parseForCompile(getMethodImpl);
         HighTierContext highContext = getDefaultHighTierContext();

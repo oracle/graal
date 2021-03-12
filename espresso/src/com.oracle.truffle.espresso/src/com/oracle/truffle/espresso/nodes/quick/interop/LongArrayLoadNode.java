@@ -63,13 +63,14 @@ public abstract class LongArrayLoadNode extends QuickNode {
                     @Cached ToEspressoNode toEspressoNode,
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
-        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, context.getMeta(), exceptionProfile);
+        Meta meta = context.getMeta();
+        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, meta, exceptionProfile);
 
         try {
-            return (long) toEspressoNode.execute(result, context.getMeta()._long);
+            return (long) toEspressoNode.execute(result, meta._long);
         } catch (UnsupportedTypeException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to long");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast the foreign array element to long");
         }
     }
 

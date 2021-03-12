@@ -92,7 +92,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         if (!method.isPublic()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Meta meta = receiver.getKlass().getMeta();
-            throw Meta.throwException(meta.java_lang_IllegalAccessError);
+            throw meta.throwException(meta.java_lang_IllegalAccessError);
         }
         return method.getMethodVersion();
     }

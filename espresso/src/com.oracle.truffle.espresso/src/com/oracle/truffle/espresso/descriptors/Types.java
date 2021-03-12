@@ -293,7 +293,7 @@ public final class Types {
     public Symbol<Type> fromClass(Class<?> clazz) {
         // TODO(peterssen): checkType is not needed here, just testing Class to Symbol<Type>
         // conversion.
-        return symbols.symbolify(ByteSequence.create(checkType(internalFromClassName(clazz.getCanonicalName()))));
+        return symbols.symbolify(ByteSequence.create(checkType(internalFromClassName(clazz.getName()))));
     }
 
     static ByteSequence checkType(ByteSequence sequence) {

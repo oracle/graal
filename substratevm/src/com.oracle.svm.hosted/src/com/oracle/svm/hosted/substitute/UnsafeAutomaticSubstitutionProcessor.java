@@ -74,6 +74,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -149,7 +150,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         this.suppressWarnings = new ArrayList<>();
     }
 
-    public void init(ImageClassLoader loader, MetaAccessProvider originalMetaAccess, SVMHost hostVM) {
+    public void init(ImageClassLoader loader, MetaAccessProvider originalMetaAccess) {
         ResolvedJavaMethod atomicIntegerFieldUpdaterNewUpdaterMethod;
         ResolvedJavaMethod atomicLongFieldUpdaterNewUpdaterMethod;
         ResolvedJavaMethod atomicReferenceFieldUpdaterNewUpdaterMethod;
@@ -253,9 +254,11 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
         plugins = new Plugins(new InvocationPlugins());
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
-        plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
+        NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
+        plugins.setClassInitializationPlugin(classInitializationPlugin);
 
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), hostVM, null, false, false);
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
+                        ParsingReason.UnsafeSubstitutionAnalysis);
 
         /*
          * Analyzing certain classes leads to false errors. We disable reporting for those classes

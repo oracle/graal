@@ -1,0 +1,93 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface java.io.Closeable
+intf java.lang.AutoCloseable
+meth public abstract void close() throws java.io.IOException
+
+CLSS public abstract interface java.lang.AutoCloseable
+meth public abstract void close() throws java.lang.Exception
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public final org.graalvm.tools.insight.heap.HeapDump
+innr public final Builder
+innr public final ClassBuilder
+innr public final ClassInstance
+innr public final InstanceBuilder
+innr public final ObjectInstance
+innr public final ThreadBuilder
+meth public org.graalvm.tools.insight.heap.HeapDump$ClassBuilder newClass(java.lang.String)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder newInstance(org.graalvm.tools.insight.heap.HeapDump$ClassInstance)
+meth public org.graalvm.tools.insight.heap.HeapDump$ObjectInstance dumpPrimitive(java.lang.Object)
+meth public org.graalvm.tools.insight.heap.HeapDump$ObjectInstance dumpString(java.lang.String)
+meth public org.graalvm.tools.insight.heap.HeapDump$ThreadBuilder newThread(java.lang.String)
+meth public static org.graalvm.tools.insight.heap.HeapDump$Builder newHeapBuilder(java.io.OutputStream) throws java.io.IOException
+supr java.lang.Object
+hfds HEAP_CLASS_DUMP,HEAP_INSTANCE_DUMP,HEAP_PRIMITIVE_ARRAY_DUMP,HEAP_ROOT_JAVA_FRAME,HEAP_ROOT_THREAD_OBJECT,MAGIC_WITH_SEGMENTS,TAG_HEAP_DUMP,TAG_LOAD_CLASS,TAG_STACK_FRAME,TAG_STACK_TRACE,TAG_START_THREAD,TAG_STRING,TYPE_BOOLEAN,TYPE_BYTE,TYPE_CHAR,TYPE_DOUBLE,TYPE_FLOAT,TYPE_INT,TYPE_LONG,TYPE_OBJECT,TYPE_SHORT,builder,heap,heapStrings,primitiveClasses,primitives,typeObject,typeString,typeThread
+hcls Identifiers
+
+CLSS public final org.graalvm.tools.insight.heap.HeapDump$Builder
+ outer org.graalvm.tools.insight.heap.HeapDump
+intf java.io.Closeable
+meth public void close() throws java.io.IOException
+meth public void dumpHeap(java.util.function.Consumer<org.graalvm.tools.insight.heap.HeapDump>) throws java.io.IOException
+supr java.lang.Object
+hfds ids,objectCounter,whole,wholeStrings
+
+CLSS public final org.graalvm.tools.insight.heap.HeapDump$ClassBuilder
+ outer org.graalvm.tools.insight.heap.HeapDump
+meth public org.graalvm.tools.insight.heap.HeapDump$ClassBuilder field(java.lang.String,java.lang.Class<?>)
+meth public org.graalvm.tools.insight.heap.HeapDump$ClassBuilder field(java.lang.String,org.graalvm.tools.insight.heap.HeapDump$ClassInstance)
+meth public org.graalvm.tools.insight.heap.HeapDump$ClassInstance dumpClass()
+supr java.lang.Object
+hfds classId,fieldNamesAndTypes,superId
+
+CLSS public final org.graalvm.tools.insight.heap.HeapDump$ClassInstance
+ outer org.graalvm.tools.insight.heap.HeapDump
+meth public java.util.NavigableSet<java.lang.String> names()
+supr java.lang.Object
+hfds fieldBytes,fieldNamesAndTypes,id
+
+CLSS public final org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder
+ outer org.graalvm.tools.insight.heap.HeapDump
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder put(java.lang.String,org.graalvm.tools.insight.heap.HeapDump$ObjectInstance)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder putBoolean(java.lang.String,boolean)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder putByte(java.lang.String,byte)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder putChar(java.lang.String,char)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder putDouble(java.lang.String,double)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder putFloat(java.lang.String,float)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder putInt(java.lang.String,int)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder putLong(java.lang.String,long)
+meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder putShort(java.lang.String,short)
+meth public org.graalvm.tools.insight.heap.HeapDump$ObjectInstance dumpInstance()
+meth public org.graalvm.tools.insight.heap.HeapDump$ObjectInstance id()
+supr java.lang.Object
+hfds clazz,instanceId,namesAndValues
+
+CLSS public final org.graalvm.tools.insight.heap.HeapDump$ObjectInstance
+ outer org.graalvm.tools.insight.heap.HeapDump
+meth public boolean equals(java.lang.Object)
+meth public int hashCode()
+supr java.lang.Object
+hfds id
+
+CLSS public final org.graalvm.tools.insight.heap.HeapDump$ThreadBuilder
+ outer org.graalvm.tools.insight.heap.HeapDump
+meth public !varargs org.graalvm.tools.insight.heap.HeapDump$ThreadBuilder addStackFrame(org.graalvm.tools.insight.heap.HeapDump$ClassInstance,java.lang.String,java.lang.String,int,org.graalvm.tools.insight.heap.HeapDump$ObjectInstance[])
+meth public org.graalvm.tools.insight.heap.HeapDump$ObjectInstance dumpThread()
+supr java.lang.Object
+hfds name,stacks
+

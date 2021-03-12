@@ -286,8 +286,7 @@ public abstract class LoopTransformations {
     // loop with final phi(s) and data flow patched to the "continue code".
     // The pre loop is constrained to one iteration for now and will likely
     // be updated to produce vector alignment if applicable.
-
-    public static LoopBeginNode insertPrePostLoops(LoopEx loop) {
+    public static PreMainPostResult insertPrePostLoops(LoopEx loop) {
         assert loop.loopBegin().loopExits().isEmpty() || !loop.loopBegin().graph().hasValueProxies() ||
                         loop.counted().getCountedExit() instanceof LoopExitNode : "Can only unroll loops, if they have exits, if the counted exit is a regular loop exit " + loop;
         StructuredGraph graph = loop.loopBegin().graph();
@@ -344,12 +343,12 @@ public abstract class LoopTransformations {
              * state on the pre/main loop exit, which is the loop header state with the values fixed
              * (proxies if need be),
              */
-            createExitState(preLoopBegin);
-            createExitState(mainLoopBegin);
+            createExitState(preLoopBegin, (LoopExitNode) preLoopExitNode, loop.counted().isInverted(), preLoop);
+            createExitState(mainLoopBegin, (LoopExitNode) mainLoopExitNode, loop.counted().isInverted(), mainLoop);
         }
 
         assert !graph.hasValueProxies() || preLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
-        rewirePreToMainPhis(preLoopBegin, mainLoop, graph.hasValueProxies() ? (LoopExitNode) preLoopExitNode : null);
+        rewirePreToMainPhis(preLoopBegin, mainLoop, preLoop, graph.hasValueProxies() ? (LoopExitNode) preLoopExitNode : null, loop.counted().isInverted());
 
         AbstractEndNode postEntryNode = postLoopBegin.forwardEnd();
         // Exits have been merged, find the continuation below the merge
@@ -401,7 +400,51 @@ public abstract class LoopTransformations {
             }
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "InsertPrePostLoops %s", loop);
-        return mainLoopBegin;
+
+        return new PreMainPostResult(preLoopBegin, mainLoopBegin, postLoopBegin, preLoop, mainLoop, postLoop);
+    }
+
+    public static class PreMainPostResult {
+        private final LoopBeginNode preLoop;
+        private final LoopBeginNode mainLoop;
+        private final LoopBeginNode postLoop;
+
+        private final LoopFragment preLoopFragment;
+        private final LoopFragment mainLoopFragment;
+        private final LoopFragment postLoopFragment;
+
+        public PreMainPostResult(LoopBeginNode preLoop, LoopBeginNode mainLoop, LoopBeginNode postLoop, LoopFragment preLoopFragment, LoopFragment mainLoopFragment, LoopFragment postLoopFragment) {
+            this.preLoop = preLoop;
+            this.mainLoop = mainLoop;
+            this.postLoop = postLoop;
+            this.preLoopFragment = preLoopFragment;
+            this.mainLoopFragment = mainLoopFragment;
+            this.postLoopFragment = postLoopFragment;
+        }
+
+        public LoopFragment getPreLoopFragment() {
+            return preLoopFragment;
+        }
+
+        public LoopFragment getMainLoopFragment() {
+            return mainLoopFragment;
+        }
+
+        public LoopFragment getPostLoopFragment() {
+            return postLoopFragment;
+        }
+
+        public LoopBeginNode getMainLoop() {
+            return mainLoop;
+        }
+
+        public LoopBeginNode getPostLoop() {
+            return postLoop;
+        }
+
+        public LoopBeginNode getPreLoop() {
+            return preLoop;
+        }
     }
 
     private static void cleanupPostDominatingValues(LoopBeginNode mainLoopBegin, AbstractMergeNode mainMergeNode, AbstractEndNode postEndNode) {
@@ -431,11 +474,11 @@ public abstract class LoopTransformations {
         mainLoopBegin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, mainLoopBegin.graph(), "After fixing post dominating proxy usages");
     }
 
-    private static void rewirePreToMainPhis(LoopBeginNode preLoopBegin, LoopFragment mainLoop, LoopExitNode preLoopCountedExit) {
+    private static void rewirePreToMainPhis(LoopBeginNode preLoopBegin, LoopFragment mainLoop, LoopFragment preLoop, LoopExitNode preLoopCountedExit, boolean inverted) {
         // Update the main loop phi initialization to carry from the pre loop
         for (PhiNode prePhiNode : preLoopBegin.phis()) {
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
-            rewirePhi(prePhiNode, mainPhiNode, preLoopCountedExit);
+            rewirePhi(prePhiNode, mainPhiNode, preLoopCountedExit, preLoop, inverted);
         }
         preLoopBegin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, preLoopBegin.graph(), "After updating value flow from pre loop phi to main loop phi");
     }
@@ -454,19 +497,27 @@ public abstract class LoopTransformations {
         merge.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, merge.graph(), "After deleting unused phis");
     }
 
-    private static void createExitState(LoopBeginNode begin) {
-        FrameState mainLoopExitStateAfter = begin.stateAfter().duplicateWithVirtualState();
-        mainLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
+    private static void createExitState(LoopBeginNode begin, LoopExitNode lex, boolean inverted, LoopFragment loop) {
+        FrameState loopHeaderState = begin.stateAfter().duplicateWithVirtualState();
+        loopHeaderState.applyToNonVirtual(new NodePositionClosure<Node>() {
             @Override
             public void apply(Node from, Position p) {
                 ValueNode usage = (ValueNode) p.get(from);
                 if (begin.isPhiAtMerge(usage)) {
-                    Node replacement = LoopFragmentInside.patchProxyAtPhi((PhiNode) usage, begin.loopExits().first(), usage);
+                    PhiNode phi = (PhiNode) usage;
+                    ValueNode toProxy = inverted ? phi.singleBackValueOrThis() : phi;
+                    Node replacement;
+                    if (loop.contains(toProxy)) {
+                        // do not proxy values that are dominating the loop and are outside
+                        replacement = LoopFragmentInside.patchProxyAtPhi((PhiNode) usage, lex, toProxy);
+                    } else {
+                        replacement = toProxy;
+                    }
                     p.set(from, replacement);
                 }
             }
         });
-        begin.loopExits().first().setStateAfter(mainLoopExitStateAfter);
+        lex.setStateAfter(loopHeaderState);
         begin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, begin.graph(), "After proxy-ing phis for exit state");
     }
 
@@ -483,19 +534,14 @@ public abstract class LoopTransformations {
         mergeNode.safeDelete();
     }
 
-    private static void rewirePhi(PhiNode currentPhi, PhiNode outGoingPhi, LoopExitNode exitToProxy) {
+    private static void rewirePhi(PhiNode currentPhi, PhiNode outGoingPhi, LoopExitNode exitToProxy, LoopFragment loopToProxy, boolean inverted) {
         if (currentPhi.graph().hasValueProxies()) {
-            List<ProxyNode> proxyUsages = currentPhi.usages().filter(ProxyNode.class).snapshot();
             ValueNode set = null;
-            for (ProxyNode proxy : proxyUsages) {
-                if (proxy.proxyPoint() == exitToProxy) {
-                    set = proxy;
-                    break;
-                }
-            }
-            if (set == null) {
-                // no proxy yet for this value
-                set = LoopFragmentInside.patchProxyAtPhi(currentPhi, exitToProxy, currentPhi);
+            ValueNode toProxy = inverted ? currentPhi.singleBackValueOrThis() : currentPhi;
+            if (loopToProxy.contains(toProxy)) {
+                set = LoopFragmentInside.patchProxyAtPhi(currentPhi, exitToProxy, toProxy);
+            } else {
+                set = toProxy;
             }
             assert set != null;
             outGoingPhi.setValueAt(0, set);
@@ -514,7 +560,7 @@ public abstract class LoopTransformations {
             PhiNode postPhiNode = postLoop.getDuplicatedNode(prePhiNode);
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
 
-            rewirePhi(mainPhiNode, postPhiNode, mainLoopCountedExit);
+            rewirePhi(mainPhiNode, postPhiNode, mainLoopCountedExit, mainLoop, preLoop.counted().isInverted());
 
             /*
              * Update all usages of the pre phi node below the original loop with the post phi
@@ -619,7 +665,8 @@ public abstract class LoopTransformations {
     public static boolean isUnrollableLoop(LoopEx loop) {
         if (!loop.isCounted() || !loop.counted().getCounter().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
-            // loops without exits can be unrolled
+            // loops without exits can be unrolled, inverted loops cannot be unrolled without
+            // protecting their first iteration
             return false;
         }
         assert loop.counted().getDirection() != null;

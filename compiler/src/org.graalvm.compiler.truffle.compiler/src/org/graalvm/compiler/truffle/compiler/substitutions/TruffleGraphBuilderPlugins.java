@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -686,15 +686,18 @@ public class TruffleGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode offset, ValueNode condition, ValueNode location) {
             if (location.isConstant()) {
                 LocationIdentity locationIdentity;
+                boolean forceLocation;
                 if (location.isNullConstant()) {
                     locationIdentity = LocationIdentity.any();
+                    forceLocation = false;
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
+                    forceLocation = true;
                 }
                 LogicNode compare = b.add(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, CanonicalCondition.EQ, condition,
                                 ConstantNode.forBoolean(true, object.graph()), NodeView.DEFAULT));
                 ConditionAnchorNode anchor = b.add(new ConditionAnchorNode(compare));
-                b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, anchor)));
+                b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, anchor, forceLocation)));
                 return true;
             } else if (canDelayIntrinsification) {
                 return false;
@@ -723,16 +726,18 @@ public class TruffleGraphBuilderPlugins {
             ValueNode locationArgument = location;
             if (locationArgument.isConstant()) {
                 LocationIdentity locationIdentity;
-                boolean forceAnyLocation = false;
+                boolean forceLocation;
                 if (locationArgument.isNullConstant()) {
                     locationIdentity = LocationIdentity.any();
+                    forceLocation = false;
                 } else if (locationArgument.asJavaConstant().equals(anyConstant)) {
                     locationIdentity = LocationIdentity.any();
-                    forceAnyLocation = true;
+                    forceLocation = true;
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
+                    forceLocation = true;
                 }
-                b.add(new RawStoreNode(object, offset, value, kind, locationIdentity, true, null, forceAnyLocation));
+                b.add(new RawStoreNode(object, offset, value, kind, locationIdentity, true, null, forceLocation));
                 return true;
             } else if (canDelayIntrinsification) {
                 return false;

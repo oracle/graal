@@ -161,6 +161,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
@@ -294,9 +295,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NativeImageGenerator {
 
-    private final FeatureHandler featureHandler;
-    private final ImageClassLoader loader;
-    private final HostedOptionProvider optionProvider;
+    protected final FeatureHandler featureHandler;
+    protected final ImageClassLoader loader;
+    protected final HostedOptionProvider optionProvider;
 
     private ForkJoinPool buildExecutor;
     private DeadlockWatchdog watchdog;
@@ -429,7 +430,18 @@ public class NativeImageGenerator {
                 architecture = GraalAccess.getOriginalTarget().arch;
             } else {
                 EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);
+                /*
+                 * FP is added by default, as floating-point operations are required by Graal.
+                 */
+                features.add(AArch64.CPUFeature.FP);
+                /*
+                 * ASIMD is added by default, as it is available in all AArch64 machines with
+                 * floating-port support.
+                 */
+                features.add(AArch64.CPUFeature.ASIMD);
+
                 features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AArch64.CPUFeature.values()));
+
                 architecture = new AArch64(features, EnumSet.noneOf(AArch64.Flag.class));
             }
             assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
@@ -490,6 +502,11 @@ public class NativeImageGenerator {
             ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"),
                             writer -> buildArtifacts.forEach((artifactType, paths) -> {
                                 writer.println("[" + artifactType + "]");
+                                if (artifactType == ArtifactType.JDK_LIB_SHIM) {
+                                    writer.println("# Note that shim JDK libraries depend on this");
+                                    writer.println("# particular native image (including its name)");
+                                    writer.println("# and therefore cannot be used with others.");
+                                }
                                 paths.stream().map(buildDir::relativize).forEach(writer::println);
                                 writer.println();
                             }));
@@ -497,14 +514,16 @@ public class NativeImageGenerator {
             System.out.println("Interrupted!");
             throw new InterruptImageBuilding(e);
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
-            } else if (e.getCause() instanceof Error) {
-                throw (Error) e.getCause();
-            }
+            rethrow(e.getCause());
         } finally {
             shutdownBuildExecutor();
         }
+    }
+
+    /** A version of "sneaky throw" to relay exceptions. */
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void rethrow(Throwable t) throws T {
+        throw (T) t;
     }
 
     protected static void setSystemPropertiesForImageEarly() {
@@ -525,7 +544,7 @@ public class NativeImageGenerator {
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
-    private ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
+    protected ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
         ImageSingletonsSupportImpl.HostedManagement vmConfig = ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
         return new ForkJoinPool(
                         maxConcurrentThreads,
@@ -583,7 +602,8 @@ public class NativeImageGenerator {
                                 GraalAccess.getOriginalProviders().getLoopsDataProvider()).build();
                 registerGraphBuilderPlugins(featureHandler, runtime.getRuntimeConfig(), (HostedProviders) runtime.getRuntimeConfig().getProviders(), bigbang.getMetaAccess(), aUniverse,
                                 hMetaAccess, hUniverse,
-                                nativeLibraries, loader, false, true, bigbang.getAnnotationSubstitutionProcessor(), new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()),
+                                nativeLibraries, loader, ParsingReason.AOTCompilation, bigbang.getAnnotationSubstitutionProcessor(),
+                                new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()),
                                 classInitializationSupport, ConfigurationValues.getTarget());
 
                 if (NativeImageOptions.PrintUniverse.getValue()) {
@@ -921,7 +941,7 @@ public class NativeImageGenerator {
                         annotationSubstitutions, additionalSubstitutions);
 
         SVMHost hostVM = new SVMHost(options, buildExecutor, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
-        automaticSubstitutions.init(loader, originalMetaAccess, hostVM);
+        automaticSubstitutions.init(loader, originalMetaAccess);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
         return new AnalysisUniverse(hostVM, target.wordJavaKind, loader.platform, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
@@ -1021,7 +1041,7 @@ public class NativeImageGenerator {
             bigbang.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable();
             bigbang.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable();
 
-            NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, true, true,
+            NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bigbang.getAnnotationSubstitutionProcessor(), classInitializationPlugin, bigbang.getHostVM().getClassInitializationSupport(), ConfigurationValues.getTarget());
             registerReplacements(debug, featureHandler, null, aProviders, aProviders.getSnippetReflection(), true, initForeignCalls);
 
@@ -1141,10 +1161,9 @@ public class NativeImageGenerator {
     }
 
     public static void registerGraphBuilderPlugins(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, HostedProviders providers, AnalysisMetaAccess aMetaAccess,
-                    AnalysisUniverse aUniverse, HostedMetaAccess hMetaAccess, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, boolean analysis, boolean hosted,
+                    AnalysisUniverse aUniverse, HostedMetaAccess hMetaAccess, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, ParsingReason reason,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin, ClassInitializationSupport classInitializationSupport,
                     TargetDescription target) {
-        assert !analysis || hosted : "analysis must always be hosted";
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
         WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(providers.getSnippetReflection(), providers.getWordTypes());
@@ -1153,10 +1172,10 @@ public class NativeImageGenerator {
         plugins.appendInlineInvokePlugin(replacements);
 
         if (nativeImageInlineDuringParsingEnabled()) {
-            plugins.appendInlineInvokePlugin(new ExperimentalNativeImageInlineDuringParsingPlugin(analysis, providers));
+            plugins.appendInlineInvokePlugin(new ExperimentalNativeImageInlineDuringParsingPlugin(reason, providers));
         }
 
-        plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(analysis, providers, aUniverse, hUniverse));
+        plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(reason, providers, aUniverse, hUniverse));
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
         ResolvedJavaType resolvedJavaType = providers.getMetaAccess().lookupJavaType(ClassInitializationTracking.class);
@@ -1177,7 +1196,7 @@ public class NativeImageGenerator {
 
         plugins.setClassInitializationPlugin(classInitializationPlugin);
 
-        featureHandler.forEachGraalFeature(feature -> feature.registerGraphBuilderPlugins(providers, plugins, analysis, hosted));
+        featureHandler.forEachGraalFeature(feature -> feature.registerGraphBuilderPlugins(providers, plugins, reason));
 
         HostedSnippetReflectionProvider hostedSnippetReflection = new HostedSnippetReflectionProvider(new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind()));
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
@@ -1216,8 +1235,8 @@ public class NativeImageGenerator {
 
         final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
         final boolean arrayEqualsSubstitution = !SubstrateOptions.useLLVMBackend();
-        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, !hosted, explicitUnsafeNullChecks,
-                        arrayEqualsSubstitution, providers.getLowerer());
+        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, reason == ParsingReason.JITCompilation,
+                        explicitUnsafeNullChecks, arrayEqualsSubstitution, providers.getLowerer());
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
@@ -1228,12 +1247,19 @@ public class NativeImageGenerator {
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we
          * need the hosted meta access.
          */
-        MetaAccessProvider pluginsMetaAccess = hosted && !analysis ? hMetaAccess : aMetaAccess;
+        MetaAccessProvider pluginsMetaAccess;
+        if (reason == ParsingReason.PointsToAnalysis || reason == ParsingReason.JITCompilation) {
+            pluginsMetaAccess = aMetaAccess;
+        } else {
+            VMError.guarantee(reason == ParsingReason.AOTCompilation);
+            pluginsMetaAccess = hMetaAccess;
+        }
+
         assert pluginsMetaAccess != null;
         SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor, pluginsMetaAccess,
-                        hostedSnippetReflection, plugins.getInvocationPlugins(), replacements, analysis);
+                        hostedSnippetReflection, plugins.getInvocationPlugins(), replacements, reason);
 
-        featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins.getInvocationPlugins(), analysis, hosted));
+        featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins.getInvocationPlugins(), reason));
 
         providers.setGraphBuilderPlugins(plugins);
         replacements.setGraphBuilderPlugins(plugins);

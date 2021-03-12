@@ -104,6 +104,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
@@ -169,7 +171,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
-    private final boolean analysis;
+    private final ParsingReason reason;
     private final Providers parsingProviders;
     private final Providers universeProviders;
     private final AnalysisUniverse aUniverse;
@@ -189,8 +191,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private static final Method unsupportedFeatureMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
 
-    public IntrinsifyMethodHandlesInvocationPlugin(boolean analysis, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
-        this.analysis = analysis;
+    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
+        this.reason = reason;
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
         this.universeProviders = providers;
@@ -200,7 +202,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         this.classInitializationPlugin = new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM());
 
-        if (analysis) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             intrinsificationRegistry = new IntrinsificationRegistry();
             ImageSingletons.add(IntrinsificationRegistry.class, intrinsificationRegistry);
         } else {
@@ -209,7 +211,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         methodHandleType = universeProviders.getMetaAccess().lookupJavaType(java.lang.invoke.MethodHandle.class);
         methodHandleInvokeMethodNames = new HashSet<>();
-        if (!NativeImageOptions.areMethodHandlesSupported()) {
+        if (!SubstrateOptions.areMethodHandlesSupported()) {
             methodHandleInvokeMethodNames.addAll(Arrays.asList("invokeExact", "invoke", "invokeBasic", "linkToVirtual", "linkToStatic", "linkToSpecial", "linkToInterface"));
         }
 
@@ -406,19 +408,22 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     class MethodHandlesInlineInvokePlugin implements InlineInvokePlugin {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-            /* Avoid infinite recursion with a (more or less random) maximum depth. */
-            if (b.getDepth() > 20) {
+            /* Avoid infinite recursion and excessive graphs with (more or less random) limits. */
+            if (b.getDepth() > 20 || b.getGraph().getNodeCount() > 1000) {
                 return null;
             }
 
             String className = method.getDeclaringClass().toJavaName(true);
-            if (className.startsWith("java.lang.invoke.VarHandle") && !className.equals("java.lang.invoke.VarHandle")) {
+            if (className.startsWith("java.lang.invoke.VarHandle") && (!className.equals("java.lang.invoke.VarHandle") || method.getName().equals("getMethodHandleUncached"))) {
                 /*
                  * Do not inline implementation methods of various VarHandle implementation classes.
                  * They are too complex and cannot be reduced to a single invoke or field access.
                  * There is also no need to inline them, because they are not related to any
-                 * MethodHandle mechanism. Methods defined in VarHandle itself are fine and not
-                 * covered by this rule.
+                 * MethodHandle mechanism.
+                 * 
+                 * Methods defined in VarHandle itself are fine and not covered by this rule, apart
+                 * from well-known methods that are never useful to be inlined. If these methods are
+                 * reached, intrinsification will not be possible in any case.
                  */
                 return null;
             } else if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
@@ -507,7 +512,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
-        if (!analysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
+        if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
             return reportUnsupportedFeature(b, methodHandleMethod);
         }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
@@ -552,7 +557,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             try {
                 transplanter.graph(graph);
 
-                if (analysis) {
+                if (reason == ParsingReason.PointsToAnalysis) {
                     /*
                      * Successfully intrinsified during analysis, remember that we can intrinsify
                      * when parsing for compilation.
@@ -835,7 +840,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                         "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
                         "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
 
-        if (NativeImageOptions.areMethodHandlesSupported()) {
+        if (SubstrateOptions.areMethodHandlesSupported()) {
             /* Do nothing, the method will be compiled elsewhere */
             return false;
 

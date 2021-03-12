@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
@@ -223,6 +224,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     protected void runMergeExplode(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString) {
         int ip = IP_BEGIN;
         outer: while (true) {
+            LoopNode.reportLoopCount(this, 1);
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }
@@ -465,7 +467,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
              * accordingly. The highest-priority match becomes this state's successor.
              */
             long[] transitionBitSet = locals.getTransitionBitSet();
-            CompilerAsserts.partialEvaluationConstant(transitionBitSet);
             CompilerDirectives.ensureVirtualized(transitionBitSet);
             final int bitSetWords = ((successors.length - 1) >> 6) + 1;
             CompilerAsserts.partialEvaluationConstant(bitSetWords);

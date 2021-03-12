@@ -78,6 +78,12 @@ suite = {
   "defaultLicense" : "UPL",
   "imports": {},
   "libraries" : {
+    "WRK": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk.tar.gz"],
+      "sha1": "04b97d4d90b3d73dc3cd37b225d8aa3d6bca42da",
+      "packedResource": True,
+      "license": "Apache-2.0",
+    },
     "WRK2": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2.tar.gz"],
       "sha1": "a5c417b414f72951de4eb95641808a0a5aa31445",

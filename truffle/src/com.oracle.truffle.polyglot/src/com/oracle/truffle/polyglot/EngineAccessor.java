@@ -759,7 +759,7 @@ final class EngineAccessor extends Accessor {
 
         private static PolyglotEngineImpl resolveEngine(Node node, PolyglotContextImpl context) {
             PolyglotEngineImpl engine;
-            if (node != null) {
+            if (CompilerDirectives.inCompiledCode() && node != null) {
                 RootNode root = node.getRootNode();
                 if (root == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -793,7 +793,7 @@ final class EngineAccessor extends Accessor {
                 impl.initializeContextLocals();
                 impl.engine.initializeMultiContext(creator.context);
                 impl.notifyContextCreated();
-                impl.initializeLanguage(creator.language.getId());
+                impl.initializeInnerContextLanguage(creator.language.getId());
             }
             return impl.creatorTruffleContext;
         }
@@ -925,6 +925,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean hasNoAccess(FileSystem fs) {
+            return FileSystems.hasNoAccess(fs);
+        }
+
+        @Override
         public void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entry) {
             HostLanguage.HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
             hostContext.addToHostClasspath(entry);
@@ -954,7 +959,12 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object createDefaultLoggerCache() {
-            return PolyglotLoggers.defaultSPI();
+            return PolyglotLoggers.LoggerCache.DEFAULT;
+        }
+
+        @Override
+        public Object getContextLoggerCache(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.getOrCreateContextLoggers();
         }
 
         @Override
@@ -979,7 +989,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object getLoggerOwner(Object loggerCache) {
-            return ((PolyglotLoggers.LoggerCache) loggerCache).getEngine();
+            return ((PolyglotLoggers.LoggerCache) loggerCache).getOwner();
         }
 
         @Override

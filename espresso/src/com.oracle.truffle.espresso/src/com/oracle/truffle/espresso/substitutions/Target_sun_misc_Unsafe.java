@@ -90,10 +90,10 @@ public final class Target_sun_misc_Unsafe {
         EspressoContext context = meta.getContext();
 
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         if (hostClass.getMirrorKlass().isArray() || hostClass.getMirrorKlass().isPrimitive()) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         byte[] bytes = data.unwrap();
@@ -444,13 +444,13 @@ public final class Target_sun_misc_Unsafe {
     public static long allocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long length, @InjectMeta Meta meta) {
         JniEnv jni = meta.getContext().getJNI();
         if (length < 0 || length > jni.sizeMax()) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
         }
         @Buffer
         TruffleObject buffer = meta.getNativeAccess().allocateMemory(length);
         if (buffer == null && length > 0) {
             // malloc may return anything for 0-sized allocations.
-            throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
         }
         long ptr = 0;
         try {
@@ -482,12 +482,12 @@ public final class Target_sun_misc_Unsafe {
     public static long reallocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long newSize, @InjectMeta Meta meta) {
         JniEnv jni = meta.getContext().getJNI();
         if (newSize < 0 || newSize > jni.sizeMax()) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
         }
         @Buffer
         TruffleObject result = meta.getNativeAccess().reallocateMemory(RawPointer.create(address), newSize);
         if (result == null) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc couldn't reallocate " + newSize + " bytes");
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc couldn't reallocate " + newSize + " bytes");
         }
         long newAddress = 0L;
         try {
@@ -1234,8 +1234,8 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static void throwException(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Throwable.class) StaticObject ee) {
-        throw Meta.throwException(ee);
+    public static void throwException(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Throwable.class) StaticObject ee, @InjectMeta Meta meta) {
+        throw meta.throwException(ee);
     }
 
     /**
@@ -1439,7 +1439,7 @@ public final class Target_sun_misc_Unsafe {
                 }
             }
         }
-        throw Meta.throwException(meta.java_lang_InternalError);
+        throw meta.throwException(meta.java_lang_InternalError);
     }
 
     @Substitution(hasReceiver = true)

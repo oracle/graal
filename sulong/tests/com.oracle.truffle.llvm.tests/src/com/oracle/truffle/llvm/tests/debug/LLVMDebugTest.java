@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,7 +47,7 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public final class LLVMDebugTest extends LLVMDebugTestBase {
 
-    private static final Path BC_DIR_PATH = Paths.get(TestOptions.TEST_SUITE_PATH, "debug");
+    private static final Path BC_DIR_PATH = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "debug");
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug.native", "debug");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug.native", "trace");
 

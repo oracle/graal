@@ -33,20 +33,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Enumeration;
-import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -76,7 +69,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -652,147 +644,6 @@ final class Target_java_lang_Compiler {
 
     @Substitute
     static void disable() {
-    }
-}
-
-final class IsSingleThreaded implements Predicate<Class<?>> {
-    @Override
-    public boolean test(Class<?> t) {
-        return !SubstrateOptions.MultiThreaded.getValue();
-    }
-}
-
-final class IsMultiThreaded implements Predicate<Class<?>> {
-    @Override
-    public boolean test(Class<?> t) {
-        return SubstrateOptions.MultiThreaded.getValue();
-    }
-}
-
-@TargetClass(className = "java.lang.ApplicationShutdownHooks")
-final class Target_java_lang_ApplicationShutdownHooks {
-
-    /**
-     * Re-initialize the map of registered hooks, because any hooks registered during native image
-     * construction can not survive into the running image. But `hooks` must be initialized to an
-     * IdentityHashMap, because 'null' means I am in the middle of shutting down.
-     */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = IdentityHashMap.class)//
-    private static IdentityHashMap<Thread, Thread> hooks;
-
-    /**
-     * Instead of starting all the threads in {@link #hooks}, just run the {@link Runnable}s one
-     * after another.
-     *
-     * We need this substitution in single-threaded mode, where we cannot start new threads but
-     * still want to support shutdown hooks. In multi-threaded mode, this substitution is not
-     * present, i.e., the original JDK code runs the shutdown hooks in separate threads.
-     */
-    @Substitute
-    @TargetElement(name = "runHooks", onlyWith = IsSingleThreaded.class)
-    static void runHooksSingleThreaded() {
-        /* Claim all the hooks. */
-        final Collection<Thread> threads;
-        /* Checkstyle: allow synchronization. */
-        synchronized (Target_java_lang_ApplicationShutdownHooks.class) {
-            threads = hooks.keySet();
-            hooks = null;
-        }
-        /* Checkstyle: disallow synchronization. */
-
-        /* Run all the hooks, catching anything that is thrown. */
-        final List<Throwable> hookExceptions = new ArrayList<>();
-        for (Thread hook : threads) {
-            try {
-                Util_java_lang_ApplicationShutdownHooks.callRunnableOfThread(hook);
-            } catch (Throwable ex) {
-                hookExceptions.add(ex);
-            }
-        }
-        /* Report any hook exceptions, but do not re-throw them. */
-        if (hookExceptions.size() > 0) {
-            for (Throwable ex : hookExceptions) {
-                ex.printStackTrace(Log.logStream());
-            }
-        }
-    }
-
-    @Alias
-    @TargetElement(name = "runHooks", onlyWith = IsMultiThreaded.class)
-    static native void runHooksMultiThreaded();
-
-    /**
-     * Interpose so that the first time someone adds an ApplicationShutdownHook, I set up a shutdown
-     * hook to run all the ApplicationShutdownHooks. Then the rest of this method is copied from
-     * {@code ApplicationShutdownHook.add(Thread)}.
-     */
-    @Substitute
-    /* Checkstyle: allow synchronization */
-    static synchronized void add(Thread hook) {
-        Util_java_lang_ApplicationShutdownHooks.initializeOnce();
-        if (hooks == null) {
-            throw new IllegalStateException("Shutdown in progress");
-        }
-        if (hook.isAlive()) {
-            throw new IllegalArgumentException("Hook already running");
-        }
-        if (hooks.containsKey(hook)) {
-            throw new IllegalArgumentException("Hook previously registered");
-        }
-        hooks.put(hook, hook);
-    }
-    /* Checkstyle: disallow synchronization */
-}
-
-class Util_java_lang_ApplicationShutdownHooks {
-
-    /** An initialization flag. */
-    private static volatile boolean initialized = false;
-
-    /** A lock to protect the initialization flag. */
-    private static ReentrantLock lock = new ReentrantLock();
-
-    public static void initializeOnce() {
-        if (!initialized) {
-            lock.lock();
-            try {
-                if (!initialized) {
-                    try {
-                        /*
-                         * Register a shutdown hook.
-                         *
-                         * Compare this code to the static initializations done in {@link
-                         * ApplicationShutdownHooks}.
-                         */
-                        Target_java_lang_Shutdown.add(1 /* shutdown hook invocation order */,
-                                        false /* not registered if shutdown in progress */,
-                                        new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                if (SubstrateOptions.MultiThreaded.getValue()) {
-                                                    Target_java_lang_ApplicationShutdownHooks.runHooksMultiThreaded();
-                                                } else {
-                                                    Target_java_lang_ApplicationShutdownHooks.runHooksSingleThreaded();
-                                                }
-                                            }
-                                        });
-                    } catch (InternalError ie) {
-                        /* Someone else has registered the shutdown hook at slot 2. */
-                    } catch (IllegalStateException ise) {
-                        /* Too late to register this shutdown hook. */
-                    }
-                    /* Announce that initialization is complete. */
-                    initialized = true;
-                }
-            } finally {
-                lock.unlock();
-            }
-        }
-    }
-
-    @SuppressFBWarnings(value = {"RU_INVOKE_RUN"}, justification = "Do not start a new thread, just call the run method.")
-    static void callRunnableOfThread(Thread thread) {
-        thread.run();
     }
 }
 

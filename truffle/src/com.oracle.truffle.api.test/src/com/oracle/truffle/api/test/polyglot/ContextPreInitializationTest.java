@@ -71,8 +71,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -106,6 +108,8 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.graalvm.collections.Pair;
 
 public class ContextPreInitializationTest {
@@ -998,6 +1002,133 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.disposeContextCount);
         assertEquals(1, firstLangCtx.initializeThreadCount);
         assertEquals(1, firstLangCtx.disposeThreadCount);
+    }
+
+    @Test
+    public void testEngineBoundLoggers() throws Exception {
+        String loggerName = "engine";
+        String loggerLevelOptionName = String.format("log.%s.level", loggerName);
+        setPatchable(FIRST);
+        // In context pre-initialization there is no sdk Context to set log handler,
+        // logging is done to System.err
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine();
+            TruffleLogger log = getEngineLogger(engine);
+            log.log(Level.INFO, "preInit:info");
+            log.log(Level.FINEST, "preInit:finest");
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine();
+            TruffleLogger log = getEngineLogger(engine);
+            log.log(Level.INFO, "patch:info");
+            log.log(Level.FINEST, "patch:finest");
+        });
+        final PrintStream origErr = System.err;
+        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        String origLogFile = System.getProperty("polyglot.log.file");
+        try (PrintStream printStream = new PrintStream(preInitErr)) {
+            System.setErr(printStream);
+            System.setProperty("polyglot." + loggerLevelOptionName, "FINE");
+            System.clearProperty("polyglot.log.file");
+            doContextPreinitialize(FIRST);
+        } finally {
+            System.setErr(origErr);
+            System.clearProperty("polyglot." + loggerLevelOptionName);
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
+        }
+        final String preInitLog = preInitErr.toString("UTF-8");
+        assertTrue(preInitLog.contains("preInit:info"));
+        assertFalse(preInitLog.contains("preInit:finest"));
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        final TestHandler testHandler = new TestHandler(loggerName);
+        try (Context ctx = Context.newBuilder().option(loggerLevelOptionName, "FINEST").logHandler(testHandler).build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            Set<String> messages = testHandler.logs.stream().map(LogRecord::getMessage).collect(Collectors.toSet());
+            assertTrue(messages.contains("patch:info"));
+            assertTrue(messages.contains("patch:finest"));
+        }
+    }
+
+    private static TruffleLogger getEngineLogger(Object engine) {
+        try {
+            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl");
+            Method m = clz.getDeclaredMethod("getEngineLogger");
+            m.setAccessible(true);
+            return (TruffleLogger) m.invoke(engine);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    public void testContextBoundLogger() throws Exception {
+        String logger1Name = String.format("%s.bound", FIRST);
+        String logger1LevelOptionName = String.format("log.%s.level", logger1Name);
+        String logger2Name = String.format("%s.bound2", FIRST);
+        String logger2LevelOptionName = String.format("log.%s.level", logger2Name);
+        AtomicReference<TruffleLogger> loggerRef = new AtomicReference<>();
+        setPatchable(FIRST);
+        // In context pre-initialization there is no sdk Context to set log handler,
+        // logging is done to System.err
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            env.getLogger("bound").log(Level.INFO, "bound:preInit:info");
+            env.getLogger("bound").log(Level.FINEST, "bound:preInit:finest");
+            TruffleLogger log = env.getLogger("bound2");
+            loggerRef.set(log);
+            log.log(Level.INFO, "bound2:preInit:info");
+            log.log(Level.FINEST, "bound2:preInit:finest");
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            env.getLogger("bound").log(Level.INFO, "bound:patch:info");
+            env.getLogger("bound").log(Level.FINEST, "bound:patch:finest");
+            TruffleLogger log = loggerRef.get();
+            Assert.assertNotNull(log);
+            log.log(Level.INFO, "bound2:patch:info");
+            log.log(Level.FINEST, "bound2:patch:finest");
+        });
+        final PrintStream origErr = System.err;
+        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        String origLogFile = System.getProperty("polyglot.log.file");
+        try (PrintStream printStream = new PrintStream(preInitErr)) {
+            System.setErr(printStream);
+            System.setProperty("polyglot." + logger1LevelOptionName, "FINE");
+            System.setProperty("polyglot." + logger2LevelOptionName, "FINE");
+            System.clearProperty("polyglot.log.file");
+            doContextPreinitialize(FIRST);
+        } finally {
+            System.setErr(origErr);
+            System.clearProperty("polyglot." + logger1LevelOptionName);
+            System.clearProperty("polyglot." + logger2LevelOptionName);
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
+        }
+        final String preInitLog = preInitErr.toString("UTF-8");
+        assertTrue(preInitLog.contains("bound:preInit:info"));
+        assertTrue(preInitLog.contains("bound2:preInit:info"));
+        assertFalse(preInitLog.contains("bound:preInit:finest"));
+        assertFalse(preInitLog.contains("bound2:preInit:finest"));
+
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        final TestHandler testHandler = new TestHandler(logger1Name, logger2Name);
+        try (Context ctx = Context.newBuilder().option(logger1LevelOptionName, "FINEST").option(logger2LevelOptionName, "FINEST").logHandler(testHandler).build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            assertEquals(4, testHandler.logs.size());
+            assertEquals("bound:patch:info", testHandler.logs.get(0).getMessage());
+            assertEquals("bound:patch:finest", testHandler.logs.get(1).getMessage());
+            assertEquals("bound2:patch:info", testHandler.logs.get(2).getMessage());
+            assertEquals("bound2:patch:finest", testHandler.logs.get(3).getMessage());
+        }
     }
 
     @Test

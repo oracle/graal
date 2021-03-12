@@ -34,11 +34,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -54,7 +56,7 @@ import com.oracle.truffle.tck.TruffleRunner;
 
 public class AllocationLimitsTest {
 
-    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_TEST_SUITES"), "other").toPath();
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
     private static final String FILENAME = "O0.bc";
     public static final BaseMatcher<String> EXCEEDS_LIMIT = new BaseMatcher<String>() {
         private final Pattern compile = Pattern.compile(".*exceeds.*limit.*");
@@ -103,6 +105,7 @@ public class AllocationLimitsTest {
     @Before
     public void setup() {
         TestOptions.assumeBundledLLVM();
+        Assume.assumeTrue("Skipping linux/amd64 only test", Platform.isLinux() && Platform.isAMD64());
         library = loadTestBitcodeValue("allocation_limits.ll.dir");
     }
 

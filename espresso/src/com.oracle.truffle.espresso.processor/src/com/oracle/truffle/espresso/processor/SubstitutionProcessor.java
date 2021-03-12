@@ -49,6 +49,8 @@ public class SubstitutionProcessor extends EspressoProcessor {
     private TypeElement host;
     // NoProvider.class
     private TypeElement noProvider;
+    // NoFilter.class
+    private TypeElement noFilter;
 
     // @Substitutions.java11()
     private ExecutableElement espressoSubstitutionsClassNameProvider;
@@ -59,6 +61,8 @@ public class SubstitutionProcessor extends EspressoProcessor {
     private ExecutableElement methodNameElement;
     // @Substitution.methodName()
     private ExecutableElement substitutionClassNameProvider;
+    // @Substitution.versionFilter()
+    private ExecutableElement versionFilterElement;
 
     // @Host.value()
     private ExecutableElement hostValueElement;
@@ -73,20 +77,22 @@ public class SubstitutionProcessor extends EspressoProcessor {
     private static final String METHOD_SUBSTITUTION = SUBSTITUTION_PACKAGE + "." + "Substitution";
     private static final String HOST = SUBSTITUTION_PACKAGE + "." + "Host";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
+    private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
 
     private static final String SUBSTITUTOR = "Substitutor";
     private static final String COLLECTOR = "SubstitutorCollector";
-    private static final String COLLECTOR_INSTANCE_NAME = "substitutorCollector";
 
     private static final String INVOKE = "invoke(Object[] " + ARGS_NAME + ") {\n";
 
     private static final String GET_METHOD_NAME = "getMethodNames";
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
+    private static final String VERSION_FILTER_METHOD = "isValidFor";
+    private static final String JAVA_VERSION = "com.oracle.truffle.espresso.runtime.JavaVersion";
 
     private static final String INSTANCE = "INSTANCE";
 
     public SubstitutionProcessor() {
-        super(SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
+        super(SUBSTITUTION_PACKAGE, SUBSTITUTOR);
     }
 
     static class SubstitutorHelper extends SubstitutionHelper {
@@ -96,9 +102,10 @@ public class SubstitutionProcessor extends EspressoProcessor {
         final String returnType;
         final boolean hasReceiver;
         final TypeMirror nameProvider;
+        final TypeMirror versionFilter;
 
         public SubstitutorHelper(EspressoProcessor processor, ExecutableElement method, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
-                        boolean hasReceiver, TypeMirror nameProvider) {
+                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter) {
             super(processor, method);
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
@@ -106,6 +113,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
             this.returnType = returnType;
             this.hasReceiver = hasReceiver;
             this.nameProvider = nameProvider;
+            this.versionFilter = versionFilter;
         }
     }
 
@@ -191,7 +199,9 @@ public class SubstitutionProcessor extends EspressoProcessor {
 
                     TypeMirror nameProvider = getNameProvider(subst, substitutionClassNameProvider);
                     nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
-                    SubstitutorHelper helper = new SubstitutorHelper(this, (ExecutableElement) method, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider);
+
+                    TypeMirror versionFilter = getVersionFilter(subst);
+                    SubstitutorHelper helper = new SubstitutorHelper(this, (ExecutableElement) method, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter);
 
                     // Create the contents of the source file
                     String classFile = spawnSubstitutor(
@@ -210,6 +220,18 @@ public class SubstitutionProcessor extends EspressoProcessor {
             assert provider.getValue() instanceof TypeMirror;
             TypeMirror value = (TypeMirror) provider.getValue();
             if (!processingEnv.getTypeUtils().isSameType(value, noProvider.asType())) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private TypeMirror getVersionFilter(AnnotationMirror annotation) {
+        AnnotationValue provider = getAttribute(annotation, versionFilterElement);
+        if (provider != null) {
+            assert provider.getValue() instanceof TypeMirror;
+            TypeMirror value = (TypeMirror) provider.getValue();
+            if (!processingEnv.getTypeUtils().isSameType(value, noFilter.asType())) {
                 return value;
             }
         }
@@ -354,6 +376,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
         this.substitutionAnnotation = processingEnv.getElementUtils().getTypeElement(METHOD_SUBSTITUTION);
         this.host = processingEnv.getElementUtils().getTypeElement(HOST);
         this.noProvider = processingEnv.getElementUtils().getTypeElement(NO_PROVIDER);
+        this.noFilter = processingEnv.getElementUtils().getTypeElement(NO_FILTER);
         for (Element e : espressoSubstitutions.getEnclosedElements()) {
             if (e.getKind() == ElementKind.METHOD) {
                 if (e.getSimpleName().contentEquals("nameProvider")) {
@@ -372,6 +395,9 @@ public class SubstitutionProcessor extends EspressoProcessor {
                 if (e.getSimpleName().contentEquals("nameProvider")) {
                     this.substitutionClassNameProvider = (ExecutableElement) e;
                 }
+                if (e.getSimpleName().contentEquals("versionFilter")) {
+                    this.versionFilterElement = (ExecutableElement) e;
+                }
             }
         }
         for (Element e : host.getEnclosedElements()) {
@@ -385,6 +411,8 @@ public class SubstitutionProcessor extends EspressoProcessor {
             }
         }
         // Actual process
+        // Initialize the collector.
+        initCollector(COLLECTOR);
         for (Element e : env.getElementsAnnotatedWith(espressoSubstitutions)) {
             processElement(e);
         }
@@ -406,9 +434,9 @@ public class SubstitutionProcessor extends EspressoProcessor {
         StringBuilder str = new StringBuilder();
         SubstitutorHelper h = (SubstitutorHelper) helper;
         str.append(TAB_3).append("super(\n");
-        str.append(TAB_4).append(generateString(h.guestMethodName)).append(",\n");
-        str.append(TAB_4).append(generateString(h.targetClassName)).append(",\n");
-        str.append(TAB_4).append(generateString(h.returnType)).append(",\n");
+        str.append(TAB_4).append(ProcessorUtils.stringify(h.guestMethodName)).append(",\n");
+        str.append(TAB_4).append(ProcessorUtils.stringify(h.targetClassName)).append(",\n");
+        str.append(TAB_4).append(ProcessorUtils.stringify(h.returnType)).append(",\n");
         str.append(TAB_4).append(generateParameterTypes(h.guestTypeNames, TAB_4)).append(",\n");
         str.append(TAB_4).append(h.hasReceiver).append("\n");
         str.append(TAB_3).append(");\n");
@@ -416,6 +444,10 @@ public class SubstitutionProcessor extends EspressoProcessor {
 
         if (h.nameProvider != null) {
             str.append(generateNameProviders(targetMethodName, h));
+        }
+
+        if (h.versionFilter != null) {
+            str.append(generateVersionFilter(h));
         }
 
         return str.toString();
@@ -429,13 +461,26 @@ public class SubstitutionProcessor extends EspressoProcessor {
         str.append(TAB_2).append(OVERRIDE).append("\n");
         str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("String[] ").append(GET_METHOD_NAME).append("() {\n");
         str.append(TAB_3).append("return ").append(nameProvider);
-        str.append(".").append(INSTANCE).append(".").append(GET_METHOD_NAME).append("(").append(generateString(targetMethodName)).append(");\n");
+        str.append(".").append(INSTANCE).append(".").append(GET_METHOD_NAME).append("(").append(ProcessorUtils.stringify(targetMethodName)).append(");\n");
         str.append(TAB_2).append("}\n\n");
         str.append(TAB_2).append(OVERRIDE).append("\n");
         str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("String[] ").append(SUBSTITUTION_CLASS_NAMES).append("() {\n");
         str.append(TAB_3).append("return ").append(nameProvider);
         str.append(".").append(INSTANCE).append(".").append(SUBSTITUTION_CLASS_NAMES).append("();\n");
         str.append(TAB_2).append("}\n");
+        return str.toString();
+    }
+
+    private static String generateVersionFilter(SubstitutorHelper h) {
+        StringBuilder str = new StringBuilder();
+        String versionFilter = h.versionFilter.toString();
+
+        str.append("\n");
+        str.append(TAB_2).append(OVERRIDE).append("\n");
+        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("boolean ").append(VERSION_FILTER_METHOD).append("(").append(JAVA_VERSION).append(" version) {\n");
+        str.append(TAB_3).append("return ").append(versionFilter);
+        str.append(".").append(INSTANCE).append(".").append(VERSION_FILTER_METHOD).append("(version);\n");
+        str.append(TAB_2).append("}\n\n");
         return str.toString();
     }
 

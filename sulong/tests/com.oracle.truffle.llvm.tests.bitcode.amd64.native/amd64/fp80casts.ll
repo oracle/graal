@@ -1,6 +1,6 @@
 ; ModuleID = 'fp80casts.bc'
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @formatBytes = private unnamed_addr constant [31 x i8] c"%x %x %x %x %x %x %x %x %x %x\0A\00", align 1
 @formatBytesPtr = global i8* getelementptr inbounds ([31 x i8], [31 x i8]* @formatBytes, i64 0, i64 0), align 8

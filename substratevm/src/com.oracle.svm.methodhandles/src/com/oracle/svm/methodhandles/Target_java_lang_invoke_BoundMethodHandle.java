@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 
 /**
  * In the JDK implementation of method handles, each bound method handle is an instance of a

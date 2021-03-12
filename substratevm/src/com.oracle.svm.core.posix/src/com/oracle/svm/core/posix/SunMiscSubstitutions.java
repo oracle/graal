@@ -30,7 +30,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -39,6 +38,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CErrorNumber;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
@@ -85,8 +85,8 @@ final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
-        if (ImageInfo.isSharedLibrary()) {
-            throw new IllegalArgumentException("Installing signal handlers is not allowed for native-image shared libraries.");
+        if (!SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw new IllegalArgumentException("Installing signal handlers is not enabled");
         }
         return Util_jdk_internal_misc_Signal.handle0(sig, nativeH);
     }
