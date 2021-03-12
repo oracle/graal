@@ -47,8 +47,6 @@ import org.graalvm.polyglot.Context;
 import org.junit.Ignore;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
-import org.junit.runner.Runner;
-import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
@@ -227,7 +225,7 @@ public abstract class CommonTestUtils {
     }
 
     /**
-     * A {@link Runner} that will ignore runs where test method is in the
+     * A {@link TruffleRunner} that will ignore runs where test method is in the
      * {@link TestCaseCollector#getExcludedTests exclusion list}.
      *
      * Example Usage:
@@ -237,34 +235,6 @@ public abstract class CommonTestUtils {
      *   public final class MyTestSuite { ... }
      * </pre>
      */
-    public static class ExcludingRunner extends BlockJUnit4ClassRunner {
-
-        private final TestCaseCollector.ExcludeMap excludes;
-
-        public ExcludingRunner(Class<?> klass) throws InitializationError {
-            super(klass);
-            excludes = TestCaseCollector.getExcludedTests(klass);
-        }
-
-        @Override
-        protected boolean isIgnored(FrameworkMethod method) {
-            if (excludes.get(method.getName()) != null) {
-                return true;
-            }
-            return super.isIgnored(method);
-        }
-
-        @Override
-        protected Description describeChild(FrameworkMethod method) {
-            String exclusionReason = excludes.get(method.getName());
-            if (exclusionReason != null) {
-                InjectedIgnore ignore = new InjectedIgnore(exclusionReason);
-                return Description.createTestDescription(getTestClass().getJavaClass(), testName(method), getAnnotations(method, ignore));
-            }
-            return super.describeChild(method);
-        }
-    }
-
     public static class ExcludingTruffleRunner extends TruffleRunner {
 
         private final TestCaseCollector.ExcludeMap excludes;

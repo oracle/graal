@@ -37,7 +37,7 @@ import org.junit.runner.RunWith;
 
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 
-@RunWith(CommonTestUtils.ExcludingRunner.class)
+@RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class CxxMethodsTest extends InteropTestBase {
 
     private static Value allocPoint;
