@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,43 +20,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.impl;
-
-import java.util.Arrays;
+package com.oracle.truffle.espresso.redefinition.plugins.api;
 
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 
-public final class MethodBreakpointInfo extends AbstractBreakpointInfo implements MethodHook {
+public final class RedefintionHook implements MethodHook {
 
-    private MethodRef[] methods = new MethodRef[0];
+    private final MethodExitHook onExitHook;
+    private final MethodEntryHook onEntryHook;
+    private final Kind kind;
 
-    public MethodBreakpointInfo(RequestFilter filter) {
-        super(filter);
+    public RedefintionHook(MethodEntryHook onEntryHook, Kind kind) {
+        this.onExitHook = null;
+        this.onEntryHook = onEntryHook;
+        this.kind = kind;
     }
 
-    public void addMethod(MethodRef method) {
-        methods = Arrays.copyOf(methods, methods.length + 1);
-        methods[methods.length - 1] = method;
-    }
-
-    public MethodRef[] getMethods() {
-        return methods;
+    public RedefintionHook(MethodExitHook onExitHook, Kind kind) {
+        this.onExitHook = onExitHook;
+        this.onEntryHook = null;
+        this.kind = kind;
     }
 
     @Override
     public Kind getKind() {
-        return Kind.INDEFINITE;
+        return kind;
     }
 
     @Override
-    public boolean onMethodEnter(@SuppressWarnings("unused") MethodRef method, @SuppressWarnings("unused") MethodVariable[] variables) {
-        return true;
+    public boolean onMethodEnter(MethodRef method, MethodVariable[] variables) {
+        if (onEntryHook != null) {
+            onEntryHook.onMethodEnter(method, variables);
+        }
+        return false;
     }
 
     @Override
-    public boolean onMethodExit(@SuppressWarnings("unused") MethodRef method, @SuppressWarnings("unused") Object returnValue) {
-        return true;
+    public boolean onMethodExit(MethodRef method, Object returnValue) {
+        if (onExitHook != null) {
+            onExitHook.onMethodExit(method, returnValue);
+        }
+        return false;
     }
 }

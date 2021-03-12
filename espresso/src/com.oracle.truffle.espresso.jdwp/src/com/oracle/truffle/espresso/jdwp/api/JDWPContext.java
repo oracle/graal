@@ -466,7 +466,7 @@ public interface JDWPContext {
      * @param redefineInfos the information about the original class and the new class bytes
      * @return 0 on success or the appropriate {@link ErrorCodes} if an error occur
      */
-    int redefineClasses(RedefineInfo[] redefineInfos);
+    int redefineClasses(List<RedefineInfo> redefineInfos);
 
     /**
      * Exit all monitors that was entered by the frame.

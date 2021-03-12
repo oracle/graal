@@ -656,7 +656,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         setBCI(frame, curBCI);
 
         if (instrument != null) {
-            instrument.notifyEntry(frame);
+            instrument.notifyEntry(frame, this);
         }
         onStart(primitives, refs);
 
@@ -2555,15 +2555,16 @@ public final class BytecodeNode extends EspressoMethodNode {
             enterAt(frame, nextStatementIndex);
         }
 
-        public void notifyEntry(@SuppressWarnings("unused") VirtualFrame frame) {
-            // TODO(Gregersen) - method entry breakpoints are currently implemented by submitting
-            // first line breakpoints within each method. This works insofar the method has a valid
-            // line table. For classes compiled without debug information we could use this hook
-            // instead.
+        public void notifyEntry(@SuppressWarnings("unused") VirtualFrame frame, EspressoInstrumentableNode instrumentableNode) {
+            if (method.hasActiveHook()) {
+                if (context.getJDWPListener().onMethodEntry(method, instrumentableNode.getScope(frame, true))) {
+                    enterAt(frame, 0);
+                }
+            }
         }
 
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
-            if (method.hasActiveBreakpoint()) {
+            if (method.hasActiveHook()) {
                 if (context.getJDWPListener().onMethodReturn(method, returnValue)) {
                     enterAt(frame, statementIndex);
                 }

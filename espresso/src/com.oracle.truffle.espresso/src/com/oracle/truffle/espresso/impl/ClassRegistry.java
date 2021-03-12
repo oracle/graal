@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -347,6 +348,7 @@ public abstract class ClassRegistry implements ContextAccess {
         EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
 
         getRegistries().recordConstraint(type, klass, getClassLoader());
+        getRegistries().onKlassDefined(klass);
         if (defineKlassListener != null) {
             defineKlassListener.onKlassDefined(klass);
         }

@@ -1,0 +1,2 @@
+com.oracle.truffle.espresso.redefinition.plugins.micronaut.MicronautPlugin
+com.oracle.truffle.espresso.redefinition.plugins.jdkproxy.JDKProxyRedefinitionPlugin

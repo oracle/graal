@@ -43,14 +43,9 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ChangePacket;
-import com.oracle.truffle.espresso.impl.ClassRedefinition;
-import com.oracle.truffle.espresso.impl.HotSwapClassInfo;
-import com.oracle.truffle.espresso.impl.InnerClassRedefiner;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.impl.RedefintionNotSupportedException;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
@@ -72,6 +67,12 @@ import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
+import com.oracle.truffle.espresso.redefinition.ChangePacket;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.redefinition.HotSwapClassInfo;
+import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
+import com.oracle.truffle.espresso.redefinition.RedefintionNotSupportedException;
+import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 public final class JDWPContextImpl implements JDWPContext {
@@ -83,24 +84,24 @@ public final class JDWPContextImpl implements JDWPContext {
     private final Ids<Object> ids;
     private JDWPSetup setup;
     private VMListener eventListener = new EmptyListener();
+    private final ClassRedefinition classRedefinition;
     private InnerClassRedefiner innerClassRedefiner;
+    private final RedefinitionPluginHandler redefinitionPluginHandler;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
         this.ids = new Ids<>(StaticObject.NULL);
         this.setup = new JDWPSetup();
         this.innerClassRedefiner = new InnerClassRedefiner(context);
+        this.redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
+        this.classRedefinition = new ClassRedefinition(context, ids, redefinitionPluginHandler);
     }
 
     public VMListener jdwpInit(TruffleLanguage.Env env, Object mainThread) {
-        // enable JDWP instrumenter only if options are set (assumed valid if non-null)
-        if (context.JDWPOptions != null) {
-            Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
-            DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
-            setup.setup(debugger, control, context.JDWPOptions, this, mainThread);
-            eventListener = control.getEventListener();
-        }
-        return eventListener;
+        Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
+        DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
+        setup.setup(debugger, control, context.JDWPOptions, this, mainThread);
+        return eventListener = control.getEventListener();
     }
 
     public void finalizeContext() {
@@ -696,61 +697,89 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public synchronized int redefineClasses(RedefineInfo[] redefineInfos) {
+    public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
         try {
-            JDWPLogger.log("Redefining %d classes", JDWPLogger.LogLevel.REDEFINE, redefineInfos.length);
-            // list of sub classes that needs to refresh things like vtable
-            List<ObjectKlass> refreshSubClasses = new ArrayList<>();
-
-            // match anon inner classes with previous state
-            List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
-            HotSwapClassInfo[] matchedInfos = innerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, removedInnerClasses);
-
-            // detect all changes to all classes, throws if redefinition cannot be completed
-            // due to the nature of the changes
-            List<ChangePacket> changePackets = ClassRedefinition.detectClassChanges(matchedInfos, context);
-
-            // We have to redefine super classes prior to subclasses
-            Collections.sort(changePackets, new HierarchyComparator());
-
             // begin redefine transaction
             ClassRedefinition.begin();
-            for (ChangePacket packet : changePackets) {
-                JDWPLogger.log("Redefining class %s", JDWPLogger.LogLevel.REDEFINE, packet.info.getNewName());
-                int result = ClassRedefinition.redefineClass(packet, getIds(), context, refreshSubClasses);
-                if (result != 0) {
-                    return result;
-                }
-            }
-            // refresh subclasses when needed
-            Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
-            for (ObjectKlass subKlass : refreshSubClasses) {
-                JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getName());
-                subKlass.onSuperKlassUpdate();
-            }
 
-            // update the JWDP IDs
-            for (ChangePacket changePacket : changePackets) {
-                if (changePacket.info.isRenamed()) {
-                    ObjectKlass klass = changePacket.info.getKlass();
-                    if (klass != null) {
-                        ids.updateId(klass);
-                    }
-                }
-            }
+            // list to collect all changed classes
+            List<ObjectKlass> changedKlasses = new ArrayList<>(redefineInfos.size());
 
-            // tell the InnerClassRedefiner to commit the changes to cache
-            innerClassRedefiner.commit(matchedInfos);
+            // redefine classes based on direct code changes first
+            doRedefine(redefineInfos, changedKlasses);
 
-            for (ObjectKlass removed : removedInnerClasses) {
-                removed.removeByRedefinition();
-            }
+            // Now, collect additional classes to redefine in response
+            // to the redefined classes above
+            List<RedefineInfo> additional = Collections.synchronizedList(new ArrayList<>());
+            classRedefinition.addExtraReloadClasses(redefineInfos, additional);
+            // redefine additional classes now
+            doRedefine(additional, changedKlasses);
+
+            // run post redefinition plugins
+            classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {
             ClassRedefinition.end();
         }
         return 0;
+    }
+
+    private void doRedefine(List<RedefineInfo> redefineInfos, List<ObjectKlass> changedKlasses) throws RedefintionNotSupportedException {
+        // list to hold removed inner classes that must be marked removed
+        List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
+        // list of sub classes that needs to refresh things like vtable
+        List<ObjectKlass> refreshSubClasses = new ArrayList<>();
+
+        // match anon inner classes with previous state
+        HotSwapClassInfo[] matchedInfos = innerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, removedInnerClasses);
+
+        // detect all changes to all classes, throws if redefinition cannot be completed
+        // due to the nature of the changes
+        List<ChangePacket> changePackets = classRedefinition.detectClassChanges(matchedInfos);
+
+        // We have to redefine super classes prior to subclasses
+        Collections.sort(changePackets, new HierarchyComparator());
+
+        for (ChangePacket packet : changePackets) {
+            JDWPLogger.log("Redefining extra class %s", JDWPLogger.LogLevel.REDEFINE, packet.info.getNewName());
+            int result = classRedefinition.redefineClass(packet, refreshSubClasses);
+            if (result != 0) {
+                throw new RedefintionNotSupportedException(result);
+            }
+        }
+
+        // refresh subclasses when needed
+        Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
+        for (ObjectKlass subKlass : refreshSubClasses) {
+            JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getName());
+            subKlass.onSuperKlassUpdate();
+        }
+
+        // include updated subclasses in all changed classes list
+        changedKlasses.addAll(refreshSubClasses);
+
+        // update the JWDP IDs for renamed inner classes
+        for (ChangePacket changePacket : changePackets) {
+            ObjectKlass klass = changePacket.info.getKlass();
+            changedKlasses.add(klass);
+            if (changePacket.info.isRenamed()) {
+                if (klass != null) {
+                    ids.updateId(klass);
+                }
+            }
+        }
+
+        // tell the InnerClassRedefiner to commit the changes to cache
+        innerClassRedefiner.commit(matchedInfos);
+
+        for (ObjectKlass removed : removedInnerClasses) {
+            removed.removeByRedefinition();
+        }
+    }
+
+    public void registerExternalHotSwapHandler(StaticObject handler) {
+        redefinitionPluginHandler.registerExternalHotSwapHandler(handler);
     }
 
     private static class HierarchyComparator implements Comparator<ChangePacket> {

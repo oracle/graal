@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.redefinition.plugins.api;
 
-public class RedefintionNotSupportedException extends RuntimeException {
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 
-    private static final long serialVersionUID = -5767957395371919542L;
-    private final int errorCode;
-
-    RedefintionNotSupportedException(int errorCode) {
-        this.errorCode = errorCode;
-    }
-
-    public int getErrorCode() {
-        return errorCode;
-    }
+public interface MethodEntryHook {
+    void onMethodEnter(MethodRef method, MethodVariable[] variables);
 }

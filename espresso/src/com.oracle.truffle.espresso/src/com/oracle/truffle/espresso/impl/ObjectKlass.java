@@ -68,6 +68,9 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.redefinition.ChangePacket;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.redefinition.DetectedChange;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -1198,6 +1201,11 @@ public final class ObjectKlass extends Klass {
         // transaction is ended
         flushReflectionCaches();
         oldVersion.assumption.invalidate();
+    }
+
+    // used by some plugins during klass redefitnion
+    public void reRunClinit() {
+        getClassInitializer().getCallTarget().call();
     }
 
     private static void checkCopyMethods(Method method, Method[][] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {

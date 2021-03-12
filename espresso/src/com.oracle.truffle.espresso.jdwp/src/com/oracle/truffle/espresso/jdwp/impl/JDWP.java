@@ -387,7 +387,7 @@ final class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 int classes = input.readInt();
                 JDWPLogger.log("Request to redefine %d classes received", JDWPLogger.LogLevel.REDEFINE, classes);
-                RedefineInfo[] redefineInfos = new RedefineInfo[classes];
+                List<RedefineInfo> redefineInfos = new ArrayList<>(classes);
                 for (int i = 0; i < classes; i++) {
                     KlassRef klass = null;
                     long refTypeId = input.readLong();
@@ -408,7 +408,7 @@ final class JDWP {
 
                     int byteLength = input.readInt();
                     byte[] classBytes = input.readByteArray(byteLength);
-                    redefineInfos[i] = new RedefineInfo(klass, classBytes);
+                    redefineInfos.add(new RedefineInfo(klass, classBytes));
                 }
 
                 int errorCode = context.redefineClasses(redefineInfos);
@@ -2990,6 +2990,8 @@ final class JDWP {
             JDWPLogger.log("Internal Espresso error: %s", JDWPLogger.LogLevel.ALL, t);
             JDWPLogger.throwing(JDWPLogger.LogLevel.ALL, t);
             reply.errorCode(ErrorCodes.INTERNAL);
+            System.out.println("ERROR!");
+            t.printStackTrace();
         }
     }
 
