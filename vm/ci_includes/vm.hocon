@@ -27,7 +27,7 @@ vm_java_16: ${labsjdk-ce-16} {
   }
 }
 vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
-vm_windows_jdk8_devkit_var: "$VS2017_15_5_5_1_0_ROOT"
+vm_windows_jdk8_devkit_var: "$VS2017_15_19_16_1_0_ROOT"
 
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr,/wasm,/espresso"
