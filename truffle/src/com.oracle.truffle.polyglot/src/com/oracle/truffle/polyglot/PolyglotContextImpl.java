@@ -538,7 +538,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (stack.isEmpty() || current.getThread() == null) {
                 throw PolyglotEngineException.illegalState("The context is not entered explicity. A context can only be left if it was previously entered.");
             }
-            engine.leave(stack.removeLast(), this, engine.getUncachedLocation(), true);
+            engine.leave(stack.removeLast(), this);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(engine, t);
         }
@@ -649,7 +649,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                      * again.
                      */
                     if (enteredThread != null) {
-                        engine.leave(prev, this, safepointLocation, pollSafepoint);
+                        engine.leave(prev, this);
                     }
                     throw t;
                 }
@@ -985,7 +985,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         try {
             initializeLanguage(language);
         } finally {
-            engine.leaveIfNeeded(prev, this, true);
+            engine.leaveIfNeeded(prev, this);
         }
     }
 
@@ -1536,7 +1536,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         PolyglotContextImpl c = this;
                         while (!threadInfo.explicitContextStack.isEmpty()) {
                             PolyglotContextImpl prev = threadInfo.explicitContextStack.removeLast();
-                            engine.leave(prev, c, engine.getUncachedLocation(), true);
+                            engine.leave(prev, c);
                             c = prev;
                         }
                         threadInfo.explicitContextStack.clear();
@@ -1583,7 +1583,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                      * synchronized.
                      */
                     assert !success || childContextsClosed() : "Polyglot context close marked as successful, but there are unclosed child contexts.";
-                    engine.leave(prev, this, engine.getUncachedLocation(), true);
+                    engine.leave(prev, this);
                     if (success) {
                         remainingThreads = threads.keySet().toArray(new Thread[0]);
                     }
@@ -2020,7 +2020,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 }
             }
         } finally {
-            engine.leave(prev, this, engine.getUncachedLocation(), true);
+            engine.leave(prev, this);
         }
         return true;
     }
@@ -2123,7 +2123,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                             language.clearOptionValues();
                         }
                     } finally {
-                        context.engine.leave(prev, context, context.engine.getUncachedLocation(), true);
+                        context.engine.leave(prev, context);
                     }
                 } finally {
                     context.inContextPreInitialization = false;

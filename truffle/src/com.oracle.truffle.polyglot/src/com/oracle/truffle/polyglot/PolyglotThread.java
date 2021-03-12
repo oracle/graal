@@ -142,7 +142,7 @@ final class PolyglotThread extends Thread {
             try {
                 run.execute();
             } finally {
-                languageContext.leaveThread(prev, thread, this);
+                languageContext.leaveThread(prev, thread);
             }
             return null;
         }

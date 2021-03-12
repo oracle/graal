@@ -751,20 +751,16 @@ final class EngineAccessor extends Accessor {
             CompilerAsserts.partialEvaluationConstant(node);
             PolyglotContextImpl context = ((PolyglotContextImpl) impl);
             PolyglotEngineImpl engine = resolveEngine(node, context);
-            Node useLocation = node;
-            if (useLocation == null) {
-                useLocation = engine.getUncachedLocation();
-            }
             if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
-                engine.leave((PolyglotContextImpl) prev, context, useLocation, true);
+                engine.leave((PolyglotContextImpl) prev, context);
             } else {
-                leaveInternalContextBoundary(useLocation, prev, context, engine);
+                leaveInternalContextBoundary(prev, context, engine);
             }
         }
 
         @TruffleBoundary
-        private static void leaveInternalContextBoundary(Node location, Object prev, PolyglotContextImpl context, PolyglotEngineImpl engine) {
-            engine.leave((PolyglotContextImpl) prev, context, location, true);
+        private static void leaveInternalContextBoundary(Object prev, PolyglotContextImpl context, PolyglotEngineImpl engine) {
+            engine.leave((PolyglotContextImpl) prev, context);
         }
 
         private static PolyglotEngineImpl resolveEngine(Node node, PolyglotContextImpl context) {

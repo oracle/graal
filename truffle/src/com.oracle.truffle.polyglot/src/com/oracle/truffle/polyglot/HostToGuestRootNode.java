@@ -139,7 +139,7 @@ abstract class HostToGuestRootNode extends RootNode {
         } finally {
             if (needsEnter) {
                 try {
-                    engine.leave(prev, context, this, true);
+                    engine.leave(prev, context);
                 } catch (Throwable e) {
                     throw handleException(languageContext, e, false, RuntimeException.class);
                 }

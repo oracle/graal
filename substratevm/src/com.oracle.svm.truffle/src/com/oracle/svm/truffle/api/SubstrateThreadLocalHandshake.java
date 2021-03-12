@@ -25,7 +25,6 @@
 package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
@@ -50,6 +49,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -149,7 +149,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
             TruffleSafepointImpl state = STATE.get();
             assert state != null;
             if (state == null) {
-                throw shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
+                throw CompilerDirectives.shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
                                 "Did you call getCurrent() outside while a polyglot context not entered?");
             }
             return state;

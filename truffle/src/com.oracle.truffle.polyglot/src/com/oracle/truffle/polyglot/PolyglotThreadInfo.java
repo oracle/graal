@@ -119,7 +119,7 @@ final class PolyglotThreadInfo {
 
     /**
      * Not to be used directly. Use
-     * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl, com.oracle.truffle.api.nodes.Node, boolean)}
+     * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl)}
      * instead.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
