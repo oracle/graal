@@ -530,7 +530,7 @@ public final class InterpreterToVM implements ContextAccess {
         }
         // @formatter:off
         switch (jvmPrimitiveType) {
-            case 4  : return StaticObject.wrap(new boolean[length], meta);
+            case 4  : return StaticObject.createArray(meta._boolean_array, new byte[length]); // boolean[] are internally represented as byte[] with _boolean_array Klass
             case 5  : return StaticObject.wrap(new char[length], meta);
             case 6  : return StaticObject.wrap(new float[length], meta);
             case 7  : return StaticObject.wrap(new double[length], meta);

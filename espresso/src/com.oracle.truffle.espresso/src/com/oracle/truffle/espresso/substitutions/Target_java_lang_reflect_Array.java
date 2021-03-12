@@ -141,7 +141,7 @@ public final class Target_java_lang_reflect_Array {
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            return Array.getBoolean(array.unwrap(), index);
+            return Array.getByte(array.unwrap(), index) != 0;
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
@@ -271,7 +271,7 @@ public final class Target_java_lang_reflect_Array {
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
-            Array.setBoolean(array.unwrap(), index, value);
+            Array.setByte(array.unwrap(), index, value ? (byte) 1 : (byte) 0);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);

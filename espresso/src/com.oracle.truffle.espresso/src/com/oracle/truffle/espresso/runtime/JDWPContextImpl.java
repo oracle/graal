@@ -470,10 +470,16 @@ public final class JDWPContextImpl implements JDWPContext {
     public Object getArrayValue(Object array, int index) {
         StaticObject arrayRef = (StaticObject) array;
         Object value;
-        if (((ArrayKlass) arrayRef.getKlass()).getComponentType().isPrimitive()) {
+        ArrayKlass arrayKlass = (ArrayKlass) arrayRef.getKlass();
+        if (arrayKlass.getComponentType().isPrimitive()) {
             // primitive array type needs wrapping
-            Object boxedArray = getUnboxedArray(array);
-            value = Array.get(boxedArray, index);
+            if (arrayKlass == context.getMeta()._boolean_array) {
+                byte[] byteArray = getUnboxedArray(array);
+                value = byteArray[index] != 0;
+            } else {
+                Object boxedArray = getUnboxedArray(array);
+                value = Array.get(boxedArray, index);
+            }
         } else {
             value = arrayRef.get(index);
         }

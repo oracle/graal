@@ -1209,12 +1209,10 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     @TruffleBoundary
     public void GetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        boolean[] contents = array.unwrap();
+        byte[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        for (int i = 0; i < len; ++i) {
-            buf.put(contents[start + i] ? (byte) 1 : (byte) 0);
-        }
+        buf.put(contents, start, len);
     }
 
     private void boundsCheck(int start, int len, int arrayLength) {
@@ -1295,12 +1293,10 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     @TruffleBoundary
     public void SetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        boolean[] contents = array.unwrap();
+        byte[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        for (int i = 0; i < len; ++i) {
-            contents[start + i] = buf.get() != 0;
-        }
+        buf.get(contents, start, len);
     }
 
     @JniImpl
@@ -1769,11 +1765,10 @@ public final class JniEnv extends NativeEnv {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        boolean[] data = array.unwrap();
+        byte[] data = array.unwrap();
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Boolean);
-        for (int i = 0; i < data.length; ++i) {
-            bytes.put(data[i] ? (byte) 1 : (byte) 0);
-        }
+        ByteBuffer elements = bytes;
+        elements.put(data);
         return NativeUtils.byteBufferPointer(bytes);
     }
 
