@@ -717,12 +717,12 @@ meth public abstract !varargs java.lang.Object execute(org.graalvm.polyglot.Valu
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyHashMap
 intf org.graalvm.polyglot.proxy.Proxy
-meth public abstract boolean hasEntry(org.graalvm.polyglot.Value)
-meth public abstract java.lang.Object getEntriesIterator()
-meth public abstract java.lang.Object getValue(org.graalvm.polyglot.Value)
-meth public abstract long getSize()
-meth public abstract void putEntry(org.graalvm.polyglot.Value,org.graalvm.polyglot.Value)
-meth public boolean removeEntry(org.graalvm.polyglot.Value)
+meth public abstract boolean hasHashEntry(org.graalvm.polyglot.Value)
+meth public abstract java.lang.Object getHashEntriesIterator()
+meth public abstract java.lang.Object getHashValue(org.graalvm.polyglot.Value)
+meth public abstract long getHashSize()
+meth public abstract void putHashEntry(org.graalvm.polyglot.Value,org.graalvm.polyglot.Value)
+meth public boolean removeHashEntry(org.graalvm.polyglot.Value)
 meth public static org.graalvm.polyglot.proxy.ProxyHashMap from(java.util.Map<java.lang.Object,java.lang.Object>)
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyInstant

@@ -54,6 +54,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* Added `getHashEntriesIterator(Object)` to return the hash entries iterator.
     * Added `getHashKeysIterator(Object)` to return the hash keys iterator.
     * Added `getHashValuesIterator(Object)` to return the hash values iterator.
+* Added `TypeDescriptor.HASH` and `TypeDescriptor.hash(TypeDescriptor, TypeDescriptor)` representing hash map types in the TCK.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the exception interop messages are executed without a context being entered. The event listeners called during the context enter are:

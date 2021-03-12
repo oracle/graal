@@ -1062,10 +1062,11 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns the hash entries iterator for the receiver. The return value is always an
      * {@link #isIterator(Object) iterator} of {@link #hasArrayElements(Object) array} elements. The
-     * first array element is a key, the second array element is an associated value. Even if the
-     * value array element is {@link #isArrayElementModifiable(Object, long) modifiable} writing to
-     * array may not update the mapping, always use {@link #writeHashEntry(Object, Object, Object)}
-     * to update the mapping.
+     * first array element is a key, the second array element is an associated value. Array returned
+     * by the iterator may be modifiable but detached from the hash, updating the array elements may
+     * not update the hash. So even if array elements are
+     * {@link #isArrayElementModifiable(Object, long) modifiable} always use
+     * {@link #writeHashEntry(Object, Object, Object)} to update the hash mapping.
      *
      * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
      *             {@code false} for the same receiver.

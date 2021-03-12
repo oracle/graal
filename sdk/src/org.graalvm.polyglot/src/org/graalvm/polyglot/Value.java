@@ -1886,7 +1886,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @since 21.1
      */
-    public long getHashSize() {
+    public long getHashSize() throws UnsupportedOperationException {
         return impl.getHashSize(receiver);
     }
 
@@ -1915,7 +1915,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @since 21.1
      */
-    public Value getHashValue(Object key) throws IllegalArgumentException, UnsupportedOperationException {
+    public Value getHashValue(Object key) throws UnsupportedOperationException {
         return impl.getHashValue(receiver, key);
     }
 
@@ -1930,7 +1930,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @since 21.1
      */
-    public Value getHashValueOrDefault(Object key, Object defaultValue) {
+    public Value getHashValueOrDefault(Object key, Object defaultValue) throws UnsupportedOperationException {
         return impl.getHashValueOrDefault(receiver, key, defaultValue);
     }
 
