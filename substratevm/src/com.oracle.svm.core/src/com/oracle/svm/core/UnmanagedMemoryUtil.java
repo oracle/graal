@@ -33,7 +33,9 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 /**
  * The methods in this class are mainly used to fill or copy unmanaged (i.e., <b>non</b>-Java heap)
  * memory. None of the methods cares about Java semantics like GC barriers or the Java memory model.
- * They don't even guarantee the rather relaxed atomicity requirements of {@code Unsafe}.
+ * The only guarantee that the methods give is that the copying is done in the largest possible
+ * units (e.g., if 15 bytes need be copied, the copying will be split into 4 operations, copying 8,
+ * 4, 2, and 1 bytes).
  * <p>
  * The valid use cases are listed below. For all other use cases, use {@link JavaMemoryUtil}
  * instead.
@@ -49,7 +51,9 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  */
 public final class UnmanagedMemoryUtil {
     /**
-     * Copy bytes from one memory area to another. The memory areas may overlap.
+     * Copy bytes from one memory area to another. The memory areas may overlap. Guarantees that
+     * data is always copied in the largest possible units (e.g., if 15 bytes need be copied, the
+     * copying will be split into 4 operations, copying 8, 4, 2, and 1 bytes).
      */
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -61,10 +65,14 @@ public final class UnmanagedMemoryUtil {
         }
     }
 
+    /**
+     * Copy bytes from one memory area to another. Guarantees that data is always copied in the
+     * largest possible units (e.g., if 15 bytes need be copied, the copying will be split into 4
+     * operations, copying 8, 4, 2, and 1 bytes).
+     */
+    @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void copyForward(Pointer from, Pointer to, UnsignedWord size) {
-        assert from.aboveThan(to);
-
+    public static void copyForward(Pointer from, Pointer to, UnsignedWord size) {
         UnsignedWord alignBits = WordFactory.unsigned(0x7);
         UnsignedWord alignedSize = size.and(alignBits.not());
         copyLongsForward(from, to, alignedSize);
@@ -87,10 +95,14 @@ public final class UnmanagedMemoryUtil {
         }
     }
 
+    /**
+     * Copy bytes from one memory area to another. Guarantees that data is always copied in the
+     * largest possible units (e.g., if 15 bytes need be copied, the copying will be split into 4
+     * operations, copying 8, 4, 2, and 1 bytes).
+     */
+    @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void copyBackward(Pointer from, Pointer to, UnsignedWord size) {
-        assert from.belowThan(to);
-
+    public static void copyBackward(Pointer from, Pointer to, UnsignedWord size) {
         UnsignedWord alignBits = WordFactory.unsigned(0x7);
         UnsignedWord alignedSize = size.and(alignBits.not());
         UnsignedWord unalignedSize = size.subtract(alignedSize);
@@ -114,6 +126,9 @@ public final class UnmanagedMemoryUtil {
         }
     }
 
+    /**
+     * Copy bytes from one memory area to another.
+     */
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void copyLongsForward(Pointer from, Pointer to, UnsignedWord size) {
@@ -138,6 +153,9 @@ public final class UnmanagedMemoryUtil {
         }
     }
 
+    /**
+     * Copy bytes from one memory area to another.
+     */
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void copyLongsBackward(Pointer from, Pointer to, UnsignedWord size) {
@@ -195,6 +213,9 @@ public final class UnmanagedMemoryUtil {
         }
     }
 
+    /**
+     * Set the bytes of a memory area to a given value.
+     */
     @IntrinsicCandidate
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void fillLongs(Pointer to, UnsignedWord size, long longValue) {

@@ -51,6 +51,10 @@ import com.oracle.svm.core.util.VMError;
  * <li>Filling Java arrays.</li>
  * <li>Filling Java objects.</li>
  * </ul>
+ * <p>
+ * More specialized methods (e.g., methods for copying primitive arrays) are faster than more
+ * generic ones. So, performance-wise it is best to call the most specific method that is applicable
+ * to your use case.
  */
 public final class JavaMemoryUtil {
 
@@ -79,10 +83,10 @@ public final class JavaMemoryUtil {
      * 17.6).
      */
     @Uninterruptible(reason = "Objects must not move")
-    public static void copyForward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
-        Pointer from = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
-        Pointer to = Word.objectToUntrackedPointer(toArray).add(toOffset);
-        copyForward(from, to, size);
+    public static void copyForward(Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord size) {
+        Pointer fromPtr = Word.objectToUntrackedPointer(from).add(fromOffset);
+        Pointer toPtr = Word.objectToUntrackedPointer(to).add(toOffset);
+        copyForward(fromPtr, toPtr, size);
     }
 
     /**
@@ -94,10 +98,10 @@ public final class JavaMemoryUtil {
      * 17.6).
      */
     @Uninterruptible(reason = "Objects must not move")
-    public static void copyBackward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
-        Pointer from = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
-        Pointer to = Word.objectToUntrackedPointer(toArray).add(toOffset);
-        copyBackward(from, to, size);
+    public static void copyBackward(Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord size) {
+        Pointer fromPtr = Word.objectToUntrackedPointer(from).add(fromOffset);
+        Pointer toPtr = Word.objectToUntrackedPointer(to).add(toOffset);
+        copyBackward(fromPtr, toPtr, size);
     }
 
     /**
@@ -266,17 +270,16 @@ public final class JavaMemoryUtil {
 
     /** Implementation of {@code Unsafe.copyMemory}. */
     public static void unsafeCopyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        // Stricter about access atomicity than required by Unsafe.copyMemory Javadoc
         if (srcBase != null || destBase != null) {
             copyOnHeap(srcBase, srcOffset, destBase, destOffset, bytes);
         } else {
-            copy(WordFactory.pointer(srcOffset), WordFactory.pointer(destOffset), WordFactory.unsigned(bytes));
+            UnmanagedMemoryUtil.copy(WordFactory.pointer(srcOffset), WordFactory.pointer(destOffset), WordFactory.unsigned(bytes));
         }
     }
 
     @Uninterruptible(reason = "Memory is on the heap, copying must not be interrupted.")
     private static void copyOnHeap(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        copy(Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
+        UnmanagedMemoryUtil.copy(Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
                         Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
                         WordFactory.unsigned(bytes));
     }
@@ -525,6 +528,7 @@ public final class JavaMemoryUtil {
     /**
      * Copies between Java primitive arrays.
      */
+    @Uninterruptible(reason = "Arrays must not move")
     public static void copyPrimitiveArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
         assert length >= 0;
 
@@ -533,12 +537,21 @@ public final class JavaMemoryUtil {
         UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
         UnsignedWord size = elementSize.multiply(length);
 
-        copyForward(fromArray, fromOffset, toArray, toOffset, size);
+        /*
+         * When copying primitive array data, we know that the offsets and the size are aligned to
+         * the array element size. So, in terms of the atomicity that is required for the Java
+         * memory model, we are fine as long as we guarantee that we are always copying multiples of
+         * element size.
+         */
+        Pointer fromPtr = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
+        Pointer toPtr = Word.objectToUntrackedPointer(toArray).add(toOffset);
+        UnmanagedMemoryUtil.copyForward(fromPtr, toPtr, size);
     }
 
     /**
      * Copies between Java primitive arrays.
      */
+    @Uninterruptible(reason = "Arrays must not move")
     public static void copyPrimitiveArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
         assert length >= 0;
 
@@ -547,7 +560,10 @@ public final class JavaMemoryUtil {
         UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
         UnsignedWord size = elementSize.multiply(length);
 
-        copyBackward(fromArray, fromOffset, toArray, toOffset, size);
+        // See comment in copyPrimitiveArrayForward.
+        Pointer fromPtr = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
+        Pointer toPtr = Word.objectToUntrackedPointer(toArray).add(toOffset);
+        UnmanagedMemoryUtil.copyBackward(fromPtr, toPtr, size);
     }
 
     private JavaMemoryUtil() {
