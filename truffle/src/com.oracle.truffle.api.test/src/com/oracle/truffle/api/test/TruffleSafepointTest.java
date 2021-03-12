@@ -1054,8 +1054,11 @@ public class TruffleSafepointTest {
 
             // if there is an indirect truffle call in the loop
             // we can omit the safepoint. if that safepoint would
-            // therefore we expect a safepoint count around 1024 but definitely less than 1024 * 2
             assertTrue(String.valueOf(count), count < CallInLoopNode.LOOP_COUNT * 2);
+            if (!TruffleOptions.AOT) {
+                // TODO GR-29998 safepoint elimination not supported on SVM for now.
+                assertTrue(String.valueOf(count), count < CallInLoopNode.LOOP_COUNT * 2);
+            }
         }
     }
 
