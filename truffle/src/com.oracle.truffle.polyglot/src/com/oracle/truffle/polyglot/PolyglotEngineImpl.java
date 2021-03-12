@@ -103,7 +103,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -1911,31 +1910,26 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return context == PolyglotContextImpl.currentNotEntered() || context.closed || context.invalid;
     }
 
+    @SuppressWarnings("unused")
     void leave(PolyglotContextImpl prev, PolyglotContextImpl context, Node safepointLocation, boolean pollSafepoint) {
         assert context.closed || context.closingThread == Thread.currentThread() ||
                         PolyglotContextImpl.currentNotEntered() == context : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
 
-        try {
-            boolean entered = true;
-            PolyglotThreadInfo info = context.cachedThreadInfo;
-            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
-                try {
-                    info.notifyLeave(this, context);
-                } finally {
-                    info.leaveInternal(prev);
-                    entered = false;
-                }
-                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.cachedThreadInfo)) {
-                    // fast path leave
-                    return;
-                }
+        boolean entered = true;
+        PolyglotThreadInfo info = context.cachedThreadInfo;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
+            try {
+                info.notifyLeave(this, context);
+            } finally {
+                info.leaveInternal(prev);
+                entered = false;
             }
-            context.leaveThreadChanged(prev, entered);
-        } finally {
-            if (pollSafepoint) {
-                TruffleSafepoint.poll(safepointLocation);
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.cachedThreadInfo)) {
+                // fast path leave
+                return;
             }
         }
+        context.leaveThreadChanged(prev, entered);
     }
 
     static final class LogConfig {

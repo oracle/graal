@@ -52,6 +52,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -240,10 +241,14 @@ final class PolyglotThreadLocalActions {
                 handshake.debugId = idCounter++;
                 log("submit", handshake, String.format("%-25s  %s  %s", threadLabel, sideEffectLabel, syncLabel));
             }
-            Future<Void> future = handshake.future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake,
-                            AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), sync);
-            this.activeEvents.put(handshake, null);
-            return future;
+            if (activeThreads.length > 0) {
+                Future<Void> future = handshake.future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake,
+                                AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), sync);
+                this.activeEvents.put(handshake, null);
+                return future;
+            } else {
+                return CompletableFuture.completedFuture(null);
+            }
         }
     }
 

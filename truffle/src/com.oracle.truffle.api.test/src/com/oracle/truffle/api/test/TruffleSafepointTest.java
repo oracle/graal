@@ -50,8 +50,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -90,8 +88,8 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
 import com.oracle.truffle.api.TruffleStackTrace;
@@ -107,8 +105,6 @@ import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class TruffleSafepointTest {
-
-    private static final Method SUBMIT_INTERNAL = ReflectionUtils.requireDeclaredMethod(TruffleLanguage.Env.class, "submitThreadLocalInternal", null);
 
     private static final int[] THREAD_CONFIGS = new int[]{1, 4, 16};
     private static final int[] ITERATION_CONFIGS = new int[]{1, 8, 32};
@@ -411,8 +407,8 @@ public class TruffleSafepointTest {
             assertFalse("always false when side effects enabled", safepoint.hasPendingSideEffectingActions());
 
             try {
-                    TruffleSafepoint.pollHere(node);
-                    fail();
+                TruffleSafepoint.pollHere(node);
+                fail();
             } catch (RuntimeException e) {
                 assertEquals("interrupt", e.getMessage());
                 assertFalse(safepoint.hasPendingSideEffectingActions());
@@ -671,89 +667,6 @@ public class TruffleSafepointTest {
     @TruffleBoundary
     private static void releaseSemaphore(Semaphore semaphore) {
         semaphore.release();
-    }
-
-    /*
-     * Non public version that can conifgure whether to enter.
-     */
-    private static Future<?> submitThreadLocalInternal(Env env, Thread[] threads, ThreadLocalAction action, boolean needEnter) {
-        try {
-            return (Future<?>) SUBMIT_INTERNAL.invoke(env, threads, action, needEnter);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    /*
-     * First submit a synchronous safepoint and then reschedule an event until the context was left
-     * for the last time on a thread. This simulates how we do cancellation and/or interrupt in a
-     * polyglot context. Note that this test cannot be used via public API and is designed as
-     * whitebox test for context cancellation.
-     */
-    @Test
-    public void testContextAlive() {
-        forEachConfig((threads, events) -> {
-            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
-                TruffleSafepoint.poll(node);
-                return false;
-            })) {
-
-                Map<Thread, List<AtomicBoolean>> noLongerAlive = Collections.synchronizedMap(new HashMap<>());
-                try {
-                    List<Future<?>> threadLocals = new ArrayList<>();
-                    for (int i = 0; i < events; i++) {
-                        ThreadLocal<AtomicBoolean> localBoolean = ThreadLocal.withInitial(() -> {
-                            AtomicBoolean b = new AtomicBoolean();
-                            noLongerAlive.computeIfAbsent(Thread.currentThread(), (k) -> new ArrayList<>()).add(b);
-                            return b;
-                        });
-
-                        threadLocals.add(submitThreadLocalInternal(setup.env, null, new ThreadLocalAction(true, true) {
-                            @Override
-                            protected void perform(Access access) {
-                                assertFalse(localBoolean.get().get());
-                                if (setup.env.getContext().isActive()) {
-                                    final Thread[] currentThread = new Thread[]{access.getThread()};
-                                    submitThreadLocalInternal(setup.env, currentThread, new ThreadLocalAction(true, false) {
-                                        @Override
-                                        protected void perform(Access innerAccess) {
-                                            assertSame(currentThread[0], innerAccess.getThread());
-                                            // context is no longer alive only once when we leave
-                                            // the
-                                            // context
-                                            assertFalse(localBoolean.get().get());
-                                            if (setup.env.getContext().isActive()) {
-                                                submitThreadLocalInternal(setup.env, currentThread, this, false);
-                                            } else {
-                                                localBoolean.get().set(true);
-                                            }
-                                        }
-                                    }, false);
-                                } else {
-                                    localBoolean.get().set(true);
-                                }
-                            }
-                        }, false));
-
-                    }
-                    // wait for all events to complete so we can reliably assert the events
-                    for (Future<?> f : threadLocals) {
-                        waitOrFail(f);
-                    }
-
-                } finally {
-                    // let the threads complete in an orderly fashion
-                    setup.stopAndAwait();
-                }
-                assertEquals(threads, noLongerAlive.size());
-                for (List<AtomicBoolean> eventAlive : noLongerAlive.values()) {
-                    assertEquals(events, eventAlive.size());
-                    for (AtomicBoolean event : eventAlive) {
-                        assertTrue(event.get());
-                    }
-                }
-            }
-        });
     }
 
     private static Semaphore[] createSemaphores(int count, int permits) {

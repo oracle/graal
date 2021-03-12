@@ -224,11 +224,11 @@ public abstract class ThreadLocalHandshake {
         }
 
         @Override
-        public Void get() throws InterruptedException, ExecutionException {
+        public Void get() throws InterruptedException {
             if (sync) {
-                this.phaser.awaitAdvance(1);
+                this.phaser.awaitAdvanceInterruptibly(1);
             } else {
-                this.phaser.awaitAdvance(0);
+                this.phaser.awaitAdvanceInterruptibly(0);
             }
             return null;
         }
@@ -237,7 +237,6 @@ public abstract class ThreadLocalHandshake {
             return cancelled || phaser.getUnarrivedParties() == 0;
         }
 
-        @SuppressWarnings("unchecked")
         public boolean cancel(boolean mayInterruptIfRunning) {
             if (phaser.getUnarrivedParties() > 0) {
                 cancelled = true;
@@ -330,8 +329,8 @@ public abstract class ThreadLocalHandshake {
                 HandshakeEntry current = this.handshakes;
                 while (current != null) {
                     if (current.handshake == handshake) {
-                        if (current.active) {
-                            // already active
+                        if (!current.active) {
+                            // already inactive
                             return;
                         }
                         break;
@@ -359,23 +358,23 @@ public abstract class ThreadLocalHandshake {
                 HandshakeEntry current = this.handshakes;
                 while (current != null) {
                     if (current.handshake == handshake) {
-                        if (current.active) {
-                            // already active
-                            return;
-                        }
-                        break;
+                        /*
+                         * The handshake has already been put to this thread and it is active or it
+                         * is inactive and must not be re-activated.
+                         */
+                        return;
                     }
                     current = current.next;
                 }
-                // not yet put?
-                if (current == null) {
-                    if (!handshake.threads.add(Thread.currentThread())) {
-                        // already processed on that thread, we don't want to process twice.
-                        return;
-                    }
-                    current = putHandshakeImpl(Thread.currentThread(), handshake);
+                // not yet put or already processed
+                assert current == null;
+                if (!handshake.threads.add(Thread.currentThread())) {
+                    // already processed on that thread, we don't want to process twice.
+                    return;
                 }
-                current.active = handshake.activateThread();
+                if (handshake.activateThread()) {
+                    putHandshakeImpl(Thread.currentThread(), handshake);
+                }
             } finally {
                 lock.unlock();
             }
