@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -288,49 +288,49 @@ public abstract class ToLLVM extends LLVMNode {
 
         @Specialization(guards = "isI1(targetType)")
         static boolean toI1(Object value, ForeignToLLVMType targetType,
-                        @Cached("createToI1()") ForeignToLLVM toI1) {
+                        @Cached(value = "createToI1()", uncached = "getSlowPath()") ForeignToLLVM toI1) {
             return LLVMTypesGen.asBoolean(toI1.executeWithForeignToLLVMType(value, null, targetType));
         }
 
         @Specialization(guards = "isI8(targetType)")
         static byte toI8(Object value, ForeignToLLVMType targetType,
-                        @Cached("createToI8()") ForeignToLLVM toI8) {
+                        @Cached(value = "createToI8()", uncached = "getSlowPath()") ForeignToLLVM toI8) {
             return LLVMTypesGen.asByte(toI8.executeWithForeignToLLVMType(value, null, targetType));
         }
 
         @Specialization(guards = "isI16(targetType)")
         static short toI16(Object value, ForeignToLLVMType targetType,
-                        @Cached("createToI16()") ForeignToLLVM toI16) {
+                        @Cached(value = "createToI16()", uncached = "getSlowPath()") ForeignToLLVM toI16) {
             return LLVMTypesGen.asShort(toI16.executeWithForeignToLLVMType(value, null, targetType));
         }
 
         @Specialization(guards = "isI32(targetType)")
         static int toI32(Object value, ForeignToLLVMType targetType,
-                        @Cached("createToI32()") ForeignToLLVM toI32) {
+                        @Cached(value = "createToI32()", uncached = "getSlowPath()") ForeignToLLVM toI32) {
             return LLVMTypesGen.asInteger(toI32.executeWithForeignToLLVMType(value, null, targetType));
         }
 
         @Specialization(guards = "isI64(targetType)")
         static Object toI64(Object value, ForeignToLLVMType targetType,
-                        @Cached("createToI64()") ForeignToLLVM toI64) {
+                        @Cached(value = "createToI64()", uncached = "getSlowPath()") ForeignToLLVM toI64) {
             return toI64.executeWithForeignToLLVMType(value, null, targetType);
         }
 
         @Specialization(guards = "isFloat(targetType)")
         static float toFloat(Object value, ForeignToLLVMType targetType,
-                        @Cached("createToFloat()") ForeignToLLVM toFloat) {
+                        @Cached(value = "createToFloat()", uncached = "getSlowPath()") ForeignToLLVM toFloat) {
             return LLVMTypesGen.asFloat(toFloat.executeWithForeignToLLVMType(value, null, targetType));
         }
 
         @Specialization(guards = "isDouble(targetType)")
         static double toDouble(Object value, ForeignToLLVMType targetType,
-                        @Cached("createToDouble()") ForeignToLLVM toDouble) {
+                        @Cached(value = "createToDouble()", uncached = "getSlowPath()") ForeignToLLVM toDouble) {
             return LLVMTypesGen.asDouble(toDouble.executeWithForeignToLLVMType(value, null, targetType));
         }
 
         @Specialization(guards = "isPointer(targetType)")
         static Object toPointer(Object value, ForeignToLLVMType targetType,
-                        @Cached("createToPointer()") ForeignToLLVM toPointer) {
+                        @Cached(value = "createToPointer()", uncached = "getSlowPath()") ForeignToLLVM toPointer) {
             return toPointer.executeWithForeignToLLVMType(value, null, targetType);
         }
 
