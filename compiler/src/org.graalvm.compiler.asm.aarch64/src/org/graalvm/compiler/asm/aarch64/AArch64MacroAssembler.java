@@ -377,6 +377,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         mov(64, dst, src);
     }
 
+    /**
+     * Generates a move between two general purpose registers.
+     *
+     * @param size register size. Has to be 32 or 64.
+     */
     public void mov(int size, Register dst, Register src) {
         if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);
