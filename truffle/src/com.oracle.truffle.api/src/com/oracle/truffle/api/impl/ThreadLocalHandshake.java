@@ -311,7 +311,9 @@ public abstract class ThreadLocalHandshake {
         private volatile boolean fastPendingSet;
         private boolean sideEffectsEnabled = true;
         private Interrupter blockedAction;
-        private boolean interrupted;
+        // This is read outside the lock because some Interrupter's need to have resetInterrupted() called concurrently to interrupt().
+        // interrupt() is called under the lock (avoids concurrent calls for the same thread), so resetInterrupted() must be called outside the lock.
+        private volatile boolean interrupted;
         private HandshakeEntry handshakes;
         private boolean hasSideEffects;
         private boolean hasNonSideEffects;
@@ -406,14 +408,23 @@ public abstract class ThreadLocalHandshake {
             impl.setFastPending(t);
             Interrupter action = this.blockedAction;
             if (action != null) {
-                action.interrupt(t);
                 interrupted = true;
+                action.interrupt(t);
             }
         }
 
         HandshakeEntry takeHandshake(Node location) {
+            boolean resetInterrupted = this.interrupted;
+            if (resetInterrupted) {
+                this.blockedAction.resetInterrupted();
+            }
+
             lock.lock();
             try {
+                if (resetInterrupted) {
+                    this.interrupted = false;
+                }
+
                 if (isPending()) {
                     assert fastPendingSet : "invalid state";
 
@@ -432,11 +443,6 @@ public abstract class ThreadLocalHandshake {
                      */
                     recursiveHandshakes.push(taken);
                     recursiveLocations.push(location);
-
-                    if (this.interrupted) {
-                        this.interrupted = false;
-                        this.blockedAction.resetInterrupted();
-                    }
 
                     return taken;
                 }
@@ -503,8 +509,8 @@ public abstract class ThreadLocalHandshake {
             try {
                 Interrupter prev = this.blockedAction;
                 if (interruptable != null && isPending()) {
-                    interruptable.interrupt(Thread.currentThread());
                     interrupted = true;
+                    interruptable.interrupt(Thread.currentThread());
                 }
                 this.blockedAction = interruptable;
                 if (prev != null && interrupted) {
