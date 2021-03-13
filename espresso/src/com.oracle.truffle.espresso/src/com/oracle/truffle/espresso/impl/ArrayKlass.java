@@ -40,6 +40,11 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.staticobject.StaticProperty;
+import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
+import com.oracle.truffle.espresso.staticobject.StaticShape;
+import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 public final class ArrayKlass extends Klass {

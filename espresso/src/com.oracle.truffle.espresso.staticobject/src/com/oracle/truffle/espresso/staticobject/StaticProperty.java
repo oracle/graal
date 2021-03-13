@@ -39,7 +39,7 @@ public class StaticProperty {
         this.internalKind = internalKind;
     }
 
-    protected StaticProperty(StaticPropertyKind kind) {
+    public StaticProperty(StaticPropertyKind kind) {
         this(getInternalKind(kind));
     }
 

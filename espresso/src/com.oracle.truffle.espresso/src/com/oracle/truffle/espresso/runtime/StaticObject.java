@@ -46,6 +46,9 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
+import com.oracle.truffle.espresso.staticobject.StaticProperty;
+import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
+import com.oracle.truffle.espresso.staticobject.StaticShape;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
@@ -63,13 +66,19 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject(null);
     public static final String CLASS_TO_STATIC = "static";
 
+    private static final StaticProperty ARRAY_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
+    private static final StaticProperty FOREIGN_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
+    private static final StaticShape<StaticObjectFactory> ARRAY_SHAPE = StaticShape.newBuilder()
+            .property(ARRAY_PROPERTY, "array", true)
+            .build(StaticObject.class, StaticObjectFactory.class);;
+    private static final StaticShape<StaticObjectFactory> FOREIGN_SHAPE = StaticShape.newBuilder()
+            .property(FOREIGN_PROPERTY, "foreignObject", true)
+            .build(StaticObject.class, StaticObjectFactory.class);;
+    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create();
+
     private final Klass klass; // != PrimitiveKlass
 
-    private Object arrayOrForeignObject;
-
-    private boolean isForeign;
-
-    private EspressoLock lock;
+    private EspressoLock lockOrForeignMarker;
 
     // region Constructors
     protected StaticObject(Klass klass) {
@@ -134,8 +143,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        StaticObject newObj = new StaticObject(klass);
-        newObj.arrayOrForeignObject = array;
+        StaticObject newObj = ARRAY_SHAPE.getFactory().create(klass);
+        ARRAY_PROPERTY.setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
 
@@ -156,19 +165,20 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (interopLibrary.isNull(foreignObject)) {
             return createForeignNull(foreignObject);
         }
-        StaticObject newObj = new StaticObject(klass);
-        newObj.arrayOrForeignObject = foreignObject;
-        newObj.isForeign = true;
-        return trackAllocation(klass, newObj);
+        return createForeign(klass, foreignObject);
     }
 
     public static StaticObject createForeignNull(Object foreignObject) {
         assert foreignObject != null;
         assert InteropLibrary.getUncached().isNull(foreignObject);
-        StaticObject newObj = new StaticObject(null);
-        newObj.arrayOrForeignObject = foreignObject;
-        newObj.isForeign = true;
-        return newObj;
+        return createForeign(null, foreignObject);
+    }
+
+    private static StaticObject createForeign(Klass klass, Object foreignObject) {
+        StaticObject newObj = FOREIGN_SHAPE.getFactory().create(klass);
+        FOREIGN_PROPERTY.setObject(newObj, foreignObject);
+        newObj.lockOrForeignMarker = FOREIGN_MARKER;
+        return trackAllocation(klass, newObj);
     }
 
     // Shallow copy.
@@ -197,7 +207,11 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     private static StaticObject trackAllocation(Klass klass, StaticObject obj) {
-        return klass.getContext().trackAllocation(obj);
+        if (klass == null) {
+            return obj;
+        } else {
+            return klass.getContext().trackAllocation(obj);
+        }
     }
 
     // endregion Constructors
@@ -256,12 +270,12 @@ public class StaticObject implements TruffleObject, Cloneable {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
         }
-        EspressoLock l = lock;
+        EspressoLock l = lockOrForeignMarker;
         if (l == null) {
             synchronized (this) {
-                l = lock;
+                l = lockOrForeignMarker;
                 if (l == null) {
-                    lock = l = EspressoLock.create();
+                    lockOrForeignMarker = l = EspressoLock.create();
                 }
             }
         }
@@ -280,7 +294,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public boolean isForeignObject() {
-        return isForeign;
+        return lockOrForeignMarker == FOREIGN_MARKER;
     }
 
     public boolean isEspressoObject() {
@@ -289,7 +303,7 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public Object rawForeignObject() {
         assert isForeignObject();
-        return this.arrayOrForeignObject;
+        return FOREIGN_PROPERTY.getObject(this);
     }
 
     public boolean isStaticStorage() {
@@ -373,12 +387,15 @@ public class StaticObject implements TruffleObject, Cloneable {
     /**
      * Start of Array manipulation.
      */
+    private Object getArray() {
+        return ARRAY_PROPERTY.getObject(this);
+    }
 
     @SuppressWarnings("unchecked")
     public <T> T unwrap() {
         checkNotForeign();
         assert isArray();
-        return (T) arrayOrForeignObject;
+        return (T) getArray();
     }
 
     public <T> T get(int index) {
@@ -390,34 +407,35 @@ public class StaticObject implements TruffleObject, Cloneable {
     public int length() {
         checkNotForeign();
         assert isArray();
-        return Array.getLength(arrayOrForeignObject);
+        return Array.getLength(getArray());
     }
 
     private Object cloneWrappedArray() {
         checkNotForeign();
         assert isArray();
-        if (arrayOrForeignObject instanceof byte[]) {
-            return this.<byte[]> unwrap().clone();
+        Object array = getArray();
+        if (array instanceof byte[]) {
+            return ((byte[]) array).clone();
         }
-        if (arrayOrForeignObject instanceof char[]) {
-            return this.<char[]> unwrap().clone();
+        if (array instanceof char[]) {
+            return ((char[]) array).clone();
         }
-        if (arrayOrForeignObject instanceof short[]) {
-            return this.<short[]> unwrap().clone();
+        if (array instanceof short[]) {
+            return ((short[]) array).clone();
         }
-        if (arrayOrForeignObject instanceof int[]) {
-            return this.<int[]> unwrap().clone();
+        if (array instanceof int[]) {
+            return ((int[]) array).clone();
         }
-        if (arrayOrForeignObject instanceof float[]) {
-            return this.<float[]> unwrap().clone();
+        if (array instanceof float[]) {
+            return ((float[]) array).clone();
         }
-        if (arrayOrForeignObject instanceof double[]) {
-            return this.<double[]> unwrap().clone();
+        if (array instanceof double[]) {
+            return ((double[]) array).clone();
         }
-        if (arrayOrForeignObject instanceof long[]) {
-            return this.<long[]> unwrap().clone();
+        if (array instanceof long[]) {
+            return ((long[]) array).clone();
         }
-        return this.<StaticObject[]> unwrap().clone();
+        return ((Object[]) array).clone();
     }
 
     public static StaticObject wrap(StaticObject[] array, Meta meta) {
