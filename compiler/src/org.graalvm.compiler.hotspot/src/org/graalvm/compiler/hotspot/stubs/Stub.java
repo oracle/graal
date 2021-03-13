@@ -281,7 +281,7 @@ public abstract class Stub {
                 }
             }
 
-            assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
+            checkSafeDataReference(data);
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
             assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;
@@ -291,6 +291,10 @@ public abstract class Stub {
             assert !callLinkage.isCompiledStub() || callLinkage.getDescriptor().equals(DEOPT_BLOB_UNCOMMON_TRAP) : this + " cannot call compiled stub " + callLinkage;
         }
         return true;
+    }
+
+    protected void checkSafeDataReference(DataPatch data) {
+        assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
     }
 
     protected Suites createSuites() {

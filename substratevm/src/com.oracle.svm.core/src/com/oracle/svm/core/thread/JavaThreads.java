@@ -199,6 +199,29 @@ public abstract class JavaThreads {
         return toTarget(thread).isVirtual();
     }
 
+    /**
+     * Returns the current isolate thread associated with a Java thread. The following properties
+     * must hold when this method is used:
+     * <ul>
+     * <li>The Java thread is already alive and executing when this method is invoked.
+     * <li>The thread is not stopped and remains alive while this method is executed.
+     * <ul>
+     */
+    @Uninterruptible(reason = "Calls uninterruptible code.")
+    public static IsolateThread fromJavaThread(Thread t) {
+        if (t == Thread.currentThread()) {
+            return CurrentIsolate.getCurrentThread();
+        } else {
+            for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                Thread current = currentThread.get(vmThread);
+                if (current == t) {
+                    return vmThread;
+                }
+            }
+            throw VMError.shouldNotReachHere("Java thread not alive.");
+        }
+    }
+
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_ThreadGroup toTarget(ThreadGroup threadGroup) {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);

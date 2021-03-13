@@ -128,7 +128,6 @@ final class PolyglotThread extends Thread {
         protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
             PolyglotThread thread = (PolyglotThread) receiver;
             PolyglotThreadRunnable run = (PolyglotThreadRunnable) args[HostToGuestRootNode.ARGUMENT_OFFSET];
-
             PolyglotContextImpl prev;
             try {
                 prev = languageContext.enterThread(thread);

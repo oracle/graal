@@ -91,6 +91,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -101,6 +102,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -185,6 +187,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return new TruffleInlining();
     }
 
+    public abstract ThreadLocalHandshake getThreadLocalHandshake();
+
     @Override
     public String getName() {
         String compilerConfigurationName = getCompilerConfigurationName();
@@ -201,6 +205,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             suffix = compilerConfigurationName;
         }
         return "GraalVM " + suffix;
+    }
+
+    /**
+     * Returns a set of classes that need to be initialized before compilations can be performed.
+     */
+    public final Iterable<Class<?>> getLookupTypes() {
+        return lookupTypes.getValues();
     }
 
     /**
@@ -363,6 +374,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
                         Node.class,
+                        RootNode.class,
                         UnexpectedResultException.class,
                         SlowPathException.class,
                         OptimizedCallTarget.class,
@@ -386,6 +398,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         BranchProfile.class,
                         ConditionProfile.class,
                         Objects.class,
+                        TruffleSafepoint.class
         }) {
             m.put(c.getName(), c);
         }
@@ -1105,9 +1118,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * Returns OptimizedCallTarget's {@link PolyglotCompilerOptions} as a {@link Map}. The returned
      * map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
      */
-    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget callTarget) {
+    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget target) {
         Map<String, Object> map = new HashMap<>();
-        OptionValues values = callTarget == null ? null : callTarget.getOptionValues();
+        OptionValues values = target.engine.getEngineOptions();
 
         for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
             final OptionKey<?> key = desc.getKey();

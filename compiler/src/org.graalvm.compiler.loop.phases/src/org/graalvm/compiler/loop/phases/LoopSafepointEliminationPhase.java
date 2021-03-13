@@ -39,8 +39,25 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
+    /**
+     * To be implemented by subclasses to perform additional checks. Returns <code>true</code> if
+     * the safepoint was also disabled in subclasses and we therefore don't need to continue
+     * traversing.
+     */
+    @SuppressWarnings("unused")
+    protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
+        return true;
+    }
+
+    /**
+     * To be implemented by subclasses to compute additional fields.
+     */
+    @SuppressWarnings("unused")
+    protected void onSafepointDisabledLoopBegin(LoopEx loop) {
+    }
+
     @Override
-    protected void run(StructuredGraph graph, MidTierContext context) {
+    protected final void run(StructuredGraph graph, MidTierContext context) {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
         loops.detectedCountedLoops();
         for (LoopEx loop : loops.countedLoops()) {
@@ -60,6 +77,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         }
                     }
                     loop.loopBegin().disableSafepoint();
+                    onSafepointDisabledLoopBegin(loop);
                 }
             }
         }
@@ -77,9 +95,14 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         } else if (node instanceof ForeignCall) {
                             canDisableSafepoint = ((ForeignCall) node).isGuaranteedSafepoint();
                         }
+                        boolean disabledInSubclass = onCallInLoop(loopEnd, node);
                         if (canDisableSafepoint) {
                             loopEnd.disableSafepoint();
-                            break blocks;
+
+                            // we can only stop if subclasses also say we can stop iterating blocks
+                            if (disabledInSubclass) {
+                                break blocks;
+                            }
                         }
                     }
                     b = b.getDominator();
@@ -88,4 +111,5 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         }
         loops.deleteUnusedNodes();
     }
+
 }

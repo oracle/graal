@@ -53,10 +53,10 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
     @Test
     public void testTruffleException() {
         NodeFactory nodeFactory = new NodeFactoryImpl();
-        assertPartialEvalEquals("constant42", createCallerChain(0, 0, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(3, 0, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(0, 3, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(4, 4, nodeFactory));
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 0, nodeFactory));
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(3, 0, nodeFactory));
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 3, nodeFactory));
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(4, 4, nodeFactory));
     }
 
     @Test
@@ -64,13 +64,13 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
         FrameDescriptor fd = new FrameDescriptor();
         Object receiver = new TestTruffleException(TestTruffleException.UNLIMITED_STACK_TRACE, null, true);
         RootTestNode rootNode = new RootTestNode(fd, "isException", new IsExceptionNode(receiver, ExceptionType.RUNTIME_ERROR));
-        assertPartialEvalEquals("constant42", rootNode);
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, rootNode);
 
         fd = new FrameDescriptor();
         receiver = new TruffleObject() {
         };
         rootNode = new RootTestNode(fd, "isException", new IsExceptionNode(receiver, ExceptionType.RUNTIME_ERROR));
-        assertPartialEvalEquals("constant0", rootNode);
+        assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant0, rootNode);
     }
 
     static RootTestNode createCallerChain(int framesAbove, int framesBelow, NodeFactory factory) {

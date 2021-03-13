@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -139,6 +140,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                         // compiled method got invalidated. We might need OSR again.
                         return execute(frame);
                     }
+                    TruffleSafepoint.poll(this);
                 }
             } finally {
                 if (firstTierBackedgeCounts && iterationsCompleted > 1) {
@@ -153,6 +155,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     // compiled method got invalidated. We might need OSR again.
                     return execute(frame);
                 }
+                TruffleSafepoint.poll(this);
             }
             return status;
         }
@@ -173,6 +176,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     // The status returned here is CONTINUE_LOOP_STATUS.
                     return status;
                 }
+                TruffleSafepoint.poll(this);
             }
             // The status returned here is different than CONTINUE_LOOP_STATUS.
             return status;
@@ -227,7 +231,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     return repeatableNode.initialLoopStatus();
                 }
                 iterations++;
-
+                TruffleSafepoint.poll(this);
             } while (repeatableNode.shouldContinue(status = repeatableNode.executeRepeatingWithValue(frame)));
             return status;
         } finally {
@@ -477,6 +481,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 if (CompilerDirectives.inInterpreter()) {
                     return loopNode.repeatableNode.initialLoopStatus();
                 }
+                TruffleSafepoint.poll(this);
             }
             return status;
         }
@@ -558,6 +563,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     if (CompilerDirectives.inInterpreter()) {
                         return loopNode.repeatableNode.initialLoopStatus();
                     }
+                    TruffleSafepoint.poll(this);
                 }
                 return status;
             } finally {

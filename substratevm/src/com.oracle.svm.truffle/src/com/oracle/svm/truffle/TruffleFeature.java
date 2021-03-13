@@ -103,6 +103,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -113,6 +115,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -149,6 +152,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -173,6 +179,8 @@ import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
+import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
+import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompilerImpl;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
@@ -282,10 +290,12 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             final GraphBuilderConfiguration.Plugins graphBuilderPlugins = graalFeature.getHostedProviders().getGraphBuilderPlugins();
             final TruffleTierConfiguration firstTier = new TruffleTierConfiguration(new EconomyPartialEvaluatorConfiguration(), GraalSupport.getRuntimeConfig().getBackendForNormalMethod(),
                             GraalSupport.getFirstTierProviders(), GraalSupport.getFirstTierSuites(), GraalSupport.getFirstTierLirSuites());
+
             PartialEvaluatorConfiguration peConfig = TruffleCompilerImpl.createPartialEvaluatorConfiguration(compilerConfigurationName);
             final TruffleTierConfiguration lastTier = new TruffleTierConfiguration(peConfig, GraalSupport.getRuntimeConfig().getBackendForNormalMethod(),
                             GraalSupport.getRuntimeConfig().getProviders(), GraalSupport.getSuites(), GraalSupport.getLIRSuites());
             final TruffleCompilerConfiguration truffleCompilerConfig = new TruffleCompilerConfiguration(runtime, graphBuilderPlugins, snippetReflectionProvider, firstTier, lastTier);
+
             return new SubstrateTruffleCompilerImpl(truffleCompilerConfig);
         }
 
@@ -373,6 +383,18 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Arrays.asList(GraalFeature.class, NodeClassFeature.class);
+    }
+
+    @Override
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        foreignCalls.register(providers, SubstrateThreadLocalHandshake.FOREIGN_POLL);
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        new SubstrateThreadLocalHandshakeSnippets(options, factories, providers, snippetReflection, lowerings);
     }
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
@@ -485,12 +507,12 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         });
 
         if (reason != ParsingReason.JITCompilation) {
+            r = new Registration(invocationPlugins, CompilerDirectives.class);
             /*
              * For AOT compilation and static analysis, we intrinsify CompilerDirectives.castExact
              * with explicit exception edges. For runtime compilation, TruffleGraphBuilderPlugins
              * registers a plugin that uses deoptimization.
              */
-            r = new Registration(invocationPlugins, CompilerDirectives.class);
             SubstrateGraphBuilderPlugins.registerCastExact(r);
         }
     }
@@ -551,6 +573,14 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
+
+            for (Class<?> initType : truffleRuntime.getLookupTypes()) {
+                access.registerAsUsed(initType);
+            }
+
+            // register thread local foreign poll as compiled otherwise the stub won't work
+            config.registerAsCompiled((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()));
+
             GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
             SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
             SubstrateTruffleCompiler truffleCompiler = truffleRuntime.initTruffleCompiler();
@@ -571,15 +601,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             registerNeverPartOfCompilation(graphBuilderConfig.getPlugins().getInvocationPlugins());
             graphBuilderConfig.getPlugins().getInvocationPlugins().closeRegistration();
 
+            Providers peProviders = partialEvaluator.getProviders();
             HostedProviders newHostedProviders = new HostedProviders(
-                            partialEvaluator.getProviders().getMetaAccess(),
-                            partialEvaluator.getProviders().getCodeCache(),
-                            partialEvaluator.getProviders().getConstantReflection(),
-                            new HostedTruffleConstantFieldProvider(partialEvaluator.getProviders().getConstantFieldProvider()),
-                            partialEvaluator.getProviders().getForeignCalls(),
-                            partialEvaluator.getProviders().getLowerer(),
-                            partialEvaluator.getProviders().getReplacements(),
-                            partialEvaluator.getProviders().getStampProvider(),
+                            peProviders.getMetaAccess(),
+                            peProviders.getCodeCache(),
+                            peProviders.getConstantReflection(),
+                            new HostedTruffleConstantFieldProvider(peProviders.getConstantFieldProvider()),
+                            peProviders.getForeignCalls(),
+                            peProviders.getLowerer(),
+                            peProviders.getReplacements(),
+                            peProviders.getStampProvider(),
                             snippetReflection,
                             graalFeature.getHostedProviders().getWordTypes(),
                             graalFeature.getHostedProviders().getPlatformConfigurationProvider(),

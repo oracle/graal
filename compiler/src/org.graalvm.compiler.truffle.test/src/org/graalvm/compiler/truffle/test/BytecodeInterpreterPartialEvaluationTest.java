@@ -263,7 +263,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     private void assertPartialEvalEqualsAndRunsCorrect(RootNode program) {
         assertReturns42(program);
-        assertPartialEvalEquals("constant42", program);
+        assertPartialEvalEquals(BytecodeInterpreterPartialEvaluationTest::constant42, program);
     }
 
     @Test

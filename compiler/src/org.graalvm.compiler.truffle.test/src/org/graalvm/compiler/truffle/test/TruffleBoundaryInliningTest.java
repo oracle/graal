@@ -24,6 +24,13 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.Iterator;
+
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
@@ -31,13 +38,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.junit.Test;
-
-import java.util.Iterator;
 
 public class TruffleBoundaryInliningTest extends PartialEvaluationTest {
     private TruffleRuntime runtime;
@@ -79,10 +79,10 @@ public class TruffleBoundaryInliningTest extends PartialEvaluationTest {
     private void runTest() {
         RootNode n1 = createRootNodeAllowInline();
         RootCallTarget c1 = runtime.createCallTarget(n1);
-        StructuredGraph allowInline = partialEval((OptimizedCallTarget) c1, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
+        StructuredGraph allowInline = partialEval((OptimizedCallTarget) c1, new Object[]{}, getCompilationId(c1));
         RootNode n2 = createRootNodeNoInline();
         RootCallTarget c2 = runtime.createCallTarget(n2);
-        StructuredGraph noInline = partialEval((OptimizedCallTarget) c2, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
+        StructuredGraph noInline = partialEval((OptimizedCallTarget) c2, new Object[]{}, getCompilationId(c2));
         checkHasTestMethod(allowInline);
         checkHasTestMethod(noInline);
     }

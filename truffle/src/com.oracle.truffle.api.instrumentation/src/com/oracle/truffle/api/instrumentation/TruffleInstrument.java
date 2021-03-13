@@ -57,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.options.OptionDescriptor;
@@ -74,11 +75,15 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
+import com.oracle.truffle.api.TruffleSafepoint.Interruptible;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -1317,7 +1322,7 @@ public abstract class TruffleInstrument {
 
         /**
          * Returns heap memory size retained by a polyglot context.
-         * 
+         *
          * @param truffleContext specifies the polyglot context for which retained size is
          *            calculated.
          * @param stopAtBytes when the calculated size exceeds stopAtBytes, calculation is stopped
@@ -1330,7 +1335,7 @@ public abstract class TruffleInstrument {
          * @return calculated heap memory size retained by the specified polyglot context, or a
          *         value greater than stopAtBytes if the calculated size is greater than
          *         stopAtBytes.
-         * 
+         *
          * @throws UnsupportedOperationException in case heap size calculation is not supported on
          *             current runtime.
          * @throws java.util.concurrent.CancellationException in case the heap size calculation is
@@ -1340,6 +1345,65 @@ public abstract class TruffleInstrument {
          */
         public long calculateContextHeapSize(TruffleContext truffleContext, long stopAtBytes, AtomicBoolean cancelled) {
             return InstrumentAccessor.engineAccess().calculateContextHeapSize(InstrumentAccessor.langAccess().getPolyglotContext(truffleContext), stopAtBytes, cancelled);
+        }
+
+        /**
+         * Submits a thread local action to be performed at the next guest language safepoint on a
+         * provided set of threads, once for each thread. If the threads array is <code>null</code>
+         * then the thread local action will be performed on all alive threads. The submitted
+         * actions are processed in the same order as they are submitted in. The action can be
+         * synchronous or asynchronous, side-effecting or non-sideeffecting. Please see
+         * {@link ThreadLocalAction} for details.
+         * <p>
+         * It is ensured that a thread local action will get processed as long as the thread stays
+         * active for this context. If a thread becomes inactive before the action can get processed
+         * then the action will not be performed for this thread. If a thread becomes active while
+         * the action is being processed then the action will be performed for that thread as long
+         * as the thread filter includes the thread or <code>null</code> was passed. Already started
+         * synchronous actions will block on activation of a new thread. If the synchronous action
+         * was not yet started on any thread, then the synchronous action will also be performed for
+         * the newly activated thread.
+         * <p>
+         * The method returns a {@link Future} instance that allows to wait for the thread local
+         * action to complete or to cancel a currently performed event.
+         * <p>
+         * Example Usage:
+         *
+         * <pre>
+         * Env env; // supplied by TruffleInstrument
+         * TruffleContext context; // supplied by ContextsListener
+         *
+         * env.submitThreadLocal(context, null, new ThreadLocalAction(true, true) {
+         *     &#64;Override
+         *     protected void perform(Access access) {
+         *         // perform action
+         *     }
+         * });
+         * </pre>
+         *
+         * <p>
+         * If the thread local action future needs to be waited on and this might be prone to
+         * deadlocks the
+         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable)
+         * blocking API} can be used to allow other thread local actions to be processed while the
+         * current thread is waiting. The returned {@link Future#get()} method can be used as
+         * {@link Interruptible}.
+         *
+         * @param context the context in which the action should be performed. Non <code>null</code>
+         *            .
+         * @param threads the threads to execute the action on. <code>null</code> for all threads
+         * @param action the action to perform on that thread.
+         * @see ThreadLocalAction
+         * @see TruffleSafepoint
+         * @since 21.1
+         */
+        public Future<Void> submitThreadLocal(TruffleContext context, Thread[] threads, ThreadLocalAction action) {
+            Objects.requireNonNull(context);
+            try {
+                return InstrumentAccessor.ENGINE.submitThreadLocal(InstrumentAccessor.LANGUAGE.getPolyglotContext(context), this.polyglotInstrument, threads, action, true);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
         }
     }
 

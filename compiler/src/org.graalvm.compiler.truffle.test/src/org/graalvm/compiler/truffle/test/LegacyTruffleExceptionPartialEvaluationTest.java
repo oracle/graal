@@ -41,10 +41,10 @@ public class LegacyTruffleExceptionPartialEvaluationTest extends PartialEvaluati
     @Test
     public void testTruffleException() {
         NodeFactory nodeFactory = new NodeFactoryImpl();
-        assertPartialEvalEquals("constant42", createCallerChain(0, 0, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(3, 0, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(0, 3, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(4, 4, nodeFactory));
+        assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 0, nodeFactory));
+        assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(3, 0, nodeFactory));
+        assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 3, nodeFactory));
+        assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(4, 4, nodeFactory));
     }
 
     @SuppressWarnings("deprecation")

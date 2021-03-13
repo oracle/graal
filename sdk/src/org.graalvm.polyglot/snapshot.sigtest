@@ -137,6 +137,7 @@ meth public void enter()
 meth public void interrupt(java.time.Duration) throws java.util.concurrent.TimeoutException
 meth public void leave()
 meth public void resetLimits()
+meth public void safepoint()
 supr java.lang.Object
 hfds ALL_HOST_CLASSES,EMPTY,NO_HOST_CLASSES,UNSET_HOST_LOOKUP,impl
 

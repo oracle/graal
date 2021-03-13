@@ -55,6 +55,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
@@ -78,6 +79,7 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
@@ -175,6 +177,8 @@ public abstract class Accessor {
         public abstract Object translateStackTraceElement(TruffleStackTraceElement stackTraceLement);
 
         public abstract ExecutionSignature prepareForAOT(RootNode rootNode);
+
+        public abstract void setPolyglotEngine(RootNode rootNode, Object engine);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -546,6 +550,10 @@ public abstract class Accessor {
         public abstract Object getEngineLock(Object polyglotEngine);
 
         public abstract long calculateContextHeapSize(Object polyglotContext, long stopAtBytes, AtomicBoolean cancelled);
+
+        public abstract Future<Void> submitThreadLocal(Object polyglotLanguageContext, Object sourcePolyglotObject, Thread[] threads, ThreadLocalAction action, boolean needsEnter);
+
+        public abstract Object getContext(Object polyglotLanguageContext);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -690,6 +698,11 @@ public abstract class Accessor {
 
         public abstract Object getScope(Env env);
 
+        public abstract boolean isSynchronousTLAction(ThreadLocalAction action);
+
+        public abstract boolean isSideEffectingTLAction(ThreadLocalAction action);
+
+        public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
     }
 
     public abstract static class InstrumentSupport extends Support {
@@ -872,6 +885,10 @@ public abstract class Accessor {
             }
         }
 
+        public ThreadLocalHandshake getThreadLocalHandshake() {
+            return DefaultThreadLocalHandshake.SINGLETON;
+        }
+
         /**
          * Reports the execution count of a loop.
          *
@@ -977,8 +994,8 @@ public abstract class Accessor {
 
     }
 
-    // A separate class to break the cycle such that Accessor can fully initialize
-    // before ...Accessor classes static initializers run, which call methods from Accessor.
+// A separate class to break the cycle such that Accessor can fully initialize
+// before ...Accessor classes static initializers run, which call methods from Accessor.
     private static class Constants {
 
         private static final Accessor.LanguageSupport LANGUAGE;

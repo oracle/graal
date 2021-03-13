@@ -74,4 +74,19 @@ final class PolyglotEngineOptions {
                     "Enabling this flag and the compiler option has major implications on the performance and footprint of the interpreter." + //
                     "Do not use in production environments.")//
     static final OptionKey<Boolean> SpecializationStatistics = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Traces thread local events and when they are processed on the individual threads." +
+                    "Prints messages with the [engine] [tl] prefix. ")//
+    static final OptionKey<Boolean> TraceThreadLocalActions = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Repeadly submits thread local actions and collects statistics about safepoint intervals in the process. " +
+                    "Prints event and interval statistics when the context is closed for each thread. " +
+                    "This option significantly slows down execution and is therefore intended for testing purposes only.")//
+    static final OptionKey<Boolean> SafepointALot = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Prints the stack trace for all threads for a time interval. By default 0, which disables the output.")//
+    static final OptionKey<Long> TraceStackTraceInterval = new OptionKey<>(0L);
+
 }

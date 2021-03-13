@@ -68,7 +68,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
                     return interop.hasBufferElements(bufferHostObject);
                 }
             };
-            assertPartialEvalEquals("constantTrue", node);
+            assertPartialEvalEquals(PolyglotHostObjectPartialEvaluationTest::constantTrue, node);
         }
     }
 
@@ -89,7 +89,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
                     }
                 }
             };
-            assertPartialEvalEquals(buffer.isReadOnly() ? "constantFalse" : "constantTrue", node);
+            assertPartialEvalEquals(buffer.isReadOnly() ? PolyglotHostObjectPartialEvaluationTest::constantFalse : PolyglotHostObjectPartialEvaluationTest::constantTrue, node);
         }
     }
 

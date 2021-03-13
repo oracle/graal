@@ -341,7 +341,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (this.hostBindings == null) {
             synchronized (this) {
                 if (this.hostBindings == null) {
-                    Object prev = language.engine.enterIfNeeded(context);
+                    Object prev = language.engine.enterIfNeeded(context, true);
                     try {
                         Object scope = LANGUAGE.getScope(env);
                         assert InteropLibrary.getUncached().hasMembers(scope) : "Scope object must have members.";
@@ -426,7 +426,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert isInitialized();
         assert Thread.currentThread() == thread;
         synchronized (context) {
-            PolyglotContextImpl prev = context.engine.enter(context);
+            PolyglotContextImpl prev = context.engine.enter(context, language.engine.getUncachedLocation(), true);
             lazy.activePolyglotThreads.add(thread);
             return prev;
         }
@@ -829,7 +829,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         Object receiver = guestValue;
         PolyglotValue cache = lazy.valueCache.get(receiver.getClass());
         if (cache == null) {
-            Object prev = language.engine.enterIfNeeded(this.context);
+            Object prev = language.engine.enterIfNeeded(this.context, true);
             try {
                 cache = lookupValueCache(guestValue);
             } finally {
@@ -841,7 +841,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     synchronized PolyglotValue lookupValueCache(Object guestValue) {
         assert toGuestValue(null, guestValue) == guestValue : "Not a valid guest value: " + guestValue + ". Only interop values are allowed to be exported.";
-        Object prev = context.engine.enterIfNeeded(context);
+        Object prev = context.engine.enterIfNeeded(context, true);
         try {
             PolyglotValue cache = lazy.valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValue>() {
                 public PolyglotValue apply(Class<?> t) {

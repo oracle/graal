@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -67,7 +68,7 @@ public final class DefaultLoopNode extends LoopNode {
     public Object execute(VirtualFrame frame) {
         Object status;
         while (repeatNode.shouldContinue((status = repeatNode.executeRepeatingWithValue(frame)))) {
-            // Empty
+            TruffleSafepoint.poll(this);
         }
         return status;
     }

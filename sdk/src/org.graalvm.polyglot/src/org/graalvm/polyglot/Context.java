@@ -776,7 +776,7 @@ public final class Context implements AutoCloseable {
      * context is still usable after this method finishes. Please note that guest finally blocks are
      * executed during interrupt. A context thread may not be interruptiple if it uses
      * non-interruptible waiting or executes non-interruptible host code.
-     * 
+     *
      * This method may be used as a "soft exit", meaning that it can be used before
      * {@link #close(boolean) close(true)} is executed.
      *
@@ -793,6 +793,52 @@ public final class Context implements AutoCloseable {
         if (!impl.interrupt(this, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
+    }
+
+    /**
+     * Polls safepoints events and executes them for the current thread. This allows guest languages
+     * to run actions between long running host method calls. Polyglot embeddings that rely on
+     * cancellation should call this method whenev a potentially long running host operation is
+     * executed. For example, iterating an unbounded array. Guest language code and operations
+     * automatically poll safepoints regularly.
+     *
+     * <p>
+     * In this example we allow {@link Context#interrupt(Duration) interruption} and
+     * {@link Context#close(boolean) cancellation} to stop the processing of our event queue.
+     *
+     * <pre>
+     * class EventProcessor {
+     *
+     *   List<Object> events = new ArrayDeque(); // list of arbitrary size
+     *
+     *   public void processEvents() {
+     *     Context context = Context.getCurrent();
+     *
+     *     while (Object event = events.pop()) {
+     *
+     *         // process event
+     *
+     *         // allow cancellation and interruptions
+     *         try {
+     *             context.safepoint();
+     *         } catch (PolyglotException e) {
+     *             if (e.isInterrupted() || e.isCancelled()) {
+     *                 // break event processing if interrupted or cancelled
+     *                 throw e;
+     *             }
+     *             // other handling of guest errors or rethrow
+     *         }
+     *     }
+     *  }
+     * }
+     * </pre>
+     *
+     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws IllegalStateException if the context is already {@link #close() closed}.
+     * @since 21.1
+     */
+    public void safepoint() {
+        impl.safepoint();
     }
 
     /**
