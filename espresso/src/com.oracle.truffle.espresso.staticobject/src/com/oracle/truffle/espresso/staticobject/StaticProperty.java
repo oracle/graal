@@ -32,6 +32,7 @@ public class StaticProperty {
     private final byte internalKind;
     @CompilationFinal //
     private StaticShape<?> shape;
+    // The offset is the actual position in the field array of an actual instance.
     @CompilationFinal //
     private int offset;
 
@@ -59,13 +60,6 @@ public class StaticProperty {
             throw new RuntimeException("Attempt to reinitialize the shape of a static property. Was it added to more than one builder?");
         }
         this.shape = s;
-    }
-
-    /**
-     * The offset is the actual position in the field array of an actual instance.
-     */
-    public int getOffset() {
-        return offset;
     }
 
     byte getInternalKind() {

@@ -39,7 +39,7 @@ public abstract class StaticShape<T> {
         return factory;
     }
 
-    public final Class<?> getStorageClass() {
+    final Class<?> getStorageClass() {
         return storageClass;
     }
 
