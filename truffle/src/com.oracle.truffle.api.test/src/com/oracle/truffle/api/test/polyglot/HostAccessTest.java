@@ -57,6 +57,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -452,6 +453,42 @@ public class HostAccessTest {
     }
 
     @Test
+    public void testMapAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowMapAccess(true));
+        Map<Integer, String> map = new HashMap<>();
+        map.put(1, Integer.toBinaryString(1));
+        map.put(2, Integer.toBinaryString(2));
+        Value value = context.asValue(map);
+        assertTrue(value.hasHashEntries());
+        assertTrue(value.hasHashEntries());
+        assertEquals(2, value.getHashSize());
+        assertEquals(Integer.toBinaryString(1), value.getHashValue(1).asString());
+        assertEquals(Integer.toBinaryString(2), value.getHashValue(2).asString());
+        value.putHashEntry(2, "");
+        assertEquals("", value.getHashValue(2).asString());
+        assertEquals("", map.get(2));
+        value.removeHashEntry(2);
+        assertEquals(1, value.getHashSize());
+        assertSame(map, value.asHostObject());
+        Value entriesIteratorIterator = value.getHashEntriesIterator();
+        assertTrue(entriesIteratorIterator.isIterator());
+        assertTrue(entriesIteratorIterator.hasIteratorNextElement());
+        Value entry = entriesIteratorIterator.getIteratorNextElement();
+        assertTrue(entry.hasArrayElements());
+        assertEquals(1, entry.getArrayElement(0).asInt());
+        assertEquals(Integer.toBinaryString(1), entry.getArrayElement(1).asString());
+        assertEquals(0, value.getMemberKeys().size());
+        ValueAssert.assertValue(value, false, Trait.HASH, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertArrayAccessDisabled(context);
+    }
+
+    @Test
+    public void testMapAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(false));
+        assertMapAccessDisabled(context);
+    }
+
+    @Test
     public void testIteratorAccessDisabled() {
         setupEnv(HostAccess.newBuilder().allowIteratorAccess(false));
         assertIteratorAccessDisabled(context);
@@ -485,6 +522,13 @@ public class HostAccessTest {
         Iterator<Integer> iterator = new IteratorImpl<>(1, 2, 3);
         Value value = context.asValue(iterator);
         assertSame(iterator, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    private static void assertMapAccessDisabled(Context context) {
+        Map<Integer, String> map = Collections.singletonMap(1, "string");
+        Value value = context.asValue(map);
+        assertSame(map, value.asHostObject());
         ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 

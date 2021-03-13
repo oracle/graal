@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,14 +43,14 @@ package com.oracle.truffle.polyglot;
 import java.lang.reflect.Type;
 import java.util.function.Function;
 
-class PolyglotMapAndFunction<K, V> extends PolyglotMap<K, V> implements Function<Object[], Object> {
+public class PolyglotMapEntryAndFunction<K, V> extends PolyglotMapEntry<K, V> implements Function<Object, Object> {
 
-    PolyglotMapAndFunction(PolyglotLanguageContext languageContext, Object obj, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
+    PolyglotMapEntryAndFunction(PolyglotLanguageContext languageContext, Object obj, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
         super(languageContext, obj, keyClass, keyType, valueClass, valueType);
     }
 
     @Override
-    public final Object apply(Object[] arguments) {
-        return cache.apply.call(languageContext, guestObject, arguments);
+    public Object apply(Object t) {
+        return cache.apply.call(languageContext, guestObject, t);
     }
 }

@@ -68,6 +68,7 @@ final class HostClassCache {
     private final boolean bufferAccess;
     private final boolean iterableAccess;
     private final boolean iteratorAccess;
+    private final boolean mapAccess;
     private final Map<Class<?>, Object> targetMappings;
     private final Object unnamedModule;
 
@@ -78,6 +79,7 @@ final class HostClassCache {
         this.bufferAccess = apiAccess.isBufferAccessible(hostAccess);
         this.iterableAccess = apiAccess.isIterableAccessible(hostAccess);
         this.iteratorAccess = apiAccess.isIteratorAccessible(hostAccess);
+        this.mapAccess = apiAccess.isMapAccessible(hostAccess);
         this.apiAccess = apiAccess;
         this.targetMappings = groupMappings(apiAccess, conf);
         this.unnamedModule = EngineAccessor.JDKSERVICES.getUnnamedModule(classLoader);
@@ -239,6 +241,10 @@ final class HostClassCache {
 
     boolean isIteratorAccess() {
         return iteratorAccess;
+    }
+
+    boolean isMapAccess() {
+        return mapAccess;
     }
 
     boolean allowsImplementation(Class<?> type) {

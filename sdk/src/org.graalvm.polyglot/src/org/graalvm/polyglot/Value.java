@@ -117,6 +117,7 @@ import java.util.function.Function;
  * <li>{@link #hasIterator() Iterable}: This value {@link #getIterator() provides} an
  * {@link #isIterator() iterator} which can be used to {@link #getIteratorNextElement() iterate}
  * value elements. For example, Guest language arrays are iterable.
+ * <li>{@link #hasHashEntries()} Hash Entries}: This value represents a map.
  * </ul>
  * <p>
  * In addition to the language agnostic types, the language specific type can be accessed using
@@ -1288,12 +1289,14 @@ public final class Value {
      * target type mappings} specified in the {@link HostAccess} configuration with precedence
      * {@link TargetMappingPrecedence#LOW}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
-     * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
-     * members} or {@link #hasArrayElements() array elements}. The returned map can be safely cast
-     * to Map<Object, Object>. The key type in such a case is either {@link String} or {@link Long}.
-     * It is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
-     * collection component types. With type literals the value type can be restricted, for example
-     * to <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an Object
+     * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasHashEntries()}
+     * hash entries}, {@link #hasMembers() members} or {@link #hasArrayElements() array elements}.
+     * The returned map can be safely cast to Map<Object, Object>. For value with
+     * {@link #hasMembers() members} the key type is {@link String}. For value with
+     * {@link #hasArrayElements() array elements} the key type is {@link Long}. It is recommended to
+     * use {@link #as(TypeLiteral) type literals} to specify the expected collection component
+     * types. With type literals the value type can be restricted, for example to
+     * <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an Object
      * component type is used, then the return types of the the list are subject to Object target
      * type mapping rules recursively.
      * <li><code>{@link List}.class</code> is supported if the value has {@link #hasArrayElements()
@@ -1397,6 +1400,11 @@ public final class Value {
      * any Number subclass including {@link BigInteger} or {@link BigDecimal}. It is recommended to
      * cast to {@link Number} and then convert to a Java primitive like with
      * {@link Number#longValue()}.
+     * <li>If the value has {@link #hasHashEntries() hash entries} then the result value will
+     * implement {@link Map}. The {@link Map#size() size} of the returned {@link Map} is equal to
+     * the {@link #getHashSize() hash entries count}. The returned value may also implement
+     * {@link Function} if the value can be {@link #canExecute() executed} or
+     * {@link #canInstantiate() instantiated}.
      * <li>If the value {@link #hasMembers() has members} then the result value will implement
      * {@link Map}. If this value {@link #hasMembers() has members} then all members are accessible
      * using {@link String} keys. The {@link Map#size() size} of the returned {@link Map} is equal
@@ -1852,6 +1860,160 @@ public final class Value {
      */
     public Value getIteratorNextElement() {
         return impl.getIteratorNextElement(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this polyglot value represents a map. In this case map entries
+     * can be accessed using {@link #getHashValue(Object)},
+     * {@link #getHashValueOrDefault(Object, Object)}, {@link #putHashEntry(Object, Object)},
+     * {@link #removeHashEntry(Object)}, {@link #getHashEntriesIterator()} and the map size can be
+     * queried using {@link #getHashSize()}.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public boolean hasHashEntries() {
+        return impl.hasHashEntries(receiver);
+    }
+
+    /**
+     * Returns the number of map entries for values with hash entries.
+     *
+     * @throws UnsupportedOperationException if the value does not have any
+     *             {@link #hasHashEntries()} hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public long getHashSize() throws UnsupportedOperationException {
+        return impl.getHashSize(receiver);
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists. If the value has no
+     * {@link #hasHashEntries() hash entries} then {@link #hasHashEntry(Object)} returns
+     * {@code false}. The key is subject to polyglot value mapping rules as described in
+     * {@link Context#asValue(Object)}.
+     *
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public boolean hasHashEntry(Object key) {
+        return impl.hasHashEntry(receiver, key);
+    }
+
+    /**
+     * Returns the value for the specified key or {@code null} if the mapping for the specified key
+     * does not exist. The key is subject to polyglot value mapping rules as described in
+     * {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value has no {@link #hasHashEntries() hash
+     *             entries} or the mapping for given key exists but is not readable.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public Value getHashValue(Object key) throws UnsupportedOperationException {
+        return impl.getHashValue(receiver, key);
+    }
+
+    /**
+     * Returns the value for the specified key or the default value if the mapping for the specified
+     * key does not exist or is not readable. The key and the default value are subject to polyglot
+     * value mapping rules as described in {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value has no {@link #hasHashEntries() hash
+     *             entries} at all.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public Value getHashValueOrDefault(Object key, Object defaultValue) throws UnsupportedOperationException {
+        return impl.getHashValueOrDefault(receiver, key, defaultValue);
+    }
+
+    /**
+     * Associates the specified value with the specified key. Both key and value are subject to
+     * polyglot value mapping rules as described in {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}, the mapping for specified key does not exist and new members
+     *             cannot be added, or the existing mapping for specified key is not modifiable.
+     * @throws IllegalArgumentException if the provided key type or value type is not allowed to be
+     *             written.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void putHashEntry(Object key, Object value) throws IllegalArgumentException, UnsupportedOperationException {
+        impl.putHashEntry(receiver, key, value);
+    }
+
+    /**
+     * Removes the mapping for a given key. Returns {@code true} if the mapping was successfully
+     * removed, {@code false} if mapping for a given key does not exist. The key is subject to
+     * polyglot value mapping rules as described in {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries} or if mapping for specified key {@link #hasHashEntry(Object)
+     *             exists} but cannot be removed.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public boolean removeHashEntry(Object key) throws UnsupportedOperationException {
+        return impl.removeHashEntry(receiver, key);
+    }
+
+    /**
+     * Creates a new hash entries iterator that allows read each map entry. The return value is
+     * always an {@link #isIterator() iterator} of {@link #hasArrayElements() array elements}. The
+     * first array element is a key, the second array element is an associated value. Even if the
+     * value array element is {@link #setArrayElement(long, Object) modifiable} writing to array may
+     * not update the mapping, always use {@link #putHashEntry(Object, Object)} to update the
+     * mapping.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @since 21.1
+     */
+    public Value getHashEntriesIterator() throws UnsupportedOperationException {
+        return impl.getHashEntriesIterator(receiver);
+    }
+
+    /**
+     * Creates a new hash keys iterator that allows read each map key. The return value is always an
+     * {@link #isIterator() iterator}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @since 21.1
+     */
+    public Value getHashKeysIterator() throws UnsupportedOperationException {
+        return impl.getHashKeysIterator(receiver);
+    }
+
+    /**
+     * Creates a new hash values iterator that allows read each map value. The return value is
+     * always an {@link #isIterator() iterator}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @since 21.1
+     */
+    public Value getHashValuesIterator() throws UnsupportedOperationException {
+        return impl.getHashValuesIterator(receiver);
     }
 
     /**

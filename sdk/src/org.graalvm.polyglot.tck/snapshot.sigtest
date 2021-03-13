@@ -128,6 +128,7 @@ fld public final static org.graalvm.polyglot.tck.TypeDescriptor DURATION
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXCEPTION
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE_ANY
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor HASH
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor HOST_OBJECT
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor INSTANTIABLE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor INSTANTIABLE_ANY
@@ -154,9 +155,10 @@ meth public int hashCode()
 meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.tck.TypeDescriptor array(org.graalvm.polyglot.tck.TypeDescriptor)
 meth public static org.graalvm.polyglot.tck.TypeDescriptor forValue(org.graalvm.polyglot.Value)
+meth public static org.graalvm.polyglot.tck.TypeDescriptor hash(org.graalvm.polyglot.tck.TypeDescriptor,org.graalvm.polyglot.tck.TypeDescriptor)
 meth public static org.graalvm.polyglot.tck.TypeDescriptor iterable(org.graalvm.polyglot.tck.TypeDescriptor)
 meth public static org.graalvm.polyglot.tck.TypeDescriptor iterator(org.graalvm.polyglot.tck.TypeDescriptor)
 supr java.lang.Object
 hfds NOTYPE,PREDEFINED_TYPES,impl
-hcls ArrayImpl,ContentTypeDescriptorImpl,ExecutableImpl,InstantiableImpl,IntersectionImpl,IterableImpl,IteratorImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
+hcls ArrayImpl,ArrayValueIterator,ExecutableImpl,HashImpl,HashIterator,InstantiableImpl,IntersectionImpl,IterableImpl,IteratorImpl,IteratorValueIterator,ParameterizedTypeDescriptorImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
 

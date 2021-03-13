@@ -112,6 +112,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HASH;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
@@ -324,6 +325,10 @@ public class ValueAPITest {
 
             if (value instanceof Class) {
                 expectedTraits.add(META);
+            }
+
+            if (value instanceof Map) {
+                expectedTraits.add(HASH);
             }
 
             assertValue(context.asValue(value), expectedTraits.toArray(new Trait[0]));
@@ -1346,7 +1351,7 @@ public class ValueAPITest {
         assertFails(() -> other.as(List.class), ClassCastException.class,
                         "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.List': Value must have array elements.");
         assertFails(() -> other.as(Map.class), ClassCastException.class,
-                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.Map': Value must have members or array elements.");
+                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.Map': Value must have members, array elements or hash entries.");
         assertFails(() -> other.as(Function.class), ClassCastException.class,
                         "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.function.Function': Value must be executable or instantiable.");
         assertFails(() -> other.as(JavaInterface.class), ClassCastException.class,

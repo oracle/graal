@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
@@ -568,14 +569,15 @@ public final class Context implements AutoCloseable {
      * back to a polyglot value.
      * <li>Any other <code>hostValue</code> will be interpreted as {@link Value#isHostObject() host
      * object}. Host objects expose all their public java fields and methods as
-     * {@link Value#getMember(String) members}. In addition, Java arrays and subtypes of
-     * {@link List} will be interpreted as a value with {@link Value#hasArrayElements() array
+     * {@link Value#getMember(String) members}. In addition, Java arrays, subtypes of {@link List}
+     * and {@link Entry} will be interpreted as a value with {@link Value#hasArrayElements() array
      * elements}. The subtypes of {@link Iterable} will be interpreted as a value with
      * {@link Value#hasIterator()} iterator}. The subtypes of {@link Iterator} will be interpreted
-     * as an {@link Value#isIterator() iterator} value. And single method interfaces annotated with
-     * {@link FunctionalInterface} are {@link Value#execute(Object...) executable} directly. Java
-     * {@link Class} instances are interpreted as {@link Value#canInstantiate() instantiable}, but
-     * they do not expose Class methods as members.
+     * as an {@link Value#isIterator() iterator} value. The subtypes of {@link Map} will be
+     * interpreted as a value with {@link Value#hasHashEntries()} hash entries}. And single method
+     * interfaces annotated with {@link FunctionalInterface} are {@link Value#execute(Object...)
+     * executable} directly. Java {@link Class} instances are interpreted as
+     * {@link Value#canInstantiate() instantiable}, but they do not expose Class methods as members.
      * </ol>
      * <p>
      * <b>Basic Examples:</b>

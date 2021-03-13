@@ -186,6 +186,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isIteratorAccessible(HostAccess access);
 
+        public abstract boolean isMapAccessible(HostAccess access);
+
         public abstract Object getHostAccessImpl(HostAccess conf);
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
@@ -817,6 +819,30 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean hasIteratorNextElement(Object receiver);
 
         public abstract Value getIteratorNextElement(Object receiver);
+
+        public boolean hasHashEntries(Object receiver) {
+            return false;
+        }
+
+        public abstract long getHashSize(Object receiver);
+
+        public boolean hasHashEntry(Object receiver, Object key) {
+            return false;
+        }
+
+        public abstract Value getHashValue(Object receiver, Object key);
+
+        public abstract Value getHashValueOrDefault(Object receiver, Object key, Object defaultValue);
+
+        public abstract void putHashEntry(Object receiver, Object key, Object value);
+
+        public abstract boolean removeHashEntry(Object receiver, Object key);
+
+        public abstract Value getHashEntriesIterator(Object receiver);
+
+        public abstract Value getHashKeysIterator(Object receiver);
+
+        public abstract Value getHashValuesIterator(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

@@ -165,6 +165,19 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
+    static RuntimeException mapEntryUnsupported(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, String operation) {
+        String message = String.format("Unsupported operation %s for Map.Entry<%s, %s> %s.", operation, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException invalidMapEntryArrayIndex(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, long index) {
+        throw PolyglotEngineException.classCast(
+                        String.format("Invalid index %d for Map.Entry<%s, %s> %s.",
+                                        index, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver)));
+    }
+
+    @TruffleBoundary
     static RuntimeException invalidListValue(PolyglotLanguageContext context, Object receiver, Type componentType, int identifier, Object value) {
         throw PolyglotEngineException.classCast(
                         String.format("Invalid value %s for List<%s> %s and index %s.",

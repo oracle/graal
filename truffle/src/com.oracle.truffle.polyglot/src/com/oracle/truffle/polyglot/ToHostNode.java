@@ -461,18 +461,28 @@ abstract class ToHostNode extends Node {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Map.class) {
-            Class<?> keyClazz = getGenericParameterType(genericType, 0).clazz;
+            TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
             TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
-            if (!isSupportedMapKeyType(keyClazz)) {
-                throw newInvalidKeyTypeException(keyClazz);
+            boolean hasHashEntries = interop.hasHashEntries(value);
+            if (!hasHashEntries && !isSupportedMapKeyType(keyType.clazz)) {
+                throw newInvalidKeyTypeException(keyType.clazz);
             }
-            boolean hasSize = (Number.class.isAssignableFrom(keyClazz)) && interop.hasArrayElements(value);
-            boolean hasKeys = (keyClazz == Object.class || keyClazz == String.class) && interop.hasMembers(value);
-            if (hasKeys || hasSize) {
+            boolean hasSize = (Number.class.isAssignableFrom(keyType.clazz)) && interop.hasArrayElements(value);
+            boolean hasKeys = (keyType.clazz == Object.class || keyType.clazz == String.class) && interop.hasMembers(value);
+            if (hasKeys || hasSize || hasHashEntries) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
-                obj = PolyglotMap.create(languageContext, value, implementsFunction, keyClazz, valueType.clazz, valueType.type);
+                obj = PolyglotMap.create(languageContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members or array elements.");
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members, array elements or hash entries.");
+            }
+        } else if (targetType == Map.Entry.class) {
+            if (interop.hasArrayElements(value)) {
+                TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
+                TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
+                boolean implementsFunction = shouldImplementFunction(value, interop);
+                obj = PolyglotMapEntry.create(languageContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Function.class) {
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);

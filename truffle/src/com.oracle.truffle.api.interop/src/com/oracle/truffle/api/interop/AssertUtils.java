@@ -107,6 +107,10 @@ final class AssertUtils {
         return String.format("Invariant contract violation for receiver %s and index %s.", formatValue(receiver), arg);
     }
 
+    static String violationInvariant(Object receiver, Object arg) {
+        return String.format("Invariant contract violation for receiver %s and key %s.", formatValue(receiver), formatValue(arg));
+    }
+
     private static String violationReturn(Object receiver, Object returnValue) {
         return String.format("Post-condition contract violation for receiver %s and return value %s.",
                         formatValue(receiver), formatValue(returnValue));

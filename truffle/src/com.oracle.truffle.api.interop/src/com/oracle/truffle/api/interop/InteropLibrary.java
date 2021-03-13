@@ -134,6 +134,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
  * <li>{@link #isInstantiable(Object) instantiable}
  * <li>{@link #isPointer(Object) pointer}
  * <li>{@link #hasMembers(Object) members}
+ * <li>{@link #hasHashEntries(Object) hash entries}
  * <li>{@link #hasArrayElements(Object) array elements}
  * <li>{@link #hasBufferElements(Object) buffer elements}
  * <li>{@link #hasLanguage(Object) language}
@@ -859,6 +860,247 @@ public abstract class InteropLibrary extends Library {
      */
     public boolean hasMemberWriteSideEffects(Object receiver, String member) {
         return false;
+    }
+
+    // Hashes
+    /**
+     * Returns {@code true} if the receiver may have hash entries. Therefore, at least one of
+     * {@link #readHashValue(Object, Object)}, {@link #writeHashEntry(Object, Object, Object)},
+     * {@link #removeHashEntry(Object, Object)} must not throw {@link UnsupportedMessageException}.
+     * For example, the contents of a map data structure could be interpreted as hash elements.
+     * Invoking this message does not cause any observable side-effects. Returns {@code false} by
+     * default.
+     *
+     * @see #getHashEntriesIterator(Object)
+     * @see #getHashSize(Object)
+     * @see #isHashEntryReadable(Object, Object)
+     * @see #isHashEntryWritable(Object, Object)
+     * @see #isHashEntryInsertable(Object, Object)
+     * @see #isHashEntryRemovable(Object, Object)
+     * @see #readHashValue(Object, Object)
+     * @see #readHashValueOrDefault(Object, Object, Object)
+     * @see #writeHashEntry(Object, Object, Object)
+     * @see #removeHashEntry(Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"getHashSize", "isHashEntryReadable", "readHashValue", "readHashValueOrDefault",
+                    "isHashEntryModifiable", "isHashEntryInsertable", "writeHashEntry", "isHashEntryRemovable",
+                    "removeHashEntry", "getHashEntriesIterator", "getHashKeysIterator", "getHashValuesIterator"})
+    public boolean hasHashEntries(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the number of receiver entries.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false}.
+     * @since 21.1
+     */
+    @Abstract(ifExported = "hasHashEntries")
+    public long getHashSize(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is
+     * {@link #readHashValue(Object, Object) readable}. This method may only return {@code true} if
+     * {@link #hasHashEntries(Object)} returns {@code true} as well and
+     * {@link #isHashEntryInsertable(Object, Object)} returns {@code false}. Invoking this message
+     * does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #readHashValue(Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "readHashValue")
+    public boolean isHashEntryReadable(Object receiver, Object key) {
+        return false;
+    }
+
+    /**
+     * Reads the value for the specified key.
+     * 
+     * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
+     *             receiver with no readable hash entries supports the read operation (even though
+     *             there is nothing to read), therefore it throws {@link UnknownKeyException} for
+     *             all arguments instead.
+     * @throws UnknownKeyException if mapping for the specified key is not
+     *             {@link #isHashEntryReadable(Object, Object) readable}, e.g. when the hash does
+     *             not contain specified key.
+     * @see #isHashEntryReadable(Object, Object)
+     * @see #readHashValueOrDefault(Object, Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "isHashEntryReadable")
+    public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the value for the specified key or returns the {@code defaultValue} when the mapping
+     * for the specified key does not exist or is not readable.
+     * 
+     * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
+     *             receiver with no readable hash entries supports the read operation (even though
+     *             there is nothing to read), therefore it returns the {@code defaultValue} for all
+     *             arguments instead.
+     * @see #isHashEntryReadable(Object, Object)
+     * @see #readHashValue(Object, Object)
+     * @since 21.1
+     */
+    public Object readHashValueOrDefault(Object receiver, Object key, Object defaultValue) throws UnsupportedMessageException {
+        try {
+            return readHashValue(receiver, key);
+        } catch (UnknownKeyException e) {
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is
+     * {@link #writeHashEntry(Object, Object, Object) writable}. This method may only return
+     * {@code true} if {@link #hasHashEntries(Object)} returns {@code true} as well and
+     * {@link #isHashEntryInsertable(Object, Object)} returns {@code false}. Invoking this message
+     * does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #writeHashEntry(Object, Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"writeHashEntry"})
+    public boolean isHashEntryModifiable(Object receiver, Object key) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key does not exist and is
+     * {@link #writeHashEntry(Object, Object, Object) writable}. This method may only return
+     * {@code true} if {@link #hasHashEntries(Object)} returns {@code true} as well and
+     * {@link #isHashEntryExisting(Object, Object)} returns {@code false}. Invoking this message
+     * does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #writeHashEntry(Object, Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "writeHashEntry")
+    public boolean isHashEntryInsertable(Object receiver, Object key) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key is
+     * {@link #isHashEntryModifiable(Object, Object) modifiable} or
+     * {@link #isHashEntryInsertable(Object, Object) insertable}.
+     *
+     * @since 21.1
+     */
+    public final boolean isHashEntryWritable(Object receiver, Object key) {
+        return isHashEntryModifiable(receiver, key) || isHashEntryInsertable(receiver, key);
+    }
+
+    /**
+     * Associates the specified value with the specified key in the receiver. Writing a member is
+     * allowed if is existing and {@link #isHashEntryModifiable(Object, Object) modifiable}, or not
+     * existing and {@link #isHashEntryInsertable(Object, Object) insertable}.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownKeyException if mapping for the specified key is not
+     *             {@link #isHashEntryModifiable(Object, Object) modifiable} nor
+     *             {@link #isHashEntryInsertable(Object, Object) insertable}.
+     * @throws UnsupportedTypeException if the provided key type or value type is not allowed to be
+     *             written.
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isHashEntryModifiable", "isHashEntryInsertable"})
+    public void writeHashEntry(Object receiver, Object key, Object value) throws UnsupportedMessageException, UnknownKeyException, UnsupportedTypeException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is removable. This method
+     * may only return {@code true} if {@link #hasHashEntries(Object)} returns {@code true} as well
+     * and {@link #isHashEntryInsertable(Object, Object)} returns {@code false}. Invoking this
+     * message does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #removeHashEntry(Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "removeHashEntry")
+    public boolean isHashEntryRemovable(Object receiver, Object key) {
+        return false;
+    }
+
+    /**
+     * Removes the mapping for a given key from the receiver. Mapping removing is allowed if it is
+     * {@link #isHashEntryRemovable(Object, Object) removable}.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support removing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownKeyException if the given mapping is not
+     *             {@link #isHashEntryRemovable(Object, Object) removable}, e.g. the receiver does
+     *             not have a mapping for given key.
+     * @see #isHashEntryRemovable(Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "isHashEntryRemovable")
+    public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} if mapping for a given key is existing. The mapping is existing if it is
+     * {@link #isHashEntryModifiable(Object, Object) modifiable},
+     * {@link #isHashEntryReadable(Object, Object) readable} or
+     * {@link #isHashEntryRemovable(Object, Object) removable}.
+     *
+     * @since 21.1
+     */
+    public final boolean isHashEntryExisting(Object receiver, Object key) {
+        return isHashEntryReadable(receiver, key) || isHashEntryModifiable(receiver, key) || isHashEntryRemovable(receiver, key);
+    }
+
+    /**
+     * Returns the hash entries iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator} of {@link #hasArrayElements(Object) array} elements. The
+     * first array element is a key, the second array element is an associated value. Array returned
+     * by the iterator may be modifiable but detached from the hash, updating the array elements may
+     * not update the hash. So even if array elements are
+     * {@link #isArrayElementModifiable(Object, long) modifiable} always use
+     * {@link #writeHashEntry(Object, Object, Object)} to update the hash mapping.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    @Abstract(ifExported = "hasHashEntries")
+    public Object getHashEntriesIterator(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the hash keys iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    public Object getHashKeysIterator(Object receiver) throws UnsupportedMessageException {
+        Object entriesIterator = getHashEntriesIterator(receiver);
+        return HashIterator.keys(entriesIterator);
+    }
+
+    /**
+     * Returns the hash values iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    public Object getHashValuesIterator(Object receiver) throws UnsupportedMessageException {
+        Object entriesIterator = getHashEntriesIterator(receiver);
+        return HashIterator.values(entriesIterator);
     }
 
     // Array Messages
@@ -3317,6 +3559,197 @@ public abstract class InteropLibrary extends Library {
             boolean result = delegate.isMemberInternal(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             return result;
+        }
+
+        @Override
+        public boolean hasHashEntries(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.hasHashEntries(receiver);
+        }
+
+        @Override
+        public long getHashSize(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                long result = delegate.getHashSize(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryReadable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryReadable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.readHashValue(receiver, key);
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean wasReadable = delegate.isHashEntryReadable(receiver, key);
+            try {
+                Object result = delegate.readHashValue(receiver, key);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasReadable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException : violationPost(receiver, e);
+                assert !(e instanceof UnsupportedMessageException) || !wasReadable : violationInvariant(receiver, key);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object readHashValueOrDefault(Object receiver, Object key, Object defaultValue) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.readHashValueOrDefault(receiver, key, defaultValue);
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            assert validArgument(receiver, defaultValue);
+            try {
+                Object result = delegate.readHashValueOrDefault(receiver, key, defaultValue);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryModifiable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryModifiable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public boolean isHashEntryInsertable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryInsertable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryExisting(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public void writeHashEntry(Object receiver, Object key, Object value) throws UnsupportedMessageException, UnknownKeyException, UnsupportedTypeException {
+            if (CompilerDirectives.inCompiledCode()) {
+                delegate.writeHashEntry(receiver, key, value);
+                return;
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            assert validArgument(receiver, value);
+            boolean wasWritable = delegate.isHashEntryModifiable(receiver, key) || delegate.isHashEntryInsertable(receiver, key);
+            try {
+                delegate.writeHashEntry(receiver, key, value);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasWritable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
+                assert !(e instanceof UnsupportedMessageException) || !wasWritable : violationInvariant(receiver, key);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryRemovable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryRemovable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
+            if (CompilerDirectives.inCompiledCode()) {
+                delegate.removeHashEntry(receiver, key);
+                return;
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean wasRemovable = delegate.isHashEntryRemovable(receiver, key);
+            try {
+                delegate.removeHashEntry(receiver, key);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasRemovable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException : violationPost(receiver, e);
+                assert !(e instanceof UnsupportedMessageException) || !wasRemovable : violationInvariant(receiver, key);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashEntriesIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashEntriesIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashEntriesIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashKeysIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashKeysIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashKeysIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashValuesIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashValuesIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashValuesIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
         }
 
         @Override
