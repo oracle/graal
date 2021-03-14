@@ -30,11 +30,14 @@ public class AOTProfilingSampler implements ProfilingSampler {
         for (int i = data.num - 1; i >= 0; i--) {
             node = node.at(result[i]);
         }
-        node.incValue();
+        incStackTraceCounter(node);
         // System.identityHashCode(data.node));
         System.out.println("--- end: " + System.nanoTime());
     }
 
+    private void incStackTraceCounter(PrefixTree.Node node) {
+        node.incValue();
+    }
 
     @NeverInline("")
     void walkCurrentThread(SamplingStackVisitor.StackTrace data, SamplingStackVisitor visitor) {

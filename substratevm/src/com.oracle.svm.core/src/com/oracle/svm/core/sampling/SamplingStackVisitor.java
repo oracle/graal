@@ -1,6 +1,6 @@
 package com.oracle.svm.core.sampling;
 
-import org.graalvm.collections.PrefixTree;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -12,7 +12,8 @@ public class SamplingStackVisitor extends ParameterizedStackFrameVisitor<Samplin
 
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, SamplingStackVisitor.StackTrace data) {
-        // data.node = data.node.at(ip.rawValue());
+        GraalError.guarantee(data.num < StackTrace.MAX_STACK_DEPTH,
+                        "The call stack depth of the thread " + Thread.currentThread() + " exceeds the maximal set value.");
         data.data[data.num++] = ip.rawValue();
         return true;
     }
@@ -22,17 +23,9 @@ public class SamplingStackVisitor extends ParameterizedStackFrameVisitor<Samplin
         return false;
     }
 
-    public static class SamplingStackTrace {
-        PrefixTree.Node node;
-
-        SamplingStackTrace(PrefixTree.Node node) {
-            this.node = node;
-        }
-    }
-
     public static class StackTrace {
 
-        static final int MAX_STACK_DEPTH = 40;
+        static final int MAX_STACK_DEPTH = 2048;
         long[] data = new long[MAX_STACK_DEPTH];
         int num = 0;
     }
