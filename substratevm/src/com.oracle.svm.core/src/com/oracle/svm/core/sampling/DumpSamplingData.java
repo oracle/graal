@@ -37,28 +37,19 @@ public class DumpSamplingData {
 
     public Runnable dumpSamplingProfilesToFile() {
         try {
-            return DumpSamplingData::dumpProfiles;
+            return DumpSamplingData::dumpSamplingData;
         } catch (Throwable t) {
             t.printStackTrace();
             return null;
         }
     }
 
-    public Runnable dumpCompilationUnitsToFile() {
-        try {
-            return DumpSamplingData::dumpCompilationUnits;
-        } catch (Throwable t) {
-            t.printStackTrace();
-            return null;
-        }
-    }
-
-    public static void dumpProfiles() {
+    public static void dumpSamplingData() {
         BufferedWriter profilesWriter = null;
         try {
-            Path pathProfiles = Paths.get("sampling-profiles.iprof").toAbsolutePath();
+            Path pathProfiles = Paths.get("sampling-java-stack.iprof").toAbsolutePath();
             profilesWriter = new BufferedWriter(new FileWriter(pathProfiles.toFile()));
-            dumpFromTree(profilesWriter, true);
+            dumpFromTree(profilesWriter, DUMP_MODE.JAVA_STACK_VIEW);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -70,14 +61,11 @@ public class DumpSamplingData {
                 }
             }
         }
-    }
-
-    public static void dumpCompilationUnits() {
         BufferedWriter flameWriter = null;
         try {
-            Path path = Paths.get("sampling-flame.iprof").toAbsolutePath();
+            Path path = Paths.get("sampling-compilation-stack.iprof").toAbsolutePath();
             flameWriter = new BufferedWriter(new FileWriter(path.toFile()));
-            dumpFromTree(flameWriter, false);
+            dumpFromTree(flameWriter, DUMP_MODE.COMPILATION_STACK_VIEW);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -104,18 +92,18 @@ public class DumpSamplingData {
         // return CodeInfoAccess.convert(untetheredCodeInfo);
     }
 
-    static String decodeMethod(long address, SamplingMethodData samplingMethodData, boolean dumpProfiles) {
+    static String decodeMethod(long address, SamplingMethodData samplingMethodData, DUMP_MODE mode) {
         CodePointer ip = WordFactory.pointer(address);
         CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
         CodeInfo codeInfo = codeInfo(ip);
         long relativeIP = CodeInfoAccess.relativeIP(codeInfo, ip);
         CodeInfoAccess.lookupCodeInfo(codeInfo, relativeIP, result);
         FrameInfoQueryResult frameInfo = result.getFrameInfo();
-        return createDecodedMethodEntry(frameInfo, relativeIP, samplingMethodData, dumpProfiles);
+        return createDecodedMethodEntry(frameInfo, relativeIP, samplingMethodData, mode);
     }
 
-    private static String createDecodedMethodEntry(FrameInfoQueryResult frameInfo, long relativeIP, SamplingMethodData samplingMethodData, boolean dumpProfiles) {
-        if (dumpProfiles) {
+    private static String createDecodedMethodEntry(FrameInfoQueryResult frameInfo, long relativeIP, SamplingMethodData samplingMethodData, DUMP_MODE mode) {
+        if (mode == DUMP_MODE.JAVA_STACK_VIEW) {
             List<String> frames = new ArrayList<>();
             frames.add(frameInfo.methodID + ":" + frameInfo.getBci());
             while (frameInfo.getCaller() != null) {
@@ -129,18 +117,25 @@ public class DumpSamplingData {
                 frameInfo = frameInfo.getCaller();
             }
             String methodName = samplingMethodData.findMethodName(relativeIP);
-            int methodId = samplingMethodData.findMethod(relativeIP);
-            int bci = frameInfo.getBci();
+            // int methodId = samplingMethodData.findMethod(relativeIP);
+            // if (methodId != frameInfo.methodID) {
+            // }
             int frameInfoMethodId = frameInfo.methodID;
-            return methodName + " ( " + methodId + "," + frameInfoMethodId + " ) " + ":" + bci;
+            if (mode == DUMP_MODE.COMPILATION_STACK_VIEW) {
+                return String.valueOf(frameInfoMethodId);
+            } else {
+                assert mode == DUMP_MODE.COMPILATION_WITH_BCI_STACK_VIEW;
+                int bci = frameInfo.getBci();
+                return frameInfoMethodId + ":" + bci;
+            }
         }
     }
 
-    static void dumpFromTree(BufferedWriter writer, boolean dumpProfiles) throws IOException {
+    static void dumpFromTree(BufferedWriter writer, DUMP_MODE mode) throws IOException {
         PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
         SamplingMethodData samplingMethodData = ImageSingletons.lookup(SamplingMethodData.class);
 
-        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> new CallFrame(decodeMethod(address, samplingMethodData, dumpProfiles), context), (context, value) -> {
+        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> new CallFrame(decodeMethod(address, samplingMethodData, mode), context), (context, value) -> {
             try {
                 StringBuilder contextChain = new StringBuilder(context.name);
                 CallFrame elem = context.tail;
@@ -167,5 +162,11 @@ public class DumpSamplingData {
             super();
             this.ip = ip;
         }
+    }
+
+    enum DUMP_MODE {
+        JAVA_STACK_VIEW,
+        COMPILATION_STACK_VIEW,
+        COMPILATION_WITH_BCI_STACK_VIEW;
     }
 }
