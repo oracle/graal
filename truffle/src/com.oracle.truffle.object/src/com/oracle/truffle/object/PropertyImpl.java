@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,7 +62,6 @@ public class PropertyImpl extends Property {
     private final Object key;
     private final Location location;
     private final int flags;
-    private final boolean relocatable;
 
     /**
      * Generic, usual-case constructor for properties storing at least a name.
@@ -72,17 +71,11 @@ public class PropertyImpl extends Property {
      * @param flags property flags (optional)
      * @since 0.17 or earlier
      */
-    PropertyImpl(Object key, Location location, int flags, boolean relocatable) {
+    PropertyImpl(Object key, Location location, int flags) {
         CompilerAsserts.neverPartOfCompilation();
         this.key = Objects.requireNonNull(key);
         this.location = Objects.requireNonNull(location);
         this.flags = flags;
-        this.relocatable = relocatable;
-    }
-
-    /** @since 0.17 or earlier */
-    public PropertyImpl(Object name, Location location, int flags) {
-        this(name, location, flags, true);
     }
 
     /** @since 0.17 or earlier */
@@ -100,7 +93,7 @@ public class PropertyImpl extends Property {
     /** @since 0.17 or earlier */
     @Override
     public Property relocate(Location newLocation) {
-        if (!getLocation().equals(newLocation) && relocatable) {
+        if (!getLocation().equals(newLocation)) {
             return construct(key, newLocation, flags);
         }
         return this;
@@ -211,7 +204,7 @@ public class PropertyImpl extends Property {
         }
 
         PropertyImpl other = (PropertyImpl) obj;
-        return key.equals(other.key) && flags == other.flags && relocatable == other.relocatable && location.equals(other.location);
+        return (key == other.key || key.equals(other.key)) && flags == other.flags && (location == other.location || location.equals(other.location));
     }
 
     /** @since 0.17 or earlier */
@@ -273,7 +266,7 @@ public class PropertyImpl extends Property {
     /** @since 0.17 or earlier */
     @SuppressWarnings("hiding")
     protected Property construct(Object name, Location location, int flags) {
-        return new PropertyImpl(name, location, flags, relocatable);
+        return new PropertyImpl(name, location, flags);
     }
 
     /** @since 0.17 or earlier */
@@ -285,9 +278,6 @@ public class PropertyImpl extends Property {
     /** @since 0.17 or earlier */
     @Override
     public Property copyWithRelocatable(boolean newRelocatable) {
-        if (this.relocatable != newRelocatable) {
-            return new PropertyImpl(key, location, flags, newRelocatable);
-        }
         return this;
     }
 }

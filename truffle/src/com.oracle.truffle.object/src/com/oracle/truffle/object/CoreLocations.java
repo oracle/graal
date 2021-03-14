@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -420,6 +420,7 @@ abstract class CoreLocations {
             return true;
         }
 
+        @Override
         public Class<? extends Object> getType() {
             return Object.class;
         }
@@ -456,6 +457,7 @@ abstract class CoreLocations {
             return true;
         }
 
+        @Override
         public Class<? extends Object> getType() {
             return Object.class;
         }
@@ -536,6 +538,7 @@ abstract class CoreLocations {
             return value instanceof Long || (allowInt && value instanceof Integer);
         }
 
+        @Override
         public final Class<Long> getType() {
             return long.class;
         }
@@ -790,6 +793,7 @@ abstract class CoreLocations {
             return value instanceof Integer;
         }
 
+        @Override
         public Class<Integer> getType() {
             return int.class;
         }
