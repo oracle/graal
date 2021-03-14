@@ -92,17 +92,17 @@ public class DumpSamplingData {
         // return CodeInfoAccess.convert(untetheredCodeInfo);
     }
 
-    static String decodeMethod(long address, SamplingMethodData samplingMethodData, DUMP_MODE mode) {
+    static String decodeMethod(long address, DUMP_MODE mode) {
         CodePointer ip = WordFactory.pointer(address);
         CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
         CodeInfo codeInfo = codeInfo(ip);
         long relativeIP = CodeInfoAccess.relativeIP(codeInfo, ip);
         CodeInfoAccess.lookupCodeInfo(codeInfo, relativeIP, result);
         FrameInfoQueryResult frameInfo = result.getFrameInfo();
-        return createDecodedMethodEntry(frameInfo, relativeIP, samplingMethodData, mode);
+        return createDecodedMethodEntry(frameInfo, mode);
     }
 
-    private static String createDecodedMethodEntry(FrameInfoQueryResult frameInfo, long relativeIP, SamplingMethodData samplingMethodData, DUMP_MODE mode) {
+    private static String createDecodedMethodEntry(FrameInfoQueryResult frameInfo, DUMP_MODE mode) {
         if (mode == DUMP_MODE.JAVA_STACK_VIEW) {
             List<String> frames = new ArrayList<>();
             frames.add(frameInfo.methodID + ":" + frameInfo.getBci());
@@ -116,10 +116,6 @@ public class DumpSamplingData {
             while (frameInfo.getCaller() != null) {
                 frameInfo = frameInfo.getCaller();
             }
-            String methodName = samplingMethodData.findMethodName(relativeIP);
-            // int methodId = samplingMethodData.findMethod(relativeIP);
-            // if (methodId != frameInfo.methodID) {
-            // }
             int frameInfoMethodId = frameInfo.methodID;
             if (mode == DUMP_MODE.COMPILATION_STACK_VIEW) {
                 return String.valueOf(frameInfoMethodId);
@@ -131,11 +127,9 @@ public class DumpSamplingData {
         }
     }
 
-    static void dumpFromTree(BufferedWriter writer, DUMP_MODE mode) throws IOException {
+    static void dumpFromTree(BufferedWriter writer, DUMP_MODE mode) {
         PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
-        SamplingMethodData samplingMethodData = ImageSingletons.lookup(SamplingMethodData.class);
-
-        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> new CallFrame(decodeMethod(address, samplingMethodData, mode), context), (context, value) -> {
+        prefixTree.topDown(new CallFrame("<total>", null), (context, address) -> new CallFrame(decodeMethod(address, mode), context), (context, value) -> {
             try {
                 StringBuilder contextChain = new StringBuilder(context.name);
                 CallFrame elem = context.tail;
