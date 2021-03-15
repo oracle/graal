@@ -274,15 +274,6 @@ public abstract class VMThreads {
         return nextTL.get(cur);
     }
 
-    public static IsolateThread findFromJavaThread(Thread thread) {
-        for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-            if (JavaThreads.fromVMThread(cur) == thread) {
-                return cur;
-            }
-        }
-        throw VMError.shouldNotReachHere("No such VMThread.");
-    }
-
     /**
      * Creates a new {@link IsolateThread} and adds it to the list of running threads. This method
      * must be the first method called in every thread.

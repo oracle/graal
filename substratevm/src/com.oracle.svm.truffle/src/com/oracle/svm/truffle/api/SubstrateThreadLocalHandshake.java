@@ -27,6 +27,7 @@ package com.oracle.svm.truffle.api;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -49,6 +50,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
@@ -177,7 +179,9 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
              * thread is active.
              */
             assert t.isAlive() : "thread must remain alive while setting fast pending";
-            PENDING.setVolatile(JavaThreads.fromJavaThread(t), 1);
+            IsolateThread isolateThread = JavaThreads.getIsolateThreadUnsafe(t);
+            VMError.guarantee(isolateThread.isNonNull(), "Java thread must remain alive.");
+            PENDING.setVolatile(isolateThread, 1);
         }
 
     }
