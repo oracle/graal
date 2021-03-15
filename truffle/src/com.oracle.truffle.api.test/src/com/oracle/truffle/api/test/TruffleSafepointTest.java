@@ -114,8 +114,8 @@ public class TruffleSafepointTest {
     private static ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
 
-    private static final int TIMEOUT_SECONDS = 60000;
-    private static final boolean VERBOSE = true;
+    private static final int TIMEOUT_SECONDS = 60;
+    private static final boolean VERBOSE = false;
     /*
      * Rerun all thread configurations asynchronously. This flag is intended to be used for
      * debugging failures in this class.
@@ -654,7 +654,10 @@ public class TruffleSafepointTest {
                     while (!done.get()) {
                         safepoint.setBlocked(node, Interrupter.THREAD_INTERRUPT,
                                         (c) -> {
-                                            // When await() is interrupted, it still needs to reacquire the lock before the InterruptedException can propagate. So we must unlock once we're out to let other threads reach the safepoint too.
+                                            // When await() is interrupted, it still needs to
+                                            // reacquire the lock before the InterruptedException
+                                            // can propagate. So we must unlock once we're out to
+                                            // let other threads reach the safepoint too.
                                             inAwait.incrementAndGet();
                                             try {
                                                 condition.await();
