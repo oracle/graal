@@ -213,7 +213,9 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
         register(linkage);
-        register(targetLinkage);
+        if (!foreignCalls.containsKey(targetLinkage.getDescriptor().getSignature())) {
+            register(targetLinkage);
+        }
     }
 
     public static final boolean PREPEND_THREAD = true;

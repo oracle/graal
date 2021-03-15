@@ -152,6 +152,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     public static final HotSpotForeignCallDescriptor NOTIFY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notify", boolean.class, Object.class);
     public static final HotSpotForeignCallDescriptor NOTIFY_ALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notifyAll", boolean.class, Object.class);
 
+    public static final HotSpotForeignCallDescriptor INVOKE_STATIC_METHOD_ONE_ARG = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS,
+                    "JVMCIRuntime::invoke_static_method_one_arg", long.class, Word.class, Word.class, long.class);
+
     public static class TestForeignCalls {
         public static final HotSpotForeignCallDescriptor BOOLEAN_RETURNS_BOOLEAN = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "boolean returns boolean",
                         Boolean.TYPE, Boolean.TYPE);
@@ -193,14 +196,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
 
         static long longReturnsLong(long arg) {
-            return arg;
-        }
-
-        static float floatReturnsFloat(float arg) {
-            return arg;
-        }
-
-        static double doubleReturnsDouble(double arg) {
             return arg;
         }
 
@@ -280,10 +275,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         invokeJavaMethodStub(options, providers, TestForeignCalls.INT_RETURNS_INT, config.invokeJavaMethodAddress, intReturnsInt);
         ResolvedJavaMethod longReturnsLong = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "longReturnsLong");
         invokeJavaMethodStub(options, providers, TestForeignCalls.LONG_RETURNS_LONG, config.invokeJavaMethodAddress, longReturnsLong);
-        ResolvedJavaMethod floatReturnsFloat = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "floatReturnsFloat");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.FLOAT_RETURNS_FLOAT, config.invokeJavaMethodAddress, floatReturnsFloat);
-        ResolvedJavaMethod doubleReturnsDouble = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "doubleReturnsDouble");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.DOUBLE_RETURNS_DOUBLE, config.invokeJavaMethodAddress, doubleReturnsDouble);
         ResolvedJavaMethod objectReturnsObject = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "objectReturnsObject");
         invokeJavaMethodStub(options, providers, TestForeignCalls.OBJECT_RETURNS_OBJECT, config.invokeJavaMethodAddress, objectReturnsObject);
 
