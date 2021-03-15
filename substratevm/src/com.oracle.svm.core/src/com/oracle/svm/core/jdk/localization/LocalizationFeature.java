@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.spi.CalendarDataProvider;
 import java.util.spi.CalendarNameProvider;
 import java.util.spi.CurrencyNameProvider;
@@ -55,6 +57,7 @@ import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.jdk.localization.substitutions.OptimizedModeOnlySubstitutions;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
@@ -116,6 +119,8 @@ public abstract class LocalizationFeature implements Feature {
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
+    private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? new ForkJoinPool(Runtime.getRuntime().availableProcessors()) : null;
+
     public static boolean optimizedMode() {
         return Options.LocalizationOptimizedMode.getValue();
     }
@@ -156,6 +161,9 @@ public abstract class LocalizationFeature implements Feature {
 
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
+
+        @Option(help = "Compress the bundles in parallel.", type = OptionType.Expert)//
+        public static final HostedOptionKey<Boolean> LocalizationCompressInParallel = new HostedOptionKey<>(true);
 
         @Option(help = "When enabled, localization feature details are printed.", type = OptionType.Debug)//
         public static final HostedOptionKey<Boolean> TraceLocalizationFeature = new HostedOptionKey<>(false);
@@ -236,7 +244,7 @@ public abstract class LocalizationFeature implements Feature {
         if (optimizedMode) {
             return new OptimizedLocalizationSupport(defaultLocale, allLocales);
         } else if (substituteLoadLookup) {
-            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales);
+            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales, compressionPool);
         }
         return new LocalizationSupport(defaultLocale, allLocales);
     }
@@ -244,6 +252,13 @@ public abstract class LocalizationFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         addResourceBundles();
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        if (compressionPool != null) {
+            compressionPool.shutdown();
+        }
     }
 
     /**

@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ForkJoinPool;
 
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
@@ -49,14 +50,21 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final GzipBundleCompression compressionAlgorithm = new GzipBundleCompression();
 
-    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, List<Locale> locales) {
+    private final ForkJoinPool pool;
+
+    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, List<Locale> locales, ForkJoinPool pool) {
         super(defaultLocale, locales);
+        this.pool = pool;
     }
 
     @Override
     protected void onBundlePrepared(ResourceBundle bundle) {
         if (isBundleSupported(bundle)) {
-            storeBundleContentOf(bundle);
+            if (pool != null) {
+                pool.execute(() -> storeBundleContentOf(bundle));
+            } else {
+                storeBundleContentOf(bundle);
+            }
         }
     }
 
