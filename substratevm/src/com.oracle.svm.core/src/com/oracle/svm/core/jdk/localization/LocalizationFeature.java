@@ -371,7 +371,8 @@ public abstract class LocalizationFeature implements Feature {
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
                         "sun.util.logging.resources.logging",
-                        "sun.util.resources.TimeZoneNames"
+                        "sun.util.resources.TimeZoneNames",
+                        "sun.text.resources.FormatData"
         };
         for (String bundleName : alwaysRegisteredResourceBundles) {
             prepareBundle(bundleName);
