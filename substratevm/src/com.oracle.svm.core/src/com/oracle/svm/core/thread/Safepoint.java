@@ -412,7 +412,6 @@ public final class Safepoint {
         exitSlowPathCheck();
     }
 
-    @SubstrateForeignCallTarget(stubCallingConvention = true)
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void exitSlowPathCheck() {
         if (ActionOnExitSafepointSupport.isActionPending()) {
