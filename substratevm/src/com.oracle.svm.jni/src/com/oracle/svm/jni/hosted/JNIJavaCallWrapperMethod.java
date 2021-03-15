@@ -325,7 +325,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         if (isReceiver && !StampTool.isPointerNonNull(value)) {
             IfNode ifNode = kit.startIf(kit.unique(IsNullNode.create(value)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
             kit.thenPart();
-            kit.append(kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.NULL_POINTER));
+            kit.append(kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.NULL_POINTER, false));
             illegalTypeEnds.add(kit.append(new EndNode()));
             kit.endIf();
             Stamp nonNullStamp = value.stamp(NodeView.DEFAULT).improveWith(StampFactory.objectNonNull());
@@ -336,7 +336,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         IfNode ifNode = kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
         kit.elsePart();
         ConstantNode typeNode = kit.createConstant(kit.getConstantReflection().asJavaClass(type), JavaKind.Object);
-        kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.CLASS_CAST, value, typeNode);
+        kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.CLASS_CAST, false, value, typeNode);
         illegalTypeEnds.add(kit.append(new EndNode()));
         kit.endIf();
         Stamp checkedStamp = value.stamp(NodeView.DEFAULT).improveWith(StampFactory.objectNonNull(typeRef));
