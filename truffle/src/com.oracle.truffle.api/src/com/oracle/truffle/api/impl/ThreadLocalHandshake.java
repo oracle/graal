@@ -156,7 +156,6 @@ public abstract class ThreadLocalHandshake {
         private final Phaser phaser;
         private volatile boolean cancelled;
         private final T action;
-        private final Consumer<T> onDone;
         private final boolean sync;
         // avoid rescheduling on the same thread again
         private final Set<Thread> threads;
@@ -164,10 +163,19 @@ public abstract class ThreadLocalHandshake {
         @SuppressWarnings("unchecked")
         Handshake(Thread[] initialThreads, T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads, boolean sync) {
             this.action = action;
-            this.onDone = onDone;
             this.sideEffecting = sideEffecting;
             this.sync = sync;
-            this.phaser = new Phaser(numberOfThreads);
+            this.phaser = new Phaser(numberOfThreads) {
+
+                @Override
+                protected boolean onAdvance(int phase, int registeredParties) {
+                    if (phase == 1) {
+                        onDone.accept(action);
+                    }
+                    return super.onAdvance(phase, registeredParties);
+                }
+
+            };
             this.threads = Collections.synchronizedSet(new HashSet<>(Arrays.asList(initialThreads)));
         }
 
@@ -192,13 +200,8 @@ public abstract class ThreadLocalHandshake {
                 if (sync) {
                     phaser.arriveAndDeregister();
                     phaser.awaitAdvance(1);
-                    assert phaser.getUnarrivedParties() == 0;
-                    onDone.accept(action);
                 } else {
                     phaser.arriveAndDeregister();
-                    if (phaser.getUnarrivedParties() == 0) {
-                        onDone.accept(action);
-                    }
                 }
             }
         }
@@ -495,11 +498,10 @@ public abstract class ThreadLocalHandshake {
 
         private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
             Interrupter prev = this.blockedAction;
-
             try {
                 while (true) {
                     try {
-                        setBlockedImpl(location, interrupter);
+                        setBlockedImpl(location, interrupter, false);
                         interruptible.apply(object);
                         break;
                     } catch (InterruptedException e) {
@@ -508,7 +510,7 @@ public abstract class ThreadLocalHandshake {
                     }
                 }
             } finally {
-                setBlockedImpl(location, prev);
+                setBlockedImpl(location, prev, true);
             }
         }
 
@@ -518,7 +520,7 @@ public abstract class ThreadLocalHandshake {
             try {
                 while (true) {
                     try {
-                        setBlockedImpl(location, interrupter);
+                        setBlockedImpl(location, interrupter, false);
                         interruptible.apply(object);
                         break;
                     } catch (InterruptedException e) {
@@ -527,7 +529,7 @@ public abstract class ThreadLocalHandshake {
                     }
                 }
             } finally {
-                setBlockedImpl(location, prev);
+                setBlockedImpl(location, prev, true);
             }
         }
 
@@ -537,7 +539,7 @@ public abstract class ThreadLocalHandshake {
                 beforeInterrupt.run();
             }
             try {
-                setBlockedImpl(location, interrupter);
+                setBlockedImpl(location, interrupter, true);
             } finally {
                 if (afterInterrupt != null) {
                     afterInterrupt.run();
@@ -546,12 +548,14 @@ public abstract class ThreadLocalHandshake {
         }
 
         @TruffleBoundary
-        private void setBlockedImpl(final Node location, final Interrupter interrupter) {
+        private void setBlockedImpl(final Node location, final Interrupter interrupter, boolean processSafepoints) {
             List<HandshakeEntry> toProcess = null;
             lock.lock();
             try {
-                if (isPending()) {
-                    toProcess = takeHandshakeImpl();
+                if (processSafepoints) {
+                    if (isPending()) {
+                        toProcess = takeHandshakeImpl();
+                    }
                 }
                 if (interrupted) {
                     assert this.blockedAction != null;
