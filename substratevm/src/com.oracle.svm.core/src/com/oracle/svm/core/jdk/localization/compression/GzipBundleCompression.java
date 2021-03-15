@@ -33,11 +33,9 @@ import static com.oracle.svm.core.jdk.localization.compression.utils.Compression
 import static com.oracle.svm.core.jdk.localization.compression.utils.CompressionUtils.readNBytes;
 import static com.oracle.svm.core.jdk.localization.compression.utils.CompressionUtils.writeInt;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -73,23 +71,9 @@ public class GzipBundleCompression implements BundleCompressionAlgorithm {
         try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(data))) {
             int[] indices = readIndices(input);
             String decompressed = readText(input);
-            assert input.available() == 0 : "Input not fully consumed: '" + consumeRest(input) + "'";
             return deserializeContent(indices, decompressed);
         } catch (IOException e) {
             throw GraalError.shouldNotReachHere(e, "Decompressing a resource bundle failed.");
-        }
-    }
-
-    private static String consumeRest(GZIPInputStream input) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input))) {
-            final StringBuilder builder = new StringBuilder();
-
-            String line = reader.readLine();
-            while (line != null) {
-                builder.append(line).append('\n');
-                line = reader.readLine();
-            }
-            return builder.toString();
         }
     }
 
