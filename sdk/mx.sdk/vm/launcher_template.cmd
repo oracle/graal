@@ -74,9 +74,21 @@ for %%a in (%args%) do (
   if errorlevel 1 exit /b 1
 )
 
+set "module_launcher=<module_launcher>"
+if "%module_launcher%"=="True" (
+  set "app_path_arg=--module-path"
+  call :escape_args <add_exports>
+  for %%v in (!args!) do (
+    call :unescape_arg %%v
+    set "jvm_args=!jvm_args! !arg!"
+  )
+) else (
+  set "app_path_arg=-cp"
+)
+
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% -cp "%absolute_cp%" <main_class> %launcher_args%
+"%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% %app_path_arg% "%absolute_cp%" <main_class> %launcher_args%
 
 exit /b %errorlevel%
 :: Function are defined via labels, so have to be defined at the end of the file and skipped
