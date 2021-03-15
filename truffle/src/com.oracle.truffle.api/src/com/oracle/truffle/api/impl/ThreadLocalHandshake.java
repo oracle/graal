@@ -223,9 +223,11 @@ public abstract class ThreadLocalHandshake {
         @Override
         public Void get() throws InterruptedException {
             if (sync) {
-                this.phaser.awaitAdvanceInterruptibly(1);
+                phaser.awaitAdvanceInterruptibly(0);
+                phaser.awaitAdvanceInterruptibly(1);
+                // still need to:
             } else {
-                this.phaser.awaitAdvanceInterruptibly(0);
+                phaser.awaitAdvanceInterruptibly(0);
             }
             return null;
         }
@@ -244,8 +246,19 @@ public abstract class ThreadLocalHandshake {
         }
 
         public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-            this.phaser.awaitAdvanceInterruptibly(0, timeout, unit);
+            if (sync) {
+                phaser.awaitAdvanceInterruptibly(0, timeout, unit);
+                phaser.awaitAdvanceInterruptibly(1, timeout, unit);
+                // still need to:
+            } else {
+                phaser.awaitAdvanceInterruptibly(0, timeout, unit);
+            }
             return null;
+        }
+
+        @Override
+        public String toString() {
+            return "Handshake[action=" + action + ", phaser=" + phaser + ", cancelled=" + cancelled + ", sideEffecting=" + sideEffecting + ", sync=" + sync + "]";
         }
 
     }
@@ -257,6 +270,11 @@ public abstract class ThreadLocalHandshake {
 
         HandshakeEntry(Handshake<?> handshake) {
             this.handshake = handshake;
+        }
+
+        @Override
+        public String toString() {
+            return "HandshakeEntry[" + handshake + " active=" + active + "]";
         }
     }
 
@@ -477,6 +495,7 @@ public abstract class ThreadLocalHandshake {
 
         private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
             Interrupter prev = this.blockedAction;
+
             try {
                 while (true) {
                     try {
