@@ -53,6 +53,7 @@ import org.graalvm.polyglot.tck.LanguageProvider;
 import org.graalvm.polyglot.tck.Snippet;
 import org.junit.AfterClass;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -88,6 +89,11 @@ public class IdentityFunctionTest {
     static Snippet createIdentitySnippet(String lang) {
         LanguageProvider tli = context.getInstalledProviders().get(lang);
         return tli.createIdentityFunctionSnippet(context.getContext());
+    }
+
+    @BeforeClass
+    public static void setUpClass() {
+        TestUtil.assertNoCurrentContext();
     }
 
     @AfterClass
