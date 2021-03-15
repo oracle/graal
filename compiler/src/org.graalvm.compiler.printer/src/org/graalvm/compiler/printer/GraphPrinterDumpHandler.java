@@ -61,7 +61,7 @@ import jdk.vm.ci.services.Services;
  * Observes compilation events and uses {@link BinaryGraphPrinter} to generate a graph
  * representation that can be inspected with the Graph Visualizer.
  */
-public class GraphPrinterDumpHandler implements DebugDumpHandler {
+public final class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     private static final int FAILURE_LIMIT = 8;
     private final GraphPrinterSupplier printerSupplier;
@@ -256,13 +256,15 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                     lastMethodOrGraph = o;
                 }
             }
+            // Truffle compilations don't have a standard inline context.
+            if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
+                String name = result.get(1);
+                result.clear();
+                result.add("Graal Graphs - " + name);
+            }
             if (result.isEmpty()) {
                 result.add(graph.toString());
                 graphSeen = true;
-            }
-            // Truffle compilations don't have a standard inline context.
-            if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
-                result.clear();
             }
             // Reverse list such that inner method comes after outer method.
             Collections.reverse(result);
