@@ -32,7 +32,11 @@ import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 import java.util.function.Function;
 
+import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.config.ObjectLayout;
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -208,12 +212,19 @@ final class Target_Unsafe_Core {
 
     @Substitute
     private long staticFieldOffset(Field f) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
+        ObjectLayout layout = ConfigurationValues.getObjectLayout();
+        final int baseOffset = layout.getArrayBaseOffset(JavaKind.fromJavaClass(f.getDeclaringClass()));
+        final long objOffset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(f);
+        return objOffset - baseOffset;
     }
 
     @Substitute
     private Object staticFieldBase(Field f) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
+        if (f.getType().isPrimitive()) {
+            return StaticFieldsSupport.getStaticPrimitiveFields();
+        } else {
+            return StaticFieldsSupport.getStaticObjectFields();
+        }
     }
 
     @Substitute
