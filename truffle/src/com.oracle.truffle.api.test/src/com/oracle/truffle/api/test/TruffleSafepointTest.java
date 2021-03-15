@@ -113,8 +113,8 @@ public class TruffleSafepointTest {
     private static ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
 
-    private static final int TIMEOUT_SECONDS = 6000;
-    private static final boolean VERBOSE = false;
+    private static final int TIMEOUT_SECONDS = 60000;
+    private static final boolean VERBOSE = true;
     /*
      * Rerun all thread configurations asynchronously. This flag is intended to be used for
      * debugging failures in this class.
@@ -636,28 +636,32 @@ public class TruffleSafepointTest {
 
     @Test
     public void testConditionAndSafepoints() {
-        ReentrantLock lock = new ReentrantLock();
-        Condition condition = lock.newCondition();
-        AtomicBoolean done = new AtomicBoolean(false);
-
         forEachConfig((threads, events) -> {
+            ReentrantLock lock = new ReentrantLock();
+            Condition condition = lock.newCondition();
+            AtomicBoolean done = new AtomicBoolean(false);
+
             CountDownLatch goingToAwait = new CountDownLatch(threads);
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
 
                 // No lockInterruptibly()/setBlocked() here, `lock` is never held during a poll()
-                // It can also be required by language semantics if only the await() should be interruptible and not the lock().
+                // It can also be required by language semantics if only the await() should be
+                // interruptible and not the lock().
                 lock.lock();
                 try {
                     goingToAwait.countDown();
                     while (!done.get()) {
                         System.err.println("iter");
                         safepoint.setBlocked(node, Interrupter.THREAD_INTERRUPT,
-                                (arg) -> {
-                                    // When await() is interrupted, it still needs to reacquire the lock before the InterruptedException can propagate.
-                                    // So we must unlock once we're out to let other threads reach the safepoint too.
-                                    condition.await();
-                                }, null, lock::unlock, lock::lock);
+                                        (c) -> {
+                                            // When await() is interrupted, it still needs to
+                                            // reacquire the lock before the InterruptedException
+                                            // can propagate.
+                                            // So we must unlock once we're out to let other threads
+                                            // reach the safepoint too.
+                                            c.await();
+                                        }, condition, lock::unlock, lock::lock);
                     }
                 } finally {
                     lock.unlock();
@@ -666,7 +670,6 @@ public class TruffleSafepointTest {
             })) {
                 try {
                     AtomicInteger eventCounter = new AtomicInteger();
-                    List<Future<?>> threadLocals = new ArrayList<>();
 
                     goingToAwait.await();
 
@@ -675,10 +678,13 @@ public class TruffleSafepointTest {
                         Thread.yield();
                     }
 
+                    List<Future<?>> threadLocals = new ArrayList<>();
                     for (int i = 0; i < events; i++) {
+                        System.out.println("submit");
                         threadLocals.add(setup.env.submitThreadLocal(null, new ThreadLocalAction(false, true) {
                             @Override
                             protected void perform(Access access) {
+                                System.out.println("Perform!");
                                 eventCounter.incrementAndGet();
                             }
                         }));
@@ -688,18 +694,23 @@ public class TruffleSafepointTest {
                     for (Future<?> f : threadLocals) {
                         waitOrFail(f);
                     }
-
-                    System.err.println("eventCounter.get() = " + eventCounter.get());
-                    assertEquals(events * threads, eventCounter.get());
-
-                    lock.lock();
                     try {
-                        System.err.println("set done");
-                        done.set(true);
-                        System.err.println("signal");
-                        condition.signalAll();
-                    } finally {
-                        lock.unlock();
+                        System.err.println("eventCounter.get() = " + eventCounter.get());
+                        assertEquals(events * threads, eventCounter.get());
+
+                        lock.lock();
+                        try {
+                            System.err.println("set done");
+                            setup.stopped.set(true);
+                            done.set(true);
+                            System.err.println("signal");
+                            condition.signalAll();
+                        } finally {
+                            lock.unlock();
+                        }
+                    } catch (Throwable t) {
+                        t.printStackTrace();
+                        throw t;
                     }
                 } catch (InterruptedException e) {
                     throw new AssertionError(e);
