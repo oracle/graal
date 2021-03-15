@@ -597,7 +597,6 @@ public class TruffleSafepointTest {
         });
     }
 
-    @TruffleBoundary
     private static void lockCooperativelySafepoint(Semaphore semaphore, Node node, TruffleSafepoint safepoint) {
         boolean prevEffects = safepoint.setAllowSideEffects(false);
         try {
@@ -611,6 +610,14 @@ public class TruffleSafepointTest {
                                     safepoint.setAllowSideEffects(prevInner);
                                 }
                             }, semaphore, () -> {
+                                boolean condDisabled = safepoint.setAllowSideEffects(true);
+                                try {
+                                    // All side-effecting events are forced to happen here.
+                                    TruffleSafepoint.pollHere(node);
+                                } finally {
+                                    safepoint.setAllowSideEffects(condDisabled);
+                                }
+                            }, () -> {
                                 boolean condDisabled = safepoint.setAllowSideEffects(true);
                                 try {
                                     // All side-effecting events are forced to happen here.
