@@ -69,6 +69,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -111,7 +113,7 @@ public class TruffleSafepointTest {
     private static ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
 
-    private static final int TIMEOUT_SECONDS = 60;
+    private static final int TIMEOUT_SECONDS = 6000;
     private static final boolean VERBOSE = false;
     /*
      * Rerun all thread configurations asynchronously. This flag is intended to be used for
@@ -630,6 +632,80 @@ public class TruffleSafepointTest {
         } finally {
             safepoint.setAllowSideEffects(prevEffects);
         }
+    }
+
+    @Test
+    public void testConditionAndSafepoints() {
+        ReentrantLock lock = new ReentrantLock();
+        Condition condition = lock.newCondition();
+        AtomicBoolean done = new AtomicBoolean(false);
+
+        forEachConfig((threads, events) -> {
+            CountDownLatch goingToAwait = new CountDownLatch(threads);
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+
+                // No lockInterruptibly()/setBlocked() here, `lock` is never held during a poll()
+                // It can also be required by language semantics if only the await() should be interruptible and not the lock().
+                lock.lock();
+                try {
+                    goingToAwait.countDown();
+                    while (!done.get()) {
+                        System.err.println("iter");
+                        safepoint.setBlocked(node, Interrupter.THREAD_INTERRUPT,
+                                (arg) -> {
+                                    // When await() is interrupted, it still needs to reacquire the lock before the InterruptedException can propagate.
+                                    // So we must unlock once we're out to let other threads reach the safepoint too.
+                                    condition.await();
+                                }, null, lock::unlock, lock::lock);
+                    }
+                } finally {
+                    lock.unlock();
+                }
+                return true;
+            })) {
+                try {
+                    AtomicInteger eventCounter = new AtomicInteger();
+                    List<Future<?>> threadLocals = new ArrayList<>();
+
+                    goingToAwait.await();
+
+                    // Wait all threads are inside await()
+                    while (lock.isLocked()) {
+                        Thread.yield();
+                    }
+
+                    for (int i = 0; i < events; i++) {
+                        threadLocals.add(setup.env.submitThreadLocal(null, new ThreadLocalAction(false, true) {
+                            @Override
+                            protected void perform(Access access) {
+                                eventCounter.incrementAndGet();
+                            }
+                        }));
+                    }
+
+                    // wait for all events to complete so we can reliably assert the events
+                    for (Future<?> f : threadLocals) {
+                        waitOrFail(f);
+                    }
+
+                    System.err.println("eventCounter.get() = " + eventCounter.get());
+                    assertEquals(events * threads, eventCounter.get());
+
+                    lock.lock();
+                    try {
+                        System.err.println("set done");
+                        done.set(true);
+                        System.err.println("signal");
+                        condition.signalAll();
+                    } finally {
+                        lock.unlock();
+                    }
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+            }
+        });
     }
 
     @Test
