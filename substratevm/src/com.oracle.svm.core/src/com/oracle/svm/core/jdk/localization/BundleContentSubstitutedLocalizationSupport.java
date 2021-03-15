@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListResourceBundle;
 import java.util.Locale;
@@ -86,16 +85,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
             try {
                 return bundle.getContent();
             } catch (Exception ex) {
-                /*
-                 * If the decompression fails, we can get into a tricky recursive problem. Say the
-                 * bundle that failed contained formatting information. Then the exception handling
-                 * will recursively require the same bundle again, which again fails. Therefore, an
-                 * empty map is returned instead to prevent from recursive errors.
-                 */
-                // Checkstyle: stop
-                System.err.println("Decompression of a bundle " + bundleClass + " failed. This is an internal error. Please open an issue and submit a reproducer.");
-                // Checkstyle: resume
-                return new HashMap<>();
+                throw GraalError.shouldNotReachHere(ex, "Decompression of a bundle " + bundleClass + " failed. This is an internal error. Please open an issue and submit a reproducer.");
             }
         }
         return super.getBundleContentOf(bundleClass);
