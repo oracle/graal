@@ -153,6 +153,7 @@ meth public boolean isIntersection()
 meth public boolean isUnion()
 meth public int hashCode()
 meth public java.lang.String toString()
+meth public org.graalvm.polyglot.tck.TypeDescriptor subtract(org.graalvm.polyglot.tck.TypeDescriptor)
 meth public static org.graalvm.polyglot.tck.TypeDescriptor array(org.graalvm.polyglot.tck.TypeDescriptor)
 meth public static org.graalvm.polyglot.tck.TypeDescriptor forValue(org.graalvm.polyglot.Value)
 meth public static org.graalvm.polyglot.tck.TypeDescriptor hash(org.graalvm.polyglot.tck.TypeDescriptor,org.graalvm.polyglot.tck.TypeDescriptor)
@@ -160,5 +161,5 @@ meth public static org.graalvm.polyglot.tck.TypeDescriptor iterable(org.graalvm.
 meth public static org.graalvm.polyglot.tck.TypeDescriptor iterator(org.graalvm.polyglot.tck.TypeDescriptor)
 supr java.lang.Object
 hfds NOTYPE,PREDEFINED_TYPES,impl
-hcls ArrayImpl,ArrayValueIterator,ExecutableImpl,HashImpl,HashIterator,InstantiableImpl,IntersectionImpl,IterableImpl,IteratorImpl,IteratorValueIterator,ParameterizedTypeDescriptorImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
+hcls ArrayImpl,ArrayValueIterator,CompositeTypeDescriptorImpl,ExecutableImpl,HashImpl,HashIterator,InstantiableImpl,IntersectionImpl,IterableImpl,IteratorImpl,IteratorValueIterator,ParameterizedTypeDescriptorImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
 
