@@ -33,7 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
-import com.oracle.svm.core.jdk.localization.compression.BundleCompressionAlgorithm;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import org.graalvm.compiler.debug.GraalError;
 
@@ -48,7 +47,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
-    private final BundleCompressionAlgorithm compressionAlgorithm = new GzipBundleCompression();
+    private final GzipBundleCompression compressionAlgorithm = new GzipBundleCompression();
 
     public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, List<Locale> locales) {
         super(defaultLocale, locales);

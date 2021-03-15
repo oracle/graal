@@ -47,9 +47,8 @@ import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
 
-public class GzipBundleCompression implements BundleCompressionAlgorithm {
+public class GzipBundleCompression {
 
-    @Override
     public CompressedBundle compress(ResourceBundle bundle) {
         final Map<String, Object> content = extractContent(bundle);
         Pair<String, int[]> input = serializeContent(content);
