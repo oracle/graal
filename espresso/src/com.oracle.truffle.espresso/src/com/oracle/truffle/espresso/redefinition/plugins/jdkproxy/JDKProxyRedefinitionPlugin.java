@@ -49,9 +49,12 @@ public class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
     private static final String GENERATOR_METHOD = "generateProxyClass";
     private static final String GENERATOR_METHOD_SIG = "(Ljava/lang/String;[Ljava/lang/Class;I)[B";
 
+    private static final String PROXY_SUPER_CLASS = "java.lang.reflect.Proxy";
+
     private final Map<KlassRef, List<ProxyCache>> cache = Collections.synchronizedMap(new HashMap<>());
 
     private MethodRef proxyGeneratorMethod;
+    private KlassRef proxySuperKlass;
 
     private ThreadLocal<Boolean> generationInProgress = ThreadLocal.withInitial(() -> false);
 
@@ -62,7 +65,9 @@ public class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
 
     @Override
     public TriggerClass[] getTriggerClasses() {
-        return new TriggerClass[]{new TriggerClass(PROXY_GENERATOR_CLASS, this, klass -> {
+        TriggerClass[] triggerClasses = new TriggerClass[2];
+        // trigger on proxy generator class and add generator method hooks
+        triggerClasses[0] = new TriggerClass(PROXY_GENERATOR_CLASS, this, klass -> {
             // hook into the proxy generator method to obtain proxy generation arguments
             hookMethodEntry(klass, new MethodLocator(GENERATOR_METHOD, GENERATOR_METHOD_SIG), MethodHook.Kind.INDEFINITE, (method, variables) -> {
                 if (generationInProgress.get()) {
@@ -74,7 +79,10 @@ public class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
                 }
                 collectProxyArguments(variables);
             });
-        })};
+        });
+        // trigger on Proxy super class to obtain the type
+        triggerClasses[1] = new TriggerClass(PROXY_SUPER_CLASS, this, klass -> proxySuperKlass = klass);
+        return triggerClasses;
     }
 
     private synchronized void collectProxyArguments(MethodVariable[] variables) {
@@ -109,7 +117,7 @@ public class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
                 }
             });
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-           // TODO - log here. Should we have a dedicated HotSwap logger that logs to file?
+            // TODO - log here. Should we have a dedicated HotSwap logger that logs to file?
         }
     }
 
@@ -143,7 +151,7 @@ public class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
     public boolean reRunClinit(KlassRef klass, boolean changed) {
         // changed Dynamic Proxy classes has cached Method references
         // in static fields, so re-run the static initializer
-        return changed && klass.getNameAsString().contains("$Proxy");
+        return changed && proxySuperKlass.isAssignable(klass);
     }
 
     private final class ProxyCache {
