@@ -109,7 +109,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class TruffleSafepointTest {
 
-    private static final int[] THREAD_CONFIGS = new int[]{4, 16};
+    private static final int[] THREAD_CONFIGS = new int[]{1, 4, 16};
     private static final int[] ITERATION_CONFIGS = new int[]{1, 8, 32};
     private static ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
@@ -641,8 +641,8 @@ public class TruffleSafepointTest {
             ReentrantLock lock = new ReentrantLock();
             Condition condition = lock.newCondition();
             AtomicBoolean done = new AtomicBoolean(false);
+            AtomicInteger inAwait = new AtomicInteger(0);
 
-            CountDownLatch goingToAwait = new CountDownLatch(threads);
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
 
@@ -651,74 +651,59 @@ public class TruffleSafepointTest {
                 // interruptible and not the lock().
                 lock.lock();
                 try {
-                    goingToAwait.countDown();
                     while (!done.get()) {
-                        System.err.println("iter");
                         safepoint.setBlocked(node, Interrupter.THREAD_INTERRUPT,
                                         (c) -> {
-                                            // When await() is interrupted, it still needs to
-                                            // reacquire the lock before the InterruptedException
-                                            // can propagate.
-                                            // So we must unlock once we're out to let other threads
-                                            // reach the safepoint too.
-                                            c.await();
+                                            // When await() is interrupted, it still needs to reacquire the lock before the InterruptedException can propagate. So we must unlock once we're out to let other threads reach the safepoint too.
+                                            inAwait.incrementAndGet();
+                                            try {
+                                                condition.await();
+                                            } finally {
+                                                inAwait.decrementAndGet();
+                                            }
                                         }, condition, lock::unlock, lock::lock);
                     }
                 } finally {
                     lock.unlock();
                 }
-                return true;
+                return true; // only run once
             })) {
-                try {
-                    AtomicInteger eventCounter = new AtomicInteger();
+                AtomicInteger eventCounter = new AtomicInteger();
 
-                    goingToAwait.await();
+                // Wait all threads are inside await()
+                while (inAwait.get() < threads || lock.isLocked()) {
+                    Thread.yield();
+                }
 
-                    // Wait all threads are inside await()
-                    while (lock.isLocked()) {
-                        Thread.yield();
-                    }
-
-                    List<Future<?>> threadLocals = new ArrayList<>();
-                    for (int i = 0; i < events; i++) {
-                        System.out.println("submit");
-                        threadLocals.add(setup.env.submitThreadLocal(null, new ThreadLocalAction(false, true) {
-                            @Override
-                            protected void perform(Access access) {
-                                System.out.println("Perform! ");
-                                if (lock.isHeldByCurrentThread()) {
-                                    new Exception().printStackTrace();
-                                }
-                                Assert.assertFalse(lock.isHeldByCurrentThread());
-                                eventCounter.incrementAndGet();
-                            }
-                        }));
-                    }
-
-                    // wait for all events to complete so we can reliably assert the events
-                    for (Future<?> f : threadLocals) {
-                        waitOrFail(f);
-                    }
-                    try {
-                        System.err.println("eventCounter.get() = " + eventCounter.get());
-                        assertEquals(events * threads, eventCounter.get());
-
-                        lock.lock();
-                        try {
-                            System.err.println("set done");
-                            done.set(true);
-                            System.err.println("signal");
-                            condition.signalAll();
-                        } finally {
-                            lock.unlock();
+                List<Future<?>> threadLocals = new ArrayList<>();
+                for (int i = 0; i < events; i++) {
+                    threadLocals.add(setup.env.submitThreadLocal(null, new ThreadLocalAction(false, true) {
+                        @Override
+                        protected void perform(Access access) {
+                            Assert.assertFalse(lock.isHeldByCurrentThread());
+                            eventCounter.incrementAndGet();
                         }
+                    }));
+                }
 
-                    } catch (Throwable t) {
-                        t.printStackTrace();
-                        throw t;
-                    }
-                } catch (InterruptedException e) {
-                    throw new AssertionError(e);
+                // wait for all events to complete so we can reliably assert the events
+                for (Future<?> f : threadLocals) {
+                    waitOrFail(f);
+                }
+
+                assertEquals(events * threads, eventCounter.get());
+
+                // Wait all threads are in condition.await(), otherwise signalAll() doesn't work
+                while (inAwait.get() < threads || lock.isLocked()) {
+                    Thread.yield();
+                }
+
+                lock.lock();
+                try {
+                    done.set(true);
+                    condition.signalAll();
+                } finally {
+                    lock.unlock();
                 }
             }
         });
