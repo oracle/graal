@@ -35,14 +35,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 
-
 public class BundleSerializationUtils {
 
     /**
      * Extracts the content of the bundle by looking up the lookup field. All the jdk internal
-     * bundles can be resolved this way, except from the BreakIterators. In the future, it can be
-     * extended with a fallback to user defined bundles by using the handleKeySet and
-     * handleGetObject methods.
+     * bundles can be resolved this way, except from the {@link java.text.BreakIterator}. In the
+     * future, it can be extended with a fallback to user defined bundles by using the handleKeySet
+     * and handleGetObject methods.
      */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> extractContent(ResourceBundle bundle) {
