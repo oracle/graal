@@ -37,6 +37,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.zip.GZIPInputStream;
@@ -47,14 +48,38 @@ import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
 
+/**
+ * Class responsible for serialization and compression of resource bundles. Only bundles whose
+ * values are strings or arrays of strings are supported. While in theory the bundles can contain
+ * any objects, in practise it is rarely the case.
+ *
+ * The serialization format is the following:
+ *
+ * LEN1 INDICES LEN2 TEXT
+ *
+ * where LEN1 and LEN2 are the lengths of byte arrays, TEXT is the actual serialized content of all
+ * keys and values merged into a single string and INDICES describe how to deserialize the content
+ * back into a map. The format of indices is the following:
+ *
+ * ( ARR_LEN KEY_LEN VALUE_LEN{ARR_LEN} )*
+ *
+ * It is a variable length list of entries. Each entry starts with ARR_LEN, which indicates the
+ * length of the value array or -1 for simple string values. KEY_LEN and VALUE_LEN should be
+ * self-explanatory.
+ *
+ */
 public class GzipBundleCompression {
+
+    public boolean canCompress(ResourceBundle bundle) {
+        return extractContent(bundle)
+                        .values()
+                        .stream()
+                        .allMatch(value -> value instanceof String || (value instanceof Object[] && Arrays.stream(((Object[]) value)).allMatch(elem -> elem instanceof String)));
+    }
 
     public CompressedBundle compress(ResourceBundle bundle) {
         final Map<String, Object> content = extractContent(bundle);
         Pair<String, int[]> input = serializeContent(content);
-        if (input == null) {
-            return null;
-        }
         try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(byteStream)) {
             writeIndices(input.getRight(), out);
             writeText(input.getLeft(), out);
