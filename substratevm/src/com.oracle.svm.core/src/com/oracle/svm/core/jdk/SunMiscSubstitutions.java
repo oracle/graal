@@ -29,7 +29,6 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.security.ProtectionDomain;
 import java.util.function.Function;
 
@@ -337,79 +336,6 @@ final class Target_sun_misc_MessageUtils {
     private static void toStdout(String msg) {
         Log.log().string(msg);
     }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_perf implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.perf." + annotation.className();
-        }
-    }
-}
-
-/** PerfCounter methods that access the lb field fail with SIGSEV. */
-@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "PerfCounter")
-final class Target_jdk_internal_perf_PerfCounter {
-
-    @Substitute
-    @SuppressWarnings("static-method")
-    public long get() {
-        return 0;
-    }
-
-    @Substitute
-    public void set(@SuppressWarnings("unused") long var1) {
-    }
-
-    @Substitute
-    public void add(@SuppressWarnings("unused") long var1) {
-    }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "Perf")
-final class Target_jdk_internal_perf_Perf {
-
-    /*
-     * The Perf class is not supported. We are defensive and also handle native methods by marking
-     * them as deleted. We do not want to fail with a linking error.
-     */
-
-    @Delete
-    private native ByteBuffer attach(String user, int lvmid, int mode);
-
-    @Delete
-    private native void detach(ByteBuffer bb);
-
-    @Substitute
-    @SuppressWarnings({"unused", "static-method"})
-    private ByteBuffer createLong(String name, int variability, int units, long value) {
-        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.createLong(String, int, int, long)");
-    }
-
-    @Substitute
-    @SuppressWarnings({"unused", "static-method"})
-    private ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength) {
-        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.createByteArray(String, int, int, byte[], int)");
-    }
-
-    @Substitute
-    @SuppressWarnings({"unused", "static-method"})
-    private long highResCounter() {
-        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.highResCounter()");
-    }
-
-    @Substitute
-    @SuppressWarnings({"unused", "static-method"})
-    private long highResFrequency() {
-        throw VMError.unsupportedFeature("Target_jdk_internal_perf_Perf.highResFrequency()");
-    }
-
-    @Delete
-    private static native void registerNatives();
 }
 
 @TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "SharedSecrets")

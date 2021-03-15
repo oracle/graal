@@ -67,6 +67,7 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -113,20 +114,20 @@ import sun.misc.Unsafe;
 
 /**
  * Implementations of the functions defined by the Java Native Interface.
- * 
+ *
  * Not all functions are currently implemented. Some functions are generated, and therefore not
  * defined in this class:
- * 
+ *
  * <ul>
  * <li>Field getters and setters ({@code Get<Type>Field}, {@code Set<Type>Field},
  * {@code GetStatic<Type>Field}, and {@code SetStatic<Type>Field}) are generated in
  * {@link JNIFieldAccessorMethod}.</li>
- * 
+ *
  * <li>Operations on primitive arrays {@code New<PrimitiveType>Array},
  * {@code Get<PrimitiveType>ArrayElements}, {@code Release<PrimitiveType>ArrayElements},
  * {@code Get<PrimitiveType>ArrayRegion} and {@code Set<PrimitiveType>ArrayRegion}) are generated in
  * {@link JNIPrimitiveArrayOperationMethod}</li>
- * 
+ *
  * <li>Wrappers for the methods callable by JNI are generated in
  * {@link JNIJavaCallWrapperMethod}.</li>
  * </ul>
@@ -611,14 +612,6 @@ public final class JNIFunctions {
     /*
      * jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity);
      */
-
-    @TargetClass(className = "java.nio.DirectByteBuffer")
-    static final class Target_java_nio_DirectByteBuffer {
-        @Alias
-        Target_java_nio_DirectByteBuffer(long addr, int cap) {
-        }
-
-    }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)

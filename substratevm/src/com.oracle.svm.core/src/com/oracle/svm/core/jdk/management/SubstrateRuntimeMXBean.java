@@ -55,7 +55,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     private static final String MSG = "RuntimeMXBean methods";
 
-    private long startMillis = 0;
+    private long startMillis;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateRuntimeMXBean() {
@@ -63,7 +63,6 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     }
 
     void initialize() {
-        /* Set the start time of the VM. */
         startMillis = System.currentTimeMillis();
     }
 
