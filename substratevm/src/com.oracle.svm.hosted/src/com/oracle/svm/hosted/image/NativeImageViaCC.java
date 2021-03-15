@@ -334,7 +334,8 @@ public abstract class NativeImageViaCC extends NativeImage {
                 cmd.add("setargv.obj");
             }
 
-            cmd.addAll(Options.NativeLinkerOption.getValue().values());
+            cmd.addAll(getNativeLinkerOptions());
+
             return cmd;
         }
     }

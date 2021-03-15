@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
 
@@ -114,7 +113,7 @@ public abstract class SystemPropertiesSupport {
 
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
-        if (OS.getCurrent() == OS.LINUX && JavaVersionUtil.JAVA_SPEC == 11) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             /* AWT system properties are no longer used after JDK 11. */
             initializeProperty("awt.toolkit", System.getProperty("awt.toolkit"));
             initializeProperty("java.awt.graphicsenv", System.getProperty("java.awt.graphicsenv"));
