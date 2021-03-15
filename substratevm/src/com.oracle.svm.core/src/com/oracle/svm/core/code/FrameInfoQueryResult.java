@@ -165,7 +165,7 @@ public class FrameInfoQueryResult {
     protected Class<?> sourceClass;
     protected String sourceMethodName;
     protected int sourceLineNumber;
-    public int methodID;
+    protected int methodID;
 
     // Index of sourceClass in CodeInfoDecoder.frameInfoSourceClasses
     protected int sourceClassIndex;
@@ -299,6 +299,13 @@ public class FrameInfoQueryResult {
 
     public String getSourceMethodName() {
         return sourceMethodName;
+    }
+
+    /**
+     * Returns the unique identification number for the method.
+     */
+    public int getMethodID() {
+        return methodID;
     }
 
     public String getSourceFileName() {

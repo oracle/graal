@@ -279,7 +279,7 @@ public class FrameInfoEncoder {
         result.needLocalValues = needLocalValues;
 
         SharedMethod method = (SharedMethod) frame.getMethod();
-        result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).addMethodId(method);
+        result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).setMethodId(method);
 
         if (customization.shouldStoreMethod()) {
             result.deoptMethod = method;

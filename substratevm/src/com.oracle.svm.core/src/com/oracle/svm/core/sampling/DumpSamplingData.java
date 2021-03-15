@@ -105,10 +105,10 @@ public class DumpSamplingData {
     private static String createDecodedMethodEntry(FrameInfoQueryResult frameInfo, DUMP_MODE mode) {
         if (mode == DUMP_MODE.JAVA_STACK_VIEW) {
             List<String> frames = new ArrayList<>();
-            frames.add(frameInfo.methodID + ":" + frameInfo.getBci());
+            frames.add(frameInfo.getMethodID() + ":" + frameInfo.getBci());
             while (frameInfo.getCaller() != null) {
                 frameInfo = frameInfo.getCaller();
-                frames.add(frameInfo.methodID + ":" + frameInfo.getBci());
+                frames.add(frameInfo.getMethodID() + ":" + frameInfo.getBci());
             }
             Collections.reverse(frames);
             return String.join(";", frames);
@@ -116,7 +116,7 @@ public class DumpSamplingData {
             while (frameInfo.getCaller() != null) {
                 frameInfo = frameInfo.getCaller();
             }
-            int frameInfoMethodId = frameInfo.methodID;
+            int frameInfoMethodId = frameInfo.getMethodID();
             if (mode == DUMP_MODE.COMPILATION_STACK_VIEW) {
                 return String.valueOf(frameInfoMethodId);
             } else {
