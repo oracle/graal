@@ -135,20 +135,29 @@ final class PolyglotThreadLocalActions {
         if (intervalTimer != null) {
             intervalTimer.cancel();
         }
-        for (AbstractTLHandshake handshake : activeEvents.keySet()) {
-            Future<?> future = handshake.future;
-            if (!future.isDone()) {
-                if (context.invalid || context.cancelled) {
-                    // we allow cancellation for invalid or cancelled contexts
-                    future.cancel(true);
-                } else {
-                    // otherwise this should not happen as leaving the context before close should
-                    // perform all events.
-                    throw new AssertionError("Pending thread local actions found. Did the actions not process on last leave? Pending action: " + handshake.action);
+
+        if (!activeEvents.isEmpty()) {
+            /*
+             * The set can be modified during the subsequent iteration.
+             */
+            ArrayList<AbstractTLHandshake> activeEventsList = new ArrayList<>(activeEvents.keySet());
+            for (AbstractTLHandshake handshake : activeEventsList) {
+                Future<?> future = handshake.future;
+                if (!future.isDone()) {
+                    if (context.invalid || context.cancelled) {
+                        // we allow cancellation for invalid or cancelled contexts
+                        future.cancel(true);
+                    } else {
+                        /*
+                         * otherwise this should not happen as leaving the context before close
+                         * should perform all events.
+                         */
+                        throw new AssertionError("Pending thread local actions found. Did the actions not process on last leave? Pending action: " + handshake.action);
+                    }
                 }
             }
+            activeEvents.clear();
         }
-        activeEvents.clear();
 
         if (statistics != null) {
             logStatistics();
@@ -275,7 +284,11 @@ final class PolyglotThreadLocalActions {
         // we cannot process the events while the context lock is held
         // so we need to collect them first.
         TruffleSafepoint s = TruffleSafepoint.getCurrent();
-        for (AbstractTLHandshake handshake : activeEvents.keySet()) {
+        /*
+         * The set can be modified during the subsequent iteration.
+         */
+        ArrayList<AbstractTLHandshake> activeEventsList = new ArrayList<>(activeEvents.keySet());
+        for (AbstractTLHandshake handshake : activeEventsList) {
             if (!handshake.isEnabledForThread(Thread.currentThread())) {
                 continue;
             }

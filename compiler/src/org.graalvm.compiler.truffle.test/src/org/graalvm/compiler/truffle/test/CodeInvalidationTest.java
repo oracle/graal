@@ -234,10 +234,10 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
     public void testInvalidation() throws IOException, InterruptedException {
         CountDownLatch latch = new CountDownLatch(2);
         NodeToInvalidate nodeToInvalidate = new NodeToInvalidate(ThreadLocal.withInitial(() -> true), latch);
-        WhileLoopNode testedCode = new WhileLoopNode(10000000, nodeToInvalidate);
+        WhileLoopNode testedCode = new WhileLoopNode(1000000000, nodeToInvalidate);
         LoopNode loopNode = testedCode.loop;
 
-        setupEnv(Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").build(), new ProxyLanguage() {
+        setupEnv(Context.create(), new ProxyLanguage() {
             /**
              * Makes sure we use the same call target for the single source that we use. Otherwise
              * storing the frame slots in member fields of WhileLoopNode wouldn't work as the
