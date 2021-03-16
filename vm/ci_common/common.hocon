@@ -382,7 +382,7 @@ deploy_graalvm_installables_darwin_amd64: {
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ${notify-nexus-deploy}
   ]
-  timelimit: "2:30:00"
+  timelimit: "3:00:00"
 }
 
 deploy_graalvm_base_windows_amd64: {
