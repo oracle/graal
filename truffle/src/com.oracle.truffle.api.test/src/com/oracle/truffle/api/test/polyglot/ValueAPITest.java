@@ -1476,11 +1476,11 @@ public class ValueAPITest {
         assertFails(() -> v.putMember("value", ""), IllegalArgumentException.class,
                         "Invalid member value ''(language: Java, type: java.lang.String) for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and member key 'value'.");
 
-        assertFails(() -> v.putMember("finalValue", 42), IllegalArgumentException.class,
-                        "Invalid member key 'finalValue' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+        assertFails(() -> v.putMember("finalValue", 42), UnsupportedOperationException.class,
+                        "Non writable or non-existent member key 'finalValue' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
-        assertFails(() -> v.putMember("notAMember", ""), IllegalArgumentException.class,
-                        "Invalid member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+        assertFails(() -> v.putMember("notAMember", ""), UnsupportedOperationException.class,
+                        "Non writable or non-existent member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
         assertNull(v.getMember("notAMember"));
 
@@ -1663,8 +1663,8 @@ public class ValueAPITest {
         Value value = context.asValue(new InvocableType());
         assertTrue(value.canInvokeMember("f"));
 
-        assertFails(() -> value.invokeMember(""), IllegalArgumentException.class,
-                        "Invalid member key '' for object 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+        assertFails(() -> value.invokeMember(""), UnsupportedOperationException.class,
+                        "Non readable or non-existent member key '' for object 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
                                         "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType).");
         assertFails(() -> value.invokeMember("f", 2), IllegalArgumentException.class,
                         "Invalid argument count when invoking 'f' on 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
