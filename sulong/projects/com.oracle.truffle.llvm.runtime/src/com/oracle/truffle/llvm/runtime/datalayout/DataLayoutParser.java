@@ -45,6 +45,7 @@ final class DataLayoutParser {
 
         private DataTypeSpecification(DataLayoutType type, int size, int abiAlignment, int preferredAlignment) {
             assert type == DataLayoutType.INTEGER || type == DataLayoutType.POINTER || type == DataLayoutType.FLOAT;
+            assert type != DataLayoutType.POINTER || (size == 64 && abiAlignment == 64 && preferredAlignment == 64) : "Only 64-bit size/alignment supported for pointers";
             this.type = type;
             this.values = new int[]{size, abiAlignment, preferredAlignment};
         }
@@ -171,20 +172,7 @@ final class DataLayoutParser {
             }
         }
         if (!isPointerTypeFound) {
-            // TODO: AArch64 only
-            int defaultPointerSize = 64;
-            specs.add(new DataTypeSpecification(DataLayoutType.POINTER, defaultPointerSize, defaultPointerSize, defaultPointerSize));
-// // Add a pointer datatype with size = largest integer size
-// int largestIntegerTypeSize = -1;
-// for (DataTypeSpecification spec : specs) {
-// if (spec.type == DataLayoutType.INTEGER && spec.getSize() > largestIntegerTypeSize) {
-// largestIntegerTypeSize = spec.getSize();
-// }
-// }
-// if (largestIntegerTypeSize > 0) {
-// specs.add(new DataTypeSpecification(DataLayoutType.POINTER, largestIntegerTypeSize,
-// largestIntegerTypeSize, largestIntegerTypeSize));
-// }
+            specs.add(new DataTypeSpecification(DataLayoutType.POINTER, 64, 64, 64));
         }
     }
 

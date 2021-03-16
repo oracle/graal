@@ -18,6 +18,8 @@ cpp/test020.cpp.dir
 cpp/test022.cpp.dir
 cpp/test023.cpp.dir
 cpp/test024.cpp.dir
+cpp/test025.cpp.dir
+cpp/test026.cpp.dir
 cpp/test028.cpp.dir
 cpp/test031.cpp.dir
 cpp/test033.cpp.dir
@@ -37,6 +39,7 @@ cpp/test051.cpp.dir
 cpp/test052.cpp.dir
 cpp/test053.cpp.dir
 cpp/testRuntimeError.cpp.dir
+cpp/builtin/arithmetic/arithmetic_uadd_i16.c.dir
 libc/memcpy/memcpy-struct-mixed.c.dir
 libc/vfprintf/vfprintf.c.dir
 libc/vprintf/vprintf.c.dir
