@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -487,25 +487,6 @@ public abstract class LayoutStrategy {
                 return current;
             }
             current = current.getParent();
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the (parent) shape that holds the given property.
-     *
-     * @since 0.17 or earlier
-     */
-    @Deprecated
-    protected static ShapeImpl getShapeFromProperty(ShapeImpl shape, Property prop) {
-        ShapeImpl current = shape;
-        ShapeImpl root = shape.getRoot();
-        while (current != root) {
-            if (current.getTransitionFromParent() instanceof AddPropertyTransition && ((AddPropertyTransition) current.getTransitionFromParent()).getProperty().equals(prop)) {
-                return current;
-            }
-            current = current.parent;
         }
 
         return null;

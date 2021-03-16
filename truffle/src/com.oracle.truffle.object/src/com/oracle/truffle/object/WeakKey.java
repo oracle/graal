@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,34 +45,37 @@ import java.lang.ref.WeakReference;
 import java.util.Map;
 
 /**
- * An unmodifiable {@link Map.Entry} with a strongly referenced key and a weakly referenced value.
- * Used by the shape transition map to allow garbage collection of unused shapes.
+ * An unmodifiable {@link Map.Entry} with a strongly or weakly referenced key and a weakly
+ * referenced value. Used by the shape transition map to allow garbage collection of unused shapes.
  */
-final class StrongKeyWeakValueEntry<K, V> extends WeakReference<V> implements Map.Entry<K, V> {
-    private final K key;
+final class WeakKey<K> extends WeakReference<K> {
 
-    StrongKeyWeakValueEntry(K key, V value) {
-        super(value);
-        this.key = key;
+    private final int hashCode;
+
+    WeakKey(K key) {
+        super(key);
+        this.hashCode = key.hashCode();
     }
 
-    StrongKeyWeakValueEntry(K key, V value, ReferenceQueue<V> queue) {
-        super(value, queue);
-        this.key = key;
-    }
-
-    @Override
-    public K getKey() {
-        return key;
+    WeakKey(K key, ReferenceQueue<K> q) {
+        super(key, q);
+        this.hashCode = key.hashCode();
     }
 
     @Override
-    public V getValue() {
-        return get();
+    public int hashCode() {
+        return hashCode;
     }
 
     @Override
-    public V setValue(V value) {
-        throw new UnsupportedOperationException();
+    public boolean equals(Object obj) {
+        Object thisKey = get();
+        if (obj instanceof WeakKey) {
+            Object otherKey = ((WeakKey<?>) obj).get();
+            return (thisKey == null || otherKey == null) ? (this == obj) : thisKey.equals(otherKey);
+        } else {
+            return false;
+        }
     }
+
 }
