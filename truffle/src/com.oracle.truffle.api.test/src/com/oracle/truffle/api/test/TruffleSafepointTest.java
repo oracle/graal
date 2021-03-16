@@ -1013,7 +1013,7 @@ public class TruffleSafepointTest {
                 values[i] = new Object[nonConstantValue];
                 TruffleSafepoint.poll(node);
             }
-            return false;
+            return true;
         })) {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
@@ -1041,7 +1041,7 @@ public class TruffleSafepointTest {
                 values[i] = new Object();
                 TruffleSafepoint.poll(node);
             }
-            return false;
+            return true;
         })) {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
@@ -1070,7 +1070,7 @@ public class TruffleSafepointTest {
             }
             // escape sum value
             values[0] = sum;
-            return false;
+            return true;
         })) {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
@@ -1112,7 +1112,7 @@ public class TruffleSafepointTest {
                 // perform an escaping allocation
                 values[i] = indirectCall.call(target);
             }
-            return false;
+            return true;
         }
 
         @TruffleBoundary
