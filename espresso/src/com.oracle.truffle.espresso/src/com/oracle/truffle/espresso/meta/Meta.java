@@ -616,8 +616,20 @@ public final class Meta implements ContextAccess {
         java_util_Map_put = java_util_Map.requireDeclaredMethod(Name.put, Signature.Object_Object_Object);
         java_util_Map_size = java_util_Map.requireDeclaredMethod(Name.size, Signature._int);
         java_util_Map_remove = java_util_Map.requireDeclaredMethod(Name.remove, Signature.Object_Object);
+        java_util_Map_containsKey = java_util_Map.requireDeclaredMethod(Name.containsKey, Signature._boolean);
         assert java_util_Map.isInterface();
 
+        java_util_List = knownKlass(Type.java_util_List);
+        java_util_List_get = java_util_List.requireDeclaredMethod(Name.get, Signature.Object_int);
+        java_util_List_set = java_util_List.requireDeclaredMethod(Name.set, Signature.Object_int_Object);
+        java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
+        assert java_util_List.isInterface();
+
+        java_util_Iterator = knownKlass(Type.java_util_Iterator);
+        java_util_Iterator_next = java_util_Iterator.requireDeclaredMethod(Name.next, Signature.Object);
+        java_util_Iterator_hasNext = java_util_Iterator.requireDeclaredMethod(Name.hasNext, Signature._boolean);
+        java_util_Iterator_remove = java_util_Iterator.requireDeclaredMethod(Name.remove, Signature._void);
+        assert java_util_Iterator.isInterface();
     }
 
     /**
@@ -1120,6 +1132,17 @@ public final class Meta implements ContextAccess {
     public final Method java_util_Map_get;
     public final Method java_util_Map_put;
     public final Method java_util_Map_remove;
+    public final Method java_util_Map_containsKey;
+
+    public final ObjectKlass java_util_List;
+    public final Method java_util_List_get;
+    public final Method java_util_List_set;
+    public final Method java_util_List_size;
+
+    public final ObjectKlass java_util_Iterator;
+    public final Method java_util_Iterator_next;
+    public final Method java_util_Iterator_hasNext;
+    public final Method java_util_Iterator_remove;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;

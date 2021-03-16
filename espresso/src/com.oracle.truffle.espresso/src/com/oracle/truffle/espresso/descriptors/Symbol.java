@@ -438,9 +438,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> nano = StaticSymbols.putName("nano");
         public static final Symbol<Name> atZone = StaticSymbols.putName("atZone");
 
+        // Map / List / Iterator
         public static final Symbol<Name> get = StaticSymbols.putName("get");
+        public static final Symbol<Name> set = StaticSymbols.putName("set");
         public static final Symbol<Name> put = StaticSymbols.putName("put");
         public static final Symbol<Name> size = StaticSymbols.putName("size");
+        public static final Symbol<Name> containsKey = StaticSymbols.putName("containsKey");
+        public static final Symbol<Name> hasNext = StaticSymbols.putName("hasNext");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal identifiers.
 
@@ -741,7 +745,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_time_ZonedDateTime = StaticSymbols.putType("Ljava/time/ZonedDateTime;");
         public static final Symbol<Type> java_util_Date = StaticSymbols.putType("Ljava/util/Date;");
         public static final Symbol<Type> java_time_ZoneId = StaticSymbols.putType("Ljava/time/ZoneId;");
+
+        // List / Map / Iterator
+        public static final Symbol<Type> java_util_List = StaticSymbols.putType("Ljava/util/List;");
         public static final Symbol<Type> java_util_Map = StaticSymbols.putType("Ljava/util/Map;");
+        public static final Symbol<Type> java_util_Iterator = StaticSymbols.putType("Ljava/util/Iterator;");
 
         // Polyglot/interop API.
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_Polyglot = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/Polyglot;");
@@ -792,6 +800,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_Object = StaticSymbols.putSignature(Type._void, Type.java_lang_Object);
         public static final Symbol<Signature> Object_Object = StaticSymbols.putSignature(Type.java_lang_Object, Type.java_lang_Object);
         public static final Symbol<Signature> Object_Object_Object = StaticSymbols.putSignature(Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object);
+        public static final Symbol<Signature> Object_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._int);
+        public static final Symbol<Signature> Object_int_Object = StaticSymbols.putSignature(Type.java_lang_Object, Type._int, Type.java_lang_Object);
 
         public static final Symbol<Signature> Object = StaticSymbols.putSignature(Type.java_lang_Object);
         public static final Symbol<Signature> String = StaticSymbols.putSignature(Type.java_lang_String);
