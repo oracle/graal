@@ -776,7 +776,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'truffle:TRUFFLE_API',
         'truffle:LOCATOR',
     ],
-    supported=True,
+    stability="supported",
 ))
 
 
@@ -789,7 +789,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     third_party_license_files=[],
     dependencies=['Truffle'],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
-    supported=True,
+    stability="supported",
 ))
 
 
@@ -806,7 +806,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     support_headers_distributions=['truffle:TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT'],
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
-    supported=True,
+    stability="supported",
 ))
 
 
