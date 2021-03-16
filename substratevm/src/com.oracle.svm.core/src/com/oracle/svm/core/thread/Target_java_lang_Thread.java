@@ -28,6 +28,8 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.nativeimage.IsolateThread;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -53,6 +55,10 @@ import com.oracle.svm.core.util.VMError;
 @TargetClass(Thread.class)
 @SuppressWarnings({"unused"})
 public final class Target_java_lang_Thread {
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    IsolateThread isolateThread;
 
     /**
      * Every thread has a boolean for noting whether this thread is interrupted.
