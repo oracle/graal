@@ -194,14 +194,6 @@
 
   llvmBundled:: {},
 
-  llvm4_darwin_fix:: {
-    timelimit: "0:45:00",
-  },
-
-  llvmBundled_darwin_fix: {
-    timelimit: "0:45:00",
-  },
-
   requireGCC:: {
     packages+: {
       gcc: "==6.1.0",
