@@ -152,6 +152,9 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         if (constant != null) {
             return constant;
         }
+        if (tool.allUsagesAvailable() && hasNoUsages() && getBoundsCheck() != null) {
+            return null;
+        }
         return this;
     }
 
