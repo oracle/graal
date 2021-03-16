@@ -213,7 +213,8 @@ class GraalVmComponent(object):
                  installable_id=None,
                  dependencies=None,
                  supported=None,
-                 early_adopter=False):
+                 early_adopter=False,
+                 stability=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -244,8 +245,7 @@ class GraalVmComponent(object):
         :type installable: bool
         :type installable_id: str
         :type post_install_msg: str
-        :type supported: bool | None
-        :type early_adopter: bool
+        :type stability: str | None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -277,8 +277,24 @@ class GraalVmComponent(object):
         self.installable = installable
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
-        self.supported = supported
-        self.early_adopter = early_adopter
+
+        if supported is not None or early_adopter:
+            if stability is not None:
+                raise mx.abort("{}: Cannot use `stability` attribute in combination with deprecated `supported` and `early_adopter` attributes".format(name))
+            else:
+                mx.warn("{}: `supported` and `early_adopter` attributes are deprecated, please use `stability`".format(name))
+
+        if supported:
+            if early_adopter:
+                stability = "earlyadopter"
+            else:
+                stability = "supported"
+        else:
+            if early_adopter:
+                stability = "experimental-earlyadopter"
+            else:
+                stability = "experimental"
+        self.stability = stability
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
@@ -295,7 +311,6 @@ class GraalVmComponent(object):
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
-        assert not self.early_adopter or self.supported is not None
 
 
     def __str__(self):
