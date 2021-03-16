@@ -441,6 +441,7 @@ public final class Symbol<T> extends ByteSequence {
         // Map / List / Iterator
         public static final Symbol<Name> get = StaticSymbols.putName("get");
         public static final Symbol<Name> set = StaticSymbols.putName("set");
+        public static final Symbol<Name> iterator = StaticSymbols.putName("iterator");
         public static final Symbol<Name> put = StaticSymbols.putName("put");
         public static final Symbol<Name> size = StaticSymbols.putName("size");
         public static final Symbol<Name> containsKey = StaticSymbols.putName("containsKey");
@@ -750,6 +751,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_util_List = StaticSymbols.putType("Ljava/util/List;");
         public static final Symbol<Type> java_util_Map = StaticSymbols.putType("Ljava/util/Map;");
         public static final Symbol<Type> java_util_Iterator = StaticSymbols.putType("Ljava/util/Iterator;");
+        public static final Symbol<Type> java_util_NoSuchElementException = StaticSymbols.putType("Ljava/util/NoSuchElementException;");
 
         // Polyglot/interop API.
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_Polyglot = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/Polyglot;");
@@ -834,6 +836,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_char_array = StaticSymbols.putSignature(Type._void, Type._char_array);
         public static final Symbol<Signature> _char_array = StaticSymbols.putSignature(Type._char_array);
         public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);
+        public static final Symbol<Signature> _boolean_Object = StaticSymbols.putSignature(Type._boolean, Type.java_lang_Object);
         public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
                         Type.java_lang_Object_array);
@@ -848,6 +851,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Long_long = StaticSymbols.putSignature(Type.java_lang_Long, Type._long);
 
         public static final Symbol<Signature> Object_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type.java_lang_Object_array);
+
+        public static final Symbol<Signature> java_util_Iterator = StaticSymbols.putSignature(Type.java_util_Iterator);
 
         public static final Symbol<Signature> MethodType_Class_Class = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Class_array);
         public static final Symbol<Signature> MethodType_String_ClassLoader = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_String, Type.java_lang_ClassLoader);

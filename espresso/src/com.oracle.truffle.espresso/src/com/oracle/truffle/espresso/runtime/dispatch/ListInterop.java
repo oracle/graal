@@ -50,11 +50,50 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 public final class ListInterop extends EspressoInterop {
+
+    @ExportMessage
+    public static boolean hasIterator(@SuppressWarnings("unused") StaticObject receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    static boolean hasArrayElements(@SuppressWarnings("unused") StaticObject receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    abstract static class GetIterator {
+
+        static final int LIMIT = 3;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
+        static Object doCached(StaticObject receiver,
+                        @Cached("receiver.getKlass()") Klass cachedKlass,
+                        @Cached("doIteratorLookup(receiver)") Method method,
+                        @Cached("create(method.getCallTarget())") DirectCallNode callNode) {
+            return callNode.call(receiver);
+        }
+
+        @Specialization(replaces = "doCached")
+        static Object doUncached(StaticObject receiver,
+                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
+            Method size = doIteratorLookup(receiver);
+            return invoke.call(size.getCallTarget(), receiver);
+        }
+
+        static Method doIteratorLookup(StaticObject receiver) {
+            return receiver.getKlass().lookupMethod(Name.iterator, Signature.java_util_Iterator);
+        }
+
+    }
+
     @ExportMessage
     abstract static class GetArraySize {
 
         static final int LIMIT = 3;
 
+        @SuppressWarnings("unused")
         @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
         static long doCached(StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
@@ -65,7 +104,7 @@ public final class ListInterop extends EspressoInterop {
 
         @Specialization(replaces = "doCached")
         static long doUncached(StaticObject receiver,
-                        @Cached IndirectCallNode invoke) {
+                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
             Method size = doSizeLookup(receiver);
             return (int) invoke.call(size.getCallTarget(), receiver);
         }
@@ -87,11 +126,6 @@ public final class ListInterop extends EspressoInterop {
                     @Cached ListSet listSet,
                     @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException {
         listSet.listSet(receiver, index, value, error);
-    }
-
-    @ExportMessage
-    static boolean hasArrayElements(@SuppressWarnings("unused") StaticObject receiver) {
-        return true;
     }
 
     @ExportMessage
@@ -131,6 +165,7 @@ public final class ListInterop extends EspressoInterop {
 
         protected abstract Object execute(StaticObject receiver, int index);
 
+        @SuppressWarnings("unused")
         @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
         static Object doCached(StaticObject receiver, int index,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
@@ -141,7 +176,7 @@ public final class ListInterop extends EspressoInterop {
 
         @Specialization(replaces = "doCached")
         static Object doUncached(StaticObject receiver, int index,
-                        @Cached IndirectCallNode invoke) {
+                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
             Method get = doGetLookup(receiver);
             return invoke.call(get.getCallTarget(), receiver, index);
         }
@@ -176,6 +211,7 @@ public final class ListInterop extends EspressoInterop {
 
         protected abstract void execute(StaticObject receiver, int index, Object value) throws ArityException, UnsupportedTypeException;
 
+        @SuppressWarnings("unused")
         @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
         static void doCached(StaticObject receiver, int index, Object value,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
@@ -186,7 +222,7 @@ public final class ListInterop extends EspressoInterop {
 
         @Specialization(replaces = "doCached")
         static void doUncached(StaticObject receiver, int index, Object value,
-                        @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
+                        @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
             Method set = doSetLookup(receiver);
             invoke.execute(set, receiver, new Object[]{index, value});
         }

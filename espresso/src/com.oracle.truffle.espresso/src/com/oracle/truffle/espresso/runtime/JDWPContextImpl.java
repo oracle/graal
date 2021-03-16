@@ -72,6 +72,7 @@ import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 public final class JDWPContextImpl implements JDWPContext {
@@ -271,7 +272,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public String getStringValue(Object object) {
         if (object instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) object;
-            return (String) staticObject.toDisplayString(false);
+            return (String) EspressoInterop.toDisplayString(staticObject, false);
         }
         return object.toString();
     }

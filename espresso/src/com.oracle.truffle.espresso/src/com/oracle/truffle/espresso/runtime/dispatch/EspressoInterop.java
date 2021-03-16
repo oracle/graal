@@ -122,7 +122,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    boolean fitsInByte(StaticObject receiver) {
+    static boolean fitsInByte(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -157,7 +157,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    boolean fitsInShort(StaticObject receiver) {
+    static boolean fitsInShort(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -188,7 +188,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    boolean fitsInInt(StaticObject receiver) {
+    static boolean fitsInInt(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -215,7 +215,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    boolean fitsInLong(StaticObject receiver) {
+    static boolean fitsInLong(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -238,7 +238,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    boolean fitsInFloat(StaticObject receiver) {
+    static boolean fitsInFloat(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -272,7 +272,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    boolean fitsInDouble(StaticObject receiver) {
+    static boolean fitsInDouble(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -294,7 +294,7 @@ public class EspressoInterop extends BaseInterop {
         return false;
     }
 
-    private Number readNumberValue(StaticObject receiver) throws UnsupportedMessageException {
+    private static Number readNumberValue(StaticObject receiver) throws UnsupportedMessageException {
         assert receiver.isEspressoObject();
         Klass klass = receiver.getKlass();
         Meta meta = klass.getMeta();
@@ -321,7 +321,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    byte asByte(StaticObject receiver) throws UnsupportedMessageException {
+    static byte asByte(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInByte(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -331,7 +331,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    short asShort(StaticObject receiver) throws UnsupportedMessageException {
+    static short asShort(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInShort(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -341,7 +341,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    int asInt(StaticObject receiver) throws UnsupportedMessageException {
+    static int asInt(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInInt(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -351,7 +351,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    long asLong(StaticObject receiver) throws UnsupportedMessageException {
+    static long asLong(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInLong(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -361,7 +361,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    float asFloat(StaticObject receiver) throws UnsupportedMessageException {
+    static float asFloat(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInFloat(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -371,7 +371,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    double asDouble(StaticObject receiver) throws UnsupportedMessageException {
+    static double asDouble(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInDouble(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -404,7 +404,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static abstract class ReadArrayElement {
+    abstract static class ReadArrayElement {
         @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
         static boolean doBoolean(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
@@ -548,7 +548,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static abstract class WriteArrayElement {
+    abstract static class WriteArrayElement {
         @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doBoolean(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,

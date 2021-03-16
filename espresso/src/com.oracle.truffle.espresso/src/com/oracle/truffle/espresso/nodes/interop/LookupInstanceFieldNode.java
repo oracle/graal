@@ -44,6 +44,7 @@ public abstract class LookupInstanceFieldNode extends AbstractLookupFieldNode {
         return null;
     }
 
+    @SuppressWarnings("unused")
     @Specialization(guards = {"klass == cachedKlass", "name.equals(cachedName)"}, limit = "LIMIT")
     protected Field doCached(Klass klass, String name,
                     @Cached("klass") Klass cachedKlass,

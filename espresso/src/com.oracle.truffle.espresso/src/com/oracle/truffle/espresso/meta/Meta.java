@@ -616,7 +616,7 @@ public final class Meta implements ContextAccess {
         java_util_Map_put = java_util_Map.requireDeclaredMethod(Name.put, Signature.Object_Object_Object);
         java_util_Map_size = java_util_Map.requireDeclaredMethod(Name.size, Signature._int);
         java_util_Map_remove = java_util_Map.requireDeclaredMethod(Name.remove, Signature.Object_Object);
-        java_util_Map_containsKey = java_util_Map.requireDeclaredMethod(Name.containsKey, Signature._boolean);
+        java_util_Map_containsKey = java_util_Map.requireDeclaredMethod(Name.containsKey, Signature._boolean_Object);
         assert java_util_Map.isInterface();
 
         java_util_List = knownKlass(Type.java_util_List);
@@ -630,6 +630,8 @@ public final class Meta implements ContextAccess {
         java_util_Iterator_hasNext = java_util_Iterator.requireDeclaredMethod(Name.hasNext, Signature._boolean);
         java_util_Iterator_remove = java_util_Iterator.requireDeclaredMethod(Name.remove, Signature._void);
         assert java_util_Iterator.isInterface();
+
+        java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
     }
 
     /**
@@ -1143,6 +1145,8 @@ public final class Meta implements ContextAccess {
     public final Method java_util_Iterator_next;
     public final Method java_util_Iterator_hasNext;
     public final Method java_util_Iterator_remove;
+
+    public final ObjectKlass java_util_NoSuchElementException;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;

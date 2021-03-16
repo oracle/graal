@@ -72,6 +72,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -2084,8 +2085,8 @@ public final class JniEnv extends NativeEnv {
                         StaticObject expectedLoader = targetMethod.getDeclaringKlass().getDefiningClassLoader();
                         StaticObject givenLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
                         return "Runtime substitution for " + targetMethod + " does not apply.\n" +
-                                        "\tExpected class loader: " + expectedLoader.toDisplayString(false) + "\n" +
-                                        "\tGiven class loader: " + givenLoader.toDisplayString(false) + "\n";
+                                        "\tExpected class loader: " + EspressoInterop.toDisplayString(expectedLoader, false) + "\n" +
+                                        "\tGiven class loader: " + EspressoInterop.toDisplayString(givenLoader, false) + "\n";
                     }
                 });
                 return null;
