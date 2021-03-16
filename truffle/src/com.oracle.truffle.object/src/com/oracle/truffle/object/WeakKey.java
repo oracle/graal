@@ -42,12 +42,7 @@ package com.oracle.truffle.object;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.util.Map;
 
-/**
- * An unmodifiable {@link Map.Entry} with a strongly or weakly referenced key and a weakly
- * referenced value. Used by the shape transition map to allow garbage collection of unused shapes.
- */
 final class WeakKey<K> extends WeakReference<K> {
 
     private final int hashCode;

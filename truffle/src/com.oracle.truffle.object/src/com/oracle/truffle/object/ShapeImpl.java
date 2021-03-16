@@ -399,7 +399,7 @@ public abstract class ShapeImpl extends Shape {
                     next = newSingleEntry(transition, successor);
                 }
             } else {
-                next = addToTransitionMap(transition, successor, prev);
+                next = addToTransitionMap(transition, successor, asTransitionMap(prev));
             }
             if (prev == next) {
                 break;
@@ -409,15 +409,17 @@ public abstract class ShapeImpl extends Shape {
 
     private static Object newTransitionMap(Transition firstTransition, ShapeImpl firstShape, Transition secondTransition, ShapeImpl secondShape) {
         TransitionMap<Transition, ShapeImpl> map = newTransitionMap();
-        map.put(firstTransition, firstShape);
-        map.put(secondTransition, secondShape);
+        addToTransitionMap(firstTransition, firstShape, map);
+        addToTransitionMap(secondTransition, secondShape, map);
         return map;
     }
 
-    private static Object addToTransitionMap(Transition transition, ShapeImpl successor, Object prevMap) {
-        assert isTransitionMap(prevMap);
-        TransitionMap<Transition, ShapeImpl> map = asTransitionMap(prevMap);
-        map.put(transition, successor);
+    private static Object addToTransitionMap(Transition transition, ShapeImpl successor, TransitionMap<Transition, ShapeImpl> map) {
+        if (transition.hasConstantLocation()) {
+            map.putWeakKey(transition, successor);
+        } else {
+            map.put(transition, successor);
+        }
         return map;
     }
 

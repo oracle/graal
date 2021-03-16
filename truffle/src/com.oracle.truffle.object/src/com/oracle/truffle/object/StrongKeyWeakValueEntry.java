@@ -56,7 +56,7 @@ final class StrongKeyWeakValueEntry<K, V> extends WeakReference<V> implements Ma
         this.key = key;
     }
 
-    StrongKeyWeakValueEntry(K key, V value, ReferenceQueue<V> queue) {
+    StrongKeyWeakValueEntry(K key, V value, ReferenceQueue<? super V> queue) {
         super(value, queue);
         this.key = key;
     }
