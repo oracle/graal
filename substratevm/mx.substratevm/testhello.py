@@ -124,6 +124,7 @@ def test():
 
     # define some useful patterns
     address_pattern = '0x[0-9a-f]+'
+    hash_pattern = '[0-9a-f]+'
     spaces_pattern = '[ \t]+'
     maybe_spaces_pattern = '[ \t]*'
     digits_pattern = '[0-9]+'
@@ -189,8 +190,10 @@ def test():
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello::main",
                       [r"#0%shello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:67"%(spaces_pattern, wildcard_pattern),
-                       r"#1%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern)
-                       ])
+                       r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#2%s com\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
+                       r"#3%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s at %sIsolateEnterStub\.java:[0-9]+"%(spaces_pattern, hash_pattern, wildcard_pattern, package_pattern)
+                      ])
     checker.check(exec_string, skip_fails=False)
 
     if can_print_data:
@@ -293,16 +296,9 @@ def test():
     # expect "All functions matching regular expression "java.io.PrintStream.println":"
     # expect ""
     # expect "File java.base/java/io/PrintStream.java:"
-    # expect "      void java.io.PrintStream::println(java.lang.Object);"
-    # expect "      void java.io.PrintStream::println(java.lang.String);"
+    # expect "      void java.io.PrintStream::println(java.lang.Object *);"
+    # expect "      void java.io.PrintStream::println(java.lang.String *);"
     exec_string = execute("info func java.io.PrintStream::println")
-    #    checker = Checker("info func java.io.PrintStream::println",
-    #                      ["All functions matching regular expression \"java\\.io\\.PrintStream::println\":",
-    #                       "",
-    #                       "File .*java/io/PrintStream.java:",
-    #                       "[ \t]*void java.io.PrintStream::println\\(java\\.lang\\.Object \\*\\);",
-    #                       "[ \t]*void java.io.PrintStream::println\\(java\\.lang\\.String \\*\\);",
-    #                      ])
     rexp = r"%svoid java.io.PrintStream::println\(java\.lang\.String \*\)"%maybe_spaces_pattern
     checker = Checker("info func java.io.PrintStream::println", rexp)
     checker.check(exec_string)
@@ -399,15 +395,14 @@ def test():
     checker.check(exec_string, skip_fails=True)
 
     # run a backtrace
-    # expect "#0  _hello.Hello$Greeter::greeter(java.lang.String[]).* at hello.Hello.java:34"
-    # expect "#1  0x[0-9a-f]+ in _hello.Hello::main(java.lang.String[]).* at hello.Hello.java:67"
-    # expect "#2  0x[0-9a-f]+ in _com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello.Greeter::greeter",
                       [r"#0%shello\.Hello\$Greeter::greeter\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:34"%(spaces_pattern, wildcard_pattern),
                        r"#1%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:67"%(spaces_pattern, address_pattern, wildcard_pattern),
-                       r"#2%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at [a-z/]+/JavaMainWrapper\.java:%s"%(spaces_pattern, address_pattern, wildcard_pattern, digits_pattern)
-                       ])
+                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#3%scom\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
+                       r"#4%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s at %sIsolateEnterStub\.java:[0-9]+"%(spaces_pattern, hash_pattern, wildcard_pattern, package_pattern)
+                      ])
     checker.check(exec_string, skip_fails=False)
 
     # now step into inlined code
