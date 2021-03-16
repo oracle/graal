@@ -213,9 +213,9 @@ public abstract class TruffleSafepoint {
      * the parameter must be a {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial
      * evaluation constant}.
      * <p>
-     * The <code>beforeInterrupt</code> <code>afterInterrupt</code> {@link Runnable runnable}
-     * optional parameter allows to run code before and after a thread got interrupted and safepoint
-     * events need are processed. If <code>null</code> is provided then no action will be performed.
+     * The <code>beforeInterrupt</code> and <code>afterInterrupt</code> {@link Runnable runnable}
+     * optional parameter allow to run code before and after a thread got interrupted and safepoint
+     * events are processed. If <code>null</code> is provided then no action will be performed.
      * Arbitrary code may be executed in this runnable. Note that the blocked state is temporarily
      * reset to its previous state while the afterInterrupt is called.
      *

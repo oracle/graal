@@ -223,7 +223,6 @@ public abstract class ThreadLocalHandshake {
             if (sync) {
                 phaser.awaitAdvanceInterruptibly(0);
                 phaser.awaitAdvanceInterruptibly(1);
-                // still need to:
             } else {
                 phaser.awaitAdvanceInterruptibly(0);
             }
@@ -234,7 +233,6 @@ public abstract class ThreadLocalHandshake {
             if (sync) {
                 phaser.awaitAdvanceInterruptibly(0, timeout, unit);
                 phaser.awaitAdvanceInterruptibly(1, timeout, unit);
-                // still need to:
             } else {
                 phaser.awaitAdvanceInterruptibly(0, timeout, unit);
             }
@@ -477,8 +475,8 @@ public abstract class ThreadLocalHandshake {
             /*
              * We want to avoid to ever call the Interruptible interface on compiled code paths to
              * make native image avoid marking it as runtime compiled. It is common that
-             * interruptibles are just a method reference to Lock::acquireInterruptible which could
-             * no longer be used otherwise as PE would fail badly for these methods and we would get
+             * interruptibles are just a method reference to Lock::lockInterruptibly which could no
+             * longer be used otherwise as PE would fail badly for these methods and we would get
              * black list method errors in native image.
              *
              * A good workaround is to use our own interface that is a subclass of Interruptible but
