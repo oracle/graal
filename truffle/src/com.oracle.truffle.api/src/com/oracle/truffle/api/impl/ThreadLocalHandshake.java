@@ -159,23 +159,15 @@ public abstract class ThreadLocalHandshake {
         private final boolean sync;
         // avoid rescheduling on the same thread again
         private final Set<Thread> threads;
+        private final Consumer<T> onDone;
 
         @SuppressWarnings("unchecked")
         Handshake(Thread[] initialThreads, T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads, boolean sync) {
             this.action = action;
+            this.onDone = onDone;
             this.sideEffecting = sideEffecting;
             this.sync = sync;
-            this.phaser = new Phaser(numberOfThreads) {
-
-                @Override
-                protected boolean onAdvance(int phase, int registeredParties) {
-                    if (phase == 1) {
-                        onDone.accept(action);
-                    }
-                    return super.onAdvance(phase, registeredParties);
-                }
-
-            };
+            this.phaser = new Phaser(numberOfThreads);
             this.threads = Collections.synchronizedSet(new HashSet<>(Arrays.asList(initialThreads)));
         }
 
@@ -196,8 +188,15 @@ public abstract class ThreadLocalHandshake {
                 if (sync) {
                     phaser.arriveAndDeregister();
                     phaser.awaitAdvance(1);
+
+                    assert phaser.getUnarrivedParties() == 0;
+                    onDone.accept(action);
                 } else {
                     phaser.arriveAndDeregister();
+
+                    if (phaser.getUnarrivedParties() == 0) {
+                        onDone.accept(action);
+                    }
                 }
             }
         }
