@@ -52,6 +52,15 @@ Then:
 
 See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
 
+## Locales
+
+It is also possible to specify which locales should be included in the image and what should be the default one. For
+example, to switch the default locale to German, but also include French and English, one can use the following hosted options.
+```shell
+native-image -H:DefaultLocale=de -H:IncludeLocales=fr,en
+```
+The locales are specified using [language tags](https://docs.oracle.com/javase/tutorial/i18n/locale/matching.html). All locales can be included via ``-H:+IncludeAllLocales``, but please note that it increases the size of the resulting binary.
+
 ## Resource Bundles in Native Image
 
 Java localization support (`java.util.ResourceBundle`) enables Java code to load L10N resources and show the right user messages suitable for actual runtime settings like time locale and format, etc.
@@ -73,3 +82,4 @@ Alternatively, bundles can be specified directly as options to `native-image` as
 ```shell
 native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
 ```
+By default, the requested bundles are included for all requested locales. In order to optimize this, it is possible to use ``IncludeResourceBundles`` with locale specific substring, for example ``-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`` will include the bundle only in French.
