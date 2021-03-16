@@ -41,9 +41,11 @@ import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.agent.ignoredconfig.AgentMetaInfProcessor;
 import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.stackaccess.EagerlyLoadedJavaStackAccess;
 import com.oracle.svm.agent.stackaccess.OnDemandJavaStackAccess;
@@ -52,6 +54,8 @@ import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -104,12 +108,14 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         String traceOutputFile = null;
         String configOutputDir = null;
         ConfigurationSet mergeConfigs = new ConfigurationSet();
+        ConfigurationSet omittedConfigs = new ConfigurationSet();
         boolean builtinCallerFilter = true;
         boolean builtinHeuristicFilter = true;
         List<String> callerFilterFiles = new ArrayList<>();
         List<String> accessFilterFiles = new ArrayList<>();
         boolean experimentalClassLoaderSupport = true;
         boolean experimentalClassDefineSupport = false;
+        boolean experimentalOmitClasspathConfig = false;
         boolean build = false;
         boolean configurationWithOrigins = false;
         int configWritePeriod = -1; // in seconds
@@ -130,6 +136,14 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 if (token.startsWith("config-merge-dir=")) {
                     mergeConfigs.addDirectory(Paths.get(configOutputDir));
                 }
+            } else if (token.startsWith("config-to-omit=")) {
+                String omittedConfigDir = getTokenValue(token);
+                omittedConfigDir = transformPath(omittedConfigDir);
+                omittedConfigs.addDirectory(Paths.get(omittedConfigDir));
+            } else if (token.equals("experimental-omit-config-from-classpath")) {
+                experimentalOmitClasspathConfig = true;
+            } else if (token.startsWith("experimental-omit-config-from-classpath=")) {
+                experimentalOmitClasspathConfig = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.startsWith("restrict-all-dir") || token.equals("restrict") || token.startsWith("restrict=")) {
                 warn("restrict mode is no longer supported, ignoring option: " + token);
             } else if (token.equals("no-builtin-caller-filter")) {
@@ -235,7 +249,23 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     }
                     return e; // rethrow
                 };
+                if (experimentalOmitClasspathConfig) {
+                    ignoreConfigFromClasspath(jvmti, omittedConfigs);
+                }
                 AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
+                TraceProcessor omittedConfigProcessor = null;
+                Predicate<String> shouldExcludeClassesWithHash = null;
+                if (!omittedConfigs.isEmpty()) {
+                    Function<IOException, Exception> ignore = e -> {
+                        warn("Failed to load omitted config: " + e);
+                        return null;
+                    };
+                    omittedConfigProcessor = new TraceProcessor(advisor, omittedConfigs.loadJniConfig(ignore), omittedConfigs.loadReflectConfig(ignore),
+                                    omittedConfigs.loadProxyConfig(ignore), omittedConfigs.loadResourceConfig(ignore), omittedConfigs.loadSerializationConfig(ignore),
+                                    omittedConfigs.loadPredefinedClassesConfig(null, null, ignore), null);
+                    shouldExcludeClassesWithHash = omittedConfigProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
+                }
+
                 Path[] predefinedClassDestinationDirs = {configOutputDirPath.resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR)};
                 if (configurationWithOrigins) {
                     ConfigurationWithOriginsResultWriter writer = new ConfigurationWithOriginsResultWriter(advisor, recordKeeper);
@@ -244,7 +274,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 } else {
                     TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                     mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
-                                    mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestinationDirs, handler));
+                                    mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestinationDirs, shouldExcludeClassesWithHash, handler), omittedConfigProcessor);
                     ConfigurationResultWriter writer = new ConfigurationResultWriter(processor);
                     tracer = writer;
                     tracingResultWriter = writer;
@@ -358,6 +388,30 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         periodicConfigWriterExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         periodicConfigWriterExecutor.scheduleAtFixedRate(this::writeConfigurationFiles,
                         initialDelay, writePeriod, TimeUnit.SECONDS);
+    }
+
+    private static void ignoreConfigFromClasspath(JvmtiEnv jvmti, ConfigurationSet ignoredConfigSet) {
+        String classpath = Support.getSystemProperty(jvmti, "java.class.path");
+        String sep = Support.getSystemProperty(jvmti, "path.separator");
+        if (sep == null) {
+            if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
+                sep = ":";
+            } else if (Platform.includedIn(Platform.WINDOWS.class)) {
+                sep = "[:;]";
+            } else {
+                warn("Running on unknown platform. Not omitting existing config from classpath.");
+                return;
+            }
+        }
+
+        AgentMetaInfProcessor processor = new AgentMetaInfProcessor(ignoredConfigSet);
+        for (String cpEntry : classpath.split(sep)) {
+            try {
+                NativeImageMetaInfWalker.walkMetaInfForCPEntry(Paths.get(cpEntry), processor);
+            } catch (NativeImageMetaInfWalker.MetaInfWalkException e) {
+                warn("Failed to walk the classpath entry: " + cpEntry + " Reason: " + e);
+            }
+        }
     }
 
     private static final Pattern propertyBlacklist = Pattern.compile("(java\\..*)|(sun\\..*)|(jvmci\\..*)");

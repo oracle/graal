@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,34 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.config;
+package com.oracle.svm.driver.metainf;
 
-import java.io.IOException;
+import java.nio.file.Path;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
+public interface NativeImageMetaInfResourceProcessor {
+    /**
+     * Process a single file located under the native-image META-INF directory.
+     *
+     * @param classpathEntry Classpath entry from which the file originated.
+     * @param resourceRoot Parent of the META-INF/native-image directory from which the file
+     *            originated.
+     * @param resourcePath Path to the file.
+     * @param type Type of the file.
+     */
+    void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws Exception;
 
-public final class ConfigurationPredefinedClass implements JsonPrintable {
+    void showWarning(String message);
 
-    private final String nameInfo;
-    private final String hash;
+    void showVerboseMessage(String message);
 
-    public ConfigurationPredefinedClass(String nameInfo, String hash) {
-        this.nameInfo = nameInfo;
-        this.hash = hash;
-    }
-
-    public String getNameInfo() {
-        return nameInfo;
-    }
-
-    @Override
-    public void printJson(JsonWriter writer) throws IOException {
-        writer.append("{ ");
-        if (nameInfo != null) {
-            writer.quote("nameInfo").append(':').quote(nameInfo).append(", ");
-        }
-        writer.quote("hash").append(':').quote(hash);
-        writer.append(" }");
-    }
+    boolean isExcluded(Path resourcePath, Path classpathEntry);
 }

@@ -98,8 +98,8 @@ public class ConfigurationWithOriginsResultWriter extends Tracer implements Trac
         ProxyConfiguration proxyConfig = new ProxyConfiguration();
         ResourceConfiguration resourceConfig = new ResourceConfiguration();
         SerializationConfiguration serializationConfiguration = new SerializationConfiguration();
-        PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(new Path[0]);
-        return new TraceProcessor(advisor, jniConfig, reflectConfig, proxyConfig, resourceConfig, serializationConfiguration, predefinedClassesConfiguration);
+        PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(new Path[0], null);
+        return new TraceProcessor(advisor, jniConfig, reflectConfig, proxyConfig, resourceConfig, serializationConfiguration, predefinedClassesConfiguration, null);
     }
 
     private static final class MethodCallNode {

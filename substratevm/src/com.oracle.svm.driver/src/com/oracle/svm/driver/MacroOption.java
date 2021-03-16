@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.driver.NativeImage.BuildConfiguration;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 
 final class MacroOption {
     enum MacroOptionKind {
@@ -227,7 +228,7 @@ final class MacroOption {
                 Map<String, MacroOption> collectedOptions = Collections.emptyMap();
                 if (Files.isDirectory(optionsDir)) {
                     collectedOptions = Files.list(optionsDir).filter(Files::isDirectory)
-                                    .filter(optionDir -> Files.isReadable(optionDir.resolve(NativeImage.nativeImagePropertiesFilename)))
+                                    .filter(optionDir -> Files.isReadable(optionDir.resolve(NativeImageMetaInfWalker.nativeImagePropertiesFilename)))
                                     .map(MacroOption::create).filter(Objects::nonNull)
                                     .collect(Collectors.toMap(MacroOption::getOptionName, Function.identity()));
                 }
@@ -425,7 +426,7 @@ final class MacroOption {
         this.kind = MacroOptionKind.fromSubdir(optionDirectory.getParent().getFileName().toString());
         this.optionName = optionDirectory.getFileName().toString();
         this.optionDirectory = optionDirectory;
-        this.properties = NativeImage.loadProperties(optionDirectory.resolve(NativeImage.nativeImagePropertiesFilename));
+        this.properties = NativeImage.loadProperties(optionDirectory.resolve(NativeImageMetaInfWalker.nativeImagePropertiesFilename));
     }
 
     @Override
