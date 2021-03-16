@@ -51,14 +51,18 @@ js_windows_common: {
 
 js_windows_jdk11: ${common_vm_windows-jdk11} ${js_windows_common} {
   setup: ${common_vm_windows-jdk11.setup} [
-    ["set-export", "DEVKIT_ROOT", "$VS2017_15_9_24_1_0_ROOT"]
+    # Keep in sync with the "devkits" object defined in the top level common.json file.
+    # When this file has been converted to jsonnet, the value can be computed instead
+    # using Jsonnet std lib functions.
     ["set-export", "DEVKIT_VERSION", "2017"]
   ]
 }
 
 js_windows: ${common_vm_windows} ${js_windows_common} {
   setup: ${common_vm_windows.setup} [
-    ["set-export", "DEVKIT_ROOT", ${vm_windows_jdk8_devkit_var}]
+    # Keep in sync with the "devkits" object defined in the top level common.json file.
+    # When this file has been converted to jsonnet, the value can be computed instead
+    # using Jsonnet std lib functions.
     ["set-export", "DEVKIT_VERSION", "2017"]
   ]
 }
