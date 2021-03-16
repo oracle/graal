@@ -199,10 +199,6 @@
   },
 
   llvmBundled_darwin_fix: {
-    # nothing to do
-    environment+: {
-      LD_LIBRARY_PATH: "$BUILD_DIR/main/sulong/mxbuild/darwin-amd64/SULONG_LLVM_ORG/lib:$LD_LIBRARY_PATH",
-    },
     timelimit: "0:45:00",
   },
 
