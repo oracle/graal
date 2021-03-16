@@ -28,11 +28,9 @@ package com.oracle.svm.jfr.traceid;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 
-import java.util.List;
 import java.util.function.Consumer;
 
 public class JfrTraceIdLoadBarrier {
-    private static Class<?>[] allClasses;
     private static int classCount0;
     private static int classCount1;
 
@@ -96,24 +94,17 @@ public class JfrTraceIdLoadBarrier {
     public static boolean initialize() {
         classCount0 = 0;
         classCount1 = 0;
-        allClasses = new Class<?>[Heap.getHeap().getClassCount()];
-        List<Class<?>> classes = Heap.getHeap().getClassList();
-        int idx = 0;
-        for (Class<?> clazz : classes) {
-            allClasses[idx++] = clazz;
-        }
         return true;
     }
 
     // Note: Using Consumer<Class<?>> directly drags in other implementations which are not uninterruptible.
     public interface ClassConsumer extends Consumer<Class<?>> {}
 
-    @Uninterruptible(reason = "Called by uninterruptible code")
     public static void doClasses(ClassConsumer kc, boolean epoch) {
         long predicate = JfrTraceId.TRANSIENT_BIT;
         predicate |= epoch ? JfrTraceIdEpoch.EPOCH_1_BIT : JfrTraceIdEpoch.EPOCH_0_BIT;
         int usedClassCount = 0;
-        for (Class<?> clazz : allClasses) {
+        for (Class<?> clazz : Heap.getHeap().getClassList()) {
             if (JfrTraceId.predicate(clazz, predicate)) {
                 kc.accept(clazz);
                 usedClassCount++;
