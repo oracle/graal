@@ -26,8 +26,19 @@
 package com.oracle.svm.jfr.traceid;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
 
 public class JfrTraceIdEpoch {
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Field EPOCH_FIELD = ReflectionUtil.lookupField(JfrTraceIdEpoch.class, "epoch");
+
     public static final long BIT = 1;
     public static final long METHOD_BIT = (BIT << 2);
     public static final long EPOCH_0_SHIFT = 0;
@@ -40,28 +51,39 @@ public class JfrTraceIdEpoch {
     public static final long EPOCH_0_METHOD_AND_CLASS_BITS = (METHOD_AND_CLASS_BITS << EPOCH_0_SHIFT);
     public static final long EPOCH_1_METHOD_AND_CLASS_BITS = (METHOD_AND_CLASS_BITS << EPOCH_1_SHIFT);
 
-    private static boolean epoch;
-    private static boolean synchronizing;
-    private static volatile boolean changedTag;
+    private static JfrTraceIdEpoch instance = new JfrTraceIdEpoch();
 
-    public static void beginEpochShift() {
+    @Uninterruptible(reason = "Called from uninterruptible code")
+    public static JfrTraceIdEpoch getInstance() {
+        return instance;
+    }
+
+    public long getEpochAddress() {
+        UnsignedWord epochFieldOffset = WordFactory.unsigned(UNSAFE.objectFieldOffset(EPOCH_FIELD));
+        return Word.objectToUntrackedPointer(this).add(epochFieldOffset).rawValue();
+    }
+    private boolean epoch;
+    private boolean synchronizing;
+    private volatile boolean changedTag;
+
+    public void beginEpochShift() {
         synchronizing = true;
     }
 
-    public static void endEpochShift() {
+    public void endEpochShift() {
         epoch = !epoch;
         synchronizing = false;
     }
 
-    public static boolean isChangedTag() {
+    public boolean isChangedTag() {
         return changedTag;
     }
 
-    public static void setChangedTag(boolean changedTag) {
-        JfrTraceIdEpoch.changedTag = changedTag;
+    public void setChangedTag(boolean changedTag) {
+        this.changedTag = changedTag;
     }
 
-    public static boolean hasChangedTag() {
+    public boolean hasChangedTag() {
         if (isChangedTag()) {
             setChangedTag(false);
             return true;
@@ -69,26 +91,26 @@ public class JfrTraceIdEpoch {
         return false;
     }
 
-    public static void setChangedTag() {
+    public void setChangedTag() {
         if (!isChangedTag()) {
             setChangedTag(true);
         }
     }
 
-    public static boolean getEpoch() {
+    public boolean getEpoch() {
         return epoch;
     }
 
-    static long thisEpochBit() {
+    long thisEpochBit() {
         return epoch ? EPOCH_1_BIT : EPOCH_0_BIT;
     }
 
     @Uninterruptible(reason = "Called by uninterruptible code")
-    public static boolean currentEpoch() {
+    public boolean currentEpoch() {
         return epoch;
     }
 
-    public static boolean previousEpoch() {
+    public boolean previousEpoch() {
         return !epoch;
     }
 }

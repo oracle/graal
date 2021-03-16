@@ -28,6 +28,7 @@ import java.util.List;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
+import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -318,7 +319,7 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     public long getEpochAddress() {
         // Should go away with backport of JDK-8257621
-        throw VMError.unimplemented();
+        return JfrTraceIdEpoch.getInstance().getEpochAddress();
     }
 
     /** See {@link JVM#uncaughtException}. */

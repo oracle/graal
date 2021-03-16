@@ -37,7 +37,7 @@ public class JfrTraceIdLoadBarrier {
     private static int classCount1;
 
     private static boolean isNotTagged(long value) {
-        long thisEpochBit = JfrTraceIdEpoch.thisEpochBit();
+        long thisEpochBit = JfrTraceIdEpoch.getInstance().thisEpochBit();
         return ((value & ((thisEpochBit << JfrTraceId.META_SHIFT) | thisEpochBit)) != thisEpochBit);
     }
 
@@ -50,14 +50,14 @@ public class JfrTraceIdLoadBarrier {
         assert obj != null;
         if (shouldTag(obj)) {
             JfrTraceId.setUsedThisEpoch(obj);
-            JfrTraceIdEpoch.setChangedTag();
+            JfrTraceIdEpoch.getInstance().setChangedTag();
         }
         assert JfrTraceId.isUsedThisEpoch(obj);
         return JfrTraceId.getTraceId(obj);
     }
 
     public static void clear() {
-        clearClassCount(JfrTraceIdEpoch.previousEpoch());
+        clearClassCount(JfrTraceIdEpoch.getInstance().previousEpoch());
     }
 
     private static void clearClassCount(boolean epoch) {
@@ -86,8 +86,8 @@ public class JfrTraceIdLoadBarrier {
         assert clazz != null;
         if (shouldTag(clazz)) {
             JfrTraceId.setUsedThisEpoch(clazz);
-            increaseClassCount(JfrTraceIdEpoch.currentEpoch());
-            JfrTraceIdEpoch.setChangedTag();
+            increaseClassCount(JfrTraceIdEpoch.getInstance().currentEpoch());
+            JfrTraceIdEpoch.getInstance().setChangedTag();
         }
         assert JfrTraceId.isUsedThisEpoch(clazz);
         return JfrTraceId.getTraceId(clazz);

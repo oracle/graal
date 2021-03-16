@@ -78,11 +78,11 @@ public class JfrTraceId {
     }
 
     public static void setUsedThisEpoch(Class<?> clazz) {
-        tag(clazz, JfrTraceIdEpoch.thisEpochBit());
+        tag(clazz, JfrTraceIdEpoch.getInstance().thisEpochBit());
     }
 
     public static boolean isUsedThisEpoch(Class<?> clazz) {
-        return predicate(clazz, TRANSIENT_BIT | JfrTraceIdEpoch.thisEpochBit());
+        return predicate(clazz, TRANSIENT_BIT | JfrTraceIdEpoch.getInstance().thisEpochBit());
     }
 
     public static long getTraceIdRaw(Class<?> clazz) {

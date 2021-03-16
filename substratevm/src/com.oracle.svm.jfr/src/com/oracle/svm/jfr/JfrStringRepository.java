@@ -47,7 +47,7 @@ public class JfrStringRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public boolean add(boolean expectedEpoch, long id, String value) {
-        boolean currentEpoch = JfrTraceIdEpoch.currentEpoch();
+        boolean currentEpoch = JfrTraceIdEpoch.getInstance().currentEpoch();
         if (currentEpoch == expectedEpoch) {
             // TODO: uninterruptibly insert the string into a datastructure.
         }

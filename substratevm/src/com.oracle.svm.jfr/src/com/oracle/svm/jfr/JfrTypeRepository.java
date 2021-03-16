@@ -52,10 +52,10 @@ public class JfrTypeRepository implements JfrRepository {
     public void write(JfrChunkWriter writer) throws IOException {
         assert VMOperation.isInProgressAtSafepoint();
         writer.writeCompressedLong(JfrTypes.Class.getId());
-        writer.writeCompressedLong(JfrTraceIdLoadBarrier.classCount(JfrTraceIdEpoch.previousEpoch()));
+        writer.writeCompressedLong(JfrTraceIdLoadBarrier.classCount(JfrTraceIdEpoch.getInstance().previousEpoch()));
 
         JfrTraceIdLoadBarrier.ClassConsumer kc = aClass -> writeKlass(aClass, writer);
-        JfrTraceIdLoadBarrier.doClasses(kc, JfrTraceIdEpoch.previousEpoch());
+        JfrTraceIdLoadBarrier.doClasses(kc, JfrTraceIdEpoch.getInstance().previousEpoch());
     }
 
     private void writeKlass(Class<?> clazz, JfrChunkWriter writer) {
