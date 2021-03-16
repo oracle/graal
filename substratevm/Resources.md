@@ -55,11 +55,14 @@ See also the [guide on assisted configuration of Java resources and other dynami
 ## Locales
 
 It is also possible to specify which locales should be included in the image and what should be the default one. For
-example, to switch the default locale to German, but also include French and English, one can use the following hosted options.
+example, to switch the default locale to German and also include French and English, one can use the following hosted
+options.
 ```shell
 native-image -H:DefaultLocale=de -H:IncludeLocales=fr,en
 ```
-The locales are specified using [language tags](https://docs.oracle.com/javase/tutorial/i18n/locale/matching.html). All locales can be included via ``-H:+IncludeAllLocales``, but please note that it increases the size of the resulting binary.
+The locales are specified using [language tags](https://docs.oracle.com/javase/tutorial/i18n/locale/matching.html). All
+locales can be included via ``-H:+IncludeAllLocales``, but please note that it increases the size of the resulting
+binary.
 
 ## Resource Bundles in Native Image
 
@@ -82,4 +85,12 @@ Alternatively, bundles can be specified directly as options to `native-image` as
 ```shell
 native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
 ```
-By default, the requested bundles are included for all requested locales. In order to optimize this, it is possible to use ``IncludeResourceBundles`` with locale specific substring, for example ``-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`` will include the bundle only in French.
+By default, the requested bundles are included for all requested locales. In order to optimize this, it is possible to
+use ``IncludeResourceBundles`` with locale specific substring, for
+example ``-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`` will include the bundle only in French.
+
+### Two Modes of Localization
+
+Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM. Therefore,
+using it causes image size increase for smaller binaries such as hello world. If smaller images are what you are aiming for, try the `-H:+LocalizationOptimizedMode` option. This option switches the lookup to a simple in-memory map. In case you are aiming for a single locale image with minimal size, it can help you achieve that.
+But please note that this mode is not fully compatible in some edge cases, so please double check that it works properly in your application. 
