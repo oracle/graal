@@ -336,7 +336,7 @@ class NFINativeAccess implements NativeAccess {
         }
 
         @ExplodeLoop
-        Object doExecute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
+        Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
             final int paramCount = nativeSignature.getParameterCount();
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
@@ -359,7 +359,7 @@ class NFINativeAccess implements NativeAccess {
                             convertedArgs[i] = arguments[i];
                     }
                 }
-                Object ret = interop.execute(delegate, convertedArgs);
+                Object ret = delegateInterop.execute(delegate, convertedArgs);
                 CompilerAsserts.partialEvaluationConstant(nativeSignature.getReturnType());
                 switch (nativeSignature.getReturnType()) {
                     case BOOLEAN:
