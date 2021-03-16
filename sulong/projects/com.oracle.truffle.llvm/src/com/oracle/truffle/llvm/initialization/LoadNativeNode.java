@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
 
 public final class LoadNativeNode extends RootNode {
 
@@ -69,7 +70,7 @@ public final class LoadNativeNode extends RootNode {
         LLVMLoadingPhase phase;
         if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
             phase = (LLVMLoadingPhase) frame.getArguments()[0];
-        } else if (frame.getArguments().length == 0) {
+        } else if (frame.getArguments().length == 0 || (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMDLOpen.RTLDFlags))) {
             if (path == null) {
                 throw new LLVMParserException(this, "Toplevel executable %s does not contain bitcode", path);
             }
