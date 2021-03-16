@@ -71,6 +71,7 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
@@ -277,10 +278,25 @@ public class SubstrateUtil {
         void invoke();
     }
 
-    private static volatile boolean diagnosticsInProgress = false;
+    private static final int REGISTERS = 1;
+    private static final int FRAME_ANCHORS = REGISTERS << 1;
+    private static final int DEOPT_STUB_POINTERS = FRAME_ANCHORS << 1;
+    private static final int TOP_FRAME = DEOPT_STUB_POINTERS << 1;
+    private static final int THREADS = TOP_FRAME << 1;
+    private static final int THREAD_STATES = THREADS << 1;
+    private static final int VM_OPERATIONS = THREAD_STATES << 1;
+    private static final int RUNTIME_COMPILATIONS = VM_OPERATIONS << 1;
+    private static final int COUNTERS = RUNTIME_COMPILATIONS << 1;
+    private static final int CURRENT_THREAD_RAW_STACKTRACE = COUNTERS << 1;
+    private static final int CURRENT_THREAD_DECODED_STACKTRACE = CURRENT_THREAD_RAW_STACKTRACE << 1;
+    private static final int OTHER_STACK_TRACES = CURRENT_THREAD_DECODED_STACKTRACE << 1;
+
+    private static AtomicWord<IsolateThread> diagnosticThread = new AtomicWord<>();
+    private static volatile int diagnosticSections = 0;
+    private static volatile int diagnosticThunkIndex = 0;
 
     public static boolean isPrintDiagnosticsInProgress() {
-        return diagnosticsInProgress;
+        return diagnosticThread.get().isNonNull();
     }
 
     /** Prints extensive diagnostic information to the given Log. */
@@ -288,96 +304,148 @@ public class SubstrateUtil {
         printDiagnostics(log, sp, ip, WordFactory.nullPointer());
     }
 
+    /**
+     * Print diagnostics for the various subsystems. If a fatal error occurs while printing
+     * diagnostics, it can happen that the same thread enters this method multiple times.
+     */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
     static void printDiagnostics(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context) {
         log.newline();
-        if (diagnosticsInProgress) {
-            log.string("Error: printDiagnostics already in progress.").newline();
+        IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+        if (!diagnosticThread.compareAndSet(WordFactory.nullPointer(), currentThread) && diagnosticThread.get().notEqual(currentThread)) {
+            log.string("Error: printDiagnostics already in progress by another thread.").newline();
             log.newline();
             return;
         }
-        diagnosticsInProgress = true;
 
-        try {
-            dumpRegisters(log, context);
-        } catch (Exception e) {
-            dumpException(log, "dumpRegisters", e);
+        if (diagnosticSections > 0) {
+            log.newline();
+            log.string("An error occurred while printing diagnostics. The remaining part of this section will be skipped.").newline();
+            log.resetIndentation();
         }
 
-        try {
-            dumpJavaFrameAnchors(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpJavaFrameAnchors", e);
+        // Print the various sections of the diagnostics and skip all sections that were already
+        // printed earlier.
+        if (shouldPrint(REGISTERS)) {
+            try {
+                dumpRegisters(log, context);
+            } catch (Exception e) {
+                dumpException(log, "dumpRegisters", e);
+            }
         }
 
-        try {
-            dumpDeoptStubPointer(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpDeoptStubPointer", e);
+        if (shouldPrint(FRAME_ANCHORS)) {
+            try {
+                dumpJavaFrameAnchors(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpJavaFrameAnchors", e);
+            }
         }
 
-        try {
-            dumpTopFrame(log, sp, ip);
-        } catch (Exception e) {
-            dumpException(log, "dumpTopFrame", e);
+        if (shouldPrint(DEOPT_STUB_POINTERS)) {
+            try {
+                dumpDeoptStubPointer(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpDeoptStubPointer", e);
+            }
         }
 
-        try {
-            dumpVMThreads(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpVMThreads", e);
+        if (shouldPrint(TOP_FRAME)) {
+            try {
+                dumpTopFrame(log, sp, ip);
+            } catch (Exception e) {
+                dumpException(log, "dumpTopFrame", e);
+            }
         }
 
-        IsolateThread currentThread = CurrentIsolate.getCurrentThread();
-        try {
-            dumpVMThreadState(log, currentThread);
-        } catch (Exception e) {
-            dumpException(log, "dumpVMThreadState", e);
+        if (shouldPrint(THREADS)) {
+            try {
+                dumpVMThreads(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpVMThreads", e);
+            }
         }
 
-        try {
-            dumpRecentVMOperations(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpRecentVMOperations", e);
+        if (shouldPrint(THREAD_STATES)) {
+            try {
+                dumpVMThreadState(log, currentThread);
+            } catch (Exception e) {
+                dumpException(log, "dumpVMThreadState", e);
+            }
         }
 
-        dumpRuntimeCompilation(log);
-
-        try {
-            dumpCounters(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpCounters", e);
+        if (shouldPrint(VM_OPERATIONS)) {
+            try {
+                dumpRecentVMOperations(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpRecentVMOperations", e);
+            }
         }
 
-        try {
-            dumpStacktraceRaw(log, sp);
-        } catch (Exception e) {
-            dumpException(log, "dumpStacktraceRaw", e);
+        if (shouldPrint(RUNTIME_COMPILATIONS)) {
+            dumpRuntimeCompilation(log);
         }
 
-        dumpStacktrace(log, sp, ip);
+        if (shouldPrint(COUNTERS)) {
+            try {
+                dumpCounters(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpCounters", e);
+            }
+        }
 
-        if (VMOperationControl.isFrozen()) {
-            /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
-            for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == CurrentIsolate.getCurrentThread()) {
-                    continue;
-                }
-                try {
-                    dumpStacktrace(log, vmThread);
-                } catch (Exception e) {
-                    dumpException(log, "dumpStacktrace", e);
+        if (shouldPrint(CURRENT_THREAD_RAW_STACKTRACE)) {
+            try {
+                dumpStacktraceRaw(log, sp);
+            } catch (Exception e) {
+                dumpException(log, "dumpStacktraceRaw", e);
+            }
+        }
+
+        if (shouldPrint(CURRENT_THREAD_DECODED_STACKTRACE)) {
+            dumpStacktrace(log, sp, ip);
+        }
+
+        if (shouldPrint(OTHER_STACK_TRACES)) {
+            if (VMOperationControl.isFrozen()) {
+                /*
+                 * Only used for diagnostics - iterate all threads without locking the threads
+                 * mutex.
+                 */
+                for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                    if (vmThread == currentThread) {
+                        continue;
+                    }
+                    try {
+                        dumpStacktrace(log, vmThread);
+                    } catch (Exception e) {
+                        dumpException(log, "dumpStacktrace", e);
+                    }
                 }
             }
         }
 
-        try {
-            DiagnosticThunkRegister.getSingleton().callDiagnosticThunks(log);
-        } catch (Exception e) {
-            dumpException(log, "callThunks", e);
+        int numDiagnosticThunks = DiagnosticThunkRegister.getSingleton().size();
+        while (diagnosticThunkIndex < numDiagnosticThunks) {
+            try {
+                int index = diagnosticThunkIndex++;
+                DiagnosticThunkRegister.getSingleton().callDiagnosticThunk(log, index);
+            } catch (Exception e) {
+                dumpException(log, "callThunks", e);
+            }
         }
 
-        diagnosticsInProgress = false;
+        diagnosticThunkIndex = 0;
+        diagnosticSections = 0;
+        diagnosticThread.set(WordFactory.nullPointer());
+    }
+
+    private static boolean shouldPrint(int sectionBit) {
+        if ((diagnosticSections & sectionBit) == 0) {
+            diagnosticSections |= sectionBit;
+            return true;
+        }
+        return false;
     }
 
     private static void dumpException(Log log, String context, Exception e) {
@@ -620,11 +688,14 @@ public class SubstrateUtil {
         }
         /* } Checkstyle: disallow synchronization. */
 
+        @Fold
+        int size() {
+            return diagnosticThunkRegistry.length;
+        }
+
         /** Call each registered diagnostic thunk. */
-        void callDiagnosticThunks(Log log) {
-            for (int i = 0; i < diagnosticThunkRegistry.length; i += 1) {
-                diagnosticThunkRegistry[i].invokeWithoutAllocation(log);
-            }
+        void callDiagnosticThunk(Log log, int index) {
+            diagnosticThunkRegistry[index].invokeWithoutAllocation(log);
         }
     }
 
