@@ -27,13 +27,22 @@ package com.oracle.svm.reflect.target;
 
 // Checkstyle: allow reflection
 
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaUtil;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import java.lang.reflect.Field;
 
@@ -47,6 +56,7 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
         if (offset > 0) {
             return offset;
         }
+
         throw VMError.unsupportedFeature("The offset of " + field + " is accessed without the field being first registered as unsafe accessed. " +
                         "Please register the field as unsafe accessed. You can do so with a reflection configuration that " +
                         "contains an entry for the field with the attribute \"allowUnsafeAccess\": true. Such a configuration " +
@@ -66,5 +76,10 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
         } catch (NoSuchFieldException nse) {
             throw new InternalError();
         }
+    }
+
+    @Substitute
+    private long staticFieldOffset(Target_java_lang_reflect_Field f) {
+        return f.offset;
     }
 }

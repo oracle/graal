@@ -33,10 +33,7 @@ import java.security.ProtectionDomain;
 import java.util.function.Function;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.config.ObjectLayout;
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -208,14 +205,6 @@ final class Target_Unsafe_Core {
     @Substitute
     public void ensureClassInitialized(Class<?> c) {
         DynamicHub.fromClass(c).ensureInitialized();
-    }
-
-    @Substitute
-    private long staticFieldOffset(Field f) {
-        ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        final int baseOffset = layout.getArrayBaseOffset(JavaKind.fromJavaClass(f.getDeclaringClass()));
-        final long objOffset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(f);
-        return objOffset - baseOffset;
     }
 
     @Substitute
