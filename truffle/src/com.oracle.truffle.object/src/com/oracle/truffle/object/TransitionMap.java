@@ -100,6 +100,7 @@ final class TransitionMap<K, V> {
      * Insert with weakly referenced key.
      */
     public V putWeakKey(K key, V value) {
+        ShapeImpl.shapeCacheWeakKeys.inc();
         WeakKey<K> weakKey = new WeakKey<>(key);
         return putAnyKey(weakKey, value);
     }

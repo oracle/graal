@@ -1537,6 +1537,7 @@ public abstract class ShapeImpl extends Shape {
     private static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
     static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
+    static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
     static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
 
