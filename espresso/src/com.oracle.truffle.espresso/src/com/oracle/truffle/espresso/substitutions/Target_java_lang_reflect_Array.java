@@ -62,9 +62,21 @@ public final class Target_java_lang_reflect_Array {
      *                dimensions of the requested array instance exceed 255.
      * @exception NegativeArraySizeException if the specified {@code length} is negative
      */
-    @TruffleBoundary
     @Substitution
     public static Object newArray(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+        if (CompilerDirectives.isPartialEvaluationConstant(componentType)) {
+            // PE-through.
+            return newArrayImpl(componentType, length, meta);
+        }
+        return newArrayBoundary(componentType, length, meta);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    static Object newArrayBoundary(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+        return newArrayImpl(componentType, length, meta);
+    }
+
+    static Object newArrayImpl(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
         if (StaticObject.isNull(componentType)) {
             throw meta.throwNullPointerException();
         }
@@ -72,16 +84,10 @@ public final class Target_java_lang_reflect_Array {
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-
         if (component.isPrimitive()) {
             byte jvmPrimitiveType = (byte) component.getJavaKind().getBasicType();
             return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length, meta);
         }
-
-        // NegativeArraySizeException is thrown in getInterpreterToVM().newArray
-        // if (length < 0) {
-        // throw meta.throwEx(meta.NegativeArraySizeException);
-        // }
         return InterpreterToVM.newReferenceArray(component, length);
     }
 
