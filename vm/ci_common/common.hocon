@@ -409,7 +409,9 @@ builds += [
   }
   ${vm_java_16} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
-      [set-export, VM_ENV, "${VM_ENV}-16"]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, graalvm-show]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
@@ -440,7 +442,10 @@ builds += [
   }
   ${vm_java_16} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
     run: [
-      [set-export, VM_ENV, "${VM_ENV}-16"]
+      [set-export, VM_ENV, "${VM_ENV}-aarch64"]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, graalvm-show]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [graalvm-show]
       ${mx_vm_common} ${vm_profiles} [build]
