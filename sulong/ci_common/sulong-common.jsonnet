@@ -195,13 +195,6 @@
   llvmBundled:: {},
 
   llvm4_darwin_fix:: {
-    # FIXME: We prune `null` entries to produce the original result.
-    # Eventually, we should canonicalize this.
-    environment: std.prune(super.environment + {
-      CPPFLAGS: "-g",
-      CFLAGS: null,
-      CLANG_LLVM_OBJCOPY: null,
-    }),
     timelimit: "0:45:00",
   },
 
