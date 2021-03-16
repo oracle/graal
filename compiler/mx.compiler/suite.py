@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.287.0",
+  "mxversion" : "5.288.5",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -227,10 +227,31 @@ suite = {
         ],
       },
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "13+",
+      "javaCompliance" : "13..15",
       "checkPackagePrefix" : "false",
       "overlayTarget" : "org.graalvm.compiler.serviceprovider",
       "multiReleaseJarVersion" : "13",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.compiler.serviceprovider.jdk16" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+          "jdk.vm.ci.code.site",
+          "jdk.vm.ci.services",
+          "jdk.vm.ci.runtime",
+        ],
+      },
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "16+",
+      "checkPackagePrefix" : "false",
+      "overlayTarget" : "org.graalvm.compiler.serviceprovider",
+      "multiReleaseJarVersion" : "16",
       "workingSets" : "API,Graal",
     },
 
@@ -570,7 +591,7 @@ suite = {
       "overlayTarget" : "org.graalvm.compiler.hotspot",
       "multiReleaseJarVersion" : "13",
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "13+",
+      "javaCompliance" : "13..14",
       "workingSets" : "Graal,HotSpot",
     },
 

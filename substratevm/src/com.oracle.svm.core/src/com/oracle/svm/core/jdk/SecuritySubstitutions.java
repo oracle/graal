@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
@@ -276,7 +277,7 @@ final class Target_javax_crypto_JceSecurity {
     // value == PROVIDER_VERIFIED is successfully verified
     // value is failure cause Exception in error case
     @Alias //
-    private static Map<Provider, Object> verificationResults;
+    private static Map<Object, Object> verificationResults;
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
@@ -298,7 +299,7 @@ final class Target_javax_crypto_JceSecurity {
     @Substitute
     static Exception getVerificationResult(Provider p) {
         /* Start code block copied from original method. */
-        Object o = verificationResults.get(p);
+        Object o = verificationResults.get(JceSecurityUtil.providerKey(p));
         if (o == PROVIDER_VERIFIED) {
             return null;
         } else if (o != null) {
@@ -315,6 +316,18 @@ final class Target_javax_crypto_JceSecurity {
                         "All providers must be registered and verified in the Native Image builder. ");
     }
 
+}
+
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK16OrLater.class)
+@SuppressWarnings({"unused"})
+final class Target_javax_crypto_JceSecurity_IdentityWrapper {
+    @Alias //
+    Provider obj;
+
+    @Alias //
+    Target_javax_crypto_JceSecurity_IdentityWrapper(Provider obj) {
+        this.obj = obj;
+    }
 }
 
 class JceSecurityAccessor {
@@ -346,6 +359,15 @@ class JceSecurityAccessor {
 }
 
 final class JceSecurityUtil {
+
+    static Object providerKey(Provider p) {
+        if (JavaVersionUtil.JAVA_SPEC < 16) {
+            return p;
+        }
+        /* Starting with JDK 16 the verification results map key is an identity wrapper object. */
+        return new Target_javax_crypto_JceSecurity_IdentityWrapper(p);
+    }
+
     static RuntimeException shouldNotReach(String method) {
         throw VMError.shouldNotReachHere(method + " is reached at runtime. " +
                         "This should not happen. The contents of JceSecurity.verificationResults " +
