@@ -27,22 +27,13 @@ package com.oracle.svm.reflect.target;
 
 // Checkstyle: allow reflection
 
-import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.MetaUtil;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import java.lang.reflect.Field;
 
