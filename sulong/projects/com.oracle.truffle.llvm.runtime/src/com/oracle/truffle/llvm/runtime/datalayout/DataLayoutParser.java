@@ -115,7 +115,7 @@ final class DataLayoutParser {
 
     /**
      * Parses the LLVM data layout string.
-     * 
+     *
      * @see <a href="https://llvm.org/docs/LangRef.html#data-layout">Data Layout</a>
      * @param layout The data layout string
      * @param specs list to collect data type specifications
@@ -171,16 +171,20 @@ final class DataLayoutParser {
             }
         }
         if (!isPointerTypeFound) {
-            // Add a pointer datatype with size = largest integer size
-            int largestIntegerTypeSize = -1;
-            for (DataTypeSpecification spec : specs) {
-                if (spec.type == DataLayoutType.INTEGER && spec.getSize() > largestIntegerTypeSize) {
-                    largestIntegerTypeSize = spec.getSize();
-                }
-            }
-            if (largestIntegerTypeSize > 0) {
-                specs.add(new DataTypeSpecification(DataLayoutType.POINTER, largestIntegerTypeSize, largestIntegerTypeSize, largestIntegerTypeSize));
-            }
+            // TODO: AArch64 only
+            int defaultPointerSize = 64;
+            specs.add(new DataTypeSpecification(DataLayoutType.POINTER, defaultPointerSize, defaultPointerSize, defaultPointerSize));
+// // Add a pointer datatype with size = largest integer size
+// int largestIntegerTypeSize = -1;
+// for (DataTypeSpecification spec : specs) {
+// if (spec.type == DataLayoutType.INTEGER && spec.getSize() > largestIntegerTypeSize) {
+// largestIntegerTypeSize = spec.getSize();
+// }
+// }
+// if (largestIntegerTypeSize > 0) {
+// specs.add(new DataTypeSpecification(DataLayoutType.POINTER, largestIntegerTypeSize,
+// largestIntegerTypeSize, largestIntegerTypeSize));
+// }
         }
     }
 
