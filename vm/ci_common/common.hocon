@@ -7,9 +7,7 @@ common_vm: ${common} ${vm_setup} {
 
 common_vm_linux: ${common_vm} ${linux} {
   packages: {
-    gcc: "==4.9.2" # GCC 4.9.0 fails on cluster
-    make: ">=3.83"
-    binutils: "==2.23.2"
+    devtoolset: "==7" # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
   }
 }
 
