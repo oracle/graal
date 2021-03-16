@@ -610,6 +610,14 @@ public final class Meta implements ContextAccess {
         java_time_ZoneId_getId = java_time_ZoneId.requireDeclaredMethod(Name.getId, Signature.String);
         java_time_ZoneId_of = java_time_ZoneId.requireDeclaredMethod(Name.of, Signature.ZoneId_String);
         assert java_time_ZoneId_of.isStatic();
+
+        java_util_Map = knownKlass(Type.java_util_Map);
+        java_util_Map_get = java_util_Map.requireDeclaredMethod(Name.get, Signature.Object_Object);
+        java_util_Map_put = java_util_Map.requireDeclaredMethod(Name.put, Signature.Object_Object_Object);
+        java_util_Map_size = java_util_Map.requireDeclaredMethod(Name.size, Signature._int);
+        java_util_Map_remove = java_util_Map.requireDeclaredMethod(Name.remove, Signature.Object_Object);
+        assert java_util_Map.isInterface();
+
     }
 
     /**
@@ -1106,6 +1114,12 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_time_ZoneId;
     public final Method java_time_ZoneId_getId;
     public final Method java_time_ZoneId_of;
+
+    public final ObjectKlass java_util_Map;
+    public final Method java_util_Map_size;
+    public final Method java_util_Map_get;
+    public final Method java_util_Map_put;
+    public final Method java_util_Map_remove;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;

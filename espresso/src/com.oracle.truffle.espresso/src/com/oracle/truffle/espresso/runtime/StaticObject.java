@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -79,6 +80,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -1210,6 +1212,110 @@ public final class StaticObject implements TruffleObject {
     }
 
     // endregion ### Members
+
+    // region ### Hashes
+
+    @ExportMessage
+    public boolean hasHashEntries() {
+        return InterpreterToVM.instanceOf(this, getKlass().getMeta().java_util_Map);
+    }
+
+    @SuppressWarnings("unused")
+    @ExportMessage
+    public boolean isHashEntryReadable(Object key) {
+        return hasHashEntries();
+    }
+
+    @SuppressWarnings("unused")
+    @ExportMessage
+    public boolean isHashEntryModifiable(Object key) {
+        return hasHashEntries();
+    }
+
+    @SuppressWarnings("unused")
+    @ExportMessage
+    public boolean isHashEntryInsertable(Object key) {
+        return hasHashEntries();
+    }
+
+    @SuppressWarnings("unused")
+    @ExportMessage
+    public boolean isHashEntryRemovable(Object key) {
+        return hasHashEntries();
+    }
+
+    @ExportMessage
+    public long getHashSize(@Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException {
+        if (!hasHashEntries()) {
+            throw UnsupportedMessageException.create();
+        }
+        Meta meta = getKlass().getMeta();
+        Method size = getInteropKlass().itableLookup(meta.java_util_Map, meta.java_util_Map_size.getITableIndex());
+        try {
+            return (int) invoke.execute(size, this, EMPTY_ARRAY);
+        } catch (UnsupportedTypeException | ArityException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    @ExportMessage
+    public Object readHashValue(Object key,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnknownKeyException {
+        if (!hasHashEntries()) {
+            throw UnsupportedMessageException.create();
+        }
+        Meta meta = getKlass().getMeta();
+        Method get = getInteropKlass().itableLookup(meta.java_util_Map, meta.java_util_Map_get.getITableIndex());
+        try {
+            return invoke.execute(get, this, new Object[]{key});
+        } catch (UnsupportedTypeException e) {
+            throw UnknownKeyException.create(key);
+        } catch (ArityException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    @ExportMessage
+    public void writeHashEntry(Object key, Object value,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnknownKeyException {
+        if (!hasHashEntries()) {
+            throw UnsupportedMessageException.create();
+        }
+        Meta meta = getKlass().getMeta();
+        Method put = getInteropKlass().itableLookup(meta.java_util_Map, meta.java_util_Map_put.getITableIndex());
+        try {
+            invoke.execute(put, this, new Object[]{key, value});
+        } catch (UnsupportedTypeException e) {
+            throw UnknownKeyException.create(key);
+        } catch (ArityException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    @ExportMessage
+    public void removeHashEntry(Object key,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnknownKeyException {
+        if (!hasHashEntries()) {
+            throw UnsupportedMessageException.create();
+        }
+        Meta meta = getKlass().getMeta();
+        Method remove = getInteropKlass().itableLookup(meta.java_util_Map, meta.java_util_Map_remove.getITableIndex());
+        try {
+            invoke.execute(remove, this, new Object[]{key});
+        } catch (UnsupportedTypeException e) {
+            throw UnknownKeyException.create(key);
+        } catch (ArityException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public Object getHashEntriesIterator() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    // endregion ### Hashes
 
     // region ### Exceptions
 
