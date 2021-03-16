@@ -1220,28 +1220,50 @@ public final class StaticObject implements TruffleObject {
         return InterpreterToVM.instanceOf(this, getKlass().getMeta().java_util_Map);
     }
 
-    @SuppressWarnings("unused")
+    /*
+     * Note:
+     * 
+     * The implementation of the hashes protocol is independent from the guest implementation. As
+     * such, even if isHashEntryModifiable() returns true, trying to modify the guest map may result
+     * in a guest exception (in the case of unmodifiable map, for example).
+     */
+
     @ExportMessage
-    public boolean isHashEntryReadable(Object key) {
-        return hasHashEntries();
+    public boolean isHashEntryReadable(Object key,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) {
+        return hasHashEntries() && containsKey(key, invoke);
     }
 
     @SuppressWarnings("unused")
     @ExportMessage
-    public boolean isHashEntryModifiable(Object key) {
-        return hasHashEntries();
+    public boolean isHashEntryModifiable(Object key,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) {
+        return hasHashEntries() && containsKey(key, invoke);
     }
 
     @SuppressWarnings("unused")
     @ExportMessage
-    public boolean isHashEntryInsertable(Object key) {
-        return hasHashEntries();
+    public boolean isHashEntryInsertable(Object key,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) {
+        return hasHashEntries() && !containsKey(key, invoke);
     }
 
     @SuppressWarnings("unused")
     @ExportMessage
-    public boolean isHashEntryRemovable(Object key) {
-        return hasHashEntries();
+    public boolean isHashEntryRemovable(Object key,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) {
+        return hasHashEntries() && containsKey(key, invoke);
+    }
+
+    private boolean containsKey(Object key,
+                    InvokeEspressoNode invokeContains) {
+        Meta meta = getKlass().getMeta();
+        Method containsKey = getInteropKlass().itableLookup(meta.java_util_Map, meta.java_util_Map_containsKey.getITableIndex());
+        try {
+            return (boolean) invokeContains.execute(containsKey, this, EMPTY_ARRAY);
+        } catch (UnsupportedTypeException | ArityException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 
     @ExportMessage
@@ -1254,7 +1276,7 @@ public final class StaticObject implements TruffleObject {
         try {
             return (int) invoke.execute(size, this, EMPTY_ARRAY);
         } catch (UnsupportedTypeException | ArityException e) {
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
@@ -1271,7 +1293,7 @@ public final class StaticObject implements TruffleObject {
         } catch (UnsupportedTypeException e) {
             throw UnknownKeyException.create(key);
         } catch (ArityException e) {
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
@@ -1288,7 +1310,7 @@ public final class StaticObject implements TruffleObject {
         } catch (UnsupportedTypeException e) {
             throw UnknownKeyException.create(key);
         } catch (ArityException e) {
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
@@ -1305,7 +1327,7 @@ public final class StaticObject implements TruffleObject {
         } catch (UnsupportedTypeException e) {
             throw UnknownKeyException.create(key);
         } catch (ArityException e) {
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
