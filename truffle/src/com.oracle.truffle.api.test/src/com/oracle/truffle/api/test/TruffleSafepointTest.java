@@ -645,11 +645,10 @@ public class TruffleSafepointTest {
 
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-
                 // No lockInterruptibly()/setBlocked() here, `lock` is never held during a poll()
                 // It can also be required by language semantics if only the await() should be
                 // interruptible and not the lock().
-                lock.lock();
+                lockBoundary(lock);
                 try {
                     while (!done.get()) {
                         safepoint.setBlocked(node, Interrupter.THREAD_INTERRUPT,
@@ -660,14 +659,14 @@ public class TruffleSafepointTest {
                                             // let other threads reach the safepoint too.
                                             inAwait.incrementAndGet();
                                             try {
-                                                condition.await();
+                                                c.await();
                                             } finally {
                                                 inAwait.decrementAndGet();
                                             }
                                         }, condition, lock::unlock, lock::lock);
                     }
                 } finally {
-                    lock.unlock();
+                    unlockBoundary(lock);
                 }
                 return true; // only run once
             })) {
@@ -710,6 +709,16 @@ public class TruffleSafepointTest {
                 }
             }
         });
+    }
+
+    @TruffleBoundary
+    private static void unlockBoundary(ReentrantLock lock) {
+        lock.unlock();
+    }
+
+    @TruffleBoundary
+    private static void lockBoundary(ReentrantLock lock) {
+        lock.lock();
     }
 
     @Test
