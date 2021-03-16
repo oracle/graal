@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -114,7 +115,8 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
         }
 
         @Override
-        public LogicNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, CanonicalCondition condition,
+        public LogicNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
+                        CanonicalCondition condition,
                         boolean unorderedIsTrue, ValueNode forX, ValueNode forY, NodeView view) {
             LogicNode result = findSynonym(forX, forY, view);
             if (result != null) {
@@ -141,9 +143,25 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
             return nullSynonym(forY, forX);
         } else if (forY.stamp(view) instanceof AbstractPointerStamp && ((AbstractPointerStamp) forY.stamp(view)).alwaysNull()) {
             return nullSynonym(forX, forY);
-        } else {
-            return null;
+        } else if (forX instanceof BoxNode && forY instanceof BoxNode) {
+            /*
+             * We have a fast path here for box comparisons of constants to avoid wasting time in
+             * PEA / lowering later.
+             */
+            BoxNode boxX = (BoxNode) forX;
+            BoxNode boxY = (BoxNode) forY;
+            if (boxX.getValue().isConstant() && boxY.getValue().isConstant()) {
+                if (boxX.getBoxingKind() != boxY.getBoxingKind()) {
+                    return LogicConstantNode.contradiction();
+                }
+                if (boxX.getValue().asConstant().equals(boxY.getValue().asConstant())) {
+                    return LogicConstantNode.tautology();
+                } else {
+                    return LogicConstantNode.contradiction();
+                }
+            }
         }
+        return null;
     }
 
     private static LogicNode nullSynonym(ValueNode nonNullValue, ValueNode nullValue) {

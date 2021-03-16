@@ -275,6 +275,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         return false;
                     }
                 }
+                if (!hasVirtualInputs.isMarked(node)) {
+                    // a virtualizable node that is no allocation, leave it as is if the inputs have
+                    // not been virtualized yet
+                    return false;
+                }
                 break;
             case MATERIALIZE_ALL:
                 boolean virtualizationResult = virtualize(node, tool);
