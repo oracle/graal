@@ -70,8 +70,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * time dependent on the array size. This typically means that safepoints are best polled at the end
  * of loops and at the end of function or method calls to cover recursion. In addition, any guest
  * language code that blocks the execution, like guest language locks, need to use the
- * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable) blocking API} to allow
- * polling of safepoints while the thread is waiting.
+ * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable) blocking API} to
+ * allow polling of safepoints while the thread is waiting.
  * <p>
  * Truffle's {@link LoopNode loop node} and {@link RootNode root node} support safepoint polling
  * automatically. No further calls to {@link #poll(Node)} are therefore necessary. Custom loops or
@@ -218,7 +218,7 @@ public abstract class TruffleSafepoint {
      * events need are processed. If <code>null</code> is provided then no action will be performed.
      * Arbitrary code may be executed in this runnable. Note that the blocked state is temporarily
      * reset to its previous state while the afterInterrupt is called.
-     * 
+     *
      * <p>
      * Multiple recursive invocations of this method is supported. The previous blocked state will
      * be restored when the method completes or fails.
@@ -231,7 +231,7 @@ public abstract class TruffleSafepoint {
      * <pre>
      * Lock lock = new ReentrantLock();
      * TruffleSafepoint sp = TruffleSafepoint.getCurrent();
-     * sp.setBlocked(location, Interrupter.THREAD_INTERRUPT, ReentrantLock::lockInterruptibly, lock, null);
+     * sp.setBlocked(location, Interrupter.THREAD_INTERRUPT, ReentrantLock::lockInterruptibly, lock, null, null);
      * </pre>
      *
      * @see TruffleSafepoint
@@ -293,7 +293,7 @@ public abstract class TruffleSafepoint {
     /**
      * Returns the current safepoint configuration for the current thread. This method is useful to
      * access configuration methods like
-     * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable)} or
+     * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)} or
      * {@link #setAllowSideEffects(boolean)}.
      * <p>
      * Important: The result of this method must not be stored or used on a different thread than
@@ -349,7 +349,8 @@ public abstract class TruffleSafepoint {
      * to allow the Truffle safepoint mechanism to interrupt a blocked thread and schedule a
      * safepoint.
      *
-     * @see TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable)
+     * @see TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable,
+     *      Runnable)
      * @see Interrupter#THREAD_INTERRUPT
      * @since 21.1
      */
