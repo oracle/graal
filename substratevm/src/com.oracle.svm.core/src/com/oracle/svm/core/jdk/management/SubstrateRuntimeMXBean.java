@@ -145,12 +145,12 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public boolean isBootClassPathSupported() {
-        return true;
+        return false;
     }
 
     @Override
     public String getBootClassPath() {
-        return "";
+        throw new UnsupportedOperationException("boot class path mechanism is not supported");
     }
 
     @Override
