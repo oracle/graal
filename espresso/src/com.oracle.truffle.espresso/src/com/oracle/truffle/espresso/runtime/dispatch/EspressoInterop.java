@@ -851,8 +851,9 @@ public class EspressoInterop extends BaseInterop {
 
     @ExportMessage
     static Object readMember(StaticObject receiver, String member,
-                    @Cached @Exclusive LookupInstanceFieldNode lookupField,
-                    @Cached @Exclusive LookupVirtualMethodNode lookupMethod) throws UnknownIdentifierException {
+                    @Cached @Exclusive LookupInstanceFieldNode lookupField
+    // , @Cached @Exclusive LookupVirtualMethodNode lookupMethod
+    ) throws UnknownIdentifierException {
         receiver.checkNotForeign();
         if (notNull(receiver)) {
             Field f = lookupField.execute(getInteropKlass(receiver), member);
@@ -860,15 +861,18 @@ public class EspressoInterop extends BaseInterop {
                 return unwrapForeign(f.get(receiver));
             }
 
+            // Disable reading method as executable members for now.
+            /*-
             Method m = null;
             try {
                 m = lookupMethod.execute(getInteropKlass(receiver), member, -1);
             } catch (ArityException e) {
-                /* Ignore */
+                // Ignore
             }
             if (m != null) {
                 return new EspressoFunction(m, receiver);
             }
+            */
 
             // Class<T>.static == Klass<T>
             if (CLASS_TO_STATIC.equals(member)) {
@@ -896,22 +900,26 @@ public class EspressoInterop extends BaseInterop {
 
     @ExportMessage
     static boolean isMemberReadable(StaticObject receiver, String member,
-                    @Cached @Exclusive LookupInstanceFieldNode lookupField,
-                    @Cached @Exclusive LookupVirtualMethodNode lookupMethod) {
+                    @Cached @Exclusive LookupInstanceFieldNode lookupField
+    // , @Cached @Exclusive LookupVirtualMethodNode lookupMethod
+    ) {
         receiver.checkNotForeign();
         Field f = lookupField.execute(getInteropKlass(receiver), member);
         if (f != null) {
             return true;
         }
+        // Disable reading method as executable members for now.
+        /*-
         Method m = null;
         try {
             m = lookupMethod.execute(getInteropKlass(receiver), member, -1);
         } catch (ArityException e) {
-            /* Ignore */
+            // Ignore
         }
         if (m != null) {
             return true;
         }
+        */
         return notNull(receiver) && receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Class //
                         && (CLASS_TO_STATIC.equals(member) || STATIC_TO_CLASS.equals(member));
     }

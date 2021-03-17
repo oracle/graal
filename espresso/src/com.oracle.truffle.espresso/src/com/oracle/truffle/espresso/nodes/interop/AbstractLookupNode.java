@@ -50,7 +50,6 @@ public abstract class AbstractLookupNode extends Node {
         } else {
             methodName = key;
         }
-        boolean skipArityCheck = arity == -1;
         Method result = null;
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = -1;
@@ -59,7 +58,7 @@ public abstract class AbstractLookupNode extends Node {
                 int matchArity = m.getParameterCount();
                 minOverallArity = min(minOverallArity, matchArity);
                 maxOverallArity = max(maxOverallArity, matchArity);
-                if (skipArityCheck || (matchArity == arity)) {
+                if (matchArity == arity) {
                     if (result != null) {
                         /*
                          * Multiple methods with the same name and arity (if specified), cannot
