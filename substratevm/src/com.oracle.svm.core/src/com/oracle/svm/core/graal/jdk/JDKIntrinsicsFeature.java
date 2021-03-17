@@ -76,7 +76,14 @@ final class JDKIntrinsicsFeature implements GraalFeature {
         r.register5("arraycopy", Object.class, int.class, Object.class, int.class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
-                b.add(new ArrayCopyWithExceptionNode(src, srcPos, dst, dstPos, length, null, b.bci()));
+                /*
+                 * GR-30242: ArrayCopyWithExceptionNode can be replaced with non-throwing node that
+                 * lowers with deopting guards instead of explicit checks. The null checks here
+                 * avoid deopts due to null objects, but not out-of-bounds or store check deopts.
+                 */
+                ValueNode nonNullSrc = b.nullCheckedValue(src);
+                ValueNode nonNullDst = b.nullCheckedValue(dst);
+                b.add(new ArrayCopyWithExceptionNode(nonNullSrc, srcPos, nonNullDst, dstPos, length, null, b.bci()));
                 return true;
             }
         });
