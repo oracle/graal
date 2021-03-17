@@ -37,7 +37,6 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -142,7 +141,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
                  * between a Phi and DeoptProxy node in which case the stamps lose precision.
                  */
                 GuardingNode nullCheck = tool.createGuard(node, node.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-                node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck)));
+                node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
             }
         }
 

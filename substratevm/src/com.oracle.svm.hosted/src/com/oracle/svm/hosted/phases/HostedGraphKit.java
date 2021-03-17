@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
@@ -167,7 +166,6 @@ public class HostedGraphKit extends SubstrateGraphKit {
             return object;
         }
         createCheckThrowingBytecodeException(IsNullNode.create(object), true, BytecodeExceptionNode.BytecodeExceptionKind.NULL_POINTER);
-        Stamp nonNullStamp = object.stamp(NodeView.DEFAULT).join(StampFactory.objectNonNull());
-        return append(PiNode.create(object, nonNullStamp));
+        return append(PiNode.create(object, StampFactory.objectNonNull()));
     }
 }
