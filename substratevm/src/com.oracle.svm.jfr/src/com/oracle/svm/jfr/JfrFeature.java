@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
@@ -122,29 +123,19 @@ public class JfrFeature implements Feature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
 
-        Map<Class<?>, Integer> classToIndex = new HashMap<>();
-
-        // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
-        Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl) a).getTypes();
-        int mapSize = 1; // Reserve slot 0 for error-catcher.
-        for (SharedType type : types) {
-            DynamicHub hub = type.getHub();
-            classToIndex.put(hub.getHostedJavaClass(), hub.getTypeID());
-            mapSize++;
-        }
+        int mapSize = ImageSingletons.lookup(DynamicHubSupport.class).getMaxTypeId() + 1; // Reserve slot 0 for error-catcher.
 
         // Create trace-ID map with fixed size.
         JfrTraceIdMap map = new JfrTraceIdMap(mapSize);
         ImageSingletons.lookup(JfrRuntimeAccess.class).setTraceIdMap(map);
 
-        // Assign each class, package, module and class-loader a unique index.
-        int idx = classToIndex.size() + 1;
-        for (Class<?> clazz : classToIndex.keySet()) {
-            if (classToIndex.get(clazz) + 1 >= idx) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
+        // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
+        Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl) a).getTypes();
+        for (SharedType type : types) {
+            DynamicHub hub = type.getHub();
+            Class<?> clazz = hub.getHostedJavaClass();
             if (!clazz.isPrimitive()) {
-                JfrTraceId.assign(clazz, classToIndex);
+                JfrTraceId.assign(clazz, hub.getTypeID());
             }
         }
 
