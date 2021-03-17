@@ -39,6 +39,8 @@ import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 /**
@@ -74,6 +76,7 @@ public class LocalizationSupport {
         throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundleClass.getTypeName());
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         if (bundle instanceof PropertyResourceBundle) {
             String withLocale = control.toBundleName(bundleName, locale);
@@ -88,6 +91,7 @@ public class LocalizationSupport {
     /**
      * Template method for subclasses to perform additional tasks.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected void onBundlePrepared(@SuppressWarnings("unused") ResourceBundle bundle) {
 
     }

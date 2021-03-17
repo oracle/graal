@@ -36,6 +36,8 @@ import java.util.ResourceBundle;
 import java.util.spi.LocaleServiceProvider;
 
 //Checkstyle: stop
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import sun.util.locale.provider.LocaleProviderAdapter;
 //Checkstyle: resume
 
@@ -71,6 +73,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         bundle.keySet();

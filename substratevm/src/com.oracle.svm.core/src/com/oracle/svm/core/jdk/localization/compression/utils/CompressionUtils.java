@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.jdk.localization.compression.utils;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -33,6 +36,7 @@ import java.nio.IntBuffer;
 
 public class CompressionUtils {
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static byte[] intsToBytes(int[] data) {
         ByteBuffer byteBuffer = ByteBuffer.allocate(data.length * 4);
         IntBuffer intBuffer = byteBuffer.asIntBuffer();
@@ -53,6 +57,7 @@ public class CompressionUtils {
         return stream.read() << 24 | stream.read() << 16 | stream.read() << 8 | stream.read();
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void writeInt(OutputStream stream, int value) throws IOException {
         stream.write((byte) (value >>> 24));
         stream.write((byte) (value >>> 16));

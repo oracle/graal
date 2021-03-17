@@ -28,6 +28,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +45,7 @@ public class BundleSerializationUtils {
      * future, it can be extended with a fallback to user defined bundles by using the handleKeySet
      * and handleGetObject methods.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unchecked")
     public static Map<String, Object> extractContent(ResourceBundle bundle) {
         bundle.keySet(); // force lazy initialization
@@ -60,6 +63,7 @@ public class BundleSerializationUtils {
     /**
      * @param content content of the bundle to be serialized
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static Pair<String, int[]> serializeContent(Map<String, Object> content) {
         List<Integer> indices = new ArrayList<>();
         StringBuilder builder = new StringBuilder();

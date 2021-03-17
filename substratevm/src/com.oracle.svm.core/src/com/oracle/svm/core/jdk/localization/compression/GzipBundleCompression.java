@@ -47,6 +47,8 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Class responsible for serialization and compression of resource bundles. Only bundles whose
@@ -70,14 +72,16 @@ import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
  */
 public class GzipBundleCompression {
 
-    public boolean canCompress(ResourceBundle bundle) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean canCompress(ResourceBundle bundle) {
         return extractContent(bundle)
                         .values()
                         .stream()
                         .allMatch(value -> value instanceof String || (value instanceof Object[] && Arrays.stream(((Object[]) value)).allMatch(elem -> elem instanceof String)));
     }
 
-    public CompressedBundle compress(ResourceBundle bundle) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static CompressedBundle compress(ResourceBundle bundle) {
         final Map<String, Object> content = extractContent(bundle);
         Pair<String, int[]> input = serializeContent(content);
         try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(byteStream)) {
@@ -100,19 +104,21 @@ public class GzipBundleCompression {
         }
     }
 
-    public static void writeIndices(int[] indices, GZIPOutputStream out) throws IOException {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void writeIndices(int[] indices, GZIPOutputStream out) throws IOException {
         byte[] indicesInBytes = intsToBytes(indices);
         writeInt(out, indicesInBytes.length);
         out.write(indicesInBytes);
     }
 
-    public static void writeText(String text, GZIPOutputStream out) throws IOException {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void writeText(String text, GZIPOutputStream out) throws IOException {
         byte[] textBytes = text.getBytes(StandardCharsets.UTF_8);
         writeInt(out, textBytes.length);
         out.write(textBytes);
     }
 
-    public static int[] readIndices(GZIPInputStream input) throws IOException {
+    private static int[] readIndices(GZIPInputStream input) throws IOException {
         int indicesInBytesLen = readInt(input);
         byte[] indicesInBytes = new byte[indicesInBytesLen];
         int realIntsRead = readNBytes(input, indicesInBytes);
@@ -120,7 +126,7 @@ public class GzipBundleCompression {
         return bytesToInts(indicesInBytes);
     }
 
-    public static String readText(GZIPInputStream input) throws IOException {
+    private static String readText(GZIPInputStream input) throws IOException {
         int remainingBytesSize = readInt(input);
         byte[] stringBytes = new byte[remainingBytesSize];
         int allBytesRead = readNBytes(input, stringBytes);

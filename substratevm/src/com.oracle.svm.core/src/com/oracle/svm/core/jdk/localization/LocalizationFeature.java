@@ -61,6 +61,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Substitute;
@@ -238,6 +240,7 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private LocalizationSupport selectLocalizationSupport() {
         if (optimizedMode) {
             return new OptimizedLocalizationSupport(defaultLocale, allLocales);
@@ -262,6 +265,7 @@ public abstract class LocalizationFeature implements Feature {
     /**
      * @return locale for given tag or null for invalid ones
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static Locale parseLocaleFromTag(String tag) {
         try {
             return new Locale.Builder().setLanguageTag(tag).build();
@@ -270,6 +274,7 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static List<Locale> processLocalesOption() {
         if (Options.IncludeAllLocales.getValue()) {
             return Arrays.asList(Locale.getAvailableLocales());
@@ -296,6 +301,7 @@ public abstract class LocalizationFeature implements Feature {
      * analysis. Therefore, we load and register all standard charsets here. Features that require
      * more than this can add additional charsets.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void addCharsets() {
         if (Options.AddAllCharsets.getValue()) {
             for (Charset c : Charset.availableCharsets().values()) {
@@ -312,6 +318,7 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void addCharset(Charset charset) {
         Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
         charsets.put(charset.name().toLowerCase(), charset);
@@ -343,10 +350,12 @@ public abstract class LocalizationFeature implements Feature {
                     CalendarDataProvider.class,
                     CalendarNameProvider.class);
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected List<Class<? extends LocaleServiceProvider>> getSpiClasses() {
         return spiClasses;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private void addProviders() {
         OptimizedLocalizationSupport optimizedLocalizationSupport = support.asOptimizedSupport();
         for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
@@ -369,6 +378,7 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected void addResourceBundles() {
         for (Locale locale : allLocales) {
             prepareBundle(localeData(java.util.spi.CalendarDataProvider.class, locale).getCalendarData(locale), locale);
@@ -396,10 +406,12 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected LocaleData localeData(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
         return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, locale)).getLocaleData();
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private void processRequestedBundle(String input) {
         int splitIndex = input.indexOf('_');
         boolean specificLocaleRequested = splitIndex != -1;
@@ -417,10 +429,12 @@ public abstract class LocalizationFeature implements Feature {
         prepareBundle(baseName, Collections.singletonList(locale));
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String baseName) {
         prepareBundle(baseName, allLocales);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String baseName, List<Locale> wantedLocales) {
         if (baseName.isEmpty()) {
             return;
@@ -461,10 +475,12 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected void prepareBundle(ResourceBundle bundle, Locale locale) {
         prepareBundle(bundle.getBaseBundleName(), bundle, locale);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         trace("Adding bundle " + bundleName);
         /*
@@ -490,6 +506,7 @@ public abstract class LocalizationFeature implements Feature {
      */
     private static final Field PARENT_FIELD = ReflectionUtil.lookupField(ResourceBundle.class, "parent");
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static ResourceBundle getParent(ResourceBundle bundle) {
         try {
             return (ResourceBundle) PARENT_FIELD.get(bundle);
@@ -498,6 +515,7 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected void trace(String msg) {
         if (trace) {
             // Checkstyle: stop

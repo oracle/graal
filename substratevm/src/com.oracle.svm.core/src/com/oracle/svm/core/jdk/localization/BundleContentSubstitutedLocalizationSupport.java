@@ -38,6 +38,8 @@ import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import org.graalvm.compiler.debug.GraalError;
 
 // Checkstyle: stop
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
 // Checkstyle: resume
@@ -48,8 +50,6 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
-    private final GzipBundleCompression compressionAlgorithm = new GzipBundleCompression();
-
     private final ForkJoinPool pool;
 
     public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, List<Locale> locales, ForkJoinPool pool) {
@@ -58,6 +58,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected void onBundlePrepared(ResourceBundle bundle) {
         if (isBundleSupported(bundle)) {
             if (pool != null) {
@@ -68,15 +69,17 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private void storeBundleContentOf(ResourceBundle bundle) {
         GraalError.guarantee(isBundleSupported(bundle), "Unsupported bundle %s of type %s", bundle, bundle.getClass());
         storedBundles.put(bundle.getClass(), processBundle(bundle));
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private StoredBundle processBundle(ResourceBundle bundle) {
         boolean isInDefaultLocale = bundle.getLocale().equals(defaultLocale);
-        if (!isInDefaultLocale && compressionAlgorithm.canCompress(bundle)) {
-            return compressionAlgorithm.compress(bundle);
+        if (!isInDefaultLocale && GzipBundleCompression.canCompress(bundle)) {
+            return GzipBundleCompression.compress(bundle);
         }
         Map<String, Object> content = extractContent(bundle);
         return new ExtractedBundle(content);
@@ -95,6 +98,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         return super.getBundleContentOf(bundleClass);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public boolean isBundleSupported(ResourceBundle bundle) {
         return bundle instanceof ListResourceBundle || bundle instanceof OpenListResourceBundle || bundle instanceof ParallelListResourceBundle;
     }
