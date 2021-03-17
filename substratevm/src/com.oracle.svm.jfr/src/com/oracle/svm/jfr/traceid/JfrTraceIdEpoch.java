@@ -89,6 +89,7 @@ public class JfrTraceIdEpoch {
         return false;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setChangedTag() {
         if (!isChangedTag()) {
             setChangedTag(true);
@@ -103,7 +104,7 @@ public class JfrTraceIdEpoch {
         return epoch ? EPOCH_1_BIT : EPOCH_0_BIT;
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean currentEpoch() {
         return epoch;
     }

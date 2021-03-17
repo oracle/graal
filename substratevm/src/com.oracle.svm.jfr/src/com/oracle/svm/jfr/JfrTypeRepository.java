@@ -43,7 +43,6 @@ public class JfrTypeRepository implements JfrRepository {
         this.symbolRepo = symbolRepo;
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
     public long getClassId(Class<?> clazz) {
         return JfrTraceId.load(clazz);
     }

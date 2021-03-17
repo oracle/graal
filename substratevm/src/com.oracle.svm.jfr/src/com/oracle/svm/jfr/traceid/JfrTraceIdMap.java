@@ -26,6 +26,7 @@
 
 package com.oracle.svm.jfr.traceid;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import org.graalvm.nativeimage.Platform;
@@ -47,11 +48,13 @@ public class JfrTraceIdMap {
         Arrays.fill(traceIDs, -1);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private int getIndex(Class<?> clazz) {
         DynamicHub hub = DynamicHub.fromClass((Class<?>) clazz);
         return hub.getTypeID() + 1; // Off-set by 1 for error-catcher
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long getId(Class<?> clazz) {
         long id = traceIDs[getIndex(clazz)];
         assert id != -1;

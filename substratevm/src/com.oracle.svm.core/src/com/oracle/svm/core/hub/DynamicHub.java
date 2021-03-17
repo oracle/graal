@@ -546,6 +546,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return layoutEncoding;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getTypeID() {
         return typeID;
     }
@@ -586,6 +587,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return isInstantiated;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DynamicHub fromClass(Class<?> clazz) {
         return SubstrateUtil.cast(clazz, DynamicHub.class);
     }

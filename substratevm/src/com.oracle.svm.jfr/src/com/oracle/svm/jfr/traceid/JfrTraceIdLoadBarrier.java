@@ -27,6 +27,7 @@ package com.oracle.svm.jfr.traceid;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.thread.VMOperation;
 
 import java.util.function.Consumer;
 
@@ -34,24 +35,16 @@ public class JfrTraceIdLoadBarrier {
     private static int classCount0;
     private static int classCount1;
 
+    @Uninterruptible(reason = "Epoch may not change")
     private static boolean isNotTagged(long value) {
         long thisEpochBit = JfrTraceIdEpoch.getInstance().thisEpochBit();
         return ((value & ((thisEpochBit << JfrTraceId.META_SHIFT) | thisEpochBit)) != thisEpochBit);
     }
 
+    @Uninterruptible(reason = "Epoch may not change")
     private static boolean shouldTag(Class<?> obj) {
         assert obj != null;
         return isNotTagged(JfrTraceId.getTraceIdRaw(obj));
-    }
-
-    private static long setUsedAndGet(Class<?> obj) {
-        assert obj != null;
-        if (shouldTag(obj)) {
-            JfrTraceId.setUsedThisEpoch(obj);
-            JfrTraceIdEpoch.getInstance().setChangedTag();
-        }
-        assert JfrTraceId.isUsedThisEpoch(obj);
-        return JfrTraceId.getTraceId(obj);
     }
 
     public static void clear() {
@@ -66,6 +59,7 @@ public class JfrTraceIdLoadBarrier {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void increaseClassCount(boolean epoch) {
         if (epoch) {
             classCount1++;
@@ -74,12 +68,12 @@ public class JfrTraceIdLoadBarrier {
         }
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code")
     public static long classCount(boolean epoch) {
+        assert VMOperation.isInProgressAtSafepoint();
         return epoch ? classCount1 : classCount0;
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code")
+    @Uninterruptible(reason = "Epoch must not change while in this method.")
     public static long load(Class<?> clazz) {
         assert clazz != null;
         if (shouldTag(clazz)) {
@@ -91,16 +85,11 @@ public class JfrTraceIdLoadBarrier {
         return JfrTraceId.getTraceId(clazz);
     }
 
-    public static boolean initialize() {
-        classCount0 = 0;
-        classCount1 = 0;
-        return true;
-    }
-
     // Note: Using Consumer<Class<?>> directly drags in other implementations which are not uninterruptible.
     public interface ClassConsumer extends Consumer<Class<?>> {}
 
     public static void doClasses(ClassConsumer kc, boolean epoch) {
+        assert VMOperation.isInProgressAtSafepoint();
         long predicate = JfrTraceId.TRANSIENT_BIT;
         predicate |= epoch ? JfrTraceIdEpoch.EPOCH_1_BIT : JfrTraceIdEpoch.EPOCH_0_BIT;
         int usedClassCount = 0;

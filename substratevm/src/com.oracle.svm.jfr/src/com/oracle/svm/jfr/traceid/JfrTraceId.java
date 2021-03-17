@@ -26,9 +26,7 @@
 
 package com.oracle.svm.jfr.traceid;
 
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-
+import com.oracle.svm.core.annotate.Uninterruptible;
 import jdk.jfr.internal.JVM;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -76,18 +74,22 @@ public class JfrTraceId {
         return (id & bits) != 0;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setUsedThisEpoch(Class<?> clazz) {
         tag(clazz, JfrTraceIdEpoch.getInstance().thisEpochBit());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isUsedThisEpoch(Class<?> clazz) {
         return predicate(clazz, TRANSIENT_BIT | JfrTraceIdEpoch.getInstance().thisEpochBit());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getTraceIdRaw(Class<?> clazz) {
         return getTraceIdMap().getId(clazz);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getTraceId(Class<?> clazz) {
         long traceid = getTraceIdRaw(clazz);
         return traceid >>> TRACE_ID_SHIFT;
