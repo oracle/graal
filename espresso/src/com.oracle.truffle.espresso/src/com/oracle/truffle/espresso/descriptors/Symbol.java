@@ -445,6 +445,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> put = StaticSymbols.putName("put");
         public static final Symbol<Name> size = StaticSymbols.putName("size");
         public static final Symbol<Name> containsKey = StaticSymbols.putName("containsKey");
+        public static final Symbol<Name> getKey = StaticSymbols.putName("getKey");
+        public static final Symbol<Name> getValue = StaticSymbols.putName("getValue");
+        public static final Symbol<Name> setValue = StaticSymbols.putName("setValue");
+        public static final Symbol<Name> entrySet = StaticSymbols.putName("entrySet");
         public static final Symbol<Name> hasNext = StaticSymbols.putName("hasNext");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal identifiers.
@@ -752,6 +756,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_util_Map = StaticSymbols.putType("Ljava/util/Map;");
         public static final Symbol<Type> java_util_Iterator = StaticSymbols.putType("Ljava/util/Iterator;");
         public static final Symbol<Type> java_util_NoSuchElementException = StaticSymbols.putType("Ljava/util/NoSuchElementException;");
+        public static final Symbol<Type> java_util_Iterable = StaticSymbols.putType("Ljava/util/Iterable;");
+        public static final Symbol<Type> java_util_Map_Entry = StaticSymbols.putType("Ljava/util/Map$Entry;");
+        public static final Symbol<Type> java_util_Set = StaticSymbols.putType("Ljava/util/Set;");
 
         // Polyglot/interop API.
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_Polyglot = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/Polyglot;");
@@ -853,6 +860,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Object_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type.java_lang_Object_array);
 
         public static final Symbol<Signature> java_util_Iterator = StaticSymbols.putSignature(Type.java_util_Iterator);
+        public static final Symbol<Signature> java_util_Set = StaticSymbols.putSignature(Type.java_util_Set);
 
         public static final Symbol<Signature> MethodType_Class_Class = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Class_array);
         public static final Symbol<Signature> MethodType_String_ClassLoader = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_String, Type.java_lang_ClassLoader);

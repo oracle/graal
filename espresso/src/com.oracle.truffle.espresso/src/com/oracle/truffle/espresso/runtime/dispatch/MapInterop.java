@@ -31,6 +31,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.impl.Method;
@@ -57,31 +58,19 @@ public class MapInterop extends EspressoInterop {
         return true;
     }
 
-    @ExportMessage
+    @ExportMessage(name = "isHashEntryReadable")
+    @ExportMessage(name = "isHashEntryModifiable")
+    @ExportMessage(name = "isHashEntryRemovable")
     public static boolean isHashEntryReadable(StaticObject receiver, Object key,
-                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) {
-        return hasHashEntries(receiver) && containsKey(receiver, key, invoke);
-    }
-
-    @SuppressWarnings("unused")
-    @ExportMessage
-    public static boolean isHashEntryModifiable(StaticObject receiver, Object key,
-                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) {
-        return hasHashEntries(receiver) && containsKey(receiver, key, invoke);
+                    @Cached.Shared("contains") @Cached InvokeEspressoNode invoke) {
+        return containsKey(receiver, key, invoke);
     }
 
     @SuppressWarnings("unused")
     @ExportMessage
     public static boolean isHashEntryInsertable(StaticObject receiver, Object key,
-                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) {
-        return hasHashEntries(receiver) && !containsKey(receiver, key, invoke);
-    }
-
-    @SuppressWarnings("unused")
-    @ExportMessage
-    public static boolean isHashEntryRemovable(StaticObject receiver, Object key,
-                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) {
-        return hasHashEntries(receiver) && containsKey(receiver, key, invoke);
+                    @Cached.Shared("contains") @Cached InvokeEspressoNode invoke) {
+        return !containsKey(receiver, key, invoke);
     }
 
     private static boolean containsKey(StaticObject receiver, Object key,
@@ -96,7 +85,8 @@ public class MapInterop extends EspressoInterop {
     }
 
     @ExportMessage
-    public static long getHashSize(StaticObject receiver, @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException {
+    public static long getHashSize(StaticObject receiver,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException {
         if (!hasHashEntries(receiver)) {
             throw UnsupportedMessageException.create();
         }
@@ -111,8 +101,9 @@ public class MapInterop extends EspressoInterop {
 
     @ExportMessage
     public static Object readHashValue(StaticObject receiver, Object key,
-                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnknownKeyException {
-        if (!hasHashEntries(receiver)) {
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke,
+                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
+        if (!isHashEntryReadable(receiver, key, contains)) {
             throw UnsupportedMessageException.create();
         }
         Meta meta = receiver.getKlass().getMeta();
@@ -128,10 +119,7 @@ public class MapInterop extends EspressoInterop {
 
     @ExportMessage
     public static void writeHashEntry(StaticObject receiver, Object key, Object value,
-                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnknownKeyException {
-        if (!hasHashEntries(receiver)) {
-            throw UnsupportedMessageException.create();
-        }
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnknownKeyException {
         Meta meta = receiver.getKlass().getMeta();
         Method put = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_put.getITableIndex());
         try {
@@ -145,8 +133,9 @@ public class MapInterop extends EspressoInterop {
 
     @ExportMessage
     public static void removeHashEntry(StaticObject receiver, Object key,
-                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnknownKeyException {
-        if (!hasHashEntries(receiver)) {
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke,
+                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
+        if (!isHashEntryReadable(receiver, key, contains)) {
             throw UnsupportedMessageException.create();
         }
         Meta meta = receiver.getKlass().getMeta();
@@ -162,8 +151,23 @@ public class MapInterop extends EspressoInterop {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    public static Object getHashEntriesIterator(@SuppressWarnings("unused") StaticObject receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+    public static Object getHashEntriesIterator(StaticObject receiver,
+                    @CachedLibrary(limit = "1") InteropLibrary setLibrary,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException {
+        if (!hasHashEntries(receiver)) {
+            throw UnsupportedMessageException.create();
+        }
+        Meta meta = receiver.getKlass().getMeta();
+        Method entrySet = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_entrySet.getITableIndex());
+        Object set = null;
+        try {
+            set = invoke.execute(entrySet, receiver, EMPTY_ARRAY);
+        } catch (ArityException | UnsupportedTypeException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        assert set != null;
+        assert setLibrary.hasIterator(set);
+        return setLibrary.getIterator(set);
     }
 
     // endregion ### Hashes

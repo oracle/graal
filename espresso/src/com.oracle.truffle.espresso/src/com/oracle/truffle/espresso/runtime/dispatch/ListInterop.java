@@ -49,43 +49,11 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
-public final class ListInterop extends EspressoInterop {
-
-    @ExportMessage
-    public static boolean hasIterator(@SuppressWarnings("unused") StaticObject receiver) {
-        return true;
-    }
+public final class ListInterop extends IterableInterop {
 
     @ExportMessage
     static boolean hasArrayElements(@SuppressWarnings("unused") StaticObject receiver) {
         return true;
-    }
-
-    @ExportMessage
-    abstract static class GetIterator {
-
-        static final int LIMIT = 3;
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static Object doCached(StaticObject receiver,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doIteratorLookup(receiver)") Method method,
-                        @Cached("create(method.getCallTarget())") DirectCallNode callNode) {
-            return callNode.call(receiver);
-        }
-
-        @Specialization(replaces = "doCached")
-        static Object doUncached(StaticObject receiver,
-                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
-            Method size = doIteratorLookup(receiver);
-            return invoke.call(size.getCallTarget(), receiver);
-        }
-
-        static Method doIteratorLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Name.iterator, Signature.java_util_Iterator);
-        }
-
     }
 
     @ExportMessage

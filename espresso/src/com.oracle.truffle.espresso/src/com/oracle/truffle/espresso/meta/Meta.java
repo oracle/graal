@@ -617,13 +617,23 @@ public final class Meta implements ContextAccess {
         java_util_Map_size = java_util_Map.requireDeclaredMethod(Name.size, Signature._int);
         java_util_Map_remove = java_util_Map.requireDeclaredMethod(Name.remove, Signature.Object_Object);
         java_util_Map_containsKey = java_util_Map.requireDeclaredMethod(Name.containsKey, Signature._boolean_Object);
+        java_util_Map_entrySet = java_util_Map.requireDeclaredMethod(Name.entrySet, Signature.java_util_Set);
         assert java_util_Map.isInterface();
+
+        java_util_Map_Entry = knownKlass(Type.java_util_Map_Entry);
+        java_util_Map_Entry_getKey = java_util_Map_Entry.requireDeclaredMethod(Name.getKey, Signature.Object);
+        java_util_Map_Entry_getValue = java_util_Map_Entry.requireDeclaredMethod(Name.getValue, Signature.Object);
+        java_util_Map_Entry_setValue = java_util_Map_Entry.requireDeclaredMethod(Name.setValue, Signature.Object_Object);
 
         java_util_List = knownKlass(Type.java_util_List);
         java_util_List_get = java_util_List.requireDeclaredMethod(Name.get, Signature.Object_int);
         java_util_List_set = java_util_List.requireDeclaredMethod(Name.set, Signature.Object_int_Object);
         java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
         assert java_util_List.isInterface();
+
+        java_util_Iterable = knownKlass(Type.java_util_Iterable);
+        java_util_Iterable_iterator = java_util_Iterable.requireDeclaredMethod(Name.iterator, Signature.java_util_Iterator);
+        assert java_util_Iterable.isInterface();
 
         java_util_Iterator = knownKlass(Type.java_util_Iterator);
         java_util_Iterator_next = java_util_Iterator.requireDeclaredMethod(Name.next, Signature.Object);
@@ -1135,11 +1145,20 @@ public final class Meta implements ContextAccess {
     public final Method java_util_Map_put;
     public final Method java_util_Map_remove;
     public final Method java_util_Map_containsKey;
+    public final Method java_util_Map_entrySet;
+
+    public final ObjectKlass java_util_Map_Entry;
+    public final Method java_util_Map_Entry_getKey;
+    public final Method java_util_Map_Entry_getValue;
+    public final Method java_util_Map_Entry_setValue;
 
     public final ObjectKlass java_util_List;
     public final Method java_util_List_get;
     public final Method java_util_List_set;
     public final Method java_util_List_size;
+
+    public final ObjectKlass java_util_Iterable;
+    public final Method java_util_Iterable_iterator;
 
     public final ObjectKlass java_util_Iterator;
     public final Method java_util_Iterator_next;

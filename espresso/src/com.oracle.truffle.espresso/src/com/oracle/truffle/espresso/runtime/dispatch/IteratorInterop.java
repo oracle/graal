@@ -62,8 +62,8 @@ public class IteratorInterop extends EspressoInterop {
         @Specialization(replaces = "doCached")
         static boolean doUncached(StaticObject receiver,
                         @Cached.Exclusive @Cached IndirectCallNode invoke) {
-            Method size = doHasNextLookup(receiver);
-            return (boolean) invoke.call(size.getCallTarget(), receiver);
+            Method hasNext = doHasNextLookup(receiver);
+            return (boolean) invoke.call(hasNext.getCallTarget(), receiver);
         }
 
         static Method doHasNextLookup(StaticObject receiver) {
@@ -95,9 +95,9 @@ public class IteratorInterop extends EspressoInterop {
         @Specialization(replaces = "doCached")
         static Object doUncached(StaticObject receiver,
                         @Cached.Exclusive @Cached IndirectCallNode invoke) throws StopIterationException {
-            Method size = doNextLookup(receiver);
+            Method next = doNextLookup(receiver);
             try {
-                return invoke.call(size.getCallTarget(), receiver);
+                return invoke.call(next.getCallTarget(), receiver);
             } catch (EspressoException e) {
                 if (InterpreterToVM.instanceOf(e.getExceptionObject(), receiver.getKlass().getMeta().java_util_NoSuchElementException)) {
                     throw StopIterationException.create(e);

@@ -50,8 +50,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.IterableInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.IteratorInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.ListInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.MapEntryInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.MapInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -339,8 +341,14 @@ public final class StaticObject implements TruffleObject {
             if (InterpreterToVM.instanceOf(receiver, meta.java_util_List)) {
                 return ListInterop.class;
             }
+            if (InterpreterToVM.instanceOf(receiver, meta.java_util_Iterable)) {
+                return IterableInterop.class;
+            }
             if (InterpreterToVM.instanceOf(receiver, meta.java_util_Map)) {
                 return MapInterop.class;
+            }
+            if (InterpreterToVM.instanceOf(receiver, meta.java_util_Map_Entry)) {
+                return MapEntryInterop.class;
             }
             if (InterpreterToVM.instanceOf(receiver, meta.java_util_Iterator)) {
                 return IteratorInterop.class;
