@@ -39,7 +39,6 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -103,7 +102,7 @@ public final class TestCaseCollector {
     public static Collection<Object[]> collectTestCases(Class<?> testSuiteClass, Path suitesPath, Predicate<? super Path> predicate) {
         try {
             // collect excludes
-            Map<String, String> excludedTests = getExcludedTests(testSuiteClass);
+            ExcludeMap excludedTests = getExcludedTests(testSuiteClass);
             // walk test cases
             return Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
                 String testCaseName = getTestCaseName(suitesPath, testPath);
@@ -129,10 +128,53 @@ public final class TestCaseCollector {
         return suitesPath.relativize(testPath).toString();
     }
 
+    public abstract static class ExcludeMap {
+        public abstract String get(String key);
+    }
+
+    private static final class EmptyExcludeMap extends ExcludeMap {
+        private static final EmptyExcludeMap EMPTY = new EmptyExcludeMap();
+
+        @Override
+        public String get(String key) {
+            return null;
+        }
+    }
+
+    private static final class ExcludeAllMap extends ExcludeMap {
+
+        private static final String EXCLUDE_ALL_PATTERN = "*";
+
+        private final String reason;
+
+        private ExcludeAllMap(String reason) {
+            this.reason = reason;
+        }
+
+        @Override
+        public String get(String key) {
+            return reason;
+        }
+    }
+
+    private static final class MapBasedExcludeMap extends ExcludeMap {
+
+        private final Map<String, String> map;
+
+        private MapBasedExcludeMap(Map<String, String> map) {
+            this.map = map;
+        }
+
+        @Override
+        public String get(String key) {
+            return map.get(key);
+        }
+    }
+
     /**
      * Returns a map from excluded test to the exclude file that caused the exclusion.
      */
-    public static Map<String, String> getExcludedTests(Class<?> testSuiteClass) {
+    public static ExcludeMap getExcludedTests(Class<?> testSuiteClass) {
         try {
             FileVisitors visitors = new FileVisitors();
 
@@ -152,9 +194,14 @@ public final class TestCaseCollector {
             // walk <ROOT><testSuiteClass>/"runtimeConfig"/<LLVMRuntimeConfig>/os_arch/
             walkOsArch(visitors, configOsArchDirectory);
 
-            return visitors.getExcludeMap();
+            Map<String, String> excludeMap = visitors.getExcludeMap();
+            String excludeAllReason = excludeMap.get(ExcludeAllMap.EXCLUDE_ALL_PATTERN);
+            if (excludeAllReason != null) {
+                return new ExcludeAllMap(excludeAllReason);
+            }
+            return new MapBasedExcludeMap(excludeMap);
         } catch (IOException e) {
-            return Collections.emptyMap();
+            return EmptyExcludeMap.EMPTY;
         }
     }
 

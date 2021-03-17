@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,9 +34,9 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 
-@RunWith(TruffleRunner.class)
+@RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class SulongBuiltinsTest extends InteropTestBase {
     private static Value getFunction(String name) {
         Value func = runWithPolyglot.getPolyglotContext().getBindings("llvm").getMember(name);
