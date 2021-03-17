@@ -85,8 +85,6 @@ public class JfrTraceId {
     }
 
     public static long getTraceIdRaw(Class<?> clazz) {
-        JfrTraceIdMap map = getTraceIdMap();
-        assert map != null;
         return getTraceIdMap().getId(clazz);
     }
 
@@ -102,21 +100,18 @@ public class JfrTraceId {
     private static void tagAsJdkJfrEvent(int index) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(index);
-        assert id != -1;
         map.setId(index, id | JDK_JFR_EVENT_KLASS);
     }
 
     private static void tagAsJdkJfrEventSub(int index) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(index);
-        assert id != -1;
         map.setId(index, id | JDK_JFR_EVENT_SUBKLASS);
     }
 
     private static boolean isEventClass(int index) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(index);
-        assert id != -1;
         return (id & (JDK_JFR_EVENT_KLASS | JDK_JFR_EVENT_SUBKLASS)) != 0;
     }
 
