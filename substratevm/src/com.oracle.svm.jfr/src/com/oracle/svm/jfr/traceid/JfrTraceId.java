@@ -59,8 +59,6 @@ public class JfrTraceId {
     private static final long JDK_JFR_EVENT_KLASS = 32;
     private static final long EVENT_HOST_KLASS = 64;
 
-    private static final AtomicLong threadCounter = new AtomicLong(1);
-
     @Fold
     static JfrTraceIdMap getTraceIdMap() {
         return ImageSingletons.lookup(JfrTraceIdMap.class);
