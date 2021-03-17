@@ -165,6 +165,9 @@ public abstract class LocalizationFeature implements Feature {
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
 
+        @Option(help = "Regular expressions matching which bundles should be compressed.", type = OptionType.User)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LocalizationCompressBundles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
         @Option(help = "Compress the bundles in parallel.", type = OptionType.Expert)//
         public static final HostedOptionKey<Boolean> LocalizationCompressInParallel = new HostedOptionKey<>(true);
 
@@ -248,7 +251,8 @@ public abstract class LocalizationFeature implements Feature {
         if (optimizedMode) {
             return new OptimizedLocalizationSupport(defaultLocale, allLocales);
         } else if (substituteLoadLookup) {
-            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales, compressionPool);
+            List<String> requestedPatterns = Options.LocalizationCompressBundles.getValue().values();
+            return new BundleContentSubstitutedLocalizationSupport(defaultLocale, allLocales, requestedPatterns, compressionPool);
         }
         return new LocalizationSupport(defaultLocale, allLocales);
     }

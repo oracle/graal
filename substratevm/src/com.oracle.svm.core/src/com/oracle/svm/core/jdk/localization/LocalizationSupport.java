@@ -94,4 +94,10 @@ public class LocalizationSupport {
     protected void onBundlePrepared(@SuppressWarnings("unused") ResourceBundle bundle) {
 
     }
+
+    @SuppressWarnings("unused")
+    public boolean shouldSubstituteLoadLookup(String className) {
+        /*- By default, keep the original code */
+        return false;
+    }
 }
