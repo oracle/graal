@@ -1043,6 +1043,29 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
+    public void removeActiveHook(MethodHook hook) {
+        // shrink the array to avoid null values
+        if (hooks.length == 0) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
+        } else if (hooks.length == 1) {
+            hooks = new MethodHook[0];
+            hasActiveHook.set(false);
+        } else {
+            int removeIndex = -1;
+            for (int i = 0; i < hooks.length; i++) {
+                if (hooks[i] == hook) {
+                    removeIndex = i;
+                    break;
+                }
+            }
+            MethodHook[] temp = new MethodHook[hooks.length - 1];
+            for (int i = 0; i < temp.length; i++) {
+                temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+            }
+            hooks = temp;
+        }
+    }
+
     public SharedRedefinitionContent redefine(ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // invalidate old version
         // install the new method version immediately
@@ -1385,6 +1408,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public void removedMethodHook(int requestId) {
             getMethod().removeActiveHook(requestId);
+        }
+
+        @Override
+        public void removedMethodHook(MethodHook hook) {
+            getMethod().removeActiveHook(hook);
         }
 
         @Override

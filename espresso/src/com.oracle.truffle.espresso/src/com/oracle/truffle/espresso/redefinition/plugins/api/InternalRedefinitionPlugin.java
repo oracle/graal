@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.redefinition.plugins.api;
 import java.util.Collection;
 import java.util.List;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
@@ -37,6 +39,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 public abstract class InternalRedefinitionPlugin {
+
+    protected static final InteropLibrary INTEROP = InteropLibrary.getUncached();
 
     private static final String constructorName = "<init>";
 
@@ -84,6 +88,10 @@ public abstract class InternalRedefinitionPlugin {
         return context.getJdwpContext().getReflectedType(classObject);
     }
 
+    protected Object getGuestClassInstance(KlassRef klass) {
+        return ((Klass) klass).mirror();
+    }
+
     protected void registerClassLoadAction(String className, ClassLoadAction action) {
         redefinitionPluginHandler.registerClassLoadAction(className, action);
     }
@@ -117,7 +125,7 @@ public abstract class InternalRedefinitionPlugin {
     protected void clearCollection(@Host(Collection.class) RedefineObject object, String fieldName) throws NoSuchFieldException, NoSuchMethodException {
         RedefineObject collectionField = object.getInstanceField(fieldName);
         if (collectionField != null) {
-            collectionField.invokeRaw("clear");
+            collectionField.invoke("clear");
         }
     }
 }

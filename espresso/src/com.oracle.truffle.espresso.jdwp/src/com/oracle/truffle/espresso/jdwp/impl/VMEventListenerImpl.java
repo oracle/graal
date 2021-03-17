@@ -182,7 +182,9 @@ public final class VMEventListenerImpl implements VMEventListener {
             }
             switch (hook.getKind()) {
                 case ONE_TIME:
-                    method.removedMethodHook(-1);
+                    if (hook.hasFired()) {
+                        method.removedMethodHook(hook);
+                    }
                     break;
                 case INDEFINITE:
                     // leave the hook active
@@ -205,7 +207,9 @@ public final class VMEventListenerImpl implements VMEventListener {
             }
             switch (hook.getKind()) {
                 case ONE_TIME:
-                    method.removedMethodHook(-1);
+                    if (hook.hasFired()) {
+                        method.removedMethodHook(hook);
+                    }
                     break;
                 case INDEFINITE:
                     // leave the hook active

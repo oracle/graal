@@ -195,6 +195,9 @@ public interface MethodRef {
      */
     void removedMethodHook(int requestId);
 
+
+    void removedMethodHook(MethodHook hook);
+
     /**
      * Determines if there are any breakpoints set on this method.
      *

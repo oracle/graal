@@ -35,14 +35,14 @@ public final class UncachedRedefineObject extends RedefineObjectImpl {
     }
 
     @Override
-    public RedefineObject invokeRaw(String name, RedefineObject... args) throws NoSuchMethodException {
+    public Object invoke(String name, RedefineObject... args) throws NoSuchMethodException {
         Method method = lookupMethod(name, args);
         if (method != null) {
             RedefineObjectImpl[] internalArgs = new RedefineObjectImpl[args.length];
             for (int i = 0; i < args.length; i++) {
                 internalArgs[i] = (RedefineObjectImpl) args[i];
             }
-            return InternalRedefinitionPlugin.createUncached(method.invokeDirect(instance, rawObjects(internalArgs)));
+            return method.invokeDirect(instance.get(), rawObjects(internalArgs));
         }
         throw new NoSuchMethodException();
     }

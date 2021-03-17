@@ -1195,11 +1195,7 @@ public final class ObjectKlass extends Klass {
 
         klassVersion = new KlassVersion(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
 
-        // flush caches before invalidating to avoid races
-        // a potential thread fetching new reflection data
-        // will be blocked at entry until the redefinition
-        // transaction is ended
-        flushReflectionCaches();
+        incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
     }
 
@@ -1222,7 +1218,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    private void flushReflectionCaches() {
+    private void incrementKlassRedefinitionCount() {
         // increment the redefine count on the class instance to flush reflection caches
         int value = InterpreterToVM.getFieldInt(mirror(), getMeta().java_lang_Class_classRedefinedCount);
         InterpreterToVM.setFieldInt(++value, mirror(), getMeta().java_lang_Class_classRedefinedCount);
@@ -1273,7 +1269,7 @@ public final class ObjectKlass extends Klass {
         // a potential thread fetching new reflection data
         // will be blocked at entry until the redefinition
         // transaction is ended
-        flushReflectionCaches();
+        incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
     }
 

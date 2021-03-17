@@ -40,7 +40,7 @@ public final class SocketConnection implements Runnable {
     private final Object sendLock = new Object();
     private final Object closeLock = new Object();
 
-    private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(512);
+    private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(4096);
 
     SocketConnection(Socket socket, ServerSocket serverSocket) throws IOException {
         this.socket = socket;

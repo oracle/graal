@@ -38,4 +38,8 @@ public interface MethodHook {
     boolean onMethodEnter(MethodRef method, MethodVariable[] variables);
 
     boolean onMethodExit(MethodRef method, Object returnValue);
+
+    default boolean hasFired() {
+        return false;
+    }
 }
