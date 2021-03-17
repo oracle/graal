@@ -23,17 +23,7 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.Date;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -507,9 +497,9 @@ public final class Symbol<T> extends ByteSequence {
      * <p>
      * Naming convention: Use the fully qualified type name, '_' as package separator and '$' as
      * separator for inner classes.<br>
-     * - {@link #_long} {@ling #java_lang}<br>
+     * - {@link #_long}<br>
+     * - {@link #java_lang_Object}<br>
      * - {@link #java_lang_String_array}<br>
-     * - {@link #_int_array_array}<br>
      * - {@link #java_lang_ref_Finalizer$FinalizerThread}<br>
      */
     public static final class Type extends Descriptor {
@@ -519,109 +509,108 @@ public final class Symbol<T> extends ByteSequence {
         }
 
         // Core types.
-        public static final Symbol<Type> java_lang_String = StaticSymbols.putType(String.class);
-        public static final Symbol<Type> java_lang_String_array = StaticSymbols.putType(String[].class);
+        public static final Symbol<Type> java_lang_String = StaticSymbols.putType("Ljava/lang/String;");
+        public static final Symbol<Type> java_lang_String_array = StaticSymbols.putType("[Ljava/lang/String;" /* String[] */);
 
-        public static final Symbol<Type> java_lang_Object = StaticSymbols.putType(Object.class);
-        public static final Symbol<Type> java_lang_Object_array = StaticSymbols.putType(Object[].class);
+        public static final Symbol<Type> java_lang_Object = StaticSymbols.putType("Ljava/lang/Object;");
+        public static final Symbol<Type> java_lang_Object_array = StaticSymbols.putType("[Ljava/lang/Object;");
 
-        public static final Symbol<Type> java_lang_Class = StaticSymbols.putType(Class.class);
-        public static final Symbol<Type> java_lang_Class_array = StaticSymbols.putType(Class[].class);
+        public static final Symbol<Type> java_lang_Class = StaticSymbols.putType("Ljava/lang/Class;");
+        public static final Symbol<Type> java_lang_Class_array = StaticSymbols.putType("[Ljava/lang/Object;");
 
-        public static final Symbol<Type> java_lang_Throwable = StaticSymbols.putType(Throwable.class);
-        public static final Symbol<Type> java_lang_Exception = StaticSymbols.putType(Exception.class);
-        public static final Symbol<Type> java_lang_System = StaticSymbols.putType(System.class);
-        public static final Symbol<Type> java_security_ProtectionDomain = StaticSymbols.putType(java.security.ProtectionDomain.class);
-        public static final Symbol<Type> java_security_ProtectionDomain_array = StaticSymbols.putType(java.security.ProtectionDomain[].class);
-        public static final Symbol<Type> java_security_AccessControlContext = StaticSymbols.putType(java.security.AccessControlContext.class);
-        public static final Symbol<Type> java_security_AccessController = StaticSymbols.putType(java.security.AccessController.class);
-        public static final Symbol<Type> java_lang_SecurityManager = StaticSymbols.putType(SecurityManager.class);
-        public static final Symbol<Type> java_security_CodeSource = StaticSymbols.putType(java.security.CodeSource.class);
-        public static final Symbol<Type> java_security_PermissionCollection = StaticSymbols.putType(java.security.PermissionCollection.class);
+        public static final Symbol<Type> java_lang_Throwable = StaticSymbols.putType("Ljava/lang/Throwable;");
+        public static final Symbol<Type> java_lang_Exception = StaticSymbols.putType("Ljava/lang/Exception;");
+        public static final Symbol<Type> java_lang_System = StaticSymbols.putType("Ljava/lang/System;");
+        public static final Symbol<Type> java_security_ProtectionDomain = StaticSymbols.putType("Ljava/security/ProtectionDomain;");
+        public static final Symbol<Type> java_security_ProtectionDomain_array = StaticSymbols.putType("[Ljava/security/ProtectionDomain;");
+        public static final Symbol<Type> java_security_AccessControlContext = StaticSymbols.putType("Ljava/security/AccessControlContext;");
+        public static final Symbol<Type> java_security_AccessController = StaticSymbols.putType("Ljava/security/AccessController;");
+        public static final Symbol<Type> java_lang_SecurityManager = StaticSymbols.putType("Ljava/lang/SecurityManager;");
+        public static final Symbol<Type> java_security_CodeSource = StaticSymbols.putType("Ljava/security/CodeSource;");
+        public static final Symbol<Type> java_security_PermissionCollection = StaticSymbols.putType("Ljava/security/PermissionCollection;");
 
-        public static final Symbol<Type> java_lang_ClassLoader = StaticSymbols.putType(java.lang.ClassLoader.class);
+        public static final Symbol<Type> java_lang_ClassLoader = StaticSymbols.putType("Ljava/lang/ClassLoader;");
         public static final Symbol<Type> java_lang_ClassLoader$NativeLibrary = StaticSymbols.putType("Ljava/lang/ClassLoader$NativeLibrary;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
 
-        public static final Symbol<Type> java_io_InputStream = StaticSymbols.putType(InputStream.class);
-        public static final Symbol<Type> java_io_PrintStream = StaticSymbols.putType(PrintStream.class);
+
+        public static final Symbol<Type> java_io_InputStream = StaticSymbols.putType("Ljava/io/InputStream;");
+        public static final Symbol<Type> java_io_PrintStream = StaticSymbols.putType("Ljava/io/PrintStream;");
 
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
 
         // Primitive types.
-        public static final Symbol<Type> _boolean = StaticSymbols.putType(boolean.class);
-        public static final Symbol<Type> _byte = StaticSymbols.putType(byte.class);
-        public static final Symbol<Type> _char = StaticSymbols.putType(char.class);
-        public static final Symbol<Type> _short = StaticSymbols.putType(short.class);
-        public static final Symbol<Type> _int = StaticSymbols.putType(int.class);
-        public static final Symbol<Type> _float = StaticSymbols.putType(float.class);
-        public static final Symbol<Type> _double = StaticSymbols.putType(double.class);
-        public static final Symbol<Type> _long = StaticSymbols.putType(long.class);
-        public static final Symbol<Type> _void = StaticSymbols.putType(void.class);
+        public static final Symbol<Type> _boolean = StaticSymbols.putType("Z" /* boolean */);
+        public static final Symbol<Type> _byte = StaticSymbols.putType("B" /* byte */);
+        public static final Symbol<Type> _char = StaticSymbols.putType("C" /* char */);
+        public static final Symbol<Type> _short = StaticSymbols.putType("S" /* short */);
+        public static final Symbol<Type> _int = StaticSymbols.putType("I" /* int */);
+        public static final Symbol<Type> _float = StaticSymbols.putType("F" /* float */);
+        public static final Symbol<Type> _double = StaticSymbols.putType("D" /* double */);
+        public static final Symbol<Type> _long = StaticSymbols.putType("J" /* long */);
+        public static final Symbol<Type> _void = StaticSymbols.putType("V" /* void */);
 
-        public static final Symbol<Type> _boolean_array = StaticSymbols.putType(boolean[].class);
-        public static final Symbol<Type> _byte_array = StaticSymbols.putType(byte[].class);
-        public static final Symbol<Type> _char_array = StaticSymbols.putType(char[].class);
-        public static final Symbol<Type> _short_array = StaticSymbols.putType(short[].class);
-        public static final Symbol<Type> _int_array = StaticSymbols.putType(int[].class);
-        public static final Symbol<Type> _float_array = StaticSymbols.putType(float[].class);
-        public static final Symbol<Type> _double_array = StaticSymbols.putType(double[].class);
-        public static final Symbol<Type> _long_array = StaticSymbols.putType(long[].class);
-
-        public static final Symbol<Type> _int_array_array = StaticSymbols.putType(int[][].class);
+        public static final Symbol<Type> _boolean_array = StaticSymbols.putType("[Z" /* boolean[] */);
+        public static final Symbol<Type> _byte_array = StaticSymbols.putType("[B" /* byte[] */);
+        public static final Symbol<Type> _char_array = StaticSymbols.putType("[C" /* char[] */);
+        public static final Symbol<Type> _short_array = StaticSymbols.putType("[S" /* short[] */);
+        public static final Symbol<Type> _int_array = StaticSymbols.putType("[I" /* int[] */);
+        public static final Symbol<Type> _float_array = StaticSymbols.putType("[F" /* float[] */);
+        public static final Symbol<Type> _double_array = StaticSymbols.putType("[D" /* double[] */);
+        public static final Symbol<Type> _long_array = StaticSymbols.putType("[J" /* long[] */);
 
         // Boxed types.
-        public static final Symbol<Type> java_lang_Boolean = StaticSymbols.putType(Boolean.class);
-        public static final Symbol<Type> java_lang_Byte = StaticSymbols.putType(Byte.class);
-        public static final Symbol<Type> java_lang_Character = StaticSymbols.putType(Character.class);
-        public static final Symbol<Type> java_lang_Short = StaticSymbols.putType(Short.class);
-        public static final Symbol<Type> java_lang_Integer = StaticSymbols.putType(Integer.class);
-        public static final Symbol<Type> java_lang_Float = StaticSymbols.putType(Float.class);
-        public static final Symbol<Type> java_lang_Double = StaticSymbols.putType(Double.class);
-        public static final Symbol<Type> java_lang_Long = StaticSymbols.putType(Long.class);
-        public static final Symbol<Type> java_lang_Void = StaticSymbols.putType(Void.class);
+        public static final Symbol<Type> java_lang_Boolean = StaticSymbols.putType("Ljava/lang/Boolean;");
+        public static final Symbol<Type> java_lang_Byte = StaticSymbols.putType("Ljava/lang/Byte;");
+        public static final Symbol<Type> java_lang_Character = StaticSymbols.putType("Ljava/lang/Character;");
+        public static final Symbol<Type> java_lang_Short = StaticSymbols.putType("Ljava/lang/Short;");
+        public static final Symbol<Type> java_lang_Integer = StaticSymbols.putType("Ljava/lang/Integer;");
+        public static final Symbol<Type> java_lang_Float = StaticSymbols.putType("Ljava/lang/Float;");
+        public static final Symbol<Type> java_lang_Double = StaticSymbols.putType("Ljava/lang/Double;");
+        public static final Symbol<Type> java_lang_Long = StaticSymbols.putType("Ljava/lang/Long;");
+        public static final Symbol<Type> java_lang_Void = StaticSymbols.putType("Ljava/lang/Void;");
 
-        public static final Symbol<Type> java_lang_Cloneable = StaticSymbols.putType(Cloneable.class);
+        public static final Symbol<Type> java_lang_Cloneable = StaticSymbols.putType("Ljava/lang/Cloneable;");
 
-        public static final Symbol<Type> java_lang_StackOverflowError = StaticSymbols.putType(StackOverflowError.class);
-        public static final Symbol<Type> java_lang_OutOfMemoryError = StaticSymbols.putType(OutOfMemoryError.class);
-        public static final Symbol<Type> java_lang_AssertionError = StaticSymbols.putType(AssertionError.class);
+        public static final Symbol<Type> java_lang_StackOverflowError = StaticSymbols.putType("Ljava/lang/StackOverflowError;");
+        public static final Symbol<Type> java_lang_OutOfMemoryError = StaticSymbols.putType("Ljava/lang/OutOfMemoryError;");
+        public static final Symbol<Type> java_lang_AssertionError = StaticSymbols.putType("Ljava/lang/AssertionError;");
 
-        public static final Symbol<Type> java_lang_NullPointerException = StaticSymbols.putType(NullPointerException.class);
-        public static final Symbol<Type> java_lang_ClassCastException = StaticSymbols.putType(ClassCastException.class);
-        public static final Symbol<Type> java_lang_ArrayStoreException = StaticSymbols.putType(ArrayStoreException.class);
-        public static final Symbol<Type> java_lang_ArithmeticException = StaticSymbols.putType(ArithmeticException.class);
-        public static final Symbol<Type> java_lang_IllegalMonitorStateException = StaticSymbols.putType(IllegalMonitorStateException.class);
-        public static final Symbol<Type> java_lang_IllegalArgumentException = StaticSymbols.putType(IllegalArgumentException.class);
-        public static final Symbol<Type> java_lang_ClassNotFoundException = StaticSymbols.putType(ClassNotFoundException.class);
-        public static final Symbol<Type> java_lang_NoClassDefFoundError = StaticSymbols.putType(NoClassDefFoundError.class);
-        public static final Symbol<Type> java_lang_InterruptedException = StaticSymbols.putType(InterruptedException.class);
-        public static final Symbol<Type> java_lang_ThreadDeath = StaticSymbols.putType(ThreadDeath.class);
-        public static final Symbol<Type> java_lang_NegativeArraySizeException = StaticSymbols.putType(NegativeArraySizeException.class);
-        public static final Symbol<Type> java_lang_RuntimeException = StaticSymbols.putType(RuntimeException.class);
-        public static final Symbol<Type> java_lang_reflect_InvocationTargetException = StaticSymbols.putType(java.lang.reflect.InvocationTargetException.class);
-        public static final Symbol<Type> java_lang_IndexOutOfBoundsException = StaticSymbols.putType(IndexOutOfBoundsException.class);
-        public static final Symbol<Type> java_lang_ArrayIndexOutOfBoundsException = StaticSymbols.putType(ArrayIndexOutOfBoundsException.class);
-        public static final Symbol<Type> java_lang_StringIndexOutOfBoundsException = StaticSymbols.putType(StringIndexOutOfBoundsException.class);
-        public static final Symbol<Type> java_lang_ExceptionInInitializerError = StaticSymbols.putType(ExceptionInInitializerError.class);
-        public static final Symbol<Type> java_lang_InstantiationException = StaticSymbols.putType(InstantiationException.class);
-        public static final Symbol<Type> java_lang_InstantiationError = StaticSymbols.putType(InstantiationError.class);
-        public static final Symbol<Type> java_lang_CloneNotSupportedException = StaticSymbols.putType(CloneNotSupportedException.class);
-        public static final Symbol<Type> java_lang_SecurityException = StaticSymbols.putType(SecurityException.class);
-        public static final Symbol<Type> java_lang_LinkageError = StaticSymbols.putType(LinkageError.class);
-        public static final Symbol<Type> java_lang_BootstrapMethodError = StaticSymbols.putType(BootstrapMethodError.class);
-        public static final Symbol<Type> java_lang_NoSuchFieldException = StaticSymbols.putType(NoSuchFieldException.class);
-        public static final Symbol<Type> java_lang_NoSuchMethodException = StaticSymbols.putType(NoSuchMethodException.class);
-        public static final Symbol<Type> java_lang_UnsupportedOperationException = StaticSymbols.putType(UnsupportedOperationException.class);
-        public static final Symbol<Type> java_lang_UnsupportedClassVersionError = StaticSymbols.putType(UnsupportedClassVersionError.class);
+        public static final Symbol<Type> java_lang_NullPointerException = StaticSymbols.putType("Ljava/lang/NullPointerException;");
+        public static final Symbol<Type> java_lang_ClassCastException = StaticSymbols.putType("Ljava/lang/ClassCastException;");
+        public static final Symbol<Type> java_lang_ArrayStoreException = StaticSymbols.putType("Ljava/lang/ArrayStoreException;");
+        public static final Symbol<Type> java_lang_ArithmeticException = StaticSymbols.putType("Ljava/lang/ArithmeticException;");
+        public static final Symbol<Type> java_lang_IllegalMonitorStateException = StaticSymbols.putType("Ljava/lang/IllegalMonitorStateException;");
+        public static final Symbol<Type> java_lang_IllegalArgumentException = StaticSymbols.putType("Ljava/lang/IllegalArgumentException;");
+        public static final Symbol<Type> java_lang_ClassNotFoundException = StaticSymbols.putType("Ljava/lang/ClassNotFoundException;");
+        public static final Symbol<Type> java_lang_NoClassDefFoundError = StaticSymbols.putType("Ljava/lang/NoClassDefFoundError;");
+        public static final Symbol<Type> java_lang_InterruptedException = StaticSymbols.putType("Ljava/lang/InterruptedException;");
+        public static final Symbol<Type> java_lang_ThreadDeath = StaticSymbols.putType("Ljava/lang/ThreadDeath;");
+        public static final Symbol<Type> java_lang_NegativeArraySizeException = StaticSymbols.putType("Ljava/lang/NegativeArraySizeException;");
+        public static final Symbol<Type> java_lang_RuntimeException = StaticSymbols.putType("Ljava/lang/RuntimeException;");
+        public static final Symbol<Type> java_lang_IndexOutOfBoundsException = StaticSymbols.putType("Ljava/lang/IndexOutOfBoundsException;");
+        public static final Symbol<Type> java_lang_ArrayIndexOutOfBoundsException = StaticSymbols.putType("Ljava/lang/ArrayIndexOutOfBoundsException;");
+        public static final Symbol<Type> java_lang_StringIndexOutOfBoundsException = StaticSymbols.putType("Ljava/lang/StringIndexOutOfBoundsException;");
+        public static final Symbol<Type> java_lang_ExceptionInInitializerError = StaticSymbols.putType("Ljava/lang/ExceptionInInitializerError;");
+        public static final Symbol<Type> java_lang_InstantiationException = StaticSymbols.putType("Ljava/lang/InstantiationException;");
+        public static final Symbol<Type> java_lang_InstantiationError = StaticSymbols.putType("Ljava/lang/InstantiationError;");
+        public static final Symbol<Type> java_lang_CloneNotSupportedException = StaticSymbols.putType("Ljava/lang/CloneNotSupportedException;");
+        public static final Symbol<Type> java_lang_SecurityException = StaticSymbols.putType("Ljava/lang/SecurityException;");
+        public static final Symbol<Type> java_lang_LinkageError = StaticSymbols.putType("Ljava/lang/LinkageError;");
+        public static final Symbol<Type> java_lang_BootstrapMethodError = StaticSymbols.putType("Ljava/lang/BootstrapMethodError;");
+        public static final Symbol<Type> java_lang_NoSuchFieldException = StaticSymbols.putType("Ljava/lang/NoSuchFieldException;");
+        public static final Symbol<Type> java_lang_NoSuchMethodException = StaticSymbols.putType("Ljava/lang/NoSuchMethodException;");
+        public static final Symbol<Type> java_lang_UnsupportedOperationException = StaticSymbols.putType("Ljava/lang/UnsupportedOperationException;");
+        public static final Symbol<Type> java_lang_UnsupportedClassVersionError = StaticSymbols.putType("Ljava/lang/UnsupportedClassVersionError;");
+        public static final Symbol<Type> java_lang_reflect_InvocationTargetException = StaticSymbols.putType("Ljava/lang/reflect/InvocationTargetException;");
 
-        public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType(Thread.class);
-        public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType(ThreadGroup.class);
-        public static final Symbol<Type> java_lang_Runnable = StaticSymbols.putType(Runnable.class);
+        public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType("Ljava/lang/Thread;");
+        public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType("Ljava/lang/ThreadGroup;");
+        public static final Symbol<Type> java_lang_Runnable = StaticSymbols.putType("Ljava/lang/Runnable;");
 
         public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType("Lsun/misc/VM;");
         public static final Symbol<Type> jdk_internal_misc_VM = StaticSymbols.putType("Ljdk/internal/misc/VM;");
-        public static final Symbol<Type> java_lang_Thread$State = StaticSymbols.putType(Thread.State.class);
+        public static final Symbol<Type> java_lang_Thread$State = StaticSymbols.putType("Ljava/lang/Thread$State;");
 
         public static final Symbol<Type> sun_misc_Signal = StaticSymbols.putType("Lsun/misc/Signal;");
         public static final Symbol<Type> jdk_internal_misc_Signal = StaticSymbols.putType("Ljdk/internal/misc/Signal;");
@@ -630,15 +619,15 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> sun_misc_SignalHandler = StaticSymbols.putType("Lsun/misc/SignalHandler;");
         public static final Symbol<Type> jdk_internal_misc_Signal$Handler = StaticSymbols.putType("Ljdk/internal/misc/Signal$Handler;");
 
-        public static final Symbol<Type> sun_nio_ch_DirectBuffer = StaticSymbols.putType(sun.nio.ch.DirectBuffer.class);
-        public static final Symbol<Type> java_nio_Buffer = StaticSymbols.putType(java.nio.Buffer.class);
+        public static final Symbol<Type> sun_nio_ch_DirectBuffer = StaticSymbols.putType("Lsun/nio/ch/DirectBuffer;");
+        public static final Symbol<Type> java_nio_Buffer = StaticSymbols.putType("Ljava/nio/Buffer;");
 
         // Guest reflection.
-        public static final Symbol<Type> java_lang_reflect_Field = StaticSymbols.putType(java.lang.reflect.Field.class);
-        public static final Symbol<Type> java_lang_reflect_Method = StaticSymbols.putType(java.lang.reflect.Method.class);
-        public static final Symbol<Type> java_lang_reflect_Constructor = StaticSymbols.putType(java.lang.reflect.Constructor.class);
-        public static final Symbol<Type> java_lang_reflect_Parameter = StaticSymbols.putType(java.lang.reflect.Parameter.class);
-        public static final Symbol<Type> java_lang_reflect_Executable = StaticSymbols.putType(java.lang.reflect.Executable.class);
+        public static final Symbol<Type> java_lang_reflect_Field = StaticSymbols.putType("Ljava/lang/reflect/Field;");
+        public static final Symbol<Type> java_lang_reflect_Method = StaticSymbols.putType("Ljava/lang/reflect/Method;");
+        public static final Symbol<Type> java_lang_reflect_Constructor = StaticSymbols.putType("Ljava/lang/reflect/Constructor;");
+        public static final Symbol<Type> java_lang_reflect_Parameter = StaticSymbols.putType("Ljava/lang/reflect/Parameter;");
+        public static final Symbol<Type> java_lang_reflect_Executable = StaticSymbols.putType("Ljava/lang/reflect/Executable;");
         public static final Symbol<Type> sun_reflect_Reflection = StaticSymbols.putType("Lsun/reflect/Reflection;");
         public static final Symbol<Type> jdk_internal_reflect_Reflection = StaticSymbols.putType("Ljdk/internal/reflect/Reflection;");
 
@@ -658,11 +647,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> sun_reflect_ConstantPool = StaticSymbols.putType("Lsun/reflect/ConstantPool;");
         public static final Symbol<Type> jdk_internal_reflect_ConstantPool = StaticSymbols.putType("Ljdk/internal/reflect/ConstantPool;");
 
-        public static final Symbol<Type> java_io_Serializable = StaticSymbols.putType(java.io.Serializable.class);
-        public static final Symbol<Type> java_nio_ByteBuffer = StaticSymbols.putType(java.nio.ByteBuffer.class);
+        public static final Symbol<Type> java_io_Serializable = StaticSymbols.putType("Ljava/io/Serializable;");
+        public static final Symbol<Type> java_nio_ByteBuffer = StaticSymbols.putType("Ljava/nio/ByteBuffer;");
         public static final Symbol<Type> java_nio_DirectByteBuffer = StaticSymbols.putType("Ljava/nio/DirectByteBuffer;");
 
-        public static final Symbol<Type> java_security_PrivilegedActionException = StaticSymbols.putType(java.security.PrivilegedActionException.class);
+        public static final Symbol<Type> java_security_PrivilegedActionException = StaticSymbols.putType("Ljava/security/PrivilegedActionException;");
 
         // Shutdown is not public.
         public static final Symbol<Type> java_lang_Shutdown = StaticSymbols.putType("Ljava/lang/Shutdown;");
@@ -671,46 +660,46 @@ public final class Symbol<T> extends ByteSequence {
 
         // Finalizer is not public.
         public static final Symbol<Type> java_lang_ref_Finalizer = StaticSymbols.putType("Ljava/lang/ref/Finalizer;");
-        public static final Symbol<Type> java_lang_ref_Reference = StaticSymbols.putType(java.lang.ref.Reference.class);
+        public static final Symbol<Type> java_lang_ref_Reference = StaticSymbols.putType("Ljava/lang/ref/Reference;");
         public static final Symbol<Type> java_lang_ref_FinalReference = StaticSymbols.putType("Ljava/lang/ref/FinalReference;");
-        public static final Symbol<Type> java_lang_ref_WeakReference = StaticSymbols.putType(java.lang.ref.WeakReference.class);
-        public static final Symbol<Type> java_lang_ref_SoftReference = StaticSymbols.putType(java.lang.ref.SoftReference.class);
-        public static final Symbol<Type> java_lang_ref_PhantomReference = StaticSymbols.putType(java.lang.ref.PhantomReference.class);
-        public static final Symbol<Type> java_lang_ref_ReferenceQueue = StaticSymbols.putType(java.lang.ref.ReferenceQueue.class);
+        public static final Symbol<Type> java_lang_ref_WeakReference = StaticSymbols.putType("Ljava/lang/ref/WeakReference;");
+        public static final Symbol<Type> java_lang_ref_SoftReference = StaticSymbols.putType("Ljava/lang/ref/SoftReference;");
+        public static final Symbol<Type> java_lang_ref_PhantomReference = StaticSymbols.putType("Ljava/lang/ref/PhantomReference;");
+        public static final Symbol<Type> java_lang_ref_ReferenceQueue = StaticSymbols.putType("Ljava/lang/ref/ReferenceQueue;");
         public static final Symbol<Type> java_lang_ref_Reference$Lock = StaticSymbols.putType("Ljava/lang/ref/Reference$Lock;");
 
         public static final Symbol<Type> sun_misc_Cleaner = StaticSymbols.putType("Lsun/misc/Cleaner;");
         public static final Symbol<Type> jdk_internal_ref_Cleaner = StaticSymbols.putType("Ljdk/internal/ref/Cleaner;");
 
-        public static final Symbol<Type> java_lang_StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
-        public static final Symbol<Type> java_lang_StackTraceElement_array = StaticSymbols.putType(StackTraceElement[].class);
+        public static final Symbol<Type> java_lang_StackTraceElement = StaticSymbols.putType("Ljava/lang/StackTraceElement;");
+        public static final Symbol<Type> java_lang_StackTraceElement_array = StaticSymbols.putType("[Ljava/lang/StackTraceElement;");
 
-        public static final Symbol<Type> java_lang_Error = StaticSymbols.putType(Error.class);
-        public static final Symbol<Type> java_lang_NoSuchFieldError = StaticSymbols.putType(NoSuchFieldError.class);
-        public static final Symbol<Type> java_lang_NoSuchMethodError = StaticSymbols.putType(NoSuchMethodError.class);
-        public static final Symbol<Type> java_lang_IllegalAccessError = StaticSymbols.putType(IllegalAccessError.class);
-        public static final Symbol<Type> java_lang_IncompatibleClassChangeError = StaticSymbols.putType(IncompatibleClassChangeError.class);
-        public static final Symbol<Type> java_lang_AbstractMethodError = StaticSymbols.putType(AbstractMethodError.class);
-        public static final Symbol<Type> java_lang_InternalError = StaticSymbols.putType(InternalError.class);
-        public static final Symbol<Type> java_lang_VerifyError = StaticSymbols.putType(VerifyError.class);
-        public static final Symbol<Type> java_lang_ClassFormatError = StaticSymbols.putType(ClassFormatError.class);
-        public static final Symbol<Type> java_lang_ClassCircularityError = StaticSymbols.putType(ClassCircularityError.class);
-        public static final Symbol<Type> java_lang_UnsatisfiedLinkError = StaticSymbols.putType(UnsatisfiedLinkError.class);
+        public static final Symbol<Type> java_lang_Error = StaticSymbols.putType("Ljava/lang/Error;");
+        public static final Symbol<Type> java_lang_NoSuchFieldError = StaticSymbols.putType("Ljava/lang/NoSuchFieldError;");
+        public static final Symbol<Type> java_lang_NoSuchMethodError = StaticSymbols.putType("Ljava/lang/NoSuchMethodError;");
+        public static final Symbol<Type> java_lang_IllegalAccessError = StaticSymbols.putType("Ljava/lang/IllegalAccessError;");
+        public static final Symbol<Type> java_lang_IncompatibleClassChangeError = StaticSymbols.putType("Ljava/lang/IncompatibleClassChangeError;");
+        public static final Symbol<Type> java_lang_AbstractMethodError = StaticSymbols.putType("Ljava/lang/AbstractMethodError;");
+        public static final Symbol<Type> java_lang_InternalError = StaticSymbols.putType("Ljava/lang/InternalError;");
+        public static final Symbol<Type> java_lang_VerifyError = StaticSymbols.putType("Ljava/lang/VerifyError;");
+        public static final Symbol<Type> java_lang_ClassFormatError = StaticSymbols.putType("Ljava/lang/ClassFormatError;");
+        public static final Symbol<Type> java_lang_ClassCircularityError = StaticSymbols.putType("Ljava/lang/ClassCircularityError;");
+        public static final Symbol<Type> java_lang_UnsatisfiedLinkError = StaticSymbols.putType("Ljava/lang/UnsatisfiedLinkError;");
 
-        public static final Symbol<Type> java_lang_invoke_MethodType = StaticSymbols.putType(java.lang.invoke.MethodType.class);
+        public static final Symbol<Type> java_lang_invoke_MethodType = StaticSymbols.putType("Ljava/lang/invoke/MethodType;");
 
         public static final Symbol<Type> java_lang_AssertionStatusDirectives = StaticSymbols.putType("Ljava/lang/AssertionStatusDirectives;");
 
-        public static final Symbol<Type> java_lang_invoke_MethodHandles = StaticSymbols.putType(java.lang.invoke.MethodHandles.class);
+        public static final Symbol<Type> java_lang_invoke_MethodHandles = StaticSymbols.putType("Ljava/lang/invoke/MethodHandles;");
         public static final Symbol<Type> java_lang_invoke_VarHandle = StaticSymbols.putType("Ljava/lang/invoke/VarHandle;");
-        public static final Symbol<Type> java_lang_invoke_MethodHandles$Lookup = StaticSymbols.putType(java.lang.invoke.MethodHandles.Lookup.class);
-        public static final Symbol<Type> java_lang_invoke_CallSite = StaticSymbols.putType(java.lang.invoke.CallSite.class);
+        public static final Symbol<Type> java_lang_invoke_MethodHandles$Lookup = StaticSymbols.putType("Ljava/lang/invoke/MethodHandles$Lookup;");
+        public static final Symbol<Type> java_lang_invoke_CallSite = StaticSymbols.putType("Ljava/lang/invoke/CallSite;");
         public static final Symbol<Type> java_lang_invoke_DirectMethodHandle = StaticSymbols.putType("Ljava/lang/invoke/DirectMethodHandle;");
 
         // MethodHandleNatives is not public.
         public static final Symbol<Type> java_lang_invoke_MethodHandleNatives = StaticSymbols.putType("Ljava/lang/invoke/MethodHandleNatives;");
         public static final Symbol<Type> java_lang_invoke_MemberName = StaticSymbols.putType("Ljava/lang/invoke/MemberName;");
-        public static final Symbol<Type> java_lang_invoke_MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
+        public static final Symbol<Type> java_lang_invoke_MethodHandle = StaticSymbols.putType("Ljava/lang/invoke/MethodHandle;");
         public static final Symbol<Type> java_lang_invoke_LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Compiled = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Compiled;");
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Hidden = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Hidden;");
@@ -732,23 +721,23 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> jdk_internal_misc_InnocuousThread = StaticSymbols.putType("Ljdk/internal/misc/InnocuousThread;");
         public static final Symbol<Type> sun_misc_InnocuousThread = StaticSymbols.putType("Lsun/misc/InnocuousThread;");
         // java.management
-        public static final Symbol<Type> java_lang_management_MemoryManagerMXBean = StaticSymbols.putType(java.lang.management.MemoryManagerMXBean.class);
-        public static final Symbol<Type> java_lang_management_MemoryPoolMXBean = StaticSymbols.putType(java.lang.management.MemoryPoolMXBean.class);
-        public static final Symbol<Type> java_lang_management_GarbageCollectorMXBean = StaticSymbols.putType(java.lang.management.GarbageCollectorMXBean.class);
+        public static final Symbol<Type> java_lang_management_MemoryManagerMXBean = StaticSymbols.putType("Ljava/lang/management/MemoryManagerMXBean;");
+        public static final Symbol<Type> java_lang_management_MemoryPoolMXBean = StaticSymbols.putType("Ljava/lang/management/MemoryPoolMXBean;");
+        public static final Symbol<Type> java_lang_management_GarbageCollectorMXBean = StaticSymbols.putType("Ljava/lang/management/GarbageCollectorMXBean;");
         public static final Symbol<Type> sun_management_ManagementFactory = StaticSymbols.putType("Lsun/management/ManagementFactory;");
         public static final Symbol<Type> sun_management_ManagementFactoryHelper = StaticSymbols.putType("Lsun/management/ManagementFactoryHelper;");
-        public static final Symbol<Type> java_lang_management_MemoryUsage = StaticSymbols.putType(java.lang.management.MemoryUsage.class);
-        public static final Symbol<Type> java_lang_management_ThreadInfo = StaticSymbols.putType(java.lang.management.ThreadInfo.class);
+        public static final Symbol<Type> java_lang_management_MemoryUsage = StaticSymbols.putType("Ljava/lang/management/MemoryUsage;");
+        public static final Symbol<Type> java_lang_management_ThreadInfo = StaticSymbols.putType("Ljava/lang/management/ThreadInfo;");
 
         // Interop conversions.
-        public static final Symbol<Type> java_time_Duration = StaticSymbols.putType(Duration.class);
-        public static final Symbol<Type> java_time_LocalTime = StaticSymbols.putType(LocalTime.class);
-        public static final Symbol<Type> java_time_LocalDateTime = StaticSymbols.putType(LocalDateTime.class);
-        public static final Symbol<Type> java_time_LocalDate = StaticSymbols.putType(LocalDate.class);
-        public static final Symbol<Type> java_time_Instant = StaticSymbols.putType(Instant.class);
-        public static final Symbol<Type> java_time_ZonedDateTime = StaticSymbols.putType(ZonedDateTime.class);
-        public static final Symbol<Type> java_util_Date = StaticSymbols.putType(Date.class);
-        public static final Symbol<Type> java_time_ZoneId = StaticSymbols.putType(ZoneId.class);
+        public static final Symbol<Type> java_time_Duration = StaticSymbols.putType("Ljava/time/Duration;");
+        public static final Symbol<Type> java_time_LocalTime = StaticSymbols.putType("Ljava/time/LocalTime;");
+        public static final Symbol<Type> java_time_LocalDateTime = StaticSymbols.putType("Ljava/time/LocalDateTime;");
+        public static final Symbol<Type> java_time_LocalDate = StaticSymbols.putType("Ljava/time/LocalDate;");
+        public static final Symbol<Type> java_time_Instant = StaticSymbols.putType("Ljava/time/Instant;");
+        public static final Symbol<Type> java_time_ZonedDateTime = StaticSymbols.putType("Ljava/time/ZonedDateTime;");
+        public static final Symbol<Type> java_util_Date = StaticSymbols.putType("Ljava/util/Date;");
+        public static final Symbol<Type> java_time_ZoneId = StaticSymbols.putType("Ljava/time/ZoneId;");
 
         // Polyglot/interop API.
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_Polyglot = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/Polyglot;");
@@ -778,6 +767,7 @@ public final class Symbol<T> extends ByteSequence {
             /* nop */
         }
 
+        public static final Symbol<Signature> _boolean = StaticSymbols.putSignature(Type._boolean);
         public static final Symbol<Signature> _byte = StaticSymbols.putSignature(Type._byte);
         public static final Symbol<Signature> _short = StaticSymbols.putSignature(Type._short);
         public static final Symbol<Signature> _char = StaticSymbols.putSignature(Type._char);
@@ -786,7 +776,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _float = StaticSymbols.putSignature(Type._float);
         public static final Symbol<Signature> _double = StaticSymbols.putSignature(Type._double);
         public static final Symbol<Signature> _void = StaticSymbols.putSignature(Type._void);
-        public static final Symbol<Signature> _boolean = StaticSymbols.putSignature(Type._boolean);
+
         public static final Symbol<Signature> Class = StaticSymbols.putSignature(Type.java_lang_Class);
         public static final Symbol<Signature> LocalDate = StaticSymbols.putSignature(Type.java_time_LocalDate);
         public static final Symbol<Signature> LocalTime = StaticSymbols.putSignature(Type.java_time_LocalTime);
@@ -806,9 +796,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Class_array = StaticSymbols.putSignature(Type.java_lang_Class_array);
 
         public static final Symbol<Signature> Object_String_String = StaticSymbols.putSignature(Type.java_lang_Object, Type.java_lang_String, Type.java_lang_String);
-        public static final Symbol<Signature> String_String = StaticSymbols.putSignature(Type.java_lang_String, Type.java_lang_String);
         public static final Symbol<Signature> _void_String_array = StaticSymbols.putSignature(Type._void, Type.java_lang_String_array);
-        public static final Symbol<Signature> Class_boolean_int_String = StaticSymbols.putSignature(Type.java_lang_Class, Type._boolean, Type._int, Type.java_lang_String);
         public static final Symbol<Signature> Class_String_boolean_ClassLoader = StaticSymbols.putSignature(Type.java_lang_Class, Type.java_lang_String, Type._boolean, Type.java_lang_ClassLoader);
 
         public static final Symbol<Signature> _void_Throwable = StaticSymbols.putSignature(Type._void, Type.java_lang_Throwable);
@@ -886,8 +874,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_Runnable);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
-
-        public static final Symbol<Signature> _boolean_Reference = StaticSymbols.putSignature(Type._boolean, Type.java_lang_ref_Reference);
 
         public static final Symbol<Signature> _void_CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.java_security_CodeSource, Type.java_security_PermissionCollection);
 
