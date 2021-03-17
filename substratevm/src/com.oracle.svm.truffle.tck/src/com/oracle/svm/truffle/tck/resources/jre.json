@@ -244,14 +244,6 @@
           "java.lang.String",
           "java.lang.Class"
         ]
-      },
-      {
-        "name": "demandSystemLogger",
-        "parameterTypes": [
-          "java.lang.String",
-          "java.lang.String",
-          "java.lang.Module"
-        ]
       }
     ]
   }
