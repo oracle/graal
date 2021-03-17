@@ -28,8 +28,8 @@ import java.util.Map;
 import java.util.function.Function;
 
 public final class CompressedBundle implements StoredBundle {
-    private byte[] content;
-    private Function<byte[], Map<String, Object>> decompressionAlgorithm;
+    private final byte[] content;
+    private final Function<byte[], Map<String, Object>> decompressionAlgorithm;
     private Map<String, Object> extracted;
 
     public CompressedBundle(byte[] content, Function<byte[], Map<String, Object>> decompressionAlgorithm) {
@@ -41,10 +41,6 @@ public final class CompressedBundle implements StoredBundle {
     public Map<String, Object> getContent() {
         if (extracted == null) {
             extracted = decompressionAlgorithm.apply(content);
-
-            /*- No need to keep the compressed version afterwards */
-            content = null;
-            decompressionAlgorithm = null;
         }
         return extracted;
     }
