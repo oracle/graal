@@ -28,8 +28,10 @@ package com.oracle.svm.jfr.traceid;
 //Checkstyle: allow reflection
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 import sun.misc.Unsafe;
@@ -52,11 +54,9 @@ public class JfrTraceIdEpoch {
     public static final long EPOCH_0_METHOD_AND_CLASS_BITS = (METHOD_AND_CLASS_BITS << EPOCH_0_SHIFT);
     public static final long EPOCH_1_METHOD_AND_CLASS_BITS = (METHOD_AND_CLASS_BITS << EPOCH_1_SHIFT);
 
-    private static JfrTraceIdEpoch instance = new JfrTraceIdEpoch();
-
-    @Uninterruptible(reason = "Called from uninterruptible code")
+    @Fold
     public static JfrTraceIdEpoch getInstance() {
-        return instance;
+        return ImageSingletons.lookup(JfrTraceIdEpoch.class);
     }
 
     public long getEpochAddress() {
