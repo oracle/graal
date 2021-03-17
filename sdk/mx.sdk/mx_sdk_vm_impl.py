@@ -1973,7 +1973,7 @@ def _gen_gu_manifest(components, formatter, bundled=False):
     manifest["Bundle-Name"] = main_component.name
     manifest["Bundle-Symbolic-Name"] = main_component.installable_id
     manifest["Bundle-Version"] = version
-    capability_fmt = 'org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch})(java_version={java_version}))'
+    capability_fmt = 'org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch})(java_version={java_version}))"'
     manifest["Bundle-RequireCapability"] = capability_fmt.format(os=get_graalvm_os(),
                                                                  arch=mx.get_arch(),
                                                                  java_version=_src_jdk_version,
