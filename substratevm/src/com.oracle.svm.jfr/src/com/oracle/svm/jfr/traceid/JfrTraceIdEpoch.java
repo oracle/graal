@@ -25,6 +25,7 @@
 
 package com.oracle.svm.jfr.traceid;
 
+//Checkstyle: allow reflection
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;

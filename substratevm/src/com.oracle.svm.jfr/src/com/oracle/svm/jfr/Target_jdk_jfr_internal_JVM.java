@@ -26,7 +26,6 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import org.graalvm.nativeimage.ProcessProperties;
