@@ -2832,11 +2832,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     }
                 } catch (UnknownIdentifierException e) {
                     unknown.enter();
-                    if (objects.isMemberExisting(receiver, key)) {
-                        return nonReadableMemberKey(context, receiver, key);
-                    } else {
-                        value = null;
-                    }
+                    value = null;
                 }
                 return value;
             }

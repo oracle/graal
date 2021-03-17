@@ -34,7 +34,6 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * When `HostAccess.Builder.allowMapAccess(boolean)` is enabled the Java `HashMap.Entry` is interpreted as a guest value with two array elements.
 * Added `Context.safepoint()` to manually poll thread local of a polyglot context while a host method is executed. For example, this allows the context to check for potential interruption or cancellation.
 * `Value.putMember(String, Object)` now throws `UnsupportedOperationException` instead of `IllegalArgumentException` if the member is not writable.
-* `Value.getMember(String)` now throws `UnsupportedOperationException` instead of returning `null` if the member is not readable.
 * `Value.removeMember(String)` now throws `UnsupportedOperationException` instead of returning `false` if the member is not removable.
 * `Value.invokeMember(String, Object...)` now throws `UnsupportedOperationException` instead of `IllegalArgumentException` if the member is not invokable.
 

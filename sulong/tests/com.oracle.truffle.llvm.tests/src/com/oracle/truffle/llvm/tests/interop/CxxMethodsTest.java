@@ -135,7 +135,7 @@ public class CxxMethodsTest extends InteropTestBase {
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = UnsupportedOperationException.class)
     public void testNonExistingMethod() {
         Value point = allocPoint.execute();
         try {
