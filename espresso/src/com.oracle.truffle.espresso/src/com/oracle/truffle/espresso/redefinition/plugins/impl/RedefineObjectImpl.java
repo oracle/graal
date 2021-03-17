@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.redefinition.plugins.impl;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.redefinition.plugins.api.RedefineObject;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -54,7 +53,12 @@ public abstract class RedefineObjectImpl implements RedefineObject {
     }
 
     @Override
-    public abstract RedefineObject invokeRaw(String name, RedefineObject... args) throws NoSuchMethodException;
+    public Object getRawValue() {
+        return instance.get();
+    }
+
+    @Override
+    public abstract Object invoke(String name, RedefineObject... args) throws NoSuchMethodException;
 
     @SuppressWarnings("unused")
     public RedefineObject invokePrecise(String className, String methodName, RedefineObject... args) throws NoSuchMethodException {
@@ -64,10 +68,10 @@ public abstract class RedefineObjectImpl implements RedefineObject {
     @Override
     public abstract RedefineObject getInstanceField(String fieldName) throws NoSuchFieldException;
 
-    protected Method lookupMethod(String name, RedefineObject[] args) throws NoSuchMethodException {
+    protected Method lookupMethod(String name, RedefineObject[] args) {
         StaticObject theInstance = instance.get();
         if (theInstance == null) {
-            throw new IllegalStateException("cannot invoke method on garbage collection instance");
+            throw new IllegalStateException("cannot invoke method on garbage collected instance");
         }
 
         Klass currentKlass = klass;
@@ -77,8 +81,8 @@ public abstract class RedefineObjectImpl implements RedefineObject {
             if (method != null) {
                 return method;
             }
-            ObjectKlass[] interfaces = currentKlass.getInterfaces();
-            for (ObjectKlass itf : interfaces) {
+            Klass[] interfaces = currentKlass.getTransitiveInterfacesList();
+            for (Klass itf : interfaces) {
                 method = lookupMethod(itf, name, args);
                 if (method != null && !method.isAbstract()) {
                     return method;
@@ -89,22 +93,68 @@ public abstract class RedefineObjectImpl implements RedefineObject {
         return null;
     }
 
-    protected Method lookupMethod(Klass klassRef, String name, RedefineObject[] args) throws NoSuchMethodException {
+    protected Method lookupMethod(Klass klassRef, String name, RedefineObject[] args) {
         for (Method declaredMethod : klassRef.getDeclaredMethods()) {
             if (declaredMethod.getNameAsString().equals(name)) {
                 // match arguments
                 boolean match = true;
+                Klass[] parameters = declaredMethod.resolveParameterKlasses();
                 if (declaredMethod.getParameterCount() == args.length) {
-                    Klass[] parameters = declaredMethod.resolveParameterKlasses();
                     for (int i = 0; i < args.length; i++) {
+                        if (args[i] == null) {
+                            if (parameters[i].isPrimitive()) {
+                                match = false;
+                                break;
+                            }
+                            continue;
+                        }
                         if (!parameters[i].isAssignableFrom((Klass) args[i].getKlass())) {
                             match = false;
                             break;
                         }
                     }
                 } else if (declaredMethod.isVarargs()) {
-                    // TODO - not implemented yet
-                    throw new NoSuchMethodException("varargs lookup not implemented");
+                    int parameterCount = declaredMethod.getParameterCount();
+                    int argsCount = args.length;
+
+                    if (parameterCount == 1) {
+                        // pure varargs
+                        // TODO - implement this case
+                        match = false;
+                    } else {
+                        // match before varargs param
+                        for (int i = 0; i < parameterCount - 1; i++) {
+                            if (args[i] == null) {
+                                if (parameters[i].isPrimitive()) {
+                                    match = false;
+                                    break;
+                                }
+                                continue;
+                            }
+                            if (!parameters[i].isAssignableFrom((Klass) args[i].getKlass())) {
+                                match = false;
+                                break;
+                            }
+                        }
+                        // match varargs
+                        Klass varargsParam = parameters[parameterCount - 1];
+                        for (int i = parameterCount - 1; i < argsCount; i++) {
+                            if (args[i] == null) {
+                                if (varargsParam.isPrimitive()) {
+                                    match = false;
+                                    break;
+                                }
+                                continue;
+                            }
+                            if (varargsParam.isAssignableFrom((Klass) args[i].getKlass())) {
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    // arguments didn't match
+                    match = false;
                 }
                 if (match) {
                     return declaredMethod;
@@ -117,7 +167,7 @@ public abstract class RedefineObjectImpl implements RedefineObject {
     protected Object[] rawObjects(RedefineObjectImpl[] args) {
         Object[] result = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
-            result[i] = args[i].instance;
+            result[i] = args[i].instance.get();
         }
         return result;
     }

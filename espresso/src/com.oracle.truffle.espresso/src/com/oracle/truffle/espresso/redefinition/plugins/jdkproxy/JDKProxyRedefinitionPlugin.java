@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
@@ -42,8 +41,6 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.MethodLocator;
 import com.oracle.truffle.espresso.redefinition.plugins.api.TriggerClass;
 
 public class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
-
-    public static final InteropLibrary INTEROP = InteropLibrary.getUncached();
 
     private static final String PROXY_GENERATOR_CLASS = "sun.misc.ProxyGenerator";
     private static final String GENERATOR_METHOD = "generateProxyClass";

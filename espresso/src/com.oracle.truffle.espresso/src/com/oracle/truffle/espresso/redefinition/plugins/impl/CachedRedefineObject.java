@@ -53,7 +53,7 @@ public final class CachedRedefineObject extends RedefineObjectImpl {
 
     @Override
     @TruffleBoundary
-    public RedefineObject invokeRaw(String name, RedefineObject... args) throws NoSuchMethodException {
+    public Object invoke(String name, RedefineObject... args) throws NoSuchMethodException {
         StringBuilder stringBuffer = new StringBuilder(name);
         for (RedefineObject arg : args) {
             stringBuffer.append(((RedefineObjectImpl) arg).instance.get().getKlass().getNameAsString());
@@ -75,7 +75,7 @@ public final class CachedRedefineObject extends RedefineObjectImpl {
             for (int i = 0; i < args.length; i++) {
                 internalArgs[i] = (RedefineObjectImpl) args[i];
             }
-            return InternalRedefinitionPlugin.createUncached(method.invokeDirect(theInstance, rawObjects(internalArgs)));
+            return method.invokeDirect(theInstance, rawObjects(internalArgs));
         }
         throw new NoSuchMethodException();
     }

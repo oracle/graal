@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.redefinition.plugins.micronaut;
 
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.redefinition.plugins.api.RedefineObject;
 import com.oracle.truffle.espresso.redefinition.plugins.api.MethodLocator;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
@@ -32,26 +31,30 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.TriggerClass;
 
 import java.util.ArrayList;
 
-// TODO - current state doesn't reflect changes to apps properly
-// TODO - this needs more thorough integration to Micronaut
 public class MicronautPlugin extends InternalRedefinitionPlugin {
 
     private static final String BEAN_CLASS_ACTIVATION_NAME = "io.micronaut.context.AbstractBeanDefinitionReference";
     private static final String EXECUTION_CLASS_ACTIVATION_NAME = "io.micronaut.context.AbstractExecutableMethod";
-    private static final String DEFAULT_BEAN_CONTEXT_ACTIVATION_NAME = "io.micronaut.context.DefaultBeanContext";
-    private static final String EMBEDDED_APPLICATION_CLASS_NAME = "io.micronaut.runtime.EmbeddedApplication";
-    private static final String BEAN_LOCATOR_CLASS_NAME = "io.micronaut.context.BeanLocator";
+    private static final String MICRONAUT_CLASS = "io.micronaut.runtime.Micronaut";
+    private static final String ROUTING_IN_BOUND_HANDLER = "io.micronaut.http.server.netty.RoutingInBoundHandler";
 
-    private static final String START_METHOD_NAME = "start";
-    private static final String START_METHOD_SIGNATURE = "()Lio/micronaut/context/BeanContext;";
+    private static final String RUN = "run";
+    private static final String RUN_SIG = "([Ljava/lang/Class;[Ljava/lang/String;)Lio/micronaut/context/ApplicationContext;";
+    private static final String STOP = "stop";
+    private static final String CHANNEL_READ_0 = "channelRead0";
+    private static final String CHANNEL_READ_0_SIG = "(Lio/netty/channel/ChannelHandlerContext;Lio/micronaut/http/HttpRequest;)V";
+
 
     private ArrayList<KlassRef> clinitRerunTypes;
     private boolean needsBeanRefresh;
 
     // the default bean context
-    private RedefineObject defaultBeanContext;
-    // the embedded application instance
-    private RedefineObject embeddedApplicationType;
+    private RedefineObject micronautContext;
+
+    private RedefineObject[] runArgs;
+    private RedefineObject micronautClassInstance;
+
+    private KlassRef rountingHandler;
 
     @Override
     public String getName() {
@@ -60,16 +63,29 @@ public class MicronautPlugin extends InternalRedefinitionPlugin {
 
     @Override
     public TriggerClass[] getTriggerClasses() {
-        ArrayList<TriggerClass> triggers = new ArrayList<>(3);
-        triggers.add(new TriggerClass(DEFAULT_BEAN_CONTEXT_ACTIVATION_NAME, this, klass -> {
-            // default bean class loaded, so register a listener on the start method
-            // for fetching the context object we need on redefinitions later
-            hookMethodExit(klass, new MethodLocator(START_METHOD_NAME, START_METHOD_SIGNATURE), MethodHook.Kind.ONE_TIME, (method, returnValue) -> {
-                defaultBeanContext = InternalRedefinitionPlugin.createCached(returnValue);
+        ArrayList<TriggerClass> triggers = new ArrayList<>(4);
+        triggers.add(new TriggerClass(MICRONAUT_CLASS, this, klass -> {
+            // we need the application context when reloading
+            hookMethodExit(klass, new MethodLocator(RUN, RUN_SIG), MethodHook.Kind.INDEFINITE, (method, returnValue) -> {
+                micronautContext = InternalRedefinitionPlugin.createCached(returnValue);
+            });
+            // we need the run arguments for re-starting a fresh context
+            hookMethodEntry(klass, new MethodLocator(RUN, RUN_SIG), MethodHook.Kind.INDEFINITE, (method, variables) -> {
+                micronautClassInstance = InternalRedefinitionPlugin.createCached(klass);
+                // collect run arguments
+                runArgs = new RedefineObject[2];
+                // array of j.l.Class instances
+                runArgs[0] = InternalRedefinitionPlugin.createUncached(variables[0].getValue());
+                // array of String args
+                runArgs[1] = InternalRedefinitionPlugin.createUncached(variables[1].getValue());
             });
         }));
         triggers.add(new TriggerClass(BEAN_CLASS_ACTIVATION_NAME, this, klass -> addClinitRerunKlass(klass)));
         triggers.add(new TriggerClass(EXECUTION_CLASS_ACTIVATION_NAME, this, klass -> addClinitRerunKlass(klass)));
+        triggers.add(new TriggerClass(ROUTING_IN_BOUND_HANDLER, this, klass -> {
+            rountingHandler = klass;
+        }));
+
         return triggers.toArray(new TriggerClass[triggers.size()]);
     }
 
@@ -83,9 +99,8 @@ public class MicronautPlugin extends InternalRedefinitionPlugin {
     @Override
     public boolean reRunClinit(KlassRef klass, boolean changed) {
         if (changed) {
-            KlassRef superClass = klass.getSuperClass();
             for (KlassRef rerunType : clinitRerunTypes) {
-                if (rerunType == superClass) {
+                if (rerunType.isAssignable(klass)) {
                     needsBeanRefresh = true;
                     return true;
                 }
@@ -96,41 +111,20 @@ public class MicronautPlugin extends InternalRedefinitionPlugin {
 
     @Override
     public void postClassRedefinition(KlassRef[] changedKlasses) {
-        if (needsBeanRefresh && defaultBeanContext.notNull()) {
-            try {
-                // clear bean caches
-                flushBeanCaches();
-                // fetch needed class types and instances one time
-                if (embeddedApplicationType == null) {
-                    embeddedApplicationType = defaultBeanContext.fromType(EMBEDDED_APPLICATION_CLASS_NAME);
+        if (needsBeanRefresh && micronautContext != null) {
+            // OK, simple HotSwap is not enough, so register a reload hook
+            // in the HTTP pipeline that restarts the context on the next
+            // request.
+            hookMethodEntry(rountingHandler, new MethodLocator(CHANNEL_READ_0, CHANNEL_READ_0_SIG), MethodHook.Kind.ONE_TIME, (method, variables) -> {
+                try {
+                    // restart Micronaut application context
+                    micronautContext.invoke(STOP);
+                    micronautClassInstance.invoke("run", runArgs);
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
-                defaultBeanContext.invokeRaw("startEnvironment");
-
-                // force a bean re-scan:
-                defaultBeanContext.invokeRaw("readAllBeanConfigurations");
-                defaultBeanContext.invokeRaw("readAllBeanDefinitionClasses");
-
-                // re-wire beans for the application
-                defaultBeanContext.invokePrecise(BEAN_LOCATOR_CLASS_NAME, "findBean", embeddedApplicationType);
-            } catch (Throwable ex) {
-                JDWPLogger.log("Failed to reload Micronaut beans due to %s", JDWPLogger.LogLevel.ALL, ex.getMessage());
-            }
+            });
         }
         needsBeanRefresh = false;
-    }
-
-    private void flushBeanCaches() {
-        try {
-            clearCollection(defaultBeanContext, "singletonObjects");
-            clearCollection(defaultBeanContext, "scopedProxies");
-            clearCollection(defaultBeanContext, "beanDefinitionsClasses");
-            clearCollection(defaultBeanContext, "containsBeanCache");
-            clearCollection(defaultBeanContext, "initializedObjectsByType");
-            clearCollection(defaultBeanContext, "beanConcreteCandidateCache");
-            clearCollection(defaultBeanContext, "beanCandidateCache");
-            clearCollection(defaultBeanContext, "beanIndex");
-        } catch (NoSuchFieldException | NoSuchMethodException ex) {
-            JDWPLogger.log("Failed to flush Micronaut caches due to %s", JDWPLogger.LogLevel.ALL, ex.getMessage());
-        }
     }
 }

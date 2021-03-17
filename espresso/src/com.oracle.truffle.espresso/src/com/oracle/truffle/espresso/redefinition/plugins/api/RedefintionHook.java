@@ -31,6 +31,7 @@ public final class RedefintionHook implements MethodHook {
     private final MethodExitHook onExitHook;
     private final MethodEntryHook onEntryHook;
     private final Kind kind;
+    private boolean hasFired = false;
 
     public RedefintionHook(MethodEntryHook onEntryHook, Kind kind) {
         this.onExitHook = null;
@@ -53,6 +54,7 @@ public final class RedefintionHook implements MethodHook {
     public boolean onMethodEnter(MethodRef method, MethodVariable[] variables) {
         if (onEntryHook != null) {
             onEntryHook.onMethodEnter(method, variables);
+            hasFired = true;
         }
         return false;
     }
@@ -61,7 +63,13 @@ public final class RedefintionHook implements MethodHook {
     public boolean onMethodExit(MethodRef method, Object returnValue) {
         if (onExitHook != null) {
             onExitHook.onMethodExit(method, returnValue);
+            hasFired = true;
         }
         return false;
+    }
+
+    @Override
+    public boolean hasFired() {
+        return hasFired;
     }
 }
