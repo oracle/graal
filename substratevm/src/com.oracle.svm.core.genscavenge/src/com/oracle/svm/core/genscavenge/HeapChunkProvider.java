@@ -113,7 +113,7 @@ final class HeapChunkProvider {
             log().string("  new chunk: ").hex(result).newline();
 
             initializeChunk(result, chunkSize);
-            resetAlignedHeapChunk(result);
+            AlignedHeapChunk.reset(result);
         }
         assert HeapChunk.getTopOffset(result).equal(AlignedHeapChunk.getObjectsStartOffset());
         assert HeapChunk.getEndOffset(result).equal(chunkSize);
@@ -153,7 +153,7 @@ final class HeapChunkProvider {
     }
 
     private static void cleanAlignedChunk(AlignedHeader alignedChunk) {
-        resetAlignedHeapChunk(alignedChunk);
+        AlignedHeapChunk.reset(alignedChunk);
         if (HeapPolicy.getZapConsumedHeapChunks()) {
             zap(alignedChunk, HeapPolicy.getConsumedHeapChunkZapWord());
         }
@@ -234,7 +234,7 @@ final class HeapChunkProvider {
         }
 
         initializeChunk(result, chunkSize);
-        resetUnalignedChunk(result);
+        UnalignedHeapChunk.reset(result);
         assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
 
         if (HeapPolicy.getZapProducedHeapChunks()) {
@@ -258,27 +258,6 @@ final class HeapChunkProvider {
     /** Initialize the immutable state of a chunk. */
     private static void initializeChunk(Header<?> that, UnsignedWord chunkSize) {
         HeapChunk.setEndOffset(that, chunkSize);
-    }
-
-    /** Reset the mutable state of a chunk. */
-    private static void resetChunkHeader(Header<?> chunk, Pointer objectsStart) {
-        HeapChunk.setTopPointer(chunk, objectsStart);
-        HeapChunk.setSpace(chunk, null);
-        HeapChunk.setNext(chunk, WordFactory.nullPointer());
-        HeapChunk.setPrevious(chunk, WordFactory.nullPointer());
-    }
-
-    private static void resetAlignedHeapChunk(AlignedHeader chunk) {
-        resetChunkHeader(chunk, AlignedHeapChunk.getObjectsStart(chunk));
-
-        CardTable.cleanTableToPointer(AlignedHeapChunk.getCardTableStart(chunk), AlignedHeapChunk.getCardTableLimit(chunk));
-        FirstObjectTable.initializeTableToLimit(AlignedHeapChunk.getFirstObjectTableStart(chunk), AlignedHeapChunk.getFirstObjectTableLimit(chunk));
-    }
-
-    private static void resetUnalignedChunk(UnalignedHeader result) {
-        resetChunkHeader(result, UnalignedHeapChunk.getObjectStart(result));
-
-        CardTable.cleanTableToPointer(UnalignedHeapChunk.getCardTableStart(result), UnalignedHeapChunk.getCardTableLimit(result));
     }
 
     private static void zap(Header<?> chunk, WordBase value) {

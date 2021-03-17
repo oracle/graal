@@ -36,6 +36,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
@@ -118,7 +119,7 @@ final class ReferenceObjectProcessing {
         if (willSurviveThisCollection(refObject)) {
             // Referent is in a to-space. So, this is either an object that got promoted without
             // being moved or an object in the old gen.
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refObject);
+            RememberedSet.get().dirtyCardIfNecessary(dr, refObject);
             return;
         }
         if (!softReferencesAreWeak && dr instanceof SoftReference) {
@@ -201,7 +202,7 @@ final class ReferenceObjectProcessing {
         }
         Object refObject = refPointer.toObject();
         if (willSurviveThisCollection(refObject)) {
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refObject);
+            RememberedSet.get().dirtyCardIfNecessary(dr, refObject);
             return true;
         }
         /*

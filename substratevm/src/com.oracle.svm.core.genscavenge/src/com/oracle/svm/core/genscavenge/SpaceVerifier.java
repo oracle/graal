@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.log.Log;
 
 final class SpaceVerifier {
@@ -180,7 +181,7 @@ final class SpaceVerifier {
         boolean result = true;
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            result &= AlignedHeapChunk.verifyOnlyCleanCards(chunk);
+            result &= RememberedSet.get().verifyOnlyCleanCards(chunk);
             chunk = HeapChunk.getNext(chunk);
         }
         trace.string("  returns: ").bool(result).string("]").newline();
@@ -192,7 +193,7 @@ final class SpaceVerifier {
         boolean result = true;
         UnalignedHeapChunk.UnalignedHeader chunk = space.getFirstUnalignedHeapChunk();
         while (chunk.isNonNull()) {
-            result &= UnalignedHeapChunk.verifyOnlyCleanCards(chunk);
+            result &= RememberedSet.get().verifyOnlyCleanCards(chunk);
             chunk = HeapChunk.getNext(chunk);
         }
         trace.string("  returns: ").bool(result).string("]").newline();

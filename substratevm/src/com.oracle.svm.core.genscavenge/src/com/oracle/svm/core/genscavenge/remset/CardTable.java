@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.genscavenge.remset;
 
 import java.nio.ByteBuffer;
 
@@ -37,6 +37,12 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
+import com.oracle.svm.core.genscavenge.HeapChunk;
+import com.oracle.svm.core.genscavenge.HeapImpl;
+import com.oracle.svm.core.genscavenge.HeapVerifier;
+import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -76,13 +82,15 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * within the card. That feature is not in this version.</li>
  * </ul>
  */
-public final class CardTable {
+final class CardTable {
     private static final int BYTES_COVERED_BY_ENTRY = 512;
 
     private static final int ENTRY_SIZE_BYTES = 1;
 
     private static final int DIRTY_ENTRY = 0;
     private static final int CLEAN_ENTRY = 1;
+
+    private static final ReferenceToYoungObjectVisitor referenceToYoungObjectVisitor = new ReferenceToYoungObjectVisitor();
 
     /** A LocationIdentity to distinguish card locations from other locations. */
     public static final LocationIdentity CARD_REMEMBERED_SET_LOCATION = NamedLocationIdentity.mutable("CardRememberedSet");
@@ -104,7 +112,6 @@ public final class CardTable {
     }
 
     static boolean containsReferenceToYoungSpace(Object obj) {
-        ReferenceToYoungObjectVisitor referenceToYoungObjectVisitor = getReferenceToYoungObjectVisitor();
         return referenceToYoungObjectVisitor.containsReferenceToYoungObject(obj);
     }
 
@@ -230,10 +237,6 @@ public final class CardTable {
         return true;
     }
 
-    private static ReferenceToYoungObjectVisitor getReferenceToYoungObjectVisitor() {
-        return HeapImpl.getHeapImpl().getHeapVerifier().getReferenceToYoungObjectVisitor();
-    }
-
     /** Check that every clean card indicates an object with no pointers to young space. */
     private static boolean verifyCleanCards(Pointer ctStart, Pointer fotStart, Pointer objectsStart, Pointer objectsLimit) {
         Log trace = Log.noopLog().string("[CardTable.verifyCleanCards:");
@@ -268,7 +271,7 @@ public final class CardTable {
                 if (LayoutEncoding.isArray(obj)) {
                     trace.string("  length: ").signed(ArrayLengthNode.arrayLength(obj));
                 }
-                boolean containsYoung = getReferenceToYoungObjectVisitor().containsReferenceToYoungObject(obj);
+                boolean containsYoung = referenceToYoungObjectVisitor.containsReferenceToYoungObject(obj);
                 if (containsYoung) {
                     final boolean witnessForDebugging = true;
                     Log witness = (witnessForDebugging ? Log.log() : HeapVerifier.getTraceLog());
@@ -294,7 +297,7 @@ public final class CardTable {
                     HeapChunk.Header<?> objChunk = AlignedHeapChunk.getEnclosingChunk(obj);
                     witness.string("  objChunk: ").hex(objChunk).string("  objChunk space: ").string(HeapChunk.getSpace(objChunk).getName()).string("  contains young: ").bool(containsYoung).newline();
                     /* Repeat the search for old-to-young references, this time as a witness. */
-                    getReferenceToYoungObjectVisitor().witnessReferenceToYoungObject(obj);
+                    referenceToYoungObjectVisitor.witnessReferenceToYoungObject(obj);
                     witness.string(" returns false for index: ").unsigned(index).string("]").newline();
                     return false;
                 }
@@ -337,8 +340,9 @@ public final class CardTable {
     static class ReferenceToYoungObjectVisitor implements ObjectVisitor {
         private final ReferenceToYoungObjectReferenceVisitor visitor;
 
-        ReferenceToYoungObjectVisitor(ReferenceToYoungObjectReferenceVisitor visitor) {
-            this.visitor = visitor;
+        @Platforms(Platform.HOSTED_ONLY.class)
+        ReferenceToYoungObjectVisitor() {
+            this.visitor = new ReferenceToYoungObjectReferenceVisitor();
         }
 
         @Override

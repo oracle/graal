@@ -33,6 +33,7 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
@@ -40,7 +41,7 @@ import com.oracle.svm.core.log.Log;
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
  * for newly-allocated or promoted objects.
  */
-final class OldGeneration extends Generation {
+public final class OldGeneration extends Generation {
     /* This Spaces are final and are flipped by transferring chunks from one to the other. */
     private final Space fromSpace;
     private final Space toSpace;
@@ -104,12 +105,8 @@ final class OldGeneration extends Generation {
     void releaseSpaces(ChunkReleaser chunkReleaser) {
         getFromSpace().releaseChunks(chunkReleaser);
         if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
-            getToSpace().cleanRememberedSet();
+            RememberedSet.get().cleanCardTable(getToSpace());
         }
-    }
-
-    void walkDirtyObjects(ObjectVisitor visitor, boolean clean) {
-        getToSpace().walkDirtyObjects(visitor, clean);
     }
 
     void prepareForPromotion() {
@@ -166,14 +163,6 @@ final class OldGeneration extends Generation {
         return result;
     }
 
-    void verifyDirtyCards(boolean inToSpace) {
-        if (inToSpace) {
-            getToSpace().verifyDirtyCards();
-        } else {
-            getFromSpace().verifyDirtyCards();
-        }
-    }
-
     boolean slowlyFindPointer(Pointer p) {
         // FromSpace is "in" the Heap, ToSpace is not "in" the Heap, because it should be empty.
         if (slowlyFindPointerInFromSpace(p)) {
@@ -215,7 +204,7 @@ final class OldGeneration extends Generation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Space getFromSpace() {
+    public Space getFromSpace() {
         return fromSpace;
     }
 

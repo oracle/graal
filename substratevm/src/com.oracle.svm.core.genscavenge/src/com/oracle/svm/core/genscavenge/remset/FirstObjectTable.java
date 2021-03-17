@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.genscavenge.remset;
 
 import java.nio.ByteBuffer;
 
@@ -35,6 +35,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.genscavenge.HeapImpl;
+import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
@@ -121,7 +123,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * <p>
  * Implementation note: Table entries are bytes but converted to and from ints with bounds checks.
  */
-public final class FirstObjectTable {
+final class FirstObjectTable {
     /**
      * The number of bytes of memory covered by an entry.
      *

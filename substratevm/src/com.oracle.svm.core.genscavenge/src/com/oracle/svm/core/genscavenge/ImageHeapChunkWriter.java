@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-interface ImageHeapChunkWriter {
+public interface ImageHeapChunkWriter {
     void initializeAlignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk);
 
     void insertIntoAlignedChunkFirstObjectTable(int chunkPosition, long objectOffsetInChunk, long objectEndOffsetInChunk);

@@ -42,9 +42,14 @@ import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
+import com.oracle.svm.core.genscavenge.HeapOptions;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
+import com.oracle.svm.core.genscavenge.remset.BarrierSnippets;
+import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
+import com.oracle.svm.core.genscavenge.remset.NoRememberedSet;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -73,6 +78,7 @@ class HeapFeature implements GraalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Heap.class, new HeapImpl(access));
         ImageSingletons.add(SubstrateAllocationSnippets.class, new GenScavengeAllocationSnippets());
+        registerRememberedSet();
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
@@ -116,5 +122,13 @@ class HeapFeature implements GraalFeature {
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
         GenScavengeAllocationSnippets.registerForeignCalls(providers, foreignCalls);
+    }
+
+    private static void registerRememberedSet() {
+        if (HeapOptions.UseRememberedSet.getValue()) {
+            ImageSingletons.add(RememberedSet.class, new CardTableBasedRememberedSet());
+        } else {
+            ImageSingletons.add(RememberedSet.class, new NoRememberedSet());
+        }
     }
 }

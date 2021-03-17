@@ -32,8 +32,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectReferenceVisitor;
-import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectVisitor;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -52,7 +51,6 @@ public final class HeapVerifier {
     }
 
     private final SpaceVerifier spaceVerifier = new SpaceVerifier();
-    private final ReferenceToYoungObjectVisitor referenceToYoungObjectVisitor = new ReferenceToYoungObjectVisitor(new ReferenceToYoungObjectReferenceVisitor());
     private final ImageHeapRegionVerifier imageHeapRegionVerifier = new ImageHeapRegionVerifier();
     private final Log witnessLog = Log.log();
 
@@ -69,7 +67,7 @@ public final class HeapVerifier {
         currentCause = cause;
     }
 
-    boolean verifyObjectAt(Pointer ptr) {
+    public boolean verifyObjectAt(Pointer ptr) {
         VMOperation.guaranteeInProgress("Can only verify from a VMOperation.");
         Log trace = getTraceLog();
         trace.string("[HeapVerifier.verifyObjectAt:").string("  ptr: ").hex(ptr);
@@ -196,14 +194,15 @@ public final class HeapVerifier {
 
     static void verifyDirtyCard(boolean inToSpace) {
         OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-        oldGen.verifyDirtyCards(inToSpace);
+        Space space = inToSpace ? oldGen.getToSpace() : oldGen.getFromSpace();
+        RememberedSet.get().verifyDirtyCards(space);
     }
 
-    static Log getTraceLog() {
+    public static Log getTraceLog() {
         return (HeapOptions.TraceHeapVerification.getValue() ? Log.log() : Log.noopLog());
     }
 
-    Log getWitnessLog() {
+    public Log getWitnessLog() {
         return witnessLog;
     }
 
@@ -476,10 +475,6 @@ public final class HeapVerifier {
             return -1;
         }
         return -2;
-    }
-
-    ReferenceToYoungObjectVisitor getReferenceToYoungObjectVisitor() {
-        return referenceToYoungObjectVisitor;
     }
 
     SpaceVerifier getSpaceVerifier() {

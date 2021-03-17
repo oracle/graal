@@ -32,7 +32,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -53,7 +53,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
@@ -78,10 +78,8 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-//Checkstyle: resume
 
-/** An implementation of a card remembered set generational heap. */
+/** An implementation of a generational heap. */
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
     private static final VMMutex REF_MUTEX = new VMMutex();
@@ -255,34 +253,17 @@ public final class HeapImpl extends Heap {
         return result;
     }
 
-    @AlwaysInline("GC performance")
-    void dirtyCardIfNecessary(Object holderObject, Object object) {
-        if (HeapPolicy.getMaxSurvivorSpaces() == 0 || holderObject == null || object == null || GCImpl.getGCImpl().isCompleteCollection() || !youngGeneration.contains(object)) {
-            return;
-        }
-
-        UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
-        if (ObjectHeaderImpl.hasRememberedSet(objectHeader)) {
-            if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
-                AlignedHeapChunk.dirtyCardForObject(holderObject, false);
-            } else {
-                assert ObjectHeaderImpl.isUnalignedObject(holderObject) : "sanity";
-                UnalignedHeapChunk.dirtyCardForObject(holderObject, false);
-            }
-        }
-    }
-
     HeapPolicy getHeapPolicy() {
         return heapPolicy;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    YoungGeneration getYoungGeneration() {
+    public YoungGeneration getYoungGeneration() {
         return youngGeneration;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    OldGeneration getOldGeneration() {
+    public OldGeneration getOldGeneration() {
         return oldGeneration;
     }
 
@@ -402,7 +383,7 @@ public final class HeapImpl extends Heap {
      * Verification.
      */
 
-    HeapVerifier getHeapVerifier() {
+    public HeapVerifier getHeapVerifier() {
         return heapVerifier;
     }
 
@@ -518,7 +499,7 @@ public final class HeapImpl extends Heap {
     @Fold
     public static boolean usesImageHeapCardMarking() {
         Boolean enabled = HeapOptions.ImageHeapCardMarking.getValue();
-        if (enabled == Boolean.FALSE) {
+        if (enabled == Boolean.FALSE || !HeapOptions.UseRememberedSet.getValue()) {
             return false;
         } else if (enabled == null) {
             return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
@@ -566,9 +547,8 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public CardTableBarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
-        ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
-        return new SubstrateCardTableBarrierSet(objectArrayType);
+    public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
+        return RememberedSet.get().createBarrierSet(metaAccess);
     }
 
     void addToReferencePendingList(Reference<?> list) {

@@ -79,7 +79,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
  * HeapChunks are *not* examined for interior Object references by the collector, though the Objects
  * allocated within the HeapChunk are examined by the collector.
  */
-final class HeapChunk {
+public final class HeapChunk {
     private HeapChunk() { // all static
     }
 
@@ -168,6 +168,14 @@ final class HeapChunk {
         @RawField
         @UniqueLocationIdentity
         void setOffsetToNextChunk(SignedWord newNext);
+    }
+
+    /** Reset the mutable state of a chunk. */
+    public static void reset(Header<?> chunk, Pointer objectsStart) {
+        HeapChunk.setTopPointer(chunk, objectsStart);
+        HeapChunk.setSpace(chunk, null);
+        HeapChunk.setNext(chunk, WordFactory.nullPointer());
+        HeapChunk.setPrevious(chunk, WordFactory.nullPointer());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -292,7 +300,7 @@ final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Pointer asPointer(Header<?> that) {
+    public static Pointer asPointer(Header<?> that) {
         return (Pointer) that;
     }
 

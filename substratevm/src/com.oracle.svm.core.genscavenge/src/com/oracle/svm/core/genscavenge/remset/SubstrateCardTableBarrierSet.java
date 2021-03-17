@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.graal;
+package com.oracle.svm.core.genscavenge.remset;
 
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;

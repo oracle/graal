@@ -80,6 +80,9 @@ public final class HeapOptions {
     @Option(help = "Enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null);
 
+    @Option(help = "Remembered sets are necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
+
     private HeapOptions() {
     }
 }

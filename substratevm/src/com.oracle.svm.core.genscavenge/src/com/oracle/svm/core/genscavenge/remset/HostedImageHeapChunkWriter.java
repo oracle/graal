@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.genscavenge.remset;
 
 import java.nio.ByteBuffer;
 
@@ -35,11 +35,14 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
+import com.oracle.svm.core.genscavenge.HeapChunk;
+import com.oracle.svm.core.genscavenge.ImageHeapChunkWriter;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
+public final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
     private final ByteBuffer buffer;
     private final int layoutToBufferAddend;
 
@@ -60,7 +63,7 @@ final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
     private final int unalignedChunkCardTableOffset;
     private final UnsignedWord unalignedChunkCardTableSize;
 
-    HostedImageHeapChunkWriter(ByteBuffer heapBuffer, long layoutToBufferOffsetAddend) {
+    public HostedImageHeapChunkWriter(ByteBuffer heapBuffer, long layoutToBufferOffsetAddend) {
         buffer = heapBuffer;
         layoutToBufferAddend = NumUtil.safeToInt(layoutToBufferOffsetAddend);
 
@@ -71,13 +74,13 @@ final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
         offsetToPreviousChunkAt = OffsetOf.get(HeapChunk.Header.class, "OffsetToPreviousChunk");
         offsetToNextChunkAt = OffsetOf.get(HeapChunk.Header.class, "OffsetToNextChunk");
 
-        alignedChunkCardTableOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getCardTableStartOffset());
-        alignedChunkCardTableSize = AlignedHeapChunk.getCardTableSize();
-        alignedChunkFirstObjectTableOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getFirstObjectTableStartOffset());
-        alignedChunkFirstObjectTableSize = AlignedHeapChunk.getFirstObjectTableSize();
+        alignedChunkCardTableOffset = UnsignedUtils.safeToInt(AlignedChunkRememberedSet.getCardTableStartOffset());
+        alignedChunkCardTableSize = AlignedChunkRememberedSet.getCardTableSize();
+        alignedChunkFirstObjectTableOffset = UnsignedUtils.safeToInt(AlignedChunkRememberedSet.getFirstObjectTableStartOffset());
+        alignedChunkFirstObjectTableSize = AlignedChunkRememberedSet.getFirstObjectTableSize();
         alignedChunkObjectsStartOffset = AlignedHeapChunk.getObjectsStartOffset();
-        unalignedChunkCardTableOffset = UnsignedUtils.safeToInt(UnalignedHeapChunk.getCardTableStartOffset());
-        unalignedChunkCardTableSize = UnalignedHeapChunk.getCardTableSize();
+        unalignedChunkCardTableOffset = UnsignedUtils.safeToInt(UnalignedChunkRememberedSet.getCardTableStartOffset());
+        unalignedChunkCardTableSize = UnalignedChunkRememberedSet.getCardTableSize();
     }
 
     private int getChunkOffsetInBuffer(int chunkPosition) {

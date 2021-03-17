@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.graal;
+package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.Collections;
 import java.util.List;
@@ -54,10 +54,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
-import com.oracle.svm.core.genscavenge.CardTable;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
-import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -75,7 +72,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         return ImageSingletons.lookup(BarrierSnippetCounters.class);
     }
 
-    BarrierSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
+    public BarrierSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
         super(options, factories, providers, snippetReflection);
     }
 
@@ -92,18 +89,18 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
-        boolean needsBarrier = ObjectHeaderImpl.hasRememberedSet(objectHeader);
+        boolean needsBarrier = RememberedSet.get().hasRememberedSet(objectHeader);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FREQUENT_PROBABILITY, !needsBarrier)) {
             return;
         }
         boolean aligned = ObjectHeaderImpl.isAlignedHeaderUnsafe(objectHeader);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.LIKELY_PROBABILITY, aligned)) {
             counters().postWriteBarrierAligned.inc();
-            AlignedHeapChunk.dirtyCardForObject(fixedObject, verifyOnly);
+            RememberedSet.get().dirtyCardForAlignedObject(fixedObject, verifyOnly);
             return;
         }
         counters().postWriteBarrierUnaligned.inc();
-        UnalignedHeapChunk.dirtyCardForObject(fixedObject, verifyOnly);
+        RememberedSet.get().dirtyCardForUnalignedObject(fixedObject, verifyOnly);
     }
 
     private class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrier> {

@@ -49,7 +49,6 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -66,11 +65,11 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
-import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
@@ -95,7 +94,6 @@ import com.oracle.svm.core.util.VMError;
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
  */
 public final class GCImpl implements GC {
-    private final RememberedSetConstructor rememberedSetConstructor = new RememberedSetConstructor();
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
     private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
@@ -435,7 +433,7 @@ public final class GCImpl implements GC {
         collect(cause, true);
     }
 
-    boolean isCompleteCollection() {
+    public boolean isCompleteCollection() {
         return completeCollection;
     }
 
@@ -814,12 +812,12 @@ public final class GCImpl implements GC {
     private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned) {
         AlignedHeader aligned = firstAligned;
         while (aligned.isNonNull()) {
-            AlignedHeapChunk.walkDirtyObjects(aligned, greyToBlackObjectVisitor, true);
+            RememberedSet.get().walkDirtyObjects(aligned, greyToBlackObjectVisitor, true);
             aligned = HeapChunk.getNext(aligned);
         }
         UnalignedHeader unaligned = firstUnaligned;
         while (unaligned.isNonNull()) {
-            UnalignedHeapChunk.walkDirtyObjects(unaligned, greyToBlackObjectVisitor, true);
+            RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor, true);
             unaligned = HeapChunk.getNext(unaligned);
         }
     }
@@ -862,8 +860,8 @@ public final class GCImpl implements GC {
              * Walk To-Space looking for dirty cards, and within those for old-to-young pointers.
              * Promote any referenced young objects.
              */
-            HeapImpl heap = HeapImpl.getHeapImpl();
-            heap.getOldGeneration().walkDirtyObjects(greyToBlackObjectVisitor, true);
+            Space oldGenToSpace = HeapImpl.getHeapImpl().getOldGeneration().getToSpace();
+            RememberedSet.get().walkDirtyObjects(oldGenToSpace, greyToBlackObjectVisitor, true);
         } finally {
             blackenDirtyCardRootsTimer.close();
         }
@@ -1027,38 +1025,6 @@ public final class GCImpl implements GC {
 
     GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {
         return greyToBlackObjectVisitor;
-    }
-
-    RememberedSetConstructor getRememberedSetConstructor() {
-        return rememberedSetConstructor;
-    }
-
-    static class RememberedSetConstructor implements ObjectVisitor {
-        private AlignedHeapChunk.AlignedHeader chunk;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        RememberedSetConstructor() {
-        }
-
-        public void initialize(AlignedHeapChunk.AlignedHeader aChunk) {
-            this.chunk = aChunk;
-        }
-
-        @Override
-        public boolean visitObject(Object o) {
-            return visitObjectInline(o);
-        }
-
-        @Override
-        @AlwaysInline("GC performance")
-        public boolean visitObjectInline(Object o) {
-            AlignedHeapChunk.setUpRememberedSetForObject(chunk, o);
-            return true;
-        }
-
-        public void reset() {
-            chunk = WordFactory.nullPointer();
-        }
     }
 
     /** Signals that a collection is already in progress. */

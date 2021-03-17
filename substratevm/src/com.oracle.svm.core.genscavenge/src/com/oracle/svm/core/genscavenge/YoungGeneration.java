@@ -37,7 +37,7 @@ import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
-final class YoungGeneration extends Generation {
+public final class YoungGeneration extends Generation {
     private final Space eden;
     private final Space[] survivorFromSpaces;
     private final Space[] survivorToSpaces;
@@ -298,7 +298,7 @@ final class YoungGeneration extends Generation {
     }
 
     @SuppressWarnings("static-method")
-    boolean contains(Object object) {
+    public boolean contains(Object object) {
         return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
     }
 
