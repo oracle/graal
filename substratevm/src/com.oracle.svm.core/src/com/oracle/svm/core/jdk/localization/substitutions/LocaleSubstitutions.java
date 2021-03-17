@@ -171,7 +171,7 @@ final class Util_java_text_BreakIterator {
 
 @SuppressWarnings({"static-method"})
 @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = JvmLocaleMode.class)
-final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
+final class Target_sun_util_locale_provider_LocaleServiceProviderPool_JvmLocaleMode {
     @Substitute
     private static Locale[] getAllAvailableLocales() {
         return ImageSingletons.lookup(LocalizationSupport.class).allLocales;

@@ -361,7 +361,7 @@ public abstract class LocalizationFeature implements Feature {
         for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
             LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
             LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
-            optimizedLocalizationSupport.providerPools.put(providerClass, new OptimizedModeOnlySubstitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
+            optimizedLocalizationSupport.providerPools.put(providerClass, new OptimizedModeOnlySubstitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode(provider));
         }
 
         for (Locale locale : allLocales) {

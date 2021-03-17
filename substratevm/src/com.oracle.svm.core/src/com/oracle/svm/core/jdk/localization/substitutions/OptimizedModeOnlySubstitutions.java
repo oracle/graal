@@ -49,7 +49,7 @@ import java.util.spi.LocaleServiceProvider;
 
 public class OptimizedModeOnlySubstitutions {
     @TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = OptimizedLocaleMode.class)
-    static final class Target_sun_util_locale_provider_LocaleProviderAdapter {
+    static final class Target_sun_util_locale_provider_LocaleProviderAdapter_OptimizedLocaleMode {
 
         @Substitute
         @SuppressWarnings({"unused"})
@@ -77,11 +77,11 @@ public class OptimizedModeOnlySubstitutions {
     @Substitute
     @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = OptimizedLocaleMode.class)
     @SuppressWarnings({"static-method"})
-    public static final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
+    public static final class Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode {
 
         private final LocaleServiceProvider cachedProvider;
 
-        public Target_sun_util_locale_provider_LocaleServiceProviderPool(LocaleServiceProvider cachedProvider) {
+        public Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode(LocaleServiceProvider cachedProvider) {
             this.cachedProvider = cachedProvider;
         }
 
@@ -141,6 +141,6 @@ public class OptimizedModeOnlySubstitutions {
 
     @Delete
     @TargetClass(value = sun.util.locale.provider.AuxLocaleProviderAdapter.class, onlyWith = OptimizedLocaleMode.class)
-    static final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter {
+    static final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter_OptimizedLocaleMode {
     }
 }

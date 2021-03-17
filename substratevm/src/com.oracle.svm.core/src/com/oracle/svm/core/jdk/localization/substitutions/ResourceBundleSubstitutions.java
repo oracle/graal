@@ -114,7 +114,7 @@ final class Target_java_util_ResourceBundle {
 
 @TargetClass(value = java.util.ListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"static-method"})
-final class Target_java_util_ListResourceBundle {
+final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
 
     @Alias private volatile Map<String, Object> lookup;
 
@@ -129,7 +129,7 @@ final class Target_java_util_ListResourceBundle {
 
 @TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"static-method"})
-final class Target_sun_util_resources_OpenListResourceBundle {
+final class Target_sun_util_resources_OpenListResourceBundle_SubstituteLoadLookup {
 
     @Alias private volatile Map<String, Object> lookup;
 
@@ -153,7 +153,7 @@ final class Target_sun_util_resources_OpenListResourceBundle {
 
 @TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"unused", "static-method"})
-final class Target_sun_util_resources_ParallelListResourceBundle {
+final class Target_sun_util_resources_ParallelListResourceBundle_SubstituteLoadLookup {
 
     @Alias private ConcurrentMap<String, Object> lookup;
 
