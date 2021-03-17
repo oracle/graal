@@ -72,7 +72,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
         return LLVMNativePointer.createNull();
     }
 
-    protected Object getLibrary(LLVMManagedPointer pointer){
+    protected Object getLibrary(LLVMManagedPointer pointer) {
         return ((LLVMDLHandler) pointer.getObject()).getLibrary();
     }
 
@@ -85,13 +85,13 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
         abstract LLVMPointer execute(Object function);
 
         @Specialization
-        protected LLVMManagedPointer doFunctionDescriptor(LLVMFunctionDescriptor function){
+        protected LLVMManagedPointer doFunctionDescriptor(LLVMFunctionDescriptor function) {
             return LLVMManagedPointer.create(function);
         }
 
         @Specialization(guards = {"!isFunctionDescriptor(symbol)", "interopLibrary.isPointer(symbol)"}, limit = "1")
         protected LLVMNativePointer doNFISymbol(Object symbol,
-                                                @CachedLibrary("symbol") InteropLibrary interopLibrary){
+                        @CachedLibrary("symbol") InteropLibrary interopLibrary) {
             try {
                 return LLVMNativePointer.create(interopLibrary.asPointer(symbol));
             } catch (InteropException e) {
@@ -99,7 +99,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
             }
         }
 
-        protected static boolean isFunctionDescriptor(Object function){
+        protected static boolean isFunctionDescriptor(Object function) {
             return function instanceof LLVMFunctionDescriptor;
         }
 
