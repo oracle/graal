@@ -53,7 +53,7 @@ import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.jdk.localization.substitutions.OptimizedModeOnlySubstitutions;
+import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -361,7 +361,7 @@ public abstract class LocalizationFeature implements Feature {
         for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
             LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
             LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
-            optimizedLocalizationSupport.providerPools.put(providerClass, new OptimizedModeOnlySubstitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode(provider));
+            optimizedLocalizationSupport.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode(provider));
         }
 
         for (Locale locale : allLocales) {
