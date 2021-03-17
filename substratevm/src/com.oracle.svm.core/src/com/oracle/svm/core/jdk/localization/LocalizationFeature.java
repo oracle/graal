@@ -234,9 +234,7 @@ public abstract class LocalizationFeature implements Feature {
         allLocales = processLocalesOption();
         defaultLocale = parseLocaleFromTag(Options.DefaultLocale.getValue());
         UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
-        if (!allLocales.contains(defaultLocale)) {
-            allLocales.add(defaultLocale);
-        }
+        allLocales.add(defaultLocale);
         support = selectLocalizationSupport();
         ImageSingletons.add(LocalizationSupport.class, support);
         ImageSingletons.add(LocalizationFeature.class, this);
