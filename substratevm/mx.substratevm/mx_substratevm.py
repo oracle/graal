@@ -1162,14 +1162,19 @@ def hellomodule(args):
         mx.abort('Experimental module support requires USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=true for "mx build" and "mx hellomodule"')
 
     # Build a helloworld Java module with maven
-    proj_dir = join(suite.dir, 'src', 'native-image-hello-module')
-    mx.run_maven(['-e', 'package'], cwd=proj_dir)
+    module_path = []
+    proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.lib')
+    mx.run_maven(['-e', 'install'], cwd=proj_dir)
+    module_path.append(join(proj_dir, 'target', 'hello-lib-1.0-SNAPSHOT.jar'))
+    proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
+    mx.run_maven(['-e', 'install'], cwd=proj_dir)
+    module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
     with native_image_context(hosted_assertions=False) as native_image:
         build_dir = join(svmbuild_dir(), 'hellomodule')
         # Build module into native image
-        hellomodule_jar = join(proj_dir, 'target', 'app-1.0-SNAPSHOT.jar')
-        mx.log('Building image from java module: ' + hellomodule_jar)
-        built_image = native_image(['--verbose', '-H:Path=' + build_dir, '-p', hellomodule_jar, '-m', 'app.hello'])
+        mx.log('Building image from java modules: ' + str(module_path))
+        module_path_sep = ';' if mx.is_windows() else ':'
+        built_image = native_image(['--verbose', '-H:Path=' + build_dir, '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])
 

@@ -22,11 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package paw;
-
-public class App {
-    public static void main(String[] args) {
-        System.out.println("Hello native-image MODULE !");
-    }
+module moduletests.hello.app {
+    exports hello;
+    requires moduletests.hello.lib;
 }
 

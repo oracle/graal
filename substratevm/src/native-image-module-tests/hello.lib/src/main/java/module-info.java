@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-module app.hello {
-    exports paw;
+module moduletests.hello.lib {
+    exports hello.lib;
 }
 
