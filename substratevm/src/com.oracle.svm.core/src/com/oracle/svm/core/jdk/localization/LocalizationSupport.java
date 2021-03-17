@@ -71,8 +71,8 @@ public class LocalizationSupport {
         return ((OptimizedLocalizationSupport) this);
     }
 
-    public Map<String, Object> getBundleContentOf(Class<?> bundleClass) {
-        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundleClass.getTypeName());
+    public Map<String, Object> getBundleContentOf(ResourceBundle bundle) {
+        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundle.getClass());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -99,5 +99,10 @@ public class LocalizationSupport {
     public boolean shouldSubstituteLoadLookup(String className) {
         /*- By default, keep the original code */
         return false;
+    }
+
+    @SuppressWarnings("unused")
+    public void prepareNonCompliant(Class<?> clazz) {
+        /*- By default, there is nothing to do */
     }
 }

@@ -48,6 +48,7 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Function;
 import java.util.spi.CalendarDataProvider;
 import java.util.spi.CalendarNameProvider;
 import java.util.spi.CurrencyNameProvider;
@@ -143,6 +144,8 @@ public abstract class LocalizationFeature implements Feature {
 
     protected LocalizationSupport support;
 
+    private Function<String, Class<?>> findClassByName;
+
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
@@ -226,7 +229,8 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess arg0) {
+    public void afterRegistration(AfterRegistrationAccess access) {
+        findClassByName = access::findClassByName;
         allLocales = processLocalesOption();
         defaultLocale = parseLocaleFromTag(Options.DefaultLocale.getValue());
         UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
@@ -484,6 +488,19 @@ public abstract class LocalizationFeature implements Feature {
             }
             somethingFound = true;
             prepareBundle(baseName, resourceBundle, locale);
+        }
+
+        if (!somethingFound) {
+            /*
+             * Try non-compliant class-based bundles. These bundles can't be looked up by the normal
+             * ResourceBundle lookup process, e.g. because they don't have default constructors.
+             */
+            Class<?> clazz = findClassByName.apply(baseName);
+            if (clazz != null && ResourceBundle.class.isAssignableFrom(clazz)) {
+                trace("Found non-compliant class-based bundle " + clazz);
+                somethingFound = true;
+                support.prepareNonCompliant(clazz);
+            }
         }
 
         if (!somethingFound) {

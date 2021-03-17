@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import sun.util.resources.OpenListResourceBundle;
 //Checkstyle: resume
 
+import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -62,7 +63,7 @@ final class Target_sun_util_resources_ParallelListResourceBundle_SubstituteLoadL
         LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
         synchronized (this) {
             if (lookup == null) {
-                lookup = new ConcurrentHashMap<>(support.getBundleContentOf(getClass()));
+                lookup = new ConcurrentHashMap<>(support.getBundleContentOf((ResourceBundle) ((Object) this)));
             }
         }
     }

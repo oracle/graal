@@ -36,6 +36,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
@@ -54,7 +55,7 @@ import static com.oracle.svm.core.jdk.localization.compression.utils.BundleSeria
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)//
-    private static final String INTERNAL_BUNDLES_PATTERN = "sun\\..*|java\\..*";
+    private static final String INTERNAL_BUNDLES_PATTERN = "sun\\..*";
 
     @Platforms(Platform.HOSTED_ONLY.class)//
     private final List<Pattern> compressBundlesPatterns;
@@ -91,7 +92,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Platforms(Platform.HOSTED_ONLY.class)
     private StoredBundle processBundle(ResourceBundle bundle) {
         boolean isInDefaultLocale = bundle.getLocale().equals(defaultLocale);
-        if (!isInDefaultLocale && GzipBundleCompression.canCompress(bundle)) {
+        if (!isInDefaultLocale && shouldCompressBundle(bundle) && GzipBundleCompression.canCompress(bundle)) {
             return GzipBundleCompression.compress(bundle);
         }
         Map<String, Object> content = extractContent(bundle);
@@ -99,22 +100,17 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
-    public Map<String, Object> getBundleContentOf(Class<?> bundleClass) {
-        StoredBundle bundle = storedBundles.get(bundleClass);
-        if (bundle != null) {
-            try {
-                return bundle.getContent();
-            } catch (Exception ex) {
-                throw GraalError.shouldNotReachHere(ex, "Decompression of a bundle " + bundleClass + " failed. This is an internal error. Please open an issue and submit a reproducer.");
-            }
+    public Map<String, Object> getBundleContentOf(ResourceBundle bundle) {
+        StoredBundle storedBundle = storedBundles.get(bundle.getClass());
+        if (storedBundle != null) {
+            return storedBundle.getContent(bundle);
         }
-        return super.getBundleContentOf(bundleClass);
+        return super.getBundleContentOf(bundle);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public boolean isBundleSupported(ResourceBundle bundle) {
-        boolean isCorrectType = bundle instanceof ListResourceBundle || bundle instanceof OpenListResourceBundle || bundle instanceof ParallelListResourceBundle;
-        return isCorrectType && shouldSubstituteLoadLookup(bundle.getClass().getName());
+        return bundle instanceof ListResourceBundle || bundle instanceof OpenListResourceBundle || bundle instanceof ParallelListResourceBundle;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -136,7 +132,13 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean shouldSubstituteLoadLookup(String className) {
+    public boolean shouldCompressBundle(ResourceBundle bundle) {
+        String className = bundle.getClass().getName();
         return compressBundlesPatterns.stream().anyMatch(pattern -> pattern.matcher(className).matches());
+    }
+
+    @Override
+    public void prepareNonCompliant(Class<?> clazz) {
+        storedBundles.put(clazz, new DelayedBundle(clazz));
     }
 }

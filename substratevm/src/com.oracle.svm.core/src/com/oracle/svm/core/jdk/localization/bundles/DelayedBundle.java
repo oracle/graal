@@ -24,18 +24,42 @@
  */
 package com.oracle.svm.core.jdk.localization.bundles;
 
+import com.oracle.svm.util.ReflectionUtil;
+
+//Checkstyle: allow reflection
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
 
-public final class ExtractedBundle implements StoredBundle {
-    private final Map<String, Object> lookup;
+public class DelayedBundle implements StoredBundle {
 
-    public ExtractedBundle(Map<String, Object> lookup) {
-        this.lookup = lookup;
+    private final Method getContents;
+
+    public DelayedBundle(Class<?> clazz) {
+        getContents = ReflectionUtil.lookupMethod(clazz, "getContents");
     }
 
     @Override
     public Map<String, Object> getContent(ResourceBundle bundle) {
-        return lookup;
+        try {
+            Object[][] content = (Object[][]) getContents.invoke(bundle);
+            return asMap(content);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Map<String, Object> asMap(Object[][] content) {
+        Map<String, Object> res = new HashMap<>();
+        for (Object[] entry : content) {
+            String key = (String) entry[0];
+            Object value = entry[1];
+            if (key == null || value == null) {
+                throw new NullPointerException();
+            }
+            res.put(key, value);
+        }
+        return res;
     }
 }

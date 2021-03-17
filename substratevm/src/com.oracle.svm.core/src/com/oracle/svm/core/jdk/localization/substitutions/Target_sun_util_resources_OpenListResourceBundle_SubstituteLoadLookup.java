@@ -32,6 +32,7 @@ import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLo
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.util.Map;
+import java.util.ResourceBundle;
 
 //Checkstyle: allow synchronization
 
@@ -44,7 +45,7 @@ final class Target_sun_util_resources_OpenListResourceBundle_SubstituteLoadLooku
     @Substitute
     private void loadLookup() {
         LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
-        Map<String, Object> content = support.getBundleContentOf(getClass());
+        Map<String, Object> content = support.getBundleContentOf((ResourceBundle) ((Object) this));
         // use the supplied map implementation specified by the factory method
         Map<String, Object> tmp = createMap(content.size());
         tmp.putAll(content);
