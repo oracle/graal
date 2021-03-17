@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
 public class CompressionUtils {
@@ -46,7 +45,6 @@ public class CompressionUtils {
 
     public static int[] bytesToInts(byte[] data) {
         IntBuffer intBuf = ByteBuffer.wrap(data)
-                        .order(ByteOrder.BIG_ENDIAN)
                         .asIntBuffer();
         int[] array = new int[intBuf.remaining()];
         intBuf.get(array);
