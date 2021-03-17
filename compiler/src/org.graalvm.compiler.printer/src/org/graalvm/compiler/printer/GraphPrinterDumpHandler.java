@@ -260,7 +260,7 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
             if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
                 String name = result.get(1);
                 result.clear();
-                result.add("Graal Graphs - " + name);
+                result.add(name);
             }
             if (result.isEmpty()) {
                 result.add(graph.toString());
