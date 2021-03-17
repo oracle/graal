@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -2027,7 +2027,7 @@ public class AsmFactory {
                     out = from;
                     break;
                 default:
-                    throw new AsmParseException("unsupported operand type: " + op.getType());
+                    throw unsupportedOperandType(op.getType());
             }
             return LLVMWriteI64NodeGen.create(frame, out);
         } else if (operand instanceof AsmArgumentOperand) {
