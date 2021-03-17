@@ -36,7 +36,9 @@ import java.text.spi.DecimalFormatSymbolsProvider;
 import java.text.spi.NumberFormatProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
@@ -44,6 +46,7 @@ import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.spi.CalendarDataProvider;
 import java.util.spi.CalendarNameProvider;
@@ -136,7 +139,7 @@ public abstract class LocalizationFeature implements Feature {
      */
     protected Locale defaultLocale = Locale.getDefault();
 
-    protected List<Locale> allLocales;
+    protected Set<Locale> allLocales;
 
     protected LocalizationSupport support;
 
@@ -270,16 +273,28 @@ public abstract class LocalizationFeature implements Feature {
         try {
             return new Locale.Builder().setLanguageTag(tag).build();
         } catch (IllformedLocaleException ex) {
-            return null;
+            /*- Custom made locales consisting of at most three parts separated by '-' are also supported */
+            String[] parts = tag.split("-");
+            switch (parts.length) {
+                case 1:
+                    return new Locale(parts[0]);
+                case 2:
+                    return new Locale(parts[0], parts[1]);
+                case 3:
+                    return new Locale(parts[0], parts[1], parts[2]);
+                default:
+                    return null;
+            }
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static List<Locale> processLocalesOption() {
+    private static Set<Locale> processLocalesOption() {
+        Set<Locale> locales = new HashSet<>();
         if (Options.IncludeAllLocales.getValue()) {
-            return Arrays.asList(Locale.getAvailableLocales());
+            Collections.addAll(locales, Locale.getAvailableLocales());
+            /*- Fallthrough to also allow adding custom locales */
         }
-        List<Locale> locales = new ArrayList<>();
         List<String> invalid = new ArrayList<>();
         for (String tag : Options.IncludeLocales.getValue().values()) {
             Locale locale = parseLocaleFromTag(tag);
@@ -435,7 +450,7 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(String baseName, List<Locale> wantedLocales) {
+    public void prepareBundle(String baseName, Collection<Locale> wantedLocales) {
         if (baseName.isEmpty()) {
             return;
         }

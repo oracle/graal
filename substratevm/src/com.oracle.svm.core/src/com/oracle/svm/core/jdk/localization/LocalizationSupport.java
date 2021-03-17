@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk.localization;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.PropertyResourceBundle;
@@ -61,7 +60,7 @@ public class LocalizationSupport {
 
     public final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
-    public LocalizationSupport(Locale defaultLocale, List<Locale> locales) {
+    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());

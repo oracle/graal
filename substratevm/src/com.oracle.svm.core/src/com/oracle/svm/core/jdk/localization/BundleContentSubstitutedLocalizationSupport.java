@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
-import java.util.List;
 import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 
@@ -52,7 +52,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final ForkJoinPool pool;
 
-    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, List<Locale> locales, ForkJoinPool pool) {
+    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, ForkJoinPool pool) {
         super(defaultLocale, locales);
         this.pool = pool;
     }

@@ -28,11 +28,11 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import org.graalvm.collections.Pair;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.spi.LocaleServiceProvider;
 
 //Checkstyle: stop
@@ -50,7 +50,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");
 
-    public OptimizedLocalizationSupport(Locale defaultLocale, List<Locale> locales) {
+    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales) {
         super(defaultLocale, locales);
     }
 
