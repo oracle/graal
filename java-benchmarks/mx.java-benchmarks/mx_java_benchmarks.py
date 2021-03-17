@@ -227,10 +227,9 @@ class BasePetClinicBenchmarkSuite(object):
 
     def stages(self, args):
         # This method overrides NativeImageMixin.stages
-        parsed_args = self.parse_native_image_args('-Dnative-image.benchmark.stages=', args)
-        if len(parsed_args) > 1:
-            mx.abort('Native Image benchmark stages should only be specified once.')
-        return parsed_args[0].split(',') if parsed_args else ['instrument-image', 'instrument-run', 'image', 'run']
+        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else ['instrument-image', 'instrument-run', 'image', 'run']
+
 
 
 class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
