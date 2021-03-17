@@ -29,12 +29,14 @@ package com.oracle.svm.reflect.hosted;
 import static com.oracle.svm.reflect.hosted.ReflectionSubstitution.getStableProxyName;
 
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import com.oracle.svm.core.invoke.MethodHandleUtils;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -574,20 +576,27 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
         public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod m, HostedProviders providers, Purpose purpose) {
             HostedGraphKit graphKit = new HostedGraphKit(ctx, providers, m);
 
-            ResolvedJavaMethod targetMethod = providers.getMetaAccess().lookupJavaMethod(method);
-            Class<?>[] argTypes = method.getParameterTypes();
-
-            int receiverOffset = targetMethod.isStatic() ? 0 : 1;
-            ValueNode[] args = new ValueNode[argTypes.length + receiverOffset];
-            if (targetMethod.isStatic()) {
-                graphKit.emitEnsureInitializedCall(targetMethod.getDeclaringClass());
+            ResolvedJavaMethod targetMethod;
+            ValueNode[] args;
+            if (!specialInvoke && method.getDeclaringClass() == MethodHandle.class && (method.getName().equals("invoke") || method.getName().equals("invokeExact"))) {
+                targetMethod = MethodHandleUtils.getThrowUnsupportedOperationException(providers.getMetaAccess());
+                args = new ValueNode[0];
             } else {
-                ValueNode receiver = graphKit.loadLocal(1, JavaKind.Object);
-                args[0] = createCheckcast(graphKit, receiver, targetMethod.getDeclaringClass(), true);
-            }
+                targetMethod = providers.getMetaAccess().lookupJavaMethod(method);
+                Class<?>[] argTypes = method.getParameterTypes();
 
-            ValueNode argumentArray = graphKit.loadLocal(2, JavaKind.Object);
-            fillArgsArray(graphKit, argumentArray, receiverOffset, args, argTypes);
+                int receiverOffset = targetMethod.isStatic() ? 0 : 1;
+                args = new ValueNode[argTypes.length + receiverOffset];
+                if (targetMethod.isStatic()) {
+                    graphKit.emitEnsureInitializedCall(targetMethod.getDeclaringClass());
+                } else {
+                    ValueNode receiver = graphKit.loadLocal(1, JavaKind.Object);
+                    args[0] = createCheckcast(graphKit, receiver, targetMethod.getDeclaringClass(), true);
+                }
+
+                ValueNode argumentArray = graphKit.loadLocal(2, JavaKind.Object);
+                fillArgsArray(graphKit, argumentArray, receiverOffset, args, argTypes);
+            }
 
             InvokeKind invokeKind;
             if (specialInvoke) {

@@ -32,6 +32,8 @@ import java.util.function.BooleanSupplier;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 // Checkstyle: stop
 import sun.invoke.util.Wrapper;
 // Checkstyle: resume
@@ -117,6 +119,18 @@ public class MethodHandleUtils {
             default:
                 throw shouldNotReachHere("Unexpected type for unbox function");
         }
+    }
+
+    public static ResolvedJavaMethod getThrowUnsupportedOperationException(MetaAccessProvider metaAccess) {
+        try {
+            return metaAccess.lookupJavaMethod(MethodHandleUtils.class.getMethod("throwUnsupportedOperationException"));
+        } catch (NoSuchMethodException e) {
+            throw shouldNotReachHere();
+        }
+    }
+
+    public static void throwUnsupportedOperationException() {
+        throw new UnsupportedOperationException("MethodHandle.invoke() and MethodHandle.invokeExact() cannot be invoked through reflection");
     }
 
     public static class MethodHandlesSupported implements BooleanSupplier {
