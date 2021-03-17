@@ -35,10 +35,14 @@ import java.util.Arrays;
 
 public class JfrTraceIdMap {
     @UnknownObjectField(types = {long[].class})
-    private final long[] traceIDs;
+    private long[] traceIDs;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrTraceIdMap(int size) {
+    public JfrTraceIdMap() {
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void initialize(int size) {
         traceIDs = new long[size];
         Arrays.fill(traceIDs, -1);
     }
@@ -54,6 +58,7 @@ public class JfrTraceIdMap {
         return id;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     long getId(int index) {
         return traceIDs[index];
     }

@@ -29,8 +29,8 @@ package com.oracle.svm.jfr.traceid;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.jfr.JfrRuntimeAccess;
 import jdk.jfr.internal.JVM;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -61,8 +61,9 @@ public class JfrTraceId {
 
     private static final AtomicLong threadCounter = new AtomicLong(1);
 
-    private static JfrTraceIdMap getTraceIdMap() {
-        return ImageSingletons.lookup(JfrRuntimeAccess.class).getTraceIdMap();
+    @Fold
+    static JfrTraceIdMap getTraceIdMap() {
+        return ImageSingletons.lookup(JfrTraceIdMap.class);
     }
 
     public static void tag(Class<?> clazz, long bits) {

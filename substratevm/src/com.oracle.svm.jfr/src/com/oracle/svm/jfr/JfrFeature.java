@@ -29,9 +29,7 @@ import static com.oracle.svm.jfr.PredefinedJFCSubstitition.PROFILE_JFC;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -90,7 +88,7 @@ public class JfrFeature implements Feature {
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM());
         ImageSingletons.add(JfrManager.class, new JfrManager());
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
-        ImageSingletons.add(JfrRuntimeAccess.class, new JfrRuntimeAccess());
+        ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
@@ -126,8 +124,7 @@ public class JfrFeature implements Feature {
         int mapSize = ImageSingletons.lookup(DynamicHubSupport.class).getMaxTypeId() + 1; // Reserve slot 0 for error-catcher.
 
         // Create trace-ID map with fixed size.
-        JfrTraceIdMap map = new JfrTraceIdMap(mapSize);
-        ImageSingletons.lookup(JfrRuntimeAccess.class).setTraceIdMap(map);
+        ImageSingletons.lookup(JfrTraceIdMap.class).initialize(mapSize);
 
         // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
         Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl) a).getTypes();
