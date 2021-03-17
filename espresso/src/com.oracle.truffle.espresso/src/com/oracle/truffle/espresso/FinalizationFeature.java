@@ -1,13 +1,20 @@
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.substitutions.HostJavaVersionUtil;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
+import org.graalvm.nativeimage.hosted.Feature;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.InvocationTargetException;
 import java.security.ProtectionDomain;
 
-public final class FinalizationSupport {
+public final class FinalizationFeature implements Feature {
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ensureInitialized();
+    }
 
     static final Class<?> PUBLIC_FINAL_REFERENCE;
 

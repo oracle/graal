@@ -35,6 +35,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
  * static initializer is injected via {@link sun.misc.Unsafe#defineClass}.
  *
  * @see Target_java_lang_ref_Reference
+ * @see com.oracle.truffle.espresso.FinalizationFeature
  * @see EspressoReference
  */
 public abstract class PublicFinalReference<T> extends FinalReference<T> {

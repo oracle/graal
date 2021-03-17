@@ -43,7 +43,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.substitutions.FinalizationSupport;
+import com.oracle.truffle.espresso.FinalizationFeature;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -83,7 +83,6 @@ import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -391,8 +390,8 @@ public final class EspressoContext {
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
         eventListener = new EmptyListener();
-        // Inject PublicFinalReference in the host VM.
-        FinalizationSupport.ensureInitialized();
+        // Ensure guest finalization  host VM.
+        FinalizationFeature.ensureInitialized();
         spawnVM();
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);
