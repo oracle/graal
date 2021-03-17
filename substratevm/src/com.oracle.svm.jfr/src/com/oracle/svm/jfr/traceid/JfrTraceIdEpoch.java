@@ -54,6 +54,10 @@ public class JfrTraceIdEpoch {
     public static final long EPOCH_0_METHOD_AND_CLASS_BITS = (METHOD_AND_CLASS_BITS << EPOCH_0_SHIFT);
     public static final long EPOCH_1_METHOD_AND_CLASS_BITS = (METHOD_AND_CLASS_BITS << EPOCH_1_SHIFT);
 
+    private boolean epoch;
+    private boolean synchronizing;
+    private volatile boolean changedTag;
+
     @Fold
     public static JfrTraceIdEpoch getInstance() {
         return ImageSingletons.lookup(JfrTraceIdEpoch.class);
@@ -63,9 +67,6 @@ public class JfrTraceIdEpoch {
         UnsignedWord epochFieldOffset = WordFactory.unsigned(UNSAFE.objectFieldOffset(EPOCH_FIELD));
         return Word.objectToUntrackedPointer(this).add(epochFieldOffset).rawValue();
     }
-    private boolean epoch;
-    private boolean synchronizing;
-    private volatile boolean changedTag;
 
     public void beginEpochShift() {
         synchronizing = true;
