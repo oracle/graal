@@ -68,13 +68,9 @@ public class JfrTraceIdEpoch {
         return Word.objectToUntrackedPointer(this).add(epochFieldOffset).rawValue();
     }
 
-    public void beginEpochShift() {
-        synchronizing = true;
-    }
-
-    public void endEpochShift() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void changeEpoch() {
         epoch = !epoch;
-        synchronizing = false;
     }
 
     public boolean isChangedTag() {
