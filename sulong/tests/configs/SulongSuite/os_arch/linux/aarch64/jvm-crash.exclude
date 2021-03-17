@@ -9,7 +9,9 @@ c/varargs/var80bit.c.dir
 c/varargs/varStructBeforePrimitiveAMD64Explicite.c.dir
 c/varargs/varStructStackOnlyAMD64Explicite.c.dir
 c/varargs/varStructModifyPtr.c.dir
+cpp/testStaticReferenceInitGlobal.cpp.dir
 cpp/test005.cpp.dir
+cpp/test014.cpp.dir
 cpp/test015.cpp.dir
 cpp/test017.cpp.dir
 cpp/test018.cpp.dir
@@ -24,7 +26,9 @@ cpp/test028.cpp.dir
 cpp/test031.cpp.dir
 cpp/test033.cpp.dir
 cpp/test034.cpp.dir
+cpp/test035.cpp.dir
 cpp/test036.cpp.dir
+cpp/test037.cpp.dir
 cpp/test039.cpp.dir
 cpp/test041.cpp.dir
 cpp/test042.cpp.dir
