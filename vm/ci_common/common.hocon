@@ -323,7 +323,7 @@ libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     TEST_LIBGRAAL_EXCLUDE: "com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.*"
   }
   run: [
-    # -ea assertions are enough to keep excution time reasonable
+    # -ea assertions are enough to keep execution time reasonable
     ${libgraal_build_ea_only}
     [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
   ]
