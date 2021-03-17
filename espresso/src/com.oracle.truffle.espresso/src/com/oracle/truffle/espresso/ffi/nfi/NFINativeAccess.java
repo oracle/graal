@@ -31,8 +31,12 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -54,11 +58,11 @@ import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
-import com.oracle.truffle.espresso.perf.DebugCounter;
 
 import sun.misc.Unsafe;
 
@@ -219,10 +223,15 @@ class NFINativeAccess implements NativeAccess {
             return true;
         }
 
+        @TruffleBoundary
+        Object doExecuteBoundary(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
+            return doExecute(arguments, delegateInterop);
+        }
+
         @ExplodeLoop
-        @ExportMessage
-        Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
+        Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
             final int paramCount = nativeSignature.getParameterCount();
+            CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
                 throw ArityException.create(paramCount, arguments.length);
@@ -231,6 +240,7 @@ class NFINativeAccess implements NativeAccess {
                 Object[] convertedArgs = new Object[arguments.length];
                 for (int i = 0; i < paramCount; i++) {
                     NativeType param = nativeSignature.parameterTypeAt(i);
+                    CompilerAsserts.partialEvaluationConstant(param);
                     switch (param) {
                         case BOOLEAN:
                             convertedArgs[i] = ((boolean) arguments[i]) ? (byte) 1 : (byte) 0;
@@ -242,7 +252,8 @@ class NFINativeAccess implements NativeAccess {
                             convertedArgs[i] = arguments[i];
                     }
                 }
-                Object ret = interop.execute(delegate, convertedArgs);
+                Object ret = delegateInterop.execute(delegate, convertedArgs);
+                CompilerAsserts.partialEvaluationConstant(nativeSignature.getReturnType());
                 switch (nativeSignature.getReturnType()) {
                     case BOOLEAN:
                         ret = (byte) ret != 0;
@@ -258,6 +269,27 @@ class NFINativeAccess implements NativeAccess {
             } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
+        @ReportPolymorphism
+        @ExportMessage
+        abstract static class Execute {
+
+            static final int INLINE_CACHE_SIZE = 2;
+
+            @Specialization(limit = "INLINE_CACHE_SIZE", guards = "receiver == cachedReceiver")
+            @SuppressWarnings("unused")
+            protected static Object doCached(NativeToJavaWrapper receiver, Object[] arguments,
+                            @Cached("receiver") NativeToJavaWrapper cachedReceiver,
+                            @CachedLibrary("cachedReceiver.delegate") InteropLibrary delegateInterop) throws ArityException {
+                return cachedReceiver.doExecute(arguments, delegateInterop);
+            }
+
+            @Specialization(replaces = "doCached")
+            protected static Object doGeneric(NativeToJavaWrapper receiver, Object[] arguments,
+                            @CachedLibrary("receiver.delegate") InteropLibrary delegateInterop) throws ArityException {
+                return receiver.doExecuteBoundary(arguments, delegateInterop);
             }
         }
     }
@@ -298,10 +330,15 @@ class NFINativeAccess implements NativeAccess {
             return true;
         }
 
+        @TruffleBoundary
+        Object doExecuteBoundary(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
+            return doExecute(arguments, delegateInterop);
+        }
+
         @ExplodeLoop
-        @ExportMessage
-        Object execute(Object[] arguments, @CachedLibrary("this.delegate") InteropLibrary interop) throws ArityException {
+        Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
             final int paramCount = nativeSignature.getParameterCount();
+            CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
                 throw ArityException.create(paramCount, arguments.length);
@@ -310,6 +347,7 @@ class NFINativeAccess implements NativeAccess {
                 Object[] convertedArgs = new Object[arguments.length];
                 for (int i = 0; i < paramCount; i++) {
                     NativeType param = nativeSignature.parameterTypeAt(i);
+                    CompilerAsserts.partialEvaluationConstant(param);
                     switch (param) {
                         case BOOLEAN:
                             convertedArgs[i] = (byte) arguments[i] != 0;
@@ -321,7 +359,8 @@ class NFINativeAccess implements NativeAccess {
                             convertedArgs[i] = arguments[i];
                     }
                 }
-                Object ret = interop.execute(delegate, convertedArgs);
+                Object ret = delegateInterop.execute(delegate, convertedArgs);
+                CompilerAsserts.partialEvaluationConstant(nativeSignature.getReturnType());
                 switch (nativeSignature.getReturnType()) {
                     case BOOLEAN:
                         ret = ((boolean) ret) ? (byte) 1 : (byte) 0;
@@ -337,6 +376,27 @@ class NFINativeAccess implements NativeAccess {
             } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
+        @ReportPolymorphism
+        @ExportMessage
+        abstract static class Execute {
+
+            static final int INLINE_CACHE_SIZE = 2;
+
+            @Specialization(limit = "INLINE_CACHE_SIZE", guards = "receiver == cachedReceiver")
+            @SuppressWarnings("unused")
+            protected static Object doCached(JavaToNativeWrapper receiver, Object[] arguments,
+                            @Cached("receiver") JavaToNativeWrapper cachedReceiver,
+                            @CachedLibrary("cachedReceiver.delegate") InteropLibrary delegateInterop) throws ArityException {
+                return cachedReceiver.doExecute(arguments, delegateInterop);
+            }
+
+            @Specialization(replaces = "doCached")
+            protected static Object doGeneric(JavaToNativeWrapper receiver, Object[] arguments,
+                            @CachedLibrary("receiver.delegate") InteropLibrary delegateInterop) throws ArityException {
+                return receiver.doExecuteBoundary(arguments, delegateInterop);
             }
         }
     }
