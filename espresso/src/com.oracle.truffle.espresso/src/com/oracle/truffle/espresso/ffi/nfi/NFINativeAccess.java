@@ -62,7 +62,6 @@ import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 import sun.misc.Unsafe;
 
@@ -86,20 +85,20 @@ class NFINativeAccess implements NativeAccess {
 
     protected final TruffleLanguage.Env env;
 
-    protected static NativeSimpleType nfiType(NativeType nativeType) {
+    protected static String nfiType(NativeType nativeType) {
         // @formatter:off
         switch (nativeType) {
-            case VOID:    return NativeSimpleType.VOID;
+            case VOID:    return "VOID";
             case BOOLEAN: // fall-through
-            case BYTE:    return NativeSimpleType.SINT8;
+            case BYTE:    return "SINT8";
             case CHAR:    // fall-through
-            case SHORT:   return NativeSimpleType.SINT16;
-            case INT:     return NativeSimpleType.SINT32;
-            case LONG:    return NativeSimpleType.SINT64;
-            case FLOAT:   return NativeSimpleType.FLOAT;
-            case DOUBLE:  return NativeSimpleType.DOUBLE;
-            case OBJECT:  return NativeSimpleType.SINT64; // word-sized handle
-            case POINTER: return NativeSimpleType.POINTER;
+            case SHORT:   return "SINT16";
+            case INT:     return "SINT32";
+            case LONG:    return "SINT64";
+            case FLOAT:   return "FLOAT";
+            case DOUBLE:  return "DOUBLE";
+            case OBJECT:  return "SINT64"; // word-sized handle
+            case POINTER: return "POINTER";
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Unexpected: " + nativeType);
