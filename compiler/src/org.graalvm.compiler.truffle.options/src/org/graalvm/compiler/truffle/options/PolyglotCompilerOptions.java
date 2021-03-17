@@ -516,6 +516,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
 
+    @Option(help = "TODO", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraversingDynamicThresholds = new OptionKey<>(false);
+
     // Language agnostic inlining
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL)
