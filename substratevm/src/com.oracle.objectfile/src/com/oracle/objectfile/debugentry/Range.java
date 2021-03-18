@@ -34,7 +34,7 @@ package com.oracle.objectfile.debugentry;
 
 public class Range {
     private static final String CLASS_DELIMITER = ".";
-    private FileEntry fileEntry;
+    private final FileEntry fileEntry;
     private final String className;
     private final String methodName;
     private final String symbolName;
@@ -182,10 +182,6 @@ public class Range {
 
     public FileEntry getFileEntry() {
         return fileEntry;
-    }
-
-    public void setFileEntry(FileEntry fileEntry) {
-        this.fileEntry = fileEntry;
     }
 
     public int getModifiers() {
