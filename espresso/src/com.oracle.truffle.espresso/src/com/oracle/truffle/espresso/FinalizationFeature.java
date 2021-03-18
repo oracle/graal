@@ -54,6 +54,20 @@ public final class FinalizationFeature implements Feature {
 
     /**
      * Compiled {@link java.lang.ref.PublicFinalReference} without the poisoned static initializer.
+     * 
+     * <p>
+     * To examine the contents, execute the following commands:
+     * 
+     * <pre>
+     * jshell &#60;&#60;EOF
+     * try (var fos = new FileOutputStream("PublicFinalReference.class")) {
+     *     byte[] PUBLIC_FINAL_REFERENCE_BYTES = ... ; // paste byte[] contents here
+     *     fos.write(PUBLIC_FINAL_REFERENCE_BYTES);
+     * }
+     * EOF
+     *
+     * javap -v PublicFinalReference.class
+     * </pre>
      */
     private static final byte[] PUBLIC_FINAL_REFERENCE_BYTES = new byte[]{-54, -2, -70, -66, 0, 0, 0, 52, 0, 28, 7, 0, 2, 1, 0, 34, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 114, 101, 102, 47, 80,
                     117, 98, 108, 105, 99, 70, 105, 110, 97, 108, 82, 101, 102, 101, 114, 101, 110, 99, 101, 7, 0, 4, 1, 0, 28, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 114, 101, 102, 47, 70, 105,
