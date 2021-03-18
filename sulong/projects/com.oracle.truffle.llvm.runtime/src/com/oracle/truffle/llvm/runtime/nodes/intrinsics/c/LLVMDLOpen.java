@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -103,16 +104,23 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         if (sysContextExt.isGlobalDLOpenFlagSet(flag)) {
             globalOrLocal = RTLDFlags.RTLD_GLOBAL;
         }
+        return LLVMManagedPointer.create(new LLVMDLHandler(loadLibrary(ctx, globalOrLocal, flag, file, readStr)));
+
+    }
+
+    @TruffleBoundary
+    protected Object loadLibrary(LLVMContext ctx, RTLDFlags globalOrLocal, int flag, Object file, LLVMReadStringNode readStr) {
+        String filename = readStr.executeWithTarget(file);
+        Path path = Paths.get(filename);
+        TruffleFile truffleFile = ctx.getEnv().getInternalTruffleFile(path.toUri());
         try {
-            String filename = readStr.executeWithTarget(file);
-            Path path = Paths.get(filename);
-            TruffleFile truffleFile = ctx.getEnv().getInternalTruffleFile(path.toUri());
             Source source = Source.newBuilder("llvm", truffleFile).build();
             CallTarget callTarget = ctx.getEnv().parsePublic(source, String.valueOf(flag));
-            Object sulongLibrary = callTarget.call(globalOrLocal);
-            return LLVMManagedPointer.create(new LLVMDLHandler(sulongLibrary));
+            return callTarget.call(globalOrLocal);
         } catch (IOException e) {
+            ctx.setDLError(1);
             throw new IllegalStateException(e);
         }
     }
+
 }

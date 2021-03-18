@@ -139,6 +139,9 @@ public final class LLVMContext {
     private final LLVMNativePointer sigIgn;
     private final LLVMNativePointer sigErr;
 
+    // dlerror state
+    private int currentDLError;
+
     // pThread state
     private final LLVMPThreadContext pThreadContext;
 
@@ -199,6 +202,8 @@ public final class LLVMContext {
         this.mainArguments = getMainArguments(env);
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
+
+        currentDLError = 0;
 
         pThreadContext = new LLVMPThreadContext(getEnv(), getLanguage(), language.getDefaultDataLayout());
 
@@ -946,6 +951,14 @@ public final class LLVMContext {
                 stream.printf("Function %s \t count: %d\n", s, sorted.get(s));
             }
         }
+    }
+
+    public void setDLError(int error) {
+        this.currentDLError = error;
+    }
+
+    public int getCurrentDLError() {
+        return currentDLError;
     }
 
     public LLVMPThreadContext getpThreadContext() {

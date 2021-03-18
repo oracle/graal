@@ -31,12 +31,15 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.LLVMDLHandler;
@@ -55,12 +58,14 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
                     LLVMPointer symbol,
                     @Cached() LLVMReadStringNode readStr,
                     @CachedLibrary("getLibrary(libraryHandle)") InteropLibrary interop,
-                    @Cached WrappedFunctionNode wrapper) {
+                    @Cached WrappedFunctionNode wrapper,
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         try {
             String symbolName = readStr.executeWithTarget(symbol);
             Object function = interop.readMember(getLibrary(libraryHandle), symbolName);
             return wrapper.execute(function);
         } catch (InteropException e) {
+            ctx.setDLError(2);
             return LLVMNativePointer.createNull();
         }
     }
@@ -91,10 +96,12 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
 
         @Specialization(guards = {"!isFunctionDescriptor(symbol)", "interopLibrary.isPointer(symbol)"}, limit = "1")
         protected LLVMNativePointer doNFISymbol(Object symbol,
-                        @CachedLibrary("symbol") InteropLibrary interopLibrary) {
+                        @CachedLibrary("symbol") InteropLibrary interopLibrary,
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
             try {
                 return LLVMNativePointer.create(interopLibrary.asPointer(symbol));
             } catch (InteropException e) {
+                ctx.setDLError(2);
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }

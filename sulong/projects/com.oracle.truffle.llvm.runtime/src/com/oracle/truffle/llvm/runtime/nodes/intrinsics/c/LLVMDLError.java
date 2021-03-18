@@ -29,15 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 
 public abstract class LLVMDLError extends LLVMIntrinsic {
 
     @Specialization
-    protected String doOp() {
-        return "";
+    protected Object doOp(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         // or null if no such error has occured since the last call of dlopen or dlsym.
+        return ctx.getCurrentDLError();
     }
-
 }
