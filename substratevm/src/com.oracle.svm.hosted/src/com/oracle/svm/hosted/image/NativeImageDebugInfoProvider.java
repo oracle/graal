@@ -551,11 +551,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public Stream<DebugMethodInfo> methodInfoProvider() {
-            return Arrays.stream(hostedType.getAllDeclaredMethods()).map(this::createDebugMethodInfo);
-        }
-
-        @Override
         public String superName() {
             HostedClass superClass = hostedType.getSuperclass();
             /*

@@ -28,7 +28,6 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
@@ -56,10 +55,6 @@ public class ClassEntry extends StructureTypeEntry {
      * Details of the associated file.
      */
     private FileEntry fileEntry;
-    /**
-     * Details of methods located in this instance.
-     */
-    protected List<MethodEntry> methods;
     /**
      * A list recording details of all primary ranges included in this class sorted by ascending
      * address range.
@@ -94,7 +89,6 @@ public class ClassEntry extends StructureTypeEntry {
         super(className, size);
         this.interfaces = new LinkedList<>();
         this.fileEntry = fileEntry;
-        this.methods = new LinkedList<>();
         this.primaryEntries = new LinkedList<>();
         this.primaryIndex = new HashMap<>();
         this.localFiles = new LinkedList<>();
@@ -133,8 +127,6 @@ public class ClassEntry extends StructureTypeEntry {
         debugInstanceTypeInfo.interfaces().forEach(interfaceName -> processInterface(interfaceName, debugInfoBase, debugContext));
         /* Add details of fields and field types */
         debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
-        /* Add details of methods and method types */
-        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.processMethod(methodFieldInfo, debugInfoBase, debugContext));
     }
 
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
@@ -267,36 +259,6 @@ public class ClassEntry extends StructureTypeEntry {
         interfaceClassEntry.addImplementor(this, debugContext);
     }
 
-    protected void processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
-        String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
-        int modifiers = debugMethodInfo.modifiers();
-        List<String> paramTypes = debugMethodInfo.paramTypes();
-        List<String> paramNames = debugMethodInfo.paramNames();
-        assert paramTypes.size() == paramNames.size();
-        int paramCount = paramTypes.size();
-        debugContext.log("typename %s adding %s method %s %s(%s)\n",
-                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramTypes, paramNames));
-        TypeEntry resultType = debugInfoBase.lookupTypeEntry(resultTypeName);
-        TypeEntry[] paramTypeArray = new TypeEntry[paramCount];
-        String[] paramNameArray = new String[paramCount];
-        int idx = 0;
-        for (String paramTypeName : paramTypes) {
-            TypeEntry paramType = debugInfoBase.lookupTypeEntry(TypeEntry.canonicalize(paramTypeName));
-            paramTypeArray[idx++] = paramType;
-        }
-        paramNameArray = paramNames.toArray(paramNameArray);
-        String fileName = debugMethodInfo.fileName();
-        Path filePath = debugMethodInfo.filePath();
-        Path cachePath = debugMethodInfo.cachePath();
-        /*
-         * n.b. the method file may differ from the owning class file when the method is a
-         * substitution
-         */
-        FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        methods.add(new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers));
-    }
-
     @Override
     protected FieldEntry addField(DebugInfoProvider.DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         FieldEntry fieldEntry = super.addField(debugFieldInfo, debugInfoBase, debugContext);
@@ -340,21 +302,8 @@ public class ClassEntry extends StructureTypeEntry {
                     int modifiers, boolean isDeoptTarget) {
         FileEntry fileEntryToUse = primaryFileEntry;
         if (fileEntryToUse == null) {
-            /*
-             * Search for a matching method to supply the file entry or failing that use the one
-             * from this class.
-             */
-            for (MethodEntry methodEntry : methods) {
-                if (methodEntry.match(methodName, paramSignature, returnTypeName)) {
-                    /* maybe the method's file entry */
-                    fileEntryToUse = methodEntry.getFileEntry();
-                    break;
-                }
-            }
-            if (fileEntryToUse == null) {
-                /* Last chance is the class's file entry. */
-                fileEntryToUse = this.fileEntry;
-            }
+            /* Last chance is the class's file entry. */
+            fileEntryToUse = this.fileEntry;
         }
         return new Range(this.typeName, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntryToUse, lo, hi, primaryLine, modifiers, isDeoptTarget);
     }

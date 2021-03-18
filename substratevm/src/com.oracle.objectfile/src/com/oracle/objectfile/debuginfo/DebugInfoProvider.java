@@ -134,8 +134,6 @@ public interface DebugInfoProvider {
 
         Stream<DebugFieldInfo> fieldInfoProvider();
 
-        Stream<DebugMethodInfo> methodInfoProvider();
-
         String superName();
 
         Stream<String> interfaces();
