@@ -488,7 +488,7 @@ public final class JDWPContextImpl implements JDWPContext {
             // primitive array type needs wrapping
             Object boxedArray = getUnboxedArray(array);
             value = Array.get(boxedArray, index);
-        }  else {
+        } else {
             value = arrayRef.get(index);
         }
         return value;
