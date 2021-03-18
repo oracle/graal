@@ -71,7 +71,7 @@ public class LocalizationSupport {
         return ((OptimizedLocalizationSupport) this);
     }
 
-    public Map<String, Object> getBundleContentOf(ResourceBundle bundle) {
+    public Map<String, Object> getBundleContentOf(Object bundle) {
         throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundle.getClass());
     }
 

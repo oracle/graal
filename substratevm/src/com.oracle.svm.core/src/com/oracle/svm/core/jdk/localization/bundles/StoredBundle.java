@@ -25,8 +25,7 @@
 package com.oracle.svm.core.jdk.localization.bundles;
 
 import java.util.Map;
-import java.util.ResourceBundle;
 
 public interface StoredBundle {
-    Map<String, Object> getContent(ResourceBundle bundle);
+    Map<String, Object> getContent(Object bundle);
 }

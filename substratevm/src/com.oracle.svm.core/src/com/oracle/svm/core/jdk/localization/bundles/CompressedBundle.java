@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk.localization.bundles;
 
 import java.util.Map;
-import java.util.ResourceBundle;
 import java.util.function.Function;
 
 public final class CompressedBundle implements StoredBundle {
@@ -39,7 +38,7 @@ public final class CompressedBundle implements StoredBundle {
     }
 
     @Override
-    public Map<String, Object> getContent(ResourceBundle bundle) {
+    public Map<String, Object> getContent(Object bundle) {
         if (extracted == null) {
             extracted = decompressionAlgorithm.apply(content);
         }

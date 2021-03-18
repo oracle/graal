@@ -32,7 +32,6 @@ import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLo
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.util.Map;
-import java.util.ResourceBundle;
 
 @TargetClass(value = java.util.ListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"static-method"})
@@ -45,6 +44,6 @@ final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
         if (lookup != null) {
             return;
         }
-        lookup = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentOf((ResourceBundle) ((Object) this));
+        lookup = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentOf(this);
     }
 }
