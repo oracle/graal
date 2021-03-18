@@ -593,10 +593,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callCount = firstTierCallCount == Integer.MAX_VALUE ? firstTierCallCount : ++firstTierCallCount;
         int firstTierLoopCallCount = this.callAndLoopCount;
         this.callAndLoopCount = firstTierLoopCallCount == Integer.MAX_VALUE ? firstTierLoopCallCount : ++firstTierLoopCallCount;
-        if (firstTierCallCount >= engine.callThresholdInFirstTier //
-                        && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier //
-                        && !compilationFailed //
-                        && !isSubmittedForCompilation()) {
+        if (!compilationFailed //
+                        && !isSubmittedForCompilation()//
+                        && firstTierCallCount >= engine.callThresholdInFirstTier //
+                        && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier * runtime().scale()) {
             return lastTierCompile();
         }
         return false;
