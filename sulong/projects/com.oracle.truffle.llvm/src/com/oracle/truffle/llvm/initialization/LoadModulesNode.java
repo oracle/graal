@@ -273,6 +273,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                     } else if (RTLDFlags.RTLD_LOCAL.isActive(localOrGlobal)) {
                         initScopes.execute(localScope);
                     } else if (RTLDFlags.RTLD_GLOBAL.isActive(localOrGlobal)) {
+                        initScopes.execute(localScope);
                         initScopes.execute(context.getGlobalScope());
                     } else {
                         throw new LLVMParserException(this, "Toplevel executable %s does not contain bitcode");
@@ -288,7 +289,6 @@ public final class LoadModulesNode extends LLVMRootNode {
                             indirectCall.call(quePoll(que), LLVMLoadingPhase.BUILD_SCOPES, visited, localScope, localOrGlobal, que, resultScope);
                         }
                     }
-
                 }
             }
 
