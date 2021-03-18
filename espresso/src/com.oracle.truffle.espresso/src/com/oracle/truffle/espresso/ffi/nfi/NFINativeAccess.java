@@ -177,7 +177,7 @@ class NFINativeAccess implements NativeAccess {
             throw EspressoError.shouldNotReachHere(e);
         } catch (AbstractTruffleException e) {
             // TODO(peterssen): Remove assert once GR-27045 reaches a definitive consensus.
-            assert "com.oracle.truffle.nfi.impl.NFIUnsatisfiedLinkError".equals(e.getClass().getName());
+            assert "com.oracle.truffle.nfi.backend.libffi.NFIUnsatisfiedLinkError".equals(e.getClass().getName());
             // We treat AbstractTruffleException as if it were an UnsatisfiedLinkError.
             getLogger().fine("AbstractTruffleException while loading library though NFI (" + nfiSource + ") : " + e.getMessage());
             return null;

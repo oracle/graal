@@ -254,6 +254,7 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "truffle:TRUFFLE_NFI_LIBFFI",
                 "tools:TRUFFLE_PROFILER",
             ],
             "javaProperties": {
