@@ -89,8 +89,9 @@ By default, the requested bundles are included for all requested locales. In ord
 use ``IncludeResourceBundles`` with locale specific substring, for
 example ``-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`` will include the bundle only in French.
 
-### Two Modes of Localization
+### JVM Mode of Localization
 
-Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM. Therefore,
-using it causes image size increase for smaller binaries such as hello world. If smaller images are what you are aiming for, try the `-H:+LocalizationOptimizedMode` option. This option switches the lookup to a simple in-memory map. In case you are aiming for a single locale image with minimal size, it can help you achieve that.
-But please note that this mode is not fully compatible in some edge cases, so please double check that it works properly in your application. 
+Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM. As a result of that, it causes image size increase 
+for smaller applications such as Hello World. Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact the all 
+bundles are known ahead of time.
+In case you would like to use the original JVM lookup, use the `-H:-LocalizationOptimizedMode` option. 
