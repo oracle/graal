@@ -1872,6 +1872,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     PolyglotContextImpl enter(PolyglotContextImpl context, Node safepointLocation, boolean pollSafepoint) {
         PolyglotContextImpl prev;
         PolyglotThreadInfo info = context.cachedThreadInfo;
+        boolean enterReverted = false;
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
             // Volatile increment is safe if only one thread does it.
             prev = info.enterInternal();
@@ -1893,6 +1894,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 return prev;
             } else {
                 info.leaveInternal(prev);
+                enterReverted = true;
             }
         }
         /*
@@ -1901,7 +1903,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
          * thread. The slow path acquires context lock to ensure ordering for context operations
          * like close.
          */
-        prev = context.enterThreadChanged(safepointLocation, pollSafepoint);
+        prev = context.enterThreadChanged(safepointLocation, enterReverted, pollSafepoint);
         assert verifyContext(context);
         return prev;
     }

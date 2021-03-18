@@ -86,16 +86,20 @@ public abstract class ThreadLocalHandshake {
         return true;
     }
 
+    public void testSupport() {
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("Thread local handshakes are not supported on this platform. " +
+                            "A possible reason may be that the underlying JVMCI version is too old.");
+        }
+    }
+
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
      */
     @TruffleBoundary
     public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting, boolean sync) {
-        if (!isSupported()) {
-            throw new UnsupportedOperationException("Thread local handshakes are not supported on this platform. " +
-                            "A possible reason may be that the underlying JVMCI version is too old.");
-        }
+        testSupport();
         Handshake<T> handshake = new Handshake<>(threads, onThread, onDone, sideEffecting, threads.length, sync);
         for (int i = 0; i < threads.length; i++) {
             Thread t = threads[i];
@@ -393,15 +397,17 @@ public abstract class ThreadLocalHandshake {
 
         private void addHandshakeImpl(Thread t, Handshake<?> handshake) {
             handshakes.add(new HandshakeEntry(handshake));
-            if (isPending() && !fastPendingSet) {
-                fastPendingSet = true;
+            if (isPending()) {
                 setFastPendingAndInterrupt(t);
             }
         }
 
         private void setFastPendingAndInterrupt(Thread t) {
             assert lock.isHeldByCurrentThread();
-            impl.setFastPending(t);
+            if (!fastPendingSet) {
+                fastPendingSet = true;
+                impl.setFastPending(t);
+            }
             Interrupter action = this.blockedAction;
             if (action != null) {
                 interrupted = true;
@@ -640,10 +646,7 @@ public abstract class ThreadLocalHandshake {
 
         private void updateFastPending() {
             if (isPending()) {
-                if (!fastPendingSet) {
-                    fastPendingSet = true;
-                    setFastPendingAndInterrupt(Thread.currentThread());
-                }
+                setFastPendingAndInterrupt(Thread.currentThread());
             } else {
                 if (fastPendingSet) {
                     fastPendingSet = false;
