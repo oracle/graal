@@ -871,10 +871,10 @@ public final class VMOperationControl {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void add(VMOpStatus started, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
+        public void add(VMOpStatus status, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
             VMOpStatusChange entry = history.next();
             entry.timestamp = System.currentTimeMillis();
-            entry.status = started;
+            entry.status = status;
             entry.operation = operation.getName();
             entry.causesSafepoint = operation.getCausesSafepoint();
             entry.queueingThread = queueingThread;
@@ -883,11 +883,11 @@ public final class VMOperationControl {
 
         public void print(Log log) {
             log.string("The ").signed(history.size()).string(" most recent VM operation status changes (oldest first):").indent(true);
-            history.foreach(log, VMOpHistory::printEntries);
+            history.foreach(log, VMOpHistory::printEntry);
             log.indent(false);
         }
 
-        private static void printEntries(Object context, VMOpStatusChange entry) {
+        private static void printEntry(Object context, VMOpStatusChange entry) {
             Log log = (Log) context;
             entry.print(log);
         }
