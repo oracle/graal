@@ -329,6 +329,7 @@ public final class InspectorTester {
                 throw td;
             } catch (Throwable t) {
                 error = t;
+                sendText("\nERROR: " + t.getClass().getName() + ": " + t.getLocalizedMessage());
             } finally {
                 try {
                     inspect.sendClose();
