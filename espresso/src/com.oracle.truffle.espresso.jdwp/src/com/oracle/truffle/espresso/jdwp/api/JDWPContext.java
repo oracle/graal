@@ -490,4 +490,6 @@ public interface JDWPContext {
      * @return the nearest instrumentable node
      */
     Node getInstrumentableNode(Node node);
+
+    boolean isSystemThread(Thread hostThread);
 }

@@ -664,7 +664,7 @@ public final class ClassRedefinition {
         }
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
         if (redefineListener.rerunClinit(oldKlass, packet.detectedChange.clinitChanged())) {
-            oldKlass.reRunClinit();
+            context.getJdwpContext().rerunclinit(oldKlass);
         }
     }
 

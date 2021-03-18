@@ -759,7 +759,13 @@ public final class DebuggerController implements ContextsListener {
 
         @Override
         public void onSuspend(SuspendedEvent event) {
-            Object currentThread = getContext().asGuestThread(Thread.currentThread());
+            Thread hostThread = Thread.currentThread();
+            if (context.isSystemThread(hostThread)) {
+                // always allow VM threads to run guest code without
+                // the risk of being suspended
+                return;
+            }
+            Object currentThread = getContext().asGuestThread(hostThread);
             JDWPLogger.log("Suspended at: %s in thread: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection().toString(), getThreadName(currentThread));
             SteppingInfo steppingInfo = commandRequestIds.remove(currentThread);
             if (steppingInfo != null) {
