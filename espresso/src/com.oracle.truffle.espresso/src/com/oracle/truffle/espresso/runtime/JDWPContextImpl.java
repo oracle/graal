@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.regex.Matcher;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -85,6 +87,8 @@ public final class JDWPContextImpl implements JDWPContext {
     private final ClassRedefinition classRedefinition;
     private InnerClassRedefiner innerClassRedefiner;
     private final RedefinitionPluginHandler redefinitionPluginHandler;
+    private Thread reloaderThread;
+    private final BlockingQueue<ReloadingAction> queue = new ArrayBlockingQueue<>(128);
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
@@ -93,6 +97,7 @@ public final class JDWPContextImpl implements JDWPContext {
         this.innerClassRedefiner = new InnerClassRedefiner(context);
         this.redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
         this.classRedefinition = new ClassRedefinition(context, ids, redefinitionPluginHandler);
+        initializeReloaderThread();
     }
 
     public VMListener jdwpInit(TruffleLanguage.Env env, Object mainThread) {
@@ -683,6 +688,47 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public boolean isSystemThread(Thread hostThread) {
+        return hostThread == reloaderThread;
+    }
+
+    private void initializeReloaderThread() {
+        reloaderThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+               while (!reloaderThread.isInterrupted()) {
+                   try {
+                       queue.take().fire();
+                   } catch (InterruptedException e) {
+                       reloaderThread.interrupt();
+                   } catch (Throwable t) {
+                       // while rerunning class initializers
+                       // in the guest, some anomalies are to
+                       // be expected. Treat those as non-fatal
+                       // TODO - add logging
+                   }
+               }
+            }
+        }, "reloader");
+        reloaderThread.start();
+    }
+
+    public void rerunclinit(ObjectKlass oldKlass) {
+        queue.add(new ReloadingAction(oldKlass));
+    }
+
+    public void ensureReloadingDone() {
+        while (!queue.isEmpty()) {
+            // poll at intervals
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+               Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    @Override
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
         try {
             // begin redefine transaction
@@ -811,6 +857,19 @@ public final class JDWPContextImpl implements JDWPContext {
             }
             // no hierarchy
             return 0;
+        }
+    }
+
+    private class ReloadingAction {
+        private ObjectKlass klass;
+
+        private ReloadingAction(ObjectKlass klass) {
+            this.klass = klass;
+        }
+
+        private void fire() {
+            System.out.println("running clinit action for klass: " + klass);
+            klass.reRunClinit();
         }
     }
 }
