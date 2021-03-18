@@ -73,7 +73,7 @@ public final class ListInterop extends IterableInterop {
                     @Cached ListGet listGet,
                     @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size,
                     @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException {
-        if (boundsCheck(receiver, index, size)) {
+        if (!boundsCheck(receiver, index, size)) {
             error.enter();
             throw InvalidArrayIndexException.create(index);
         }
@@ -85,7 +85,7 @@ public final class ListInterop extends IterableInterop {
                     @Cached ListSet listSet,
                     @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size,
                     @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException {
-        if (boundsCheck(receiver, index, size)) {
+        if (!boundsCheck(receiver, index, size)) {
             error.enter();
             throw InvalidArrayIndexException.create(index);
         }
