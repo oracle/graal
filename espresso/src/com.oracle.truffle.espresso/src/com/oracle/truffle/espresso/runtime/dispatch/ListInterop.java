@@ -104,6 +104,8 @@ public final class ListInterop extends IterableInterop {
         return boundsCheck(receiver, index, size);
     }
 
+    // TODO: isArrayElementRemovable and isArrayElementInsertable
+
     private static boolean boundsCheck(StaticObject receiver, long index,
                     LookupAndInvokeKnownMethodNode size) {
         return 0 <= index && index < (int) size.execute(receiver, EMPTY_ARGS);
