@@ -89,7 +89,7 @@ public final class TruffleOutputGroup implements Closeable {
      */
     public static TruffleOutputGroup openCallTarget(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) throws IOException {
         if (debug != null && debug.isDumpEnabled()) {
-            return new TruffleOutputGroup(debug, properties, "Truffle::" + compilable.getName());
+            return new TruffleOutputGroup(debug, properties, "TruffleAST::" + compilable.getName());
         }
         return null;
     }

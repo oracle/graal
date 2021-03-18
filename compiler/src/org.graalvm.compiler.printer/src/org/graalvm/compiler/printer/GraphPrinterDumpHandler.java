@@ -257,8 +257,10 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                 }
             }
             // Truffle compilations don't have a standard inline context.
+            // Since TruffleDebugJavaMethod specifies the declaring class for truffle compilations
+            // as "LTruffleGraal" we identify truffle compilations as starting with "TruffleGraal"
             if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
-                String name = result.get(1);
+                String name = result.get(1).replace("TruffleGraal.", "TruffleIR::");
                 result.clear();
                 result.add(name);
             }

@@ -122,7 +122,7 @@ public class TruffleDebugJavaMethod implements JavaMethod {
 
     @Override
     public String getName() {
-        return (compilable.toString() + "").replace('.', '_').replace(' ', '_');
+        return (compilable.getName() + "").replace('.', '_').replace(' ', '_');
     }
 
     @Override
