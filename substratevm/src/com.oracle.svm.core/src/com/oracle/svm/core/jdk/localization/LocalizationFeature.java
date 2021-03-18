@@ -163,7 +163,7 @@ public abstract class LocalizationFeature implements Feature {
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
 
         @Option(help = "Optimize the resource bundle lookup using a simple map.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(true);
 
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
