@@ -47,10 +47,12 @@ public class JfrTraceIdLoadBarrier {
         return isNotTagged(JfrTraceId.getTraceIdRaw(obj));
     }
 
+    @Uninterruptible(reason = "Epoch may not change")
     public static void clear() {
         clearClassCount(JfrTraceIdEpoch.getInstance().previousEpoch());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void clearClassCount(boolean epoch) {
         if (epoch) {
             classCount1 = 0;

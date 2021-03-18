@@ -74,12 +74,12 @@ public class JfrTraceId {
         return (id & bits) != 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Epoch must not change.")
     public static void setUsedThisEpoch(Class<?> clazz) {
         tag(clazz, JfrTraceIdEpoch.getInstance().thisEpochBit());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Epoch must not change.")
     public static boolean isUsedThisEpoch(Class<?> clazz) {
         return predicate(clazz, TRANSIENT_BIT | JfrTraceIdEpoch.getInstance().thisEpochBit());
     }
