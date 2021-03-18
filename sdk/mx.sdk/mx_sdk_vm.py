@@ -421,7 +421,7 @@ def register_graalvm_component(component):
         _graalvm_components_by_name[component.name] = component
 
 
-def graalvm_component_by_name(name):
+def graalvm_component_by_name(name, fatalIfMissing=True):
     """
     :rtype: GraalVmComponent
     """
@@ -430,7 +430,10 @@ def graalvm_component_by_name(name):
     elif name in _graalvm_components_by_name:
         return _graalvm_components_by_name[name]
     else:
-        raise Exception("Unknown component: {}".format(name))
+        if fatalIfMissing:
+            raise Exception("Unknown component: {}".format(name))
+        else:
+            return None
 
 
 def graalvm_components(opt_limit_to_suite=False):
