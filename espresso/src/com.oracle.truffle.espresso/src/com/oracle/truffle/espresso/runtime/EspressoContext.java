@@ -390,7 +390,7 @@ public final class EspressoContext {
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
         eventListener = new EmptyListener();
-        // Ensure guest finalization  host VM.
+        // Setup finalization support in the host VM.
         FinalizationFeature.ensureInitialized();
         spawnVM();
         this.initialized = true;

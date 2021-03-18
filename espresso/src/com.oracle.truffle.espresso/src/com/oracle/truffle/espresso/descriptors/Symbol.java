@@ -510,7 +510,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // Core types.
         public static final Symbol<Type> java_lang_String = StaticSymbols.putType("Ljava/lang/String;");
-        public static final Symbol<Type> java_lang_String_array = StaticSymbols.putType("[Ljava/lang/String;" /* String[] */);
+        public static final Symbol<Type> java_lang_String_array = StaticSymbols.putType("[Ljava/lang/String;");
 
         public static final Symbol<Type> java_lang_Object = StaticSymbols.putType("Ljava/lang/Object;");
         public static final Symbol<Type> java_lang_Object_array = StaticSymbols.putType("[Ljava/lang/Object;");
@@ -532,7 +532,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_ClassLoader = StaticSymbols.putType("Ljava/lang/ClassLoader;");
         public static final Symbol<Type> java_lang_ClassLoader$NativeLibrary = StaticSymbols.putType("Ljava/lang/ClassLoader$NativeLibrary;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
-
 
         public static final Symbol<Type> java_io_InputStream = StaticSymbols.putType("Ljava/io/InputStream;");
         public static final Symbol<Type> java_io_PrintStream = StaticSymbols.putType("Ljava/io/PrintStream;");
