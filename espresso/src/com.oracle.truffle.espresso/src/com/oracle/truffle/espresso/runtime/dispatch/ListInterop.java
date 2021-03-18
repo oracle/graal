@@ -44,6 +44,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
+import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNodeGen;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -56,59 +58,55 @@ public final class ListInterop extends IterableInterop {
         return true;
     }
 
+    static LookupAndInvokeKnownMethodNode getSizeLookup() {
+        return LookupAndInvokeKnownMethodNodeGen.create(getMeta().java_util_List, getMeta().java_util_List_size);
+    }
+
     @ExportMessage
-    abstract static class GetArraySize {
-
-        static final int LIMIT = 3;
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static long doCached(StaticObject receiver,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doSizeLookup(receiver)") Method method,
-                        @Cached("create(method.getCallTarget())") DirectCallNode callNode) {
-            return (int) callNode.call(receiver);
-        }
-
-        @Specialization(replaces = "doCached")
-        static long doUncached(StaticObject receiver,
-                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
-            Method size = doSizeLookup(receiver);
-            return (int) invoke.call(size.getCallTarget(), receiver);
-        }
-
-        static Method doSizeLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Name.size, Signature._int);
-        }
+    static long getArraySize(StaticObject receiver,
+                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size) {
+        return (int) size.execute(receiver, EMPTY_ARGS);
     }
 
     @ExportMessage
     static Object readArrayElement(StaticObject receiver, long index,
                     @Cached ListGet listGet,
+                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size,
                     @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException {
+        if (boundsCheck(receiver, index, size)) {
+            error.enter();
+            throw InvalidArrayIndexException.create(index);
+        }
         return listGet.listGet(receiver, index, error);
     }
 
     @ExportMessage
     static void writeArrayElement(StaticObject receiver, long index, Object value,
                     @Cached ListSet listSet,
+                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size,
                     @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException {
+        if (boundsCheck(receiver, index, size)) {
+            error.enter();
+            throw InvalidArrayIndexException.create(index);
+        }
         listSet.listSet(receiver, index, value, error);
     }
 
     @ExportMessage
-    static boolean isArrayElementReadable(StaticObject receiver, long index) {
-        return boundsCheck(receiver, index);
+    static boolean isArrayElementReadable(StaticObject receiver, long index,
+                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size) {
+        return boundsCheck(receiver, index, size);
     }
 
     @ExportMessage
-    static boolean isArrayElementModifiable(StaticObject receiver, long index) {
-        return boundsCheck(receiver, index);
+    static boolean isArrayElementModifiable(StaticObject receiver, long index,
+                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size) {
+        return boundsCheck(receiver, index, size);
     }
 
-    private static boolean boundsCheck(StaticObject receiver, long index) {
-        Method size = receiver.getKlass().lookupMethod(Name.size, Signature._int);
-        return 0 <= index && index < (int) size.invokeDirect(receiver);
+    private static boolean boundsCheck(StaticObject receiver, long index,
+                    LookupAndInvokeKnownMethodNode size) {
+        return 0 <= index && index < (int) size.execute(receiver, EMPTY_ARGS);
     }
 
     @GenerateUncached
@@ -116,10 +114,6 @@ public final class ListInterop extends IterableInterop {
         static final int LIMIT = 3;
 
         public Object listGet(StaticObject receiver, long index, BranchProfile error) throws InvalidArrayIndexException {
-            if (index < 0 || Integer.MAX_VALUE < index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
             try {
                 return unwrapForeign(execute(receiver, (int) index));
             } catch (EspressoException e) {
@@ -159,10 +153,6 @@ public final class ListInterop extends IterableInterop {
         static final int LIMIT = 3;
 
         public void listSet(StaticObject receiver, long index, Object value, BranchProfile error) throws InvalidArrayIndexException {
-            if (index < 0 || Integer.MAX_VALUE < index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
             try {
                 execute(receiver, (int) index, value);
             } catch (EspressoException e) {
