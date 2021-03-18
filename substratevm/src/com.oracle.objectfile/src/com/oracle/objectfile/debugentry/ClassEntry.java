@@ -296,15 +296,4 @@ public class ClassEntry extends StructureTypeEntry {
     public ClassEntry getSuperClass() {
         return superClass;
     }
-
-    public Range makePrimaryRange(String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry primaryFileEntry, int lo,
-                    int hi, int primaryLine,
-                    int modifiers, boolean isDeoptTarget) {
-        FileEntry fileEntryToUse = primaryFileEntry;
-        if (fileEntryToUse == null) {
-            /* Last chance is the class's file entry. */
-            fileEntryToUse = this.fileEntry;
-        }
-        return new Range(this.typeName, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntryToUse, lo, hi, primaryLine, modifiers, isDeoptTarget);
-    }
 }
