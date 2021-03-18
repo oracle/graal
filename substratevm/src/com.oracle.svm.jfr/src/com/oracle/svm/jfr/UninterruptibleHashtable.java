@@ -122,4 +122,8 @@ public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>
         }
         return 0L;
     }
+
+    public T[] getTable() {
+        return table;
+    }
 }

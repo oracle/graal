@@ -25,6 +25,7 @@
 package com.oracle.svm.jfr;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -87,12 +88,36 @@ public class JfrSymbolRepository implements JfrRepository {
 
     @Override
     public void write(JfrChunkWriter writer) throws IOException {
+        // TODO: Epoch-based constant pool writing should allow for
+        // writing outside of a safepoint. However symbols can be
+        // marked in use directly by native events so the symbol
+        // repository probably needs to be epoch based as well
         assert VMOperation.isInProgressAtSafepoint();
         writer.writeCompressedLong(JfrTypes.Symbol.getId());
         writer.writeCompressedLong(table.getSize());
 
-        // TODO: iterate the table and write the symbol data in the correct encoding. Also consider
-        // symbol.getReplaceDotWithSlash() when writing the data.
+        JfrSymbol[] entries = table.getTable();
+        for (int i = 0; i < entries.length; i++) {
+            JfrSymbol entry = entries[i];
+            if (entry.isNonNull()) {
+                while (entry.isNonNull()) {
+                    writeSymbol(writer, entry);
+                    entry = entry.getNext();
+                }
+            }
+        }
+    }
+
+    private void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) throws IOException {
+        writer.writeCompressedLong(symbol.getId());
+        byte utf8 = 3;
+        writer.writeByte(utf8);
+        writer.writeCompressedInt(symbol.getValue().length());
+        String value = symbol.getValue();
+        if (symbol.getReplaceDotWithSlash()) {
+            value = value.replaceAll("\\.", "\\");
+        }
+        writer.writeBytes(value.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override

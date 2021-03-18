@@ -272,6 +272,16 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         writeCompressedInt(value ? 1 : 0);
     }
 
+    public void writeByte(byte value) throws IOException {
+        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
+        file.write(value);
+    }
+
+    public void writeBytes(byte[] values) throws IOException {
+        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
+        file.write(values);
+    }
+
     public void writeCompressedInt(int value) throws IOException {
         assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
         writeCompressedLong(value & 0xFFFFFFFFL);
