@@ -172,7 +172,7 @@ def registered_graalvm_components(stage1=False):
         excluded = _excluded_components()
         components_to_build = []
 
-        libpoly_build_args = []
+        # libpoly_build_args = []
         libpoly_jar_dependencies = []
         libpoly_build_dependencies = []
         libpoly_has_entrypoints = []
@@ -187,7 +187,7 @@ def registered_graalvm_components(stage1=False):
                 if component not in components_to_build and not (excludes and is_excluded(component)):
                     components_to_build.append(component)
                     components.extend(component.direct_dependencies())
-                    libpoly_build_args.extend(component.polyglot_lib_build_args)
+                    # libpoly_build_args.extend(component.polyglot_lib_build_args)
                     libpoly_jar_dependencies.extend(component.polyglot_lib_jar_dependencies)
                     libpoly_build_dependencies.extend(component.polyglot_lib_build_dependencies)
                     if component.has_polyglot_lib_entrypoints:
@@ -221,7 +221,7 @@ def registered_graalvm_components(stage1=False):
                                '-Dgraalvm.libpolyglot=true',
                                '-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>',
                                '--tool:all',
-                           ] + libpoly_build_args,
+                           ],  # + libpoly_build_args,
                         is_polyglot=True,
                     )],
                 )
@@ -589,6 +589,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         component_suites = {}
         installables = {}
         has_graal_compiler = False
+        _libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False)
+        _libpolyglot_macro_dir = (_get_macros_dir() + '/' + GraalVmNativeProperties.macro_name(_libpolyglot_component.library_configs[0]) + '/') if _libpolyglot_component is not None else None
+
         for _component in sorted(self.components, key=lambda c: c.name):
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
             _component_type_base = _get_component_type_base(_component)
@@ -702,6 +705,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
                     _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 _add_native_image_macro(_library_config, _component)
+            if _component.polyglot_lib_build_args:
+                # _libpolyglot_macro_dist = mx.distribution(_libpolyglot_macro_dist_name(_component), fatalIfMissing=False)
+                # if _libpolyglot_macro_dist:
+                _add(layout, _libpolyglot_macro_dir, 'dependency:' + _libpolyglot_macro_dist_name(_component))
 
             if _src_jdk_version == 8 or not _jlink_libraries():
                 graalvm_dists.difference_update(_component.boot_jars)
@@ -2377,6 +2384,9 @@ def _get_native_image_configs(component, config_type):
     return _native_image_configs.get(config_type).get(component.name, [])
 
 
+def _libpolyglot_macro_dist_name(component):
+    return component.short_name + "_libpolyglot_macro"
+
 def has_vm_suite():
     global _vm_suite
     if _vm_suite == 'uninitialized':
@@ -2395,6 +2405,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
     # Add the macros if SubstrateVM is included, as images could be created later with an installable Native Image
     with_svm = has_component('svm')
+    libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False) if with_svm else None
+    assert libpolyglot_component is None or len(libpolyglot_component.library_configs) == 1
+
     names = set()
     short_names = set()
     needs_stage1 = False
@@ -2429,6 +2442,20 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     needs_stage1 = True  # library configs need a stage1 even when they are skipped
         if component.installable and not _disable_installable(component):
             installables.setdefault(component.installable_id, []).append(component)
+        if libpolyglot_component is not None and component.polyglot_lib_build_args:
+            register_distribution(mx.LayoutJARDistribution(
+                suite=component.suite,
+                name=_libpolyglot_macro_dist_name(component),
+                deps=[],
+                layout={'META-INF/native-image/{}/native-image.properties'.format(component.short_name): 'string:Args=' + ' \\\n\t'.join(component.polyglot_lib_build_args)},
+                path=None,
+                platformDependent=False,
+                theLicense=None,
+                excludedLibs=None,
+                path_substitutions=None,
+                string_substitutions=None,
+                archive_factory=None
+            ))
 
     # Create installables
     for components in installables.values():
