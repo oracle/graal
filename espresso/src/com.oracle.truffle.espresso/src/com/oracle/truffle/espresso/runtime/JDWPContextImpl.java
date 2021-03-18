@@ -472,11 +472,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public Object getArrayValue(Object array, int index) {
         StaticObject arrayRef = (StaticObject) array;
         Object value;
-        if (((ArrayKlass) arrayRef.getKlass()).getComponentType().isPrimitive()) {
-            // primitive array type needs wrapping
-            Object boxedArray = getUnboxedArray(array);
-            value = Array.get(boxedArray, index);
-        } else if (arrayRef.isForeignObject()) {
+        if (arrayRef.isForeignObject()) {
             value = ForeignArrayUtils.readForeignArrayElement(arrayRef, index, InteropLibrary.getUncached(), context.getMeta(), BranchProfile.create());
             if (!(value instanceof StaticObject)) {
                 // For JDWP we have to have a ref type, so here we have to create a copy
@@ -488,7 +484,11 @@ public final class JDWPContextImpl implements JDWPContext {
                     throw new IllegalStateException("foreign object conversion not supported");
                 }
             }
-        } else {
+        } else if (((ArrayKlass) arrayRef.getKlass()).getComponentType().isPrimitive()) {
+            // primitive array type needs wrapping
+            Object boxedArray = getUnboxedArray(array);
+            value = Array.get(boxedArray, index);
+        }  else {
             value = arrayRef.get(index);
         }
         return value;
