@@ -69,11 +69,14 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -597,7 +600,6 @@ public class TruffleSafepointTest {
         });
     }
 
-    @TruffleBoundary
     private static void lockCooperativelySafepoint(Semaphore semaphore, Node node, TruffleSafepoint safepoint) {
         boolean prevEffects = safepoint.setAllowSideEffects(false);
         try {
@@ -618,11 +620,105 @@ public class TruffleSafepointTest {
                                 } finally {
                                     safepoint.setAllowSideEffects(condDisabled);
                                 }
+                            }, () -> {
+                                boolean condDisabled = safepoint.setAllowSideEffects(true);
+                                try {
+                                    // All side-effecting events are forced to happen here.
+                                    TruffleSafepoint.pollHere(node);
+                                } finally {
+                                    safepoint.setAllowSideEffects(condDisabled);
+                                }
                             });
             releaseSemaphore(semaphore);
         } finally {
             safepoint.setAllowSideEffects(prevEffects);
         }
+    }
+
+    @Test
+    public void testConditionAndSafepoints() {
+        forEachConfig((threads, events) -> {
+            ReentrantLock lock = new ReentrantLock();
+            Condition condition = lock.newCondition();
+            AtomicBoolean done = new AtomicBoolean(false);
+            AtomicInteger inAwait = new AtomicInteger(0);
+
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+                // No lockInterruptibly()/setBlocked() here, `lock` is never held during a poll()
+                // It can also be required by language semantics if only the await() should be
+                // interruptible and not the lock().
+                lockBoundary(lock);
+                try {
+                    while (!done.get()) {
+                        safepoint.setBlocked(node, Interrupter.THREAD_INTERRUPT,
+                                        (c) -> {
+                                            // When await() is interrupted, it still needs to
+                                            // reacquire the lock before the InterruptedException
+                                            // can propagate. So we must unlock once we're out to
+                                            // let other threads reach the safepoint too.
+                                            inAwait.incrementAndGet();
+                                            try {
+                                                c.await();
+                                            } finally {
+                                                inAwait.decrementAndGet();
+                                            }
+                                        }, condition, lock::unlock, lock::lock);
+                    }
+                } finally {
+                    unlockBoundary(lock);
+                }
+                return true; // only run once
+            })) {
+                AtomicInteger eventCounter = new AtomicInteger();
+
+                // Wait all threads are inside await()
+                while (inAwait.get() < threads || lock.isLocked()) {
+                    Thread.yield();
+                }
+
+                List<Future<?>> threadLocals = new ArrayList<>();
+                for (int i = 0; i < events; i++) {
+                    threadLocals.add(setup.env.submitThreadLocal(null, new ThreadLocalAction(false, true) {
+                        @Override
+                        protected void perform(Access access) {
+                            Assert.assertFalse(lock.isHeldByCurrentThread());
+                            eventCounter.incrementAndGet();
+                        }
+                    }));
+                }
+
+                // wait for all events to complete so we can reliably assert the events
+                for (Future<?> f : threadLocals) {
+                    waitOrFail(f);
+                }
+
+                assertEquals(events * threads, eventCounter.get());
+
+                // Wait all threads are in condition.await(), otherwise signalAll() doesn't work
+                while (inAwait.get() < threads || lock.isLocked()) {
+                    Thread.yield();
+                }
+
+                lock.lock();
+                try {
+                    done.set(true);
+                    condition.signalAll();
+                } finally {
+                    lock.unlock();
+                }
+            }
+        });
+    }
+
+    @TruffleBoundary
+    private static void unlockBoundary(ReentrantLock lock) {
+        lock.unlock();
+    }
+
+    @TruffleBoundary
+    private static void lockBoundary(ReentrantLock lock) {
+        lock.lock();
     }
 
     @Test
@@ -917,7 +1013,7 @@ public class TruffleSafepointTest {
                 values[i] = new Object[nonConstantValue];
                 TruffleSafepoint.poll(node);
             }
-            return false;
+            return true;
         })) {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
@@ -945,7 +1041,7 @@ public class TruffleSafepointTest {
                 values[i] = new Object();
                 TruffleSafepoint.poll(node);
             }
-            return false;
+            return true;
         })) {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
@@ -974,7 +1070,7 @@ public class TruffleSafepointTest {
             }
             // escape sum value
             values[0] = sum;
-            return false;
+            return true;
         })) {
             SafepointCounter counter = new SafepointCounter(setup);
             setup.env.submitThreadLocal(null, counter);
@@ -1016,7 +1112,7 @@ public class TruffleSafepointTest {
                 // perform an escaping allocation
                 values[i] = indirectCall.call(target);
             }
-            return false;
+            return true;
         }
 
         @TruffleBoundary

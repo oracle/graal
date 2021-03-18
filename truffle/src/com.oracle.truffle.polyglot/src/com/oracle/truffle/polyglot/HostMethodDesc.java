@@ -170,21 +170,14 @@ abstract class HostMethodDesc {
 
         abstract static class ReflectBase extends SingleMethod {
 
-            @CompilationFinal private CallTarget doInvokeTarget;
-
             ReflectBase(Executable executable) {
                 super(executable);
             }
 
             @Override
             public Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Node node) {
-                CallTarget target = this.doInvokeTarget;
-                if (target == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    doInvokeTarget = target = languageContext.context.engine.getHostToGuestCodeCache().reflectionHostInvoke;
-                }
+                CallTarget target = engine.getHostToGuestCodeCache().reflectionHostInvoke;
                 assert target == languageContext.context.engine.getHostToGuestCodeCache().reflectionHostInvoke;
-
                 return GuestToHostRootNode.guestToHostCall(node, target, languageContext, receiver, this, arguments);
             }
 
@@ -310,9 +303,13 @@ abstract class HostMethodDesc {
             public Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Node node) {
                 MethodHandle handle = methodHandle;
                 if (handle == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    handle = makeMethodHandle();
-                    methodHandle = handle;
+                    if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                        // we must not repeatedly deoptimize if MHBase is uncached.
+                        // it ok to modify the methodHandle here even though it is compilation final
+                        // because it is always initialized to the same value.
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                    }
+                    methodHandle = handle = makeMethodHandle();
                 }
                 CallTarget target = engine.getHostToGuestCodeCache().methodHandleHostInvoke;
                 CompilerAsserts.partialEvaluationConstant(target);
@@ -346,8 +343,8 @@ abstract class HostMethodDesc {
             }
 
             @Override
+            @TruffleBoundary
             protected MethodHandle makeMethodHandle() {
-                CompilerAsserts.neverPartOfCompilation();
                 try {
                     Method m = reflectionMethod;
                     final MethodHandle methodHandle = MethodHandles.publicLookup().unreflect(m);
@@ -378,6 +375,7 @@ abstract class HostMethodDesc {
             }
 
             @Override
+            @TruffleBoundary
             protected MethodHandle makeMethodHandle() {
                 CompilerAsserts.neverPartOfCompilation();
                 try {
