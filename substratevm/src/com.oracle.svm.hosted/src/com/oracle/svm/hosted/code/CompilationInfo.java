@@ -66,6 +66,7 @@ public class CompilationInfo {
     protected CompileFunction customCompileFunction;
 
     /* Statistics collected before/during compilation. */
+    protected long numNodesAfterParsing;
     protected long numNodesBeforeCompilation;
     protected long numNodesAfterCompilation;
     protected long numDeoptEntryPoints;
