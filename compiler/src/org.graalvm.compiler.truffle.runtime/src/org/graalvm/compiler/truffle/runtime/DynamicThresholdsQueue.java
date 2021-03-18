@@ -28,13 +28,10 @@ import java.util.concurrent.TimeUnit;
 
 public class DynamicThresholdsQueue extends TraversingBlockingQueue {
 
-    public static final double ACTIVATION_TRIGGER = 1;
     public static final double MINIMAL_SCALE = 0.25;
     public static final double NORMAL_LOAD = 2;
     private final GraalTruffleRuntime runtime;
     private final int threads;
-
-    private boolean active;
 
     public DynamicThresholdsQueue(GraalTruffleRuntime runtime, int threads) {
         this.runtime = runtime;
@@ -46,42 +43,14 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     @Override
-    public boolean add(Runnable e) {
-        checkActive();
-        return super.add(e);
-    }
-
-    private void checkActive() {
-        if (!active && load() > ACTIVATION_TRIGGER) {
-            active = true;
-        }
-    }
-
-    @Override
-    public boolean offer(Runnable e) {
-        checkActive();
-        return super.offer(e);
-    }
-
-    @Override
-    public boolean offer(Runnable e, long timeout, TimeUnit unit) throws InterruptedException {
-        checkActive();
-        return super.offer(e, timeout, unit);
-    }
-
-    @Override
     public Runnable poll(long timeout, TimeUnit unit) throws InterruptedException {
-        if (active) {
-            scaleThresholds();
-        }
+        scaleThresholds();
         return super.poll(timeout, unit);
     }
 
     @Override
     public Runnable poll() {
-        if (active) {
-            scaleThresholds();
-        }
+        scaleThresholds();
         return super.poll();
     }
 
