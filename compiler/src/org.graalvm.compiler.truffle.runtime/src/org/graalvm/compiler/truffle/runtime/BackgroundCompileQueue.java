@@ -282,6 +282,7 @@ public class BackgroundCompileQueue {
 
         @Override
         public Thread newThread(Runnable r) {
+            System.out.println("@@ Creating thread!");
             final Thread t = new Thread(r) {
                 @SuppressWarnings("try")
                 @Override

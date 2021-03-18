@@ -28,8 +28,9 @@ import java.util.concurrent.TimeUnit;
 
 public class DynamicThresholdsQueue extends TraversingBlockingQueue {
 
-    public static final double ACTIVATION_TRIGGER = 3;
+    public static final double ACTIVATION_TRIGGER = 1;
     public static final double MINIMAL_SCALE = 0.25;
+    public static final double NORMAL_LOAD = 2;
     private final GraalTruffleRuntime runtime;
     private final int threads;
 
@@ -41,15 +42,31 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     private double load() {
-        return (double) entries.size() / threads;
+        return ((double) entries.size() + 1) / threads;
     }
 
     @Override
     public boolean add(Runnable e) {
+        checkActive();
+        return super.add(e);
+    }
+
+    private void checkActive() {
         if (!active && load() > ACTIVATION_TRIGGER) {
             active = true;
         }
-        return super.add(e);
+    }
+
+    @Override
+    public boolean offer(Runnable e) {
+        checkActive();
+        return super.offer(e);
+    }
+
+    @Override
+    public boolean offer(Runnable e, long timeout, TimeUnit unit) throws InterruptedException {
+        checkActive();
+        return super.offer(e, timeout, unit);
     }
 
     @Override
@@ -69,8 +86,7 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     private void scaleThresholds() {
-        double slope = (1 - MINIMAL_SCALE) / (ACTIVATION_TRIGGER - 1);
-        double intercept = 1 - slope * ACTIVATION_TRIGGER;
-        runtime.setCompilationThresholdScale(slope * load() + intercept);
+        double slope = (1 - MINIMAL_SCALE) / NORMAL_LOAD;
+        runtime.setCompilationThresholdScale(slope * load() + MINIMAL_SCALE);
     }
 }
