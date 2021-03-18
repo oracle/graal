@@ -534,7 +534,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     private double scale = 1;
 
-    double scale() {
+    public double scale() {
         return scale;
     }
 

@@ -28,8 +28,8 @@ import java.util.concurrent.TimeUnit;
 
 public class DynamicThresholdsQueue extends TraversingBlockingQueue {
 
-    public static final double MINIMAL_SCALE = 0.25;
-    public static final double NORMAL_LOAD = 2;
+    public static final double MINIMAL_SCALE = 0.01;
+    public static final double NORMAL_LOAD = 3;
     private final GraalTruffleRuntime runtime;
     private final int threads;
 
@@ -39,7 +39,7 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     private double load() {
-        return ((double) entries.size() + 1) / threads;
+        return (double) entries.size() / threads;
     }
 
     @Override
