@@ -35,22 +35,22 @@ package com.oracle.objectfile.debugentry;
 public class Range {
     private static final String CLASS_DELIMITER = ".";
     private FileEntry fileEntry;
-    private String className;
-    private String methodName;
-    private String symbolName;
-    private String paramSignature;
-    private String returnTypeName;
-    private String fullMethodName;
-    private String fullMethodNameWithParams;
-    private int lo;
-    private int hi;
-    private int line;
-    private boolean isDeoptTarget;
-    private int modifiers;
+    private final String className;
+    private final String methodName;
+    private final String symbolName;
+    private final String paramSignature;
+    private final String returnTypeName;
+    private final String fullMethodName;
+    private final String fullMethodNameWithParams;
+    private final int lo;
+    private final int hi;
+    private final int line;
+    private final boolean isDeoptTarget;
+    private final int modifiers;
     /*
      * This is null for a primary range.
      */
-    private Range primary;
+    private final Range primary;
 
     /*
      * Create a primary range.
