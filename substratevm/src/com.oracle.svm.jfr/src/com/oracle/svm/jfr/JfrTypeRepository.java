@@ -32,7 +32,6 @@ import com.oracle.svm.jfr.traceid.JfrTraceIdLoadBarrier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.VMOperation;
 
 public class JfrTypeRepository implements JfrRepository {
