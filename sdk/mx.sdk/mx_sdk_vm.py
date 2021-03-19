@@ -281,8 +281,7 @@ class GraalVmComponent(object):
         if supported is not None or early_adopter:
             if stability is not None:
                 raise mx.abort("{}: Cannot use `stability` attribute in combination with deprecated `supported` and `early_adopter` attributes".format(name))
-            else:
-                mx.warn("{}: `supported` and `early_adopter` attributes are deprecated, please use `stability`".format(name))
+            mx.warn("{}: `supported` and `early_adopter` attributes are deprecated, please use `stability`".format(name))
 
         if supported:
             if early_adopter:
@@ -592,8 +591,11 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
             hashes[module_name] = (algorithm, hash_value)
 
     build_dir = mx.ensure_dir_exists(join(dst_jdk_dir + ".build"))
+
+    synthetic_modules = []
     try:
-        # Handle targets of qualified exports that are not present in `modules`
+        # Synthesize modules for targets of qualified exports that are not present in `modules`.
+        # Without this, runtime module resolution will fail due to missing modules.
         target_requires = {}
         for jmd in modules:
             for targets in jmd.exports.values():
@@ -605,11 +607,10 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
                 mx.abort('Target(s) of qualified exports cannot be resolved: ' + '.'.join(target_requires.keys()))
             assert missing_export_target_action == 'create', 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
 
-            extra_modules = []
             for name, requires in target_requires.items():
                 module_jar = join(build_dir, name + '.jar')
                 jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
-                extra_modules.append(jmd)
+                synthetic_modules.append(jmd)
                 module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
                 module_info_java = join(module_build_dir, 'module-info.java')
                 module_info_class = join(module_build_dir, 'module-info.class')
@@ -625,7 +626,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
                     os.remove(jmd.get_jmod_path())
                 mx.run([jdk.javac.replace('javac', 'jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
 
-            modules.extend(extra_modules)
+            modules.extend(synthetic_modules)
             all_module_names = frozenset(list(jdk_modules.keys()) + [m.name for m in modules])
 
         # Extract src.zip from source JDK
@@ -742,7 +743,8 @@ grant codeBase "file:${java.home}/languages/-" {
                 thread_priority_policy_option = ''
 
             if jdk_supports_enablejvmciproduct(jdk):
-                if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
+                non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
+                if 'jdk.internal.vm.compiler' in non_synthetic_modules:
                     jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
                 else:
                     # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
