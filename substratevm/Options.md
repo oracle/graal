@@ -29,7 +29,7 @@ macro, and server options.
 Depending on the GraalVM edition, the options to the native image builder (`native-image`) may differ.
 The following options are equally supported with both GraalVM Communty and Enterprise editions:
 
-* `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a separated list of directories, JAR archives, and ZIP archives to search for class files.
+* `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a colon separated list of directories, JAR archives, and ZIP archives to search for class files.
 * `-D<name>=<value>`: set a system property.
 * `-J<flag>`: pass `<flag>` directly to the JVM running the native image builder.
 * `-O<level>`: 0 for no optimizations, or 1 for basic optimizations (default).
