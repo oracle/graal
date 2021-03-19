@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,17 +23,16 @@
 #include <dlfcn.h>
 #include <stdio.h>
 
-void one(){
-	printf("ONE from library three\n");
+void one() {
+    printf("ONE from library three\n");
 }
 
-void two(){
-	printf("TWO from library three\n");
+void two() {
+    printf("TWO from library three\n");
 }
 
 void three() {
-	one();
-	two();
+    one();
+    two();
     printf("THREE from library three\n");
 }
-
