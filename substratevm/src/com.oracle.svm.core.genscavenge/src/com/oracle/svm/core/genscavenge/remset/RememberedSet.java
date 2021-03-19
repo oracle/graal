@@ -41,9 +41,11 @@ public interface RememberedSet {
     @AlwaysInline("GC performance")
     public void dirtyCardIfNecessary(Object holderObject, Object object);
 
-    public void cleanCardTable(AlignedHeader chunk);
+    public void initializeChunk(AlignedHeader chunk);
 
-    public void cleanCardTable(UnalignedHeader chunk);
+    public void initializeChunk(UnalignedHeader chunk);
+
+    public void resetChunk(AlignedHeader chunk);
 
     public void cleanCardTable(Space space);
 
@@ -53,13 +55,7 @@ public interface RememberedSet {
 
     public boolean walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean);
 
-    public boolean verify(AlignedHeader chunk);
+    public boolean verify(AlignedHeader firstAlignedHeapChunk);
 
-    public boolean verify(UnalignedHeader chunk);
-
-    public boolean verifyOnlyCleanCards(AlignedHeader chunk);
-
-    public boolean verifyOnlyCleanCards(UnalignedHeader chunk);
-
-    public boolean verifyDirtyCards(Space space);
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk);
 }

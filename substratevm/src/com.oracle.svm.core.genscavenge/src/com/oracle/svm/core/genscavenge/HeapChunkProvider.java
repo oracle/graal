@@ -39,6 +39,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.core.log.Log;
@@ -113,7 +114,7 @@ final class HeapChunkProvider {
             log().string("  new chunk: ").hex(result).newline();
 
             initializeChunk(result, chunkSize);
-            AlignedHeapChunk.reset(result);
+            AlignedHeapChunk.initialize(result);
         }
         assert HeapChunk.getTopOffset(result).equal(AlignedHeapChunk.getObjectsStartOffset());
         assert HeapChunk.getEndOffset(result).equal(chunkSize);
@@ -234,7 +235,7 @@ final class HeapChunkProvider {
         }
 
         initializeChunk(result, chunkSize);
-        UnalignedHeapChunk.reset(result);
+        UnalignedHeapChunk.initializeChunk(result);
         assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
 
         if (HeapPolicy.getZapProducedHeapChunks()) {
@@ -304,16 +305,6 @@ final class HeapChunkProvider {
 
     long getFirstAllocationTime() {
         return firstAllocationTime;
-    }
-
-    boolean slowlyFindPointer(Pointer p) {
-        for (AlignedHeader chunk = unusedAlignedChunks.get(); chunk.isNonNull(); chunk = HeapChunk.getNext(chunk)) {
-            Pointer chunkPtr = HeapChunk.asPointer(chunk);
-            if (p.aboveOrEqual(chunkPtr) && p.belowThan(chunkPtr.add(HeapPolicy.getAlignedHeapChunkSize()))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

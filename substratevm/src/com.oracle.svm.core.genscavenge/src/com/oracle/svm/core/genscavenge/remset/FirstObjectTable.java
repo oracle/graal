@@ -367,7 +367,7 @@ final class FirstObjectTable {
                 trace.string("  FirstObjectTable.verify: memoryLimit.belowOrEqual(objStart) => false]").newline();
                 return false;
             }
-            if (!HeapImpl.getHeapImpl().getHeapVerifier().verifyObjectAt(objStart)) {
+            if (!HeapImpl.getHeapImpl().getHeapVerifier().verifyObject(objStart)) {
                 Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[FirstObjectTable.verify:");
                 witness.string("  tableStart: ").hex(tableStart).string("  memoryStart: ").hex(memoryStart).string("  memoryLimit: ").hex(memoryLimit);
                 witness.string("  objStart: ").hex(objStart).string("  fails to verify").string("]").newline();

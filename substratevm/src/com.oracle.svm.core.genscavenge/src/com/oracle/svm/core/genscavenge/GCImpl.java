@@ -77,7 +77,6 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
@@ -172,7 +171,7 @@ public final class GCImpl implements GC {
         ThreadLocalAllocation.disableAndFlushForAllThreads();
 
         printGCBefore(cause.getName());
-        boolean outOfMemory = collectImpl(cause.getName(), forceFullGC);
+        boolean outOfMemory = collectImpl(forceFullGC);
         HeapPolicy.setEdenAndYoungGenBytes(WordFactory.unsigned(0), accounting.getYoungChunkBytesAfter());
         printGCAfter(cause.getName());
 
@@ -183,22 +182,14 @@ public final class GCImpl implements GC {
         return outOfMemory;
     }
 
-    private boolean collectImpl(String cause, boolean forceFullGC) {
-        Log trace = Log.noopLog().string("[GCImpl.collectImpl:").newline().string("  epoch: ").unsigned(getCollectionEpoch()).string("  cause: ").string(cause).newline();
+    private boolean collectImpl(boolean forceFullGC) {
         boolean outOfMemory;
 
         precondition();
 
-        trace.string("  Begin collection: ");
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            trace.string("  Verify before: ");
-            Timer verifyBeforeTimer = timers.verifyBefore.open();
-            try {
-                HeapImpl.getHeapImpl().verifyBeforeGC(cause, getCollectionEpoch());
-            } finally {
-                verifyBeforeTimer.close();
-            }
+            verifyBeforeGC();
             outOfMemory = doCollectImpl(forceFullGC);
             if (outOfMemory) {
                 // Avoid running out of memory with a full GC that reclaims softly reachable objects
@@ -212,17 +203,9 @@ public final class GCImpl implements GC {
         } finally {
             nav.close();
         }
-        trace.string("  Verify after: ");
-        Timer verifyAfterTime = timers.verifyAfter.open();
-        try {
-            HeapImpl.getHeapImpl().verifyAfterGC(cause, getCollectionEpoch());
-        } finally {
-            verifyAfterTime.close();
-        }
 
+        verifyAfterGC();
         postcondition();
-
-        trace.string("]").newline();
         return outOfMemory;
     }
 
@@ -255,6 +238,40 @@ public final class GCImpl implements GC {
         ReferenceObjectProcessing.afterCollection(usedBytes, maxBytes);
 
         return outOfMemory;
+    }
+
+    private void verifyBeforeGC() {
+        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+            Timer verifyBeforeTimer = timers.verifyBefore.open();
+            try {
+                boolean success = true;
+                success &= HeapVerifier.verify(HeapVerifier.Occasion.BEFORE_COLLECTION);
+                success &= StackVerifier.verifyAllThreads();
+
+                if (!success) {
+                    VMError.shouldNotReachHere("Verification before garbage collection failed.");
+                }
+            } finally {
+                verifyBeforeTimer.close();
+            }
+        }
+    }
+
+    private void verifyAfterGC() {
+        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+            Timer verifyAfterTime = timers.verifyAfter.open();
+            try {
+                boolean success = true;
+                success &= HeapVerifier.verify(HeapVerifier.Occasion.AFTER_COLLECTION);
+                success &= StackVerifier.verifyAllThreads();
+
+                if (!success) {
+                    VMError.shouldNotReachHere("Verification after garbage collection failed.");
+                }
+            } finally {
+                verifyAfterTime.close();
+            }
+        }
     }
 
     /**
@@ -351,7 +368,7 @@ public final class GCImpl implements GC {
         assert oldGen.getToSpace().isEmpty() : "oldGen.getToSpace() should be empty before a collection.";
     }
 
-    private void postcondition() {
+    private static void postcondition() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
@@ -360,7 +377,7 @@ public final class GCImpl implements GC {
         assert oldGen.getToSpace().isEmpty() : "oldGen.getToSpace() should be empty after a collection.";
     }
 
-    private void verbosePostCondition() {
+    private static void verbosePostCondition() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
@@ -370,48 +387,42 @@ public final class GCImpl implements GC {
          */
         final boolean forceForTesting = false;
         if (runtimeAssertions() || forceForTesting) {
-            Log witness = Log.log();
+            Log log = Log.log();
             if ((!youngGen.getEden().isEmpty()) || forceForTesting) {
-                witness.string("[GCImpl.postcondition: Eden space should be empty after a collection.").newline();
+                log.string("[GCImpl.postcondition: Eden space should be empty after a collection.").newline();
                 /* Print raw fields before trying to walk the chunk lists. */
-                witness.string("  These should all be 0:").newline();
-                witness.string("    Eden space first AlignedChunk:   ").hex(youngGen.getEden().getFirstAlignedHeapChunk()).newline();
-                witness.string("    Eden space last  AlignedChunk:   ").hex(youngGen.getEden().getLastAlignedHeapChunk()).newline();
-                witness.string("    Eden space first UnalignedChunk: ").hex(youngGen.getEden().getFirstUnalignedHeapChunk()).newline();
-                witness.string("    Eden space last  UnalignedChunk: ").hex(youngGen.getEden().getLastUnalignedHeapChunk()).newline();
-                youngGen.getEden().report(witness, true).newline();
-                witness.string("  verifying the heap:");
-                heap.verifyAfterGC("because Eden space is not empty", getCollectionEpoch());
-                witness.string("]").newline();
+                log.string("  These should all be 0:").newline();
+                log.string("    Eden space first AlignedChunk:   ").hex(youngGen.getEden().getFirstAlignedHeapChunk()).newline();
+                log.string("    Eden space last  AlignedChunk:   ").hex(youngGen.getEden().getLastAlignedHeapChunk()).newline();
+                log.string("    Eden space first UnalignedChunk: ").hex(youngGen.getEden().getFirstUnalignedHeapChunk()).newline();
+                log.string("    Eden space last  UnalignedChunk: ").hex(youngGen.getEden().getLastUnalignedHeapChunk()).newline();
+                youngGen.getEden().report(log, true).newline();
+                log.string("]").newline();
             }
             for (int i = 0; i < HeapPolicy.getMaxSurvivorSpaces(); i++) {
                 if ((!youngGen.getSurvivorToSpaceAt(i).isEmpty()) || forceForTesting) {
-                    witness.string("[GCImpl.postcondition: Survivor toSpace should be empty after a collection.").newline();
+                    log.string("[GCImpl.postcondition: Survivor toSpace should be empty after a collection.").newline();
                     /* Print raw fields before trying to walk the chunk lists. */
-                    witness.string("  These should all be 0:").newline();
-                    witness.string("    Survivor space ").signed(i).string(" first AlignedChunk:   ").hex(youngGen.getSurvivorToSpaceAt(i).getFirstAlignedHeapChunk()).newline();
-                    witness.string("    Survivor space ").signed(i).string(" last  AlignedChunk:   ").hex(youngGen.getSurvivorToSpaceAt(i).getLastAlignedHeapChunk()).newline();
-                    witness.string("    Survivor space ").signed(i).string(" first UnalignedChunk: ").hex(youngGen.getSurvivorToSpaceAt(i).getFirstUnalignedHeapChunk()).newline();
-                    witness.string("    Survivor space ").signed(i).string(" last  UnalignedChunk: ").hex(youngGen.getSurvivorToSpaceAt(i).getLastUnalignedHeapChunk()).newline();
-                    youngGen.getSurvivorToSpaceAt(i).report(witness, true).newline();
-                    witness.string("  verifying the heap:");
-                    heap.verifyAfterGC("because Survivor toSpace is not empty", getCollectionEpoch());
-                    witness.string("]").newline();
+                    log.string("  These should all be 0:").newline();
+                    log.string("    Survivor space ").signed(i).string(" first AlignedChunk:   ").hex(youngGen.getSurvivorToSpaceAt(i).getFirstAlignedHeapChunk()).newline();
+                    log.string("    Survivor space ").signed(i).string(" last  AlignedChunk:   ").hex(youngGen.getSurvivorToSpaceAt(i).getLastAlignedHeapChunk()).newline();
+                    log.string("    Survivor space ").signed(i).string(" first UnalignedChunk: ").hex(youngGen.getSurvivorToSpaceAt(i).getFirstUnalignedHeapChunk()).newline();
+                    log.string("    Survivor space ").signed(i).string(" last  UnalignedChunk: ").hex(youngGen.getSurvivorToSpaceAt(i).getLastUnalignedHeapChunk()).newline();
+                    youngGen.getSurvivorToSpaceAt(i).report(log, true).newline();
+                    log.string("]").newline();
                 }
             }
             if ((!oldGen.getToSpace().isEmpty()) || forceForTesting) {
-                witness.string("[GCImpl.postcondition: oldGen toSpace should be empty after a collection.").newline();
+                log.string("[GCImpl.postcondition: oldGen toSpace should be empty after a collection.").newline();
                 /* Print raw fields before trying to walk the chunk lists. */
-                witness.string("  These should all be 0:").newline();
-                witness.string("    oldGen toSpace first AlignedChunk:   ").hex(oldGen.getToSpace().getFirstAlignedHeapChunk()).newline();
-                witness.string("    oldGen toSpace last  AlignedChunk:   ").hex(oldGen.getToSpace().getLastAlignedHeapChunk()).newline();
-                witness.string("    oldGen.toSpace first UnalignedChunk: ").hex(oldGen.getToSpace().getFirstUnalignedHeapChunk()).newline();
-                witness.string("    oldGen.toSpace last  UnalignedChunk: ").hex(oldGen.getToSpace().getLastUnalignedHeapChunk()).newline();
-                oldGen.getToSpace().report(witness, true).newline();
-                oldGen.getFromSpace().report(witness, true).newline();
-                witness.string("  verifying the heap:");
-                heap.verifyAfterGC("because oldGen toSpace is not empty", getCollectionEpoch());
-                witness.string("]").newline();
+                log.string("  These should all be 0:").newline();
+                log.string("    oldGen toSpace first AlignedChunk:   ").hex(oldGen.getToSpace().getFirstAlignedHeapChunk()).newline();
+                log.string("    oldGen toSpace last  AlignedChunk:   ").hex(oldGen.getToSpace().getLastAlignedHeapChunk()).newline();
+                log.string("    oldGen.toSpace first UnalignedChunk: ").hex(oldGen.getToSpace().getFirstUnalignedHeapChunk()).newline();
+                log.string("    oldGen.toSpace last  UnalignedChunk: ").hex(oldGen.getToSpace().getLastUnalignedHeapChunk()).newline();
+                oldGen.getToSpace().report(log, true).newline();
+                oldGen.getFromSpace().report(log, true).newline();
+                log.string("]").newline();
             }
         }
     }
@@ -441,10 +452,8 @@ public final class GCImpl implements GC {
     private void scavenge(boolean fromDirtyRoots) {
         GreyToBlackObjRefVisitor.Counters counters = greyToBlackObjRefVisitor.openCounters();
         try {
-            Log trace = Log.noopLog().string("[GCImpl.scavenge:").string("  fromDirtyRoots: ").bool(fromDirtyRoots).newline();
             Timer rootScanTimer = timers.rootScan.open();
             try {
-                trace.string("  Cheney scan: ");
                 if (fromDirtyRoots) {
                     cheneyScanFromDirtyRoots();
                 } else {
@@ -468,7 +477,6 @@ public final class GCImpl implements GC {
                 }
             }
 
-            trace.string("  Discovered references: ");
             Timer referenceObjectsTimer = timers.referenceObjects.open();
             try {
                 Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
@@ -477,7 +485,6 @@ public final class GCImpl implements GC {
                 referenceObjectsTimer.close();
             }
 
-            trace.string("  Release spaces: ");
             Timer releaseSpacesTimer = timers.releaseSpaces.open();
             try {
                 assert chunkReleaser.isEmpty();
@@ -487,9 +494,7 @@ public final class GCImpl implements GC {
                 releaseSpacesTimer.close();
             }
 
-            trace.string("  Swap spaces: ");
             swapSpaces();
-            trace.string("]").newline();
         } finally {
             counters.close();
         }
@@ -793,14 +798,12 @@ public final class GCImpl implements GC {
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            blackenDirtyImageHeapChunkRoots(asImageHeapChunk(info.offsetOfFirstAlignedChunkWithRememberedSet),
-                            asImageHeapChunk(info.offsetOfFirstUnalignedChunkWithRememberedSet));
+            blackenDirtyImageHeapChunkRoots(info.getFirstAlignedImageHeapChunk(), info.getFirstUnalignedImageHeapChunk());
 
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxInfo != null) {
-                    blackenDirtyImageHeapChunkRoots(asImageHeapChunk(auxInfo.offsetOfFirstAlignedChunkWithRememberedSet),
-                                    asImageHeapChunk(auxInfo.offsetOfFirstUnalignedChunkWithRememberedSet));
+                    blackenDirtyImageHeapChunkRoots(info.getFirstAlignedImageHeapChunk(), info.getFirstUnalignedImageHeapChunk());
                 }
             }
         } finally {
@@ -820,15 +823,6 @@ public final class GCImpl implements GC {
             RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor, true);
             unaligned = HeapChunk.getNext(unaligned);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends HeapChunk.Header<T>> T asImageHeapChunk(long offsetInImageHeap) {
-        if (offsetInImageHeap < 0) {
-            return (T) WordFactory.nullPointer();
-        }
-        UnsignedWord offset = WordFactory.unsigned(offsetInImageHeap);
-        return (T) KnownIntrinsics.heapBase().add(offset);
     }
 
     private void blackenImageHeapRoots() {

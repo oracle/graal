@@ -42,7 +42,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.SubstrateUtil.DiagnosticThunk;
@@ -94,8 +93,6 @@ public final class HeapImpl extends Heap {
     private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
     private final HeapPolicy heapPolicy;
     private final ImageHeapInfo imageHeapInfo = new ImageHeapInfo();
-    private HeapVerifier heapVerifier;
-    private final StackVerifier stackVerifier;
 
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
     private Reference<?> refPendingList;
@@ -115,13 +112,6 @@ public final class HeapImpl extends Heap {
         this.gcImpl = new GCImpl(access);
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.heapPolicy = new HeapPolicy();
-        if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC() || getVerifyDirtyCardBeforeGC() || getVerifyDirtyCardAfterGC()) {
-            this.heapVerifier = new HeapVerifier();
-            this.stackVerifier = new StackVerifier();
-        } else {
-            this.heapVerifier = null;
-            this.stackVerifier = null;
-        }
         SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(new HeapDiagnosticsPrinter());
     }
 
@@ -155,16 +145,6 @@ public final class HeapImpl extends Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer pointer) {
         return imageHeapInfo.isInImageHeap(pointer) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(pointer));
-    }
-
-    boolean isInImageHeapSlow(Object obj) {
-        return isInImageHeapSlow(Word.objectToUntrackedPointer(obj));
-    }
-
-    /** Slow, verification-only version of {@link #isInImageHeap}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean isInImageHeapSlow(Pointer p) {
-        return imageHeapInfo.isInImageHeapSlow(p) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObjectSlow(p));
     }
 
     @Override
@@ -376,96 +356,6 @@ public final class HeapImpl extends Heap {
                 list.add(KnownIntrinsics.convertUnknownValue(o, Class.class));
             }
             return true;
-        }
-    }
-
-    /*
-     * Verification.
-     */
-
-    public HeapVerifier getHeapVerifier() {
-        return heapVerifier;
-    }
-
-    void setHeapVerifier(HeapVerifier value) {
-        this.heapVerifier = value;
-    }
-
-    @Fold
-    static boolean getVerifyHeapBeforeGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapBeforeCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyHeapAfterGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapAfterCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyStackBeforeGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackBeforeCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyStackAfterGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyDirtyCardBeforeGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsBeforeCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyDirtyCardAfterGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsAfterCollection.getValue());
-    }
-
-    @NeverInline("Starting a stack walk in the caller frame")
-    void verifyBeforeGC(String cause, UnsignedWord epoch) {
-        Log trace = Log.noopLog().string("[HeapImpl.verifyBeforeGC:");
-        trace.string("  getVerifyHeapBeforeGC(): ").bool(getVerifyHeapBeforeGC()).string("  heapVerifier: ").object(heapVerifier);
-        trace.string("  getVerifyStackBeforeGC(): ").bool(getVerifyStackBeforeGC()).string("  stackVerifier: ").object(stackVerifier);
-        if (getVerifyHeapBeforeGC()) {
-            assert heapVerifier != null : "No heap verifier!";
-            if (!heapVerifier.verifyOperation("before collection", HeapVerifier.Occasion.BEFORE_COLLECTION)) {
-                Log.log().string("[HeapImpl.verifyBeforeGC:").string("  cause: ").string(cause).string("  heap fails to verify before epoch: ").unsigned(epoch).string("]").newline();
-                assert false;
-            }
-        }
-        if (getVerifyStackBeforeGC()) {
-            assert stackVerifier != null : "No stack verifier!";
-            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), "before collection")) {
-                Log.log().string("[HeapImpl.verifyBeforeGC:").string("  cause: ").string(cause).string("  stack fails to verify epoch: ").unsigned(epoch).string("]").newline();
-                assert false;
-            }
-        }
-        if (getVerifyDirtyCardBeforeGC()) {
-            assert heapVerifier != null : "No heap verifier!";
-            HeapVerifier.verifyDirtyCard(false);
-        }
-        trace.string("]").newline();
-    }
-
-    @NeverInline("Starting a stack walk in the caller frame")
-    void verifyAfterGC(String cause, UnsignedWord epoch) {
-        if (getVerifyHeapAfterGC()) {
-            assert heapVerifier != null : "No heap verifier!";
-            if (!heapVerifier.verifyOperation("after collection", HeapVerifier.Occasion.AFTER_COLLECTION)) {
-                Log.log().string("[HeapImpl.verifyAfterGC:").string("  cause: ").string(cause).string("  heap fails to verify after epoch: ").unsigned(epoch).string("]").newline();
-                assert false;
-            }
-        }
-        if (getVerifyStackAfterGC()) {
-            assert stackVerifier != null : "No stack verifier!";
-            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), "after collection")) {
-                Log.log().string("[HeapImpl.verifyAfterGC:").string("  cause: ").string(cause).string("  stack fails to verify after epoch: ").unsigned(epoch).string("]").newline();
-                assert false;
-            }
-        }
-        if (getVerifyDirtyCardAfterGC()) {
-            assert heapVerifier != null : "No heap verifier!";
-            HeapVerifier.verifyDirtyCard(true);
         }
     }
 

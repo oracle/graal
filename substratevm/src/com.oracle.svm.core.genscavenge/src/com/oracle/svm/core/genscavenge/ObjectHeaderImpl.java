@@ -144,11 +144,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return dynamicHubFromObjectHeader(header);
     }
 
-    public static DynamicHub readDynamicHubFromObjectCarefully(Object o) {
-        readHeaderFromObjectCarefully(o);
-        return KnownIntrinsics.readHub(o);
-    }
-
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
@@ -276,36 +271,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return !isUnalignedObject(o);
     }
 
-    public static boolean isAlignedHeader(Object obj, UnsignedWord header) {
-        return !isUnalignedHeader(obj, header);
-    }
-
-    public static boolean isAlignedHeader(Pointer ptrToObj, UnsignedWord header) {
-        return !isUnalignedHeader(ptrToObj, header);
-    }
-
-    /* Must only be called by the write barriers as it does not check for image heap objects. */
-    public static boolean isAlignedHeaderUnsafe(UnsignedWord header) {
-        return !testUnalignedBit(header);
+    public static boolean isAlignedHeader(UnsignedWord header) {
+        return !isUnalignedHeader(header);
     }
 
     public static boolean isUnalignedObject(Object obj) {
-        assert HeapImpl.usesImageHeapCardMarking() || !HeapImpl.getHeapImpl().isInImageHeap(obj) : "must not be called for image heap objects";
         UnsignedWord header = ObjectHeaderImpl.readHeaderFromObject(obj);
-        return testUnalignedBit(header);
+        return isUnalignedHeader(header);
     }
 
-    public static boolean isUnalignedHeader(Object obj, UnsignedWord header) {
-        assert HeapImpl.usesImageHeapCardMarking() || !HeapImpl.getHeapImpl().isInImageHeap(obj) : "must not be called for image heap objects";
-        return testUnalignedBit(header);
-    }
-
-    public static boolean isUnalignedHeader(Pointer ptrToObj, UnsignedWord header) {
-        assert HeapImpl.usesImageHeapCardMarking() || !HeapImpl.getHeapImpl().isInImageHeap(ptrToObj) : "must not be called for image heap objects";
-        return testUnalignedBit(header);
-    }
-
-    private static boolean testUnalignedBit(UnsignedWord header) {
+    public static boolean isUnalignedHeader(UnsignedWord header) {
         return header.and(UNALIGNED_BIT).notEqual(0);
     }
 
@@ -322,11 +297,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     public static boolean isPointerToForwardedObject(Pointer p) {
         UnsignedWord header = readHeaderFromPointer(p);
         return isForwardedHeader(header);
-    }
-
-    public static boolean isPointerToForwardedObjectCarefully(Pointer p) {
-        UnsignedWord header = readHeaderFromPointerCarefully(p);
-        return isForwardedHeaderCarefully(header);
     }
 
     public static boolean isForwardedHeader(UnsignedWord header) {

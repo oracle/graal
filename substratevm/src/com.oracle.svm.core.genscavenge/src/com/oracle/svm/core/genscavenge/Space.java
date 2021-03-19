@@ -112,7 +112,7 @@ public final class Space {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean isOldSpace() {
+    public boolean isOldSpace() {
         return age == (HeapPolicy.getMaxSurvivorSpaces() + 1);
     }
 
@@ -389,11 +389,6 @@ public final class Space {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        if (HeapOptions.TraceObjectPromotion.getValue()) {
-            Log.log().string("[promoteAlignedObject:").string("  obj: ").object(original).string("  fromSpace: ").string(originalSpace.getName()).string("  toSpace: ").string(this.getName())
-                            .string("  size: ").unsigned(LayoutEncoding.getSizeFromObject(original)).string("]").newline();
-        }
-
         Object copy = copyAlignedObject(original);
         ObjectHeaderImpl.installForwardingPointer(original, copy);
         return copy;
@@ -435,11 +430,6 @@ public final class Space {
     private void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        if (HeapOptions.TraceObjectPromotion.getValue()) {
-            Log.log().string("[promoteAlignedHeapChunk:").string("  chunk: ").hex(chunk).string("  fromSpace: ").string(originalSpace.getName()).string("  toSpace: ").string(this.getName())
-                            .string("]").newline();
-        }
-
         originalSpace.extractAlignedHeapChunk(chunk);
         appendAlignedHeapChunk(chunk);
         if (isOldSpace() && originalSpace.isYoungSpace()) {
@@ -451,11 +441,6 @@ public final class Space {
     void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        if (HeapOptions.TraceObjectPromotion.getValue()) {
-            Log.log().string("[promoteUnalignedHeapChunk:").string("  chunk: ").hex(chunk).string("  fromSpace: ").string(originalSpace.getName()).string("  toSpace: ").string(this.getName())
-                            .string("]").newline();
-        }
-
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
 
@@ -466,13 +451,10 @@ public final class Space {
 
     private AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
-        Log trace = Log.noopLog().string("[Space.requestAlignedHeapChunk:").string("  space: ").string(getName()).newline();
         AlignedHeapChunk.AlignedHeader aChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
-        trace.string("  aChunk: ").hex(aChunk);
         if (aChunk.isNonNull()) {
             appendAlignedHeapChunk(aChunk);
         }
-        trace.string("  Space.requestAlignedHeapChunk returns: ").hex(aChunk).string("]").newline();
         return aChunk;
     }
 

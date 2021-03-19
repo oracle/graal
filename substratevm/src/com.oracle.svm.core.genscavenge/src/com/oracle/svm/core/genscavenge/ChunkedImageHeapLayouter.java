@@ -33,8 +33,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.AlignedChunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.Chunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.UnalignedChunk;
-import com.oracle.svm.core.genscavenge.remset.HostedImageHeapChunkWriter;
-import com.oracle.svm.core.genscavenge.remset.RuntimeImageHeapChunkWriter;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapObject;

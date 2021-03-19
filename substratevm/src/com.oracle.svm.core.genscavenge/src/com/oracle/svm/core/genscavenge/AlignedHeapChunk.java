@@ -42,8 +42,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.PointerUtils;
 
 /**
@@ -88,9 +86,14 @@ public final class AlignedHeapChunk {
     public interface AlignedHeader extends HeapChunk.Header<AlignedHeader> {
     }
 
+    public static void initialize(AlignedHeader chunk) {
+        HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk));
+        RememberedSet.get().initializeChunk(chunk);
+    }
+
     public static void reset(AlignedHeader chunk) {
-        HeapChunk.reset(chunk, AlignedHeapChunk.getObjectsStart(chunk));
-        RememberedSet.get().cleanCardTable(chunk);
+        HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk));
+        RememberedSet.get().resetChunk(chunk);
     }
 
     public static Pointer getObjectsStart(AlignedHeader that) {
@@ -141,51 +144,6 @@ public final class AlignedHeapChunk {
     @Fold
     public static UnsignedWord getObjectsStartOffset() {
         return RememberedSet.get().getHeaderSizeOfAlignedChunk();
-    }
-
-    static boolean verify(AlignedHeader that) {
-        Log trace = Log.noopLog().string("[AlignedHeapChunk.verify:");
-        trace.string("  that: ").hex(that);
-        boolean result = true;
-        if (result && !HeapChunk.verifyObjects(that, getObjectsStart(that))) {
-            result = false;
-            Log verifyLog = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[AlignedHeapChunk.verify:");
-            verifyLog.string("  identifier: ").hex(that).string("  superclass fails to verify]").newline();
-        }
-        if (result && !verifyObjectHeaders(that)) {
-            result = false;
-            Log verifyLog = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[AlignedHeapChunk.verify:");
-            verifyLog.string("  identifier: ").hex(that).string("  object headers fail to verify.]").newline();
-        }
-        if (result && !RememberedSet.get().verify(that)) {
-            result = false;
-            Log verifyLog = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[AlignedHeapChunk.verify:");
-            verifyLog.string("  identifier: ").hex(that).string("  remembered set fails to verify]").newline();
-        }
-        trace.string("  returns: ").bool(result);
-        trace.string("]").newline();
-        return result;
-    }
-
-    /** Verify that all the objects have headers that say they are aligned. */
-    private static boolean verifyObjectHeaders(AlignedHeader that) {
-        Log trace = Log.noopLog().string("[AlignedHeapChunk.verifyObjectHeaders: ").string("  that: ").hex(that);
-        Pointer current = getObjectsStart(that);
-        while (current.belowThan(HeapChunk.getTopPointer(that))) {
-            trace.newline().string("  current: ").hex(current);
-            UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(current);
-            if (!ObjectHeaderImpl.isAlignedHeader(current, header)) {
-                trace.string("  does not have an aligned header: ").hex(header).string("  returns: false").string("]").newline();
-                return false;
-            }
-            /*
-             * Step over the object. This does not deal with forwarded objects, but I have already
-             * checked that the header is an aligned header.
-             */
-            current = LayoutEncoding.getObjectEnd(current.toObject());
-        }
-        trace.string("  returns: true]").newline();
-        return true;
     }
 
     @Fold

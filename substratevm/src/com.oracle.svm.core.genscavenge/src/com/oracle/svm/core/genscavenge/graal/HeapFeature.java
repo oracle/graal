@@ -46,7 +46,6 @@ import com.oracle.svm.core.genscavenge.HeapOptions;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
-import com.oracle.svm.core.genscavenge.remset.BarrierSnippets;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.NoRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;

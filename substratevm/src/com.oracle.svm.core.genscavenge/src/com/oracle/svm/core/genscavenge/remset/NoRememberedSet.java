@@ -5,12 +5,13 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.graal.SubstrateNoBarrierSet;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -74,12 +75,17 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
-    public void cleanCardTable(AlignedHeader chunk) {
+    public void initializeChunk(AlignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
-    public void cleanCardTable(UnalignedHeader chunk) {
+    public void initializeChunk(UnalignedHeader chunk) {
+        // Nothing to do.
+    }
+
+    @Override
+    public void resetChunk(AlignedHeader chunk) {
         // Nothing to do.
     }
 
@@ -104,27 +110,12 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
-    public boolean verify(AlignedHeader chunk) {
+    public boolean verify(AlignedHeader firstAlignedHeapChunk) {
         return true;
     }
 
     @Override
-    public boolean verify(UnalignedHeader chunk) {
-        return true;
-    }
-
-    @Override
-    public boolean verifyOnlyCleanCards(AlignedHeader chunk) {
-        return true;
-    }
-
-    @Override
-    public boolean verifyOnlyCleanCards(UnalignedHeader chunk) {
-        return true;
-    }
-
-    @Override
-    public boolean verifyDirtyCards(Space space) {
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk) {
         return true;
     }
 }

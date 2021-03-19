@@ -43,9 +43,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
@@ -78,7 +75,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * </pre>
  *
  * The HeapChunk fields can be accessed as declared fields. The card table is optional, and both the
- * card table and the location of the Object are just computed as Pointers.
+ * card table and the location of the object are just computed pointers.
  *
  * In this implementation, I am only implementing imprecise card remembered sets, so I only need one
  * entry for the whole Object. But for consistency I am treating it as a 1-element table.
@@ -97,9 +94,9 @@ public final class UnalignedHeapChunk {
     public interface UnalignedHeader extends HeapChunk.Header<UnalignedHeader> {
     }
 
-    public static void reset(UnalignedHeader chunk) {
-        HeapChunk.reset(chunk, UnalignedHeapChunk.getObjectStart(chunk));
-        RememberedSet.get().cleanCardTable(chunk);
+    public static void initializeChunk(UnalignedHeader chunk) {
+        HeapChunk.initialize(chunk, UnalignedHeapChunk.getObjectStart(chunk));
+        RememberedSet.get().initializeChunk(chunk);
     }
 
     public static Pointer getObjectStart(UnalignedHeader that) {
@@ -156,49 +153,6 @@ public final class UnalignedHeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCommittedObjectMemory(UnalignedHeader that) {
         return HeapChunk.getEndOffset(that).subtract(getObjectStartOffset());
-    }
-
-    static boolean verify(UnalignedHeader that) {
-        return verify(that, getObjectStart(that));
-    }
-
-    private static boolean verify(UnalignedHeader that, Pointer start) {
-        VMOperation.guaranteeInProgress("Should only be called as a VMOperation.");
-        Log trace = HeapVerifier.getTraceLog().string("[UnalignedHeapChunk.verify");
-        trace.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(HeapChunk.getTopPointer(that)).string("  end: ").hex(HeapChunk.getEndPointer(that)).newline();
-        UnsignedWord objHeader = ObjectHeaderImpl.readHeaderFromPointer(start);
-        if (ObjectHeaderImpl.isForwardedHeader(objHeader)) {
-            Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
-            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(HeapChunk.getTopPointer(that)).string("  end: ").hex(HeapChunk.getEndPointer(that));
-            witness.string("  space: ").string(HeapChunk.getSpace(that).getName());
-            witness.string("  should not be forwarded").string("]").newline();
-            return false;
-        }
-        if (!ObjectHeaderImpl.isUnalignedHeader(start, objHeader)) {
-            Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
-            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  end: ").hex(HeapChunk.getEndPointer(that));
-            witness.string("  space: ").string(HeapChunk.getSpace(that).getName());
-            witness.string("  obj: ").hex(start).string("  objHeader: ").hex(objHeader);
-            witness.string("  does not have an unaligned header").string("]").newline();
-            return false;
-        }
-        Object obj = start.toObject();
-        Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
-        if (objEnd.notEqual(HeapChunk.getTopPointer(that))) {
-            Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
-            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  end: ").hex(HeapChunk.getEndPointer(that));
-            witness.string("  space: ").string(HeapChunk.getSpace(that).getName());
-            witness.string("  obj: ").object(obj).string("  objEnd: ").hex(objEnd);
-            witness.string("  should be the only object in the chunk").string("]").newline();
-            return false;
-        }
-        if (!RememberedSet.get().verify(that)) {
-            Log witnessLog = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeadChunk remembered set fails to verify");
-            witnessLog.string("  that: ").hex(that).string("  remembered set fails to verify.").string("]").newline();
-        }
-        boolean result = HeapChunk.verifyObjects(that, start);
-        trace.string("  returns: ").bool(result).string("]").newline();
-        return result;
     }
 
     @Fold

@@ -41,7 +41,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -230,41 +229,5 @@ final class ReferenceObjectProcessing {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);
         return !space.isFromSpace();
-    }
-
-    public static boolean verify(Reference<?> dr) {
-        Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
-        int refClassification = HeapVerifier.classifyPointer(refPointer);
-        if (refClassification < 0) {
-            Log witness = Log.log();
-            witness.string("[ReferenceObjectProcessing.verify:");
-            witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
-            witness.string("  refClassification: ").signed(refClassification);
-            witness.string("]").newline();
-            assert (!(refClassification < 0)) : "Bad referent.";
-            return false;
-        }
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        YoungGeneration youngGen = heap.getYoungGeneration();
-        OldGeneration oldGen = heap.getOldGeneration();
-        boolean refNull = refPointer.isNull();
-        boolean refBootImage = (!refNull) && heap.isInImageHeapSlow(refPointer);
-        boolean refYoung = (!refNull) && youngGen.slowlyFindPointer(refPointer);
-        boolean refOldFrom = (!refNull) && oldGen.slowlyFindPointerInFromSpace(refPointer);
-        boolean refOldTo = (!refNull) && oldGen.slowlyFindPointerInToSpace(refPointer);
-        /* The referent might already have survived, or might not have. */
-        if (!(refNull || refYoung || refBootImage || refOldFrom)) {
-            Log witness = Log.log();
-            witness.string("[ReferenceObjectProcessing.verify:");
-            witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
-            witness.string("  refBootImage: ").bool(refBootImage);
-            witness.string("  refYoung: ").bool(refYoung);
-            witness.string("  refOldFrom: ").bool(refOldFrom);
-            witness.string("  referent should be in heap.");
-            witness.string("]").newline();
-            return false;
-        }
-        assert !refOldTo : "referent should be in the heap.";
-        return true;
     }
 }

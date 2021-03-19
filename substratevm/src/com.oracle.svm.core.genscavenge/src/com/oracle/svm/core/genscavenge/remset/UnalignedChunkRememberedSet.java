@@ -73,48 +73,48 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
+    public static void initializeChunk(UnalignedHeader chunk) {
+        cleanCardTable(chunk);
+        // first object table is empty for unaligned chunks
+    }
+
     public static void cleanCardTable(UnalignedHeader chunk) {
         CardTable.cleanTableToPointer(getCardTableStart(chunk), getCardTableLimit(chunk));
     }
 
-    public static boolean walkDirtyObjects(UnalignedHeader that, GreyToBlackObjectVisitor visitor, boolean clean) {
-        Log trace = Log.noopLog().string("[UnalignedHeapChunk.walkDirtyObjects:");
-        trace.string("  clean: ").bool(clean).string("  that: ").hex(that).string("  ");
+    public static boolean walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         boolean result = true;
-        Pointer rememberedSetStart = getCardTableStart(that);
+        Pointer rememberedSetStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();
-        trace.string("  rememberedSetStart: ").hex(rememberedSetStart).string("  objectIndex: ").unsigned(objectIndex);
         if (CardTable.isDirtyEntryAtIndex(rememberedSetStart, objectIndex)) {
             if (clean) {
                 CardTable.cleanEntryAtIndex(rememberedSetStart, objectIndex);
             }
-            Pointer objectsStart = UnalignedHeapChunk.getObjectStart(that);
+            Pointer objectsStart = UnalignedHeapChunk.getObjectStart(chunk);
             Object obj = objectsStart.toObject();
-            trace.string("  obj: ").object(obj);
             if (!visitor.visitObjectInline(obj)) {
                 result = false;
             }
         }
-        trace.string("  returns: ").bool(result).string("]").newline();
         return result;
     }
 
-    public static boolean verify(UnalignedHeader that) {
+    public static boolean verify(UnalignedHeader chunk) {
         // Only chunks in the old from space have a remembered set.
         OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-        if (HeapChunk.getSpace(that) == oldGen.getFromSpace()) {
+        if (HeapChunk.getSpace(chunk) == oldGen.getFromSpace()) {
             // Check if there are cross-generational pointers ...
-            Pointer objStart = UnalignedHeapChunk.getObjectStart(that);
+            Pointer objStart = UnalignedHeapChunk.getObjectStart(chunk);
             Object obj = objStart.toObject();
             boolean containsYoungReferences = CardTable.containsReferenceToYoungSpace(obj);
             // ... and if so, that the chunk is marked as dirty.
             if (containsYoungReferences) {
-                Pointer rememberedSet = getCardTableStart(that);
+                Pointer rememberedSet = getCardTableStart(chunk);
                 UnsignedWord objectIndex = getObjectIndex();
                 boolean isDirty = CardTable.isDirtyEntryAtIndex(rememberedSet, objectIndex);
                 if (!isDirty) {
                     Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
-                    witness.string("  that: ").hex(that);
+                    witness.string("  chunk: ").hex(chunk);
                     witness.string("  containsYoungReferences implies isDirty").string("]").newline();
                     return false;
                 }
@@ -123,18 +123,15 @@ final class UnalignedChunkRememberedSet {
         return true;
     }
 
-    public static boolean verifyOnlyCleanCards(UnalignedHeader that) {
-        Log trace = Log.noopLog().string("[UnalignedHeapChunk.verifyOnlyCleanCards:");
-        trace.string("  that: ").hex(that);
+    public static boolean verifyOnlyCleanCards(UnalignedHeader chunk) {
         boolean result = true;
-        Pointer rememberedSetStart = getCardTableStart(that);
+        Pointer rememberedSetStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();
         if (CardTable.isDirtyEntryAtIndex(rememberedSetStart, objectIndex)) {
             result = false;
             Log witness = Log.log().string("[UnalignedHeapChunk.verifyOnlyCleanCards:");
-            witness.string("  that: ").hex(that).string("  dirty card at index: ").unsigned(objectIndex).string("]").newline();
+            witness.string("  chunk: ").hex(chunk).string("  dirty card at index: ").unsigned(objectIndex).string("]").newline();
         }
-        trace.string("  returns: ").bool(result).string("]").newline();
         return result;
     }
 
@@ -166,11 +163,11 @@ final class UnalignedChunkRememberedSet {
         return WordFactory.zero();
     }
 
-    static Pointer getCardTableStart(UnalignedHeader that) {
-        return HeapChunk.asPointer(that).add(getCardTableStartOffset());
+    static Pointer getCardTableStart(UnalignedHeader chunk) {
+        return HeapChunk.asPointer(chunk).add(getCardTableStartOffset());
     }
 
-    static Pointer getCardTableLimit(UnalignedHeader that) {
-        return HeapChunk.asPointer(that).add(getCardTableLimitOffset());
+    static Pointer getCardTableLimit(UnalignedHeader chunk) {
+        return HeapChunk.asPointer(chunk).add(getCardTableLimitOffset());
     }
 }

@@ -47,7 +47,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
@@ -171,7 +170,7 @@ public final class HeapChunk {
     }
 
     /** Reset the mutable state of a chunk. */
-    public static void reset(Header<?> chunk, Pointer objectsStart) {
+    public static void initialize(Header<?> chunk, Pointer objectsStart) {
         HeapChunk.setTopPointer(chunk, objectsStart);
         HeapChunk.setSpace(chunk, null);
         HeapChunk.setNext(chunk, WordFactory.nullPointer());
@@ -316,7 +315,7 @@ public final class HeapChunk {
     }
 
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Pointer ptrToObj, UnsignedWord header) {
-        if (ObjectHeaderImpl.isAlignedHeader(ptrToObj, header)) {
+        if (ObjectHeaderImpl.isAlignedHeader(header)) {
             return AlignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
         } else {
             return UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
@@ -358,32 +357,5 @@ public final class HeapChunk {
             return result;
         }
 
-    }
-
-    static boolean verifyObjects(Header<?> that, Pointer start) {
-        Log trace = HeapVerifier.getTraceLog().string("[HeapChunk.verify:");
-        trace.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(getTopPointer(that)).string("  end: ").hex(getEndPointer(that));
-        Pointer p = start;
-        while (p.belowThan(getTopPointer(that))) {
-            if (!HeapImpl.getHeapImpl().getHeapVerifier().verifyObjectAt(p)) {
-                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[HeapChunk.verify:");
-                witness.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(getTopPointer(that)).string("  end: ").hex(getEndPointer(that));
-                witness.string("  space: ").string(getSpace(that).getName());
-                witness.string("  object at p: ").hex(p).string("  fails to verify").string("]").newline();
-                trace.string("  returns false]").newline();
-                return false;
-            }
-            /* Step carefully over the object. */
-            UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointerCarefully(p);
-            Object o;
-            if (ObjectHeaderImpl.isForwardedHeaderCarefully(header)) {
-                o = ObjectHeaderImpl.getForwardedObject(p);
-            } else {
-                o = p.toObject();
-            }
-            p = p.add(LayoutEncoding.getSizeFromObject(o));
-        }
-        trace.string("  returns true]").newline();
-        return true;
     }
 }

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.remset;
+package com.oracle.svm.core.genscavenge;
 
 import java.nio.ByteBuffer;
 
@@ -35,9 +35,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
-import com.oracle.svm.core.genscavenge.HeapChunk;
-import com.oracle.svm.core.genscavenge.ImageHeapChunkWriter;
+import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
+import com.oracle.svm.core.genscavenge.remset.CardTable;
+import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
+import com.oracle.svm.core.genscavenge.remset.UnalignedChunkRememberedSet;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 

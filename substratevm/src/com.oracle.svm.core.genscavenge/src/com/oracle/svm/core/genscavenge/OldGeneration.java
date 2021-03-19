@@ -26,14 +26,12 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
-import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
@@ -71,14 +69,14 @@ public final class OldGeneration extends Generation {
     @AlwaysInline("GC performance")
     @Override
     public Object promoteObject(Object original, UnsignedWord header) {
-        if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
+        if (ObjectHeaderImpl.isAlignedHeader(header)) {
             AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = HeapChunk.getSpace(chunk);
             if (originalSpace.isFromSpace()) {
                 return promoteAlignedObject(original, originalSpace);
             }
         } else {
-            assert ObjectHeaderImpl.isUnalignedHeader(original, header);
+            assert ObjectHeaderImpl.isUnalignedHeader(header);
             UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = HeapChunk.getSpace(chunk);
             if (originalSpace.isFromSpace()) {
@@ -104,9 +102,6 @@ public final class OldGeneration extends Generation {
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {
         getFromSpace().releaseChunks(chunkReleaser);
-        if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
-            RememberedSet.get().cleanCardTable(getToSpace());
-        }
     }
 
     void prepareForPromotion() {
@@ -128,79 +123,6 @@ public final class OldGeneration extends Generation {
         getToSpace().report(log, traceHeapChunks).newline();
         log.redent(false).string("]");
         return log;
-    }
-
-    @Override
-    protected boolean verify(HeapVerifier.Occasion occasion) {
-        boolean result = true;
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        HeapVerifier heapVerifier = heap.getHeapVerifier();
-        SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifier();
-        // The from space should be clean after a collection...
-        spaceVerifier.initialize(heap.getOldGeneration().getFromSpace());
-        if (!spaceVerifier.verify()) {
-            result = false;
-            heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old from space fails to verify").string("]").newline();
-        }
-        if (occasion.equals(HeapVerifier.Occasion.AFTER_COLLECTION)) {
-            if (!spaceVerifier.verifyOnlyCleanCards()) {
-                result = false;
-                heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old from space contains dirty cards").string("]").newline();
-            }
-        }
-        // ... and the to space should be empty, except during a collection.
-        spaceVerifier.initialize(heap.getOldGeneration().getToSpace());
-        if (!spaceVerifier.verify()) {
-            result = false;
-            heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old to space fails to verify").string("]").newline();
-        }
-        if (!occasion.equals(HeapVerifier.Occasion.DURING_COLLECTION)) {
-            if (spaceVerifier.containsChunks()) {
-                result = false;
-                heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old to space contains chunks").string("]").newline();
-            }
-        }
-        return result;
-    }
-
-    boolean slowlyFindPointer(Pointer p) {
-        // FromSpace is "in" the Heap, ToSpace is not "in" the Heap, because it should be empty.
-        if (slowlyFindPointerInFromSpace(p)) {
-            return true;
-        }
-        if (slowlyFindPointerInToSpace(p)) {
-            Log paranoia = Log.noopLog();
-            if (paranoia.isEnabled()) {
-                paranoia.string("[OldGeneration.slowlyFindPointerInOldGeneration:");
-                paranoia.string("  p: ").hex(p);
-                paranoia.string("  found in: ").string(getToSpace().getName());
-                paranoia.string("]").newline();
-            }
-            return false;
-        }
-        return false;
-    }
-
-    boolean slowlyFindPointerInFromSpace(Pointer p) {
-        return HeapVerifier.slowlyFindPointerInSpace(getFromSpace(), p);
-    }
-
-    boolean slowlyFindPointerInToSpace(Pointer p) {
-        return HeapVerifier.slowlyFindPointerInSpace(getToSpace(), p);
-    }
-
-    /* This could return an enum, but I want to be able to examine it easily from a debugger. */
-    int classifyPointer(Pointer p) {
-        if (p.isNull()) {
-            return 0;
-        }
-        if (slowlyFindPointerInFromSpace(p)) {
-            return 1;
-        }
-        if (slowlyFindPointerInToSpace(p)) {
-            return 2;
-        }
-        return -1;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
