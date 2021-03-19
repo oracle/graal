@@ -26,7 +26,6 @@ package com.oracle.svm.core.windows;
 
 import java.io.FileDescriptor;
 
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,10 +41,11 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.windows.headers.FileAPI;
-import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinSock;
 
@@ -110,8 +110,8 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     @Override
     public PointerBase findBuiltinSymbol(String name) {
         try (CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
-            HMODULE builtinHandle = WinBase.GetModuleHandleA(WordFactory.nullPointer());
-            return WinBase.GetProcAddress(builtinHandle, symbol.get());
+            HMODULE builtinHandle = LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer());
+            return LibLoaderAPI.GetProcAddress(builtinHandle, symbol.get());
         }
     }
 
@@ -159,7 +159,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                  * WinBase.SetDllDirectoryA(dllpathPtr); CCharPointerHolder pathPin =
                  * CTypeConversion.toCString(path); CCharPointer pathPtr = pathPin.get();
                  */
-                dlhandle = WinBase.LoadLibraryA(dllPathPtr);
+                dlhandle = LibLoaderAPI.LoadLibraryA(dllPathPtr);
             }
             return dlhandle.isNonNull();
         }
@@ -176,7 +176,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             }
             assert dlhandle.isNonNull();
             try (CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
-                return WinBase.GetProcAddress(dlhandle, symbol.get());
+                return LibLoaderAPI.GetProcAddress(dlhandle, symbol.get());
             }
         }
     }

@@ -44,6 +44,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
@@ -53,8 +54,8 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
     @Override
     public String getExecutableName() {
         CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
-        WinBase.HMODULE hModule = WinBase.GetModuleHandleA(WordFactory.nullPointer());
-        int result = WinBase.GetModuleFileNameA(hModule, path, WinBase.MAX_PATH);
+        WinBase.HMODULE hModule = LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer());
+        int result = LibLoaderAPI.GetModuleFileNameA(hModule, path, WinBase.MAX_PATH);
         return result == 0 ? null : CTypeConversion.toJavaString(path);
     }
 
@@ -95,8 +96,8 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
     @Override
     public String getObjectFile(String symbol) {
         try (CTypeConversion.CCharPointerHolder symbolHolder = CTypeConversion.toCString(symbol)) {
-            WinBase.HMODULE builtinHandle = WinBase.GetModuleHandleA(WordFactory.nullPointer());
-            PointerBase symbolAddress = WinBase.GetProcAddress(builtinHandle, symbolHolder.get());
+            WinBase.HMODULE builtinHandle = LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer());
+            PointerBase symbolAddress = LibLoaderAPI.GetProcAddress(builtinHandle, symbolHolder.get());
             if (symbolAddress.isNonNull()) {
                 return getObjectFile(symbolAddress);
             }
@@ -112,13 +113,13 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     private static String getObjectFile(PointerBase symbolAddress) {
         WinBase.HMODULEPointer module = StackValue.get(WinBase.HMODULEPointer.class);
-        if (!WinBase.GetModuleHandleExA(WinBase.GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS() | WinBase.GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT(),
-                        symbolAddress, module)) {
+        if (LibLoaderAPI.GetModuleHandleExA(LibLoaderAPI.GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS() | LibLoaderAPI.GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT(),
+                        (CCharPointer) symbolAddress, module) == 0) {
             return null;
         }
 
         CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
-        int result = WinBase.GetModuleFileNameA(module.read(), path, WinBase.MAX_PATH);
+        int result = LibLoaderAPI.GetModuleFileNameA(module.read(), path, WinBase.MAX_PATH);
         return result == 0 ? null : CTypeConversion.toJavaString(path);
     }
 
