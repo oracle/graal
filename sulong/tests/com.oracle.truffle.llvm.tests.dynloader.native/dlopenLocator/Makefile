@@ -29,39 +29,27 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-LIBS=c/libone$(SO_EXT) c/libtwo$(SO_EXT) c/libthree$(SO_EXT) c/libfour$(SO_EXT)
-#LDFLAGS+=-rpath $(ORIGIN_TOKEN)/ -Lc
-default: c/ref.bc $(LIBS) c/ref.out
+LIBS=dlopenLocator/libone$(SO_EXT) dlopenLocator/libtwo$(SO_EXT) dlopenLocator/libthree$(SO_EXT) dlopenLocator/libfour$(SO_EXT)
+default: dlopenLocator/ref.bc dlopenLocator/ref.out $(LIBS)
 
-c/lib%$(SO_EXT): c/%.c c/Makefile
+dlopenLocator/lib%$(SO_EXT): src/%.c dlopenLocator/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-c/ref.out: LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -ldl 
-c/ref.out: c/dlopentest.c c/Makefile $(LIBS) 
+dlopenLocator/ref.out: LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -ldl
+dlopenLocator/ref.out: dlopenLocator/dlopentest.c dlopenLocator/Makefile $(LIBS)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
 
-c/libone$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -Lc -ltwo
-c/libone$(SO_EXT): c/libtwo$(SO_EXT)	
+dlopenLocator/libone$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -LdlopenLocator -ltwo
+dlopenLocator/libone$(SO_EXT): dlopenLocator/libtwo$(SO_EXT)
 
-c/libtwo$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS)
+dlopenLocator/libtwo$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS)
 
-c/libthree$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS)
+dlopenLocator/libthree$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS)
 
-c/libfour$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -Lc -lone
-c/libfour$(SO_EXT): c/libone$(SO_EXT)	
+dlopenLocator/libfour$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -LdlopenLocator -lone
+dlopenLocator/libfour$(SO_EXT): dlopenLocator/libone$(SO_EXT)
 
 %.bc: %.out
 	cp $< $@
-
-
-#clang -shared three.c -fPIC -o three.so
-#clang -shared two.c -fPIC -o two.so
-#clang -c -fPIC one.c
-#clang -shared one.o two.so -o one.so -Wl,--rpath,.
-#clang -c -fPIC four.c
-#clang -shared four.o one.so -o four.so -Wl,--rpath,.
-#clang dlopentest.c -ldl -o dlopentest
-
-

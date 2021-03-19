@@ -1107,7 +1107,7 @@ suite = {
         "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
       "results": [
-        "c",
+        "dlopenLocator",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -1591,6 +1591,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.amd64.native/*",
           "dependency:com.oracle.truffle.llvm.tests.pthread.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.dynloader.native/*",
         ],
       },
       "license" : "BSD-new",
