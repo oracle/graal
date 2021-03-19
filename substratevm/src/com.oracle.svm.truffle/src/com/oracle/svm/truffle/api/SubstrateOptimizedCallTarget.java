@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.truffle.TruffleFeature;
+import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -123,7 +123,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public SubstrateOptimizedCallTargetInstalledCode createSubstrateInstalledCode() {
-        assert TruffleFeature.Support.isIsolatedCompilation() : "Must be called only with isolated compilation";
+        assert TruffleSupport.isIsolatedCompilation() : "Must be called only with isolated compilation";
         return createInstalledCode();
     }
 
