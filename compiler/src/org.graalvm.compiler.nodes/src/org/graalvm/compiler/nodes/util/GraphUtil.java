@@ -43,6 +43,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.LinkedNodeStack;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -345,33 +346,44 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
-        assert checkKill(node, mayKillGuard);
-        node.markDeleted();
-        outer: for (Node in : node.inputs()) {
-            if (in.isAlive()) {
-                in.removeUsage(node);
-                if (in.hasNoUsages()) {
-                    node.maybeNotifyZeroUsages(in);
-                }
-                if (isFloatingNode(in)) {
+        LinkedNodeStack stack = null;
+        Node cur = node;
+        do {
+            assert checkKill(cur, mayKillGuard);
+            cur.markDeleted();
+            outer: for (Node in : cur.inputs()) {
+                if (in.isAlive()) {
+                    in.removeUsage(cur);
                     if (in.hasNoUsages()) {
-                        if (in instanceof GuardNode) {
-                            // Guard nodes are only killed if their anchor dies.
-                        } else {
-                            killWithUnusedFloatingInputs(in);
-                        }
-                    } else if (in instanceof PhiNode) {
-                        for (Node use : in.usages()) {
-                            if (use != in) {
+                        cur.maybeNotifyZeroUsages(in);
+                    }
+                    if (isFloatingNode(in)) {
+                        if (in.hasNoUsages()) {
+                            if (in instanceof GuardNode) {
+                                // Guard nodes are only killed if their anchor dies.
                                 continue outer;
                             }
+                        } else if (in instanceof PhiNode) {
+                            if (!((PhiNode) in).isDegenerated()) {
+                                continue outer;
+                            }
+                            in.replaceAtUsages(null);
+                        } else {
+                            continue outer;
                         }
-                        in.replaceAtUsages(null);
-                        killWithUnusedFloatingInputs(in);
+                        if (stack == null) {
+                            stack = new LinkedNodeStack();
+                        }
+                        stack.push(in);
                     }
                 }
             }
-        }
+            if (stack == null || stack.isEmpty()) {
+                break;
+            } else {
+                cur = stack.pop();
+            }
+        } while (true);
     }
 
     /**
