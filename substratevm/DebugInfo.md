@@ -137,8 +137,8 @@ with the signature `String(java.lang.String *)`.
 
 The C++ layout class inherits fields and methods from class (layout)
 type java.lang.Object using C++ public inheritance. The latter in turn
-inherits standard oop header fields from a special struct class named
-_objhdr which includes a single field called `hub` whose type is
+inherits standard oop (ordinary object pointer) header fields from a special struct class named
+`_objhdr` which includes a single field called `hub` whose type is
 `java.lang.Class *` i.e. it is a pointer to the object's class.
 
 The ptype command can be used to print details of a specific type. Note
@@ -661,33 +661,32 @@ Windows support is still under development.
 
 Note that it is currently recommended to disable use of Isolates by
 passing flag `-H:-SpawnIsolates` on the command line when debug info
-generation is enabled. Enabling of Isolates affects the way that oops
-(object references) are encoded. In turn that means the debug info
+generation is enabled. Enabling of Isolates affects the way ordinary object pointers (oops) are encoded. In turn, that means the debug info
 generator has to provide gdb with information about how to translate
-an encoded oops to the address in memory where the object data is
+an encoded oop to the address in memory, where the object data is
 stored. This sometimes requires care when asking gdb to process
 encoded oops vs decoded raw addresses.
 
 When isolates are disabled, oops are essentially raw addresses pointing
 directly at the object contents. This is generally the same whether
-the oops is embedded in a static/instance field or is referenced from a
+the oop is embedded in a static/instance field or is referenced from a
 local or parameter variable located in a register or saved to the stack.
 It is not quite that simple because the bottom 3 bits of some oops may
 be used to hold "tags" that record certain transient properties of
 an object. However, the debuginfo provided to gdb means that it will
-remove these tag bits before dereferencing the oops as an address.
+remove these tag bits before dereferencing the oop as an address.
 
-By contrast, when isolates are enabled oops references stored in static
+By contrast, when isolates are enabled, oops references stored in static
 or instance fields are actually relative addresses, offsets from a
 dedicated heap base register (r14 on x86_64, r29 on AArch64), rather
 than direct addresses (in a few special cases the offset may also have
-some low tag bits set). When an 'indirect' oops of this kind gets loaded
-during execution it is almost always immediately converted to a 'raw'
+some low tag bits set). When an 'indirect' oop of this kind gets loaded
+during execution, it is almost always immediately converted to a 'raw'
 address by adding the offset to the heap base register value. So, oops
 which occur as the value of local or parameter vars are actually raw
 addresses.
 
-The DWARF info encoded into the image when isolates are enabled tells
+The DWARF info encoded into the image, when isolates are enabled, tells
 gdb to rebase indirect oops whenever it tries to dereference them to
 access underlying object data. This is normally automatic and
 transparent, but it is visible in the underlying type model that gdb
@@ -708,7 +707,7 @@ wrapper class that inherits from the expected type
 as the original but the DWARF info record that defines it includes
 information that tells gdb how to convert pointers to this type.
 
-When gdb is asked to print the oops stored in this field it is clear that
+When gdb is asked to print the oop stored in this field it is clear that
 it is an offset rather than a raw address.
 
 ```
@@ -718,8 +717,8 @@ $1 = 0x286c08
 0x286c08:	Cannot access memory at address 0x286c08
 ```
 
-However, when gdb is asked to dereference through the field it applies
-the necessary address conversion to the oops and fetches the correct
+However, when gdb is asked to dereference through the field, it applies
+the necessary address conversion to the oop and fetches the correct
 data.
 
 ```
@@ -777,9 +776,9 @@ in almost all cases where an expression identifying a raw type pointer
 would work. The only case case where care might be needed is when
 casting a displayed numeric field value or displayed register value.
 
-For example, if the indirect hub oop printed above is passed to
-`hubname_raw` the cast to type Object internal to that command fails to
-force the required indirect oops translation and the resulting memory
+For example, if the indirect `hub` oop printed above is passed to
+`hubname_raw`, the cast to type Object internal to that command fails to
+force the required indirect oops translation. The resulting memory
 access fails:
 
 ```
