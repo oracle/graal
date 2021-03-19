@@ -37,7 +37,8 @@ dlopenLocator/lib%$(SO_EXT): src/%.c dlopenLocator/Makefile
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
 dlopenLocator/ref.out: LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -ldl
-dlopenLocator/ref.out: dlopenLocator/dlopentest.c dlopenLocator/Makefile $(LIBS)
+dlopenLocator/ref.out: CPPFLAGS+=-DDLOPEN_TEST_NO_ABSOLUTE=1
+dlopenLocator/ref.out: src/dlopentest.c dlopenLocator/Makefile $(LIBS)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
 
@@ -52,4 +53,4 @@ dlopenLocator/libfour$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/
 dlopenLocator/libfour$(SO_EXT): dlopenLocator/libone$(SO_EXT)
 
 %.bc: %.out
-	cp $< $@
+	@cp $< $@

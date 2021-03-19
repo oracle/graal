@@ -37,7 +37,7 @@ dlopenAbsolute/lib%$(SO_EXT): src/%.c dlopenAbsolute/Makefile
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
 dlopenAbsolute/ref.out: LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -ldl
-dlopenAbsolute/ref.out: dlopenAbsolute/dlopenAbsolute.c dlopenAbsolute/Makefile $(LIBS)
+dlopenAbsolute/ref.out: src/dlopentest.c dlopenAbsolute/Makefile $(LIBS)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
 
@@ -52,4 +52,4 @@ dlopenAbsolute/libfour$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)
 dlopenAbsolute/libfour$(SO_EXT): dlopenAbsolute/libone$(SO_EXT)
 
 %.bc: %.out
-	cp $< $@
+	@cp $< $@
