@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.CompareOperator;
@@ -107,6 +108,7 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMI64R
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMI8RetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMIVarBitRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMStructRetNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMArrayRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVectorRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNode;
@@ -716,6 +718,8 @@ public class BasicNodeFactory implements NodeFactory {
             return LLVMIVarBitRetNodeGen.create(retValue);
         } else if (type instanceof PointerType || type instanceof FunctionType) {
             return LLVMAddressRetNodeGen.create(retValue);
+        } else if (type instanceof ArrayType) {
+            return LLVMArrayRetNodeGen.create(retValue);
         } else if (type instanceof StructureType) {
             try {
                 long size = getByteSize(type);
@@ -1268,8 +1272,20 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, Type.TypeArrayBuilder argsTypes, int callerArgumentCount) {
-        if (target instanceof FunctionDeclaration) {
-            FunctionDeclaration declaration = (FunctionDeclaration) target;
+        Symbol actualTarget = target;
+        if (actualTarget instanceof CastConstant && ((CastConstant) actualTarget).getValue() instanceof FunctionDeclaration) {
+            /*
+             * This branch solves the following scenario, in which a builtin is bitcast before its
+             * invocation:
+             *
+             * %1 = call i32 bitcast (i32 (...)* @polyglot_get_arg_count to i32 ()*)() #2, !dbg !18
+             *
+             * Otherwise the builtin would be handled as a normal function.
+             */
+            actualTarget = ((CastConstant) actualTarget).getValue();
+        }
+        if (actualTarget instanceof FunctionDeclaration) {
+            FunctionDeclaration declaration = (FunctionDeclaration) actualTarget;
             String name = declaration.getName();
             /*
              * These "llvm." builtins are *not* function intrinsics. Builtins replace statements

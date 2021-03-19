@@ -114,7 +114,6 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     private int gpOffset;
     private int fpOffset;
 
-    private LLVMPointer nativized;
     private LLVMPointer overflowArgAreaBaseNativePtr;
 
     private RegSaveArea gpSaveArea;
