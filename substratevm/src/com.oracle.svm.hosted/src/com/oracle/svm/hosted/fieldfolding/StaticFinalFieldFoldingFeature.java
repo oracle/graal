@@ -180,9 +180,26 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
         bb = access.getBigBang();
     }
 
+    /**
+     * Computes a unique index for each optimized field, and prepares the boolean[] array for the
+     * image heap that tracks the field initialization state at run time.
+     */
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         bb = null;
+
+        List<AnalysisField> foldedFields = new ArrayList<>(foldedFieldValues.keySet());
+        /* Make the fieldCheckIndex deterministic by using an (arbitrary) sort order. */
+        foldedFields.sort(Comparator.comparing(field -> field.format("%H.%n")));
+
+        fieldCheckIndexMap = new HashMap<>();
+        int fieldCheckIndex = 0;
+        for (AnalysisField field : foldedFields) {
+            fieldCheckIndexMap.put(field, fieldCheckIndex);
+            fieldCheckIndex++;
+        }
+
+        fieldInitializationStatus = new boolean[fieldCheckIndex];
     }
 
     /**
@@ -279,26 +296,6 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
                             "This violates the Java bytecode specification. " +
                             "You can use " + SubstrateOptionsParser.commandArgument(Options.OptStaticFinalFieldFolding, "-") + " to disable the optimization.");
         }
-    }
-
-    /**
-     * Computes a unique index for each optimized field, and prepares the boolean[] array for the
-     * image heap that tracks the field initialization state at run time.
-     */
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        List<AnalysisField> foldedFields = new ArrayList<>(foldedFieldValues.keySet());
-        /* Make the fieldCheckIndex deterministic by using an (arbitrary) sort order. */
-        foldedFields.sort(Comparator.comparing(field -> field.format("%H.%n")));
-
-        fieldCheckIndexMap = new HashMap<>();
-        int fieldCheckIndex = 0;
-        for (AnalysisField field : foldedFields) {
-            fieldCheckIndexMap.put(field, fieldCheckIndex);
-            fieldCheckIndex++;
-        }
-
-        fieldInitializationStatus = new boolean[fieldCheckIndex];
     }
 
     static AnalysisField toAnalysisField(ResolvedJavaField field) {
