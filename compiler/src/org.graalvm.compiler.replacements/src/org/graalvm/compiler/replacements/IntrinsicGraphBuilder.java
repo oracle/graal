@@ -349,6 +349,9 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @SuppressWarnings("try")
     public StructuredGraph buildGraph(InvocationPlugin plugin) {
+        // The caller is expected to have filtered out decorator plugins since they cannot be
+        // processed without special handling.
+        assert !plugin.isDecorator() : plugin;
         NodeSourcePosition position = graph.trackNodeSourcePosition() ? NodeSourcePosition.placeholder(method) : null;
         try (DebugCloseable context = graph.withNodeSourcePosition(position)) {
             Receiver receiver = method.isStatic() ? null : this;

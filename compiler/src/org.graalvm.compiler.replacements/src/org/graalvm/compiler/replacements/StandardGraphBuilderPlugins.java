@@ -1541,6 +1541,8 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         };
+        // The purpose of this plugin is to help Blackhole.consume function mostly correctly even if
+        // it's been inlined.
         String[] names = {"org.openjdk.jmh.infra.Blackhole", "org.openjdk.jmh.logic.BlackHole"};
         for (String name : names) {
             Registration r = new Registration(plugins, name, replacements);
