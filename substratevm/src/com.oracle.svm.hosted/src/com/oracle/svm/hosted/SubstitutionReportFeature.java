@@ -81,7 +81,7 @@ public class SubstitutionReportFeature implements Feature {
                 if (t instanceof SubstitutionType) {
                     SubstitutionType subType = (SubstitutionType) t;
                     if (subType.isUserSubstitution()) {
-                        String jarLocation = getJarLocation(subType.getAnnotated());
+                        String jarLocation = getTypeClassFileLocation(subType.getAnnotated());
                         substitutions.putIfAbsent(jarLocation, new Substitutions());
                         substitutions.get(jarLocation).addType(subType);
                     }
@@ -96,7 +96,7 @@ public class SubstitutionReportFeature implements Feature {
             if (method.wrapped instanceof SubstitutionMethod) {
                 SubstitutionMethod subMethod = (SubstitutionMethod) method.wrapped;
                 if (subMethod.isUserSubstitution()) {
-                    String jarLocation = getJarLocation(subMethod.getAnnotated().getDeclaringClass());
+                    String jarLocation = getTypeClassFileLocation(subMethod.getAnnotated().getDeclaringClass());
                     substitutions.putIfAbsent(jarLocation, new Substitutions());
                     substitutions.get(jarLocation).addMethod(subMethod);
                 }
@@ -110,7 +110,7 @@ public class SubstitutionReportFeature implements Feature {
             if (field.wrapped instanceof SubstitutionField) {
                 SubstitutionField subField = (SubstitutionField) field.wrapped;
                 if (subField.isUserSubstitution()) {
-                    String jarLocation = getJarLocation(subField.getAnnotated().getDeclaringClass());
+                    String jarLocation = getTypeClassFileLocation(subField.getAnnotated().getDeclaringClass());
                     substitutions.putIfAbsent(jarLocation, new Substitutions());
                     substitutions.get(jarLocation).addField(subField);
                 }
@@ -135,12 +135,6 @@ public class SubstitutionReportFeature implements Feature {
         });
     }
 
-    private String getJarLocation(ResolvedJavaType type) {
-        Class<?> annotatedClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
-        CodeSource source = annotatedClass.getProtectionDomain().getCodeSource();
-        return source == null ? "unknown" : source.getLocation().toString();
-    }
-
     private String formatMethod(ResolvedJavaMethod method) {
         return method.getDeclaringClass().toJavaName(true) + "#" + method.getName();
     }
@@ -149,7 +143,13 @@ public class SubstitutionReportFeature implements Feature {
         return field.getDeclaringClass().toJavaName(true) + "." + field.getName();
     }
 
-    private <T> String formatSubstitution(String jar, String type, T original, T annotated, Function<T, String> formatter) {
+    private static String getTypeClassFileLocation(ResolvedJavaType type) {
+        Class<?> annotatedClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
+        CodeSource source = annotatedClass.getProtectionDomain().getCodeSource();
+        return source == null ? "unknown" : source.getLocation().toString();
+    }
+
+    private static <T> String formatSubstitution(String jar, String type, T original, T annotated, Function<T, String> formatter) {
         return '\'' + jar + "'," + type + ',' + formatter.apply(original) + ',' + formatter.apply(annotated);
     }
 
