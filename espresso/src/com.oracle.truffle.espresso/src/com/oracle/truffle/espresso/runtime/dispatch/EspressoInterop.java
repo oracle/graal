@@ -44,6 +44,7 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -422,7 +423,7 @@ public class EspressoInterop extends BaseInterop {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
-                return receiver.<boolean[]> unwrap()[(int) index];
+                return receiver.<byte[]> unwrap()[(int) index] != 0;
             } catch (IndexOutOfBoundsException outOfBounds) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
@@ -1032,7 +1033,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static @CompilerDirectives.TruffleBoundary LocalDate asDate(StaticObject receiver,
+    static @TruffleBoundary LocalDate asDate(StaticObject receiver,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (isDate(receiver)) {
@@ -1084,7 +1085,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static @CompilerDirectives.TruffleBoundary LocalTime asTime(StaticObject receiver,
+    static @TruffleBoundary LocalTime asTime(StaticObject receiver,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (isTime(receiver)) {
@@ -1136,7 +1137,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static @CompilerDirectives.TruffleBoundary ZoneId asTimeZone(StaticObject receiver,
+    static @TruffleBoundary ZoneId asTimeZone(StaticObject receiver,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (isTimeZone(receiver)) {
@@ -1159,7 +1160,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static @CompilerDirectives.TruffleBoundary Instant asInstant(StaticObject receiver,
+    static @TruffleBoundary Instant asInstant(StaticObject receiver,
                     @CachedLibrary("receiver") InteropLibrary receiverLibrary, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (receiverLibrary.isInstant(receiver)) {
