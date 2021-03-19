@@ -1237,14 +1237,12 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 '-H:+EnforceMaxRuntimeCompileMethods',
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
             ]
-            graalvm_dist = get_final_graalvm_distribution()
-            if graalvm_dist.vm_config_name:
-                build_args += ['-Dorg.graalvm.config={}'.format(graalvm_dist.vm_config_name.upper())]
             if _debug_images():
                 build_args += ['-ea', '-H:-AOTInline', '-H:+PreserveFramePointer']
             if _get_svm_support().is_debug_supported():
                 build_args += ['-g']
 
+            graalvm_dist = get_final_graalvm_distribution()
             graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:' + self.subject.name))
             location_classpath = self._get_location_classpath()
             graalvm_home = _get_graalvm_archive_path("")
