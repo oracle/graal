@@ -314,16 +314,10 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class Dispatch {
+    public static class Dispatch {
         static final int LIMIT = 4;
 
-        @Specialization(guards = "receiver.isForeignObject()")
-        static Class<?> dispatchForeign(@SuppressWarnings("unused") StaticObject receiver) {
-            return BaseInterop.class;
-        }
-
         @Specialization(guards = {
-                        "receiver.isEspressoObject()",
                         "receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
         static Class<?> dispatchCached(
                         @SuppressWarnings("unused") StaticObject receiver,
@@ -333,7 +327,7 @@ public final class StaticObject implements TruffleObject {
         }
 
         @Specialization
-        static Class<?> dispatchGeneric(StaticObject receiver) {
+        public static Class<?> dispatchGeneric(StaticObject receiver) {
             if (isNull(receiver) || receiver.isForeignObject()) {
                 return BaseInterop.class;
             }
