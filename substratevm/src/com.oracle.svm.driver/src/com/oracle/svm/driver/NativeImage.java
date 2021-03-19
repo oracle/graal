@@ -802,7 +802,6 @@ public class NativeImage {
             addImageBuilderJavaArgs("-Djava.awt.headless=true");
         }
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
-        addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
 
