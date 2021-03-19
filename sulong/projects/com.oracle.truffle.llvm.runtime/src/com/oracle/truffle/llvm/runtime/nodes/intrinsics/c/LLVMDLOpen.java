@@ -41,7 +41,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -122,7 +121,7 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         if (filename.contains("/")) {
             truffleFile = ctx.getEnv().getInternalTruffleFile(path.toUri());
         } else {
-            truffleFile = createTruffleFile(filename, path.toString(), ctx.getMainLibraryLocator(), ctx);
+            truffleFile = ctx.getMainLibraryLocator().locate(ctx, filename, "<source library>");
         }
         try {
             Source source = Source.newBuilder("llvm", truffleFile).build();
@@ -132,19 +131,5 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
             ctx.setDLError(1);
             throw new IllegalStateException(e);
         }
-    }
-
-    private static TruffleFile createTruffleFile(String libName, String libPath, LibraryLocator locator, LLVMContext context) {
-        TruffleFile file = locator.locate(context, libName, "<source library>");
-        if (file == null) {
-            if (libPath != null) {
-                file = context.getEnv().getInternalTruffleFile(libPath);
-            } else {
-                Path path = Paths.get(libName);
-                LibraryLocator.traceDelegateNative(context, path);
-                file = context.getEnv().getInternalTruffleFile(path.toUri());
-            }
-        }
-        return file;
     }
 }

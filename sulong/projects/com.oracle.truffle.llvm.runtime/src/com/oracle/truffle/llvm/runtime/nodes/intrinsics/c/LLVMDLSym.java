@@ -77,6 +77,13 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
         return LLVMNativePointer.createNull();
     }
 
+    @Specialization
+    protected Object doNative(@SuppressWarnings("unused") LLVMNativePointer libraryHandle,
+                          @SuppressWarnings("unused") LLVMPointer symbol,
+                          @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr) {
+        return LLVMNativePointer.createNull();
+    }
+
     protected Object getLibrary(LLVMManagedPointer pointer) {
         return ((LLVMDLHandler) pointer.getObject()).getLibrary();
     }
