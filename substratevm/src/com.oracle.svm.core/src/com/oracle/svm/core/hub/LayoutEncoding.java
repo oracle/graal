@@ -187,6 +187,7 @@ public class LayoutEncoding {
         return (encoding >> ARRAY_INDEX_SHIFT_SHIFT) & ARRAY_INDEX_SHIFT_MASK;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getArrayIndexScale(int encoding) {
         return 1 << getArrayIndexShift(encoding);
     }

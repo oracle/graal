@@ -49,7 +49,7 @@ public interface SubstrateArraysCopyOf extends Lowerable, VirtualizableAllocatio
 
     ValueNode getOriginalLength();
 
-    ValueNode getNewArrayType();
+    ValueNode getNewObjectArrayType();
 
     ValueNode getNewLength();
 
@@ -62,7 +62,7 @@ public interface SubstrateArraysCopyOf extends Lowerable, VirtualizableAllocatio
 
     @Override
     default void virtualize(VirtualizerTool tool) {
-        if (!getNewArrayType().isConstant()) {
+        if (!getNewObjectArrayType().isConstant()) {
             /*
              * This is an object array copy. If the new array type is not a constant then it cannot
              * be virtualized.
@@ -72,7 +72,7 @@ public interface SubstrateArraysCopyOf extends Lowerable, VirtualizableAllocatio
 
         /* from index is always 0 for Arrays.copyOf. */
         ValueNode from = ConstantNode.forInt(0);
-        ResolvedJavaType newComponentType = tool.getConstantReflection().asJavaType(getNewArrayType().asConstant()).getComponentType();
+        ResolvedJavaType newComponentType = tool.getConstantReflection().asJavaType(getNewObjectArrayType().asConstant()).getComponentType();
         GraphUtil.virtualizeArrayCopy(tool, getOriginal(), getOriginalLength(), getNewLength(), from, newComponentType, JavaKind.Object, asNode().graph(),
                         (componentType, length) -> new VirtualArrayNode(componentType, length));
     }

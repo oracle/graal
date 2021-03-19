@@ -244,9 +244,9 @@ public class JavaMainWrapper {
 
             CCharPointer firstArgPos = MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0);
             // Copy the new arg0 to the original argv[0] position
-            MemoryUtil.copy((Pointer) arg0Pointer, (Pointer) firstArgPos, newArgLength);
+            UnmanagedMemoryUtil.copy((Pointer) arg0Pointer, (Pointer) firstArgPos, newArgLength);
             // Zero-out the remaining space
-            MemoryUtil.fill(((Pointer) firstArgPos).add(newArgLength), origLength.subtract(newArgLength), (byte) 0);
+            UnmanagedMemoryUtil.fill(((Pointer) firstArgPos).add(newArgLength), origLength.subtract(newArgLength), (byte) 0);
         }
 
         // Let caller know if truncation happened

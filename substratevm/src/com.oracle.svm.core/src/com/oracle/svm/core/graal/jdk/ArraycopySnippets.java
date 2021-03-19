@@ -44,12 +44,9 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
@@ -86,29 +83,30 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
         }
         DynamicHub fromHub = KnownIntrinsics.readHub(fromArray);
         DynamicHub toHub = KnownIntrinsics.readHub(toArray);
+        int fromLayoutEncoding = fromHub.getLayoutEncoding();
 
-        if (LayoutEncoding.isPrimitiveArray(fromHub.getLayoutEncoding())) {
+        if (LayoutEncoding.isPrimitiveArray(fromLayoutEncoding)) {
             if (fromArray == toArray && fromIndex < toIndex) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                primitiveCopyBackward(fromArray, fromIndex, fromArray, toIndex, length, fromHub.getLayoutEncoding());
+                JavaMemoryUtil.copyPrimitiveArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (fromHub == toHub) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                primitiveCopyForward(fromArray, fromIndex, toArray, toIndex, length, fromHub.getLayoutEncoding());
+                JavaMemoryUtil.copyPrimitiveArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 return;
             }
-        } else if (LayoutEncoding.isObjectArray(fromHub.getLayoutEncoding())) {
+        } else if (LayoutEncoding.isObjectArray(fromLayoutEncoding)) {
             if (fromArray == toArray && fromIndex < toIndex) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                objectCopyBackward(fromArray, fromIndex, fromArray, toIndex, length, fromHub.getLayoutEncoding());
+                JavaMemoryUtil.copyObjectArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (fromHub == toHub || DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                objectCopyForward(fromArray, fromIndex, toArray, toIndex, length, fromHub.getLayoutEncoding());
+                JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (LayoutEncoding.isObjectArray(toHub.getLayoutEncoding())) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                objectStoreCheckCopyForward(fromArray, fromIndex, toArray, toIndex, length);
+                JavaMemoryUtil.copyObjectArrayForwardWithStoreCheck(fromArray, fromIndex, toArray, toIndex, length);
                 return;
             }
         }
@@ -118,97 +116,6 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
     private static void boundsCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
         if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > ArrayLengthNode.arrayLength(fromArray) - length || toIndex > ArrayLengthNode.arrayLength(toArray) - length) {
             throw new ArrayIndexOutOfBoundsException();
-        }
-    }
-
-    public static void primitiveCopyForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
-        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
-        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
-        UnsignedWord size = elementSize.multiply(length);
-
-        primitiveCopyForward(fromArray, fromOffset, toArray, toOffset, size);
-    }
-
-    public static void primitiveCopyForward(Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord size) {
-        UnsignedWord i = WordFactory.zero();
-        if (size.and(1).notEqual(0)) {
-            ObjectAccess.writeByte(to, toOffset.add(i), ObjectAccess.readByte(from, fromOffset.add(i)));
-            i = i.add(1);
-        }
-        if (size.and(2).notEqual(0)) {
-            ObjectAccess.writeShort(to, toOffset.add(i), ObjectAccess.readShort(from, fromOffset.add(i)));
-            i = i.add(2);
-        }
-        if (size.and(4).notEqual(0)) {
-            ObjectAccess.writeInt(to, toOffset.add(i), ObjectAccess.readInt(from, fromOffset.add(i)));
-            i = i.add(4);
-        }
-        while (i.belowThan(size)) {
-            ObjectAccess.writeLong(to, toOffset.add(i), ObjectAccess.readLong(from, fromOffset.add(i)));
-            i = i.add(8);
-        }
-    }
-
-    private static void primitiveCopyBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
-        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
-        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
-        UnsignedWord size = elementSize.multiply(length);
-
-        if (size.and(1).notEqual(0)) {
-            size = size.subtract(1);
-            ObjectAccess.writeByte(toArray, toOffset.add(size), ObjectAccess.readByte(fromArray, fromOffset.add(size)));
-        }
-        if (size.and(2).notEqual(0)) {
-            size = size.subtract(2);
-            ObjectAccess.writeShort(toArray, toOffset.add(size), ObjectAccess.readShort(fromArray, fromOffset.add(size)));
-        }
-        if (size.and(4).notEqual(0)) {
-            size = size.subtract(4);
-            ObjectAccess.writeInt(toArray, toOffset.add(size), ObjectAccess.readInt(fromArray, fromOffset.add(size)));
-        }
-        while (size.aboveThan(0)) {
-            size = size.subtract(8);
-            ObjectAccess.writeLong(toArray, toOffset.add(size), ObjectAccess.readLong(fromArray, fromOffset.add(size)));
-        }
-    }
-
-    public static void objectCopyForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
-        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
-        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
-        UnsignedWord size = elementSize.multiply(length);
-
-        UnsignedWord copied = WordFactory.zero();
-        while (copied.belowThan(size)) {
-            BarrieredAccess.writeObject(toArray, toOffset.add(copied), BarrieredAccess.readObject(fromArray, fromOffset.add(copied)));
-            copied = copied.add(elementSize);
-        }
-    }
-
-    private static void objectCopyBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
-        UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
-        UnsignedWord elementSize = WordFactory.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
-        UnsignedWord size = elementSize.multiply(length);
-
-        UnsignedWord remaining = size;
-        while (remaining.aboveThan(0)) {
-            remaining = remaining.subtract(elementSize);
-            BarrieredAccess.writeObject(toArray, toOffset.add(remaining), BarrieredAccess.readObject(fromArray, fromOffset.add(remaining)));
-        }
-    }
-
-    public static void objectStoreCheckCopyForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
-        /*
-         * This performs also an array bounds check in every loop iteration. However, since we do a
-         * store check in every loop iteration, we are slow anyways.
-         */
-        Object[] from = (Object[]) fromArray;
-        Object[] to = (Object[]) toArray;
-        for (int i = 0; i < length; i++) {
-            to[toIndex + i] = from[fromIndex + i];
         }
     }
 

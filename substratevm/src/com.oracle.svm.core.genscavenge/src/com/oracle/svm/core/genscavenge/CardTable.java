@@ -36,7 +36,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -117,7 +117,7 @@ public final class CardTable {
     }
 
     private static void cleanTableToLimitOffset(Pointer tableStart, UnsignedWord tableLimitOffset) {
-        MemoryUtil.fill(tableStart, tableLimitOffset, (byte) CLEAN_ENTRY);
+        UnmanagedMemoryUtil.fill(tableStart, tableLimitOffset, (byte) CLEAN_ENTRY);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

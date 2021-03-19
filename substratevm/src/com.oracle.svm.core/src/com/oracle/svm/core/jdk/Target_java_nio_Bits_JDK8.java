@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -44,7 +44,7 @@ final class Target_java_nio_Bits_JDK8 {
      */
     @Substitute
     private static void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        MemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
+        JavaMemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
     }
 
     /* Ensure lazy initialization of page size happens at image runtime. */

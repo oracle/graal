@@ -40,7 +40,7 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -121,31 +121,31 @@ final class Target_Unsafe_Core {
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     private void copyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        MemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
+        JavaMemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private void copyMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        MemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
+        JavaMemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        MemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
+        JavaMemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
     }
 
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     private void setMemory(Object destBase, long destOffset, long bytes, byte bvalue) {
-        MemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
+        JavaMemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private void setMemory0(Object destBase, long destOffset, long bytes, byte bvalue) {
-        MemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
+        JavaMemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
     }
 
     @Substitute

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.core;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.ImageSingletons;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/**
- * The singleton holder of hosted options overrides. The values held by this object override those
- * in {@link HostedOptionValues}.
- * <p>
- * Unlike {@link HostedOptionValues}, this object is mutable. This allows for options to be
- * overridden programmatically in later phases.
- */
-public class HostedOptionOverrideValues {
-    private final EconomicMap<HostedOptionKey<?>, Object> overrides;
-
-    public HostedOptionOverrideValues() {
-        this.overrides = EconomicMap.create();
-    }
-
-    public static HostedOptionOverrideValues singleton() {
-        return ImageSingletons.lookup(HostedOptionOverrideValues.class);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T get(HostedOptionKey<T> key) {
-        return (T) this.overrides.get(key);
-    }
-
-    public <T> void set(HostedOptionKey<T> key, T value) {
-        this.overrides.put(key, value);
-    }
+@Retention(RetentionPolicy.SOURCE)
+@Target({ElementType.METHOD})
+public @interface IntrinsicCandidate {
 }
