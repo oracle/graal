@@ -30,6 +30,9 @@
 QUIETLY$(MX_VERBOSE)  = @
 
 CLANG?=clang
+CLANG_SO?=$(CLANG)
+CLANG_REF?=$(CLANG)
+CLANG_BC?=$(CLANG)
 CLANGXX?=clang++
 LLVM_AS?=llvm-as
 OPT?=opt

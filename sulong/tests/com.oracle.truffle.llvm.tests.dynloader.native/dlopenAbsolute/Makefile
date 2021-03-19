@@ -34,12 +34,17 @@ default: dlopenAbsolute/ref.bc dlopenAbsolute/ref.out $(LIBS)
 
 dlopenAbsolute/lib%$(SO_EXT): src/%.c dlopenAbsolute/Makefile
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
+	$(QUIETLY) $(CLANG_SO) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
 dlopenAbsolute/ref.out: LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -ldl
 dlopenAbsolute/ref.out: src/dlopentest.c dlopenAbsolute/Makefile $(LIBS)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
+	$(QUIETLY) $(CLANG_REF) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
+
+dlopenAbsolute/ref.bc: LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -ldl
+dlopenAbsolute/ref.bc: src/dlopentest.c dlopenAbsolute/Makefile $(LIBS)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG_BC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
 
 dlopenAbsolute/libone$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -LdlopenAbsolute -ltwo
 dlopenAbsolute/libone$(SO_EXT): dlopenAbsolute/libtwo$(SO_EXT)
