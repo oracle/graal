@@ -134,7 +134,8 @@ public class JfrFeature implements Feature {
             DynamicHub hub = type.getHub();
             Class<?> clazz = hub.getHostedJavaClass();
             if (!clazz.isPrimitive()) {
-                JfrTraceId.assign(clazz, hub.getTypeID());
+                // Off-set by one for error-catcher
+                JfrTraceId.assign(clazz, hub.getTypeID() + 1);
             }
         }
 

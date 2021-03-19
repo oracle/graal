@@ -120,7 +120,6 @@ public class JfrTraceId {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void assign(Class<?> clazz, int index) {
         assert clazz != null;
-        index = index + 1; // Off-set by one for error-catcher
         if (getTraceIdMap().getId(index) != -1) {
             return;
         }
