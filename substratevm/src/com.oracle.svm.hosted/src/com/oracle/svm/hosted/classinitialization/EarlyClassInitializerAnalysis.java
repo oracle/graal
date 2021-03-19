@@ -138,7 +138,11 @@ final class EarlyClassInitializerAnalysis {
         OptionValues options = HostedOptionValues.singleton();
         DebugContext debug = new Builder(options).build();
         try (DebugContext.Scope s = debug.scope("EarlyClassInitializerAnalysis", clinit)) {
-            return canInitializeWithoutSideEffects(clinit, analyzedClasses, options, debug);
+            if (canInitializeWithoutSideEffects(clinit, analyzedClasses, options, debug)) {
+                return true;
+            } else {
+                return false;
+            }
         } catch (Throwable ex) {
             throw debug.handle(ex);
         }

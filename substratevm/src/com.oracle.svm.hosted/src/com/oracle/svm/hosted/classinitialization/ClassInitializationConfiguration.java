@@ -55,7 +55,7 @@ import com.oracle.svm.core.util.UserError;
  */
 public class ClassInitializationConfiguration {
     private static final String ROOT_QUALIFIER = "";
-    private static final int MAX_NUMBER_OF_REASONS = 3;
+    private static final int MAX_NUMBER_OF_REASONS = 10;
 
     private InitializationNode root = new InitializationNode("", null, null, false);
 
@@ -70,8 +70,11 @@ public class ClassInitializationConfiguration {
     }
 
     synchronized String lookupReason(String classOrPackage) {
-        assert lookupRec(root, qualifierList(classOrPackage), null).getLeft() != null : "Path for a file should be ";
-        return String.join(" and ", lookupRec(root, qualifierList(classOrPackage), null).getLeft().reasons);
+        InitializationNode initializationNode = lookupRec(root, qualifierList(classOrPackage), null).getLeft();
+        if (initializationNode == null) {
+            return null;
+        }
+        return String.join(" and ", initializationNode.reasons);
     }
 
     private static List<String> qualifierList(String classOrPackage) {

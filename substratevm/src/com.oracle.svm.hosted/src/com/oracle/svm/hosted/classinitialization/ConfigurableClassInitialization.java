@@ -31,6 +31,7 @@ import java.lang.reflect.Proxy;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +49,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -94,6 +96,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     protected MetaAccessProvider metaAccess;
 
     private final EarlyClassInitializerAnalysis earlyClassInitializerAnalysis;
+    private Set<Class<?>> provenSafeEarly = Collections.synchronizedSet(new HashSet<>());
+    private Set<Class<?>> provenSafeLate = Collections.synchronizedSet(new HashSet<>());
 
     public ConfigurableClassInitialization(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         this.metaAccess = metaAccess;
@@ -108,9 +112,10 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
             allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
             String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
-            ReportUtils.report("initializer configuration", path, "initializer_configuration", "txt", writer -> {
+            ReportUtils.report("class initialization configuration", path, "class_initialization_configuration", "csv", writer -> {
+                writer.println("Class or Package Name, Initialization Kind, Reasons");
                 for (ClassOrPackageConfig config : allConfigs) {
-                    writer.append(config.getName()).append(" -> ").append(config.getKind().toString()).append(" reasons: ")
+                    writer.append(config.getName()).append(", ").append(config.getKind().toString()).append(", ")
                                     .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
                 }
             });
@@ -357,6 +362,29 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
     }
 
+    @Override
+    public String reasonForClass(Class<?> clazz) {
+        InitKind initKind = classInitKinds.get(clazz);
+        String reason = classInitializationConfiguration.lookupReason(clazz.getTypeName());
+        if (reason != null) {
+            return reason;
+        } else {
+            if (initKind == InitKind.BUILD_TIME) {
+                if (provenSafeEarly.contains(clazz)) {
+                    return "class proven as side-effect free before analysis";
+                } else if (provenSafeLate.contains(clazz)) {
+                    return "class proven as side-effect free after analysis";
+                } else {
+                    throw VMError.shouldNotReachHere(clazz.getTypeName() + " is initialized at build time but not specified. It must be proven as safe.");
+                }
+            } else if (initKind.isRunTime()) {
+                return "classes are initialized at run time by default";
+            } else {
+                throw VMError.shouldNotReachHere("Must be either proven or specified");
+            }
+        }
+    }
+
     private static String classInitializationTrace(Class<?> clazz) {
         return getTraceString(initializedClasses.get(clazz));
     }
@@ -546,7 +574,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     private static void checkEagerInitialization(Class<?> clazz) {
         if (clazz.isPrimitive() || clazz.isArray()) {
-            throw UserError.abort("Primitive types and array classes are initialized eagerly because initialization is side-effect free. " +
+            throw UserError.abort("Primitive types and array classes are initialized at build time because initialization is side-effect free. " +
                             "It is not possible (and also not useful) to register them for run time initialization. Culprit: %s", clazz.getTypeName());
         }
         if (clazz.isAnnotation()) {
@@ -567,7 +595,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return existing;
         }
 
-        /* Without doubt initialize all annotations. */
+        /* Initialize all annotations because we don't support parsing at run-time. */
         if (clazz.isAnnotation()) {
             forceInitializeHosted(clazz, "all annotations are initialized", false);
             return InitKind.BUILD_TIME;
@@ -581,7 +609,28 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         }
 
-        InitKind clazzResult = computeInitKindForClass(clazz);
+        if (clazz.isPrimitive()) {
+            forceInitializeHosted(clazz, "primitive types are initialized at build time", false);
+            return InitKind.BUILD_TIME;
+        }
+
+        if (clazz.isArray()) {
+            forceInitializeHosted(clazz, "arrays are initialized at build time", false);
+            return InitKind.BUILD_TIME;
+        }
+
+        if (Proxy.isProxyClass(clazz) && isProxyFromAnnotation(clazz)) {
+            forceInitializeHosted(clazz, "proxy classes are initialized at build time", false);
+            return InitKind.BUILD_TIME;
+        }
+
+        if (clazz.getTypeName().contains("$$StringConcat")) {
+            forceInitializeHosted(clazz, "string concatenation classes are initialized at build time", false);
+            return InitKind.BUILD_TIME;
+        }
+
+        InitKind specifiedInitKind = specifiedInitKindFor(clazz);
+        InitKind clazzResult = specifiedInitKind != null ? specifiedInitKind : InitKind.RUN_TIME;
 
         InitKind superResult = InitKind.BUILD_TIME;
         if (clazz.getSuperclass() != null) {
@@ -601,6 +650,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                  * class at run time (at which time the same exception is probably thrown again).
                  */
                 clazzResult = ensureClassInitialized(clazz, true);
+                if (clazzResult == InitKind.BUILD_TIME) {
+                    addProvenEarly(clazz);
+                }
             }
         }
 
@@ -658,23 +710,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         return result;
     }
 
-    private InitKind computeInitKindForClass(Class<?> clazz) {
-        if (clazz.isPrimitive() || clazz.isArray()) {
-            return InitKind.BUILD_TIME;
-        } else if (clazz.isAnnotation()) {
-            return InitKind.BUILD_TIME;
-        } else if (Proxy.isProxyClass(clazz) && isProxyFromAnnotation(clazz)) {
-            return InitKind.BUILD_TIME;
-        } else if (clazz.getTypeName().contains("$$StringConcat")) {
-            return InitKind.BUILD_TIME;
-        } else if (specifiedInitKindFor(clazz) != null) {
-            return specifiedInitKindFor(clazz);
-        } else {
-            /* The default value. */
-            return InitKind.RUN_TIME;
-        }
-    }
-
     private static boolean isProxyFromAnnotation(Class<?> clazz) {
         for (Class<?> interfaces : clazz.getInterfaces()) {
             if (interfaces.isAnnotation()) {
@@ -682,5 +717,14 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             }
         }
         return false;
+    }
+
+    void addProvenEarly(Class<?> clazz) {
+        provenSafeEarly.add(clazz);
+    }
+
+    @Override
+    public void setProvenSafeLate(Set<Class<?>> classes) {
+        provenSafeLate = new HashSet<>(classes);
     }
 }
