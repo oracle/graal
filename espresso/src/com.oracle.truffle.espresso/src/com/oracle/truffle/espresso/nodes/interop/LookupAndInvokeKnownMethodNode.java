@@ -36,6 +36,50 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 
+/**
+ * This node is a shortcut for implementing behaviors that require doing a virtual/interface lookup
+ * then an invocation of a method that is known.
+ * <p>
+ * Use cases include implementation of interop library messages that would look like
+ * 
+ * <pre>
+ * &#64;ExportMessage
+ * static class TheMessage {
+ *     
+ *     &#64;Specialization(guards = "receiver.getKlass() == cachedKlass")
+ *     static Object doCached(StaticObject receiver, Object[] arguments,
+ *                     &#64;Cached("receiver.getKlass()") Klass cachedKlass
+ *                     &#64;Cached("doLookup(receiver)") Method cachedMethod
+ *                     &#64;Cached InvokeEspressoNode invoke) {
+ *         invoke.execute(cachedMethod, receiver, arguments);
+ *     }
+ *     
+ *     &#64;Specialization
+ *     static Object doUncached(StaticObject receiver, Object[] arguments
+ *                     &#64;Cached InvokeEspressoNode invoke) {
+ *         Method method = doLookup(receiver);
+ *         invoke.execute(method, receiver, arguments);
+ *     }
+ *     
+ *     static Method doLookup(StaticObject receiver) {
+ *         getInteropKlass(receiver).itableLookup(getMeta().a_class, getMeta().a_method);
+ *     }
+ * }
+ * </pre>
+ * 
+ * which can be replaced with:
+ * 
+ * <pre>
+ * static LookupAndInvokeKnownMethodNode getLookup() {
+ *     return LookupAndInvokeKnownMethodNodeGen.create(getMeta().a_class, getMeta().a_method);
+ * }
+ * 
+ * static Object theMessage(StaticObject receiver, Object[] arguments,
+ *                 &#64;Cached("getLookup()") LookupAndInvokeKnownMethodNode invoke) {
+ *     return invoke.execute(receiver, arguments);
+ * }
+ * </pre>
+ */
 public abstract class LookupAndInvokeKnownMethodNode extends Node {
     static final int LIMIT = 3;
 
