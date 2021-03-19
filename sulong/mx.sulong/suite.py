@@ -1107,6 +1107,7 @@ suite = {
         "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
       "results": [
+        "dlopenAbsolute",
         "dlopenLocator",
       ],
       "testProject" : True,
