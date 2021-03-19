@@ -120,7 +120,7 @@ public class SubstitutionReportFeature implements Feature {
 
     private void reportSubstitutions() {
         ReportUtils.report("substitutions performed by native-image", "reports", "substitutions", "csv", pw -> {
-            pw.println("location , category (type/method/field) , original , annotated");
+            pw.println("location, category (type/method/field), original, annotated");
             for (Map.Entry<String, Substitutions> g : substitutions.entrySet()) {
                 for (Map.Entry<ResolvedJavaType, ResolvedJavaType> e : g.getValue().getSubstitutedTypes().entrySet()) {
                     pw.println(formatSubstitution(g.getKey(), "type", e.getKey(), e.getValue(), t -> t.toJavaName(true)));
