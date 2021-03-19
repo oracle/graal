@@ -56,6 +56,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `getHashValuesIterator(Object)` to return the hash values iterator.
 * Added `TypeDescriptor.HASH` and `TypeDescriptor.hash(TypeDescriptor, TypeDescriptor)` representing hash map types in the TCK.
 * Added support for Truffle safepoints and thread local actions. See `TruffleSafepoint` and `ThreadLocalAction`. There is also a [tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md) that explains how to adopt and use in language or tool implementations.
+* Make the Truffle NFI more modular.
+    * Provide option `--language:nfi=none` for disabling native access via the Truffle NFI in native-image even if the NFI is included in the image (e.g. as dependency of another language).
+    * Moved `trufflenfi.h` header from the JDK root include directory into the NFI language home (`languages/nfi/include`).
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the exception interop messages are executed without a context being entered. The event listeners called during the context enter are:
