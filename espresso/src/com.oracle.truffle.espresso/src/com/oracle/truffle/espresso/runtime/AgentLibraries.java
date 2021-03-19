@@ -70,6 +70,10 @@ final class AgentLibraries implements ContextAccess {
         return null;
     }
 
+    boolean isEmpty() {
+        return agents.isEmpty();
+    }
+
     void initialize() {
         Object ret;
 
