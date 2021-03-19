@@ -124,6 +124,7 @@ public class JDKInitializationFeature implements Feature {
         classInitSupport.rerunInitialization("com.sun.jndi.dns.DnsClient", "Contains Random references, therefore can't be included in the image heap.");
         classInitSupport.rerunInitialization("sun.net.www.protocol.http.DigestAuthentication$Parameters", "Contains Random references, therefore can't be included in the image heap.");
         classInitSupport.rerunInitialization("sun.security.krb5.KrbServiceLocator", "Contains Random references, therefore can't be included in the image heap.");
+        classInitSupport.rerunInitialization("com.sun.jndi.ldap.ServiceLocator", "Contains Random references, therefore can't be included in the image heap.");
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             classInitSupport.rerunInitialization("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap.");
         }
