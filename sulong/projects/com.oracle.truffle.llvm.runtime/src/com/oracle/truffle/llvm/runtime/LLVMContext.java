@@ -139,6 +139,8 @@ public final class LLVMContext {
     private final LLVMNativePointer sigIgn;
     private final LLVMNativePointer sigErr;
 
+    private LibraryLocator mainLibraryLocator;
+
     // dlerror state
     private int currentDLError;
 
@@ -310,6 +312,12 @@ public final class LLVMContext {
         CompilerAsserts.partialEvaluationConstant(index);
         return contextExtensions[index];
     }
+
+    public LibraryLocator getMainLibraryLocator() {
+        return mainLibraryLocator;
+    }
+
+    public void setMainLibraryLocator(LibraryLocator libraryLocator) { this.mainLibraryLocator = libraryLocator;}
 
     public <T extends ContextExtension> T getContextExtension(Class<T> type) {
         CompilerAsserts.neverPartOfCompilation();
