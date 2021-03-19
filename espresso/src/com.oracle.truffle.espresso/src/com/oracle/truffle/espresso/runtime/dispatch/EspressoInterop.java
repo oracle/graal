@@ -83,7 +83,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public class EspressoInterop extends BaseInterop {
     // region ### is/as checks/conversions
 
-    static Object[] EMPTY_ARGS = new Object[]{};
+    static final Object[] EMPTY_ARGS = new Object[]{};
 
     public static Meta getMeta() {
         CompilerAsserts.neverPartOfCompilation();
