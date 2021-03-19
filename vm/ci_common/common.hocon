@@ -111,8 +111,6 @@ fastr: {
   }
   downloads: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
-    # TODO: for the time being, build from the sources...
-    # FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "8", platformspecific: true },
   }
 }
 
@@ -131,7 +129,9 @@ fastr_linux: ${fastr} {
     FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
   }
   downloads: {
-    BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "4.8.5", platformspecific: true }
+    BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "4.8.5", platformspecific: true },
+    # TODO: should be use on Darwin too, i.e., moved to "fastr -> downloads"
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "10", platformspecific: true },
   }
 }
 
