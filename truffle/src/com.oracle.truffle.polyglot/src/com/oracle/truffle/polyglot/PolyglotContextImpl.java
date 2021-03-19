@@ -551,7 +551,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @TruffleBoundary
-    PolyglotContextImpl enterThreadChanged(Node safepointLocation, boolean pollSafepoint) {
+    PolyglotContextImpl enterThreadChanged(Node safepointLocation, boolean enterReverted, boolean pollSafepoint) {
         PolyglotThreadInfo enteredThread = null;
         PolyglotContextImpl prev = null;
         try {
@@ -559,6 +559,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             boolean needsInitialization = false;
             synchronized (this) {
                 PolyglotThreadInfo threadInfo = getCachedThreadInfo();
+                if (enterReverted && threadInfo.getEnteredCount() == 0) {
+                    threadLocalActions.notifyThreadActivation(threadInfo, false);
+                }
                 checkClosed();
                 assert threadInfo != null;
 

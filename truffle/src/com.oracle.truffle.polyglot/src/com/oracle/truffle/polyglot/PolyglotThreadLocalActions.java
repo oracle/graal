@@ -191,6 +191,7 @@ final class PolyglotThreadLocalActions {
     }
 
     Future<Void> submit(Thread[] threads, String originId, ThreadLocalAction action, boolean needsEnter) {
+        TL_HANDSHAKE.testSupport();
         Objects.requireNonNull(action);
         if (threads != null) {
             for (int i = 0; i < threads.length; i++) {
