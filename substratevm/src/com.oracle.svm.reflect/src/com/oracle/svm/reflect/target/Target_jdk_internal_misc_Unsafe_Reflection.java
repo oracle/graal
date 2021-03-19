@@ -63,6 +63,11 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
 
     @Substitute
     public long staticFieldOffset(Target_java_lang_reflect_Field field) {
+        /*
+         * Since we store the offset in the `offset` field, which is computed
+         * through `FieldOffsetComputer#compute`, the implementation for
+         * this is the same as `objectFieldOffset` method
+         */
         return FieldUtils.getFieldOffset(field);
     }
 
