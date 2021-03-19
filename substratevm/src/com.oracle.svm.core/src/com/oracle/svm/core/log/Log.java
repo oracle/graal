@@ -323,6 +323,12 @@ public abstract class Log implements AutoCloseable {
     }
 
     /**
+     * Reset the indentation to 0.
+     */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
+    public abstract Log resetIndentation();
+
+    /**
      * Prints the strings "true" or "false" depending on the value.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
@@ -557,6 +563,11 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log redent(boolean addOrRemove) {
+            return this;
+        }
+
+        @Override
+        public Log resetIndentation() {
             return this;
         }
     }
