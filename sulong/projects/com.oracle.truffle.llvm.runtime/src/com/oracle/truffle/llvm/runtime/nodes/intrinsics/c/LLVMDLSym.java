@@ -79,8 +79,8 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
 
     @Specialization
     protected Object doNative(@SuppressWarnings("unused") LLVMNativePointer libraryHandle,
-                          @SuppressWarnings("unused") LLVMPointer symbol,
-                          @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr) {
+                    @SuppressWarnings("unused") LLVMPointer symbol,
+                    @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr) {
         return LLVMNativePointer.createNull();
     }
 

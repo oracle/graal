@@ -219,9 +219,9 @@ public final class SulongLibrary implements TruffleObject {
          */
         @Specialization(guards = {"library.main == cachedMain", "cachedMain != null"})
         static Object doCached(SulongLibrary library, Object[] args,
-                               @Cached("library.main") @SuppressWarnings("unused") CachedMainFunction cachedMain,
-                               @Cached("create(cachedMain.getMainCallTarget())") DirectCallNode call,
-                               @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                        @Cached("library.main") @SuppressWarnings("unused") CachedMainFunction cachedMain,
+                        @Cached("create(cachedMain.getMainCallTarget())") DirectCallNode call,
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
             ctx.setMainLibraryLocator(library.libraryLocator);
             return call.call(args);
         }

@@ -49,7 +49,8 @@ public final class LLVMParserRuntime {
     private final List<LLVMSourceFileReference> sourceFileReferences;
     private final LibraryLocator locator;
 
-    public LLVMParserRuntime(LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID, TruffleFile file, String libName, List<LLVMSourceFileReference> sourceFileReferences, LibraryLocator locator) {
+    public LLVMParserRuntime(LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID, TruffleFile file, String libName, List<LLVMSourceFileReference> sourceFileReferences,
+                    LibraryLocator locator) {
         this.fileScope = fileScope;
         this.nodeFactory = nodeFactory;
         this.bitcodeID = bitcodeID;
@@ -79,7 +80,9 @@ public final class LLVMParserRuntime {
         return bitcodeID;
     }
 
-    public LibraryLocator getLocator() {return locator;}
+    public LibraryLocator getLocator() {
+        return locator;
+    }
 
     public List<LLVMSourceFileReference> getSourceFileReferences() {
         return sourceFileReferences;

@@ -95,9 +95,9 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
 
     @Specialization
     protected Object doOp(Object file,
-                          int flag,
-                          @Cached() LLVMReadStringNode readStr,
-                          @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                    int flag,
+                    @Cached() LLVMReadStringNode readStr,
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         // Default settings for RTLD flags.
         RTLDFlags globalOrLocal = RTLDFlags.RTLD_LOCAL;
         // Check for flag settings for each platform.

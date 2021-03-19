@@ -317,7 +317,9 @@ public final class LLVMContext {
         return mainLibraryLocator;
     }
 
-    public void setMainLibraryLocator(LibraryLocator libraryLocator) { this.mainLibraryLocator = libraryLocator;}
+    public void setMainLibraryLocator(LibraryLocator libraryLocator) {
+        this.mainLibraryLocator = libraryLocator;
+    }
 
     public <T extends ContextExtension> T getContextExtension(Class<T> type) {
         CompilerAsserts.neverPartOfCompilation();
