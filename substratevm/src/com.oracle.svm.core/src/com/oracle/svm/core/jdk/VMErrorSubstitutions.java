@@ -34,6 +34,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.LogHandlerExtension;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -102,7 +103,7 @@ public class VMErrorSubstitutions {
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
         VMErrorSubstitutions.shutdown(callerIP, msg, ex);
-        return null;
+        throw UnreachableNode.unreachable();
     }
 
     @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
