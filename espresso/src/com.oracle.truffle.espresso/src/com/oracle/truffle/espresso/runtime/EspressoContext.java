@@ -581,7 +581,13 @@ public final class EspressoContext {
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.JavaAgent)) {
             agents.registerAgent("instrument", getEnv().getOptions().get(EspressoOptions.JavaAgent), false);
         }
-        agents.initialize();
+        if (getEnv().getOptions().get(EspressoOptions.EnableAgents)) {
+            agents.initialize();
+        } else {
+            if (!agents.isEmpty()) {
+                getLogger().warning("Agents support is currently disabled in Espresso. Ignoring passed agent options.");
+            }
+        }
     }
 
     private void initVmProperties() {
