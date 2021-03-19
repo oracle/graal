@@ -1005,8 +1005,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
             acceptsBuilder.string("dynamicDispatch_.accepts(" + receiverName + ") && ");
 
-            boolean finalClass = hasFinalDynamicDispatch(libraryExports);
-
             acceptsBuilder.string("dynamicDispatch_.dispatch(" + receiverName + ")");
             acceptsBuilder.string(" == ");
 
