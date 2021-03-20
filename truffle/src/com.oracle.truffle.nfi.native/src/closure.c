@@ -349,7 +349,7 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_ClosureNativePointer_fre
     struct closure_data *data = (struct closure_data *) ptr;
     (*env)->DeleteWeakGlobalRef(env, data->callTarget);
     if (data->receiver) {
-        (*env)->DeleteWeakGlobalRef(env, data->callTarget);
+        (*env)->DeleteWeakGlobalRef(env, data->receiver);
     }
     ffi_closure_free(data);
 }
