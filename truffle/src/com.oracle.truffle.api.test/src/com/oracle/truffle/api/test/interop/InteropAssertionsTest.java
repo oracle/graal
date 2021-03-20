@@ -1113,6 +1113,8 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         Predicate<Object> modifiable;
         Predicate<Object> insertable;
         Predicate<Object> removeable;
+        Predicate<Object> writable;
+        Predicate<Object> existing;
         Supplier<Long> size;
         Map<Object, Object> data;
         Supplier<Object> iterator;
@@ -1259,6 +1261,24 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         }
 
         @ExportMessage
+        public boolean isHashEntryWritable(Object key) {
+            if (writable != null) {
+                return writable.test(key);
+            } else {
+                return isHashEntryModifiable(key) || isHashEntryInsertable(key);
+            }
+        }
+
+        @ExportMessage
+        public boolean isHashEntryExisting(Object key) {
+            if (existing != null) {
+                return existing.test(key);
+            } else {
+                return isHashEntryReadable(key) || isHashEntryModifiable(key) || isHashEntryRemovable(key);
+            }
+        }
+
+        @ExportMessage
         @SuppressWarnings("static-method")
         boolean hasLanguage() {
             return true;
@@ -1377,6 +1397,30 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         hashTest.insertable = (k) -> true;
         hashTest.readable = (k) -> true;
         assertFails(() -> hashLib.isHashEntryInsertable(hashTest, 1), AssertionError.class);
+    }
+
+    @Test
+    public void testIsHashEntryExisting() {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        assertFalse(hashLib.isHashEntryExisting(hashTest, 1));
+        hashTest.modifiable = (k) -> true;
+        assertTrue(hashLib.isHashEntryExisting(hashTest, 1));
+        hashTest.modifiable = null;
+        hashTest.existing = (k) -> true;
+        assertFails(() -> hashLib.isHashEntryExisting(hashTest, 1), AssertionError.class);
+    }
+
+    @Test
+    public void testIsHashEntryWritable() {
+        HashTest hashTest = new HashTest();
+        InteropLibrary hashLib = createLibrary(InteropLibrary.class, hashTest);
+        assertTrue(hashLib.isHashEntryWritable(hashTest, 1));
+        hashTest.insertable = (k) -> false;
+        hashTest.modifiable = (k) -> false;
+        assertFalse(hashLib.isHashEntryWritable(hashTest, 1));
+        hashTest.writable = (k) -> true;
+        assertFails(() -> hashLib.isHashEntryWritable(hashTest, 1), AssertionError.class);
     }
 
     @Test
