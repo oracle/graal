@@ -290,6 +290,14 @@ full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${custo
 ruby_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${custom_vm_darwin}
 full_vm_build_darwin: ${ruby_vm_build_darwin} ${fastr_darwin} ${graalpython_darwin}
 
+libgraal_build_ea_only: [mx,
+    --env, ${libgraal_env},
+    # enable ea asserts in the image building code
+    "--extra-image-builder-argument=-J-ea",
+    # enable ea asserts in the generated libgraal
+    "--extra-image-builder-argument=-ea",
+    build
+]
 libgraal_build: [mx,
     --env, ${libgraal_env},
     # enable all asserts in the image building code
@@ -309,15 +317,14 @@ libgraal_compiler: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
   timelimit: "1:00:00"
   targets: [gate]
 }
-
 libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
   environment: {
     # The Truffle TCK tests run as a part of Truffle TCK gate
     TEST_LIBGRAAL_EXCLUDE: "com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.*"
   }
   run: [
-    # enable asserts in the JVM building the image and enable asserts in the resulting native image
-    ${libgraal_build}
+    # -ea assertions are enough to keep execution time reasonable
+    ${libgraal_build_ea_only}
     [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
   ]
   logs: ${common_vm.logs} ["*/graal-compiler.log"]
