@@ -64,13 +64,12 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
     @Substitute
     public long staticFieldOffset(Target_java_lang_reflect_Field field) {
         /*
-         * Since we store the offset in the `offset` field, which is computed
-         * through `FieldOffsetComputer#compute`, the implementation for
-         * this is the same as `objectFieldOffset` method
+         * Since we store the offset in the `offset` field, which is computed through
+         * `FieldOffsetComputer#compute`, the implementation for this is the same as
+         * `objectFieldOffset` method
          */
         return FieldUtils.getFieldOffset(field);
     }
-
 
     private static class FieldUtils {
         private static long getFieldOffset(Target_java_lang_reflect_Field field) {
@@ -78,12 +77,10 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
             if (offset > 0) {
                 return offset;
             }
-            throw VMError.unsupportedFeature(
-            "The offset of " + field + " is accessed without the field being first registered as unsafe accessed. " +
-                  "Please register the field as unsafe accessed. You can do so with a reflection configuration that " +
-                  "contains an entry for the field with the attribute \"allowUnsafeAccess\": true. Such a configuration " +
-                  "file can be generated for you. Read BuildConfiguration.md and Reflection.md for details."
-            );
+            throw VMError.unsupportedFeature("The offset of " + field + " is accessed without the field being first registered as unsafe accessed. " +
+                            "Please register the field as unsafe accessed. You can do so with a reflection configuration that " +
+                            "contains an entry for the field with the attribute \"allowUnsafeAccess\": true. Such a configuration " +
+                            "file can be generated for you. Read BuildConfiguration.md and Reflection.md for details.");
         }
     }
 }
