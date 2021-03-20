@@ -794,6 +794,12 @@ public class NativeImage {
             addImageBuilderJavaArgs("-Djava.awt.printerjob=sun.print.PSPrinterJob");
         }
 
+        if (OS.getCurrent() == OS.WINDOWS && JavaVersionUtil.JAVA_SPEC >= 11) {
+            addImageBuilderJavaArgs("-Dawt.toolkit=sun.awt.windows.WToolkit");
+            addImageBuilderJavaArgs("-Djava.awt.graphicsenv=sun.awt.Win32GraphicsEnvironment");
+            addImageBuilderJavaArgs("-Djava.awt.printerjob=sun.awt.windows.WPrinterJob");
+        }
+
         /*
          * The presence of CDS and custom system class loaders disables the use of archived
          * non-system class and and triggers a warning.
