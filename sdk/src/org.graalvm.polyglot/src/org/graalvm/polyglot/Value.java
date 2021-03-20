@@ -294,6 +294,7 @@ public final class Value {
      * described in {@link Context#asValue(Object)}.
      *
      * @throws ArrayIndexOutOfBoundsException if the array index does not exist.
+     * @throws ClassCastException if the provided value type is not allowed to be written.
      * @throws UnsupportedOperationException if the value does not have any
      *             {@link #hasArrayElements() array elements} or if the index exists but is not
      *             modifiable.
@@ -771,6 +772,7 @@ public final class Value {
      * @throws UnsupportedOperationException if the value does not have any {@link #hasMembers()
      *             members}, the key does not exist and new members cannot be added, or the existing
      *             member is not modifiable.
+     * @throws IllegalArgumentException if the provided value type is not allowed to be written.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the identifier is null.
      * @since 19.0

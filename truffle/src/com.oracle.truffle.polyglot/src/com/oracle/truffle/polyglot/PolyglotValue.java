@@ -1277,9 +1277,21 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @TruffleBoundary
-    protected static RuntimeException invalidMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
-        String message = String.format("Invalid member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
-        throw PolyglotEngineException.illegalArgument(message);
+    protected static RuntimeException nonReadableMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
+        String message = String.format("Non readable or non-existent member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    protected static RuntimeException nonWritableMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
+        String message = String.format("Non writable or non-existent member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    protected static RuntimeException nonRemovableMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
+        String message = String.format("Non removable or non-existent member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
     }
 
     @TruffleBoundary
@@ -2861,7 +2873,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     throw putMemberUnsupported(context, receiver);
                 } catch (UnknownIdentifierException e) {
                     unknown.enter();
-                    throw invalidMemberKey(context, receiver, key);
+                    throw nonWritableMemberKey(context, receiver, key);
                 } catch (UnsupportedTypeException e) {
                     invalidValue.enter();
                     throw invalidMemberValue(context, receiver, key, value);
@@ -2899,14 +2911,20 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     value = Boolean.TRUE;
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    if (!objects.hasMembers(receiver) || objects.isMemberExisting(receiver, key)) {
+                    if (!objects.hasMembers(receiver)) {
                         throw removeMemberUnsupported(context, receiver);
+                    } else if (objects.isMemberExisting(receiver, key)) {
+                        throw nonRemovableMemberKey(context, receiver, key);
                     } else {
                         value = Boolean.FALSE;
                     }
                 } catch (UnknownIdentifierException e) {
                     unknown.enter();
-                    value = Boolean.FALSE;
+                    if (objects.isMemberExisting(receiver, key)) {
+                        throw nonRemovableMemberKey(context, receiver, key);
+                    } else {
+                        value = Boolean.FALSE;
+                    }
                 }
                 return value;
             }
@@ -3260,7 +3278,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     throw invokeUnsupported(context, receiver, key);
                 } catch (UnknownIdentifierException e) {
                     unknownIdentifier.enter();
-                    throw invalidMemberKey(context, receiver, key);
+                    throw nonReadableMemberKey(context, receiver, key);
                 } catch (UnsupportedTypeException e) {
                     invalidArgument.enter();
                     throw invalidInvokeArgumentType(context, receiver, key, e);
