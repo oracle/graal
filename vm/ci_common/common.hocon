@@ -111,6 +111,7 @@ fastr: {
   }
   downloads: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "11", platformspecific: true },
   }
 }
 
@@ -130,8 +131,6 @@ fastr_linux: ${fastr} {
   }
   downloads: {
     BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "4.8.5", platformspecific: true },
-    # TODO: should be use on Darwin too, i.e., moved to "fastr -> downloads"
-    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "10", platformspecific: true },
   }
 }
 
