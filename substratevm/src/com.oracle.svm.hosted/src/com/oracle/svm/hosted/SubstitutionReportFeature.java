@@ -36,6 +36,8 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -126,21 +128,13 @@ public class SubstitutionReportFeature implements Feature {
                     pw.println(formatSubstitution(g.getKey(), "type", e.getKey(), e.getValue(), t -> t.toJavaName(true)));
                 }
                 for (Map.Entry<ResolvedJavaMethod, ResolvedJavaMethod> e : g.getValue().getSubstitutedMethods().entrySet()) {
-                    pw.println(formatSubstitution(g.getKey(), "method", e.getKey(), e.getValue(), this::formatMethod));
+                    pw.println(formatSubstitution(g.getKey(), "method", e.getKey(), e.getValue(), m -> m.format("%H#%n")));
                 }
                 for (Map.Entry<ResolvedJavaField, ResolvedJavaField> e : g.getValue().getSubstitutedFields().entrySet()) {
-                    pw.println(formatSubstitution(g.getKey(), "field", e.getKey(), e.getValue(), this::formatField));
+                    pw.println(formatSubstitution(g.getKey(), "field", e.getKey(), e.getValue(), f -> f.format("%H.%n")));
                 }
             }
         });
-    }
-
-    private String formatMethod(ResolvedJavaMethod method) {
-        return method.getDeclaringClass().toJavaName(true) + "#" + method.getName();
-    }
-
-    private String formatField(ResolvedJavaField field) {
-        return field.getDeclaringClass().toJavaName(true) + "." + field.getName();
     }
 
     private static String getTypeClassFileLocation(ResolvedJavaType type) {
@@ -154,9 +148,11 @@ public class SubstitutionReportFeature implements Feature {
     }
 
     private static class Substitutions {
-        private final Map<ResolvedJavaType, ResolvedJavaType> substitutedTypes = new TreeMap<>(new ResolvedJavaTypeComparator());
-        private final Map<ResolvedJavaMethod, ResolvedJavaMethod> substitutedMethods = new TreeMap<>(new ResolvedJavaMethodComparator());
-        private final Map<ResolvedJavaField, ResolvedJavaField> substitutedFields = new TreeMap<>(new ResolvedJavaFieldComparator());
+        private final Map<ResolvedJavaType, ResolvedJavaType> substitutedTypes = new TreeMap<>(Comparator.comparing(t -> t.toJavaName(true)));
+        private final Map<ResolvedJavaMethod, ResolvedJavaMethod> substitutedMethods = new TreeMap<>(
+                        Comparator.comparing((ResolvedJavaMethod m) -> m.getDeclaringClass().toJavaName(true)).thenComparing(JavaMethod::getName));
+        private final Map<ResolvedJavaField, ResolvedJavaField> substitutedFields = new TreeMap<>(
+                        Comparator.comparing((ResolvedJavaField f) -> f.getDeclaringClass().toJavaName(true)).thenComparing(JavaField::getName));
 
         public void addType(SubstitutionType type) {
             substitutedTypes.put(type.getOriginal(), type.getAnnotated());
@@ -180,29 +176,6 @@ public class SubstitutionReportFeature implements Feature {
 
         public Map<ResolvedJavaField, ResolvedJavaField> getSubstitutedFields() {
             return substitutedFields;
-        }
-
-        private static class ResolvedJavaTypeComparator implements Comparator<ResolvedJavaType> {
-            @Override
-            public int compare(ResolvedJavaType t1, ResolvedJavaType t2) {
-                return t1.toJavaName(true).compareTo(t2.toJavaName(true));
-            }
-        }
-
-        private static class ResolvedJavaMethodComparator implements Comparator<ResolvedJavaMethod> {
-            @Override
-            public int compare(ResolvedJavaMethod m1, ResolvedJavaMethod m2) {
-                int cmp = m1.getDeclaringClass().toJavaName(true).compareTo(m2.getDeclaringClass().toJavaName(true));
-                return cmp != 0 ? cmp : m1.getName().compareTo(m2.getName());
-            }
-        }
-
-        private static class ResolvedJavaFieldComparator implements Comparator<ResolvedJavaField> {
-            @Override
-            public int compare(ResolvedJavaField f1, ResolvedJavaField f2) {
-                int cmp = f1.getDeclaringClass().toJavaName(true).compareTo(f2.getDeclaringClass().toJavaName(true));
-                return cmp != 0 ? cmp : f1.getName().compareTo(f2.getName());
-            }
         }
     }
 }
