@@ -432,24 +432,12 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    void leaveThread(PolyglotContextImpl prev, PolyglotThread thread) {
+    void leaveAndDisposePolyglotThread(PolyglotContextImpl prev, PolyglotThread thread) {
         assert isInitialized();
-        assert Thread.currentThread() == thread;
         synchronized (context) {
-            Map<Thread, PolyglotThreadInfo> seenThreads = context.getSeenThreads();
-            PolyglotThreadInfo info = seenThreads.get(thread);
-            if (info == null) {
-                // already disposed
-                return;
-            }
-            for (PolyglotLanguageContext languageContext : context.contexts) {
-                if (languageContext.isInitialized()) {
-                    LANGUAGE.disposeThread(languageContext.env, thread);
-                }
-            }
-            lazy.activePolyglotThreads.remove(thread);
-            language.engine.leave(prev, context);
-            seenThreads.remove(thread);
+            context.leaveAndDisposeThread(prev, thread);
+            boolean removed = lazy.activePolyglotThreads.remove(thread);
+            assert removed : "thread was not removed";
         }
         EngineAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.creatorTruffleContext, thread);
     }
@@ -605,9 +593,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     }
                     initialized = true; // Allow language use during initialization
                     try {
-                        if (!context.inContextPreInitialization) {
-                            LANGUAGE.initializeThread(env, Thread.currentThread());
-                        }
+                        LANGUAGE.initializeThread(env, Thread.currentThread());
                         LANGUAGE.postInitEnv(env);
 
                         if (!context.isSingleThreaded()) {
