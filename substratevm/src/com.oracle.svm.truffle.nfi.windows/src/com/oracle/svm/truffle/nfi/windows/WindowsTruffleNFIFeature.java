@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ import com.oracle.svm.core.windows.WindowsUtils;
 import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
-import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError;
+import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
 
@@ -80,7 +80,7 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
         HMODULE dlhandle = LibLoaderAPI.LoadLibraryA(dllPathPtr);
         if (dlhandle.isNull()) {
             CompilerDirectives.transferToInterpreter();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath)), RuntimeException.class);
+            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath)), RuntimeException.class);
         }
         return dlhandle.rawValue();
     }
@@ -107,7 +107,7 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
 
         if (ret.isNull()) {
             CompilerDirectives.transferToInterpreter();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(name)), RuntimeException.class);
+            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(name)), RuntimeException.class);
         }
         return ret.rawValue();
     }

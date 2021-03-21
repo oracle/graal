@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -571,7 +571,7 @@ def check_filename_length(args):
 
 COPYRIGHT_HEADER_UPL = """\
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -828,9 +828,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    truffle_jars=['truffle:TRUFFLE_NFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI', 'truffle:TRUFFLE_NFI_LIBFFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
-    support_headers_distributions=['truffle:TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT'],
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,11 @@ import com.oracle.svm.driver.NativeImage.BuildConfiguration;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
+    private final HashSet<MacroOption> addedCheck;
+
     MacroOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
+        addedCheck = new HashSet<>();
     }
 
     @Override
@@ -48,7 +51,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String headArg = args.peek();
         boolean consumed = false;
         try {
-            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, new HashSet<>(), null, enabledOption -> applyEnabled(enabledOption, args.argumentOrigin));
+            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, addedCheck, null, enabledOption -> applyEnabled(enabledOption, args.argumentOrigin));
         } catch (VerboseInvalidMacroException e1) {
             NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
         } catch (InvalidMacroException | AddedTwiceException e) {

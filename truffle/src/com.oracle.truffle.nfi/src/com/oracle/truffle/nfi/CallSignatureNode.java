@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,7 +62,7 @@ import com.oracle.truffle.nfi.ConvertTypeNode.OptimizedConvertTypeNode;
 import com.oracle.truffle.nfi.NFISignature.ArgsCachedState;
 import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 
 abstract class CallSignatureNode extends Node {
 

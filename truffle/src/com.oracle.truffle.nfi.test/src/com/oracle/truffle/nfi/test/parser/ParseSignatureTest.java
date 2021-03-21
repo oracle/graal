@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.test.parser.ParseSignatureTestFactory.InlineCacheNodeGen;
 import com.oracle.truffle.nfi.test.parser.backend.NFITestBackend.ArrayType;
 import com.oracle.truffle.nfi.test.parser.backend.TestCallInfo;

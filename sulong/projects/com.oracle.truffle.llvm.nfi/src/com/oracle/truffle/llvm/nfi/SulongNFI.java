@@ -43,12 +43,12 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.nfi.spi.NFIBackend;
-import com.oracle.truffle.nfi.spi.NFIBackendFactory;
-import com.oracle.truffle.nfi.spi.NFIBackendLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackendTools;
-import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.backend.spi.NFIBackend;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
+import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import java.io.IOException;
 
 @TruffleLanguage.Registration(id = "internal/nfi-llvm", name = "nfi-llvm", version = "6.0.0", internal = true, interactive = false, //
