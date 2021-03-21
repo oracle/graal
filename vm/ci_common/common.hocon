@@ -140,7 +140,7 @@ fastr_darwin: ${fastr} {
   }
   environment:  {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
-    FASTR_FC: "/cm/shared/apps/gcc/10.2.0/bin/gfortran"
+    FASTR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
     GNUR_HOME_BINARY: "/cm/shared/apps/gnur/4.0.3-gcc10.2-pcre8.42/lib/R/"
