@@ -231,7 +231,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         mainLoopBegin.setUnrollFactor(mainLoopBegin.getUnrollFactor() * 2);
-        mainLoopBegin.setLoopFrequency(Math.max(1.0, mainLoopBegin.loopFrequency() / 2));
+        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().scaleFrequency(1 / 2.0));
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "LoopPartialUnroll %s", loop);
 
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);

@@ -240,7 +240,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             Constant hub = providers.getConstantReflection().asObjectHub(receiverClass);
             ConstantNode hubNode = kit.createConstant(hub, JavaKind.Object);
             ObjectEqualsNode isNewObjectCall = kit.unique(new ObjectEqualsNode(unboxedReceiver, hubNode));
-            kit.startIf(isNewObjectCall, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+            kit.startIf(isNewObjectCall, BranchProbabilityNode.FAST_PATH_PROFILE);
             kit.thenPart();
             ValueNode createdObjectOrNull = support.createNewObjectCall(kit, invokeMethod, state, args);
             kit.elsePart();
@@ -323,7 +323,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
     private static PiNode typeChecked(JNIGraphKit kit, ValueNode uncheckedValue, ResolvedJavaType type, List<EndNode> illegalTypeEnds, boolean isReceiver) {
         ValueNode value = uncheckedValue;
         if (isReceiver && !StampTool.isPointerNonNull(value)) {
-            IfNode ifNode = kit.startIf(kit.unique(IsNullNode.create(value)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+            IfNode ifNode = kit.startIf(kit.unique(IsNullNode.create(value)), BranchProbabilityNode.SLOW_PATH_PROFILE);
             kit.thenPart();
             kit.append(kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.NULL_POINTER, false));
             illegalTypeEnds.add(kit.append(new EndNode()));
@@ -333,7 +333,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         }
         TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
         LogicNode instanceOf = kit.append(InstanceOfNode.createAllowNull(typeRef, value, null, null));
-        IfNode ifNode = kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        IfNode ifNode = kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROFILE);
         kit.elsePart();
         ConstantNode typeNode = kit.createConstant(kit.getConstantReflection().asJavaClass(type), JavaKind.Object);
         kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.CLASS_CAST, false, value, typeNode);

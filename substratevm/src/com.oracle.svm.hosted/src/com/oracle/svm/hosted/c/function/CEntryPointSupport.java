@@ -171,7 +171,7 @@ public class CEntryPointSupport implements GraalFeature {
                 DeadEndNode deadEndNode = b.add(new DeadEndNode());
                 AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(deadEndNode);
                 if (prevBegin != null && prevBegin.predecessor() instanceof IfNode) {
-                    ((IfNode) prevBegin.predecessor()).setProbability(prevBegin, BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY);
+                    ((IfNode) prevBegin.predecessor()).setProbability(prevBegin, BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROFILE);
                 }
                 return true;
             }

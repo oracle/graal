@@ -27,10 +27,11 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 
 /**
  * The {@code ControlSplitNode} is a base class for all instructions that split the control flow
- * (ie. have more than one successor).
+ * (i.e., have more than one successor).
  */
 @NodeInfo
 public abstract class ControlSplitNode extends FixedNode {
@@ -44,9 +45,11 @@ public abstract class ControlSplitNode extends FixedNode {
 
     /**
      * Attempts to set the probability for the given successor to the passed value (which has to be
-     * in the range of 0.0 and 1.0). Returns whether setting the probability was successful.
+     * in the range of 0.0 and 1.0). Returns whether setting the probability was successful. When
+     * successful, sets the source of the knowledge about probabilities according to the
+     * {@code profileData}'s profile source.
      */
-    public abstract boolean setProbability(AbstractBeginNode successor, double value);
+    public abstract boolean setProbability(AbstractBeginNode successor, BranchProbabilityData profileData);
 
     /**
      * Primary successor of the control split. Data dependencies on the node have to be scheduled in
@@ -60,4 +63,9 @@ public abstract class ControlSplitNode extends FixedNode {
      * Returns the number of successors.
      */
     public abstract int getSuccessorCount();
+
+    /**
+     * Returns the source of this node's knowledge about its successor probabilities.
+     */
+    public abstract ProfileData getProfileData();
 }

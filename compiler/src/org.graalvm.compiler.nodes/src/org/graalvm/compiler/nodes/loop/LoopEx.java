@@ -31,7 +31,6 @@ import java.util.Queue;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -308,13 +307,13 @@ public class LoopEx {
             if (negated) {
                 condition = condition.negate();
             }
-            boolean oneOff = false;
+            boolean isLimitIncluded = false;
             boolean unsigned = false;
             switch (condition) {
                 case EQ:
                     if (iv.initNode() == limit) {
                         // allow "single iteration" case
-                        oneOff = true;
+                        isLimitIncluded = true;
                     } else {
                         return false;
                     }
@@ -347,7 +346,7 @@ public class LoopEx {
                 case BE:
                     unsigned = true; // fall through
                 case LE:
-                    oneOff = true;
+                    isLimitIncluded = true;
                     if (iv.direction() != Direction.Up) {
                         return false;
                     }
@@ -362,7 +361,7 @@ public class LoopEx {
                 case AE:
                     unsigned = true; // fall through
                 case GE:
-                    oneOff = true;
+                    isLimitIncluded = true;
                     if (iv.direction() != Direction.Down) {
                         return false;
                     }
@@ -377,7 +376,7 @@ public class LoopEx {
                 default:
                     throw GraalError.shouldNotReachHere(condition.toString());
             }
-            counted = new CountedLoopInfo(this, iv, ifNode, limit, oneOff, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor(), unsigned);
+            counted = new CountedLoopInfo(this, iv, ifNode, limit, isLimitIncluded, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor(), unsigned);
             return true;
         }
         return false;
@@ -479,7 +478,7 @@ public class LoopEx {
                     }
                     if (!isValidConvert && op instanceof NarrowNode) {
                         NarrowNode narrow = (NarrowNode) op;
-                        isValidConvert = NumUtil.isSignedNbit(narrow.getResultBits(), ((IntegerStamp) narrow.getValue().stamp(NodeView.DEFAULT)).upMask());
+                        isValidConvert = narrow.isLossless();
                     }
 
                     if (isValidConvert) {

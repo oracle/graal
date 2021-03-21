@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -52,7 +53,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
 
     public static final NodeClass<LoopBeginNode> TYPE = NodeClass.create(LoopBeginNode.class);
-    protected double loopFrequency;
+    private LoopFrequencyData profileData;
     protected double loopOrigFrequency;
     protected int nextEndIndex;
     protected int unswitches;
@@ -94,7 +95,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public LoopBeginNode() {
         super(TYPE);
-        loopFrequency = 1;
+        profileData = LoopFrequencyData.DEFAULT;
         loopOrigFrequency = 1;
         unswitches = 0;
         splits = 0;
@@ -197,13 +198,16 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.loopOrigFrequency = loopOrigFrequency;
     }
 
-    public double loopFrequency() {
-        return loopFrequency;
+    public LoopFrequencyData profileData() {
+        return profileData;
     }
 
-    public void setLoopFrequency(double loopFrequency) {
-        assert loopFrequency >= 1.0;
-        this.loopFrequency = loopFrequency;
+    public double loopFrequency() {
+        return profileData.getLoopFrequency();
+    }
+
+    public void setLoopFrequency(LoopFrequencyData newProfileData) {
+        this.profileData = newProfileData;
     }
 
     /**
