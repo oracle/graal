@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk.localization.bundles;
 
-package com.oracle.svm.core.jdk8;
+import java.util.Map;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+public final class ExtractedBundle implements StoredBundle {
+    private final Map<String, Object> lookup;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
-
-@AutomaticFeature
-final class LocalizationFeatureJDK8 extends LocalizationFeature {
+    public ExtractedBundle(Map<String, Object> lookup) {
+        this.lookup = lookup;
+    }
 
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC == 8;
+    public Map<String, Object> getContent(Object bundle) {
+        return lookup;
     }
 }

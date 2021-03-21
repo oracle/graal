@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk.localization.substitutions;
 
-package com.oracle.svm.core.jdk8;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
+// Checkstyle: stop
+import sun.util.locale.provider.LocaleResources;
+// Checkstyle: resume
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import java.lang.ref.ReferenceQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
-
-@AutomaticFeature
-final class LocalizationFeatureJDK8 extends LocalizationFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC == 8;
-    }
+@TargetClass(LocaleResources.class)
+final class Target_sun_util_locale_provider_LocaleResources {
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @Alias//
+    private ConcurrentMap<?, ?> cache;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ReferenceQueue.class)//
+    @Alias//
+    private ReferenceQueue<Object> referenceQueue;
 }

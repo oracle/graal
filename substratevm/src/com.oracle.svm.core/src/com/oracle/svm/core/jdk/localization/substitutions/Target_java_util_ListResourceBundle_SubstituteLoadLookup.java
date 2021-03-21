@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk.localization.substitutions;
 
-package com.oracle.svm.core.jdk8;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import java.util.Map;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+@TargetClass(value = java.util.ListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
+@SuppressWarnings({"static-method"})
+final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
 
-@AutomaticFeature
-final class LocalizationFeatureJDK8 extends LocalizationFeature {
+    @Alias private volatile Map<String, Object> lookup;
 
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC == 8;
+    @Substitute
+    private void loadLookup() {
+        if (lookup != null) {
+            return;
+        }
+        lookup = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentOf(this);
     }
 }

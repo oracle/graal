@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk.localization.substitutions;
 
-package com.oracle.svm.core.jdk8;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+@TargetClass(java.text.DateFormatSymbols.class)
+final class Target_java_text_DateFormatSymbols {
 
-@AutomaticFeature
-final class LocalizationFeatureJDK8 extends LocalizationFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC == 8;
-    }
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    private static ConcurrentMap<?, ?> cachedInstances = new ConcurrentHashMap<>(3);
 }

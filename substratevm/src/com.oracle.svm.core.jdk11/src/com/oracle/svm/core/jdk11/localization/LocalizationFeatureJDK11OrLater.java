@@ -23,21 +23,26 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk11;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.LocalizationFeature;
-//Checkstyle: stop
-import sun.text.spi.JavaTimeDateTimePatternProvider;
-//Checkstyle: start
+package com.oracle.svm.core.jdk11.localization;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.spi.LocaleServiceProvider;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+
+//Checkstyle: stop
+import sun.text.spi.JavaTimeDateTimePatternProvider;
+//Checkstyle: resume
+
+/**
+ * @see LocalizationFeature
+ */
 @AutomaticFeature
 final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
 
@@ -53,7 +58,9 @@ final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
     protected void addResourceBundles() {
         super.addResourceBundles();
 
-        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorResources(imageLocale));
+        for (Locale locale : allLocales) {
+            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorResources(locale), locale);
+        }
     }
 
     @Override
