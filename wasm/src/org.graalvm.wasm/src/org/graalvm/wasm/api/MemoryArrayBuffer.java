@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,15 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.memory.WasmMemory;
+
+import java.nio.ByteOrder;
 
 import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 import static java.lang.Math.toIntExact;
@@ -58,6 +61,126 @@ public class MemoryArrayBuffer implements TruffleObject {
 
     public MemoryArrayBuffer(WasmMemory memory) {
         this.memory = memory;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean hasBufferElements() {
+        return true;
+    }
+
+    @ExportMessage
+    final long getBufferSize() {
+        return memory.byteSize();
+    }
+
+    private void checkOffset(long byteOffset, int opLength) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || getBufferSize() - opLength < byteOffset) {
+            throw InvalidBufferOffsetException.create(byteOffset, opLength);
+        }
+    }
+
+    @ExportMessage
+    final byte readBufferByte(long byteOffset) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Byte.BYTES);
+        return (byte) memory.load_i32_8s(null, (int) byteOffset);
+    }
+
+    @ExportMessage
+    final short readBufferShort(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Short.BYTES);
+        short result = (short) memory.load_i32_16s(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Short.reverseBytes(result);
+        }
+        return result;
+    }
+
+    @ExportMessage
+    final int readBufferInt(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Integer.BYTES);
+        int result = memory.load_i32(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Integer.reverseBytes(result);
+        }
+        return result;
+    }
+
+    @ExportMessage
+    final long readBufferLong(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Long.BYTES);
+        long result = memory.load_i64(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Long.reverseBytes(result);
+        }
+        return result;
+    }
+
+    @ExportMessage
+    final float readBufferFloat(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Float.BYTES);
+        float result = memory.load_f32(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(result)));
+        }
+        return result;
+    }
+
+    @ExportMessage
+    final double readBufferDouble(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Double.BYTES);
+        double result = memory.load_f64(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Double.longBitsToDouble(Long.reverseBytes(Double.doubleToRawLongBits(result)));
+        }
+        return result;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean isBufferWritable() {
+        return true;
+    }
+
+    @ExportMessage
+    final void writeBufferByte(long byteOffset, byte value) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Byte.BYTES);
+        memory.store_i32_8(null, (int) byteOffset, value);
+    }
+
+    @ExportMessage
+    final void writeBufferShort(ByteOrder order, long byteOffset, short value) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Short.BYTES);
+        short actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Short.reverseBytes(value);
+        memory.store_i32_16(null, (int) byteOffset, actualValue);
+    }
+
+    @ExportMessage
+    final void writeBufferInt(ByteOrder order, long byteOffset, int value) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Integer.BYTES);
+        int actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Integer.reverseBytes(value);
+        memory.store_i32(null, (int) byteOffset, actualValue);
+    }
+
+    @ExportMessage
+    final void writeBufferLong(ByteOrder order, long byteOffset, long value) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Long.BYTES);
+        long actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Long.reverseBytes(value);
+        memory.store_i64(null, (int) byteOffset, actualValue);
+    }
+
+    @ExportMessage
+    final void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Float.BYTES);
+        float actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(value)));
+        memory.store_f32(null, (int) byteOffset, actualValue);
+    }
+
+    @ExportMessage
+    final void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Double.BYTES);
+        double actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Double.longBitsToDouble(Long.reverseBytes(Double.doubleToRawLongBits(value)));
+        memory.store_f64(null, (int) byteOffset, actualValue);
     }
 
     @SuppressWarnings({"unused"})

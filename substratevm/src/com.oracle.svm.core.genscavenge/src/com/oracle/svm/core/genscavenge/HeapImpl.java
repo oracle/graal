@@ -45,6 +45,7 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.SubstrateUtil.DiagnosticThunk;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -123,12 +124,7 @@ public final class HeapImpl extends Heap {
             this.heapVerifier = null;
             this.stackVerifier = null;
         }
-        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(log -> {
-            logImageHeapPartitionBoundaries(log).newline();
-            zapValuesToLog(log).newline();
-            report(log, true).newline();
-            log.newline();
-        });
+        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(new HeapDiagnosticsPrinter());
     }
 
     @Fold
@@ -712,6 +708,30 @@ public final class HeapImpl extends Heap {
             return list;
         } finally {
             REF_MUTEX.unlock();
+        }
+    }
+
+    private static class HeapDiagnosticsPrinter implements DiagnosticThunk {
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void invokeWithoutAllocation(Log log) {
+            HeapImpl heap = HeapImpl.getHeapImpl();
+            GCImpl gc = GCImpl.getGCImpl();
+
+            log.string("[Heap settings and statistics: ").indent(true);
+            log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
+            log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
+
+            GCAccounting accounting = gc.getAccounting();
+            log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();
+            log.string("Complete collections: ").unsigned(accounting.getCompleteCollectionCount());
+            log.redent(false).string("]").newline();
+            log.newline();
+
+            heap.logImageHeapPartitionBoundaries(log).newline();
+            zapValuesToLog(log).newline();
+            heap.report(log, true).newline();
+            log.newline();
         }
     }
 }

@@ -8,6 +8,10 @@ New features:
 
 * Allow accessing foreign buffers from LLVM bitcode via the interop buffers API.
 
+* Added intrinsic functions for pthread_setname_np and pthread_getname_np.
+
+* Added intrinsic functions for dlopen and dlsym.
+
 # Version 21.0.0
 
 Fixes:

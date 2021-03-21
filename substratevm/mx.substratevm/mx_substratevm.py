@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -848,7 +848,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     short_name='svm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler', 'Truffle Macro', 'Truffle NFI'],
+    dependencies=['GraalVM compiler', 'Truffle Macro', 'SVM Truffle NFI Support'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -856,8 +856,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:POINTSTO',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
-    supported=True,
-    early_adopter=True,
+    stability="earlyadopter",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=suite,
+    name='SVM Truffle NFI Support',
+    short_name='svmnfi',
+    license_files=[],
+    third_party_license_files=[],
+    dir_name='nfi',
+    dependencies=['SubstrateVM', 'Truffle NFI'],
+    truffle_jars=[],
+    builder_jar_distributions=['substratevm:SVM_LIBFFI'],
+    support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
 ))
 
 def _native_image_launcher_main_class():
@@ -924,8 +936,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     provided_executables=['bin/<cmd:rebuild-images>'],
     installable=True,
-    supported=True,
-    early_adopter=True,
+    stability="earlyadopter",
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -940,8 +951,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
     installable=True,
     priority=1,
-    supported=True,
-    early_adopter=True,
+    stability="earlyadopter",
 ))
 
 if not mx.is_windows():
@@ -959,8 +969,7 @@ if not mx.is_windows():
             'substratevm:JAVACPP_SHADOWED',
             'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
         ],
-        supported=False,
-        early_adopter=True,
+        stability="experimental-earlyadopter",
     ))
 
 
@@ -987,8 +996,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         "substratevm:POLYGLOT_NATIVE_API",
     ],
     has_polyglot_lib_entrypoints=True,
-    supported=True,
-    early_adopter=True,
+    stability="earlyadopter",
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
@@ -1039,7 +1047,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             ],
         ),
     ],
-    supported=True,
+    stability="supported",
 ))
 
 def _native_image_configure_extra_jvm_args():

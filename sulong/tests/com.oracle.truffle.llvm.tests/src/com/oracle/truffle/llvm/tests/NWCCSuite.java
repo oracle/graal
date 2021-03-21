@@ -40,7 +40,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
-@Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
+@Parameterized.UseParametersRunnerFactory(CommonTestUtils.ExcludingParametersFactory.class)
 public final class NWCCSuite extends BaseSuiteHarness {
 
     public static final String TEST_DISTRIBUTION = "SULONG_NWCC_TEST_SUITE";

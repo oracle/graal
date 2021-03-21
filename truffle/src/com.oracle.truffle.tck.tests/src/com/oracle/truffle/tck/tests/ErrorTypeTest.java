@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
 import org.graalvm.polyglot.PolyglotException;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -84,6 +85,11 @@ public class ErrorTypeTest {
             computeSnippets(snippetLanguage, snippets, overloads, testRuns);
         }
         return testRuns;
+    }
+
+    @BeforeClass
+    public static void setUpClass() {
+        TestUtil.assertNoCurrentContext();
     }
 
     @AfterClass

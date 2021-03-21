@@ -325,31 +325,31 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject r
 
     ffi_prep_closure_loc(&data->closure, cif, invoke_closure, data, code);
 
-    return (*env)->CallObjectMethod(env, ctx->NFIContext, ctx->NFIContext_createClosureNativePointer, (jlong) data, (jlong) code, callTarget, signature, receiver);
+    return (*env)->CallObjectMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_createClosureNativePointer, (jlong) data, (jlong) code, callTarget, signature, receiver);
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_allocateClosureObjectRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureObjectRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
     return prepare_closure(env, nativeContext, signature, receiver, callTarget, invoke_closure_object_ret);
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_allocateClosureStringRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureStringRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
     return prepare_closure(env, nativeContext, signature, receiver, callTarget, invoke_closure_string_ret);
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_allocateClosureBufferRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureBufferRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
     return prepare_closure(env, nativeContext, signature, receiver, callTarget, invoke_closure_buffer_ret);
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_allocateClosureVoidRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureVoidRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
     return prepare_closure(env, nativeContext, signature, receiver, callTarget, invoke_closure_void_ret);
 }
 
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_ClosureNativePointer_freeClosure(JNIEnv *env, jclass self, jlong ptr) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer_freeClosure(JNIEnv *env, jclass self, jlong ptr) {
     struct closure_data *data = (struct closure_data *) ptr;
     (*env)->DeleteWeakGlobalRef(env, data->callTarget);
     if (data->receiver) {
-        (*env)->DeleteWeakGlobalRef(env, data->callTarget);
+        (*env)->DeleteWeakGlobalRef(env, data->receiver);
     }
     ffi_closure_free(data);
 }

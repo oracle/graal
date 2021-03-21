@@ -71,8 +71,7 @@ final class Target_jdk_internal_util_StaticProperty {
     @Substitute
     @TargetElement(onlyWith = JDK15OrLater.class)
     private static String javaLibraryPath() {
-        String value = ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("java.library.path");
-        return value == null ? "" : value;
+        return ImageSingletons.lookup(SystemPropertiesSupport.class).javaLibraryPath();
     }
 
     @Substitute

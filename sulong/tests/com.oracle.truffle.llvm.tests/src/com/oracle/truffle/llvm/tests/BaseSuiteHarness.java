@@ -31,12 +31,10 @@ package com.oracle.truffle.llvm.tests;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,26 +45,18 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.Description;
 import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.model.FrameworkMethod;
-import org.junit.runners.model.InitializationError;
-import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
-import org.junit.runners.parameterized.ParametersRunnerFactory;
-import org.junit.runners.parameterized.TestWithParameters;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 
@@ -105,101 +95,6 @@ public abstract class BaseSuiteHarness {
         return exclusionReason;
     }
 
-    /**
-     * A {@link ParametersRunnerFactory} that will ignore runs where {@link #exclusionReason} is not
-     * {@code null}.
-     *
-     * Example Usage:
-     * 
-     * <pre>
-     *   &#64;RunWith(Parameterized.class)
-     *   &#64;Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
-     *   public final class MyTestSuite extends BaseSuiteHarness { ... }
-     * </pre>
-     *
-     * Although this is designed to work with subclasses of {@link BaseSuiteHarness}, it can be used
-     * with any {@link org.junit.runners.Parameterized parameterized} test where the parameter with
-     * index {@link TestCaseCollector#EXCLUDE_REASON_IDX} is non-{@code null} if the test should be
-     * ignored.
-     * 
-     * @see #exclusionReason
-     * @see TestCaseCollector#EXCLUDE_REASON_IDX
-     */
-    public static final class ExcludingParametersFactory implements ParametersRunnerFactory {
-
-        public ExcludingParametersFactory() {
-        }
-
-        @Override
-        public org.junit.runner.Runner createRunnerForTestWithParameters(TestWithParameters test) throws InitializationError {
-            return new IgnoringParameterizedRunner(test);
-        }
-    }
-
-    /**
-     * Dynamically created {@link Ignore} annotation.
-     */
-    @SuppressWarnings("all")
-    private static class InjectedIgnore implements Ignore {
-        private final String value;
-
-        InjectedIgnore(String exclusionReason) {
-            this.value = exclusionReason;
-        }
-
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            return Ignore.class;
-        }
-
-        @Override
-        public String value() {
-            return value;
-        }
-    }
-
-    private static final class IgnoringParameterizedRunner extends BlockJUnit4ClassRunnerWithParameters {
-
-        private final Ignore ignore;
-
-        IgnoringParameterizedRunner(TestWithParameters test) throws InitializationError {
-            super(test);
-            List<Object> parameters = test.getParameters();
-            assert parameters.size() == 3 : "Wrong number of parameters!";
-            Object excludeReason = parameters.get(TestCaseCollector.EXCLUDE_REASON_IDX);
-            this.ignore = excludeReason == null ? null : new InjectedIgnore(excludeReason.toString());
-        }
-
-        @Override
-        protected boolean isIgnored(FrameworkMethod child) {
-            if (ignore != null) {
-                return true;
-            }
-            return super.isIgnored(child);
-        }
-
-        @Override
-        protected Description describeChild(FrameworkMethod method) {
-            if (ignore != null) {
-                return Description.createTestDescription(getTestClass().getJavaClass(), testName(method), getAnnotations(method, ignore));
-            }
-            return super.describeChild(method);
-        }
-
-        private static Annotation[] getAnnotations(FrameworkMethod method, Ignore injectedIgnore) {
-            Annotation[] annotations = method.getAnnotations();
-            for (Annotation annotation : annotations) {
-                if (annotation instanceof Ignore) {
-                    // already ignored - no need to ignore even more
-                    return annotations;
-                }
-            }
-            Annotation[] newAnnotations = Arrays.copyOf(annotations, annotations.length + 1);
-            newAnnotations[newAnnotations.length - 1] = injectedIgnore;
-            return newAnnotations;
-        }
-    }
-
     private static final List<Path> passingTests = new ArrayList<>();
     private static final List<Path> failingTests = new ArrayList<>();
     private static final Map<String, String> ignoredTests = new HashMap<>();
@@ -213,7 +108,7 @@ public abstract class BaseSuiteHarness {
     private static final int MAX_RETRIES = 3;
 
     protected Function<Context.Builder, CaptureOutput> getCaptureOutput() {
-        return c -> new CaptureNativeOutput();
+        return TestEngineConfig.getInstance().getCaptureOutput();
     }
 
     /**
@@ -345,7 +240,8 @@ public abstract class BaseSuiteHarness {
     }
 
     /**
-     * Safe-guard for tests that are not executed via {@link ExcludingParametersFactory}.
+     * Safe-guard for tests that are not executed via
+     * {@link CommonTestUtils.ExcludingParametersFactory}.
      */
     protected void assumeNotExcluded() {
         if (getExclusionReason() != null) {

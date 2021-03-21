@@ -95,6 +95,14 @@ public final class GraalDirectives {
     }
 
     /**
+     * Inject information into the compiler to assume that the input is an object created via a
+     * primitive boxing operation.
+     */
+    public static <P> P trustedBox(P o) {
+        return o;
+    }
+
+    /**
      * A call to this method will force the compiler to assume this instruction has a visible memory
      * effect killing all memory locations.
      */

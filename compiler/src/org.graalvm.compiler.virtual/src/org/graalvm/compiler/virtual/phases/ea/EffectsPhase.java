@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -81,6 +82,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
 
     @SuppressWarnings("try")
     public boolean runAnalysis(StructuredGraph graph, CoreProvidersT context) {
+        LoopEx.removeObsoleteProxies(graph, context);
         assert unscheduled || strategy != null;
         boolean changed = false;
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
@@ -113,7 +115,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
 
                             new DeadCodeEliminationPhase(Required).apply(graph);
                         }
-
+                        LoopEx.removeObsoleteProxies(graph, context);
                         postIteration(graph, context, listener.getNodes());
                     }
 

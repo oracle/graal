@@ -34,10 +34,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.tests.CommonTestUtils;
-import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -49,7 +45,10 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -66,12 +65,15 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.llvm.tests.Platform;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 
+@RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class LLVMInteropTest {
     @Test
     public void test001() {

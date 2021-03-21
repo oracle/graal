@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 
@@ -97,7 +97,7 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
 
         AArch64LibCHelper.CPUFeatures cpuFeatures = StackValue.get(AArch64LibCHelper.CPUFeatures.class);
 
-        MemoryUtil.fill((Pointer) cpuFeatures, SizeOf.unsigned(AArch64LibCHelper.CPUFeatures.class), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) cpuFeatures, SizeOf.unsigned(AArch64LibCHelper.CPUFeatures.class), (byte) 0);
 
         AArch64LibCHelper.determineCPUFeatures(cpuFeatures);
 

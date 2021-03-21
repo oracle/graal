@@ -232,12 +232,20 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
 
     @Test
     public void testInvalidation() throws IOException, InterruptedException {
-        CountDownLatch latch = new CountDownLatch(2);
+        /*
+         * The test runs the same compiled code in two threads. Invalidation in one thread using
+         * CompilerDirectives#transferToInterpreterAndInvalidate causes deopt in that thread and
+         * makes the code non-enterable. However, the other thread does not necessarily deopt and
+         * can still continue executing the invalidated code, so a subsequent node replace must also
+         * deopt the other thread in order for the replace to have effect. This test checks whether
+         * this works properly.
+         */
+        CountDownLatch latch = new CountDownLatch(1);
         NodeToInvalidate nodeToInvalidate = new NodeToInvalidate(ThreadLocal.withInitial(() -> true), latch);
-        WhileLoopNode testedCode = new WhileLoopNode(10000000, nodeToInvalidate);
+        WhileLoopNode testedCode = new WhileLoopNode(1000000000, nodeToInvalidate);
         LoopNode loopNode = testedCode.loop;
 
-        setupEnv(Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").build(), new ProxyLanguage() {
+        setupEnv(Context.create(), new ProxyLanguage() {
             /**
              * Makes sure we use the same call target for the single source that we use. Otherwise
              * storing the frame slots in member fields of WhileLoopNode wouldn't work as the
@@ -276,17 +284,18 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
         });
 
         Source source = Source.newBuilder(ProxyLanguage.ID, "", "DummySource").build();
-        // First execution should compile the loop.
-        context.eval(source);
         Future<?> future1;
         Future<?> future2;
-        OptimizedCallTarget loopCallTarget = ((OptimizedOSRLoopNode) loopNode).getCompiledOSRLoop();
-        Assert.assertNotNull(loopCallTarget);
-        Assert.assertTrue(loopCallTarget.isValid());
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             future1 = executor.submit(new RunCode(context, source, null));
             nodeToInvalidate.latch.await();
+            /*
+             * The latch is counted down only in compiled code, so the code should be compiled now.
+             */
+            OptimizedCallTarget loopCallTarget = ((OptimizedOSRLoopNode) loopNode).getCompiledOSRLoop();
+            Assert.assertNotNull(loopCallTarget);
+            Assert.assertTrue(loopCallTarget.isValid());
             future2 = executor.submit(new RunCode(context, source, nodeToInvalidate));
             future1.get();
             future2.get();

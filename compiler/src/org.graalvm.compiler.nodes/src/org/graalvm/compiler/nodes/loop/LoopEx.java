@@ -52,9 +52,11 @@ import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -73,6 +75,7 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 public class LoopEx {
@@ -557,5 +560,26 @@ public class LoopEx {
             }
         }
         return true;
+    }
+
+    /**
+     * Remove loop proxies that became obsolete over time, i.e., they proxy a value that already
+     * flowed out of a loop and dominates the loop now.
+     */
+    public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context) {
+        LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
+        for (LoopEx loop : loopsData.loops()) {
+            removeObsoleteProxiesForLoop(loop);
+        }
+    }
+
+    public static void removeObsoleteProxiesForLoop(LoopEx loop) {
+        for (LoopExitNode lex : loop.loopBegin().loopExits()) {
+            for (ProxyNode proxy : lex.proxies().snapshot()) {
+                if (loop.isOutsideLoop(proxy.value())) {
+                    proxy.replaceAtUsagesAndDelete(proxy.getOriginalNode());
+                }
+            }
+        }
     }
 }

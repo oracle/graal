@@ -38,7 +38,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.CalleeSavedRegisters;
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 
@@ -144,7 +144,7 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
 
         AMD64LibCHelper.CPUFeatures cpuFeatures = StackValue.get(AMD64LibCHelper.CPUFeatures.class);
 
-        MemoryUtil.fill((Pointer) cpuFeatures, SizeOf.unsigned(AMD64LibCHelper.CPUFeatures.class), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) cpuFeatures, SizeOf.unsigned(AMD64LibCHelper.CPUFeatures.class), (byte) 0);
 
         AMD64LibCHelper.determineCPUFeatures(cpuFeatures);
 

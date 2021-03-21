@@ -33,8 +33,14 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.ServiceLoader;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
+import org.graalvm.polyglot.Context;
+
+import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
+import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 
 public abstract class TestEngineConfigBase implements TestEngineConfig {
 
@@ -98,5 +104,10 @@ public abstract class TestEngineConfigBase implements TestEngineConfig {
     @Override
     public boolean canExecute(Path path) {
         return true;
+    }
+
+    @Override
+    public Function<Context.Builder, CaptureOutput> getCaptureOutput() {
+        return c -> new CaptureNativeOutput();
     }
 }

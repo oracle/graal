@@ -31,11 +31,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   linux: self.common + {
     packages+: {
-      binutils: '>=2.30',
+      '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+      '01:binutils': '>=2.34',
       git: '>=1.8.3',
-      gcc: '>=4.9.1',
-      'gcc-build-essentials': '>=4.9.1', # GCC 4.9.0 fails on cluster
-      make: '>=3.83',
       'sys:cmake': '==3.15.2',
       ruby: "==2.6.5",
     },

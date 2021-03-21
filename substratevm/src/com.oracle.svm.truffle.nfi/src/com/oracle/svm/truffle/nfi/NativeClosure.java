@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.getOffset;
-import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.getTag;
+import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getOffset;
+import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getTag;
 import static com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_alloc;
 
 import java.lang.ref.WeakReference;
@@ -74,9 +74,9 @@ final class NativeClosure {
     private final WeakReference<CallTarget> callTarget;
     private final WeakReference<Object> receiver;
 
-    private final Target_com_oracle_truffle_nfi_impl_LibFFISignature signature;
+    private final Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature;
 
-    private NativeClosure(CallTarget callTarget, Object receiver, Target_com_oracle_truffle_nfi_impl_LibFFISignature signature) {
+    private NativeClosure(CallTarget callTarget, Object receiver, Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature) {
         this.callTarget = new WeakReference<>(callTarget);
         if (receiver != null) {
             this.receiver = new WeakReference<>(receiver);
@@ -87,7 +87,7 @@ final class NativeClosure {
     }
 
     private ByteBuffer createRetBuffer(PointerBase buffer) {
-        Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo retType = signature.signatureInfo.getRetType();
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_CachedTypeInfo retType = signature.signatureInfo.getRetType();
         int size = retType.size;
         if (size < SizeOf.get(ffi_arg.class)) {
             size = SizeOf.get(ffi_arg.class);
@@ -95,8 +95,8 @@ final class NativeClosure {
         return CTypeConversion.asByteBuffer(buffer, size);
     }
 
-    static Target_com_oracle_truffle_nfi_impl_ClosureNativePointer prepareClosure(Target_com_oracle_truffle_nfi_impl_NFIContext ctx,
-                    Target_com_oracle_truffle_nfi_impl_LibFFISignature signature, CallTarget callTarget, Object receiver, ffi_closure_callback callback) {
+    static Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer prepareClosure(Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx,
+                    Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, CallTarget callTarget, Object receiver, ffi_closure_callback callback) {
         NativeClosure closure = new NativeClosure(callTarget, receiver, signature);
         NativeClosureHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createClosureHandle(closure);
 
@@ -112,7 +112,7 @@ final class NativeClosure {
     }
 
     private Object call(WordPointer argPointers, ByteBuffer retBuffer) {
-        Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo[] argTypes = signature.signatureInfo.getArgTypes();
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_CachedTypeInfo[] argTypes = signature.signatureInfo.getArgTypes();
         int length = argTypes.length;
         if (receiver != null) {
             length++;
@@ -125,16 +125,16 @@ final class NativeClosure {
         int i;
         for (i = 0; i < argTypes.length; i++) {
             Object type = argTypes[i];
-            if (Target_com_oracle_truffle_nfi_impl_LibFFIType_StringType.class.isInstance(type)) {
+            if (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_StringType.class.isInstance(type)) {
                 CCharPointerPointer argPtr = argPointers.read(i);
                 args[i] = TruffleNFISupport.utf8ToJavaString(argPtr.read());
-            } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_ObjectType.class.isInstance(type)) {
+            } else if (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_ObjectType.class.isInstance(type)) {
                 WordPointer argPtr = argPointers.read(i);
                 args[i] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
-            } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_NullableType.class.isInstance(type)) {
+            } else if (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_NullableType.class.isInstance(type)) {
                 WordPointer argPtr = argPointers.read(i);
                 args[i] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
-            } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
+            } else if (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_EnvType.class.isInstance(type)) {
                 // skip
             } else {
                 WordPointer argPtr = argPointers.read(i);
@@ -168,8 +168,8 @@ final class NativeClosure {
     private static PointerBase serializeStringRet(Object retValue) {
         if (retValue == null) {
             return WordFactory.zero();
-        } else if (retValue instanceof Target_com_oracle_truffle_nfi_impl_NativeString) {
-            Target_com_oracle_truffle_nfi_impl_NativeString nativeString = (Target_com_oracle_truffle_nfi_impl_NativeString) retValue;
+        } else if (retValue instanceof Target_com_oracle_truffle_nfi_backend_libffi_NativeString) {
+            Target_com_oracle_truffle_nfi_backend_libffi_NativeString nativeString = (Target_com_oracle_truffle_nfi_backend_libffi_NativeString) retValue;
             return WordFactory.pointer(nativeString.nativePointer);
         } else if (retValue instanceof String) {
             byte[] utf8 = TruffleNFISupport.javaStringToUtf8((String) retValue);
@@ -209,18 +209,18 @@ final class NativeClosure {
     private static void doInvokeClosureBufferRet(Pointer ret, WordPointer args, ClosureData user) {
         NativeClosure closure = lookup(user);
         ByteBuffer retBuffer = closure.createRetBuffer(ret);
-        Target_com_oracle_truffle_nfi_impl_LibFFIClosure_RetPatches patches = (Target_com_oracle_truffle_nfi_impl_LibFFIClosure_RetPatches) closure.call(args, retBuffer);
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches patches = (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches) closure.call(args, retBuffer);
 
         if (patches != null) {
             for (int i = 0; i < patches.count; i++) {
-                Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag tag = getTag(patches.patches[i]);
+                Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag tag = getTag(patches.patches[i]);
                 int offset = getOffset(patches.patches[i]);
                 Object obj = patches.objects[i];
 
-                if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.OBJECT) {
+                if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.OBJECT) {
                     WordBase handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
                     ret.writeWord(offset, handle);
-                } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.STRING) {
+                } else if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.STRING) {
                     ret.writeWord(offset, serializeStringRet(obj));
                 } else {
                     // nothing to do

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.288.0",
+  "mxversion" : "5.290.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -1028,7 +1028,7 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
-    "other" : {
+    "com.oracle.truffle.llvm.tests.standalone.other.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O1"],
@@ -1088,6 +1088,27 @@ suite = {
         "linker",
         "rpath",
         "reload",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.dynloader.native" : {
+      "subDir" : "tests",
+      "native": True,
+      "vpath": True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CLANG": "<toolchainGetToolPath:native,CC>",
+        "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.dynloader.native>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "results": [
+        "dlopenAbsolute",
+        "dlopenLocator",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -1378,6 +1399,7 @@ suite = {
       "distDependencies" : [
         "SULONG_CORE",
         "truffle:TRUFFLE_NFI",
+        "truffle:TRUFFLE_NFI_LIBFFI",
       ],
       "license" : "BSD-new",
     },
@@ -1571,6 +1593,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.amd64.native/*",
           "dependency:com.oracle.truffle.llvm.tests.pthread.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.dynloader.native/*",
         ],
       },
       "license" : "BSD-new",
@@ -1584,7 +1607,7 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./" : [
-          "dependency:other/*",
+          "dependency:com.oracle.truffle.llvm.tests.standalone.other.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",

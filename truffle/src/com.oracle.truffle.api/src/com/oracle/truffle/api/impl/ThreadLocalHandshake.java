@@ -57,6 +57,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.Node;
@@ -85,16 +86,20 @@ public abstract class ThreadLocalHandshake {
         return true;
     }
 
+    public void testSupport() {
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("Thread local handshakes are not supported on this platform. " +
+                            "A possible reason may be that the underlying JVMCI version is too old.");
+        }
+    }
+
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
      */
     @TruffleBoundary
     public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting, boolean sync) {
-        if (!isSupported()) {
-            throw new UnsupportedOperationException("Thread local handshakes are not supported on this platform. " +
-                            "A possible reason may be that the underlying JVMCI version is too old.");
-        }
+        testSupport();
         Handshake<T> handshake = new Handshake<>(threads, onThread, onDone, sideEffecting, threads.length, sync);
         for (int i = 0; i < threads.length; i++) {
             Thread t = threads[i];
@@ -155,10 +160,10 @@ public abstract class ThreadLocalHandshake {
         private final Phaser phaser;
         private volatile boolean cancelled;
         private final T action;
-        private final Consumer<T> onDone;
         private final boolean sync;
         // avoid rescheduling on the same thread again
         private final Set<Thread> threads;
+        private final Consumer<T> onDone;
 
         @SuppressWarnings("unchecked")
         Handshake(Thread[] initialThreads, T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads, boolean sync) {
@@ -168,10 +173,6 @@ public abstract class ThreadLocalHandshake {
             this.sync = sync;
             this.phaser = new Phaser(numberOfThreads);
             this.threads = Collections.synchronizedSet(new HashSet<>(Arrays.asList(initialThreads)));
-        }
-
-        boolean isSideEffecting() {
-            return sideEffecting;
         }
 
         @Override
@@ -191,11 +192,13 @@ public abstract class ThreadLocalHandshake {
                 if (sync) {
                     phaser.arriveAndDeregister();
                     phaser.awaitAdvance(1);
-                    assert phaser.getUnarrivedParties() == 0;
+
+                    assert phaser.isTerminated();
                     onDone.accept(action);
                 } else {
                     phaser.arriveAndDeregister();
-                    if (phaser.getUnarrivedParties() == 0) {
+
+                    if (phaser.isTerminated()) {
                         onDone.accept(action);
                     }
                 }
@@ -214,20 +217,34 @@ public abstract class ThreadLocalHandshake {
 
         void deactivateThread() {
             phaser.arriveAndDeregister();
+            if (phaser.isTerminated()) {
+                onDone.accept(action);
+            }
         }
 
         @Override
         public Void get() throws InterruptedException {
             if (sync) {
-                this.phaser.awaitAdvanceInterruptibly(1);
+                phaser.awaitAdvanceInterruptibly(0);
+                phaser.awaitAdvanceInterruptibly(1);
             } else {
-                this.phaser.awaitAdvanceInterruptibly(0);
+                phaser.awaitAdvanceInterruptibly(0);
+            }
+            return null;
+        }
+
+        public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+            if (sync) {
+                phaser.awaitAdvanceInterruptibly(0, timeout, unit);
+                phaser.awaitAdvanceInterruptibly(1, timeout, unit);
+            } else {
+                phaser.awaitAdvanceInterruptibly(0, timeout, unit);
             }
             return null;
         }
 
         public boolean isDone() {
-            return cancelled || phaser.getUnarrivedParties() == 0;
+            return cancelled || phaser.isTerminated();
         }
 
         public boolean cancel(boolean mayInterruptIfRunning) {
@@ -239,9 +256,9 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-            this.phaser.awaitAdvanceInterruptibly(0, timeout, unit);
-            return null;
+        @Override
+        public String toString() {
+            return "Handshake[action=" + action + ", phaser=" + phaser + ", cancelled=" + cancelled + ", sideEffecting=" + sideEffecting + ", sync=" + sync + "]";
         }
 
     }
@@ -253,6 +270,11 @@ public abstract class ThreadLocalHandshake {
 
         HandshakeEntry(Handshake<?> handshake) {
             this.handshake = handshake;
+        }
+
+        @Override
+        public String toString() {
+            return "HandshakeEntry[" + handshake + " active=" + active + "]";
         }
     }
 
@@ -317,6 +339,8 @@ public abstract class ThreadLocalHandshake {
                     assert current.active;
                     current.active = false;
                     handshake.deactivateThread();
+                    claimEntry(current);
+                    resetPending();
                 }
 
             } finally {
@@ -373,15 +397,17 @@ public abstract class ThreadLocalHandshake {
 
         private void addHandshakeImpl(Thread t, Handshake<?> handshake) {
             handshakes.add(new HandshakeEntry(handshake));
-            if (isPending() && !fastPendingSet) {
-                fastPendingSet = true;
+            if (isPending()) {
                 setFastPendingAndInterrupt(t);
             }
         }
 
         private void setFastPendingAndInterrupt(Thread t) {
             assert lock.isHeldByCurrentThread();
-            impl.setFastPending(t);
+            if (!fastPendingSet) {
+                fastPendingSet = true;
+                impl.setFastPending(t);
+            }
             Interrupter action = this.blockedAction;
             if (action != null) {
                 interrupted = true;
@@ -449,35 +475,86 @@ public abstract class ThreadLocalHandshake {
         }
 
         @Override
-        @TruffleBoundary
-        public <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable onInterrupt) {
+        public <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
             assert impl.getCurrent() == this : "Cannot be used from a different thread.";
+
+            /*
+             * We want to avoid to ever call the Interruptible interface on compiled code paths to
+             * make native image avoid marking it as runtime compiled. It is common that
+             * interruptibles are just a method reference to Lock::lockInterruptibly which could no
+             * longer be used otherwise as PE would fail badly for these methods and we would get
+             * black list method errors in native image.
+             *
+             * A good workaround is to use our own interface that is a subclass of Interruptible but
+             * that must be used to opt-in to compilation.
+             */
+            if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(interruptible) && interruptible instanceof CompiledInterruptible<?>) {
+                setBlockedCompiled(location, interrupter, (CompiledInterruptible<T>) interruptible, object, beforeInterrupt, afterInterrupt);
+            } else {
+                setBlockedBoundary(location, interrupter, interruptible, object, beforeInterrupt, afterInterrupt);
+            }
+        }
+
+        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
             Interrupter prev = this.blockedAction;
             try {
                 while (true) {
                     try {
-                        setBlockedImpl(location, interrupter);
+                        setBlockedImpl(location, interrupter, false);
                         interruptible.apply(object);
                         break;
                     } catch (InterruptedException e) {
-                        setBlockedImpl(location, prev);
-                        if (onInterrupt != null) {
-                            onInterrupt.run();
-                        }
+                        setBlockedAfterInterrupt(location, prev, beforeInterrupt, afterInterrupt);
                         continue;
                     }
                 }
             } finally {
-                setBlockedImpl(location, prev);
+                setBlockedImpl(location, prev, false);
             }
         }
 
-        private void setBlockedImpl(final Node location, final Interrupter interrupter) {
+        @TruffleBoundary
+        private <T> void setBlockedBoundary(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+            Interrupter prev = this.blockedAction;
+            try {
+                while (true) {
+                    try {
+                        setBlockedImpl(location, interrupter, false);
+                        interruptible.apply(object);
+                        break;
+                    } catch (InterruptedException e) {
+                        setBlockedAfterInterrupt(location, prev, beforeInterrupt, afterInterrupt);
+                        continue;
+                    }
+                }
+            } finally {
+                setBlockedImpl(location, prev, false);
+            }
+        }
+
+        @TruffleBoundary
+        private void setBlockedAfterInterrupt(final Node location, final Interrupter interrupter, Runnable beforeInterrupt, Runnable afterInterrupt) {
+            if (beforeInterrupt != null) {
+                beforeInterrupt.run();
+            }
+            try {
+                setBlockedImpl(location, interrupter, true);
+            } finally {
+                if (afterInterrupt != null) {
+                    afterInterrupt.run();
+                }
+            }
+        }
+
+        @TruffleBoundary
+        private void setBlockedImpl(final Node location, final Interrupter interrupter, boolean processSafepoints) {
             List<HandshakeEntry> toProcess = null;
             lock.lock();
             try {
-                if (isPending()) {
-                    toProcess = takeHandshakeImpl();
+                if (processSafepoints) {
+                    if (isPending()) {
+                        toProcess = takeHandshakeImpl();
+                    }
                 }
                 if (interrupted) {
                     assert this.blockedAction != null;
@@ -569,10 +646,7 @@ public abstract class ThreadLocalHandshake {
 
         private void updateFastPending() {
             if (isPending()) {
-                if (!fastPendingSet) {
-                    fastPendingSet = true;
-                    setFastPendingAndInterrupt(Thread.currentThread());
-                }
+                setFastPendingAndInterrupt(Thread.currentThread());
             } else {
                 if (fastPendingSet) {
                     fastPendingSet = false;

@@ -47,6 +47,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import org.graalvm.polyglot.Value;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -80,6 +81,11 @@ public class ExpressionTest {
                             }
                         });
         return testRuns;
+    }
+
+    @BeforeClass
+    public static void setUpClass() {
+        TestUtil.assertNoCurrentContext();
     }
 
     @AfterClass

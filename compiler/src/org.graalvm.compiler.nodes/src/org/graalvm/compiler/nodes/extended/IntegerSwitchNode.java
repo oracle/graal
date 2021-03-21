@@ -607,12 +607,14 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         int newDefaultSuccessor = addNewSuccessor(defaultSuccessor(), newSuccessors);
         double newDefaultProbability = keyProbabilities[keyProbabilities.length - 1];
 
-        /*
-         * We remove the array load, but we still need to preserve exception semantics by keeping
-         * the bounds check. Fortunately the array length is a constant.
-         */
-        LogicNode boundsCheck = graph().unique(new IntegerBelowNode(newValue, ConstantNode.forInt(arrayLength, graph())));
-        graph().addBeforeFixed(this, graph().add(new FixedGuardNode(boundsCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateReprofile)));
+        if (loadIndexed.getBoundsCheck() == null) {
+            /*
+             * We remove the array load, but we still need to preserve exception semantics by
+             * keeping the bounds check. Fortunately the array length is a constant.
+             */
+            LogicNode boundsCheck = graph().unique(new IntegerBelowNode(newValue, ConstantNode.forInt(arrayLength, graph())));
+            graph().addBeforeFixed(this, graph().add(new FixedGuardNode(boundsCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateReprofile)));
+        }
 
         /*
          * Build the low-level representation of the new switch keys and replace ourself with a new

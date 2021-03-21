@@ -54,6 +54,10 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract String getLibrarySuffix();
 
+    public abstract boolean isGlobalDLOpenFlagSet(int flag);
+
+    public abstract boolean isLazyDLOpenFlagSet(int flag);
+
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final S[] valueToSysCall;
 
     protected PlatformCapability(Class<S> cls) {

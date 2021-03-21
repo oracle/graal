@@ -247,6 +247,20 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     /**
+     * @return {@code true} if this node's only usages are the node itself (only possible for
+     *         loops).
+     */
+    public boolean isDegenerated() {
+        for (Node use : usages()) {
+            if (use != this) {
+                return false;
+            }
+        }
+        assert isLoopPhi();
+        return true;
+    }
+
+    /**
      * Create a phi of the same kind on the given merge.
      *
      * @param newMerge the merge to use for the newly created phi

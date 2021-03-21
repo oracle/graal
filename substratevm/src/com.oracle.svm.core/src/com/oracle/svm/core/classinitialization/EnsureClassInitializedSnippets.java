@@ -60,7 +60,7 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
     };
 
     @Snippet
-    private static void ensureClassIsInitializedSnippet(DynamicHub hub) {
+    private static void ensureClassIsInitializedSnippet(@Snippet.NonNullParameter DynamicHub hub) {
         ClassInitializationInfo info = hub.getClassInitializationInfo();
         /*
          * The ClassInitializationInfo field is always initialized by the image generator. We can

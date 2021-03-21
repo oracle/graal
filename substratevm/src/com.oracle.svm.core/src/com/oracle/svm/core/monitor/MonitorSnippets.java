@@ -137,6 +137,10 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
         protected void lowerHighTier(AccessMonitorNode node, LoweringTool tool) {
             ValueNode object = node.object();
             if (!StampTool.isPointerNonNull(object)) {
+                /*
+                 * This should never happen except in deopt entry methods that contain a cycle
+                 * between a Phi and DeoptProxy node in which case the stamps lose precision.
+                 */
                 GuardingNode nullCheck = tool.createGuard(node, node.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
                 node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck)));
             }

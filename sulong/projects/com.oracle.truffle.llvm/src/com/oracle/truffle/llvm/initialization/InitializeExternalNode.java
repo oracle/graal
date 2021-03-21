@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
@@ -120,14 +121,14 @@ public final class InitializeExternalNode extends LLVMNode {
      * functions/globals.
      */
     @ExplodeLoop
-    public void execute(LLVMContext context, LLVMLocalScope localScope) {
+    public void execute(LLVMContext context, LLVMLocalScope localScope, LLVMDLOpen.RTLDFlags rtldFlags) {
         LLVMScope globalScope = context.getGlobalScope();
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
         NativeContextExtension nativeContextExtension = getNativeContextExtension(context);
         // functions and globals
         for (int i = 0; i < allocExternalSymbols.length; i++) {
             AllocExternalSymbolNode function = allocExternalSymbols[i];
-            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context);
+            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context, rtldFlags);
             // skip allocating fallbacks
             if (pointer == null) {
                 continue;

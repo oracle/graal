@@ -11,7 +11,7 @@
     ]
   },
   {
-    "name": "com.oracle.truffle.nfi.impl.LibFFILibrary",
+    "name": "com.oracle.truffle.nfi.backend.libffi.LibFFILibrary",
     "fields": [
       {
         "name": "handle"

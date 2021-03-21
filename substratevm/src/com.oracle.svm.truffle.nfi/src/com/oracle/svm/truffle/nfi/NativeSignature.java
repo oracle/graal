@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.getOffset;
-import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.getTag;
+import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getOffset;
+import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getTag;
 
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
@@ -70,7 +70,7 @@ final class NativeSignature {
 
     static class PrepareHelper {
 
-        static CifData prepareArgs(int argCount, Target_com_oracle_truffle_nfi_impl_LibFFIType... args) {
+        static CifData prepareArgs(int argCount, Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType... args) {
             CifData data = UnmanagedMemory.malloc(SizeOf.get(CifData.class) + argCount * SizeOf.get(ffi_type_array.class));
 
             for (int i = 0; i < argCount; i++) {
@@ -122,19 +122,19 @@ final class NativeSignature {
                 }
 
                 for (int i = 0; i < patchCount; i++) {
-                    Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag tag = getTag(patchOffsets[i]);
+                    Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag tag = getTag(patchOffsets[i]);
                     int offset = getOffset(patchOffsets[i]);
                     Object obj = objArgs[i];
 
-                    if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.OBJECT) {
+                    if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.OBJECT) {
                         WordBase handle = scope.createLocalHandle(obj);
                         prim.writeWord(offset, handle);
-                    } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.STRING) {
+                    } else if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.STRING) {
                         PointerBase strPtr = scope.pinString((String) obj);
                         prim.writeWord(offset, strPtr);
-                    } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.KEEPALIVE) {
+                    } else if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.KEEPALIVE) {
                         // nothing to do
-                    } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.ENV) {
+                    } else if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.ENV) {
                         prim.writeWord(offset, env);
                     } else {
                         // all other types are array types, all of them are treated the same by svm

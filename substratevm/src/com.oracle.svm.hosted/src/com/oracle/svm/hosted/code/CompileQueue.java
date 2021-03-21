@@ -89,6 +89,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
@@ -1037,6 +1038,7 @@ public class CompileQueue {
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         VMError.guarantee(highTier.removePhase(PartialEscapePhase.class));
         VMError.guarantee(highTier.removePhase(ReadEliminationPhase.class));
+        VMError.guarantee(highTier.removePhase(BoxNodeOptimizationPhase.class));
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         VMError.guarantee(midTier.removePhase(FloatingReadPhase.class));
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();

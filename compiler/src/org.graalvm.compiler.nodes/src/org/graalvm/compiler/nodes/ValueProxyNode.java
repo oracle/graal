@@ -40,12 +40,10 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
 
     public static final NodeClass<ValueProxyNode> TYPE = NodeClass.create(ValueProxyNode.class);
     @Input ValueNode value;
-    private final boolean loopPhiProxy;
 
     public ValueProxyNode(ValueNode value, LoopExitNode loopExit) {
         super(TYPE, value.stamp(NodeView.DEFAULT), loopExit);
         this.value = value;
-        loopPhiProxy = loopExit.loopBegin().isPhiAtMerge(value);
     }
 
     @Override
@@ -77,9 +75,6 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
 
         ValueNode curValue = value;
         if (curValue.getNodeClass().isLeafNode()) {
-            return curValue;
-        }
-        if (loopPhiProxy && !loopExit.loopBegin().isPhiAtMerge(curValue)) {
             return curValue;
         }
         return this;

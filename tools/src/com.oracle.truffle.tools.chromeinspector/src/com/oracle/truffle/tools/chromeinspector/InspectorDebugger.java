@@ -1145,7 +1145,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                     silentResume = false;
                 }
             } finally {
-                onSuspendPhaser.arrive();
+                onSuspendPhaser.arriveAndDeregister();
                 if (delayUnlock.getAndSet(false)) {
                     future.set(scheduler.schedule(() -> {
                         unlock();

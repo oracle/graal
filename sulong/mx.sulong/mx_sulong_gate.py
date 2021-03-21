@@ -27,6 +27,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+import argparse
 import os
 import subprocess
 from argparse import ArgumentParser
@@ -133,10 +134,24 @@ def set_sulong_test_config_root(root):
     _sulongTestConfigRoot = root
 
 
+class MxUnittestTestEngineConfigAction(argparse.Action):
+
+    config = None
+
+    def __init__(self, **kwargs):
+        kwargs['required'] = False
+        super(MxUnittestTestEngineConfigAction, self).__init__(**kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        MxUnittestTestEngineConfigAction.config = values
+
+
 def _unittest_config_participant(config):
     (vmArgs, mainClass, mainClassArgs) = config
     vmArgs += get_test_distribution_path_properties(_suite)
     vmArgs += ['-Dsulongtest.configRoot={}'.format(_sulongTestConfigRoot)]
+    if MxUnittestTestEngineConfigAction.config:
+        vmArgs += ['-Dsulongtest.config=' + MxUnittestTestEngineConfigAction.config]
     return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -146,6 +161,7 @@ def get_test_distribution_path_properties(suite):
 
 
 mx_unittest.add_config_participant(_unittest_config_participant)
+mx_unittest.add_unittest_argument('--sulong-config', default=None, help='Select test engine configuration for the sulong unittests.', metavar='<config>', action=MxUnittestTestEngineConfigAction)
 
 
 class SulongGateEnv(object):

@@ -51,10 +51,14 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.tck.tests.ValueAssert;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyHashMap;
+import org.graalvm.polyglot.proxy.ProxyIterator;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -297,6 +301,8 @@ public class HashTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
         for (KeyFactory<?> factory : KeyFactory.ALL) {
             testPolyglotMapImpl(context.asValue(new Hash()), (KeyFactory<Object>) factory, context);
+            testPolyglotMapImpl(context.asValue(new ProxyHashObject(new HashMap<>(), Collections.singletonMap("fld", "fldValue"))),
+                            (KeyFactory<Object>) factory, context);
             testPolyglotMapImpl(context.asValue(ProxyHashMap.from(new HashMap<>())), (KeyFactory<Object>) factory, context);
         }
     }
@@ -401,6 +407,16 @@ public class HashTest extends AbstractPolyglotTest {
             collected.put(unboxKey.apply(e.getKey()), unboxValue.apply(e.getValue()));
         }
         assertEquals(testData, collected);
+    }
+
+    @Test
+    public void testValueAssert() throws Exception {
+        setupEnv();
+        Hash hash = new Hash();
+        hash.writeHashEntry(1, -1);
+        ValueAssert.assertValue(context.asValue(hash), ValueAssert.Trait.HASH);
+        ValueAssert.assertValue(context.asValue(new ProxyHashObject(Collections.singletonMap(1, -1), Collections.singletonMap("fld", "fldValue"))),
+                        ValueAssert.Trait.HASH, ValueAssert.Trait.MEMBERS, ValueAssert.Trait.PROXY_OBJECT);
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -643,6 +659,67 @@ public class HashTest extends AbstractPolyglotTest {
         @TruffleBoundary
         private static int hashCode(Object obj) {
             return Objects.hashCode(obj);
+        }
+    }
+
+    private static final class ProxyHashObject implements ProxyObject, ProxyHashMap {
+
+        private final Map<Object, Object> hashSpace;
+        private final Map<String, Object> membersSpace;
+
+        ProxyHashObject(Map<Object, Object> hashSpace, Map<String, Object> membersSpace) {
+            this.hashSpace = hashSpace;
+            this.membersSpace = membersSpace;
+        }
+
+        @Override
+        public long getHashSize() {
+            return hashSpace.size();
+        }
+
+        @Override
+        public boolean hasHashEntry(Value key) {
+            return hashSpace.containsKey(key.as(Object.class));
+        }
+
+        @Override
+        public Object getHashValue(Value key) {
+            return hashSpace.get(key.as(Object.class));
+        }
+
+        @Override
+        public void putHashEntry(Value key, Value value) {
+            hashSpace.put(key.as(Object.class), value.as(Object.class));
+        }
+
+        @Override
+        public boolean removeHashEntry(Value key) {
+            return hashSpace.remove(key.as(Object.class)) != null;
+        }
+
+        @Override
+        public Object getHashEntriesIterator() {
+            return ProxyIterator.from(hashSpace.entrySet().iterator());
+        }
+
+        @Override
+        public Object getMember(String key) {
+            return membersSpace.get(key);
+        }
+
+        @Override
+        public Object getMemberKeys() {
+            return ProxyArray.fromArray((Object[]) membersSpace.keySet().toArray(new String[membersSpace.size()]));
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            return membersSpace.containsKey(key);
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            membersSpace.put(key, value.isHostObject() ? value.asHostObject() : value);
         }
     }
 

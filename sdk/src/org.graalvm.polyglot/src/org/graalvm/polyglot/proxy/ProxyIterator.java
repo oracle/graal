@@ -89,7 +89,7 @@ public interface ProxyIterator extends Proxy {
      *
      * @since 21.1
      */
-    static ProxyIterator from(Iterator<Object> iterator) {
+    static ProxyIterator from(Iterator<?> iterator) {
         Objects.requireNonNull(iterator, "Iterator must be non null.");
         return new DefaultProxyIterator(iterator);
     }
@@ -97,9 +97,9 @@ public interface ProxyIterator extends Proxy {
 
 final class DefaultProxyIterator implements ProxyIterator {
 
-    private final Iterator<Object> iterator;
+    private final Iterator<?> iterator;
 
-    DefaultProxyIterator(Iterator<Object> iterator) {
+    DefaultProxyIterator(Iterator<?> iterator) {
         this.iterator = iterator;
     }
 

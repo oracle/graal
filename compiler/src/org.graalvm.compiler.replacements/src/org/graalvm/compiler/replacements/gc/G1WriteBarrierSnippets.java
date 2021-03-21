@@ -145,7 +145,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         int gcCycle = 0;
         if (trace) {
             Pointer gcTotalCollectionsAddress = WordFactory.pointer(gcTotalCollectionsAddress());
-            gcCycle = (int) gcTotalCollectionsAddress.readLong(0, LocationIdentity.any());
+            gcCycle = gcTotalCollectionsAddress.readInt(0, LocationIdentity.any());
             log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(expectedObject).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Field %p\n", gcCycle, thread.rawValue(), field.rawValue());
@@ -221,7 +221,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         int gcCycle = 0;
         if (trace) {
             Pointer gcTotalCollectionsAddress = WordFactory.pointer(gcTotalCollectionsAddress());
-            gcCycle = (int) gcTotalCollectionsAddress.readLong(0, LocationIdentity.any());
+            gcCycle = gcTotalCollectionsAddress.readInt(0, LocationIdentity.any());
             log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
@@ -394,7 +394,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     protected abstract long referentOffset();
 
     private boolean isTracingActive(int traceStartCycle) {
-        return traceStartCycle > 0 && ((Pointer) WordFactory.pointer(gcTotalCollectionsAddress())).readLong(0) > traceStartCycle;
+        return traceStartCycle > 0 && ((Pointer) WordFactory.pointer(gcTotalCollectionsAddress())).readInt(0) > traceStartCycle;
     }
 
     private void log(boolean enabled, String format, long value1, long value2, long value3) {

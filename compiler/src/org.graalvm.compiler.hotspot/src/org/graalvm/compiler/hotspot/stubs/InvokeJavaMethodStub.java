@@ -25,13 +25,14 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import static org.graalvm.compiler.core.common.type.PrimitiveStamp.getBits;
+import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.INVOKE_STATIC_METHOD_ONE_ARG;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
@@ -44,7 +45,6 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordCastNode;
 
 import jdk.vm.ci.code.site.ConstantReference;
@@ -72,11 +72,14 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
                     ResolvedJavaMethod staticMethod) {
         super(options, runtime, providers, address, descriptor, true);
         this.javaMethod = staticMethod;
+        // This stub is compiled to kill no registers which interferes with returning float and
+        // double through a long. For simplicity disallow that case until it's required.
+        GraalError.guarantee(!javaMethod.getSignature().getReturnKind().isNumericFloat(), "float/double returns don't work with register save/restore logic: %s", javaMethod);
     }
 
     @Override
-    protected Class<?>[] createTargetParameters(ForeignCallDescriptor descriptor) {
-        return new Class<?>[]{Word.class, Word.class, Long.TYPE};
+    protected HotSpotForeignCallDescriptor getTargetSignature(HotSpotForeignCallDescriptor descriptor) {
+        return INVOKE_STATIC_METHOD_ONE_ARG;
     }
 
     @Override
@@ -90,8 +93,7 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
     }
 
     @Override
-    protected StubForeignCallNode createTargetCall(GraphKit kit, ReadRegisterNode thread) {
-        Stamp stamp = StampFactory.forKind(javaMethod.getSignature().getReturnKind());
+    protected ValueNode createTargetCall(GraphKit kit, ReadRegisterNode thread) {
         ParameterNode[] params = createParameters(kit);
         ValueNode[] targetArguments = new ValueNode[2 + params.length];
         targetArguments[0] = thread;
@@ -119,8 +121,10 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
             }
             targetArguments[2] = value;
         }
-
-        return kit.append(new StubForeignCallNode(providers.getForeignCalls(), stamp, target.getDescriptor(), targetArguments));
+        assert INVOKE_STATIC_METHOD_ONE_ARG.getResultType() == long.class;
+        Stamp returnStamp = StampFactory.forKind(JavaKind.Long);
+        ValueNode result = kit.append(new StubForeignCallNode(providers.getForeignCalls(), returnStamp, INVOKE_STATIC_METHOD_ONE_ARG, targetArguments));
+        return result;
     }
 
     @Override

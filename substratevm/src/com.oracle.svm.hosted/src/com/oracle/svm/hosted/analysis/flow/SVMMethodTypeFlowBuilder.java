@@ -202,7 +202,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
         } else if (n instanceof SubstrateArraysCopyOf) {
             SubstrateArraysCopyOf node = (SubstrateArraysCopyOf) n;
-            processArraysCopyOf(n, node.getOriginal(), node.getNewArrayType(), state);
+            processArraysCopyOf(n, node.getOriginal(), node.getNewObjectArrayType(), state);
         }
     }
 }

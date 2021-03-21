@@ -46,19 +46,18 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
 //Checkstyle: resume
 
 final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
-    private static final String MSG = "RuntimeMXBean methods";
-
+    private final String managementSpecVersion;
     private long startMillis;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateRuntimeMXBean() {
+        managementSpecVersion = ManagementFactory.getRuntimeMXBean().getManagementSpecVersion();
         RuntimeSupport.getRuntimeSupport().addInitializationHook(this::initialize);
     }
 
@@ -101,37 +100,37 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public String getVmName() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.getProperty("java.vm.name");
     }
 
     @Override
     public String getVmVendor() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.getProperty("java.vm.vendor");
     }
 
     @Override
     public String getVmVersion() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.getProperty("java.vm.version");
     }
 
     @Override
     public String getSpecName() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.getProperty("java.vm.specification.name");
     }
 
     @Override
     public String getSpecVendor() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.getProperty("java.vm.specification.vendor");
     }
 
     @Override
     public String getSpecVersion() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.getProperty("java.vm.specification.version");
     }
 
     @Override
     public String getManagementSpecVersion() {
-        throw VMError.unsupportedFeature(MSG);
+        return managementSpecVersion;
     }
 
     @Override
@@ -141,17 +140,17 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public String getLibraryPath() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.getProperty("java.vm.library.path");
     }
 
     @Override
     public boolean isBootClassPathSupported() {
-        throw VMError.unsupportedFeature(MSG);
+        return false;
     }
 
     @Override
     public String getBootClassPath() {
-        throw VMError.unsupportedFeature(MSG);
+        throw new UnsupportedOperationException("boot class path mechanism is not supported");
     }
 
     @Override

@@ -54,6 +54,7 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -919,6 +920,41 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean methodTypeFromDescriptor(JNIEnvironment jni, Breakpoint bp) {
+        JNIObjectHandle callerClass = getDirectCallerClass();
+        JNIObjectHandle descriptor = getObjectArgument(0);
+        JNIObjectHandle classLoader = getObjectArgument(1);
+
+        JNIObjectHandle result = Support.callStaticObjectMethodLL(jni, bp.clazz, bp.method, descriptor, classLoader);
+        if (clearException(jni)) {
+            result = nullHandle();
+        }
+
+        List<String> types = new ArrayList<>();
+        if (result.notEqual(nullHandle())) {
+            JNIObjectHandle rtype = Support.callObjectMethod(jni, result, agent.handles().getJavaLangInvokeMethodTypeReturnType(jni));
+            if (clearException(jni)) {
+                rtype = nullHandle();
+            }
+            String rtypeName = getClassNameOrNull(jni, rtype);
+            if (rtypeName != null) {
+                types.add(rtypeName);
+            }
+
+            JNIObjectHandle ptypes = Support.callObjectMethod(jni, result, agent.handles().getJavaLangInvokeMethodTypeParameterArray(jni));
+            if (clearException(jni)) {
+                ptypes = nullHandle();
+            }
+            Object ptypeNames = getClassArrayNames(jni, ptypes);
+            if (ptypeNames instanceof String[]) {
+                types.addAll(Arrays.asList((String[]) ptypeNames));
+            }
+        }
+
+        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "methodTypeDescriptor", result.notEqual(nullHandle()), types);
+        return true;
+    }
+
     private static boolean objectStreamClassConstructor(JNIEnvironment jni, Breakpoint bp) {
         JNIObjectHandle serializeTargetClass = getObjectArgument(1);
         String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
@@ -1348,7 +1384,10 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::asInterfaceInstance),
                     optionalBrk("java/lang/invoke/ConstantBootstraps", "getStaticFinal",
                                     "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)Ljava/lang/Object;",
-                                    BreakpointInterceptor::constantBootstrapGetStaticFinal)
+                                    BreakpointInterceptor::constantBootstrapGetStaticFinal),
+                    optionalBrk("java/lang/invoke/MethodType", "fromMethodDescriptorString",
+                                    "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;",
+                                    BreakpointInterceptor::methodTypeFromDescriptor)
     };
 
     private static final BreakpointSpecification CLASSLOADER_LOAD_CLASS_BREAKPOINT_SPECIFICATION = optionalBrk("java/lang/ClassLoader", "loadClass",

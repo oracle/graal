@@ -281,17 +281,23 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
 }
 
 #ifdef JNI_VERSION_9
-int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
-  va_list args;
-  int len;
-  va_start(args, fmt);
-  len = jio_vsnprintf(str, count, fmt, args);
-  va_end(args);
-  return len;
+/*
+ * Both `jio_snprintf` and `jio_fprintf` as defined in `src/java.base/share/native/libjava/jio.c`
+ * are no longer part of `STATIC_BUILD`, which is used to build static JDK libraries, so we redefine
+ * them here.
+ */
+JNIEXPORT int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
+    int len;
+
+    va_list args;
+    va_start(args, fmt);
+    len = jio_vsnprintf(str, count, fmt, args);
+    va_end(args);
+
+    return len;
 }
 
-int jio_fprintf(FILE *fp, const char *fmt, ...)
-{
+JNIEXPORT int jio_fprintf(FILE *fp, const char *fmt, ...) {
     int len;
 
     va_list args;

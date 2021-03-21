@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -232,7 +232,7 @@ abstract class CoreLocations {
         public int hashCode() {
             final int prime = 31;
             int result = super.hashCode();
-            result = prime * result + ((value == null) ? 0 : 0 /* value.hashCode() */);
+            result = prime * result + ((value == null) ? 0 : value.hashCode());
             return result;
         }
 

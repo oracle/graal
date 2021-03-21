@@ -50,7 +50,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.TestCaseCollector;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
@@ -59,7 +59,7 @@ import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(Parameterized.class)
-@Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
+@Parameterized.UseParametersRunnerFactory(CommonTestUtils.ExcludingParametersFactory.class)
 public class BitcodeFormatTest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
@@ -92,7 +92,7 @@ public class BitcodeFormatTest {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() throws IOException {
-        Map<String, String> excluded = TestCaseCollector.getExcludedTests(BitcodeFormatTest.class);
+        TestCaseCollector.ExcludeMap excluded = TestCaseCollector.getExcludedTests(BitcodeFormatTest.class);
         return Files.list(testBase).map(f -> new Object[]{f, f.getFileName().toString(), excluded.get(f.getFileName().toString())}).collect(Collectors.toList());
     }
 

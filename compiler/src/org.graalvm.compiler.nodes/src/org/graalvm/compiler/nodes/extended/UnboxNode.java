@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -110,10 +111,22 @@ public final class UnboxNode extends AbstractBoxingNode implements Virtualizable
             if (unboxed != null && unboxed.getJavaKind() == boxingKind) {
                 return ConstantNode.forConstant(unboxed, metaAccess);
             }
-        } else if (forValue instanceof BoxNode) {
-            BoxNode box = (BoxNode) forValue;
-            if (boxingKind == box.getBoxingKind()) {
-                return box.getValue();
+        } else {
+            ValueNode inputUnPi = GraphUtil.skipPi(forValue);
+            if (inputUnPi instanceof BoxNode) {
+                BoxNode box = (BoxNode) inputUnPi;
+                if (boxingKind == box.getBoxingKind()) {
+                    return box.getValue();
+                }
+            }
+            // unproxify constant box (only do it for constants as they are leaf nodes and thus
+            // outside a loop)
+            ValueNode inputUnProxyify = GraphUtil.unproxify(forValue);
+            if (inputUnProxyify instanceof BoxNode && ((BoxNode) inputUnProxyify).getValue().isConstant()) {
+                BoxNode box = (BoxNode) inputUnProxyify;
+                if (boxingKind == box.getBoxingKind()) {
+                    return box.getValue();
+                }
             }
         }
         return null;

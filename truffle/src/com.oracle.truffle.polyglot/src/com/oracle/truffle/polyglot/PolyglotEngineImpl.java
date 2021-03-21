@@ -868,10 +868,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    private void addContext(PolyglotContextImpl context) {
+    void addContext(PolyglotContextImpl context) {
         assert Thread.holdsLock(this.lock);
-        assert context.creatorApi == null;
-        assert context.currentApi == null;
 
         Context api = impl.getAPIAccess().newContext(context);
         context.creatorApi = api;
@@ -901,13 +899,18 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     void removeContext(PolyglotContextImpl context) {
+        assert Thread.holdsLock(this.lock) : "Must hold PolyglotEngineImpl.lock";
+        contexts.remove(context.weakReference);
+        workContextReferenceQueue();
+    }
+
+    void disposeContext(PolyglotContextImpl context) {
         synchronized (this.lock) {
             // should never be remove twice
             assert !context.weakReference.removed;
             context.weakReference.removed = true;
             context.weakReference.freeInstances.clear();
-            contexts.remove(context.weakReference);
-            workContextReferenceQueue();
+            removeContext(context);
         }
     }
 
@@ -1699,7 +1702,13 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
         boolean hasContextBindings;
         try {
-            if (!replayEvents) { // is new context
+            if (replayEvents) { // loaded context
+                // A new language can be created during engine patching to set the options.
+                // During engine patching the PolyglotEngineImpl#contexts does not contain
+                // the pre initialized context and resizeContextLocals does update the
+                // Context#contextLocals
+                context.resizeContextLocals(this.contextLocalLocations);
+            } else { // is new context
                 try {
                     synchronized (context) {
                         context.initializeContextLocals();
@@ -1707,7 +1716,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 } catch (Throwable t) {
                     if (contextAddedToEngine) {
                         synchronized (this.lock) {
-                            removeContext(context);
+                            disposeContext(context);
                             if (boundEngine) {
                                 ensureClosed(false, false);
                             }
@@ -1758,9 +1767,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             config.internalFileSystem = preInitFs;
 
             boolean patchResult = false;
+            synchronized (this.lock) {
+                addContext(context);
+            }
             try {
                 patchResult = context.patch(config);
             } finally {
+                synchronized (this.lock) {
+                    removeContext(context);
+                }
                 if (patchResult) {
                     Collection<PolyglotInstrument> toCreate = null;
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
@@ -1872,6 +1887,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     PolyglotContextImpl enter(PolyglotContextImpl context, Node safepointLocation, boolean pollSafepoint) {
         PolyglotContextImpl prev;
         PolyglotThreadInfo info = context.cachedThreadInfo;
+        boolean enterReverted = false;
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
             // Volatile increment is safe if only one thread does it.
             prev = info.enterInternal();
@@ -1893,6 +1909,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 return prev;
             } else {
                 info.leaveInternal(prev);
+                enterReverted = true;
             }
         }
         /*
@@ -1901,7 +1918,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
          * thread. The slow path acquires context lock to ensure ordering for context operations
          * like close.
          */
-        prev = context.enterThreadChanged(safepointLocation, pollSafepoint);
+        prev = context.enterThreadChanged(safepointLocation, enterReverted, pollSafepoint);
         assert verifyContext(context);
         return prev;
     }

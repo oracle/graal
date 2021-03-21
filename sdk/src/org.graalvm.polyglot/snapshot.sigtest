@@ -750,7 +750,7 @@ CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyIterator
 intf org.graalvm.polyglot.proxy.Proxy
 meth public abstract boolean hasNext()
 meth public abstract java.lang.Object getNext()
-meth public static org.graalvm.polyglot.proxy.ProxyIterator from(java.util.Iterator<java.lang.Object>)
+meth public static org.graalvm.polyglot.proxy.ProxyIterator from(java.util.Iterator<?>)
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyNativeObject
 intf org.graalvm.polyglot.proxy.Proxy

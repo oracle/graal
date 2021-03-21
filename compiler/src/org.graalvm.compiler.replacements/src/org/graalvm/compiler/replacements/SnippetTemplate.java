@@ -143,6 +143,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.MemoryEdgeProxy;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -1195,6 +1196,17 @@ public class SnippetTemplate {
         return true;
     }
 
+    private static boolean checkNonNull(ResolvedJavaMethod method, String parameterName, Object arg) {
+        if (arg instanceof ValueNode) {
+            assert StampTool.isPointerNonNull((ValueNode) arg) : method + ": non-null Node for argument " + parameterName + " must have non-null stamp: " + arg;
+        } else if (arg instanceof Constant) {
+            assert JavaConstant.isNull((Constant) arg) : method + ": non-null Constant for argument " + parameterName + " must not represent null";
+        } else {
+            assert arg != null : method + ": non-null object for argument " + parameterName + " must not be null";
+        }
+        return true;
+    }
+
     /**
      * The graph built from the snippet method.
      */
@@ -2093,6 +2105,9 @@ public class SnippetTemplate {
                 assert args.values[i] instanceof Varargs;
                 Varargs varargs = (Varargs) args.values[i];
                 assert IS_IN_NATIVE_IMAGE || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
+
+            } else if (args.info.isNonNullParameter(i)) {
+                assert checkNonNull(method, args.info.getParameterName(i), args.values[i]);
             }
         }
         return true;

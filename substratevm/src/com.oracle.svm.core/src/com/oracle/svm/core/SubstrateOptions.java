@@ -441,9 +441,12 @@ public class SubstrateOptions {
     };
 
     public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
-        // force update of TrackNodeSourcePosition and DeleteLocalSymbols
+        /* Force update of TrackNodeSourcePosition */
         TrackNodeSourcePosition.update(values, newValue > 0);
-        DeleteLocalSymbols.update(values, newValue == 0);
+        if (OS.WINDOWS.isCurrent()) {
+            /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
+            DeleteLocalSymbols.update(values, newValue == 0);
+        }
     }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//

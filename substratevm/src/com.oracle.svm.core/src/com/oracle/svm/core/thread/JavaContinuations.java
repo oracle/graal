@@ -89,7 +89,7 @@ public class JavaContinuations {
 
         @Override
         public void invoke() {
-            IsolateThread vmThread = VMThreads.findFromJavaThread(thread);
+            IsolateThread vmThread = JavaThreads.getIsolateThread(thread);
             Pointer rootSP = cont.sp;
             CodePointer rootIP = cont.ip;
             preemptStatus = StoredContinuationImpl.allocateFromForeignStack(cont, rootSP, vmThread);
@@ -103,7 +103,7 @@ public class JavaContinuations {
     public static int isPinned(Target_java_lang_Thread thread, Target_java_lang_ContinuationScope scope, boolean isCurrentThread) {
         Target_java_lang_Continuation cont = thread.getContinuation();
 
-        IsolateThread vmThread = isCurrentThread ? CurrentIsolate.getCurrentThread() : VMThreads.findFromJavaThread(SubstrateUtil.cast(thread, Thread.class));
+        IsolateThread vmThread = isCurrentThread ? CurrentIsolate.getCurrentThread() : JavaThreads.getIsolateThread(SubstrateUtil.cast(thread, Thread.class));
 
         if (cont != null) {
             int threadMonitorCount = MonitorSupport.singleton().countThreadLock(vmThread);
