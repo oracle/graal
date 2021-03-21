@@ -18,7 +18,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       '01:pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
       'pip:ninja_syntax': '==1.7.2',
-      'mx': 'HEAD',
+      'mx': '5.291.0',
     },
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
@@ -59,7 +59,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // generic targets
   gate:            {targets+: ['gate'], timelimit: "1:00:00"},
   postMerge:       {targets+: ['post-merge']},
-  bench:           {targets+: ['bench', 'post-merge']},
+  bench:           {targets+: ['bench']},
   dailyBench:      {targets+: ['bench', 'daily']},
   daily:           {targets+: ['daily']},
   weekly:          {targets+: ['weekly']},
