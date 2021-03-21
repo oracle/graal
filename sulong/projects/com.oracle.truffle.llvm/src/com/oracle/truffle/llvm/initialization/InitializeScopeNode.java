@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,10 +65,12 @@ public final class InitializeScopeNode extends LLVMNode {
         this.allocScopes = allocScopesList.toArray(LLVMSymbol.EMPTY);
     }
 
-    public void execute(LLVMContext context, LLVMLocalScope localScope) {
-        localScope.addMissingLinkageName(fileScope);
+    public void execute(LLVMScope scope) {
+        if (scope instanceof LLVMLocalScope) {
+            scope.addMissingLinkageName(fileScope);
+        }
         for (int i = 0; i < allocScopes.length; i++) {
-            allocateScope(allocScopes[i], context, localScope);
+            allocateScope(allocScopes[i], scope);
         }
     }
 
@@ -84,6 +86,13 @@ public final class InitializeScopeNode extends LLVMNode {
         LLVMSymbol exportedSymbolFromLocal = localScope.get(symbol.getName());
         if (exportedSymbolFromLocal == null) {
             localScope.register(symbol);
+        }
+    }
+
+    static void allocateScope(LLVMSymbol symbol, LLVMScope scope) {
+        LLVMSymbol exportedSymbolFromLocal = scope.get(symbol.getName());
+        if (exportedSymbolFromLocal == null) {
+            scope.register(symbol);
         }
     }
 }

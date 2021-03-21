@@ -1092,6 +1092,27 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.dynloader.native" : {
+      "subDir" : "tests",
+      "native": True,
+      "vpath": True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CLANG": "<toolchainGetToolPath:native,CC>",
+        "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.dynloader.native>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "results": [
+        "dlopenAbsolute",
+        "dlopenLocator",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.embedded.custom.native" : {
       "description" : "Embedded tests with custom Makefiles",
       "subDir" : "tests",
@@ -1571,6 +1592,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.amd64.native/*",
           "dependency:com.oracle.truffle.llvm.tests.pthread.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.dynloader.native/*",
         ],
       },
       "license" : "BSD-new",
