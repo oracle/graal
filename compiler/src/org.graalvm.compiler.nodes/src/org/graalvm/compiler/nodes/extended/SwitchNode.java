@@ -130,7 +130,7 @@ public abstract class SwitchNode extends ControlSplitNode {
         assert newProbability <= 1.0 && newProbability >= 0.0 : newProbability;
         assert assertProbabilities();
 
-        double[] keyProbabilities = getKeyProbabilities();
+        double[] keyProbabilities = getKeyProbabilities().clone();
         double sum = 0;
         double otherSum = 0;
         for (int i = 0; i < keySuccessors.length; i++) {
@@ -155,8 +155,8 @@ public abstract class SwitchNode extends ControlSplitNode {
                 keyProbabilities[i] = Math.max(0.0, keyProbabilities[i] - (delta * keyProbabilities[i]) / otherSum);
             }
         }
-        assert assertProbabilities();
         profileData = SwitchProbabilityData.create(keyProbabilities, profileData.getProfileSource().combine(successorProfileData.getProfileSource()));
+        assert assertProbabilities();
         return true;
     }
 
