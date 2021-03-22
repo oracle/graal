@@ -683,6 +683,7 @@ public class SourceAPITest {
         assertTrue(section.hasLines());
         assertTrue(section.hasColumns());
         assertEquals("", section.getCharacters());
+        assertTrue(truffleSource.getURI().toString().contains("name"));
     }
 
     @Test
