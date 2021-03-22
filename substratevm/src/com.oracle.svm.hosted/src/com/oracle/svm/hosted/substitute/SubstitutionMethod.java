@@ -64,14 +64,6 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
      */
     private final boolean isUserSubstitution;
 
-    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated) {
-        this(original, annotated, false, false);
-    }
-
-    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution) {
-        this(original, annotated, inClassSubstitution, false);
-    }
-
     public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution, boolean isUserSubstitution) {
         this.original = original;
         this.annotated = annotated;

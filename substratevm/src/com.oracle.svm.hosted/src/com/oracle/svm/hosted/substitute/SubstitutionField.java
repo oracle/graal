@@ -47,10 +47,6 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
      */
     private final boolean isUserSubstitution;
 
-    public SubstitutionField(ResolvedJavaField original, ResolvedJavaField annotated) {
-        this(original, annotated, false);
-    }
-
     public SubstitutionField(ResolvedJavaField original, ResolvedJavaField annotated, boolean isUserSubstitution) {
         this.original = original;
         this.annotated = annotated;
