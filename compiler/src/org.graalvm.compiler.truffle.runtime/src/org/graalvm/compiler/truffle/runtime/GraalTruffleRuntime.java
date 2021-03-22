@@ -713,11 +713,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressWarnings("try")
     private void truffleDump(OptimizedCallTarget callTarget, TruffleCompiler compiler, TruffleCompilation compilation, Map<String, Object> optionsMap, TruffleInlining inlining) throws Exception {
         try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
-            if (!debug.isDumpEnabled()) {
-                return;
-            }
             try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget));
                             TruffleOutputGroup o = isPrintGraphEnabled() ? TruffleOutputGroup.openCallTarget(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation)) : null) {
+                if (!debug.isDumpEnabled()) {
+                    return;
+                }
                 if (inlining.inlinedTargets().length > 1) {
                     TruffleTreeDumper.dump(debug, callTarget, inlining);
                 }

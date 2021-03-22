@@ -71,7 +71,6 @@ public final class TruffleTreeDumper {
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget root, TruffleInlining inlining) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
             try {
-
                 CompilableTruffleAST[] inlinedTargets = inlining.inlinedTargets();
                 Set<CompilableTruffleAST> uniqueTargets = new HashSet<>(Arrays.asList(inlinedTargets));
                 uniqueTargets.remove(root);
