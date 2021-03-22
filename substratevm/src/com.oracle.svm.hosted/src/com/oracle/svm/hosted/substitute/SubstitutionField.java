@@ -41,9 +41,16 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
 
-    public SubstitutionField(ResolvedJavaField original, ResolvedJavaField annotated) {
+    /**
+     * This field is used in the {@link com.oracle.svm.hosted.SubstitutionReportFeature} class to
+     * determine {@link SubstitutionMethod} objects which correspond to annotated substitutions.
+     */
+    private final boolean isUserSubstitution;
+
+    public SubstitutionField(ResolvedJavaField original, ResolvedJavaField annotated, boolean isUserSubstitution) {
         this.original = original;
         this.annotated = annotated;
+        this.isUserSubstitution = isUserSubstitution;
     }
 
     @Override
@@ -68,6 +75,10 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
             value = ReadableJavaField.readFieldValue(GraalAccess.getOriginalProviders().getConstantReflection(), annotated, receiver);
         }
         return value;
+    }
+
+    public boolean isUserSubstitution() {
+        return isUserSubstitution;
     }
 
     public ResolvedJavaField getOriginal() {

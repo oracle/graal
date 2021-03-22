@@ -104,7 +104,7 @@ public class ReportUtils {
             try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
                 try (PrintWriter writer = new PrintWriter(fw)) {
                     Path cwd = Paths.get("").toAbsolutePath();
-                    System.out.println("# Printing " + description + " to: " + cwd.relativize(file));
+                    System.out.println("# Printing " + description + " to: " + cwd.relativize(file.toAbsolutePath()));
                     reporter.accept(writer);
                 }
             }
