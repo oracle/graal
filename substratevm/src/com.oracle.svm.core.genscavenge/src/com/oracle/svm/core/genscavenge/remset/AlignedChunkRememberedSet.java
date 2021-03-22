@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import java.util.List;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -38,12 +42,12 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
-import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapPolicy;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -63,22 +67,44 @@ final class AlignedChunkRememberedSet {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         assert !HeapChunk.getSpace(chunk).isYoungSpace();
 
-        assert verifyOnlyCleanCards(chunk);
         Pointer fotStart = getFirstObjectTableStart(chunk);
-        Pointer memoryStart = AlignedHeapChunk.getObjectsStart(chunk);
-        Pointer objStart = Word.objectToUntrackedPointer(obj);
-        Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
-        FirstObjectTable.setTableForObject(fotStart, memoryStart, objStart, objEnd);
+        Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
+        Pointer startOffset = Word.objectToUntrackedPointer(obj).subtract(objectsStart);
+        Pointer endOffset = LayoutEncoding.getObjectEnd(obj).subtract(objectsStart);
+        FirstObjectTable.setTableForObject(fotStart, startOffset, endOffset);
         ObjectHeaderImpl.setRememberedSetBit(obj);
     }
 
-    public static void enableRememberedSetForChunk(AlignedHeader chunk) {
+    public static void enableRememberedSet(AlignedHeader chunk) {
+        // Completely clean the card table and the first object table as further objects may be
+        // added later on to this chunk.
+        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+        FirstObjectTable.initializeTable(getFirstObjectTableStart(chunk), getFirstObjectTableSize());
+
         Pointer offset = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer top = HeapChunk.getTopPointer(chunk);
         while (offset.belowThan(top)) {
             Object obj = offset.toObject();
             enableRememberedSetForObject(chunk, obj);
             offset = offset.add(LayoutEncoding.getSizeFromObject(obj));
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void enableRememberedSet(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects) {
+        // Completely clean the card table and the first object table.
+        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+        FirstObjectTable.initializeTable(getFirstObjectTableStart(chunk), getFirstObjectTableSize());
+
+        Pointer fotStart = getFirstObjectTableStart(chunk);
+        for (ImageHeapObject obj : objects) {
+            long startOffset = obj.getOffset() - chunkPosition;
+            long endOffset = startOffset + obj.getSize();
+
+            assert startOffset >= 0;
+            assert endOffset > 0;
+            FirstObjectTable.setTableForObject(fotStart, WordFactory.unsigned(startOffset), WordFactory.unsigned(endOffset));
+            // The remembered set bit in the header will be set by the code that writes the objects.
         }
     }
 
@@ -92,106 +118,41 @@ final class AlignedChunkRememberedSet {
         Pointer cardTableStart = getCardTableStart(chunk);
         UnsignedWord index = getObjectIndex(chunk, objectPointer);
         if (verifyOnly) {
-            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, index), "card must be dirty", "", "", 0L, 0L);
+            AssertionNode.assertion(false, CardTable.isDirty(cardTableStart, index), "card must be dirty", "", "", 0L, 0L);
         } else {
-            CardTable.dirtyEntryAtIndex(cardTableStart, index);
+            CardTable.setDirty(cardTableStart, index);
         }
     }
 
-    public static void initializeChunk(AlignedHeader chunk) {
-        CardTable.cleanTableToPointer(getCardTableStart(chunk), getCardTableLimit(chunk));
-        FirstObjectTable.initializeTableToLimit(getFirstObjectTableStart(chunk), getFirstObjectTableLimit(chunk));
-    }
-
-    public static void resetChunk(AlignedHeader chunk) {
-        assert verifyOnlyCleanCards(chunk);
-        FirstObjectTable.initializeTableToLimit(getFirstObjectTableStart(chunk), getFirstObjectTableLimit(chunk));
-    }
-
-    public static void cleanCardTable(AlignedHeader chunk) {
-        // The card table cannot be dirty beyond top.
-        CardTable.cleanTableToIndex(getCardTableStart(chunk), getCardTableIndexLimitForCurrentTop(chunk));
-        assert verifyOnlyCleanCards(chunk);
-    }
-
-    public static boolean walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
-        /* Iterate through the cards looking for dirty cards. */
+    public static void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor) {
         Pointer cardTableStart = getCardTableStart(chunk);
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
         UnsignedWord indexLimit = CardTable.indexLimitForMemorySize(memorySize);
+
         for (UnsignedWord index = WordFactory.zero(); index.belowThan(indexLimit); index = index.add(1)) {
-            /* If the card is dirty, visit the objects it covers. */
-            if (CardTable.isDirtyEntryAtIndex(cardTableStart, index)) {
-                if (clean) {
-                    CardTable.cleanEntryAtIndex(cardTableStart, index);
-                }
+            if (CardTable.isDirty(cardTableStart, index)) {
+                CardTable.setClean(cardTableStart, index);
+
+                Pointer ptr = FirstObjectTable.getFirstObjectImprecise(fotStart, objectsStart, objectsLimit, index);
                 Pointer cardLimit = CardTable.indexToMemoryPointer(objectsStart, index.add(1));
-                /*
-                 * Iterate through the objects on that card. Find the start of the
-                 * imprecisely-marked card.
-                 */
-                Pointer impreciseStart = FirstObjectTable.getImpreciseFirstObjectPointer(fotStart, objectsStart, objectsLimit, index);
-                /*
-                 * Walk the objects to the end of an object, even if that is past cardLimit, because
-                 * these are imprecise cards.
-                 */
-                Pointer ptr = impreciseStart;
                 Pointer walkLimit = PointerUtils.min(cardLimit, objectsLimit);
                 while (ptr.belowThan(walkLimit)) {
                     Object obj = ptr.toObject();
-                    Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
-                    if (!visitor.visitObjectInline(obj)) {
-                        Log failureLog = Log.log().string("[AlignedHeapChunk.walkDirtyObjects:");
-                        failureLog.string("  visitor.visitObject fails").string("  obj: ").object(obj).string("]").newline();
-                        return false;
-                    }
-                    ptr = objEnd;
+                    visitor.visitObjectInline(obj);
+                    ptr = LayoutEncoding.getObjectEnd(obj);
                 }
             }
         }
-        return true;
     }
 
     public static boolean verify(AlignedHeader chunk) {
-        if (chunk.getSpace().isOldSpace()) {
-            HeapImpl heap = HeapImpl.getHeapImpl();
-            if (!CardTable.verify(getCardTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk))) {
-                Log verifyLog = heap.getHeapVerifier().getWitnessLog().string("[AlignedHeapChunk.verifyRememberedSet:");
-                verifyLog.string("  card table fails to verify").string("]").newline();
-                return false;
-            }
-            if (!FirstObjectTable.verify(getFirstObjectTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk))) {
-                Log verifyLog = heap.getHeapVerifier().getWitnessLog().string("[AlignedHeapChunk.verifyRememberedSet:");
-                verifyLog.string("  first object table fails to verify").string("]").newline();
-                return false;
-            }
-        } else {
-            verifyOnlyCleanCards(chunk);
-            // first object table can have an arbitrary state
-        }
-        return true;
-    }
-
-    public static boolean verifyOnlyCleanCards(AlignedHeader chunk) {
-        boolean result = true;
-        Pointer cardTableStart = getCardTableStart(chunk);
-        UnsignedWord indexLimit = getCardTableIndexLimitForCurrentTop(chunk);
-        for (UnsignedWord index = WordFactory.zero(); index.belowThan(indexLimit); index = index.add(1)) {
-            if (CardTable.isDirtyEntryAtIndex(cardTableStart, index)) {
-                result = false;
-                Log witness = Log.log().string("[AlignedHeapChunk.verifyOnlyCleanCards:");
-                witness.string("  chunk: ").hex(chunk).string("  dirty card at index: ").unsigned(index).string("]").newline();
-            }
-        }
-        return result;
-    }
-
-    private static UnsignedWord getCardTableIndexLimitForCurrentTop(AlignedHeader chunk) {
-        UnsignedWord memorySize = HeapChunk.getTopOffset(chunk).subtract(AlignedHeapChunk.getObjectsStartOffset());
-        return CardTable.indexLimitForMemorySize(memorySize);
+        boolean success = true;
+        success &= CardTable.verify(getCardTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk));
+        success &= FirstObjectTable.verify(getFirstObjectTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk));
+        return success;
     }
 
     /** Return the index of an object within the tables of a chunk. */
@@ -251,19 +212,19 @@ final class AlignedChunkRememberedSet {
         return UnsignedUtils.roundUp(tableLimit, alignment);
     }
 
-    static Pointer getCardTableStart(AlignedHeader chunk) {
-        return HeapChunk.asPointer(chunk).add(getCardTableStartOffset());
+    private static Pointer getCardTableStart(AlignedHeader chunk) {
+        return getCardTableStart(HeapChunk.asPointer(chunk));
     }
 
-    static Pointer getCardTableLimit(AlignedHeader chunk) {
-        return HeapChunk.asPointer(chunk).add(getCardTableLimitOffset());
+    private static Pointer getCardTableStart(Pointer chunk) {
+        return chunk.add(getCardTableStartOffset());
     }
 
-    static Pointer getFirstObjectTableStart(AlignedHeader chunk) {
-        return HeapChunk.asPointer(chunk).add(getFirstObjectTableStartOffset());
+    private static Pointer getFirstObjectTableStart(AlignedHeader chunk) {
+        return getFirstObjectTableStart(HeapChunk.asPointer(chunk));
     }
 
-    static Pointer getFirstObjectTableLimit(AlignedHeader chunk) {
-        return HeapChunk.asPointer(chunk).add(getFirstObjectTableLimitOffset());
+    private static Pointer getFirstObjectTableStart(Pointer chunk) {
+        return chunk.add(getFirstObjectTableStartOffset());
     }
 }

@@ -815,12 +815,13 @@ public final class GCImpl implements GC {
     private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned) {
         AlignedHeader aligned = firstAligned;
         while (aligned.isNonNull()) {
-            RememberedSet.get().walkDirtyObjects(aligned, greyToBlackObjectVisitor, true);
+            RememberedSet.get().walkDirtyObjects(aligned, greyToBlackObjectVisitor);
             aligned = HeapChunk.getNext(aligned);
         }
+
         UnalignedHeader unaligned = firstUnaligned;
         while (unaligned.isNonNull()) {
-            RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor, true);
+            RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor);
             unaligned = HeapChunk.getNext(unaligned);
         }
     }
@@ -855,7 +856,7 @@ public final class GCImpl implements GC {
              * Promote any referenced young objects.
              */
             Space oldGenToSpace = HeapImpl.getHeapImpl().getOldGeneration().getToSpace();
-            RememberedSet.get().walkDirtyObjects(oldGenToSpace, greyToBlackObjectVisitor, true);
+            RememberedSet.get().walkDirtyObjects(oldGenToSpace, greyToBlackObjectVisitor);
         } finally {
             blackenDirtyCardRootsTimer.close();
         }

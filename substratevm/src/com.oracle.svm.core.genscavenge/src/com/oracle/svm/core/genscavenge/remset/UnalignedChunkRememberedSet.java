@@ -26,6 +26,8 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -34,12 +36,10 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
-import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
-import com.oracle.svm.core.genscavenge.OldGeneration;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 final class UnalignedChunkRememberedSet {
@@ -53,9 +53,17 @@ final class UnalignedChunkRememberedSet {
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 
-    public static void enableRememberedSetForChunk(UnalignedHeader chunk) {
+    public static void enableRememberedSet(UnalignedHeader chunk) {
+        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+
         Object obj = UnalignedHeapChunk.getObjectStart(chunk).toObject();
         ObjectHeaderImpl.setRememberedSetBit(obj);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void enableRememberedSet(HostedByteBufferPointer chunk) {
+        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+        // The remembered set bit in the header will be set by the code that writes the objects.
     }
 
     /**
@@ -67,72 +75,26 @@ final class UnalignedChunkRememberedSet {
         Pointer cardTableStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();
         if (verifyOnly) {
-            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, objectIndex), "card must be dirty", "", "", 0L, 0L);
+            AssertionNode.assertion(false, CardTable.isDirty(cardTableStart, objectIndex), "card must be dirty", "", "", 0L, 0L);
         } else {
-            CardTable.dirtyEntryAtIndex(cardTableStart, objectIndex);
+            CardTable.setDirty(cardTableStart, objectIndex);
         }
     }
 
-    public static void initializeChunk(UnalignedHeader chunk) {
-        cleanCardTable(chunk);
-        // first object table is empty for unaligned chunks
-    }
-
-    public static void cleanCardTable(UnalignedHeader chunk) {
-        CardTable.cleanTableToPointer(getCardTableStart(chunk), getCardTableLimit(chunk));
-    }
-
-    public static boolean walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
-        boolean result = true;
+    public static void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor) {
         Pointer rememberedSetStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();
-        if (CardTable.isDirtyEntryAtIndex(rememberedSetStart, objectIndex)) {
-            if (clean) {
-                CardTable.cleanEntryAtIndex(rememberedSetStart, objectIndex);
-            }
+        if (CardTable.isDirty(rememberedSetStart, objectIndex)) {
+            CardTable.setClean(rememberedSetStart, objectIndex);
+
             Pointer objectsStart = UnalignedHeapChunk.getObjectStart(chunk);
             Object obj = objectsStart.toObject();
-            if (!visitor.visitObjectInline(obj)) {
-                result = false;
-            }
+            visitor.visitObjectInline(obj);
         }
-        return result;
     }
 
     public static boolean verify(UnalignedHeader chunk) {
-        // Only chunks in the old from space have a remembered set.
-        OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-        if (HeapChunk.getSpace(chunk) == oldGen.getFromSpace()) {
-            // Check if there are cross-generational pointers ...
-            Pointer objStart = UnalignedHeapChunk.getObjectStart(chunk);
-            Object obj = objStart.toObject();
-            boolean containsYoungReferences = CardTable.containsReferenceToYoungSpace(obj);
-            // ... and if so, that the chunk is marked as dirty.
-            if (containsYoungReferences) {
-                Pointer rememberedSet = getCardTableStart(chunk);
-                UnsignedWord objectIndex = getObjectIndex();
-                boolean isDirty = CardTable.isDirtyEntryAtIndex(rememberedSet, objectIndex);
-                if (!isDirty) {
-                    Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
-                    witness.string("  chunk: ").hex(chunk);
-                    witness.string("  containsYoungReferences implies isDirty").string("]").newline();
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    public static boolean verifyOnlyCleanCards(UnalignedHeader chunk) {
-        boolean result = true;
-        Pointer rememberedSetStart = getCardTableStart(chunk);
-        UnsignedWord objectIndex = getObjectIndex();
-        if (CardTable.isDirtyEntryAtIndex(rememberedSetStart, objectIndex)) {
-            result = false;
-            Log witness = Log.log().string("[UnalignedHeapChunk.verifyOnlyCleanCards:");
-            witness.string("  chunk: ").hex(chunk).string("  dirty card at index: ").unsigned(objectIndex).string("]").newline();
-        }
-        return result;
+        return CardTable.verify(getCardTableStart(chunk), UnalignedHeapChunk.getObjectStart(chunk), HeapChunk.getTopPointer(chunk));
     }
 
     @Fold
@@ -163,11 +125,11 @@ final class UnalignedChunkRememberedSet {
         return WordFactory.zero();
     }
 
-    static Pointer getCardTableStart(UnalignedHeader chunk) {
-        return HeapChunk.asPointer(chunk).add(getCardTableStartOffset());
+    private static Pointer getCardTableStart(UnalignedHeader chunk) {
+        return getCardTableStart(HeapChunk.asPointer(chunk));
     }
 
-    static Pointer getCardTableLimit(UnalignedHeader chunk) {
-        return HeapChunk.asPointer(chunk).add(getCardTableLimitOffset());
+    private static Pointer getCardTableStart(Pointer chunk) {
+        return chunk.add(getCardTableStartOffset());
     }
 }

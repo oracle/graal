@@ -1,12 +1,13 @@
 package com.oracle.svm.core.genscavenge.remset;
 
+import java.util.List;
+
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
@@ -15,10 +16,10 @@ import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapPolicy;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
-import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -45,18 +46,30 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
+    public void enableRememberedSetForChunk(AlignedHeader chunk) {
+        AlignedChunkRememberedSet.enableRememberedSet(chunk);
+    }
+
+    @Override
+    public void enableRememberedSetForChunk(UnalignedHeader chunk) {
+        UnalignedChunkRememberedSet.enableRememberedSet(chunk);
+    }
+
+    @Override
     public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
         AlignedChunkRememberedSet.enableRememberedSetForObject(chunk, obj);
     }
 
     @Override
-    public void enableRememberedSetForChunk(AlignedHeader chunk) {
-        AlignedChunkRememberedSet.enableRememberedSetForChunk(chunk);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkOffset, List<ImageHeapObject> objects) {
+        AlignedChunkRememberedSet.enableRememberedSet(chunk, chunkOffset, objects);
     }
 
     @Override
-    public void enableRememberedSetForChunk(UnalignedHeader chunk) {
-        UnalignedChunkRememberedSet.enableRememberedSetForChunk(chunk);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk) {
+        UnalignedChunkRememberedSet.enableRememberedSet(chunk);
     }
 
     @Override
@@ -97,66 +110,28 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
-    public void initializeChunk(AlignedHeader chunk) {
-        AlignedChunkRememberedSet.initializeChunk(chunk);
+    public void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor) {
+        AlignedChunkRememberedSet.walkDirtyObjects(chunk, visitor);
     }
 
     @Override
-    public void initializeChunk(UnalignedHeader chunk) {
-        UnalignedChunkRememberedSet.initializeChunk(chunk);
+    public void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor) {
+        UnalignedChunkRememberedSet.walkDirtyObjects(chunk, visitor);
     }
 
     @Override
-    public void resetChunk(AlignedHeader chunk) {
-        AlignedChunkRememberedSet.resetChunk(chunk);
-    }
-
-    @Override
-    public void cleanCardTable(Space space) {
-        AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
-        while (aChunk.isNonNull()) {
-            AlignedChunkRememberedSet.cleanCardTable(aChunk);
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-
-        UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
-        while (uChunk.isNonNull()) {
-            UnalignedChunkRememberedSet.cleanCardTable(uChunk);
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-    }
-
-    @Override
-    public boolean walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
-        return AlignedChunkRememberedSet.walkDirtyObjects(chunk, visitor, clean);
-    }
-
-    @Override
-    public boolean walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
-        return UnalignedChunkRememberedSet.walkDirtyObjects(chunk, visitor, clean);
-    }
-
-    @Override
-    public boolean walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean) {
+    public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor) {
         AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
-            if (!walkDirtyObjects(aChunk, visitor, clean)) {
-                Log failureLog = Log.log().string("[Space.walkDirtyObjects:");
-                failureLog.string("  aChunk.walkDirtyObjects fails").string("]").newline();
-                return false;
-            }
+            walkDirtyObjects(aChunk, visitor);
             aChunk = HeapChunk.getNext(aChunk);
         }
+
         UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
-            if (!walkDirtyObjects(uChunk, visitor, clean)) {
-                Log failureLog = Log.log().string("[Space.walkDirtyObjects:");
-                failureLog.string("  uChunk.walkDirtyObjects fails").string("]").newline();
-                return false;
-            }
+            walkDirtyObjects(uChunk, visitor);
             uChunk = HeapChunk.getNext(uChunk);
         }
-        return true;
     }
 
     @Override

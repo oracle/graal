@@ -24,32 +24,20 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
-import java.nio.ByteBuffer;
-
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.genscavenge.HeapImpl;
-import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
  * A "first object table" to tell me the start of the first object that crosses onto a card
  * remembered set memory region.
- * <p>
- * The card table is a summary of pointer stores into a region of the heap. The card table is linear
- * with the region it summarizes, but smaller than the region. Each card table entry records that a
- * pointer has been stored in the address range summarized by the entry.
  * <p>
  * During a young generation collection, all the pointers on dirty cards must be examined to see if
  * they reference objects in the young generation, since those objects are reachable and must be
@@ -60,10 +48,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * header is hard because objects can cross the boundaries between the cards. The first object table
  * solves this problem by saying where is the start of the object that crosses onto the memory
  * covered by a card.
- * <p>
- * The table is linear with the memory it covers, so the table can be indexed by scaling an index
- * into the memory region, and the memory region can be indexed by scaling an index into the table.
- * In the code here, an entry is one byte for each memory region covered by an entry.
  * <p>
  * Entries come in two flavors. A memory offset entry gives an offset into the *previous* memory
  * region to the start of the object that crosses onto this entry. If all objects were tiny, then
@@ -125,12 +109,10 @@ import com.oracle.svm.core.util.UnsignedUtils;
  */
 final class FirstObjectTable {
     /**
-     * The number of bytes of memory covered by an entry.
-     *
-     * Since the indexes into the CardTable are used to index into the FirstObjectTable, these need
-     * to have the same value.
+     * The number of bytes of memory covered by an entry. Since the indexes into the CardTable are
+     * used to index into the FirstObjectTable, these need to have the same value.
      */
-    private static final int BYTES_COVERED_BY_ENTRY = CardTable.getBytesCoveredByEntry();
+    private static final int BYTES_COVERED_BY_ENTRY = CardTable.BYTES_COVERED_BY_ENTRY;
 
     private static final int ENTRY_SIZE_BYTES = 1;
 
@@ -180,67 +162,53 @@ final class FirstObjectTable {
     private FirstObjectTable() {
     }
 
-    static void initializeTableToLimit(Pointer table, Pointer tableLimit) {
-        assert FirstObjectTable.doInitializeTableToLimit(table, tableLimit);
+    public static void initializeTable(Pointer table, UnsignedWord size) {
+        if (SubstrateUtil.HOSTED) {
+            // Initialize this table unconditionally as this simplifies a few things.
+            doInitializeTable(table, size);
+        } else {
+            // There is no need to initialize this table unless assertions are enabled.
+            assert doInitializeTable(table, size);
+        }
     }
 
-    static boolean isUninitializedIndex(Pointer table, UnsignedWord index) {
-        int entry = getEntryAtIndex(table, index);
-        return isUninitializedEntry(entry);
+    private static boolean doInitializeTable(Pointer table, UnsignedWord size) {
+        UnmanagedMemoryUtil.fill(table, size, (byte) UNINITIALIZED_ENTRY);
+        return true;
     }
 
-    static void setTableForObject(Pointer table, Pointer memory, Pointer start, Pointer end) {
-        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
-        setTableForObjectUnchecked(table, memory, start, end);
-    }
-
-    private static void setTableForObjectUnchecked(Pointer table, Pointer memory, Pointer start, Pointer end) {
-        assert memory.belowOrEqual(start);
-        setTableForObjectAtOffsetUnchecked(table, start.subtract(memory), end.subtract(memory));
-    }
-
-    static void setTableForObjectAtOffsetUnchecked(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
+    public static void setTableForObject(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
         assert startOffset.belowThan(endOffset);
-        UnsignedWord actualEndOffset = endOffset.subtract(1); // methods wants offset of last byte
-        setTableForObjectAtLocation(table, startOffset, actualEndOffset);
-    }
-
-    private static void setTableForObjectAtLocation(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
         UnsignedWord startIndex = memoryOffsetToIndex(startOffset);
-        UnsignedWord endIndex = memoryOffsetToIndex(endOffset);
-        UnsignedWord startMemoryOffset = indexToMemoryOffset(startIndex);
-        if (startIndex.equal(endIndex) && startOffset.unsignedRemainder(BYTES_COVERED_BY_ENTRY).notEqual(0)) {
-            /* The object does not cross, or start on, a card boundary: nothing to do. */
+        UnsignedWord endIndex = memoryOffsetToIndex(endOffset.subtract(1));
+        boolean startsAtCardBoundary = startOffset.unsignedRemainder(BYTES_COVERED_BY_ENTRY).equal(0);
+        if (startIndex.equal(endIndex) && !startsAtCardBoundary) {
+            // The object neither crosses nor starts on a card boundary
             return;
         }
-        UnsignedWord memoryOffsetIndex;
-        if (startOffset.equal(startMemoryOffset)) {
-            memoryOffsetIndex = startIndex;
-            setEntryAtIndex(table, memoryOffsetIndex, 0);
+
+        // Write the first entry.
+        if (startsAtCardBoundary) {
+            setEntryAtIndex(table, startIndex, 0);
         } else {
-            /*
-             * The startOffset is in the middle of the memory for startIndex. That is, before the
-             * memory for startIndex+1.
-             */
-            memoryOffsetIndex = startIndex.add(1);
-            UnsignedWord memoryIndexOffset = indexToMemoryOffset(memoryOffsetIndex);
+            startIndex = startIndex.add(1);
+            UnsignedWord memoryIndexOffset = indexToMemoryOffset(startIndex);
             int entry = memoryOffsetToEntry(memoryIndexOffset.subtract(startOffset));
-            setEntryAtIndex(table, memoryOffsetIndex, entry);
+            setEntryAtIndex(table, startIndex, entry);
         }
-        /*
-         * Fill from memoryOffsetIndex towards endIndex with offset entries referring back to
-         * memoryOffsetIndex.
-         */
-        /* First, as many linear offsets as are needed, or as I can have. */
-        UnsignedWord linearIndexMax = UnsignedUtils.min(endIndex, memoryOffsetIndex.add(LINEAR_OFFSET_MAX));
-        UnsignedWord entryIndex = memoryOffsetIndex.add(1);
+
+        // Write subsequent entries.
+        // First, as many linear offsets as needed.
+        UnsignedWord linearIndexMax = UnsignedUtils.min(endIndex, startIndex.add(LINEAR_OFFSET_MAX));
+        UnsignedWord entryIndex = startIndex.add(1);
         int entry = LINEAR_OFFSET_MIN;
         while (entryIndex.belowOrEqual(linearIndexMax)) {
             setEntryAtIndex(table, entryIndex, entry);
             entryIndex = entryIndex.add(1);
             entry++;
         }
-        /* Next, as many exponential offsets as are needed. */
+
+        // Next, as many exponential offsets as needed.
         int unbiasedExponent = EXPONENT_MIN;
         while (entryIndex.belowOrEqual(endIndex)) {
             /* There are 2^N entries with the exponent N. */
@@ -256,155 +224,98 @@ final class FirstObjectTable {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static void setTableInBufferForObject(ByteBuffer buffer, int bufferTableOffset, UnsignedWord startOffset, UnsignedWord endOffset) {
-        UnsignedWord actualEndOffset = endOffset.subtract(1); // methods wants offset of last byte
-        setTableForObjectAtLocation(new HostedByteBufferPointer(buffer, bufferTableOffset), startOffset, actualEndOffset);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static void initializeTableInBuffer(ByteBuffer buffer, int bufferTableOffset, UnsignedWord tableSize) {
-        for (int i = 0; tableSize.aboveThan(i); i++) {
-            buffer.put(bufferTableOffset + i, NumUtil.safeToByte(UNINITIALIZED_ENTRY));
-        }
-    }
-
     /**
-     * Return a Pointer to an object that could be precisely marked by this card.
-     *
-     * For a precise mark, this means I have to back up to the start of the object that crosses onto
-     * (or starts) this entry.
-     *
-     * @param tableStart The start of the first object table.
-     * @param memoryStart The start of the memory region corresponding to the first object table.
-     * @param memoryLimit The end of the memory region corresponding to the first object table.
-     * @param index The index into the first object table.
-     * @return A Pointer to first object that could be precisely marked at this index.
+     * In case of imprecise card marking, we mark the card table at the address of the object (and
+     * not at the address of the reference). So, we must skip over the first object if it starts
+     * outside the current card.
      */
-    static Pointer getPreciseFirstObjectPointer(Pointer tableStart, Pointer memoryStart, Pointer memoryLimit, UnsignedWord index) {
-        Log trace = Log.noopLog().string("[FirstObjectTable.getPreciseFirstObjectPointer:").string("  index: ").unsigned(index);
+    public static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit, UnsignedWord index) {
+        Pointer result;
+        Pointer firstObject = getFirstObject(tableStart, objectsStart, objectsLimit, index);
+        Pointer indexedMemoryStart = objectsStart.add(indexToMemoryOffset(index));
+        // If the object starts before the memory for this index, skip over it.
+        if (firstObject.belowThan(indexedMemoryStart)) {
+            Object crossingObject = firstObject.toObject();
+            result = LayoutEncoding.getObjectEnd(crossingObject);
+        } else {
+            assert firstObject.equal(indexedMemoryStart) : "preciseFirstPointer.equal(indexedMemoryStart)";
+            result = indexedMemoryStart;
+        }
+        assert objectsStart.belowOrEqual(result) : "memoryStart.belowOrEqual(result)";
+        assert result.belowOrEqual(objectsLimit) : "result.belowOrEqual(memoryLimit)";
+        return result;
+    }
+
+    private static Pointer getFirstObject(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit, UnsignedWord index) {
         UnsignedWord currentIndex = index;
         int currentEntry = getEntryAtIndex(tableStart, currentIndex);
-        if (trace.isEnabled()) {
-            trace.string("  entry: ");
-            entryToLog(trace, currentEntry);
-        }
-        assert (currentEntry != UNINITIALIZED_ENTRY) : "uninitialized first object table entry";
-        if (MEMORY_OFFSET_MAX < currentEntry) {
-            /* The current entry is an entry offset. */
-            while (LINEAR_OFFSET_MAX < currentEntry) {
-                /* The current entry is a exponential offset. */
+        assert currentEntry != UNINITIALIZED_ENTRY : "uninitialized first object table entry";
+
+        if (currentEntry > MEMORY_OFFSET_MAX) {
+            // Process all exponential entries.
+            while (currentEntry > LINEAR_OFFSET_MAX) {
                 int exponent = unbiasExponent(currentEntry);
                 UnsignedWord deltaIndex = exponentToOffset(exponent);
                 assert deltaIndex.belowOrEqual(currentIndex) : "Delta out of bounds.";
                 currentIndex = currentIndex.subtract(deltaIndex);
                 currentEntry = getEntryAtIndex(tableStart, currentIndex);
             }
-            if (MEMORY_OFFSET_MAX < currentEntry) {
-                /* The current entry is a linear offset. */
+
+            // Process all linear entries
+            if (currentEntry > MEMORY_OFFSET_MAX) {
                 currentIndex = currentIndex.subtract(currentEntry);
                 currentEntry = getEntryAtIndex(tableStart, currentIndex);
             }
         }
-        /* The current entry is a memory offset. */
-        Pointer result = getPointerAtOffset(memoryStart, currentIndex, currentEntry);
-        trace.string("  returns: ").hex(result);
-        assert memoryStart.belowOrEqual(result) : "memoryStart.belowOrEqual(result)";
-        assert result.belowThan(memoryLimit) : "result.belowThan(memoryLimit)";
-        trace.string("]").newline();
+
+        // The current entry is now a memory offset.
+        UnsignedWord memoryOffset = entryToMemoryOffset(currentIndex, currentEntry);
+        Pointer result = objectsStart.add(memoryOffset);
+        assert objectsStart.belowOrEqual(result) : "chunkStart.belowOrEqual(result)";
+        assert result.belowThan(objectsLimit) : "result.belowThan(memoryLimit)";
         return result;
     }
 
-    /**
-     * Return a Pointer into a memory region indicated by the entry at a given index.
-     *
-     * For an imprecise mark, this means I can skip past any object that crosses onto this entry.
-     *
-     * @param tableStart The start of the first object table.
-     * @param memoryStart The start of the memory region corresponding to the first object table.
-     * @param memoryLimit The end of the memory region corresponding to the first object table.
-     * @param index The index into the first object table.
-     * @return A Pointer to the first object that could be imprecisely marked at this index. Returns
-     *         the null Pointer if no object could be imprecisely marked at this index, e.g., if the
-     *         object that crosses onto this card either also crosses off of this card, or runs up
-     *         to the memory limit.
-     */
-    static Pointer getImpreciseFirstObjectPointer(Pointer tableStart, Pointer memoryStart, Pointer memoryLimit, UnsignedWord index) {
-        Log trace = Log.noopLog().string("[FirstObjectTable.getImpreciseFirstObjectPointer:");
-        trace.string("  tableStart: ").hex(tableStart).string("  memoryStart: ").hex(memoryStart).string("  memoryLimit: ").hex(memoryLimit).string("  index: ").unsigned(index).newline();
-        Pointer preciseFirstPointer = getPreciseFirstObjectPointer(tableStart, memoryStart, memoryLimit, index);
-        /* If the object starts before the memory for this index, skip over it. */
-        Pointer indexedMemoryStart = memoryStart.add(indexToMemoryOffset(index));
-        Pointer result;
-        if (preciseFirstPointer.belowThan(indexedMemoryStart)) {
-            Object crossingObject = preciseFirstPointer.toObject();
-            result = LayoutEncoding.getObjectEnd(crossingObject);
-        } else {
-            assert preciseFirstPointer.equal(indexedMemoryStart) : "preciseFirstPointer.equal(indexedMemoryStart)";
-            result = indexedMemoryStart;
-        }
-        trace.string("  returns: ").hex(result);
-        assert memoryStart.belowOrEqual(result) : "memoryStart.belowOrEqual(result)";
-        assert result.belowOrEqual(memoryLimit) : "result.belowOrEqual(memoryLimit)";
-        trace.string("]").newline();
-        return result;
+    private static UnsignedWord entryToMemoryOffset(UnsignedWord index, int entry) {
+        assert isMemoryOffsetEntry(entry) : "Entry out of bounds.";
+        UnsignedWord entryOffset = WordFactory.unsigned(-entry).multiply(memoryOffsetScale());
+        assert entryOffset.belowThan(BYTES_COVERED_BY_ENTRY) : "Entry out of bounds.";
+
+        UnsignedWord indexOffset = indexToMemoryOffset(index);
+        return indexOffset.subtract(entryOffset);
     }
 
-    /** Walk the table checking I can find the start of each object that crosses onto an entry. */
-    static boolean verify(Pointer tableStart, Pointer memoryStart, Pointer memoryLimit) {
-        Log trace = HeapVerifier.getTraceLog().string("[FirstObjectTable.verify:");
-        trace.string("  tableStart: ").hex(tableStart).string("  memoryStart: ").hex(memoryStart).string("  memoryLimit: ").hex(memoryLimit);
-        UnsignedWord indexLimit = getTableSizeForMemoryRange(memoryStart, memoryLimit);
+    public static boolean verify(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit) {
+        UnsignedWord indexLimit = getTableSizeForMemoryRange(objectsStart, objectsLimit);
         for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
-            trace.newline().string("  FirstObjectTable.verify: index: ").unsigned(index).newline();
-            Pointer objStart = getPreciseFirstObjectPointer(tableStart, memoryStart, memoryLimit, index);
-            trace.string("  objStart: ").hex(objStart).newline();
-            if (objStart.belowThan(memoryStart)) {
-                trace.string("  FirstObjectTable.verify: objStart.belowThan(memoryStart) => false]").newline();
+            Pointer objStart = getFirstObject(tableStart, objectsStart, objectsLimit, index);
+            if (objStart.belowThan(objectsStart) || objectsLimit.belowOrEqual(objStart)) {
+                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object that is outside of the current chunk:  obj: ").hex(objStart).string(", chunk: ")
+                                .hex(objectsStart).string(" - ").hex(objectsLimit).newline();
                 return false;
             }
-            if (memoryLimit.belowOrEqual(objStart)) {
-                trace.string("  FirstObjectTable.verify: memoryLimit.belowOrEqual(objStart) => false]").newline();
+
+            Pointer entryStart = objectsStart.add(indexToMemoryOffset(index));
+            if (!objStart.belowOrEqual(entryStart)) {
+                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object is not crossing nor starting at a card boundary:  obj: ").hex(objStart)
+                                .string(", chunk: ").hex(objectsStart).string(" - ").hex(objectsLimit).newline();
                 return false;
             }
-            if (!HeapImpl.getHeapImpl().getHeapVerifier().verifyObject(objStart)) {
-                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[FirstObjectTable.verify:");
-                witness.string("  tableStart: ").hex(tableStart).string("  memoryStart: ").hex(memoryStart).string("  memoryLimit: ").hex(memoryLimit);
-                witness.string("  objStart: ").hex(objStart).string("  fails to verify").string("]").newline();
-                return false;
-            }
-            /* Check that the object crosses onto this entry. */
-            Pointer entryStart = memoryStart.add(indexToMemoryOffset(index));
-            trace.string("  entryStart: ").hex(entryStart);
-            if (!(objStart.belowOrEqual(entryStart))) {
-                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[FirstObjectTable.verify:");
-                witness.string("  tableStart: ").hex(tableStart).string("  memoryStart: ").hex(memoryStart).string("  memoryLimit: ").hex(memoryLimit);
-                witness.string("  objStart: ").hex(objStart).string("  entryStart: ").hex(entryStart).string("  !(objStart.belowOrEqual(entryStart))").string("]").newline();
-                return false;
-            }
+
             Object obj = objStart.toObject();
             Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
-            trace.string("  ");
-            trace.string(obj.getClass().getName());
-            trace.string("  objEnd: ").hex(objEnd);
-            if (!(entryStart.belowThan(objEnd))) {
-                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[FirstObjectTable.verify:");
-                witness.string("  tableStart: ").hex(tableStart).string("  memoryStart: ").hex(memoryStart).string("  memoryLimit: ").hex(memoryLimit);
-                witness.string("  objEnd: ").hex(objEnd).string("  entryStart: ").hex(entryStart).string("  !(entryStart.belowThan(objEnd))").string("]").newline();
+            if (!entryStart.belowThan(objEnd)) {
+                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object is not crossing nor starting at a card boundary:  obj: ").hex(objStart)
+                                .string(" - ").hex(objEnd).string(", chunk: ").hex(objectsStart).string(" - ").hex(objectsLimit).newline();
                 return false;
             }
         }
-        trace.string("  => true]").newline();
         return true;
     }
 
-    static UnsignedWord getTableSizeForMemoryRange(Pointer memoryStart, Pointer memoryLimit) {
+    private static UnsignedWord getTableSizeForMemoryRange(Pointer memoryStart, Pointer memoryLimit) {
         assert memoryStart.belowOrEqual(memoryLimit) : "Pointers out of order";
         UnsignedWord memorySize = memoryLimit.subtract(memoryStart);
-        return getTableSizeForMemorySize(memorySize);
-    }
-
-    private static UnsignedWord getTableSizeForMemorySize(UnsignedWord memorySize) {
         UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
         UnsignedWord index = FirstObjectTable.memoryOffsetToIndex(roundedMemory);
         return index.multiply(ENTRY_SIZE_BYTES);
@@ -418,19 +329,6 @@ final class FirstObjectTable {
         return ConfigurationValues.getObjectLayout().getAlignment();
     }
 
-    private static boolean doInitializeTableToLimit(Pointer table, Pointer tableLimit) {
-        doInitializeTableToLimitOffset(table, tableLimit.subtract(table));
-        return true;
-    }
-
-    private static void doInitializeTableToLimitOffset(Pointer table, UnsignedWord tableLimitOffset) {
-        UnmanagedMemoryUtil.fill(table, tableLimitOffset, (byte) UNINITIALIZED_ENTRY);
-    }
-
-    private static void doInitializeTableToIndex(Pointer table, UnsignedWord indexLimit) {
-        doInitializeTableToLimitOffset(table, FirstObjectTable.indexToTableOffset(indexLimit));
-    }
-
     private static int getEntryAtIndex(Pointer table, UnsignedWord index) {
         return table.readByte(indexToTableOffset(index));
     }
@@ -442,62 +340,40 @@ final class FirstObjectTable {
         table.writeByte(indexToTableOffset(index), (byte) value);
     }
 
-    private static boolean isValidEntry(int entry) {
-        return ((ENTRY_MIN <= entry) && (entry <= ENTRY_MAX));
+    private static boolean isUninitializedIndex(Pointer table, UnsignedWord index) {
+        int entry = getEntryAtIndex(table, index);
+        return isUninitializedEntry(entry);
     }
 
+    private static boolean isValidEntry(int entry) {
+        return ENTRY_MIN <= entry && entry <= ENTRY_MAX;
+    }
+
+    /** May only be used for assertions. */
     private static boolean isUninitializedEntry(int entry) {
         assert isValidEntry(entry) : "Invalid entry";
-        return (entry == UNINITIALIZED_ENTRY);
+        return entry == UNINITIALIZED_ENTRY;
     }
 
     private static boolean isMemoryOffsetEntry(int entry) {
         assert isValidEntry(entry) : "Invalid entry";
-        return ((MEMORY_OFFSET_MIN <= entry) && (entry <= MEMORY_OFFSET_MAX));
-    }
-
-    private static boolean isLinearOffsetEntry(int entry) {
-        assert isValidEntry(entry) : "Invalid entry";
-        return ((LINEAR_OFFSET_MIN <= entry) && (entry <= LINEAR_OFFSET_MAX));
-    }
-
-    private static boolean isExponentialOffsetEntry(int entry) {
-        assert isValidEntry(entry) : "Invalid entry";
-        int unbiasedEntry = unbiasExponent(entry);
-        return ((EXPONENT_MIN <= unbiasedEntry) && (unbiasedEntry <= EXPONENT_MAX));
+        return MEMORY_OFFSET_MIN <= entry && entry <= MEMORY_OFFSET_MAX;
     }
 
     private static int biasExponent(int exponent) {
-        assert ((EXPONENT_MIN <= exponent) && (exponent <= EXPONENT_MAX)) : "Exponent out of bounds.";
+        assert EXPONENT_MIN <= exponent && exponent <= EXPONENT_MAX : "Exponent out of bounds.";
         return exponent + EXPONENT_BIAS;
     }
 
     private static int unbiasExponent(int entry) {
         int exponent = entry - EXPONENT_BIAS;
-        assert ((EXPONENT_MIN <= exponent) && (exponent <= EXPONENT_MAX)) : "Exponent out of bounds.";
+        assert EXPONENT_MIN <= exponent && exponent <= EXPONENT_MAX : "Exponent out of bounds.";
         return exponent;
     }
 
     private static UnsignedWord exponentToOffset(int n) {
-        assert ((0 <= n) && (n <= 63)) : "Exponent out of bounds.";
+        assert 0 <= n && n <= 63 : "Exponent out of bounds.";
         return WordFactory.unsigned(1L << n);
-    }
-
-    private static boolean memoryOffsetStartsCard(UnsignedWord offset) {
-        return offset.unsignedRemainder(BYTES_COVERED_BY_ENTRY).equal(0);
-    }
-
-    private static boolean memoryOffsetAndLengthCrossesCard(UnsignedWord offset, UnsignedWord length) {
-        UnsignedWord startCard = memoryOffsetToIndex(offset);
-        UnsignedWord endCard = memoryOffsetToIndex(offset.add(length).subtract(1));
-        return startCard.belowThan(endCard);
-    }
-
-    private static Pointer getPointerAtOffset(Pointer memory, UnsignedWord currentIndex, int currentEntry) {
-        assert isMemoryOffsetEntry(currentEntry) : "Entry out of bounds.";
-        UnsignedWord indexOffset = indexToMemoryOffset(currentIndex);
-        UnsignedWord entryOffset = entryToMemoryOffset(currentEntry);
-        return memory.add(indexOffset).subtract(entryOffset);
     }
 
     private static UnsignedWord indexToTableOffset(UnsignedWord index) {
@@ -517,106 +393,7 @@ final class FirstObjectTable {
         UnsignedWord scaledOffset = memoryOffset.unsignedDivide(memoryOffsetScale());
         assert scaledOffset.multiply(memoryOffsetScale()).equal(memoryOffset) : "Not a multiple.";
         long result = (-scaledOffset.rawValue());
-        assert ((MEMORY_OFFSET_MIN <= result) && (result <= MEMORY_OFFSET_MAX)) : "Scaled offset out of bounds.";
+        assert MEMORY_OFFSET_MIN <= result && result <= MEMORY_OFFSET_MAX : "Scaled offset out of bounds.";
         return (int) result;
-    }
-
-    /** Turn a table entry into a memory offset. This only handles memory offset entries. */
-    private static UnsignedWord entryToMemoryOffset(int entry) {
-        assert isMemoryOffsetEntry(entry) : "Entry out of bounds.";
-        UnsignedWord entryUnsigned = WordFactory.unsigned(-entry);
-        UnsignedWord result = entryUnsigned.multiply(memoryOffsetScale());
-        assert (result.belowThan(BYTES_COVERED_BY_ENTRY)) : "Entry out of bounds.";
-        return result;
-    }
-
-    private static void entryToLog(Log log, int entry) {
-        log.signed(entry).string(":");
-        if (isUninitializedEntry(entry)) {
-            log.string("UninitializedEntry");
-        } else if (isMemoryOffsetEntry(entry)) {
-            log.string("Memory:").signed(entryToMemoryOffset(entry));
-        } else if (isLinearOffsetEntry(entry)) {
-            log.string("Linear:").signed(entry);
-        } else if (isExponentialOffsetEntry(entry)) {
-            log.string("Exponent:").signed(unbiasExponent(entry));
-        } else {
-            log.string("Unknown");
-        }
-    }
-
-    public static final class TestingBackDoor {
-
-        private TestingBackDoor() {
-        }
-
-        public static void initializeTableToLimit(Pointer table, Pointer tableLimit) {
-            FirstObjectTable.doInitializeTableToLimit(table, tableLimit);
-        }
-
-        public static void initializeTableToIndex(Pointer table, UnsignedWord indexLimit) {
-            FirstObjectTable.doInitializeTableToIndex(table, indexLimit);
-        }
-
-        public static void setTableForObject(Pointer table, Pointer memory, Pointer start, Pointer end) {
-            /* Bypass the check for an in-progress VMOperation. */
-            FirstObjectTable.setTableForObjectUnchecked(table, memory, start, end);
-        }
-
-        public static int getEntryAtIndex(Pointer table, UnsignedWord index) {
-            return FirstObjectTable.getEntryAtIndex(table, index);
-        }
-
-        public static Pointer getPreciseFirstObjectPointer(Pointer tableStart, Pointer memoryStart, Pointer memoryLimit, UnsignedWord index) {
-            return FirstObjectTable.getPreciseFirstObjectPointer(tableStart, memoryStart, memoryLimit, index);
-        }
-
-        public static boolean memoryOffsetStartsCard(UnsignedWord offset) {
-            return FirstObjectTable.memoryOffsetStartsCard(offset);
-        }
-
-        public static boolean memoryOffsetAndLengthCrossesCard(UnsignedWord offset, UnsignedWord length) {
-            return FirstObjectTable.memoryOffsetAndLengthCrossesCard(offset, length);
-        }
-
-        static void indexToLog(Pointer tableStart, Log log, UnsignedWord index) {
-            FirstObjectTable.entryToLog(log, getEntryAtIndex(tableStart, index));
-        }
-
-        public static int getMemoryBytesCoveredByEntry() {
-            return FirstObjectTable.BYTES_COVERED_BY_ENTRY;
-        }
-
-        public static int getMemoryOffsetScale() {
-            return FirstObjectTable.memoryOffsetScale();
-        }
-
-        public static int getMemoryOffsetMax() {
-            return FirstObjectTable.MEMORY_OFFSET_MAX;
-        }
-
-        public static int getLinearOffsetMin() {
-            return FirstObjectTable.LINEAR_OFFSET_MIN;
-        }
-
-        public static int getLinearOffsetMax() {
-            return FirstObjectTable.LINEAR_OFFSET_MAX;
-        }
-
-        public static int getExponentBias() {
-            return FirstObjectTable.EXPONENT_BIAS;
-        }
-
-        public static int getUninitializedEntry() {
-            return FirstObjectTable.UNINITIALIZED_ENTRY;
-        }
-
-        public static UnsignedWord getTableSizeForMemorySize(UnsignedWord memorySize) {
-            return FirstObjectTable.getTableSizeForMemorySize(memorySize);
-        }
-
-        public static UnsignedWord getTableSizeForMemoryRange(Pointer memoryStart, Pointer memoryLimit) {
-            return FirstObjectTable.getTableSizeForMemoryRange(memoryStart, memoryLimit);
-        }
     }
 }

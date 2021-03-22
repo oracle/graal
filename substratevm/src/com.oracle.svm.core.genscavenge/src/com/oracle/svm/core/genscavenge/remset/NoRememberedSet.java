@@ -1,6 +1,10 @@
 package com.oracle.svm.core.genscavenge.remset;
 
+import java.util.List;
+
 import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -12,6 +16,8 @@ import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.SubstrateNoBarrierSet;
+import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -38,17 +44,29 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
-    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
-        // Nothing to do.
-    }
-
-    @Override
     public void enableRememberedSetForChunk(AlignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
     public void enableRememberedSetForChunk(UnalignedHeader chunk) {
+        // Nothing to do.
+    }
+
+    @Override
+    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
+        // Nothing to do.
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkOffset, List<ImageHeapObject> objects) {
+        // Nothing to do.
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk) {
         // Nothing to do.
     }
 
@@ -75,37 +93,17 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
-    public void initializeChunk(AlignedHeader chunk) {
-        // Nothing to do.
-    }
-
-    @Override
-    public void initializeChunk(UnalignedHeader chunk) {
-        // Nothing to do.
-    }
-
-    @Override
-    public void resetChunk(AlignedHeader chunk) {
-        // Nothing to do.
-    }
-
-    @Override
-    public void cleanCardTable(Space space) {
-        // Nothing to do.
-    }
-
-    @Override
-    public boolean walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
+    public void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor) {
         throw VMError.shouldNotReachHere();
     }
 
     @Override
-    public boolean walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
+    public void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor) {
         throw VMError.shouldNotReachHere();
     }
 
     @Override
-    public boolean walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean) {
+    public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor) {
         throw VMError.shouldNotReachHere();
     }
 

@@ -453,6 +453,9 @@ public final class Space {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         AlignedHeapChunk.AlignedHeader aChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
         if (aChunk.isNonNull()) {
+            if (this.isOldSpace()) {
+                RememberedSet.get().enableRememberedSetForChunk(aChunk);
+            }
             appendAlignedHeapChunk(aChunk);
         }
         return aChunk;

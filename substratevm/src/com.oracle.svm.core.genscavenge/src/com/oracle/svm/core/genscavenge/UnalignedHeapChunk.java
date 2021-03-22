@@ -94,9 +94,8 @@ public final class UnalignedHeapChunk {
     public interface UnalignedHeader extends HeapChunk.Header<UnalignedHeader> {
     }
 
-    public static void initializeChunk(UnalignedHeader chunk) {
-        HeapChunk.initialize(chunk, UnalignedHeapChunk.getObjectStart(chunk));
-        RememberedSet.get().initializeChunk(chunk);
+    public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize) {
+        HeapChunk.initialize(chunk, UnalignedHeapChunk.getObjectStart(chunk), chunkSize);
     }
 
     public static Pointer getObjectStart(UnalignedHeader that) {

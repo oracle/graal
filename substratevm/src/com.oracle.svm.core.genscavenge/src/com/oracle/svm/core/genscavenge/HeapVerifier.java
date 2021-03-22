@@ -34,12 +34,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -48,9 +46,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.VMError;
 
 public final class HeapVerifier {
     private static final ObjectVerifier OBJECT_VERIFIER = new ObjectVerifier();
@@ -92,7 +87,7 @@ public final class HeapVerifier {
 
     private static boolean verifyNonChunkedImageHeap() {
         // Without chunks, just visit all the image heap objects.
-        IMAGE_HEAP_OBJECT_VERIFIER.reset();
+        IMAGE_HEAP_OBJECT_VERIFIER.initialize();
         ImageHeapWalker.walkRegions(HeapImpl.getImageHeapInfo(), IMAGE_HEAP_OBJECT_VERIFIER);
         return IMAGE_HEAP_OBJECT_VERIFIER.getResult();
     }
@@ -192,7 +187,7 @@ public final class HeapVerifier {
                 success = false;
             }
 
-            OBJECT_VERIFIER.reset(aChunk, WordFactory.nullPointer());
+            OBJECT_VERIFIER.initialize(aChunk, WordFactory.nullPointer());
             AlignedHeapChunk.walkObjects(aChunk, OBJECT_VERIFIER);
             aChunk = HeapChunk.getNext(aChunk);
             success &= OBJECT_VERIFIER.result;
@@ -210,7 +205,7 @@ public final class HeapVerifier {
                 success = false;
             }
 
-            OBJECT_VERIFIER.reset(WordFactory.nullPointer(), uChunk);
+            OBJECT_VERIFIER.initialize(WordFactory.nullPointer(), uChunk);
             UnalignedHeapChunk.walkObjects(uChunk, OBJECT_VERIFIER);
             uChunk = HeapChunk.getNext(uChunk);
             success &= OBJECT_VERIFIER.result;
@@ -306,6 +301,54 @@ public final class HeapVerifier {
         return true;
     }
 
+    private static boolean isInHeap(Pointer ptr) {
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        return heap.isInImageHeap(ptr) || isInYoungGen(ptr) || isInOldGen(ptr);
+    }
+
+    private static boolean isInYoungGen(Pointer ptr) {
+        YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
+        if (findPointerInSpace(youngGen.getEden(), ptr)) {
+            return true;
+        }
+
+        for (int i = 0; i < youngGen.getMaxSurvivorSpaces(); i++) {
+            if (findPointerInSpace(youngGen.getSurvivorFromSpaceAt(i), ptr)) {
+                return true;
+            }
+            if (findPointerInSpace(youngGen.getSurvivorToSpaceAt(i), ptr)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isInOldGen(Pointer ptr) {
+        OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
+        return findPointerInSpace(oldGen.getFromSpace(), ptr) || findPointerInSpace(oldGen.getToSpace(), ptr);
+    }
+
+    private static boolean findPointerInSpace(Space space, Pointer p) {
+        AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
+        while (aChunk.isNonNull()) {
+            Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
+            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(aChunk))) {
+                return true;
+            }
+            aChunk = HeapChunk.getNext(aChunk);
+        }
+
+        UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
+        while (uChunk.isNonNull()) {
+            Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
+            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(uChunk))) {
+                return true;
+            }
+            uChunk = HeapChunk.getNext(uChunk);
+        }
+        return false;
+    }
+
     private static boolean verifyReferent(Reference<?> ref) {
         Pointer ptr = ReferenceInternals.getReferentPointer(ref);
         if (!isInHeap(ptr)) {
@@ -323,8 +366,8 @@ public final class HeapVerifier {
             objectVerifier = new ImageHeapObjectVerifier();
         }
 
-        public void reset() {
-            objectVerifier.reset(WordFactory.nullPointer(), WordFactory.nullPointer());
+        public void initialize() {
+            objectVerifier.initialize(WordFactory.nullPointer(), WordFactory.nullPointer());
         }
 
         public boolean getResult() {
@@ -347,7 +390,8 @@ public final class HeapVerifier {
         ObjectVerifier() {
         }
 
-        void reset(AlignedHeader aChunk, UnalignedHeader uChunk) {
+        @SuppressWarnings("hiding")
+        void initialize(AlignedHeader aChunk, UnalignedHeader uChunk) {
             this.result = true;
             this.aChunk = aChunk;
             this.uChunk = uChunk;
