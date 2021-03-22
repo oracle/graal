@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Objects;
 
 import com.oracle.svm.core.sampling.CallStackFrameMethodData;
+import com.oracle.svm.core.sampling.DebugCallStackFrameMethodData;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
@@ -280,6 +281,8 @@ public class FrameInfoEncoder {
 
         SharedMethod method = (SharedMethod) frame.getMethod();
         result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).setMethodId(method);
+        // Debug only.
+        ImageSingletons.lookup(DebugCallStackFrameMethodData.class).addMethodInfo(method, result.methodID);
 
         if (customization.shouldStoreMethod()) {
             result.deoptMethod = method;

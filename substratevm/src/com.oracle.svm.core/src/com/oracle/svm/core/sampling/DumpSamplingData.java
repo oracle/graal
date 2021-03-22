@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.code.FrameInfoQueryResult;
 import org.graalvm.collections.PrefixTree;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -21,6 +20,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 
 public class DumpSamplingData {
@@ -111,18 +111,19 @@ public class DumpSamplingData {
                 frames.add(frameInfo.getMethodID() + ":" + frameInfo.getBci());
             }
             Collections.reverse(frames);
-            return String.join(";", frames);
+            return String.join(",", frames);
         } else {
             while (frameInfo.getCaller() != null) {
                 frameInfo = frameInfo.getCaller();
             }
             int frameInfoMethodId = frameInfo.getMethodID();
+            DebugCallStackFrameMethodData frameMethodData = ImageSingletons.lookup(DebugCallStackFrameMethodData.class);
             if (mode == DUMP_MODE.COMPILATION_STACK_VIEW) {
-                return String.valueOf(frameInfoMethodId);
+                return frameMethodData.methodInfo(frameInfoMethodId) + " (" + frameInfoMethodId + ")";
             } else {
                 assert mode == DUMP_MODE.COMPILATION_WITH_BCI_STACK_VIEW;
                 int bci = frameInfo.getBci();
-                return frameInfoMethodId + ":" + bci;
+                return frameMethodData.methodInfo(frameInfoMethodId) + " (" + frameInfoMethodId + ") " + ":" + bci;
             }
         }
     }
@@ -135,7 +136,7 @@ public class DumpSamplingData {
                 CallFrame elem = context.tail;
                 if (value > 0) {
                     while (elem != null) {
-                        contextChain.append(";").append(elem.name);
+                        contextChain.append(",").append(elem.name);
                         elem = elem.tail;
                     }
                     contextChain.append(" " + value);
