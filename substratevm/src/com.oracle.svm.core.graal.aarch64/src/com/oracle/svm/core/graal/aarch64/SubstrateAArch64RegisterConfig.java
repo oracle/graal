@@ -104,10 +104,13 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final RegisterAttributes[] attributesMap;
     private final MetaAccessProvider metaAccess;
     private final RegisterArray javaGeneralParameterRegisters;
+    private final boolean preserveFramePointer;
+    public static final Register fp = AArch64.r29;
 
-    public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target) {
+    public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
+        this.preserveFramePointer = preserveFramePointer;
 
         // This is the Linux 64-bit ABI for parameters.
         generalParameterRegs = new RegisterArray(r0, r1, r2, r3, r4, r5, r6, r7);
@@ -122,7 +125,9 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         regs.remove(zr);
         regs.remove(r8);
         regs.remove(r9);
-        regs.remove(r29);
+        if (preserveFramePointer) {
+            regs.remove(r29);
+        }
         regs.remove(r31);
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
@@ -209,6 +214,10 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
             default:
                 throw VMError.shouldNotReachHere();
         }
+    }
+
+    public boolean shouldPreserveFramePointer() {
+        return preserveFramePointer;
     }
 
     @Override
