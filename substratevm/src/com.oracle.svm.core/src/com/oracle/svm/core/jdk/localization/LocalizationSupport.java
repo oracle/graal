@@ -34,13 +34,15 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+
+import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Holder for localization information that is computed during image generation and used at run
@@ -66,8 +68,18 @@ public class LocalizationSupport {
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
     }
 
+    @Fold
+    public static boolean optimizedMode() {
+        return LocalizationFeature.Options.LocalizationOptimizedMode.getValue();
+    }
+
+    @Fold
+    public static boolean jvmMode() {
+        return !optimizedMode();
+    }
+
     public OptimizedLocalizationSupport asOptimizedSupport() {
-        GraalError.guarantee(LocalizationFeature.optimizedMode(), "Optimized support only available in optimized localization mode.");
+        GraalError.guarantee(optimizedMode(), "Optimized support only available in optimized localization mode.");
         return ((OptimizedLocalizationSupport) this);
     }
 
