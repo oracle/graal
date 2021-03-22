@@ -634,6 +634,18 @@ public final class TypeDescriptor {
      * <li>If this and {@code toRemove} types are parameterized types (array, iterable, iterator,
      * hash) of the same kind the type parameter types are subtracted applying the same rules.</li>
      * </ul>
+     * <p>
+     * Examples:
+     * <ul>
+     * <li>NUMBER.subtract(NUMBER) -> no type</li>
+     * <li>NUMBER.subtract(STRING) -> NUMBER</li>
+     * <li>UNION[NUMBER|STRING|OBJECT].subtract(NUMBER) -> UNION[STRING|OBJECT]</li>
+     * <li>UNION[NUMBER|STRING|OBJECT].subtract(UNION[NUMBER|STRING]) -> OBJECT</li>
+     * <li>INTERSECTION[NUMBER&STRING&OBJECT].subtract(NUMBER) -> INTERSECTION[STRING&OBJECT]</li>
+     * <li>INTERSECTION[NUMBER&STRING&OBJECT].subtract(INTERSECTION[NUMBER&STRING]) -> OBJECT</li>
+     * <li>ARRAY[UNION[NUMBER|STRING]].subtract(ARRAY[NUMBER]) -> ARRAY[STRING]</li>
+     * <li>ARRAY[INTERSECTION[NUMBER|STRING]].subtract(ARRAY[NUMBER]) -> ARRAY[STRING]</li>
+     * </ul>
      * 
      * @param toRemove the type to remove.
      * @since 20.2
@@ -1520,7 +1532,15 @@ public final class TypeDescriptor {
                 case 1:
                     return subTypes.iterator().next();
                 default:
-                    return new IntersectionImpl(subTypes);
+                    Set<TypeDescriptorImpl> useSubTypes = new HashSet<>();
+                    for (TypeDescriptorImpl subType : subTypes) {
+                        if (subType.getClass() == IntersectionImpl.class) {
+                            useSubTypes.addAll(((IntersectionImpl) subType).types);
+                        } else {
+                            useSubTypes.add(subType);
+                        }
+                    }
+                    return new IntersectionImpl(useSubTypes);
             }
         }
 
@@ -1613,6 +1633,14 @@ public final class TypeDescriptor {
                 case 1:
                     return subTypes.iterator().next();
                 default:
+                    Set<TypeDescriptorImpl> useSubTypes = new HashSet<>();
+                    for (TypeDescriptorImpl subType : subTypes) {
+                        if (subType.getClass() == UnionImpl.class) {
+                            useSubTypes.addAll(((UnionImpl) subType).types);
+                        } else {
+                            useSubTypes.add(subType);
+                        }
+                    }
                     return new UnionImpl(subTypes);
             }
         }

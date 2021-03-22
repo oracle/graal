@@ -485,6 +485,18 @@ public class TypeDescriptorTest {
         TypeDescriptor expected = predefinedAndNoType.subtract(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.EXECUTABLE, TypeDescriptor.INSTANTIABLE));
         Assert.assertEquals(expected, TypeDescriptor.ANY.subtract(TypeDescriptor.NUMBER));
         Assert.assertEquals(noType, TypeDescriptor.ANY.subtract(predefinedAndNoType));
+
+        // Examples
+        TypeDescriptor unionNumOrStrOrObj = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        Assert.assertEquals(TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.OBJECT), unionNumOrStrOrObj.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(TypeDescriptor.OBJECT, unionNumOrStrOrObj.subtract(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
+        TypeDescriptor intersectionNumOrStrOrObj = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        Assert.assertEquals(TypeDescriptor.intersection(TypeDescriptor.STRING, TypeDescriptor.OBJECT), intersectionNumOrStrOrObj.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(TypeDescriptor.OBJECT, intersectionNumOrStrOrObj.subtract(TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
+        Assert.assertEquals(TypeDescriptor.array(TypeDescriptor.STRING),
+                        TypeDescriptor.array(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).subtract(TypeDescriptor.array(TypeDescriptor.NUMBER)));
+        Assert.assertEquals(TypeDescriptor.array(TypeDescriptor.STRING),
+                        TypeDescriptor.array(TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).subtract(TypeDescriptor.array(TypeDescriptor.NUMBER)));
     }
 
     @Test
