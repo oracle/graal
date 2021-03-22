@@ -60,7 +60,7 @@ class SubstrateAArch64Feature implements Feature {
         ImageSingletons.add(SubstrateRegisterConfigFactory.class, new SubstrateRegisterConfigFactory() {
             @Override
             public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
-                return new SubstrateAArch64RegisterConfig(config, metaAccess, target);
+                return new SubstrateAArch64RegisterConfig(config, metaAccess, target, preserveFramePointer);
             }
         });
 

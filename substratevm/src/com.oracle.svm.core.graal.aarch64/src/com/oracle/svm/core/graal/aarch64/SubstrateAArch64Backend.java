@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
+import static com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.fp;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -31,7 +32,6 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
-import static jdk.vm.ci.aarch64.AArch64.r29;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -535,21 +535,27 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             FrameMap frameMap = crb.frameMap;
             final int frameSize = frameMap.frameSize();
             final int totalFrameSize = frameMap.totalFrameSize();
-            assert frameSize + 2 * crb.target.arch.getWordSize() == totalFrameSize : "total framesize should be framesize + 2 words";
+            int wordSize = crb.target.arch.getWordSize();
+            assert frameSize + 2 * wordSize == totalFrameSize : "total framesize should be framesize + 2 words";
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             crb.blockComment("[method prologue]");
 
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                int wordSize = 8;
                 Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
                 AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
                 if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                     masm.sub(64, sp, sp, totalFrameSize);
-                    masm.stp(64, r29, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
+                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
+                    if (((SubstrateAArch64RegisterConfig) frameMap.getRegisterConfig()).shouldPreserveFramePointer()) {
+                        masm.add(64, fp, sp, frameSize);
+                    }
                 } else {
                     int frameRecordSize = 2 * wordSize;
-                    masm.stp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
+                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
+                    if (((SubstrateAArch64RegisterConfig) frameMap.getRegisterConfig()).shouldPreserveFramePointer()) {
+                        masm.mov(64, fp, sp);
+                    }
                     masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
                 }
             }
@@ -583,22 +589,20 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
             crb.blockComment("[method epilogue]");
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                int wordSize = 8;
+                int wordSize = crb.target.arch.getWordSize();
                 Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
                 AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
                 if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
-                    masm.ldp(64, r29, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
+                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
                     masm.add(64, sp, sp, totalFrameSize);
                 } else {
                     int frameRecordSize = 2 * wordSize;
                     masm.add(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
-                    masm.ldp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, frameRecordSize));
+                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, frameRecordSize));
                 }
             }
-            if (frameSize != 0) {
-                crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
-            }
+            crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
         }
 
         @Override
@@ -889,7 +893,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         result.recordMark(asm.position(), PROLOGUE_END);
         byte[] instructions = asm.close(true);
         result.setTargetCode(instructions, instructions.length);
-        result.setTotalFrameSize(getTarget().wordSize); // not really, but 0 not allowed
+        result.setTotalFrameSize(getTarget().wordSize * 2); // not really, but 0 not allowed
         return result;
     }
 
