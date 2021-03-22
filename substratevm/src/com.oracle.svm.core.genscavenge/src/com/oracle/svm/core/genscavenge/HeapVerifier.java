@@ -183,7 +183,7 @@ public final class HeapVerifier {
         while (aChunk.isNonNull()) {
             if (space != aChunk.getSpace()) {
                 Log.log().string("Space ").string(space.getName()).string(" contains aligned chunk ").hex(aChunk).string(" but the chunk does not reference the correct space: ")
-                                .hex(Word.objectToUntrackedPointer(aChunk)).newline();
+                                .hex(Word.objectToUntrackedPointer(aChunk.getSpace())).newline();
                 success = false;
             }
 
@@ -201,7 +201,7 @@ public final class HeapVerifier {
         while (uChunk.isNonNull()) {
             if (space != uChunk.getSpace()) {
                 Log.log().string("Space ").string(space.getName()).string(" contains unaligned chunk ").hex(uChunk).string(" but the chunk does not reference the correct space: ")
-                                .hex(Word.objectToUntrackedPointer(uChunk)).newline();
+                                .hex(Word.objectToUntrackedPointer(uChunk.getSpace())).newline();
                 success = false;
             }
 
@@ -247,7 +247,7 @@ public final class HeapVerifier {
                 return false;
             }
 
-            Pointer chunkStart = (Pointer) chunk;
+            Pointer chunkStart = HeapChunk.asPointer(chunk);
             Pointer chunkTop = HeapChunk.getTopPointer(chunk);
             if (chunkStart.aboveOrEqual(ptr) || chunkTop.belowOrEqual(ptr)) {
                 Log.log().string("Object ").hex(ptr).string(" is not within the allocated part of the chunk: [").hex(chunkStart).string(", ").hex(chunkTop).string("]").newline();
@@ -283,10 +283,12 @@ public final class HeapVerifier {
         InteriorObjRefWalker.walkObject(obj, REFERENCE_VERIFIER);
 
         boolean success = REFERENCE_VERIFIER.result;
-        if (obj instanceof Reference) {
+        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        if (hub.isReferenceInstanceClass()) {
             // The referent field of java.lang.Reference is excluded from the reference map, so we
             // need to verify it separately.
-            success &= verifyReferent((Reference<?>) obj);
+            Reference<?> ref = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
+            success &= verifyReferent(ref);
         }
         return success;
     }
