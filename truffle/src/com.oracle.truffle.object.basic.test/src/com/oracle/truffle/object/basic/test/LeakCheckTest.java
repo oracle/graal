@@ -52,20 +52,20 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 public class LeakCheckTest {
     private static final com.oracle.truffle.api.object.Layout LAYOUT = com.oracle.truffle.api.object.Layout.createLayout();
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
+    private static final com.oracle.truffle.api.object.ObjectType OBJECT_TYPE = new com.oracle.truffle.api.object.ObjectType();
 
     /**
      * Make sure the transition cache does not leak.
      */
     @Test
     public void leakCheck() {
-        Shape emptyShape = LAYOUT.createShape(new ObjectType());
+        Shape emptyShape = LAYOUT.createShape(OBJECT_TYPE);
         List<WeakReference<Shape>> fullShapeRefs = new ArrayList<>();
 
         for (int i = 0; i < 100; i++) {
@@ -90,7 +90,7 @@ public class LeakCheckTest {
      */
     @Test
     public void constantPropertyLeakCheck() {
-        Shape emptyShape = LAYOUT.createShape(new ObjectType());
+        Shape emptyShape = LAYOUT.createShape(OBJECT_TYPE);
         List<WeakReference<Shape>> weakShapeRefs = new ArrayList<>();
         List<Shape> strongShapeRefs = new ArrayList<>();
 
@@ -119,6 +119,44 @@ public class LeakCheckTest {
         assertNotNull(emptyShape); // keep alive
     }
 
+    /**
+     * Make sure constant properties do not leak.
+     */
+    @Test
+    public void constantPropertyLeakCheckSingleTransition() {
+        List<Shape> shapesToKeepAlive = new ArrayList<>();
+        List<WeakReference<Shape>> weakShapeRefs = new ArrayList<>();
+        List<Shape> strongShapeRefs = new ArrayList<>();
+
+        for (int i = 0; i < 100000; i++) {
+            Shape emptyShape = LAYOUT.createShape(OBJECT_TYPE);
+            shapesToKeepAlive.add(emptyShape);
+            DynamicObject obj = emptyShape.newInstance();
+
+            Leak leak;
+            leak = new Leak();
+            LIBRARY.putConstant(obj, "a", leak, 0);
+            leak.shape = obj.getShape();
+            LIBRARY.putConstant(obj, "b", leak, 0);
+            leak.shape = obj.getShape();
+            LIBRARY.putConstant(obj, "c", leak, 0);
+            leak.shape = obj.getShape();
+
+            Shape shape = obj.getShape();
+            weakShapeRefs.add(new WeakReference<>(shape));
+            strongShapeRefs.add(shape);
+        }
+
+        strongShapeRefs.clear();
+        System.gc();
+
+        for (WeakReference<Shape> fullShapeRef : weakShapeRefs) {
+            assertNull("Shape should have been garbage-collected", fullShapeRef.get());
+        }
+
+        assertNotNull(shapesToKeepAlive); // keep alive
+    }
+
     private static final class Leak {
         @SuppressWarnings("unused") Shape shape;
         @SuppressWarnings("unused") byte[] data = new byte[100];
@@ -130,7 +168,7 @@ public class LeakCheckTest {
      */
     @Test
     public void testWeakKeyStaysAlive() {
-        Shape emptyShape = LAYOUT.createShape(new ObjectType());
+        Shape emptyShape = LAYOUT.createShape(OBJECT_TYPE);
 
         DynamicObject obj = emptyShape.newInstance();
         Leak const1 = new Leak();
@@ -150,6 +188,21 @@ public class LeakCheckTest {
         LIBRARY.putConstant(obj, "const3", const3, 0);
 
         Shape currShape = obj.getShape();
+        assertSame(prevShape, currShape);
+
+        // switch from single transition to transition map
+        obj = emptyShape.newInstance();
+        Leak const4 = new Leak();
+        LIBRARY.putConstant(obj, "const4", const4, 0);
+
+        System.gc();
+
+        obj = emptyShape.newInstance();
+        LIBRARY.putConstant(obj, "const1", const1, 0);
+        LIBRARY.putConstant(obj, "const2", const2, 0);
+        LIBRARY.putConstant(obj, "const3", const3, 0);
+
+        currShape = obj.getShape();
         assertSame(prevShape, currShape);
     }
 
