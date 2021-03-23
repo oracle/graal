@@ -1,0 +1,7 @@
+# The native code aborted on an attempt to perform a number cast
+c/max-unsigned-int-to-double-cast.c.dir
+# The compiled LL code containing the va_arg instruction returns invalid values
+va_arg
+# The following two tests do not work on Aarch64 as they use AMD64 args passing stack specifics
+c/varargs/varStructBeforePrimitiveAMD64Explicite.c.dir
+c/varargs/varStructStackOnlyAMD64Explicite.c.dir
