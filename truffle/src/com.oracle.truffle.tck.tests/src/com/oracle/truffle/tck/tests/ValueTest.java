@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,7 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import java.io.IOException;
-import java.util.AbstractMap;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Objects;
-import java.util.function.Function;
-
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.tck.LanguageProvider;
 import org.graalvm.polyglot.tck.Snippet;
 import org.junit.AfterClass;
 import org.junit.Assume;
@@ -58,8 +49,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.io.IOException;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Objects;
+
 @RunWith(Parameterized.class)
-public class IdentityFunctionTest {
+public class ValueTest {
 
     private static final TestUtil.CollectingMatcher<TestRun> TEST_RESULT_MATCHER = TestUtil.createTooManyFailuresMatcher();
     private static TestContext context;
@@ -67,28 +65,18 @@ public class IdentityFunctionTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<? extends TestRun> createExpressionTests() {
-        context = new TestContext(IdentityFunctionTest.class);
-        final Collection<? extends TestRun> testRuns = TestUtil.createTestRuns(
-                        TestUtil.getRequiredLanguages(context),
-                        TestUtil.getRequiredValueLanguages(context),
-                        new Function<String, Collection<? extends Snippet>>() {
-                            @Override
-                            public Collection<? extends Snippet> apply(String lang) {
-                                return Arrays.asList(createIdentitySnippet(lang));
-                            }
-                        },
-                        new Function<String, Collection<? extends Snippet>>() {
-                            @Override
-                            public Collection<? extends Snippet> apply(String lang) {
-                                return context.getValueConstructors(null, lang);
-                            }
-                        });
+        context = new TestContext(ValueTest.class);
+        String javaHostId = "java-host";
+        Collection<TestRun> testRuns = new ArrayList<>();
+        Snippet identity = context.getInstalledProviders().get(javaHostId).createIdentityFunctionSnippet(context.getContext());
+        for (String languageId : TestUtil.getRequiredValueLanguages(context)) {
+            for (Snippet snippet : context.getValueConstructors(null, languageId)) {
+                TestRun testRun = new TestRun(new AbstractMap.SimpleImmutableEntry<>(javaHostId, identity),
+                                Collections.singletonList(new AbstractMap.SimpleImmutableEntry<>(languageId, snippet)));
+                testRuns.add(testRun);
+            }
+        }
         return testRuns;
-    }
-
-    static Snippet createIdentitySnippet(String lang) {
-        LanguageProvider tli = context.getInstalledProviders().get(lang);
-        return tli.createIdentityFunctionSnippet(context.getContext());
     }
 
     @BeforeClass
@@ -102,31 +90,19 @@ public class IdentityFunctionTest {
         context = null;
     }
 
-    public IdentityFunctionTest(final TestRun testRun) {
+    public ValueTest(final TestRun testRun) {
         Objects.requireNonNull(testRun);
         this.testRun = testRun;
     }
 
     @Test
-    public void testIdentityFunction() {
+    public void testValues() {
         Assume.assumeThat(testRun, TEST_RESULT_MATCHER);
         boolean success = false;
         try {
-            try {
-                final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-                TestUtil.validateResult(testRun, result, null, true);
-                success = true;
-            } catch (PolyglotException pe) {
-                TestUtil.validateResult(testRun, null, pe, true);
-                success = true;
-            }
-        } catch (PolyglotException | AssertionError e) {
-            throw new AssertionError(
-                            TestUtil.formatErrorMessage(
-                                            "Unexpected Exception: " + e.getMessage(),
-                                            testRun,
-                                            context),
-                            e);
+            Value value = testRun.getActualParameters().get(0);
+            TestUtil.validateResult(testRun, value, null, false);
+            success = true;
         } finally {
             TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, success));
         }
