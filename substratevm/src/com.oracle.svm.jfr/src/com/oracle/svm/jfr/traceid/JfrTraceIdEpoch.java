@@ -65,7 +65,7 @@ public class JfrTraceIdEpoch {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrTraceIdEpoch() {}
+    public JfrTraceIdEpoch() { }
 
     public long getEpochAddress() {
         UnsignedWord epochFieldOffset = WordFactory.unsigned(UNSAFE.objectFieldOffset(EPOCH_FIELD));
