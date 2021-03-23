@@ -1049,7 +1049,6 @@ public class NativeImage {
             }
             forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
             forEachPropertyValue(properties.get("Args"), args, resolver);
-            forEachPropertyValue(properties.get("ImageClasspath"), this::addCustomImageClasspath, resolver, ":");
         } else {
             args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
         }
