@@ -1340,13 +1340,13 @@ class GraalVmLibPolyglotNativePropertiesBuildTask(mx.LayoutArchiveTask):
     def build(self):
         component = self.subject.component
         native_image_properties = OrderedDict()
+        native_image_args = component.polyglot_lib_build_args
         if component.polyglot_lib_jar_dependencies:
             final_dist = get_final_graalvm_distribution()
-            native_image_properties['ImageClasspath'] = ':'.join(("${java.home}/" + e.replace(os.sep, '/') for e in graalvm_home_relative_classpath(component.polyglot_lib_jar_dependencies, _get_graalvm_archive_path('', final_dist), graal_vm=final_dist).split(os.pathsep)))
-        if component.polyglot_lib_build_args:
-            native_image_properties['Args'] = ' '.join(component.polyglot_lib_build_args)
+            native_image_args += ['-cp', ':'.join(("${java.home}/" + e.replace(os.sep, '/') for e in graalvm_home_relative_classpath(component.polyglot_lib_jar_dependencies, _get_graalvm_archive_path('', final_dist), graal_vm=final_dist).split(os.pathsep)))]
+        assert native_image_args
+        native_image_properties['Args'] = ' '.join(native_image_args)
         self.subject.layout['META-INF/native-image/{}/native-image.properties'.format(component.short_name)] = 'string:' + _format_properties(native_image_properties)
-
         super(GraalVmLibPolyglotNativePropertiesBuildTask, self).build()
 
 
