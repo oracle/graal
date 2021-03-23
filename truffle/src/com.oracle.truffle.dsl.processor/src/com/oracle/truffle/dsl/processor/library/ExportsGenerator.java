@@ -278,13 +278,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
     }
 
-    private static boolean hasFinalDynamicDispatch(ExportsLibrary libraryExport) {
-        if (libraryExport.isDynamicDispatchTarget()) {
-            return libraryExport.getTemplateType().getModifiers().contains(Modifier.FINAL);
-        }
-        return true;
-    }
-
     private static Modifier resolveSubclassVisibility(ExportsLibrary libraryExport) {
         if (libraryExport.isBuiltinDefaultExport()) {
             // lets open this can of worms at a later date
