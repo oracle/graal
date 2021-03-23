@@ -57,6 +57,17 @@ class AMD64CPUFeatureAccessFeature implements Feature {
 public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
 
     /**
+     * We include all flags that enable AMD64 CPU instructions as we want best possible performance
+     * for the code.
+     *
+     * @return All the flags that enable AMD64 CPU instructions.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static EnumSet<AMD64.Flag> allAMD64Flags() {
+        return EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountTrailingZerosInstruction);
+    }
+
+    /**
      * Determines whether a given JVMCI AMD64.CPUFeature is present on the current hardware. Because
      * the CPUFeatures available vary across different JDK versions, the features are queried via
      * their name, as opposed to the actual enum.

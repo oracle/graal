@@ -75,9 +75,9 @@ public class AArch64MembarOpTest extends BackendTest {
     @Test
     public void runNormalMembarTests() {
         List<Pair<Integer, BarrierKind>> cases = new ArrayList<>();
-        cases.add(Pair.create(MemoryBarriers.LOAD_LOAD, BarrierKind.LOAD_LOAD));
-        cases.add(Pair.create(MemoryBarriers.LOAD_STORE, BarrierKind.LOAD_LOAD));
-        cases.add(Pair.create(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE, BarrierKind.LOAD_LOAD));
+        cases.add(Pair.create(MemoryBarriers.LOAD_LOAD, BarrierKind.LOAD_ANY));
+        cases.add(Pair.create(MemoryBarriers.LOAD_STORE, BarrierKind.LOAD_ANY));
+        cases.add(Pair.create(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE, BarrierKind.LOAD_ANY));
         cases.add(Pair.create(MemoryBarriers.STORE_LOAD, BarrierKind.ANY_ANY));
         cases.add(Pair.create(MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_LOAD, BarrierKind.ANY_ANY));
         cases.add(Pair.create(MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_STORE, BarrierKind.ANY_ANY));
