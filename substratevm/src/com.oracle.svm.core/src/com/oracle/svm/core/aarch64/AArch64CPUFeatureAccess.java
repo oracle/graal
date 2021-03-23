@@ -56,6 +56,14 @@ class AArch64CPUFeatureAccessFeature implements Feature {
 public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
 
     /**
+     * We include all flags which currently impact AArch64 performance.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static EnumSet<AArch64.Flag> enabledAArch64Flags() {
+        return EnumSet.of(AArch64.Flag.UseLSE);
+    }
+
+    /**
      * Determines whether a given JVMCI AArch64.CPUFeature is present on the current hardware.
      * Because the CPUFeatures available vary across different JDK versions, the features are
      * queried via their name, as opposed to the actual enum.

@@ -24,11 +24,12 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 
-public class AArch64LIRFlagsVersioned {
-    @SuppressWarnings("unused")
-    public static boolean useLSE(Architecture masm) {
-        return false;
+public class AArch64LIRFlags {
+    public static boolean useLSE(Architecture arch) {
+        AArch64 aarch64 = (AArch64) arch;
+        return aarch64.getFeatures().contains(AArch64.CPUFeature.LSE) && aarch64.getFlags().contains(AArch64.Flag.UseLSE);
     }
 }
