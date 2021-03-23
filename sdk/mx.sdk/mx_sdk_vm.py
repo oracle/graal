@@ -43,7 +43,6 @@ from __future__ import print_function
 from abc import ABCMeta
 
 import mx
-import mx_javamodules
 import mx_subst
 import os
 import shutil
@@ -125,12 +124,6 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
             required_module_name, required_package_name = required
             add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
         return sorted(add_exports)
-
-    def get_add_exports(self):
-        distributions = self.jar_distributions
-        distributions_transitive = mx.classpath_entries(distributions)
-        required_exports = mx_javamodules.requiredExports(distributions_transitive, base_jdk())
-        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
 
 
 class LauncherConfig(AbstractNativeImageConfig):
