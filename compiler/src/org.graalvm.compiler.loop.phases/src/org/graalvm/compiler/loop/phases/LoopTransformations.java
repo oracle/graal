@@ -385,7 +385,7 @@ public abstract class LoopTransformations {
         }
         double originalFrequency = loop.loopBegin().loopFrequency();
         preLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
-        mainLoopBegin.setLoopFrequency(loop.loopBegin().profileData().decrementFrequency(2.0));
+        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().decrementFrequency(2.0));
         postLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
         preLoopBegin.setLoopOrigFrequency(originalFrequency);
         mainLoopBegin.setLoopOrigFrequency(originalFrequency);
