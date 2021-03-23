@@ -1025,12 +1025,30 @@ public final class BytecodeNode extends EspressoMethodNode {
                         continue loop;
                     }
                     // @formatter:off
-                    case IRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn(popInt(primitives, top - 1)));
-                    case LRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popLong(primitives, top - 1)));
-                    case FRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popFloat(primitives, top - 1)));
-                    case DRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popDouble(primitives, top - 1)));
-                    case ARETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popObject(refs, top - 1)));
-                    case RETURN : return notifyReturn(frame, statementIndex, exitMethodAndReturn());
+                    case IRETURN: {
+                        LoopNode.reportLoopCount(this, loopCount[0]);
+                        return notifyReturn(frame, statementIndex, exitMethodAndReturn(popInt(primitives, top - 1)));
+                    }
+                    case LRETURN: {
+                        LoopNode.reportLoopCount(this, loopCount[0]);
+                        return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popLong(primitives, top - 1)));
+                    }
+                    case FRETURN: {
+                        LoopNode.reportLoopCount(this, loopCount[0]);
+                        return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popFloat(primitives, top - 1)));
+                    }
+                    case DRETURN: {
+                        LoopNode.reportLoopCount(this, loopCount[0]);
+                        return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popDouble(primitives, top - 1)));
+                    }
+                    case ARETURN: {
+                        LoopNode.reportLoopCount(this, loopCount[0]);
+                        return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popObject(refs, top - 1)));
+                    }
+                    case RETURN : {
+                        LoopNode.reportLoopCount(this, loopCount[0]);
+                        return notifyReturn(frame, statementIndex, exitMethodAndReturn());
+                    }
 
                     // TODO(peterssen): Order shuffled.
                     case GETSTATIC : // fall through
@@ -1455,6 +1473,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             checkStopping();
             if ((++loopCount[0] & (REPORT_LOOP_STRIDE - 1)) == 0) {
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
+                loopCount[0] -= REPORT_LOOP_STRIDE;
             }
         }
         if (instrument != null) {
