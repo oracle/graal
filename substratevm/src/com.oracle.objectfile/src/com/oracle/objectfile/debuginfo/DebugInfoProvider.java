@@ -200,7 +200,7 @@ public interface DebugInfoProvider {
         int size();
     }
 
-    interface DebugMethodInfo extends DebugMemberInfo{
+    interface DebugMethodInfo extends DebugMemberInfo {
         /**
          * @return a string identifying the method parameters.
          */
@@ -220,6 +220,11 @@ public interface DebugInfoProvider {
          * @return the symbolNameForMethod string
          */
         String symbolNameForMethod();
+
+        /**
+         * @return true if this method has been compiled in as a deoptimization target
+         */
+        boolean isDeoptTarget();
     }
 
     /**
@@ -261,11 +266,6 @@ public interface DebugInfoProvider {
          *         to an empty frame
          */
         List<DebugFrameSizeChange> getFrameSizeChanges();
-
-        /**
-         * @return true if this method has been compiled in as a deoptimization target
-         */
-        boolean isDeoptTarget();
     }
 
     /**

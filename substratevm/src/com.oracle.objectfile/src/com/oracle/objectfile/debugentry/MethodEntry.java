@@ -29,13 +29,15 @@ package com.oracle.objectfile.debugentry;
 public class MethodEntry extends MemberEntry {
     TypeEntry[] paramTypes;
     String[] paramNames;
+    final boolean isDeoptTarget;
 
-    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers) {
+    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers, boolean isDeoptTarget) {
         super(fileEntry, methodName, ownerType, valueType, modifiers);
         assert ((paramTypes == null && paramNames == null) ||
                         (paramTypes != null && paramNames != null && paramTypes.length == paramNames.length));
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
+        this.isDeoptTarget = isDeoptTarget;
     }
 
     public String methodName() {
@@ -93,5 +95,9 @@ public class MethodEntry extends MemberEntry {
             }
         }
         return true;
+    }
+
+    public boolean isDeoptTarget() {
+        return isDeoptTarget;
     }
 }

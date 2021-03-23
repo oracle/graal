@@ -41,7 +41,6 @@ public class Range {
     private final int lo;
     private final int hi;
     private final int line;
-    private final boolean isDeoptTarget;
     /*
      * This is null for a primary range.
      */
@@ -50,23 +49,22 @@ public class Range {
     /*
      * Create a primary range.
      */
-    public Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line,
-                 boolean isDeoptTarget) {
-        this(symbolName, stringTable, methodEntry, fileEntry, lo, hi, line, isDeoptTarget, null);
+    public Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line) {
+        this(symbolName, stringTable, methodEntry, fileEntry, lo, hi, line, null);
     }
 
     /*
      * Create a secondary range.
      */
     public Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary) {
-        this(symbolName, stringTable, methodEntry, methodEntry.fileEntry, lo, hi, line, false, primary);
+        this(symbolName, stringTable, methodEntry, methodEntry.fileEntry, lo, hi, line, primary);
     }
 
     /*
      * Create a primary or secondary range.
      */
     private Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line,
-                    boolean isDeoptTarget, Range primary) {
+                    Range primary) {
         this.fileEntry = fileEntry; // TODO remove and use fileEntry from MethodEntry
         if (fileEntry != null) {
             stringTable.uniqueDebugString(fileEntry.getFileName());
@@ -79,7 +77,6 @@ public class Range {
         this.lo = lo;
         this.hi = hi;
         this.line = line;
-        this.isDeoptTarget = isDeoptTarget;
         this.primary = primary;
     }
 
@@ -128,7 +125,7 @@ public class Range {
     }
 
     public boolean isDeoptTarget() {
-        return isDeoptTarget;
+        return methodEntry.isDeoptTarget;
     }
 
     private String getExtendedMethodName(boolean includeClass, boolean includeParams, boolean includeReturnType) {
