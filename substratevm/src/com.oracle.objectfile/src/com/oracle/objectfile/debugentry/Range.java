@@ -35,18 +35,13 @@ package com.oracle.objectfile.debugentry;
 public class Range {
     private static final String CLASS_DELIMITER = ".";
     private final FileEntry fileEntry;
-    private final String className;
-    private final String methodName;
+    private MethodEntry methodEntry;
     private final String symbolName;
-    private final String paramSignature;
-    private final String returnTypeName;
-    private final String fullMethodName;
     private final String fullMethodNameWithParams;
     private final int lo;
     private final int hi;
     private final int line;
     private final boolean isDeoptTarget;
-    private final int modifiers;
     /*
      * This is null for a primary range.
      */
@@ -55,41 +50,36 @@ public class Range {
     /*
      * Create a primary range.
      */
-    public Range(String className, String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry fileEntry, int lo, int hi, int line,
-                    int modifiers, boolean isDeoptTarget) {
-        this(className, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntry, lo, hi, line, modifiers, isDeoptTarget, null);
+    public Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line,
+                 boolean isDeoptTarget) {
+        this(symbolName, stringTable, methodEntry, fileEntry, lo, hi, line, isDeoptTarget, null);
     }
 
     /*
      * Create a secondary range.
      */
-    public Range(String className, String methodName, String symbolName, StringTable stringTable, FileEntry fileEntry, int lo, int hi, int line,
-                    Range primary) {
-        this(className, methodName, symbolName, "", "", stringTable, fileEntry, lo, hi, line, 0, false, primary);
+    public Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary) {
+        this(symbolName, stringTable, methodEntry, methodEntry.fileEntry, lo, hi, line, false, primary);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    private Range(String className, String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry fileEntry, int lo, int hi, int line,
-                    int modifiers, boolean isDeoptTarget, Range primary) {
-        this.fileEntry = fileEntry;
+    private Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line,
+                    boolean isDeoptTarget, Range primary) {
+        this.fileEntry = fileEntry; // TODO remove and use fileEntry from MethodEntry
         if (fileEntry != null) {
             stringTable.uniqueDebugString(fileEntry.getFileName());
             stringTable.uniqueDebugString(fileEntry.getPathName());
         }
-        this.className = stringTable.uniqueString(className);
-        this.methodName = stringTable.uniqueString(methodName);
+        assert methodEntry != null;
+        this.methodEntry = methodEntry;
         this.symbolName = stringTable.uniqueString(symbolName);
-        this.paramSignature = stringTable.uniqueString(paramSignature);
-        this.returnTypeName = stringTable.uniqueString(returnTypeName);
-        this.fullMethodName = stringTable.uniqueString(constructClassAndMethodName());
         this.fullMethodNameWithParams = stringTable.uniqueString(constructClassAndMethodNameWithParams());
         this.lo = lo;
         this.hi = hi;
         this.line = line;
         this.isDeoptTarget = isDeoptTarget;
-        this.modifiers = modifiers;
         this.primary = primary;
     }
 
@@ -106,11 +96,11 @@ public class Range {
     }
 
     public String getClassName() {
-        return className;
+        return methodEntry.ownerType.typeName;
     }
 
     public String getMethodName() {
-        return methodName;
+        return methodEntry.memberName;
     }
 
     public String getSymbolName() {
@@ -130,7 +120,7 @@ public class Range {
     }
 
     public String getFullMethodName() {
-        return fullMethodName;
+        return constructClassAndMethodName();
     }
 
     public String getFullMethodNameWithParams() {
@@ -143,23 +133,23 @@ public class Range {
 
     private String getExtendedMethodName(boolean includeClass, boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
-        if (includeReturnType && returnTypeName.length() > 0) {
-            builder.append(returnTypeName);
+        if (includeReturnType && methodEntry.valueType.typeName.length() > 0) {
+            builder.append(methodEntry.valueType.typeName);
             builder.append(' ');
         }
-        if (includeClass && className != null) {
-            builder.append(className);
+        if (includeClass && getClassName() != null) {
+            builder.append(getClassName());
             builder.append(CLASS_DELIMITER);
         }
-        builder.append(methodName);
+        builder.append(getMethodName());
         if (includeParams) {
             builder.append('(');
-            builder.append(paramSignature);
+            builder.append(String.join(", ", methodEntry.paramNames));
             builder.append(')');
         }
         if (includeReturnType) {
             builder.append(" ");
-            builder.append(returnTypeName);
+            builder.append(methodEntry.valueType.typeName);
         }
         return builder.toString();
     }
@@ -173,11 +163,11 @@ public class Range {
     }
 
     public String getMethodReturnTypeName() {
-        return returnTypeName;
+        return methodEntry.valueType.typeName;
     }
 
-    public String getParamSignature() {
-        return paramSignature;
+    public TypeEntry[] getParamTypes() {
+        return methodEntry.paramTypes;
     }
 
     public FileEntry getFileEntry() {
@@ -185,7 +175,7 @@ public class Range {
     }
 
     public int getModifiers() {
-        return modifiers;
+        return methodEntry.modifiers;
     }
 
     @Override

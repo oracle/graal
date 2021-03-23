@@ -724,18 +724,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (!Modifier.isStatic(range.getModifiers())) {
             pos = writeMethodParameterDeclaration(context, "this", classEntry.getTypeName(), true, isSpecification, buffer, pos);
         }
-        String paramsString = range.getParamSignature();
-        if (!paramsString.isEmpty()) {
-            String[] paramTypes = paramsString.split(",");
-            for (int i = 0; i < paramTypes.length; i++) {
-                String paramName = uniqueDebugString("");
-                String paramTypeName = paramTypes[i].trim();
-                FileEntry fileEntry = range.getFileEntry();
-                if (fileEntry != null) {
-                    pos = writeMethodParameterDeclaration(context, paramName, paramTypeName, false, isSpecification, buffer, pos);
-                } else {
-                    pos = writeMethodParameterDeclaration(context, paramTypeName, paramTypeName, false, isSpecification, buffer, pos);
-                }
+        for (TypeEntry paramType : range.getParamTypes()) {
+            String paramTypeName = paramType.getTypeName();
+            String paramName = uniqueDebugString("");
+            FileEntry fileEntry = range.getFileEntry();
+            if (fileEntry != null) {
+                pos = writeMethodParameterDeclaration(context, paramName, paramTypeName, false, isSpecification, buffer, pos);
+            } else {
+                pos = writeMethodParameterDeclaration(context, paramTypeName, paramTypeName, false, isSpecification, buffer, pos);
             }
         }
         return pos;

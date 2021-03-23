@@ -337,10 +337,9 @@ public class ClassEntry extends StructureTypeEntry {
         return superClass;
     }
 
-    public Range makePrimaryRange(String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry primaryFileEntry, int lo,
-                    int hi, int primaryLine,
-                    int modifiers, boolean isDeoptTarget) {
-        FileEntry fileEntryToUse = primaryFileEntry;
+    public Range makePrimaryRange(String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, MethodEntry method, int lo,
+                                  int hi, int primaryLine, boolean isDeoptTarget) {
+        FileEntry fileEntryToUse = method.fileEntry;
         if (fileEntryToUse == null) {
             /*
              * Search for a matching method to supply the file entry or failing that use the one
@@ -358,6 +357,19 @@ public class ClassEntry extends StructureTypeEntry {
                 fileEntryToUse = this.fileEntry;
             }
         }
-        return new Range(this.typeName, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntryToUse, lo, hi, primaryLine, modifiers, isDeoptTarget);
+        return new Range(symbolName, stringTable, method, fileEntryToUse, lo, hi, primaryLine, isDeoptTarget);
+    }
+
+    public MethodEntry ensureMethodEntry(DebugInfoProvider.DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
+        String paramSignature = debugMethodInfo.paramSignature();
+        String returnTypeName = debugMethodInfo.valueType();
+        // TODO improve data structure to avoid loops...
+        for (MethodEntry methodEntry : methods) {
+            if (methodEntry.match(methodName, paramSignature, returnTypeName)) {
+                return methodEntry;
+            }
+        }
+        return processMethod(debugMethodInfo, debugInfoBase, debugContext);
     }
 }
