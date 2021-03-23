@@ -172,7 +172,6 @@ def registered_graalvm_components(stage1=False):
         excluded = _excluded_components()
         components_to_build = []
 
-        libpoly_jar_dependencies = []
         libpoly_build_dependencies = []
         libpoly_has_entrypoints = []
 
@@ -186,7 +185,6 @@ def registered_graalvm_components(stage1=False):
                 if component not in components_to_build and not (excludes and is_excluded(component)):
                     components_to_build.append(component)
                     components.extend(component.direct_dependencies())
-                    libpoly_jar_dependencies.extend(component.polyglot_lib_jar_dependencies)
                     libpoly_build_dependencies.extend(component.polyglot_lib_build_dependencies)
                     if component.has_polyglot_lib_entrypoints:
                         libpoly_has_entrypoints.append(component.name)
@@ -214,7 +212,9 @@ def registered_graalvm_components(stage1=False):
                     dir_name='polyglot',
                     library_configs=[mx_sdk_vm.LibraryConfig(
                         destination='<lib:polyglot>',
-                        jar_distributions=libpoly_jar_dependencies,
+                        # We can ignore `component.polyglot_lib_jar_dependencies` because, when building a native image,
+                        # the `GraalVmNativeImage` project has a build-time dependency to Stage1
+                        jar_distributions=[],
                         build_args=[
                                '-Dgraalvm.libpolyglot=true',
                                '-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>',
@@ -703,6 +703,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
                     _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 _add_native_image_macro(_library_config, _component)
+
+            graalvm_dists.update(_component.polyglot_lib_jar_dependencies)
             if GraalVmLibPolyglotNativeProperties.needs_lib_polyglot_native_properties(_component):
                 _add(layout, _libpolyglot_macro_dir, 'dependency:' + _libpolyglot_macro_dist_name(_component))
 
@@ -1274,8 +1276,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
             if isinstance(image_config, mx_sdk.LauncherConfig):
                 _write_ln(u'ImageClass=' + java_properties_escape(image_config.main_class))
-            libpoly_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False)
-            if libpoly_component is None or self.subject.name != GraalVmNativeProperties.project_name(libpoly_component.library_configs[0]):
+            if location_classpath:
                 _write_ln(u'ImageClasspath=' + java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
             _write_ln(u'Args=' + java_properties_escape(' '.join(build_args), ' ', len('Args')))
         return self._contents
