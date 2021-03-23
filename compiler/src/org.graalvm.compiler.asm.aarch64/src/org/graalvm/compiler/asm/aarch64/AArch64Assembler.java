@@ -1396,7 +1396,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param rt general purpose register. May not be null or stackpointer.
      * @param rn general purpose register.
      */
-    public void ldaxr(int size, Register rt, Register rn) {
+    protected void ldaxr(int size, Register rt, Register rn) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
         exclusiveLoadInstruction(LDAXR, rt, rn, getLog2TransferSize(size));
     }
@@ -1411,7 +1411,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param rt general purpose register. May not be null or stackpointer.
      * @param rn general purpose register.
      */
-    public void stlxr(int size, Register rs, Register rt, Register rn) {
+    protected void stlxr(int size, Register rs, Register rt, Register rn) {
         assert size == 8 || size == 16 || size == 32 || size == 64;
         exclusiveStoreInstruction(STLXR, rs, rt, rn, getLog2TransferSize(size));
     }
@@ -3009,15 +3009,13 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /**
-     * Possible barrier definitions for Aarch64. LOAD_LOAD and LOAD_STORE map to the same underlying
-     * barrier.
+     * Barrier definitions for AArch64.
      *
      * We only need synchronization across the inner shareable domain (see B2-90 in the Reference
      * documentation).
      */
     public enum BarrierKind {
-        LOAD_LOAD(0x9, "ISHLD"),
-        LOAD_STORE(0x9, "ISHLD"),
+        LOAD_ANY(0x9, "ISHLD"),
         STORE_STORE(0xA, "ISHST"),
         ANY_ANY(0xB, "ISH"),
         SYSTEM(0xF, "SYS");
