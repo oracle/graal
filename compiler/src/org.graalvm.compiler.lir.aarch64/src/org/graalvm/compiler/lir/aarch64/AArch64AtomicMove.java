@@ -98,7 +98,7 @@ public class AArch64AtomicMove {
             boolean acquire = ((memoryOrder.postWriteBarriers & (STORE_LOAD | STORE_STORE)) != 0) || ((memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0);
             boolean release = ((memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0) || ((memoryOrder.preReadBarriers & (LOAD_LOAD | STORE_LOAD)) != 0);
 
-            if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
+            if (AArch64LIRFlags.useLSE(masm.target.arch)) {
                 masm.mov(Math.max(memAccessSize, 32), result, expected);
                 masm.cas(memAccessSize, result, newVal, address, acquire, release);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
@@ -295,7 +295,7 @@ public class AArch64AtomicMove {
             Register value = asRegister(newValue);
             Register result = asRegister(resultValue);
 
-            if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
+            if (AArch64LIRFlags.useLSE(masm.target.arch)) {
                 masm.swp(memAccessSize, value, result, address, true, true);
             } else {
                 Register scratch = asRegister(scratchValue);
