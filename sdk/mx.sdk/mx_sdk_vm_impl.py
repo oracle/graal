@@ -595,9 +595,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         component_suites = {}
         installables = {}
         has_graal_compiler = False
+        _macros_dir = _get_macros_dir()
         _libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False)
         assert _libpolyglot_component is None or len(_libpolyglot_component.library_configs) == 1
-        _libpolyglot_macro_dir = (_get_macros_dir() + '/' + GraalVmNativeProperties.macro_name(_libpolyglot_component.library_configs[0]) + '/') if _libpolyglot_component is not None else None
+        _libpolyglot_macro_dir = (_macros_dir + '/' + GraalVmNativeProperties.macro_name(_libpolyglot_component.library_configs[0]) + '/') if _macros_dir is not None and _libpolyglot_component is not None else None
 
         for _component in sorted(self.components, key=lambda c: c.name):
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
@@ -715,7 +716,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add_native_image_macro(_library_config, _component)
 
             graalvm_dists.update(_component.polyglot_lib_jar_dependencies)
-            if GraalVmLibPolyglotNativeProperties.needs_lib_polyglot_native_properties(_component):
+            if _libpolyglot_macro_dir is not None and GraalVmLibPolyglotNativeProperties.needs_lib_polyglot_native_properties(_component):
                 _add(layout, _libpolyglot_macro_dir, 'dependency:' + _libpolyglot_macro_dist_name(_component))
 
             if _src_jdk_version == 8 or not _jlink_libraries():
