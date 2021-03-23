@@ -141,9 +141,9 @@ public final class DebuggerController implements ContextsListener {
         return options.host;
     }
 
-    public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn) {
+    public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn, DebuggerCommand.Kind stepKind) {
         JDWPLogger.log("Adding step command request in thread %s with ID %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread), commandRequestId);
-        commandRequestIds.put(thread, new SteppingInfo(commandRequestId, suspendPolicy, isPopFrames, isForceEarlyReturn));
+        commandRequestIds.put(thread, new SteppingInfo(commandRequestId, suspendPolicy, isPopFrames, isForceEarlyReturn, stepKind));
     }
 
     /**
@@ -219,30 +219,6 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    public void stepOver(RequestFilter filter) {
-        Object thread = filter.getStepInfo().getGuestThread();
-        JDWPLogger.log("STEP_OVER for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
-
-        SuspendedInfo susp = suspendedInfos.get(thread);
-        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
-            susp.recordStep(DebuggerCommand.Kind.STEP_OVER);
-        } else {
-            JDWPLogger.log("NOT STEPPING OVER for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
-        }
-    }
-
-    public void stepInto(RequestFilter filter) {
-        Object thread = filter.getStepInfo().getGuestThread();
-        JDWPLogger.log("STEP_INTO for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
-
-        SuspendedInfo susp = suspendedInfos.get(thread);
-        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
-            susp.recordStep(DebuggerCommand.Kind.STEP_INTO);
-        } else {
-            JDWPLogger.log("not STEPPING INTO for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
-        }
-    }
-
     public void stepOut(RequestFilter filter) {
         Object thread = filter.getStepInfo().getGuestThread();
         JDWPLogger.log("STEP_OUT for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
@@ -267,23 +243,17 @@ public final class DebuggerController implements ContextsListener {
                 steppingInfo.setStepOutBCI(context.getIds().getIdAsLong(klass), context.getIds().getIdAsLong(method), stepOutBCI);
             }
         }
-        susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
     }
 
     public void clearStepCommand(StepInfo stepInfo) {
-        SuspendedInfo susp = suspendedInfos.get(stepInfo.getGuestThread());
-        // only relevant to clear a step command
-        // if we have a known suspension state
-        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
-            susp.clearStepping();
-        }
+        commandRequestIds.remove(stepInfo.getGuestThread());
     }
 
     public boolean popFrames(Object guestThread, CallFrame frameToPop, int packetId) {
         SuspendedInfo susp = suspendedInfos.get(guestThread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             susp.getEvent().prepareUnwindFrame(frameToPop.getDebugStackFrame());
-            setCommandRequestId(guestThread, packetId, SuspendStrategy.EVENT_THREAD, true, false);
+            setCommandRequestId(guestThread, packetId, SuspendStrategy.EVENT_THREAD, true, false, DebuggerCommand.Kind.SPECIAL_STEP);
             resume(guestThread, false);
             return true;
         }
@@ -296,7 +266,7 @@ public final class DebuggerController implements ContextsListener {
             // Truffle unwind will take us to exactly the right location in the caller method
             susp.getEvent().prepareUnwindFrame(frame.getDebugStackFrame(), frame.asDebugValue(returnValue));
             susp.setForceEarlyReturnInProgress();
-            setCommandRequestId(guestThread, -1, SuspendStrategy.NONE, false, true);
+            setCommandRequestId(guestThread, -1, SuspendStrategy.NONE, false, true, DebuggerCommand.Kind.SPECIAL_STEP);
             return true;
         }
         return false;
@@ -317,7 +287,8 @@ public final class DebuggerController implements ContextsListener {
             if (suspensionCount == 0) {
                 // only resume when suspension count reaches 0
                 SuspendedInfo suspendedInfo = getSuspendedInfo(thread);
-                if (!isStepping(thread)) {
+                SteppingInfo steppingInfo = commandRequestIds.get(thread);
+                if (steppingInfo == null) {
                     if (!sessionClosed) {
                         try {
                             JDWPLogger.log("calling underlying resume method for thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
@@ -330,7 +301,7 @@ public final class DebuggerController implements ContextsListener {
                     // we're currently stepping, so make sure to
                     // commit the recorded step kind to Truffle
                     if (suspendedInfo != null && !suspendedInfo.isForceEarlyReturnInProgress()) {
-                        DebuggerCommand.Kind stepKind = suspendedInfo.getStepKind();
+                        DebuggerCommand.Kind stepKind = steppingInfo.getStepKind();
                         if (stepKind != null) {
                             switch (stepKind) {
                                 // force early return doesn't trigger any events, so the debugger
@@ -351,6 +322,7 @@ public final class DebuggerController implements ContextsListener {
                                 case SUBMIT_EXCEPTION_BREAKPOINT:
                                 case SUBMIT_LINE_BREAKPOINT:
                                 case SUBMIT_METHOD_ENTRY_BREAKPOINT:
+                                case SPECIAL_STEP:
                                     break;
                                 default:
                                     throw new RuntimeException("should not reach here");
@@ -960,7 +932,7 @@ public final class DebuggerController implements ContextsListener {
                         Object filterObject = context.getIds().fromId((int) requestFilter.getThisFilterId());
                         Object thisObject = frame.getThisValue();
                         if (filterObject != thisObject) {
-                            continueStepping(event, thread);
+                            continueStepping(event, info, thread);
                             return true;
                         }
                     }
@@ -969,7 +941,7 @@ public final class DebuggerController implements ContextsListener {
 
                     if (klass != null && requestFilter.isKlassExcluded(klass)) {
                         // should not suspend here then, tell the event to keep going
-                        continueStepping(event, thread);
+                        continueStepping(event, info, thread);
                         return true;
                     }
                 }
@@ -977,12 +949,8 @@ public final class DebuggerController implements ContextsListener {
             return false;
         }
 
-        private void continueStepping(SuspendedEvent event, Object thread) {
-            SuspendedInfo susp = suspendedInfos.get(thread);
-            if (susp == null || susp.getStepKind() == null) {
-                return;
-            }
-            switch (susp.getStepKind()) {
+        private void continueStepping(SuspendedEvent event, SteppingInfo steppingInfo, Object thread) {
+            switch (steppingInfo.getStepKind()) {
                 case STEP_INTO:
                     // stepping into unwanted code which was filtered
                     // so step out and try step into again
@@ -992,7 +960,10 @@ public final class DebuggerController implements ContextsListener {
                     event.prepareStepOver(STEP_CONFIG);
                     break;
                 case STEP_OUT:
-                    doStepOut(susp);
+                    SuspendedInfo info = getSuspendedInfo(thread);
+                    if (info != null) {
+                        doStepOut(info);
+                    }
                     break;
                 default:
                     break;
