@@ -1590,15 +1590,6 @@ public class BytecodeParser implements GraphBuilderContext {
         return emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.ARRAY_STORE, value);
     }
 
-    protected GuardingNode maybeEmitExplicitDivisionByZeroCheck(ValueNode y) {
-        if (!((IntegerStamp) y.stamp(NodeView.DEFAULT)).contains(0) || !needsExplicitDivisionByZeroException(y)) {
-            return null;
-        }
-        ConstantNode zero = ConstantNode.defaultForKind(y.getStackKind(), graph);
-        LogicNode condition = genUnique(IntegerEqualsNode.create(getConstantReflection(), getMetaAccess(), options, null, y, zero, NodeView.DEFAULT));
-        return emitBytecodeExceptionCheck(condition, false, BytecodeExceptionKind.DIVISION_BY_ZERO);
-    }
-
     @Override
     public AbstractBeginNode emitBytecodeExceptionCheck(LogicNode condition, boolean passingOnTrue, BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
         AbstractBeginNode result = GraphBuilderContext.super.emitBytecodeExceptionCheck(condition, passingOnTrue, exceptionKind, arguments);
@@ -4867,15 +4858,6 @@ public class BytecodeParser implements GraphBuilderContext {
      * @param value The value that is stored into the array.
      */
     protected boolean needsExplicitStoreCheckException(ValueNode array, ValueNode value) {
-        return needsExplicitException();
-    }
-
-    /**
-     * Returns true if an explicit null check should be emitted for the given object.
-     *
-     * @param y The dividend.
-     */
-    protected boolean needsExplicitDivisionByZeroException(ValueNode y) {
         return needsExplicitException();
     }
 
