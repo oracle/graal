@@ -45,6 +45,24 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     @Override
+    public boolean add(Runnable e) {
+        scaleThresholds();
+        return super.add(e);
+    }
+
+    @Override
+    public boolean offer(Runnable e) {
+        scaleThresholds();
+        return super.offer(e);
+    }
+
+    @Override
+    public boolean offer(Runnable e, long timeout, TimeUnit unit) throws InterruptedException {
+        scaleThresholds();
+        return super.offer(e, timeout, unit);
+    }
+
+    @Override
     public Runnable poll(long timeout, TimeUnit unit) throws InterruptedException {
         scaleThresholds();
         return super.poll(timeout, unit);
