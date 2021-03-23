@@ -235,7 +235,6 @@ public class JfrThreadLocal implements ThreadListener {
     private static void writeDataLoss(JfrBuffer buffer, UnsignedWord unflushedSize) {
         assert buffer.isNonNull();
         assert unflushedSize.aboveThan(0);
-        JfrBufferAccess.reinitialize(buffer);
         UnsignedWord totalDataLoss = increaseDataLost(unflushedSize);
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.DataLossEvent)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
