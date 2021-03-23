@@ -588,6 +588,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         installables = {}
         has_graal_compiler = False
         _libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False)
+        assert _libpolyglot_component is None or len(_libpolyglot_component.library_configs) == 1
         _libpolyglot_macro_dir = (_get_macros_dir() + '/' + GraalVmNativeProperties.macro_name(_libpolyglot_component.library_configs[0]) + '/') if _libpolyglot_component is not None else None
 
         for _component in sorted(self.components, key=lambda c: c.name):
@@ -2458,7 +2459,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     # Add the macros if SubstrateVM is included, as images could be created later with an installable Native Image
     with_svm = has_component('svm')
     libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False) if with_svm else None
-    assert libpolyglot_component is None or len(libpolyglot_component.library_configs) == 1
 
     names = set()
     short_names = set()
