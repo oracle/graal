@@ -125,7 +125,10 @@ public class JfrTraceId {
         if (getTraceIdMap().getId(index) != -1) {
             return;
         }
-        // We are picking up the host trace-ID here.
+        // We are picking up the host trace-ID here. This is important because host JFR will build
+        // some datastructures that preserve the trace-IDs itself, and those end up in the image.
+        // We need to be in sync with that information, otherwise events may get dropped or other
+        // inconsistencies.
         long typeId = JVM.getJVM().getTypeId(clazz);
         getTraceIdMap().setId(index, typeId << TRACE_ID_SHIFT);
 
