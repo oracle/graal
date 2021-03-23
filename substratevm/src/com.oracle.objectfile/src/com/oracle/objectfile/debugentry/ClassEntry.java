@@ -337,25 +337,11 @@ public class ClassEntry extends StructureTypeEntry {
         return superClass;
     }
 
-    public Range makePrimaryRange(String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, MethodEntry method, int lo,
-                    int hi, int primaryLine) {
+    public Range makePrimaryRange(String symbolName, StringTable stringTable, MethodEntry method, int lo, int hi, int primaryLine) {
         FileEntry fileEntryToUse = method.fileEntry;
         if (fileEntryToUse == null) {
-            /*
-             * Search for a matching method to supply the file entry or failing that use the one
-             * from this class.
-             */
-            for (MethodEntry methodEntry : methods) {
-                if (methodEntry.match(methodName, paramSignature, returnTypeName)) {
-                    /* maybe the method's file entry */
-                    fileEntryToUse = methodEntry.getFileEntry();
-                    break;
-                }
-            }
-            if (fileEntryToUse == null) {
-                /* Last chance is the class's file entry. */
-                fileEntryToUse = this.fileEntry;
-            }
+            /* Last chance is the class's file entry. */
+            fileEntryToUse = this.fileEntry;
         }
         return new Range(symbolName, stringTable, method, fileEntryToUse, lo, hi, primaryLine);
     }
