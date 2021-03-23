@@ -267,9 +267,9 @@ public class ClassEntry extends StructureTypeEntry {
         interfaceClassEntry.addImplementor(this, debugContext);
     }
 
-    protected void processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
-        String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
+    protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.methodName());
+        String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.returnTypeName());
         int modifiers = debugMethodInfo.modifiers();
         List<String> paramTypes = debugMethodInfo.paramTypes();
         List<String> paramNames = debugMethodInfo.paramNames();
@@ -294,7 +294,9 @@ public class ClassEntry extends StructureTypeEntry {
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        methods.add(new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers));
+        final MethodEntry methodEntry = new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers);
+        methods.add(methodEntry);
+        return methodEntry;
     }
 
     @Override
