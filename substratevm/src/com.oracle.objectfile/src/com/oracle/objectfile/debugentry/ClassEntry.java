@@ -268,8 +268,8 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.methodName());
-        String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.returnTypeName());
+        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
+        String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
         int modifiers = debugMethodInfo.modifiers();
         List<String> paramTypes = debugMethodInfo.paramTypes();
         List<String> paramNames = debugMethodInfo.paramNames();

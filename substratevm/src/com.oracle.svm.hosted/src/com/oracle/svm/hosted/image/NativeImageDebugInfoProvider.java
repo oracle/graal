@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.JavaType;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -248,6 +249,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return ((InjectedFieldsType) javaType).getOriginal();
         }
         return null;
+    }
+
+    private static String toJavaName(JavaType javaType) {
+        if (javaType instanceof HostedType) {
+            return getJavaType((HostedType) javaType, true).toJavaName();
+        }
+        return javaType.toJavaName();
     }
 
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
@@ -680,6 +688,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
+            public String paramSignature() {
+                return hostedMethod.format("%P");
+            }
+
+            @Override
             public List<String> paramTypes() {
                 LinkedList<String> paramTypes = new LinkedList<>();
                 Signature signature = hostedMethod.getSignature();
@@ -698,6 +711,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     paramNames.add("");
                 }
                 return paramNames;
+            }
+
+            @Override
+            public String symbolNameForMethod() {
+                return NativeImage.localSymbolNameForMethod(hostedMethod);
             }
 
             @Override
@@ -858,12 +876,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String className() {
+        public String ownerType() {
             return getJavaType(hostedMethod, true).toJavaName();
         }
 
         @Override
-        public String methodName() {
+        public String name() {
             ResolvedJavaMethod targetMethod = hostedMethod.getWrapped().getWrapped();
             if (targetMethod instanceof SubstitutionMethod) {
                 targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
@@ -894,7 +912,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String returnTypeName() {
+        public String valueType() {
             return hostedMethod.format("%R");
         }
 
@@ -958,11 +976,33 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public boolean isDeoptTarget() {
-            return methodName().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
+            return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
         }
 
         @Override
-        public int getModifiers() {
+        public List<String> paramTypes() {
+            LinkedList<String> paramTypes = new LinkedList<>();
+            Signature signature = hostedMethod.getSignature();
+            for (int i = 0; i < signature.getParameterCount(false); i++) {
+                final JavaType parameterType = signature.getParameterType(i, null);
+                paramTypes.add(toJavaName(parameterType));
+            }
+            return paramTypes;
+        }
+
+        @Override
+        public List<String> paramNames() {
+            /* Can only provide blank names for now. */
+            LinkedList<String> paramNames = new LinkedList<>();
+            Signature signature = hostedMethod.getSignature();
+            for (int i = 0; i < signature.getParameterCount(false); i++) {
+                paramNames.add("");
+            }
+            return paramNames;
+        }
+
+        @Override
+        public int modifiers() {
             return hostedMethod.getModifiers();
         }
     }
@@ -1022,12 +1062,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String className() {
+        public String ownerType() {
             return method.format("%H");
         }
 
         @Override
-        public String methodName() {
+        public String name() {
             ResolvedJavaMethod targetMethod = method;
             while (targetMethod instanceof WrappedJavaMethod) {
                 targetMethod = ((WrappedJavaMethod) targetMethod).getWrapped();
@@ -1058,6 +1098,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public String valueType() {
+            return method.format("%R");
+        }
+
+        @Override
+        public String paramSignature() {
+            return method.format("%P");
+        }
+
+        @Override
         public String symbolNameForMethod() {
             return NativeImage.localSymbolNameForMethod(method);
         }
@@ -1079,6 +1129,33 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return lineNumberTable.getLineNumber(bci);
             }
             return -1;
+        }
+
+        @Override
+        public List<String> paramTypes() {
+            LinkedList<String> paramTypes = new LinkedList<>();
+            Signature signature = method.getSignature();
+            for (int i = 0; i < signature.getParameterCount(false); i++) {
+                final JavaType parameterType = signature.getParameterType(i, null);
+                paramTypes.add(toJavaName(parameterType));
+            }
+            return paramTypes;
+        }
+
+        @Override
+        public List<String> paramNames() {
+            /* Can only provide blank names for now. */
+            LinkedList<String> paramNames = new LinkedList<>();
+            Signature signature = method.getSignature();
+            for (int i = 0; i < signature.getParameterCount(false); i++) {
+                paramNames.add("");
+            }
+            return paramNames;
+        }
+
+        @Override
+        public int modifiers() {
+            return method.getModifiers();
         }
 
         @SuppressWarnings("try")
