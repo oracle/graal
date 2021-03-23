@@ -27,7 +27,7 @@
 package com.oracle.svm.jfr.traceid;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.Type;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -129,7 +129,17 @@ public class JfrTraceId {
         // some datastructures that preserve the trace-IDs itself, and those end up in the image.
         // We need to be in sync with that information, otherwise events may get dropped or other
         // inconsistencies.
-        long typeId = JVM.getJVM().getTypeId(clazz);
+        long typeId;
+        if (clazz == void.class) {
+            // void doesn't seem to be one of the known types in Type.java, but it would crash when
+            // queried in Hotspot. Trouble is that some code appears to be calling JVM.getTypeId() or similar
+            // at run-time, at which point it's expected that we have an entry in the table. Let's map it
+            // to 0 which is also TYPE_NONE in Hotspot's JFR. Maybe it should be added to the known types in
+            // Hotspot's Type.java.
+            typeId = 0;
+        } else {
+            typeId = Type.getTypeId(clazz);
+        }
         getTraceIdMap().setId(index, typeId << TRACE_ID_SHIFT);
 
         if ((jdk.internal.event.Event.class == clazz || jdk.jfr.Event.class == clazz) &&

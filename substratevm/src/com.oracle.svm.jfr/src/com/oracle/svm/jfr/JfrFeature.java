@@ -133,10 +133,8 @@ public class JfrFeature implements Feature {
         for (SharedType type : types) {
             DynamicHub hub = type.getHub();
             Class<?> clazz = hub.getHostedJavaClass();
-            if (!clazz.isPrimitive()) {
-                // Off-set by one for error-catcher
-                JfrTraceId.assign(clazz, hub.getTypeID() + 1);
-            }
+            // Off-set by one for error-catcher
+            JfrTraceId.assign(clazz, hub.getTypeID() + 1);
         }
 
         // TODO: get the method count
