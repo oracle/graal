@@ -305,9 +305,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (!ImageSingletons.contains(TruffleSupport.class)) {
-            ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
-        }
         imageClassLoader = a.getApplicationClassLoader();
 
         /* Inline during parsing does not work well with deopt targets ATM. */
@@ -335,6 +332,13 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         // reinitialize language cache
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState", Collections.emptyList());
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(TruffleSupport.class)) {
+            ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
+        }
     }
 
     @Override
