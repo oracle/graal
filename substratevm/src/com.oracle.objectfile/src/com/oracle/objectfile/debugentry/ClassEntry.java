@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
@@ -300,7 +300,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     @Override
-    protected FieldEntry addField(DebugInfoProvider.DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         FieldEntry fieldEntry = super.addField(debugFieldInfo, debugInfoBase, debugContext);
         FileEntry fieldFileEntry = fieldEntry.getFileEntry();
         if (fieldFileEntry != null) {
@@ -360,7 +360,7 @@ public class ClassEntry extends StructureTypeEntry {
         return new Range(symbolName, stringTable, method, fileEntryToUse, lo, hi, primaryLine);
     }
 
-    public MethodEntry ensureMethodEntry(DebugInfoProvider.DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    public MethodEntry ensureMethodEntry(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
         String paramSignature = debugMethodInfo.paramSignature();
         String returnTypeName = debugMethodInfo.valueType();
