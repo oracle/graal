@@ -89,4 +89,8 @@ final class PolyglotEngineOptions {
                     "Prints the stack trace for all threads for a time interval. By default 0, which disables the output.")//
     static final OptionKey<Long> TraceStackTraceInterval = new OptionKey<>(0L);
 
+    @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
+                    "Print warning when the engine is using a default Truffle runtime.")//
+    static final OptionKey<Boolean> WarnInterpreterOnly = new OptionKey<>(true);
+
 }

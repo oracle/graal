@@ -75,6 +75,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -1558,14 +1559,10 @@ public class TruffleSafepointTest {
         }
     }
 
-    static boolean isGraalRuntime() {
-        return Truffle.getRuntime().getName().contains("Graal");
-    }
-
     protected Context createTestContext() {
         Context.Builder b = Context.newBuilder();
         b.allowExperimentalOptions(true);
-        if (isGraalRuntime()) {
+        if (AbstractPolyglotTest.isGraalRuntime()) {
             b.option("engine.CompileImmediately", "true");
             b.option("engine.BackgroundCompilation", "false");
         }

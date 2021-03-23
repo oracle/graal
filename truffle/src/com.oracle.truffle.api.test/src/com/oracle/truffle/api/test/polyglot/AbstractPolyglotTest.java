@@ -260,6 +260,10 @@ public abstract class AbstractPolyglotTest {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
+    public static boolean isGraalRuntime() {
+        return Truffle.getRuntime().getName().contains("Graal");
+    }
+
     private static class TestRootNode extends RootNode {
 
         @Child private Node node;
