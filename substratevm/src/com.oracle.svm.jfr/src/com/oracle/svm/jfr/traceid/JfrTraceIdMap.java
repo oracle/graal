@@ -50,7 +50,7 @@ public class JfrTraceIdMap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private int getIndex(Class<?> clazz) {
-        DynamicHub hub = DynamicHub.fromClass((Class<?>) clazz);
+        DynamicHub hub = DynamicHub.fromClass(clazz);
         return hub.getTypeID() + 1; // Off-set by 1 for error-catcher
     }
 
