@@ -35,8 +35,6 @@ import org.graalvm.nativeimage.Platforms;
 
 public class JfrTraceId {
 
-    private static final long MaxJfrEventId = 403;
-
     public static final long BIT = 1;
     public static final long META_SHIFT = 8;
     public static final long TRANSIENT_META_BIT = (BIT << 3);
@@ -62,12 +60,14 @@ public class JfrTraceId {
         return ImageSingletons.lookup(JfrTraceIdMap.class);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void tag(Class<?> clazz, long bits) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(clazz);
         map.setId(clazz, (id & ~0xff) | (bits & 0xff));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean predicate(Class<?> clazz, long bits) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(clazz);
@@ -99,12 +99,14 @@ public class JfrTraceId {
         return JfrTraceIdLoadBarrier.load(clazz);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void tagAsJdkJfrEvent(int index) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(index);
         map.setId(index, id | JDK_JFR_EVENT_KLASS);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void tagAsJdkJfrEventSub(int index) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(index);
@@ -123,6 +125,7 @@ public class JfrTraceId {
         if (getTraceIdMap().getId(index) != -1) {
             return;
         }
+        // We are picking up the host trace-ID here.
         long typeId = JVM.getJVM().getTypeId(clazz);
         getTraceIdMap().setId(index, typeId << TRACE_ID_SHIFT);
 
@@ -136,22 +139,5 @@ public class JfrTraceId {
 
             tagAsJdkJfrEventSub(index);
         }
-    }
-
-    public static boolean isSerialized(Class<?> clazz) {
-        return predicate(clazz, SERIALIZED_BIT);
-    }
-
-    public static void setSerialized(Class<?> clazz) {
-        long id = getTraceIdMap().getId(clazz);
-        getTraceIdMap().setId(clazz, id | SERIALIZED_BIT);
-    }
-
-    public static void clearSerialized(Class<?> clazz) {
-        long id = getTraceIdMap().getId(clazz);
-        if (isSerialized(clazz)) {
-            getTraceIdMap().setId(clazz, id ^ SERIALIZED_BIT);
-        }
-        assert (!isSerialized(clazz));
     }
 }

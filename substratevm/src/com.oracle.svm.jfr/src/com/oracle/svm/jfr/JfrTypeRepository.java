@@ -52,11 +52,11 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedLong(JfrTypes.Class.getId());
         writer.writeCompressedLong(JfrTraceIdLoadBarrier.classCount(JfrTraceIdEpoch.getInstance().previousEpoch()));
 
-        JfrTraceIdLoadBarrier.ClassConsumer kc = aClass -> writeKlass(aClass, writer);
+        JfrTraceIdLoadBarrier.ClassConsumer kc = aClass -> writeClass(aClass, writer);
         JfrTraceIdLoadBarrier.doClasses(kc, JfrTraceIdEpoch.getInstance().previousEpoch());
     }
 
-    private void writeKlass(Class<?> clazz, JfrChunkWriter writer) {
+    private void writeClass(Class<?> clazz, JfrChunkWriter writer) {
         try {
             writer.writeCompressedLong(0L); // classloader
             writer.writeCompressedLong(symbolRepo.getSymbolId(clazz));

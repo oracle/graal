@@ -27,13 +27,14 @@ package com.oracle.svm.jfr.traceid;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.thread.VMOperation;
 
 import java.util.function.Consumer;
 
 public class JfrTraceIdLoadBarrier {
-    private static int classCount0;
-    private static int classCount1;
+    private static final UninterruptibleUtils.AtomicInteger classCount0 = new UninterruptibleUtils.AtomicInteger(0);
+    private static final UninterruptibleUtils.AtomicInteger classCount1 = new UninterruptibleUtils.AtomicInteger(0);
 
     @Uninterruptible(reason = "Epoch may not change")
     private static boolean isNotTagged(long value) {
@@ -55,24 +56,24 @@ public class JfrTraceIdLoadBarrier {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void clearClassCount(boolean epoch) {
         if (epoch) {
-            classCount1 = 0;
+            classCount1.set(0);
         } else {
-            classCount0 = 0;
+            classCount0.set(0);
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void increaseClassCount(boolean epoch) {
         if (epoch) {
-            classCount1++;
+            classCount1.incrementAndGet();
         } else {
-            classCount0++;
+            classCount0.incrementAndGet();
         }
     }
 
     public static long classCount(boolean epoch) {
         assert VMOperation.isInProgressAtSafepoint();
-        return epoch ? classCount1 : classCount0;
+        return epoch ? classCount1.get() : classCount0.get();
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")

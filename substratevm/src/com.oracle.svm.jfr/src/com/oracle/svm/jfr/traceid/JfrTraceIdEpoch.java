@@ -32,6 +32,8 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 import sun.misc.Unsafe;
@@ -55,13 +57,15 @@ public class JfrTraceIdEpoch {
     public static final long EPOCH_1_METHOD_AND_CLASS_BITS = (METHOD_AND_CLASS_BITS << EPOCH_1_SHIFT);
 
     private boolean epoch;
-    private boolean synchronizing;
     private volatile boolean changedTag;
 
     @Fold
     public static JfrTraceIdEpoch getInstance() {
         return ImageSingletons.lookup(JfrTraceIdEpoch.class);
     }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrTraceIdEpoch() {}
 
     public long getEpochAddress() {
         UnsignedWord epochFieldOffset = WordFactory.unsigned(UNSAFE.objectFieldOffset(EPOCH_FIELD));
@@ -94,10 +98,6 @@ public class JfrTraceIdEpoch {
         if (!isChangedTag()) {
             setChangedTag(true);
         }
-    }
-
-    public boolean getEpoch() {
-        return epoch;
     }
 
     long thisEpochBit() {
