@@ -30,8 +30,6 @@ import java.lang.reflect.Array;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
@@ -49,14 +47,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.IterableInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.IteratorInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.ListInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.MapEntryInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.MapInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
@@ -314,46 +305,11 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public static class Dispatch {
-        static final int LIMIT = 4;
-
-        @Specialization(guards = {
-                        "receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static Class<?> dispatchCached(
-                        @SuppressWarnings("unused") StaticObject receiver,
-                        @SuppressWarnings("unused") @Cached(value = "receiver.getKlass()", allowUncached = true) Klass cachedKlass,
-                        @Cached(value = "dispatchGeneric(receiver)", allowUncached = true) Class<?> library) {
-            return library;
+    public Class<?> dispatch() {
+        if (isNull(this) || isForeignObject()) {
+            return BaseInterop.class;
         }
-
-        @Specialization
-        public static Class<?> dispatchGeneric(StaticObject receiver) {
-            if (isNull(receiver) || receiver.isForeignObject()) {
-                return BaseInterop.class;
-            }
-            Meta meta = receiver.getKlass().getMeta();
-            if (InterpreterToVM.instanceOf(receiver, meta.java_util_List)) {
-                return ListInterop.class;
-            }
-            if (InterpreterToVM.instanceOf(receiver, meta.java_util_Iterable)) {
-                return IterableInterop.class;
-            }
-            if (InterpreterToVM.instanceOf(receiver, meta.java_util_Map)) {
-                return MapInterop.class;
-            }
-            if (InterpreterToVM.instanceOf(receiver, meta.java_util_Map_Entry)) {
-                return MapEntryInterop.class;
-            }
-            if (InterpreterToVM.instanceOf(receiver, meta.java_util_Iterator)) {
-                return IteratorInterop.class;
-            }
-            // if (InterpreterToVM.instanceOf(receiver, meta.groovy_lang_GroovyObject)) {
-            // return GroovyObjectInterop.class;
-            // }
-
-            // Default
-            return EspressoInterop.class;
-        }
+        return getKlass().getDispatch();
     }
 
     private void setModule(Klass klass) {

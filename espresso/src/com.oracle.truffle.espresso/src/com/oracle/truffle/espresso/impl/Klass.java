@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -79,6 +80,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -423,6 +426,44 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // endregion ### Identity/hashCode
 
+    public Class<?> getDispatch() {
+        Class<?> result = dispatch;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (isPrimitive()) {
+                result = BaseInterop.class;
+            } else if (isArray()) {
+                result = EspressoInterop.class;
+            } else {
+                if (getMeta().INTEROP_CLASSES == null) {
+                    // shortcut to not update the cache.
+                    return EspressoInterop.class;
+                }
+                exclusiveLoop: //
+                for (Pair<ObjectKlass, Class<?>>[] exclusive : getMeta().INTEROP_CLASSES) {
+                    for (Pair<ObjectKlass, Class<?>> pair : exclusive) {
+                        if (pair.getLeft().isAssignableFrom(this)) {
+                            if (result != null) {
+                                // Class implements multiple mutually exclusive interop classes.
+                                result = EspressoInterop.class;
+                                break exclusiveLoop;
+                            }
+                            result = pair.getRight();
+                            // Found a match. Keep going to check for mutual exclusivity.
+                            continue exclusiveLoop;
+                        }
+                    }
+                }
+                if (result == null) {
+                    // No match in known interop classes.
+                    result = EspressoInterop.class;
+                }
+            }
+            dispatch = result;
+        }
+        return result;
+    }
+
     // endregion Interop
 
     // Threshold for using binary search instead of linear search for interface lookup.
@@ -457,6 +498,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal //
     private volatile StaticObject mirrorCache;
+
+    @CompilationFinal //
+    private Class<?> dispatch;
 
     @CompilationFinal private int hierarchyDepth = -1;
 

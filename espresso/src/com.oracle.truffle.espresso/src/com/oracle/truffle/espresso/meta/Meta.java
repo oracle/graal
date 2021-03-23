@@ -24,6 +24,8 @@ package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
 
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -45,6 +47,11 @@ import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.IterableInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.IteratorInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.ListInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.MapEntryInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.MapInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -58,6 +65,7 @@ public final class Meta implements ContextAccess {
     private final ExceptionDispatch dispatch;
     private final StringConversion stringConversion;
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public Meta(EspressoContext context) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
@@ -642,6 +650,13 @@ public final class Meta implements ContextAccess {
         assert java_util_Iterator.isInterface();
 
         java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
+
+        INTEROP_CLASSES = new Pair[][]{
+                        new Pair[]{Pair.create(java_util_List, ListInterop.class), Pair.create(java_util_Iterable, IterableInterop.class)},
+                        new Pair[]{Pair.create(java_util_Map, MapInterop.class)},
+                        new Pair[]{Pair.create(java_util_Map_Entry, MapEntryInterop.class)},
+                        new Pair[]{Pair.create(java_util_Iterator, IteratorInterop.class)},
+        };
     }
 
     /**
@@ -1253,6 +1268,21 @@ public final class Meta implements ContextAccess {
 
     @CompilationFinal(dimensions = 1) //
     public final PrimitiveKlass[] PRIMITIVE_KLASSES;
+
+    /**
+     * Represents all known guest classes with special interop library handling. Each entry in the
+     * array represents mutually exclusive groups of classes. Classes within a single entry are
+     * related by a subclassing relationship, most specific first.
+     * <p>
+     * If a given receiver implements multiple mutually exclusive classes, then its assigned interop
+     * protocol will be the most basic one possible, effectively disabling special handling.
+     * <p>
+     * For example, a class implementing both {@link #java_util_List} and
+     * {@link #java_util_Map_Entry}, which are considered mutually exclusive, will dispatch to the
+     * regular object interop {@link com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop}.
+     */
+    @CompilationFinal(dimensions = 2) //
+    public final Pair<ObjectKlass, Class<?>>[][] INTEROP_CLASSES;
 
     // Checkstyle: resume field name check
 
