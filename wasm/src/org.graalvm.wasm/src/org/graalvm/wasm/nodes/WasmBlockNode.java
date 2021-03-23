@@ -1600,13 +1600,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             }
             case WasmType.F32_TYPE: {
                 int address = instance().globalAddress(index);
-                int value = context.globals().loadAsInt(address);
+                int value = context.globals().loadFloatAsInt(address);
                 pushInt(stack, stackPointer, value);
                 break;
             }
             case WasmType.F64_TYPE: {
                 int address = instance().globalAddress(index);
-                long value = context.globals().loadAsLong(address);
+                long value = context.globals().loadDoubleAsLong(address);
                 push(stack, stackPointer, value);
                 break;
             }
