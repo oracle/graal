@@ -318,6 +318,7 @@ class GraalVmComponent(object):
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
 
+        assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
