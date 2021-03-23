@@ -44,11 +44,11 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -63,6 +63,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.CollectionPolicy.NeverCollect;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -103,11 +104,10 @@ public final class GCImpl implements GC {
     private final Timers timers = new Timers();
 
     private final CollectionVMOperation collectOperation = new CollectionVMOperation();
-    private final OutOfMemoryError oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
     private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
     private final ChunkReleaser chunkReleaser = new ChunkReleaser();
 
-    private CollectionPolicy policy;
+    private final CollectionPolicy policy;
     private boolean completeCollection = false;
     private UnsignedWord sizeBefore = WordFactory.zero();
     private boolean collectionInProgress = false;
@@ -125,14 +125,18 @@ public final class GCImpl implements GC {
     }
 
     private void collect(GCCause cause, boolean forceFullGC) {
-        UnsignedWord requestingEpoch = possibleCollectionPrologue();
-        collectWithoutAllocating(cause, forceFullGC);
-        possibleCollectionEpilogue(requestingEpoch);
+        if (!hasNeverCollectPolicy()) {
+            UnsignedWord requestingEpoch = possibleCollectionPrologue();
+            collectWithoutAllocating(cause, forceFullGC);
+            possibleCollectionEpilogue(requestingEpoch);
+        }
     }
 
     @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of garbage collection.")
-    void collectWithoutAllocating(GCCause cause, boolean forceFullGC) {
+    boolean collectWithoutAllocating(GCCause cause, boolean forceFullGC) {
+        VMError.guarantee(!hasNeverCollectPolicy());
+
         int size = SizeOf.get(CollectionVMOperationData.class);
         CollectionVMOperationData data = StackValue.get(size);
         UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
@@ -141,9 +145,7 @@ public final class GCImpl implements GC {
         data.setRequestingEpoch(getCollectionEpoch());
         data.setForceFullGC(forceFullGC);
         enqueueCollectOperation(data);
-        if (data.getOutOfMemory()) {
-            throw oldGenerationSizeExceeded;
-        }
+        return data.getOutOfMemory();
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
@@ -186,10 +188,10 @@ public final class GCImpl implements GC {
         boolean outOfMemory;
 
         precondition();
+        verifyBeforeGC();
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            verifyBeforeGC();
             outOfMemory = doCollectImpl(forceFullGC);
             if (outOfMemory) {
                 // Avoid running out of memory with a full GC that reclaims softly reachable objects
@@ -386,15 +388,16 @@ public final class GCImpl implements GC {
     }
 
     private static void verbosePostCondition() {
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        YoungGeneration youngGen = heap.getYoungGeneration();
-        OldGeneration oldGen = heap.getOldGeneration();
         /*
          * Note to self: I can get output similar to this *all the time* by running with
          * -R:+VerboseGC -R:+PrintHeapShape -R:+TraceHeapChunks
          */
         final boolean forceForTesting = false;
         if (runtimeAssertions() || forceForTesting) {
+            HeapImpl heap = HeapImpl.getHeapImpl();
+            YoungGeneration youngGen = heap.getYoungGeneration();
+            OldGeneration oldGen = heap.getOldGeneration();
+
             Log log = Log.log();
             if ((!youngGen.getEden().isEmpty()) || forceForTesting) {
                 log.string("[GCImpl.postcondition: Eden space should be empty after a collection.").newline();
@@ -1022,8 +1025,14 @@ public final class GCImpl implements GC {
         return accounting;
     }
 
+    @Fold
     public CollectionPolicy getPolicy() {
         return policy;
+    }
+
+    @Fold
+    public boolean hasNeverCollectPolicy() {
+        return policy instanceof NeverCollect;
     }
 
     GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {

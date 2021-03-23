@@ -135,22 +135,22 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
-    public boolean verify(AlignedHeader firstAlignedHeapChunk) {
+    public boolean verify(AlignedHeader firstAlignedHeapChunk, boolean allCardsMustBeClean) {
         boolean success = true;
         AlignedHeader aChunk = firstAlignedHeapChunk;
         while (aChunk.isNonNull()) {
-            success &= AlignedChunkRememberedSet.verify(aChunk);
+            success &= AlignedChunkRememberedSet.verify(aChunk, allCardsMustBeClean);
             aChunk = HeapChunk.getNext(aChunk);
         }
         return success;
     }
 
     @Override
-    public boolean verify(UnalignedHeader firstUnalignedHeapChunk) {
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk, boolean allCardsMustBeClean) {
         boolean success = true;
         UnalignedHeader uChunk = firstUnalignedHeapChunk;
         while (uChunk.isNonNull()) {
-            success &= UnalignedChunkRememberedSet.verify(uChunk);
+            success &= UnalignedChunkRememberedSet.verify(uChunk, allCardsMustBeClean);
             uChunk = HeapChunk.getNext(uChunk);
         }
         return success;

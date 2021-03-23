@@ -389,7 +389,7 @@ public final class HeapImpl extends Heap {
     @Fold
     public static boolean usesImageHeapCardMarking() {
         Boolean enabled = HeapOptions.ImageHeapCardMarking.getValue();
-        if (enabled == Boolean.FALSE || !HeapOptions.UseRememberedSet.getValue()) {
+        if (enabled == Boolean.FALSE || enabled == null && !HeapOptions.useRememberedSet()) {
             return false;
         } else if (enabled == null) {
             return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();

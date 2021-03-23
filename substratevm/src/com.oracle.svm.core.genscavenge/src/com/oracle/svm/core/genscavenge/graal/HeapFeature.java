@@ -87,10 +87,12 @@ class HeapFeature implements GraalFeature {
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        // Even though I don't hold on to this instance, it is preserved because it becomes the
-        // enclosing instance for the lowerings registered within it.
-        BarrierSnippets barrierSnippets = new BarrierSnippets(options, factories, providers, snippetReflection);
-        barrierSnippets.registerLowerings(lowerings);
+        if (HeapOptions.useRememberedSet()) {
+            // Even though I don't hold on to this instance, it is preserved because it becomes the
+            // enclosing instance for the lowerings registered within it.
+            BarrierSnippets barrierSnippets = new BarrierSnippets(options, factories, providers, snippetReflection);
+            barrierSnippets.registerLowerings(lowerings);
+        }
 
         GenScavengeAllocationSnippets.registerLowering(options, factories, providers, snippetReflection, lowerings);
     }
@@ -124,7 +126,7 @@ class HeapFeature implements GraalFeature {
     }
 
     private static void registerRememberedSet() {
-        if (HeapOptions.UseRememberedSet.getValue()) {
+        if (HeapOptions.useRememberedSet()) {
             ImageSingletons.add(RememberedSet.class, new CardTableBasedRememberedSet());
         } else {
             ImageSingletons.add(RememberedSet.class, new NoRememberedSet());

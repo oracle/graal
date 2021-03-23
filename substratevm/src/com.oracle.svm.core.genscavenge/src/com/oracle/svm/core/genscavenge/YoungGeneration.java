@@ -249,6 +249,20 @@ public final class YoungGeneration extends Generation {
         return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
     }
 
+    public boolean isEmpty() {
+        if (!eden.isEmpty()) {
+            return false;
+        }
+
+        for (int i = 0; i < maxSurvivorSpaces; i++) {
+            if (!survivorFromSpaces[i].isEmpty() || !survivorToSpaces[i].isEmpty()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     @AlwaysInline("GC performance")
     private Object promoteAlignedObject(Object original, Space originalSpace) {
         assert ObjectHeaderImpl.isAlignedObject(original);

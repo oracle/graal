@@ -167,8 +167,12 @@ public class SubstrateOptions {
     }
 
     @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
-    @Option(help = "Use a card remembered set heap for GC")//
+    @Option(help = "Use a serial GC")//
     public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
+
+    @APIOption(name = "epsilon", group = GCGroup.class, customHelp = "Epsilon garbage collector")//
+    @Option(help = "Use a no-op GC")//
+    public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {

@@ -61,7 +61,7 @@ public interface RememberedSet {
 
     public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor);
 
-    public boolean verify(AlignedHeader firstAlignedHeapChunk);
+    public boolean verify(AlignedHeader firstAlignedHeapChunk, boolean allCardsMustBeClean);
 
-    public boolean verify(UnalignedHeader firstUnalignedHeapChunk);
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk, boolean allCardsMustBeClean);
 }

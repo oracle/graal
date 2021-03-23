@@ -148,11 +148,15 @@ final class AlignedChunkRememberedSet {
         }
     }
 
-    public static boolean verify(AlignedHeader chunk) {
-        boolean success = true;
-        success &= CardTable.verify(getCardTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk));
-        success &= FirstObjectTable.verify(getFirstObjectTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk));
-        return success;
+    public static boolean verify(AlignedHeader chunk, boolean allCardsMustBeClean) {
+        if (allCardsMustBeClean) {
+            return CardTable.verifyAllCardsClean(getCardTableStart(chunk), getCardTableSize());
+        } else {
+            boolean success = true;
+            success &= CardTable.verify(getCardTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk));
+            success &= FirstObjectTable.verify(getFirstObjectTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk));
+            return success;
+        }
     }
 
     /** Return the index of an object within the tables of a chunk. */

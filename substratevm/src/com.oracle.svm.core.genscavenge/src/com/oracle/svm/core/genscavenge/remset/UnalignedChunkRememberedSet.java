@@ -93,8 +93,12 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
-    public static boolean verify(UnalignedHeader chunk) {
-        return CardTable.verify(getCardTableStart(chunk), UnalignedHeapChunk.getObjectStart(chunk), HeapChunk.getTopPointer(chunk));
+    public static boolean verify(UnalignedHeader chunk, boolean allCardsMustBeClean) {
+        if (allCardsMustBeClean) {
+            return CardTable.verifyAllCardsClean(getCardTableStart(chunk), getCardTableSize());
+        } else {
+            return CardTable.verify(getCardTableStart(chunk), UnalignedHeapChunk.getObjectStart(chunk), HeapChunk.getTopPointer(chunk));
+        }
     }
 
     @Fold

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import java.lang.ref.Reference;
+
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -36,9 +38,12 @@ import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.graal.BarrierSnippets;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.ReferenceInternals;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
@@ -127,17 +132,64 @@ final class CardTable {
         return CardTable.memoryOffsetToIndex(roundedMemory);
     }
 
-    public static boolean verify(Pointer ctStart, Pointer objectsStart, Pointer objectsLimit) {
+    public static boolean verify(Pointer cardTableStart, Pointer objectsStart, Pointer objectsLimit) {
         boolean success = true;
         Pointer curPtr = objectsStart;
         while (curPtr.belowThan(objectsLimit)) {
-            Object curObj = curPtr.toObject();
-            CARD_TABLE_VERIFICATION_VISITOR.initialize(curObj, ctStart, objectsStart);
-            InteriorObjRefWalker.walkObject(curObj, CARD_TABLE_VERIFICATION_VISITOR);
-            success &= CARD_TABLE_VERIFICATION_VISITOR.success;
-            curPtr = LayoutEncoding.getObjectEnd(curObj);
+            // As we only use imprecise card marking at the moment, only the card at the address of
+            // the object may be dirty.
+            Object obj = curPtr.toObject();
+            UnsignedWord cardTableIndex = memoryOffsetToIndex(curPtr.subtract(objectsStart));
+            if (isClean(cardTableStart, cardTableIndex)) {
+                CARD_TABLE_VERIFICATION_VISITOR.initialize(obj, cardTableStart, objectsStart);
+                InteriorObjRefWalker.walkObject(obj, CARD_TABLE_VERIFICATION_VISITOR);
+                success &= CARD_TABLE_VERIFICATION_VISITOR.success;
+
+                DynamicHub hub = KnownIntrinsics.readHub(obj);
+                if (hub.isReferenceInstanceClass()) {
+                    // The referent field of java.lang.Reference is excluded from the reference map,
+                    // so we need to verify it separately.
+                    Reference<?> ref = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
+                    success &= verifyReferent(ref, cardTableStart, objectsStart);
+                }
+            }
+            curPtr = LayoutEncoding.getObjectEnd(obj);
         }
         return success;
+    }
+
+    public static boolean verifyAllCardsClean(Pointer cardTableStart, UnsignedWord cardTableSize) {
+        boolean success = true;
+        for (UnsignedWord index = WordFactory.zero(); index.belowThan(cardTableSize); index = index.add(1)) {
+            if (CardTable.isDirty(cardTableStart, index)) {
+                Pointer cardTableAddress = cardTableStart.add(indexToTableOffset(index));
+                Log.log().string("All cards in the in card table ").hex(cardTableStart).string(" should be clean but the card at ").hex(cardTableAddress).string(" is dirty.").newline();
+                success = false;
+            }
+        }
+        return success;
+    }
+
+    private static boolean verifyReferent(Reference<?> ref, Pointer cardTableStart, Pointer objectsStart) {
+        return verifyReference(ref, cardTableStart, objectsStart, ReferenceInternals.getReferentFieldAddress(ref), ReferenceInternals.getReferentPointer(ref));
+    }
+
+    private static boolean verifyReference(Object parentObject, Pointer cardTableStart, Pointer objectsStart, Pointer reference, Pointer referencedObject) {
+        if (referencedObject.isNonNull() && !HeapImpl.getHeapImpl().isInImageHeap(referencedObject)) {
+            Object obj = referencedObject.toObject();
+            HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
+            Space chunkSpace = HeapChunk.getSpace(objChunk);
+            // Fail if we find a reference to the young generation.
+            if (chunkSpace.isYoungSpace()) {
+                UnsignedWord cardTableIndex = memoryOffsetToIndex(Word.objectToUntrackedPointer(parentObject).subtract(objectsStart));
+                Pointer cardTableAddress = cardTableStart.add(indexToTableOffset(cardTableIndex));
+                Log.log().string("Object ").hex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).string(") has an object reference at ")
+                                .hex(reference).string(" that points to ").hex(referencedObject).string(" (").string(obj.getClass().getName())
+                                .string("), which is in the young generation. However, the card table at ").hex(cardTableAddress).string(" is clean.").newline();
+                return false;
+            }
+        }
+        return true;
     }
 
     private static class CardTableVerificationVisitor implements ObjectReferenceVisitor {
@@ -155,22 +207,9 @@ final class CardTable {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-            Pointer objPtr = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-            if (objPtr.isNonNull() && !HeapImpl.getHeapImpl().isInImageHeap(objPtr)) {
-                Object obj = objPtr.toObject();
-                HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
-                Space chunkSpace = HeapChunk.getSpace(objChunk);
-                if (chunkSpace.isYoungSpace()) {
-                    UnsignedWord cardTableIndex = memoryOffsetToIndex(objRef.subtract(objectsStart));
-                    if (isClean(cardTableStart, cardTableIndex)) {
-                        Pointer cardTableAddress = cardTableStart.add(indexToTableOffset(cardTableIndex));
-                        Log.log().string("Object ").hex(Word.objectToUntrackedPointer(parentObject)).string(" has an object reference at ").hex(objRef).string(" that points to ").hex(objPtr)
-                                        .string(", which is in the young generation. However, the card table at ").hex(cardTableAddress).string(" is clean.").newline();
-                        this.success = false;
-                    }
-                }
-            }
+        public boolean visitObjectReference(Pointer reference, boolean compressed) {
+            Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(reference, compressed);
+            success &= verifyReference(parentObject, cardTableStart, objectsStart, reference, referencedObject);
             return true;
         }
     }
