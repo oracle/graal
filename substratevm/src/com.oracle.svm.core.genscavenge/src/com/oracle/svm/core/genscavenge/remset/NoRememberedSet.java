@@ -60,7 +60,7 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkOffset, List<ImageHeapObject> objects) {
+    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects) {
         // Nothing to do.
     }
 

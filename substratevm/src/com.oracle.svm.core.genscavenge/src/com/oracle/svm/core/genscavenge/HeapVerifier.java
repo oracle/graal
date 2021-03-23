@@ -279,7 +279,7 @@ public final class HeapVerifier {
 
     // This method is executed exactly once per object in the heap.
     private static boolean verifyReferences(Object obj) {
-        REFERENCE_VERIFIER.reset();
+        REFERENCE_VERIFIER.initialize(obj);
         InteriorObjRefWalker.walkObject(obj, REFERENCE_VERIFIER);
 
         boolean success = REFERENCE_VERIFIER.result;
@@ -294,12 +294,22 @@ public final class HeapVerifier {
     }
 
     // This method is executed exactly once for each object reference in the heap and on the stack.
-    public static boolean verifyReference(Pointer objRef, boolean compressed) {
+    public static boolean verifyReference(Object parentObject, Pointer objRef, boolean compressed) {
         Pointer ptr = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
+        if (ptr.isNull()) {
+            return true;
+        }
+
         if (!isInHeap(ptr)) {
-            Log.log().string("Object reference at ").hex(objRef).string(" points outside the Java heap: ").hex(ptr).newline();
+            Log.log().string("Object reference at ").hex(objRef).string(" points outside the Java heap: ").hex(ptr).string(". ");
+            if (parentObject != null) {
+                Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
+            } else {
+                Log.log().string("The invalid reference is on the stack.").newline();
+            }
             return false;
         }
+
         return true;
     }
 
@@ -424,19 +434,22 @@ public final class HeapVerifier {
     }
 
     private static class ObjectReferenceVerifier implements ObjectReferenceVisitor {
+        private Object parentObject;
         private boolean result;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         ObjectReferenceVerifier() {
         }
 
-        public void reset() {
+        @SuppressWarnings("hiding")
+        public void initialize(Object parentObject) {
+            this.parentObject = parentObject;
             this.result = true;
         }
 
         @Override
         public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-            result &= verifyReference(objRef, compressed);
+            result &= verifyReference(parentObject, objRef, compressed);
             return true;
         }
     }

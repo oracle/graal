@@ -38,7 +38,7 @@ public interface RememberedSet {
     public void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkOffset, List<ImageHeapObject> objects);
+    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk);

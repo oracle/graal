@@ -62,8 +62,8 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkOffset, List<ImageHeapObject> objects) {
-        AlignedChunkRememberedSet.enableRememberedSet(chunk, chunkOffset, objects);
+    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects) {
+        AlignedChunkRememberedSet.enableRememberedSet(chunk, chunkPosition, objects);
     }
 
     @Override

@@ -249,7 +249,9 @@ public final class GCImpl implements GC {
                 success &= StackVerifier.verifyAllThreads();
 
                 if (!success) {
-                    VMError.shouldNotReachHere("Verification before garbage collection failed.");
+                    String kind = getGCKind();
+                    Log.log().string("Heap verification failed before ").string(kind).string(" garbage collection.").newline();
+                    VMError.shouldNotReachHere();
                 }
             } finally {
                 verifyBeforeTimer.close();
@@ -266,12 +268,18 @@ public final class GCImpl implements GC {
                 success &= StackVerifier.verifyAllThreads();
 
                 if (!success) {
-                    VMError.shouldNotReachHere("Verification after garbage collection failed.");
+                    String kind = getGCKind();
+                    Log.log().string("Heap verification failed after ").string(kind).string(" garbage collection.").newline();
+                    VMError.shouldNotReachHere();
                 }
             } finally {
                 verifyAfterTime.close();
             }
         }
+    }
+
+    private String getGCKind() {
+        return isCompleteCollection() ? "complete" : "incremental";
     }
 
     /**
