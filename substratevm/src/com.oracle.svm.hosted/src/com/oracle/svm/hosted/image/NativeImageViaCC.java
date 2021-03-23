@@ -76,17 +76,6 @@ public abstract class NativeImageViaCC extends NativeImage {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
     }
 
-    private static boolean removeUnusedSymbols() {
-        if (SubstrateOptions.RemoveUnusedSymbols.hasBeenSet()) {
-            return SubstrateOptions.RemoveUnusedSymbols.getValue();
-        }
-        /*
-         * The Darwin linker sometimes segfaults when option -dead_strip is used. Thus, Linux is the
-         * only platform were RemoveUnusedSymbols can be safely enabled per default.
-         */
-        return Platform.includedIn(Platform.LINUX.class);
-    }
-
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
         private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
@@ -100,7 +89,7 @@ public abstract class NativeImageViaCC extends NativeImage {
                 additionalPreOptions.add("-Wl,--rosegment");
             }
 
-            if (removeUnusedSymbols()) {
+            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
@@ -189,7 +178,7 @@ public abstract class NativeImageViaCC extends NativeImage {
                 additionalPreOptions.add("-Wl,-no_compact_unwind");
             }
 
-            if (removeUnusedSymbols()) {
+            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
                 /* Remove functions and data unreachable by entry points. */
                 additionalPreOptions.add("-Wl,-dead_strip");
             }
@@ -306,8 +295,9 @@ public abstract class NativeImageViaCC extends NativeImage {
                 }
             }
 
-            if (removeUnusedSymbols()) {
-                cmd.add("/OPT:REF");
+            if (!SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+                /* Disable removal as it is on by default. */
+                cmd.add("/OPT:NOREF,NOICF");
             }
 
             // Add clibrary paths to command
