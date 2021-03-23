@@ -28,14 +28,16 @@ import java.util.concurrent.TimeUnit;
 
 public class DynamicThresholdsQueue extends TraversingBlockingQueue {
 
-    public static final double MINIMAL_SCALE = 0.01;
-    public static final double NORMAL_LOAD = 3;
     private final GraalTruffleRuntime runtime;
     private final int threads;
+    private final double minScale;
+    private final int normalLoad;
 
-    public DynamicThresholdsQueue(GraalTruffleRuntime runtime, int threads) {
+    public DynamicThresholdsQueue(GraalTruffleRuntime runtime, int threads, double minScale, int normalLoad) {
         this.runtime = runtime;
         this.threads = threads;
+        this.minScale = minScale;
+        this.normalLoad = normalLoad;
     }
 
     private double load() {
@@ -55,7 +57,7 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     private void scaleThresholds() {
-        double slope = (1 - MINIMAL_SCALE) / NORMAL_LOAD;
-        runtime.setCompilationThresholdScale(Math.min(1.0, slope * load() + MINIMAL_SCALE));
+        double slope = (1 - minScale) / normalLoad;
+        runtime.setCompilationThresholdScale(Math.min(1.0, slope * load() + minScale));
     }
 }

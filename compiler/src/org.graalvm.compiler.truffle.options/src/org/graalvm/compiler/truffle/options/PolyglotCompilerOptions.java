@@ -519,6 +519,12 @@ public final class PolyglotCompilerOptions {
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraversingDynamicThresholds = new OptionKey<>(false);
 
+    @Option(help = "TODO", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Double> DynamicThresholdMinScale = new OptionKey<>(0.1);
+
+    @Option(help = "TODO", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> DynamicThresholdNormLoad= new OptionKey<>(3);
+
     // Language agnostic inlining
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL)
