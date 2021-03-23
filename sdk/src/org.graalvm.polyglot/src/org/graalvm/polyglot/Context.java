@@ -44,7 +44,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -560,6 +564,22 @@ public final class Context implements AutoCloseable {
      * it will be interpreted as polyglot {@link Value#isString() string}.
      * <li>If the <code>hostValue</code> is an instance of {@link Boolean}, then it will be
      * interpreted as polyglot {@link Value#isBoolean() boolean}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Instant}, {@link LocalTime},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Date} or
+     * {@link java.sql.Time} then it will be interpreted as polyglot {@link Value#isTime() time}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Instant}, {@link LocalDate},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} or
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isDate() date}.
+     * <li>If the <code>hostValue</code> is an instance of {@link ZoneId}, {@link Instant},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} and
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isTimeZone() time
+     * zone}.
+     * <li>If the <code>hostValue</code> is an instance of {@link ZonedDateTime}, {@link Instant},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} and
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isInstant()
+     * instant}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Duration} then it will be
+     * interpreted as polyglot {@link Value#isDuration() duration}.
      * <li>If the <code>hostValue</code> is a {@link Proxy polyglot proxy}, then it will be
      * interpreted according to the behavior specified by the proxy. See the javadoc of the proxy
      * subclass for further details.
