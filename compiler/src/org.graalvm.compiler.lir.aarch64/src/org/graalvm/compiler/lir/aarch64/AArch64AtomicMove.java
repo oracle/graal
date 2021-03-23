@@ -117,7 +117,7 @@ public class AArch64AtomicMove {
                  *
                  * A -> ldaxr -> stlxr -> B
                  *
-                 * can not be executed as:
+                 * cannot be executed as:
                  *
                  * ldaxr -> B -> A -> stlxr
                  */
@@ -132,7 +132,12 @@ public class AArch64AtomicMove {
                 masm.loadExclusive(memAccessSize, result, address, acquire);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                masm.storeExclusive(memAccessSize, scratch, newVal, address, false);
+                /*
+                 * Even with the prior dmb, for releases it is still necessary to use stlxr instead
+                 * of stxr to guarantee subsequent lda(x)r/stl(x)r cannot be hoisted above this
+                 * instruction and thereby violate volatile semantics.
+                 */
+                masm.storeExclusive(memAccessSize, scratch, newVal, address, release);
                 // if scratch == 0 then write successful, else retry.
                 masm.cbnz(32, scratch, retry);
                 masm.bind(fail);
@@ -177,7 +182,7 @@ public class AArch64AtomicMove {
 
             Label retry = new Label();
             masm.bind(retry);
-            masm.ldaxr(memAccessSize, result, address);
+            masm.loadExclusive(memAccessSize, result, address, false);
             try (ScratchRegister scratchRegister1 = masm.getScratchRegister()) {
                 Register scratch1 = scratchRegister1.getRegister();
                 if (LIRValueUtil.isConstantValue(deltaValue)) {
@@ -188,11 +193,22 @@ public class AArch64AtomicMove {
                 }
                 try (ScratchRegister scratchRegister2 = masm.getScratchRegister()) {
                     Register scratch2 = scratchRegister2.getRegister();
-                    masm.stlxr(memAccessSize, scratch2, scratch1, address);
+                    masm.storeExclusive(memAccessSize, scratch2, scratch1, address, true);
                     // if scratch2 == 0 then write successful, else retry
                     masm.cbnz(32, scratch2, retry);
                 }
             }
+            /*
+             * Use a full barrier for the acquire semantics instead of ldaxr to guarantee that the
+             * instruction sequence:
+             *
+             * A -> ldaxr -> stlxr -> B
+             *
+             * cannot be executed as:
+             *
+             * ldaxr -> B -> A -> stlxr
+             */
+            masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
         }
     }
 
@@ -285,10 +301,21 @@ public class AArch64AtomicMove {
                 Register scratch = asRegister(scratchValue);
                 Label retry = new Label();
                 masm.bind(retry);
-                masm.ldaxr(memAccessSize, result, address);
-                masm.stlxr(memAccessSize, scratch, value, address);
+                masm.loadExclusive(memAccessSize, result, address, false);
+                masm.storeExclusive(memAccessSize, scratch, value, address, true);
                 // if scratch == 0 then write successful, else retry
                 masm.cbnz(32, scratch, retry);
+                /*
+                 * Use a full barrier for the acquire semantics instead of ldaxr to guarantee that
+                 * the instruction sequence:
+                 *
+                 * A -> ldaxr -> stlxr -> B
+                 *
+                 * cannot be executed as:
+                 *
+                 * ldaxr -> B -> A -> stlxr
+                 */
+                masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
             }
         }
     }
