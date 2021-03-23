@@ -152,9 +152,13 @@ public final class HeapVerifier {
         boolean success = true;
         RememberedSet rememberedSet = RememberedSet.get();
         if (HeapImpl.usesImageHeapChunks()) {
+            /*
+             * For the image heap, we can't verify that all cards are clean after a GC because the
+             * GC itself may result in dirty cards.
+             */
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            success &= rememberedSet.verify(info.getFirstAlignedImageHeapChunk(), allCardsMustBeClean);
-            success &= rememberedSet.verify(info.getFirstUnalignedImageHeapChunk(), allCardsMustBeClean);
+            success &= rememberedSet.verify(info.getFirstAlignedImageHeapChunk(), false);
+            success &= rememberedSet.verify(info.getFirstUnalignedImageHeapChunk(), false);
         }
 
         OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();

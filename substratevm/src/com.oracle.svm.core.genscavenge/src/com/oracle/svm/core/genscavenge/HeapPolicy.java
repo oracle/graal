@@ -316,7 +316,7 @@ public final class HeapPolicy {
     }
 
     public static void maybeCollectOnAllocation() {
-        if (GCImpl.getGCImpl().hasNeverCollectPolicy()) {
+        if (GCImpl.hasNeverCollectPolicy()) {
             // Don't initiate a safepoint if we won't do a collection anyways.
             if (HeapPolicy.getEdenUsedBytes().aboveThan(HeapPolicy.getMaximumHeapSize())) {
                 throw OUT_OF_MEMORY_ERROR;

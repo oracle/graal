@@ -163,7 +163,7 @@ final class CardTable {
         for (UnsignedWord index = WordFactory.zero(); index.belowThan(cardTableSize); index = index.add(1)) {
             if (CardTable.isDirty(cardTableStart, index)) {
                 Pointer cardTableAddress = cardTableStart.add(indexToTableOffset(index));
-                Log.log().string("All cards in the in card table ").hex(cardTableStart).string(" should be clean but the card at ").hex(cardTableAddress).string(" is dirty.").newline();
+                Log.log().string("All cards in the card table ").hex(cardTableStart).string(" should be clean but the card at ").hex(cardTableAddress).string(" is dirty.").newline();
                 success = false;
             }
         }
