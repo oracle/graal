@@ -1063,7 +1063,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String ownerType() {
-            return method.format("%H");
+            if (method instanceof HostedMethod) {
+                return getJavaType((HostedMethod) method, true).toJavaName();
+            } else {
+                return method.getDeclaringClass().toJavaName();
+            }
         }
 
         @Override
