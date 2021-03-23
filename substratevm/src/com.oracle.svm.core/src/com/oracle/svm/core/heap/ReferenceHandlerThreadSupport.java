@@ -24,22 +24,19 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 
-@AutomaticFeature
-public class ReferenceHandlerThreadFeature implements Feature {
-    private Thread thread;
+public class ReferenceHandlerThreadSupport {
+    private final Thread thread;
 
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ReferenceHandler.useDedicatedThread();
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    ReferenceHandlerThreadSupport() {
         thread = new Thread(new ReferenceHandlerRunnable(), "Reference Handler");
         thread.setPriority(Thread.MAX_PRIORITY);
         thread.setDaemon(true);
@@ -48,5 +45,19 @@ public class ReferenceHandlerThreadFeature implements Feature {
 
     public Thread getThread() {
         return thread;
+    }
+}
+
+@AutomaticFeature
+class ReferenceHandlerThreadFeature implements Feature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ReferenceHandler.useDedicatedThread();
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.add(ReferenceHandlerThreadSupport.class, new ReferenceHandlerThreadSupport());
     }
 }
