@@ -388,7 +388,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 @AutomaticFeature
 class WindowsSystemPropertiesFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(SystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());
     }
 }
