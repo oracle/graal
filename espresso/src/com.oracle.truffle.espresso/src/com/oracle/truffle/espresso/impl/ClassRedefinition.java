@@ -521,16 +521,16 @@ public final class ClassRedefinition {
     }
 
     private static boolean checkLineNumberTable(LineNumberTableAttribute table1, LineNumberTableAttribute table2) {
-        LineNumberTableAttribute.Entry[] oldEntries = table1.getEntries();
-        LineNumberTableAttribute.Entry[] newEntries = table2.getEntries();
+        List<LineNumberTableAttribute.Entry> oldEntries = table1.getEntries();
+        List<LineNumberTableAttribute.Entry> newEntries = table2.getEntries();
 
-        if (oldEntries.length != newEntries.length) {
+        if (oldEntries.size() != newEntries.size()) {
             return true;
         }
 
-        for (int i = 0; i < oldEntries.length; i++) {
-            LineNumberTableAttribute.Entry oldEntry = oldEntries[i];
-            LineNumberTableAttribute.Entry newEntry = newEntries[i];
+        for (int i = 0; i < oldEntries.size(); i++) {
+            LineNumberTableAttribute.Entry oldEntry = oldEntries.get(i);
+            LineNumberTableAttribute.Entry newEntry = newEntries.get(i);
             if (oldEntry.getLineNumber() != newEntry.getLineNumber() || oldEntry.getBCI() != newEntry.getBCI()) {
                 return true;
             }
