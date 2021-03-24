@@ -216,7 +216,7 @@ public final class Target_java_lang_System {
     @TruffleBoundary
     private static void handleForeignArray(Object src, int srcPos, Object dest, int destPos, int length, Klass destType, Meta meta, SubstitutionProfiler profiler) {
         InteropLibrary library = InteropLibrary.getUncached();
-        ToEspressoNode toEspressoNode = ToEspressoNodeGen.create();
+        ToEspressoNode toEspressoNode = ToEspressoNodeGen.getUncached();
         if (library.isNull(src) || library.isNull(dest)) {
             throw throwNullPointerEx(meta, profiler);
         }
