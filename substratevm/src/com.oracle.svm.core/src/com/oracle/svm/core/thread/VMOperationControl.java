@@ -864,6 +864,7 @@ public final class VMOperationControl {
      */
     private static class VMOpHistory {
         private final RingBuffer<VMOpStatusChange> history;
+        private static final RingBuffer.Consumer<VMOpStatusChange> PRINT_ENTRY = VMOpHistory::printEntry;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         VMOpHistory() {
@@ -883,7 +884,7 @@ public final class VMOperationControl {
 
         public void print(Log log) {
             log.string("The ").signed(history.size()).string(" most recent VM operation status changes (oldest first):").indent(true);
-            history.foreach(log, VMOpHistory::printEntry);
+            history.foreach(log, PRINT_ENTRY);
             log.indent(false);
         }
 
