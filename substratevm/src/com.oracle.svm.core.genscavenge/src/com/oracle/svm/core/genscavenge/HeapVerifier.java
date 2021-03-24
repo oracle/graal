@@ -309,7 +309,7 @@ public final class HeapVerifier {
                 // we can't verify that this bit is set.
 
             } else if (space.isOldSpace()) {
-                if (!RememberedSet.get().hasRememberedSet(header)) {
+                if (SubstrateOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
                     Log.log().string("Object ").hex(ptr).string(" is in old generation chunk ").hex(chunk).string(" but does not have a remembered set.").newline();
                     return false;
                 }
