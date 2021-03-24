@@ -42,7 +42,6 @@ import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
-import com.oracle.svm.core.genscavenge.HeapOptions;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
