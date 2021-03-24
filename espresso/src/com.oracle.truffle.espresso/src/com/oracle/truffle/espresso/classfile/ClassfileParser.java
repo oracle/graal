@@ -747,7 +747,7 @@ public final class ClassfileParser {
                 }
             }
             attributeCount = stream.readU2();
-            methodAttributes = new Attribute[attributeCount];
+            methodAttributes = spawnAttributesArray(attributeCount);
         }
 
         CodeAttribute codeAttribute = null;
@@ -838,6 +838,10 @@ public final class ClassfileParser {
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);
     }
 
+    private static Attribute[] spawnAttributesArray(int attributeCount) {
+        return attributeCount == 0 ? Attribute.EMPTY_ARRAY : new Attribute[attributeCount];
+    }
+
     private static int parseAnnotation(ClassfileStream subStream) {
         int typeIndex = subStream.readU2();
         int numElementValuePairs = subStream.readU2();
@@ -903,7 +907,7 @@ public final class ClassfileParser {
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Class);
 
-        final Attribute[] classAttributes = new Attribute[attributeCount];
+        final Attribute[] classAttributes = spawnAttributesArray(attributeCount);
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
@@ -1374,7 +1378,7 @@ public final class ClassfileParser {
         }
 
         int attributeCount = stream.readU2();
-        final Attribute[] codeAttributes = new Attribute[attributeCount];
+        final Attribute[] codeAttributes = spawnAttributesArray(attributeCount);
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Code);
 
@@ -1422,6 +1426,9 @@ public final class ClassfileParser {
 
     private ExceptionHandler[] parseExceptionHandlerEntries() {
         int count = stream.readU2();
+        if (count == 0) {
+            return ExceptionHandler.EMPTY_ARRAY;
+        }
         ExceptionHandler[] entries = new ExceptionHandler[count];
         for (int i = 0; i < count; i++) {
             int startPc = stream.readU2();
@@ -1489,7 +1496,7 @@ public final class ClassfileParser {
         }
 
         final int attributeCount = stream.readU2();
-        final Attribute[] fieldAttributes = new Attribute[attributeCount];
+        final Attribute[] fieldAttributes = spawnAttributesArray(attributeCount);
 
         ConstantValueAttribute constantValue = null;
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Field);
