@@ -103,12 +103,13 @@ public class DumpSamplingData {
     }
 
     private static String createDecodedMethodEntry(FrameInfoQueryResult frameInfo, DUMP_MODE mode) {
+        DebugCallStackFrameMethodData frameMethodData = ImageSingletons.lookup(DebugCallStackFrameMethodData.class);
         if (mode == DUMP_MODE.JAVA_STACK_VIEW) {
             List<String> frames = new ArrayList<>();
-            frames.add(frameInfo.getMethodID() + ":" + frameInfo.getBci());
-            while (frameInfo.getCaller() != null) {
+            while (frameInfo != null) {
+                int methodID = frameInfo.getMethodID();
+                frames.add(frameMethodData.methodInfo(methodID) + " (" + methodID + " )" + ":" + frameInfo.getBci());
                 frameInfo = frameInfo.getCaller();
-                frames.add(frameInfo.getMethodID() + ":" + frameInfo.getBci());
             }
             Collections.reverse(frames);
             return String.join(",", frames);
@@ -117,7 +118,6 @@ public class DumpSamplingData {
                 frameInfo = frameInfo.getCaller();
             }
             int frameInfoMethodId = frameInfo.getMethodID();
-            DebugCallStackFrameMethodData frameMethodData = ImageSingletons.lookup(DebugCallStackFrameMethodData.class);
             if (mode == DUMP_MODE.COMPILATION_STACK_VIEW) {
                 return frameMethodData.methodInfo(frameInfoMethodId) + " (" + frameInfoMethodId + ")";
             } else {
