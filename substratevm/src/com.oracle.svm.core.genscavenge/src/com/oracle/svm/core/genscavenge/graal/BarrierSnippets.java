@@ -96,7 +96,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
-        boolean needsBarrier = RememberedSet.get().hasRememberedSet(objectHeader);
+        boolean needsBarrier = RememberedSet.get().isRememberedSetEnabled(objectHeader);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FREQUENT_PROBABILITY, !needsBarrier)) {
             return;
         }

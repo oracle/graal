@@ -31,20 +31,24 @@ public interface RememberedSet {
 
     public UnsignedWord getHeaderSizeOfUnalignedChunk();
 
-    public void enableRememberedSetForChunk(AlignedHeader chunk);
-
-    public void enableRememberedSetForChunk(UnalignedHeader chunk);
-
-    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk);
 
+    public void enableRememberedSetForChunk(AlignedHeader chunk);
+
+    public void enableRememberedSetForChunk(UnalignedHeader chunk);
+
+    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
+
+    public void clearRememberedSet(AlignedHeader chunk);
+
+    public void clearRememberedSet(UnalignedHeader chunk);
+
     @AlwaysInline("GC performance")
-    public boolean hasRememberedSet(UnsignedWord header);
+    public boolean isRememberedSetEnabled(UnsignedWord header);
 
     @AlwaysInline("GC performance")
     public void dirtyCardForAlignedObject(Object object, boolean verifyOnly);
@@ -61,7 +65,7 @@ public interface RememberedSet {
 
     public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor);
 
-    public boolean verify(AlignedHeader firstAlignedHeapChunk, boolean allCardsMustBeClean);
+    public boolean verify(AlignedHeader firstAlignedHeapChunk);
 
-    public boolean verify(UnalignedHeader firstUnalignedHeapChunk, boolean allCardsMustBeClean);
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk);
 }

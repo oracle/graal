@@ -101,7 +101,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         // This is the most expensive check as it accesses the heap fairly randomly, which results
         // in a lot of cache misses.
         UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
-        if (GCImpl.getGCImpl().isCompleteCollection() || !RememberedSet.get().hasRememberedSet(header)) {
+        if (GCImpl.getGCImpl().isCompleteCollection() || !RememberedSet.get().isRememberedSetEnabled(header)) {
 
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 counters.noteForwardedReferent();

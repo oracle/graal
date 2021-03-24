@@ -53,17 +53,22 @@ final class UnalignedChunkRememberedSet {
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void enableRememberedSet(HostedByteBufferPointer chunk) {
+        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+        // The remembered set bit in the header will be set by the code that writes the objects.
+    }
+
     public static void enableRememberedSet(UnalignedHeader chunk) {
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+        // Unaligned chunks don't have a first object table.
 
         Object obj = UnalignedHeapChunk.getObjectStart(chunk).toObject();
         ObjectHeaderImpl.setRememberedSetBit(obj);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void enableRememberedSet(HostedByteBufferPointer chunk) {
+    public static void clearRememberedSet(UnalignedHeader chunk) {
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
-        // The remembered set bit in the header will be set by the code that writes the objects.
     }
 
     /**
@@ -93,12 +98,8 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
-    public static boolean verify(UnalignedHeader chunk, boolean allCardsMustBeClean) {
-        if (allCardsMustBeClean) {
-            return CardTable.verifyAllCardsClean(getCardTableStart(chunk), getCardTableSize());
-        } else {
-            return CardTable.verify(getCardTableStart(chunk), UnalignedHeapChunk.getObjectStart(chunk), HeapChunk.getTopPointer(chunk));
-        }
+    public static boolean verify(UnalignedHeader chunk) {
+        return CardTable.verify(getCardTableStart(chunk), UnalignedHeapChunk.getObjectStart(chunk), HeapChunk.getTopPointer(chunk));
     }
 
     @Fold

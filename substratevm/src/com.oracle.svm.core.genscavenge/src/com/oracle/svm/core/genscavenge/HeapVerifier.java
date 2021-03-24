@@ -146,8 +146,14 @@ public final class HeapVerifier {
             return true;
         }
 
+        /*
+         * It would be nice to assert that all cards in the image heap and old generation are clean
+         * after a garbage collection. For the image heap, it is pretty much impossible to do that
+         * as the GC itself dirties the card table. For the old generation, it is also not possible
+         * at the moment because the reference handling may result in dirty cards.
+         */
+
         YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
-        boolean allCardsMustBeClean = occasion == HeapVerifier.Occasion.AFTER_COLLECTION && youngGen.isEmpty();
 
         boolean success = true;
         RememberedSet rememberedSet = RememberedSet.get();
@@ -157,18 +163,18 @@ public final class HeapVerifier {
              * GC itself may result in dirty cards.
              */
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            success &= rememberedSet.verify(info.getFirstAlignedImageHeapChunk(), false);
-            success &= rememberedSet.verify(info.getFirstUnalignedImageHeapChunk(), false);
+            success &= rememberedSet.verify(info.getFirstAlignedImageHeapChunk());
+            success &= rememberedSet.verify(info.getFirstUnalignedImageHeapChunk());
         }
 
         OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
         Space toSpace = oldGeneration.getToSpace();
-        success &= rememberedSet.verify(toSpace.getFirstAlignedHeapChunk(), allCardsMustBeClean);
-        success &= rememberedSet.verify(toSpace.getFirstUnalignedHeapChunk(), allCardsMustBeClean);
+        success &= rememberedSet.verify(toSpace.getFirstAlignedHeapChunk());
+        success &= rememberedSet.verify(toSpace.getFirstUnalignedHeapChunk());
 
         Space fromSpace = oldGeneration.getFromSpace();
-        success &= rememberedSet.verify(fromSpace.getFirstAlignedHeapChunk(), allCardsMustBeClean);
-        success &= rememberedSet.verify(fromSpace.getFirstUnalignedHeapChunk(), allCardsMustBeClean);
+        success &= rememberedSet.verify(fromSpace.getFirstAlignedHeapChunk());
+        success &= rememberedSet.verify(fromSpace.getFirstUnalignedHeapChunk());
         return success;
     }
 
@@ -290,6 +296,22 @@ public final class HeapVerifier {
                 assert uChunk.isNonNull();
                 if (!ObjectHeaderImpl.isUnalignedHeader(header)) {
                     Log.log().string("Header of object ").hex(ptr).string(" is not marked as unaligned: ").hex(header).newline();
+                    return false;
+                }
+            }
+
+            Space space = chunk.getSpace();
+            if (space == null) {
+                if (!HeapImpl.getHeapImpl().isInImageHeap(obj)) {
+                    Log.log().string("Object ").hex(ptr).string(" is not an image heap object even though the space of the parent chunk ").hex(chunk).string(" is null.").newline();
+                    return false;
+                }
+                // Not all objects in the image heap have the remembered set bit in the header, so
+                // we can't verify that this bit is set.
+
+            } else if (space.isOldSpace()) {
+                if (!RememberedSet.get().isRememberedSetEnabled(header)) {
+                    Log.log().string("Object ").hex(ptr).string(" is in old generation chunk ").hex(chunk).string(" but does not have a remembered set.").newline();
                     return false;
                 }
             }

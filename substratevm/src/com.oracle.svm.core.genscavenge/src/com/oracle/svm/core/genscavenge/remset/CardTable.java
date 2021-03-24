@@ -158,18 +158,6 @@ final class CardTable {
         return success;
     }
 
-    public static boolean verifyAllCardsClean(Pointer cardTableStart, UnsignedWord cardTableSize) {
-        boolean success = true;
-        for (UnsignedWord index = WordFactory.zero(); index.belowThan(cardTableSize); index = index.add(1)) {
-            if (CardTable.isDirty(cardTableStart, index)) {
-                Pointer cardTableAddress = cardTableStart.add(indexToTableOffset(index));
-                Log.log().string("All cards in the card table ").hex(cardTableStart).string(" should be clean but the card at ").hex(cardTableAddress).string(" is dirty.").newline();
-                success = false;
-            }
-        }
-        return success;
-    }
-
     private static boolean verifyReferent(Reference<?> ref, Pointer cardTableStart, Pointer objectsStart) {
         return verifyReference(ref, cardTableStart, objectsStart, ReferenceInternals.getReferentFieldAddress(ref), ReferenceInternals.getReferentPointer(ref));
     }

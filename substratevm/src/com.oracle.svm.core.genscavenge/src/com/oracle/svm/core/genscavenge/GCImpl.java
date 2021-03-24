@@ -155,11 +155,6 @@ public final class GCImpl implements GC {
 
     /** The body of the VMOperation to do the collection. */
     private boolean collectOperation(GCCause cause, UnsignedWord requestingEpoch, boolean forceFullGC) {
-        Log trace = Log.noopLog().string("[GCImpl.collectOperation:").newline()
-                        .string("  epoch: ").unsigned(getCollectionEpoch())
-                        .string("  cause: ").string(cause.getName())
-                        .string("  requestingEpoch: ").unsigned(requestingEpoch)
-                        .newline();
         assert VMOperation.isGCInProgress() : "Collection should be a VMOperation.";
         assert getCollectionEpoch().equal(requestingEpoch);
 
@@ -180,7 +175,6 @@ public final class GCImpl implements GC {
         finishCollection();
         timers.mutator.open();
 
-        trace.string("]").newline();
         return outOfMemory;
     }
 
@@ -537,8 +531,6 @@ public final class GCImpl implements GC {
     }
 
     private void cheneyScanFromRoots() {
-        Log trace = Log.noopLog().string("[GCImpl.cheneyScanFromRoots:").newline();
-
         Timer cheneyScanFromRootsTimer = timers.cheneyScanFromRoots.open();
         try {
             /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
@@ -553,7 +545,7 @@ public final class GCImpl implements GC {
              * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
              * objects are in fromSpace.
              */
-            promoteIndividualPinnedObjects();
+            promoteChunksWithPinnedObjects();
 
             /*
              * Stack references are grey at the beginning of a collection, so I need to blacken
@@ -585,13 +577,9 @@ public final class GCImpl implements GC {
         } finally {
             cheneyScanFromRootsTimer.close();
         }
-
-        trace.string("]").newline();
     }
 
     private void cheneyScanFromDirtyRoots() {
-        Log trace = Log.noopLog().string("[GCImpl.cheneyScanFromDirtyRoots:").newline();
-
         Timer cheneyScanFromDirtyRootsTimer = timers.cheneyScanFromDirtyRoots.open();
         try {
             /*
@@ -616,7 +604,7 @@ public final class GCImpl implements GC {
              * pinned objects are moved entirely, as opposed to promoting the objects individually
              * by roots. This makes the objects in those chunks grey.
              */
-            promoteIndividualPinnedObjects();
+            promoteChunksWithPinnedObjects();
 
             /*
              * Blacken Objects that are dirty roots. There are dirty cards in ToSpace. Do this early
@@ -655,32 +643,54 @@ public final class GCImpl implements GC {
         } finally {
             cheneyScanFromDirtyRootsTimer.close();
         }
-
-        trace.string("]").newline();
     }
 
-    private void promoteIndividualPinnedObjects() {
-        Log trace = Log.noopLog().string("[GCImpl.promoteIndividualPinnedObjects:").newline();
+    private void promoteChunksWithPinnedObjects() {
         Timer promotePinnedObjectsTimer = timers.promotePinnedObjects.open();
         try {
-            PinnedObjectImpl rest = PinnedObjectImpl.claimPinnedObjectList();
-            while (rest != null) {
-                PinnedObjectImpl first = rest;
-                PinnedObjectImpl next = first.getNext();
-                if (first.isOpen()) {
-                    /*
-                     * Promote the chunk with the object, and put this PinnedObject on the new list
-                     * (which reverses the list).
-                     */
-                    promotePinnedObject(first);
-                    PinnedObjectImpl.pushPinnedObject(first);
-                }
-                rest = next;
+            // Remove closed pinned objects from the global list. This code needs to use write
+            // barriers as the PinnedObjectImpls are a linked list and we don't know in which
+            // generation each individual PinnedObjectImpl lives. So, the card table will be
+            // modified.
+            PinnedObjectImpl pinnedObjects = removeClosedPinnedObjects(PinnedObjectImpl.getPinnedObjects());
+            PinnedObjectImpl.setPinnedObjects(pinnedObjects);
+
+            // Promote all chunks that contain pinned objects. The card table of the promoted chunks
+            // will be cleaned.
+            PinnedObjectImpl cur = pinnedObjects;
+            while (cur != null) {
+                assert cur.isOpen();
+                promotePinnedObject(cur);
+                cur = cur.getNext();
             }
         } finally {
             promotePinnedObjectsTimer.close();
         }
-        trace.string("]").newline();
+    }
+
+    private static PinnedObjectImpl removeClosedPinnedObjects(PinnedObjectImpl list) {
+        PinnedObjectImpl firstOpen = null;
+        PinnedObjectImpl lastOpen = null;
+
+        PinnedObjectImpl cur = list;
+        while (cur != null) {
+            if (cur.isOpen()) {
+                if (firstOpen == null) {
+                    assert lastOpen == null;
+                    firstOpen = cur;
+                    lastOpen = cur;
+                } else {
+                    lastOpen.setNext(cur);
+                    lastOpen = cur;
+                }
+            }
+            cur = cur.getNext();
+        }
+
+        if (lastOpen != null) {
+            lastOpen.setNext(null);
+        }
+        return firstOpen;
     }
 
     @NeverInline("Starting a stack walk in the caller frame. " +
@@ -688,13 +698,10 @@ public final class GCImpl implements GC {
                     "But we don't store stack frame information for the first frame we would need to process.")
     @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.", calleeMustBe = false)
     private void blackenStackRoots() {
-        Log trace = Log.noopLog().string("[GCImpl.blackenStackRoots:").newline();
         Timer blackenStackRootsTimer = timers.blackenStackRoots.open();
         try {
             Pointer sp = readCallerStackPointer();
-            trace.string("[blackenStackRoots:").string("  sp: ").hex(sp);
             CodePointer ip = readReturnAddress();
-            trace.string("  ip: ").hex(ip).newline();
 
             JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
             JavaStackWalker.initWalk(walk, sp, ip);
@@ -718,14 +725,11 @@ public final class GCImpl implements GC {
                     if (JavaStackWalker.initWalk(walk, vmThread)) {
                         walkStack(walk);
                     }
-                    trace.newline();
                 }
             }
-            trace.string("]").newline();
         } finally {
             blackenStackRootsTimer.close();
         }
-        trace.string("]").newline();
     }
 
     /**
@@ -787,18 +791,14 @@ public final class GCImpl implements GC {
     }
 
     private void walkThreadLocals() {
-        Log trace = Log.noopLog().string("[walkRegisteredObjectReferences").string(":").newline();
         if (SubstrateOptions.MultiThreaded.getValue()) {
             Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
             try {
-                trace.string("[ThreadLocalsWalker:").newline();
                 ThreadLocalMTWalker.walk(greyToBlackObjRefVisitor);
-                trace.string("]").newline();
             } finally {
                 walkThreadLocalsTimer.close();
             }
         }
-        trace.string("]").newline();
     }
 
     private void blackenDirtyImageHeapRoots() {
@@ -807,7 +807,6 @@ public final class GCImpl implements GC {
             return;
         }
 
-        Log trace = Log.noopLog().string("[blackenDirtyImageHeapRoots:").newline();
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
@@ -822,7 +821,6 @@ public final class GCImpl implements GC {
         } finally {
             blackenImageHeapRootsTimer.close();
         }
-        trace.string("]").newline();
     }
 
     private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned) {
@@ -840,14 +838,12 @@ public final class GCImpl implements GC {
     }
 
     private void blackenImageHeapRoots() {
-        Log trace = Log.noopLog().string("[blackenImageHeapRoots:").newline();
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
             HeapImpl.getHeapImpl().walkNativeImageHeapRegions(blackenImageHeapRootsVisitor);
         } finally {
             blackenImageHeapRootsTimer.close();
         }
-        trace.string("]").newline();
     }
 
     private class BlackenImageHeapRootsVisitor implements MemoryWalker.ImageHeapRegionVisitor {
@@ -861,7 +857,6 @@ public final class GCImpl implements GC {
     }
 
     private void blackenDirtyCardRoots() {
-        Log trace = Log.noopLog().string("[GCImpl.blackenDirtyCardRoots:").newline();
         Timer blackenDirtyCardRootsTimer = timers.blackenDirtyCardRoots.open();
         try {
             /*
@@ -873,24 +868,18 @@ public final class GCImpl implements GC {
         } finally {
             blackenDirtyCardRootsTimer.close();
         }
-        trace.string("]").newline();
     }
 
     private static void prepareForPromotion(boolean isIncremental) {
-        Log trace = Log.noopLog().string("[GCImpl.prepareForPromotion:").newline();
-
         HeapImpl heap = HeapImpl.getHeapImpl();
         OldGeneration oldGen = heap.getOldGeneration();
         oldGen.prepareForPromotion();
         if (isIncremental) {
             heap.getYoungGeneration().prepareForPromotion();
         }
-        trace.string("]").newline();
-
     }
 
     private void scanGreyObjects(boolean isIncremental) {
-        Log trace = Log.noopLog().string("[GCImpl.scanGreyObjects").newline();
         HeapImpl heap = HeapImpl.getHeapImpl();
         OldGeneration oldGen = heap.getOldGeneration();
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
@@ -903,11 +892,9 @@ public final class GCImpl implements GC {
         } finally {
             scanGreyObjectsTimer.close();
         }
-        trace.string("]").newline();
     }
 
     private static void scanGreyObjectsLoop() {
-        Log trace = Log.noopLog().string("[GCImpl.scanGreyObjectsLoop").newline();
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
@@ -916,44 +903,36 @@ public final class GCImpl implements GC {
             hasGrey = youngGen.scanGreyObjects();
             hasGrey |= oldGen.scanGreyObjects();
         }
-        trace.string("]").newline();
     }
 
     private static void promotePinnedObject(PinnedObjectImpl pinned) {
-        Log trace = Log.noopLog().string("[GCImpl.promotePinnedObject").string("  pinned: ").object(pinned);
         HeapImpl heap = HeapImpl.getHeapImpl();
         OldGeneration oldGen = heap.getOldGeneration();
         /* Find the chunk the object is in, and if necessary, move it to To space. */
         Object referent = pinned.getObject();
         if (referent != null && !heap.isInImageHeap(referent)) {
-            trace.string("  referent: ").object(referent);
             /*
              * The referent doesn't move, so I can ignore the result of the promotion because I
              * don't have to update any pointers to it.
              */
             oldGen.promoteObjectChunk(referent);
         }
-        trace.string("]").newline();
     }
 
     private static void swapSpaces() {
-        Log trace = Log.noopLog().string("[GCImpl.swapSpaces:");
         HeapImpl heap = HeapImpl.getHeapImpl();
         OldGeneration oldGen = heap.getOldGeneration();
         heap.getYoungGeneration().swapSpaces();
         oldGen.swapSpaces();
-        trace.string("]").newline();
     }
 
     private void releaseSpaces() {
-        Log trace = Log.noopLog().string("[GCImpl.releaseSpaces:");
         HeapImpl heap = HeapImpl.getHeapImpl();
 
         heap.getYoungGeneration().releaseSpaces(chunkReleaser);
         if (completeCollection) {
             heap.getOldGeneration().releaseSpaces(chunkReleaser);
         }
-        trace.string("]").newline();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
