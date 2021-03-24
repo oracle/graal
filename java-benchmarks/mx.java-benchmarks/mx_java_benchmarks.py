@@ -295,6 +295,121 @@ class PetClinicWrk2BenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.
 mx_benchmark.add_bm_suite(PetClinicWrk2BenchmarkSuite())
 
 
+class BaseTikaBenchmarkSuite(object):
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def version(self):
+        return "1.0.0"
+
+    def validateReturnCode(self, retcode):
+        return retcode == 143
+
+    def applicationDist(self):
+        return mx.library("TIKA_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-SNAPSHOT-runner.jar")
+
+    def applicationStartupRule(self, benchSuiteName, benchmark):
+        # Example of Micronaut startup log:
+        # "2021-03-17 20:03:33,893 INFO  [io.quarkus] (main) tika-quickstart 1.0.0-SNAPSHOT on JVM (powered by Quarkus 1.12.1.Final) started in 1.210s. Listening on: <url>"
+        return [
+            mx_benchmark.StdOutRule(
+                r"started in (?P<startup>\d*[.,]?\d*)s.",
+                {
+                    "benchmark": benchmark,
+                    "bench-suite": benchSuiteName,
+                    "metric.name": "app-startup",
+                    "metric.value": ("<startup>", float),
+                    "metric.unit": "s",
+                    "metric.better": "lower",
+                }
+            )
+        ]
+
+    def skip_agent_assertions(self, benchmark, args):
+        # This method overrides NativeImageMixin.skip_agent_assertions
+        user_args = super(BaseTikaBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def stages(self, args):
+        # This method overrides NativeImageMixin.stages
+        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else ['image', 'run']
+
+    def extra_image_build_argument(self, benchmark, args):
+        return ['-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
+                '-J-Dsun.nio.ch.maxUpdateArraySize=100',
+                '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
+                '-J-Dvertx.disableDnsResolver=true,'
+                '-J-Dio.netty.leakDetection.level=DISABLED',
+                '-J-Dio.netty.allocator.maxOrder=1',
+                '-J-Duser.language=en',
+                '-J-Duser.country=US -J-Dfile.encoding=UTF-8',
+                '--initialize-at-build-time=',
+                '-H:InitialCollectionPolicy=com.oracle.svm.core.genscavenge.CollectionPolicy$BySpaceAndTime',
+                '-H:+JNI',
+                '-H:+AllowFoldMethods',
+                '-H:FallbackThreshold=0',
+                '-H:+ReportExceptionStackTraces',
+                '-H:-AddAllCharsets',
+                '-H:EnableURLProtocols=http',
+                '-H:NativeLinkerOption=-no-pie',
+                '-H:-UseServiceLoaderFeature',
+                '-H:+StackTrace'] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
+
+class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+    """Tika benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "tika-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["odt", "pdf"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
+
+
+class TikaWrk2BenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
+    """Tika benchmark suite that measures latency using Wrk2."""
+
+    def name(self):
+        return "tika-wrk2"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["odt", "pdf"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(TikaWrk2BenchmarkSuite())
+
+
 class BaseShopCartBenchmarkSuite(object):
     def group(self):
         return "Graal"
