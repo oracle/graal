@@ -388,7 +388,7 @@ public final class HeapImpl extends Heap {
     @Fold
     public static boolean usesImageHeapCardMarking() {
         Boolean enabled = HeapOptions.ImageHeapCardMarking.getValue();
-        if (enabled == Boolean.FALSE || enabled == null && !HeapOptions.useRememberedSet()) {
+        if (enabled == Boolean.FALSE || enabled == null && !SubstrateOptions.useRememberedSet()) {
             return false;
         } else if (enabled == null) {
             return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
@@ -605,7 +605,7 @@ public final class HeapImpl extends Heap {
     }
 }
 
-@TargetClass(value = java.lang.Runtime.class, onlyWith = UseCardRememberedSetHeap.class)
+@TargetClass(value = java.lang.Runtime.class, onlyWith = UseSerialGC.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_Runtime {
     @Substitute

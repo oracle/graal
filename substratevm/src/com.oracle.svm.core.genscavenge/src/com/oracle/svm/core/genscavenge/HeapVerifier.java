@@ -35,6 +35,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -62,7 +63,7 @@ public final class HeapVerifier {
         success &= verifyImageHeapObjects();
         success &= verifyYoungGeneration(occasion);
         success &= verifyOldGeneration();
-        success &= verifyRememberedSets(occasion);
+        success &= verifyRememberedSets();
         return success;
     }
 
@@ -136,13 +137,13 @@ public final class HeapVerifier {
         return success;
     }
 
-    private static boolean verifyRememberedSets(Occasion occasion) {
+    private static boolean verifyRememberedSets() {
         /*
          * After we are done with all other verifications, it is guaranteed that the heap is in a
          * reasonable state. Now, we can verify the remembered sets without having to worry about
          * heap consistency basic.
          */
-        if (!HeapOptions.useRememberedSet() || !SubstrateGCOptions.VerifyRememberedSet.getValue()) {
+        if (!SubstrateOptions.useRememberedSet() || !SubstrateGCOptions.VerifyRememberedSet.getValue()) {
             return true;
         }
 
@@ -152,8 +153,6 @@ public final class HeapVerifier {
          * as the GC itself dirties the card table. For the old generation, it is also not possible
          * at the moment because the reference handling may result in dirty cards.
          */
-
-        YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
 
         boolean success = true;
         RememberedSet rememberedSet = RememberedSet.get();

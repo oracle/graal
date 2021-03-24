@@ -55,7 +55,7 @@ public abstract class CollectionPolicy {
     static CollectionPolicy getInitialPolicy(FeatureAccess access) {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
             return new NeverCollect();
-        } else if (!HeapOptions.useRememberedSet()) {
+        } else if (!SubstrateOptions.useRememberedSet()) {
             return new OnlyCompletely();
         } else {
             // Use whatever policy the user specified.

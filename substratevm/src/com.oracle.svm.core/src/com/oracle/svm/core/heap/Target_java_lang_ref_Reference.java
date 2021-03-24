@@ -249,6 +249,6 @@ class ComputeQueueValue implements CustomFieldValueComputer {
 class NotCardRememberedSetHeap implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return !SubstrateOptions.UseCardRememberedSetHeap.getValue();
+        return !SubstrateOptions.UseSerialGC.getValue();
     }
 }

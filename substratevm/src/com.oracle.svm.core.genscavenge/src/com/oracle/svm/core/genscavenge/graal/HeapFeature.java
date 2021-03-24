@@ -65,7 +65,7 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseCardRememberedSetHeap.getValue();
+        return SubstrateOptions.UseSerialGC.getValue();
     }
 
     @Override
@@ -87,7 +87,7 @@ class HeapFeature implements GraalFeature {
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        if (HeapOptions.useRememberedSet()) {
+        if (SubstrateOptions.useRememberedSet()) {
             // Even though I don't hold on to this instance, it is preserved because it becomes the
             // enclosing instance for the lowerings registered within it.
             BarrierSnippets barrierSnippets = new BarrierSnippets(options, factories, providers, snippetReflection);
@@ -126,7 +126,7 @@ class HeapFeature implements GraalFeature {
     }
 
     private static RememberedSet createRememberedSet() {
-        if (HeapOptions.useRememberedSet()) {
+        if (SubstrateOptions.useRememberedSet()) {
             return new CardTableBasedRememberedSet();
         } else {
             return new NoRememberedSet();

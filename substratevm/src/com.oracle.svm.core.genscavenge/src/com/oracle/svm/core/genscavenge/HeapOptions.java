@@ -24,11 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
@@ -52,16 +50,6 @@ public final class HeapOptions {
     @Option(help = "Enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null);
 
-    @Fold
-    public static boolean useRememberedSet() {
-        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
-    }
-
     private HeapOptions() {
-    }
-
-    static class ConcealedOptions {
-        @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
-        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
     }
 }

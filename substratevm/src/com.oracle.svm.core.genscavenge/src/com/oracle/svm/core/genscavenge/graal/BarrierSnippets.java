@@ -160,7 +160,7 @@ class BarrierSnippetCounters {
 class BarrierSnippetCountersFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseCardRememberedSetHeap.getValue() && HeapOptions.useRememberedSet();
+        return SubstrateOptions.UseSerialGC.getValue() && SubstrateOptions.useRememberedSet();
     }
 
     @Override
