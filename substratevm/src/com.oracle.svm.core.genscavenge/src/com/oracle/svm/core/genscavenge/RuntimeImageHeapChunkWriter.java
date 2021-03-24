@@ -43,7 +43,7 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
     private final Pointer heapBegin;
     private final Word layoutToBufferOffsetAddend;
 
-    public RuntimeImageHeapChunkWriter(ByteBuffer buffer, long layoutToBufferOffsetAddend) {
+    RuntimeImageHeapChunkWriter(ByteBuffer buffer, long layoutToBufferOffsetAddend) {
         DirectBuffer direct = (DirectBuffer) buffer; // required from caller
         this.heapBegin = WordFactory.pointer(direct.address());
         this.layoutToBufferOffsetAddend = WordFactory.signed(layoutToBufferOffsetAddend);

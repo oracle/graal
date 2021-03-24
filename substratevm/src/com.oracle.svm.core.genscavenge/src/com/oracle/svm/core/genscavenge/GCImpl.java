@@ -221,7 +221,7 @@ public final class GCImpl implements GC {
             } else if (policy.collectIncrementally()) {
                 scavenge(true);
             } else {
-                VMError.shouldNotReachHere("A GC was triggered, so why did the policy decide to do nothing?");
+                VMError.shouldNotReachHere("A safepoint for a GC was triggered, so why did the GC policy decide not to do a GC?");
             }
         } finally {
             collectionTimer.close();

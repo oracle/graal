@@ -77,7 +77,7 @@ class HeapFeature implements GraalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Heap.class, new HeapImpl(access));
         ImageSingletons.add(SubstrateAllocationSnippets.class, new GenScavengeAllocationSnippets());
-        registerRememberedSet();
+        ImageSingletons.add(RememberedSet.class, createRememberedSet());
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
@@ -125,11 +125,11 @@ class HeapFeature implements GraalFeature {
         GenScavengeAllocationSnippets.registerForeignCalls(providers, foreignCalls);
     }
 
-    private static void registerRememberedSet() {
+    private static RememberedSet createRememberedSet() {
         if (HeapOptions.useRememberedSet()) {
-            ImageSingletons.add(RememberedSet.class, new CardTableBasedRememberedSet());
+            return new CardTableBasedRememberedSet();
         } else {
-            ImageSingletons.add(RememberedSet.class, new NoRememberedSet());
+            return new NoRememberedSet();
         }
     }
 }

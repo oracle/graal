@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
@@ -21,51 +45,51 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public interface RememberedSet {
     @Fold
-    public static RememberedSet get() {
+    static RememberedSet get() {
         return ImageSingletons.lookup(RememberedSet.class);
     }
 
-    public BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
+    BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
 
-    public UnsignedWord getHeaderSizeOfAlignedChunk();
+    UnsignedWord getHeaderSizeOfAlignedChunk();
 
-    public UnsignedWord getHeaderSizeOfUnalignedChunk();
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects);
+    UnsignedWord getHeaderSizeOfUnalignedChunk();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk);
+    void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects);
 
-    public void enableRememberedSetForChunk(AlignedHeader chunk);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk);
 
-    public void enableRememberedSetForChunk(UnalignedHeader chunk);
+    void enableRememberedSetForChunk(AlignedHeader chunk);
 
-    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
+    void enableRememberedSetForChunk(UnalignedHeader chunk);
 
-    public void clearRememberedSet(AlignedHeader chunk);
+    void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
 
-    public void clearRememberedSet(UnalignedHeader chunk);
+    void clearRememberedSet(AlignedHeader chunk);
 
-    @AlwaysInline("GC performance")
-    public boolean isRememberedSetEnabled(UnsignedWord header);
-
-    @AlwaysInline("GC performance")
-    public void dirtyCardForAlignedObject(Object object, boolean verifyOnly);
+    void clearRememberedSet(UnalignedHeader chunk);
 
     @AlwaysInline("GC performance")
-    public void dirtyCardForUnalignedObject(Object object, boolean verifyOnly);
+    boolean hasRememberedSet(UnsignedWord header);
 
     @AlwaysInline("GC performance")
-    public void dirtyCardIfNecessary(Object holderObject, Object object);
+    void dirtyCardForAlignedObject(Object object, boolean verifyOnly);
 
-    public void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor);
+    @AlwaysInline("GC performance")
+    void dirtyCardForUnalignedObject(Object object, boolean verifyOnly);
 
-    public void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor);
+    @AlwaysInline("GC performance")
+    void dirtyCardIfNecessary(Object holderObject, Object object);
 
-    public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor);
+    void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor);
 
-    public boolean verify(AlignedHeader firstAlignedHeapChunk);
+    void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor);
 
-    public boolean verify(UnalignedHeader firstUnalignedHeapChunk);
+    void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor);
+
+    boolean verify(AlignedHeader firstAlignedHeapChunk);
+
+    boolean verify(UnalignedHeader firstUnalignedHeapChunk);
 }

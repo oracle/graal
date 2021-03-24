@@ -104,21 +104,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
-    public static UnsignedWord readHeaderFromPointerCarefully(Pointer p) {
-        VMError.guarantee(!p.isNull(), "ObjectHeader.readHeaderFromPointerCarefully:  p: null");
-        if (!ReferenceAccess.singleton().haveCompressedReferences()) {
-            // These tests are only useful if the original reference did not have to be
-            // uncompressed, which would result in a different address than the zap word
-            VMError.guarantee(p.notEqual(HeapPolicy.getProducedHeapChunkZapWord()), "ObjectHeader.readHeaderFromPointerCarefully:  p: producedZapValue");
-            VMError.guarantee(p.notEqual(HeapPolicy.getConsumedHeapChunkZapWord()), "ObjectHeader.readHeaderFromPointerCarefully:  p: consumedZapValue");
-        }
-        UnsignedWord header = readHeaderFromPointer(p);
-        VMError.guarantee(header.notEqual(WordFactory.zero()), "ObjectHeader.readHeaderFromPointerCarefully:  header: 0");
-        VMError.guarantee(!isProducedHeapChunkZapped(header), "ObjectHeader.readHeaderFromPointerCarefully:  header: producedZapValue");
-        VMError.guarantee(!isConsumedHeapChunkZapped(header), "ObjectHeader.readHeaderFromPointerCarefully:  header: consumedZapValue");
-        return header;
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord readHeaderFromObject(Object o) {
         if (getReferenceSize() == Integer.BYTES) {
@@ -301,11 +286,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     public static boolean isForwardedHeader(UnsignedWord header) {
         return testForwardedHeaderBit(header);
-    }
-
-    public static boolean isForwardedHeaderCarefully(UnsignedWord header) {
-        UnsignedWord headerBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(header);
-        return testForwardedHeaderBit(headerBits);
     }
 
     private static boolean testForwardedHeaderBit(UnsignedWord headerBits) {

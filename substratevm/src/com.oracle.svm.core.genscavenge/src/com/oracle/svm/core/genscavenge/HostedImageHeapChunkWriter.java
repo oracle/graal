@@ -40,7 +40,7 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
+final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
     private final ByteBuffer buffer;
     private final int layoutToBufferAddend;
 
@@ -52,7 +52,7 @@ public final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
     private final int offsetToPreviousChunkAt;
     private final int offsetToNextChunkAt;
 
-    public HostedImageHeapChunkWriter(ByteBuffer heapBuffer, long layoutToBufferOffsetAddend) {
+    HostedImageHeapChunkWriter(ByteBuffer heapBuffer, long layoutToBufferOffsetAddend) {
         buffer = heapBuffer;
         layoutToBufferAddend = NumUtil.safeToInt(layoutToBufferOffsetAddend);
 

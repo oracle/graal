@@ -126,7 +126,7 @@ public final class OldGeneration extends Generation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Space getFromSpace() {
+    Space getFromSpace() {
         return fromSpace;
     }
 

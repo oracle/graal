@@ -305,7 +305,6 @@ public final class HeapPolicy {
         return youngUsedBytes.get();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getEdenUsedBytes() {
         assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
         return edenUsedBytes.get();

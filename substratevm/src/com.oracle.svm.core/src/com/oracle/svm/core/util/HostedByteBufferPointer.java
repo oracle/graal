@@ -246,7 +246,7 @@ public final class HostedByteBufferPointer implements Pointer {
 
     @Override
     public void initializeLong(WordBase offset, long val, LocationIdentity locationIdentity) {
-        writeLong(offsetAsInt(offset), val, locationIdentity);
+        initializeLong(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
@@ -256,32 +256,32 @@ public final class HostedByteBufferPointer implements Pointer {
 
     @Override
     public void writeChar(int offset, char val, LocationIdentity locationIdentity) {
-        buffer.putChar(baseOffset + offset, val);
+        writeChar(offset, val);
     }
 
     @Override
     public void writeShort(int offset, short val, LocationIdentity locationIdentity) {
-        buffer.putShort(baseOffset + offset, val);
+        writeShort(offset, val);
     }
 
     @Override
     public void writeInt(int offset, int val, LocationIdentity locationIdentity) {
-        buffer.putInt(baseOffset + offset, val);
+        writeInt(offset, val);
     }
 
     @Override
     public void writeLong(int offset, long val, LocationIdentity locationIdentity) {
-        buffer.putLong(baseOffset + offset, val);
+        writeLong(offset, val);
     }
 
     @Override
     public void writeFloat(int offset, float val, LocationIdentity locationIdentity) {
-        buffer.putFloat(baseOffset + offset, val);
+        writeFloat(offset, val);
     }
 
     @Override
     public void writeDouble(int offset, double val, LocationIdentity locationIdentity) {
-        buffer.putDouble(baseOffset + offset, val);
+        writeDouble(offset, val);
     }
 
     @Override

@@ -58,7 +58,7 @@ final class StackVerifier {
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), STACK_FRAME_VISITOR);
         if (SubstrateOptions.MultiThreaded.getValue()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread.equal(CurrentIsolate.getCurrentThread())) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
                 JavaStackWalker.walkThread(vmThread, STACK_FRAME_VISITOR);

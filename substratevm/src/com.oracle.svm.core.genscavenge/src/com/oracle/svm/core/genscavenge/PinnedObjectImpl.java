@@ -40,6 +40,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.thread.VMOperation;
 
 /** Support for pinning objects to a memory address with {@link PinnedObject}. */
 final class PinnedObjectImpl implements PinnedObject {
@@ -88,11 +89,13 @@ final class PinnedObjectImpl implements PinnedObject {
     }
 
     static PinnedObjectImpl getPinnedObjects() {
+        assert VMOperation.isGCInProgress();
         UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = HeapImpl.getHeapImpl().getPinHead();
         return pinHead.get();
     }
 
     static void setPinnedObjects(PinnedObjectImpl list) {
+        assert VMOperation.isGCInProgress();
         UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = HeapImpl.getHeapImpl().getPinHead();
         pinHead.set(list);
     }

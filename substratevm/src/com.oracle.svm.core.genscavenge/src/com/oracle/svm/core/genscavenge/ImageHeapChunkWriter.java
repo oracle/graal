@@ -28,7 +28,7 @@ import java.util.List;
 
 import com.oracle.svm.core.image.ImageHeapObject;
 
-public interface ImageHeapChunkWriter {
+interface ImageHeapChunkWriter {
     void initializeAlignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk);
 
     void enableRememberedSetForAlignedChunk(int chunkPosition, List<ImageHeapObject> objects);

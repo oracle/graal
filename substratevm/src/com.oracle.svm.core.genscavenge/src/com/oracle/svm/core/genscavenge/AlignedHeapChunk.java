@@ -95,7 +95,7 @@ public final class AlignedHeapChunk {
     }
 
     public static Pointer getObjectsStart(AlignedHeader that) {
-    	return HeapChunk.asPointer(that).add(getObjectsStartOffset());
+        return HeapChunk.asPointer(that).add(getObjectsStartOffset());
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */

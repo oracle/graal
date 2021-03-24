@@ -79,7 +79,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         return ImageSingletons.lookup(BarrierSnippetCounters.class);
     }
 
-    public BarrierSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
+    BarrierSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
         super(options, factories, providers, snippetReflection);
     }
 
@@ -96,7 +96,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
-        boolean needsBarrier = RememberedSet.get().isRememberedSetEnabled(objectHeader);
+        boolean needsBarrier = RememberedSet.get().hasRememberedSet(objectHeader);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FREQUENT_PROBABILITY, !needsBarrier)) {
             return;
         }

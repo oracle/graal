@@ -202,9 +202,9 @@ final class AlignedChunkRememberedSet {
 
     @Fold
     static UnsignedWord getCardTableStartOffset() {
-        UnsignedWord headerSize = getStructSize();
+        UnsignedWord structSize = getStructSize();
         UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
-        return UnsignedUtils.roundUp(headerSize, alignment);
+        return UnsignedUtils.roundUp(structSize, alignment);
     }
 
     @Fold

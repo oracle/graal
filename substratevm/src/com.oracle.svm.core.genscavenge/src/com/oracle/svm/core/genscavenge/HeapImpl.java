@@ -78,7 +78,6 @@ import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-/** An implementation of a generational heap. */
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
     private static final VMMutex REF_MUTEX = new VMMutex();
