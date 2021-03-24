@@ -61,6 +61,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private static final int JFR_VERSION_MINOR = 0;
     private static final int CHUNK_SIZE_OFFSET = 8;
 
+    public static final byte TYPE_UTF8 = 3;
+
     private final ReentrantLock lock;
     private final boolean compressedInts;
     private long notificationThreshold;

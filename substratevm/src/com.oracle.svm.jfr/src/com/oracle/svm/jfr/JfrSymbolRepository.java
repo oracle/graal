@@ -110,13 +110,14 @@ public class JfrSymbolRepository implements JfrRepository {
 
     private void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) throws IOException {
         writer.writeCompressedLong(symbol.getId());
-        byte utf8 = 3;
-        writer.writeByte(utf8);
-        writer.writeCompressedInt(symbol.getValue().length());
-        String value = symbol.getValue();
+        writer.writeByte(JfrChunkWriter.TYPE_UTF8);
+        String value;
         if (symbol.getReplaceDotWithSlash()) {
-            value = value.replaceAll("\\.", "\\");
+            value = symbol.getValue().replace('.', '\\');
+        } else {
+            value = symbol.getValue();
         }
+        writer.writeCompressedInt(value.length());
         writer.writeBytes(value.getBytes(StandardCharsets.UTF_8));
     }
 
