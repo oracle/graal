@@ -1306,7 +1306,6 @@ class GraalVmLibPolyglotNativeProperties(mx.LayoutJARDistribution):
         """
         :type component: mx_sdk.GraalVmComponent
         """
-        self.component = component
         super(GraalVmLibPolyglotNativeProperties, self).__init__(
             suite=component.suite,
             name=_libpolyglot_macro_dist_name(component),
@@ -1320,6 +1319,8 @@ class GraalVmLibPolyglotNativeProperties(mx.LayoutJARDistribution):
             string_substitutions=None,
             archive_factory=None
         )
+        self.component = component
+        self._layout_initialized = False
 
     @staticmethod
     def needs_lib_polyglot_native_properties(component):
@@ -1328,28 +1329,18 @@ class GraalVmLibPolyglotNativeProperties(mx.LayoutJARDistribution):
         """
         return component.polyglot_lib_jar_dependencies or component.polyglot_lib_build_args
 
-    def getBuildTask(self, args):
-        return GraalVmLibPolyglotNativePropertiesBuildTask(self, args)
-
-
-class GraalVmLibPolyglotNativePropertiesBuildTask(mx.LayoutArchiveTask):
-    def __init__(self, subject, args):
-        """
-        :type subject: GraalVmLibPolyglotNativeProperties
-        """
-        super(GraalVmLibPolyglotNativePropertiesBuildTask, self).__init__(args, subject)
-
-    def build(self):
-        component = self.subject.component
-        native_image_properties = OrderedDict()
-        native_image_args = component.polyglot_lib_build_args
-        if component.polyglot_lib_jar_dependencies:
-            final_dist = get_final_graalvm_distribution()
-            native_image_args += ['-cp', os.pathsep.join(("${java.home}" + os.sep + e for e in graalvm_home_relative_classpath(component.polyglot_lib_jar_dependencies, _get_graalvm_archive_path('', final_dist), graal_vm=final_dist).split(os.pathsep)))]
-        assert native_image_args
-        native_image_properties['Args'] = ' '.join(native_image_args)
-        self.subject.layout['META-INF/native-image/{}/native-image.properties'.format(component.short_name)] = 'string:' + _format_properties(native_image_properties)
-        super(GraalVmLibPolyglotNativePropertiesBuildTask, self).build()
+    def _walk_layout(self):
+        if not self._layout_initialized:
+            native_image_args = self.component.polyglot_lib_build_args
+            if self.component.polyglot_lib_jar_dependencies:
+                final_dist = get_final_graalvm_distribution()
+                native_image_args += ['-cp', os.pathsep.join(("${java.home}" + os.sep + e for e in graalvm_home_relative_classpath(self.component.polyglot_lib_jar_dependencies, _get_graalvm_archive_path('', final_dist), graal_vm=final_dist).split(os.pathsep)))]
+            assert native_image_args
+            # self.layout['META-INF/native-image/{}/native-image.properties'.format(self.component.short_name)] = 'string:' + _format_properties({'Args': ' '.join(native_image_args)})
+            self.layout['META-INF/native-image/{}/native-image.properties'.format(self.component.short_name)] = 'string:Args=' + java_properties_escape(' '.join(native_image_args), ' ', len('Args'))
+                                                                                                                # _format_properties({'Args': ' '.join(native_image_args)})
+            self._layout_initialized = True
+        return super(GraalVmLibPolyglotNativeProperties, self)._walk_layout()
 
 
 def java_properties_escape(s, split_long=None, key_length=0):
