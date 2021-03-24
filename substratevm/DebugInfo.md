@@ -137,8 +137,8 @@ with the signature `String(java.lang.String *)`.
 
 The C++ layout class inherits fields and methods from class (layout)
 type java.lang.Object using C++ public inheritance. The latter in turn
-inherits standard oop header fields from a special struct class named
-_objhdr which includes a single field called `hub` whose type is
+inherits standard oop (ordinary object pointer) header fields from a special struct class named
+`_objhdr` which includes a single field called `hub` whose type is
 `java.lang.Class *` i.e. it is a pointer to the object's class.
 
 The ptype command can be used to print details of a specific type. Note
@@ -175,7 +175,7 @@ $1 = {
   <java.lang.Object> = {
     <_objhdr> = {
       hub = 0x90cb58
-    }, <No data fields>}, 
+    }, <No data fields>},
   members of java.lang.String:
   value = 0x7ffff7c011a0,
   hash = 0,
@@ -183,13 +183,13 @@ $1 = {
 }
 ```
 
-The hub field in the object header is actually a reference of Java type
+The `hub` field in the object header is actually a reference of Java type
 `java.lang.Class`. Note that the field is typed by gdb using a pointer
 to the underlying C++ class (layout) type.
 
 All classes, from Object downwards inherit from a common, automatically
-generated header type _objhdr. It is this header type which includes
-the hub field:
+generated header type `_objhdr`. It is this header type which includes
+the `hub` field:
 
 ```
 (gdb) ptype _objhdr
@@ -228,7 +228,7 @@ $3 = {
 }
 ```
 
-The value in register rdx is obviously a reference to a String array.
+The value in register `rdx` is obviously a reference to a String array.
 Casting it to this type shows it has length 1.
 
 ```
@@ -245,7 +245,7 @@ $4 = {
 }
 ```
 
-A simpler command which allows just the name of the hub object to be
+A simpler command which allows just the name of the `hub` object to be
 printed is as follows:
 
 ```
@@ -254,7 +254,7 @@ printed is as follows:
 ```
 
 Indeed it is useful to define a gdb command `hubname_raw` to execute this
-operation on an arbitrary raw memory address
+operation on an arbitrary raw memory address.
 
 ```
 define hubname_raw
@@ -277,7 +277,7 @@ Cannot access memory at address 0x2
 
 Array type layouts are modelled as a C++ class type. It inherits
 from class Object so it includes the hub and idHash header fields
-defined by _objhdr. It adds a length field and an embedded (C++) data
+defined by `_objhdr`. It adds a length field and an embedded (C++) data
 array whose elements are typed from the Java array's element type,
 either primitive values or object references.
 
@@ -301,7 +301,7 @@ concerned.
 
 If gdb already knows the Java type for a reference it can be printed
 without casting using a simpler version of the hubname command. For
-example, the String array retrieved above as $4 has a known type.
+example, the String array retrieved above as `$4` has a known type.
 
 ```
 (gdb) ptype $4
@@ -337,7 +337,8 @@ Given a reference typed to an interface it can be resolved to the
 relevant class type by viewing it through the relevant union element.
 
 If we take the first String in the args array we can ask gdb to cast
-it to interface CharSequence
+it to interface `CharSequence`.
+
 ```
 (gdb) print (('java.lang.String[]' *)$rdi)->data[0]
 $5 = (java.lang.String *) 0x7ffff7c01060
@@ -345,7 +346,7 @@ $5 = (java.lang.String *) 0x7ffff7c01060
 $6 = (java.lang.CharSequence *) 0x7ffff7c01060
 ```
 
-The hubname command won't work with this union type because it is
+The `hubname` command will not work with this union type because it is
 only objects of the elements of the union that include the hub field:
 
 ```
@@ -365,7 +366,7 @@ $18 = {
   <java.lang.Object> = {
     <_objhdr> = {
       hub = 0x90cb58
-    }, <No data fields>}, 
+    }, <No data fields>},
   members of java.lang.String:
   value = 0x7ffff7c011a0,
   hash = 0,
@@ -401,8 +402,7 @@ File Hello.java:
 Breakpoint 1 at 0x4065a0: file Hello.java, line 43.
 ```
 
- An example of a static field containing Object data is provided by
- the static field `powerCache` in class `BigInteger`
+An example of a static field containing Object data is provided by the static field `powerCache` in class `BigInteger`.
 
 ```
 (gdb) ptype 'java.math.BigInteger'
@@ -419,7 +419,7 @@ type = class _java.math.BigInteger : public _java.lang.Number {
   public:
     void BigInteger(byte [] *);
     void BigInteger(java.lang.String *, int);
-    . . .    
+    . . .
 }
 (gdb) info var powerCache
 All variables matching regular expression "powerCache":
@@ -439,8 +439,8 @@ $8 = (java.math.BigInteger[][] *) 0xa6fd98
 $9 = (java.math.BigInteger[][] **) 0xa6fbd8
 ```
 
-gdb dereferences through symbolic names for static fields to access
-the primitive value or object stored in the field
+The gdb dereferences through symbolic names for static fields to access
+the primitive value or object stored in the field.
 
 ```
 (gdb) p *'java.math.BigInteger'::powerCache
@@ -473,7 +473,7 @@ $14 = {
     <java.lang.Object> = {
       <_objhdr> = {
         hub = 0x919bc8
-      }, <No data fields>}, <No data fields>}, 
+      }, <No data fields>}, <No data fields>},
   members of java.math.BigInteger:
   mag = 0xa5b030,
   signum = 1,
@@ -510,7 +510,7 @@ be cached in file _sources/jdk/java.base/java/util/HashMap.java_. Debug
 info records for this class and its methods will identify this source
 file using the relative directory path _java.base/java/util_ and file
 name _HashMap.java_. On Windows things will be the same modulo use of
-'\' rather than '/' as the file separator.
+`\` rather than `/` as the file separator.
 
 Sources for GraalVM classes are retrieved from zip files or source
 directories derived from entries in the classpath. Retrieved files are
@@ -564,7 +564,7 @@ following command:
 ```
 (gdb) set directories /path/to/sources/jdk:/path/to/sources/graal:/path/to/sources/src
 ```
-THe `/path/to/sources/jdk` directory should contain source files for all JDK runtime
+The `/path/to/sources/jdk` directory should contain source files for all JDK runtime
 classes referenced from debug records.
 
 The `/path/to/sources/graal` directory should contain source files for all GraalVM
@@ -661,36 +661,35 @@ Windows support is still under development.
 
 Note that it is currently recommended to disable use of Isolates by
 passing flag `-H:-SpawnIsolates` on the command line when debug info
-generation is enabled. Enabling of Isolates affects the way that oops
-(object references) are encoded. In turn that means the debug info
+generation is enabled. Enabling of Isolates affects the way ordinary object pointers (oops) are encoded. In turn, that means the debug info
 generator has to provide gdb with information about how to translate
-an encoded oop to the address in memory where the object data is
+an encoded oop to the address in memory, where the object data is
 stored. This sometimes requires care when asking gdb to process
 encoded oops vs decoded raw addresses.
 
-When isolates are disabled oops are essentially raw addresses pointing
+When isolates are disabled, oops are essentially raw addresses pointing
 directly at the object contents. This is generally the same whether
 the oop is embedded in a static/instance field or is referenced from a
 local or parameter variable located in a register or saved to the stack.
-It's not quite that simple because the bottom 3 bits of some oops may
+It is not quite that simple because the bottom 3 bits of some oops may
 be used to hold "tags" that record certain transient properties of
 an object. However, the debuginfo provided to gdb means that it will
 remove these tag bits before dereferencing the oop as an address.
 
-By contrast, when isolates are enabled oop references stored in static
+By contrast, when isolates are enabled, oops references stored in static
 or instance fields are actually relative addresses, offsets from a
 dedicated heap base register (r14 on x86_64, r29 on AArch64), rather
 than direct addresses (in a few special cases the offset may also have
 some low tag bits set). When an 'indirect' oop of this kind gets loaded
-during execution it is almost always immediately converted to a 'raw'
+during execution, it is almost always immediately converted to a 'raw'
 address by adding the offset to the heap base register value. So, oops
 which occur as the value of local or parameter vars are actually raw
 addresses.
 
-The DWARF info encoded into the image when isolates are enabled tells
+The DWARF info encoded into the image, when isolates are enabled, tells
 gdb to rebase indirect oops whenever it tries to dereference them to
 access underlying object data. This is normally automatic and
-transparent but it is visible in the underlying type model that gdb
+transparent, but it is visible in the underlying type model that gdb
 displays when you ask for the type of objects.
 
 For example, consider the static field we encountered above. Printing
@@ -702,9 +701,9 @@ has a different type to the expected one:
 type = class _z_.java.math.BigInteger[][] : public java.math.BigInteger[][] {
 } *
 ```
-The field is typed as '_z_.java.math.BigInteger[][]' which is an empty
+The field is typed as `_z_.java.math.BigInteger[][]` which is an empty
 wrapper class that inherits from the expected type
-'java.math.BigInteger[][]'. This wrapper type is essentially the same
+`java.math.BigInteger[][]`. This wrapper type is essentially the same
 as the original but the DWARF info record that defines it includes
 information that tells gdb how to convert pointers to this type.
 
@@ -718,7 +717,7 @@ $1 = 0x286c08
 0x286c08:	Cannot access memory at address 0x286c08
 ```
 
-However, when gdb is asked to dereference through the field it applies
+However, when gdb is asked to dereference through the field, it applies
 the necessary address conversion to the oop and fetches the correct
 data.
 
@@ -749,7 +748,7 @@ type = class _z_.java.math.BigInteger[] : public java.math.BigInteger[] {
 } *[0]
 ```
 
-gdb still knows how to dereference these oops:
+The gdb still knows how to dereference these oops:
 
 ```
 (gdb) p $1->hub
@@ -777,9 +776,9 @@ in almost all cases where an expression identifying a raw type pointer
 would work. The only case case where care might be needed is when
 casting a displayed numeric field value or displayed register value.
 
-For example, if the indirect hub oop printed above is passed to
-hubname_raw the cast to type Object internal to that command fails to
-force the required indirect oop translation and the resulting memory
+For example, if the indirect `hub` oop printed above is passed to
+`hubname_raw`, the cast to type Object internal to that command fails to
+force the required indirect oops translation. The resulting memory
 access fails:
 
 ```

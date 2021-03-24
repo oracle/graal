@@ -29,7 +29,7 @@ macro, and server options.
 Depending on the GraalVM edition, the options to the native image builder (`native-image`) may differ.
 The following options are equally supported with both GraalVM Communty and Enterprise editions:
 
-* `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a separated list of directories, JAR archives, and ZIP archives to search for class files.
+* `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a colon separated list of directories, JAR archives, and ZIP archives to search for class files.
 * `-D<name>=<value>`: set a system property.
 * `-J<flag>`: pass `<flag>` directly to the JVM running the native image builder.
 * `-O<level>`: 0 for no optimizations, or 1 for basic optimizations (default).
@@ -48,7 +48,7 @@ The following options are equally supported with both GraalVM Communty and Enter
 * `--initialize-at-run-time`: a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at runtime and not during the image build. An empty string is currently not supported.
 * `--install-exit-handlers`: provide `java.lang.Terminator` exit handlers for executable images.
 * `--libc`: select the `libc` native library implementation to use (available implementations are `glibc` and `musl`).
-* `--native-compiler-options`: providea a custom C compiler option used to query code compilation.
+* `--native-compiler-options`: provide a custom C compiler option used to query code compilation.
 * `--native-compiler-path`: provide a custom path to the C compiler used to query code compilation
 and linking.
 * `--native-image-info`: show native toolchain information and image's build settings.
@@ -56,6 +56,7 @@ and linking.
 * `--report-unsupported-elements-at-runtime`: report the usage of unsupported methods and fields at runtime when they are accessed the first time, instead of an error during an image building.
 * `--shared`: build a shared library.
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries).
+* `--target`: select the native image compilation target (in <OS>-<architecture> format). It defaults to the host's OS-architecture pair.
 * `--trace-class-initialization`: provide a comma-separated list of fully-qualified class names that a class
 initialization is traced for.
 * `--trace-object-instantiation`: provide a comma-separated list of fully-qualified class names that an object
