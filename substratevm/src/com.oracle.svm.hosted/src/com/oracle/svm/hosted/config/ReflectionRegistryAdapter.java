@@ -77,12 +77,12 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
 
     @Override
     public void registerPublicFields(Class<?> type) {
-        registry.register(false, false, type.getFields());
+        registry.register(false, type.getFields());
     }
 
     @Override
     public void registerDeclaredFields(Class<?> type) {
-        registry.register(false, false, type.getDeclaredFields());
+        registry.register(false, type.getDeclaredFields());
     }
 
     @Override
@@ -107,7 +107,7 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
 
     @Override
     public void registerField(Class<?> type, String fieldName, boolean allowWrite, boolean allowUnsafeAccess) throws NoSuchFieldException {
-        registry.register(allowWrite, allowUnsafeAccess, type.getDeclaredField(fieldName));
+        registry.register(allowWrite, type.getDeclaredField(fieldName));
     }
 
     @Override

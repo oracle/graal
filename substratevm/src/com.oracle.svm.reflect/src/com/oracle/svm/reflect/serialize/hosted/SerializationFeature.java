@@ -31,7 +31,6 @@ import java.io.Externalizable;
 import java.io.ObjectStreamClass;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
@@ -163,16 +162,7 @@ public class SerializationFeature implements Feature {
     }
 
     private static void registerFields(Class<?> serializationTargetClass) {
-        for (Field f : serializationTargetClass.getDeclaredFields()) {
-            int modifiers = f.getModifiers();
-            boolean allowWrite = false;
-            boolean allowUnsafeAccess = false;
-            int staticFinalMask = Modifier.STATIC | Modifier.FINAL;
-            if ((modifiers & staticFinalMask) != staticFinalMask) {
-                allowUnsafeAccess = !Modifier.isStatic(f.getModifiers());
-            }
-            RuntimeReflection.register(allowWrite, allowUnsafeAccess, f);
-        }
+        RuntimeReflection.register(serializationTargetClass.getDeclaredFields());
     }
 
     private static Class<?> resolveClass(String typeName, FeatureAccess a) {

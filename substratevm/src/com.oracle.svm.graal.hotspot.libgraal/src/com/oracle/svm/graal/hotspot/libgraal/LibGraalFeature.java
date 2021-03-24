@@ -348,7 +348,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         source.check(tokens.length == 4, "Expected 4 tokens for a field");
                         String fieldName = tokens[2];
                         try {
-                            registry.register(false, false, clazz.getDeclaredField(fieldName));
+                            registry.register(false, clazz.getDeclaredField(fieldName));
                         } catch (NoSuchFieldException e) {
                             throw source.error("Field %s.%s not found", clazz.getTypeName(), fieldName);
                         } catch (NoClassDefFoundError e) {

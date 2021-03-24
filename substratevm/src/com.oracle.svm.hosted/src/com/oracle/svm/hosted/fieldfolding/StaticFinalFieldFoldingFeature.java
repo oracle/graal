@@ -65,7 +65,6 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -246,11 +245,6 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
              * Loads of assertion status fields are constant folded using a different mechanism, so
              * no need to handle them here.
              */
-            return;
-        }
-
-        if (ImageSingletons.lookup(RuntimeReflectionSupport.class).inspectFinalFieldWritableForAnalysis(field.getJavaField())) {
-            /* Final field is explicitly made writable using the reflection configuration. */
             return;
         }
 
