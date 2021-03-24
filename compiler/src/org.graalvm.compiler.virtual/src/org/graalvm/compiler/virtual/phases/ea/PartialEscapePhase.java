@@ -83,6 +83,7 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
     private final boolean readElimination;
     private final BasePhase<CoreProviders> cleanupPhase;
+    private boolean finalPEA;
 
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, OptionValues options) {
         this(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, null, options);
@@ -119,6 +120,9 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
             if (readElimination || graph.hasVirtualizableAllocation()) {
                 runAnalysis(graph, context);
             }
+            if (finalPEA) {
+                graph.setAfterPEA();
+            }
         }
     }
 
@@ -140,4 +144,7 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
         return false;
     }
 
+    public void setFinalPEA() {
+        this.finalPEA = true;
+    }
 }

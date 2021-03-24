@@ -234,6 +234,9 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
     protected void run(final StructuredGraph graph, CoreProviders context) {
         lower(graph, context, LoweringMode.LOWERING);
         assert checkPostLowering(graph, context);
+        if (loweringStage == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            graph.setAfterHighTier();
+        }
     }
 
     private void lower(StructuredGraph graph, CoreProviders context, LoweringMode mode) {

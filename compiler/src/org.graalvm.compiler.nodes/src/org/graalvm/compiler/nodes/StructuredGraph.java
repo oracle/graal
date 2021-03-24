@@ -155,7 +155,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * Different stages of the compilation regarding the status of various graph properties.
      */
     public enum StageFlags {
+        AFTER_PARTIAL_ESCAPE_PHASE,
+        AFTER_HIGH_TIER,
         AFTER_FLOATING_READ_PHASE,
+        AFTER_GUARD_MOVEMENT,
         AFTER_FIXED_READ_PHASE,
         AFTER_VALUE_PROXY_REMOVAL,
         AFTER_EXPAND_LOGIC,
@@ -1017,6 +1020,34 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void setAfterFinalCanonicalization() {
         stageFlags.add(StageFlags.AFTER_FINAL_CANONICALIZATION);
+    }
+
+    public boolean isAfterPEA() {
+        return stageFlags.contains(StageFlags.AFTER_PARTIAL_ESCAPE_PHASE);
+    }
+
+    public boolean isAfterHighTier() {
+        return stageFlags.contains(StageFlags.AFTER_HIGH_TIER);
+    }
+
+    public void setAfterHighTier() {
+        stageFlags.add(StageFlags.AFTER_HIGH_TIER);
+    }
+
+    public void setAfterPEA() {
+        stageFlags.add(StageFlags.AFTER_PARTIAL_ESCAPE_PHASE);
+    }
+
+    public void setAfterGuardMovement() {
+        stageFlags.add(StageFlags.AFTER_GUARD_MOVEMENT);
+    }
+
+    public boolean isAfterGuardMovement() {
+        return stageFlags.contains(StageFlags.AFTER_GUARD_MOVEMENT);
+    }
+
+    public EnumSet<StageFlags> getStageFlags() {
+        return stageFlags;
     }
 
     /**
