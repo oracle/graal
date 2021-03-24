@@ -1,20 +1,29 @@
 package com.oracle.svm.core.sampling;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import java.util.HashMap;
 import java.util.Map;
 
-//Debug purposes only.
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class DebugCallStackFrameMethodData {
 
-    private Map<Integer, String> samplingMethods = new HashMap<>();
+    // Debug purpose only.
+    private final Map<Integer, String> sampledMethods = new HashMap<>();
+
+    public int samplingCodeStartId = -1;
 
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {
-        samplingMethods.put(methodId, method.format("%H.%n"));
+        sampledMethods.put(methodId, method.format("%H.%n"));
+        if (samplingCodeStartId == -1 && method.format("%H.%n").contains("Safepoint.enterSlowPathSafepointCheck")) {
+            samplingCodeStartId = methodId;
+        }
     }
 
     public String methodInfo(int methodId) {
-        return samplingMethods.get(methodId);
+        return sampledMethods.get(methodId);
+    }
+
+    boolean isSamplingCode(int methodId) {
+        return samplingCodeStartId == methodId;
     }
 }
