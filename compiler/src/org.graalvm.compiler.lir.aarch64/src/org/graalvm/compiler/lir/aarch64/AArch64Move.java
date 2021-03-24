@@ -229,7 +229,7 @@ public class AArch64Move {
                 case MemoryBarriers.LOAD_LOAD:
                 case MemoryBarriers.LOAD_STORE:
                 case MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE:
-                    masm.dmb(AArch64MacroAssembler.BarrierKind.LOAD_LOAD);
+                    masm.dmb(AArch64MacroAssembler.BarrierKind.LOAD_ANY);
                     break;
                 default:
                     masm.dmb(AArch64MacroAssembler.BarrierKind.ANY_ANY);
