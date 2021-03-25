@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.regex.Matcher;
+
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -31,10 +35,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.regex.Matcher;
 
 public abstract class ClassInfo {
 
@@ -92,7 +92,7 @@ public abstract class ClassInfo {
     }
 
     public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Symbol.Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + name + ";", null, context);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), definingLoader, "L" + name + ";", context);
 
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();

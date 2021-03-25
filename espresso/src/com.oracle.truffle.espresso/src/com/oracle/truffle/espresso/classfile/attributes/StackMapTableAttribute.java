@@ -31,17 +31,9 @@ public class StackMapTableAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = Symbol.Name.StackMapTable;
 
-    private boolean truncated = false;
+    public static final StackMapTableAttribute EMPTY = new StackMapTableAttribute(NAME, null);
 
     public StackMapTableAttribute(Symbol<Symbol.Name> name, byte[] data) {
         super(name, data);
-    }
-
-    public boolean isTruncated() {
-        return truncated;
-    }
-
-    public void setTruncated() {
-        this.truncated = true;
     }
 }

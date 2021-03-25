@@ -79,7 +79,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
@@ -170,30 +169,22 @@ public final class ClassfileParser {
     private int maxBootstrapMethodAttrIndex = -1;
     private Tag badConstantSeen;
 
+    StaticObject loader;
+
     private ConstantPool pool;
 
-    @SuppressWarnings("unused")
-    public Klass getHostClass() {
-        return hostClass;
-    }
-
-    /**
-     * The host class for an anonymous class.
-     */
-    private final Klass hostClass;
-
-    private ClassfileParser(ClassfileStream stream, String requestedClassType, Klass hostClass, EspressoContext context, StaticObject[] constantPoolPatches) {
+    private ClassfileParser(ClassfileStream stream, StaticObject loader, String requestedClassType, EspressoContext context, StaticObject[] constantPoolPatches) {
         this.requestedClassType = requestedClassType;
-        this.hostClass = hostClass;
         this.context = context;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
         this.constantPoolPatches = constantPoolPatches;
+        this.loader = loader;
     }
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassfileStream stream, EspressoContext context) {
-        this(stream, "", null, context, null);
+        this(stream, null, "", context, null);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -225,12 +216,12 @@ public final class ClassfileParser {
         }
     }
 
-    public static ParserKlass parse(ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
-        return parse(stream, requestedClassName, hostClass, context, null);
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context) {
+        return parse(stream, loader, requestedClassName, context, null);
     }
 
-    public static ParserKlass parse(ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context, @Host(Object[].class) StaticObject[] constantPoolPatches) {
-        return new ClassfileParser(stream, requestedClassName, hostClass, context, constantPoolPatches).parseClass();
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, @Host(Object[].class) StaticObject[] constantPoolPatches) {
+        return new ClassfileParser(stream, loader, requestedClassName, context, constantPoolPatches).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -1172,6 +1163,14 @@ public final class ClassfileParser {
 
     }
 
+    private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> attributeName, int attributeSize) {
+        if (context.needsVerify(loader)) {
+            return new StackMapTableAttribute(attributeName, stream.readByteArray(attributeSize));
+        }
+        stream.skip(attributeSize);
+        return StackMapTableAttribute.EMPTY;
+    }
+
     private NestHostAttribute parseNestHostAttribute(Symbol<Name> attributeName) {
         int hostClassIndex = stream.readU2();
         pool.classAt(hostClassIndex).validate(pool);
@@ -1263,7 +1262,7 @@ public final class ClassfileParser {
                 if (stackMapTable != null) {
                     throw ConstantPool.classFormatError("Duplicate StackMapTable attribute");
                 }
-                codeAttributes[i] = stackMapTable = new StackMapTableAttribute(attributeName, stream.readByteArray(attributeSize));
+                codeAttributes[i] = stackMapTable = parseStackMapTableAttribute(attributeName, attributeSize);
             } else {
                 Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                 // stream.skip(attributeSize);

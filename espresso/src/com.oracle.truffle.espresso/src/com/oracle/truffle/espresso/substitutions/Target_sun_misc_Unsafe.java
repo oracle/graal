@@ -34,11 +34,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.ffi.Buffer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -46,7 +47,6 @@ import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -100,8 +100,8 @@ public final class Target_sun_misc_Unsafe {
         StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap();
         Klass hostKlass = hostClass.getMirrorKlass();
         ClassfileStream cfs = new ClassfileStream(bytes, null);
-        ParserKlass parserKlass = ClassfileParser.parse(cfs, null, hostKlass, context, patches);
         StaticObject classLoader = hostKlass.getDefiningClassLoader();
+        ParserKlass parserKlass = ClassfileParser.parse(cfs, classLoader, null, context, patches);
 
         // Inherit host class's protection domain.
         StaticObject clazz = defineAnonymousKlass(parserKlass, context, classLoader, hostKlass).mirror();
