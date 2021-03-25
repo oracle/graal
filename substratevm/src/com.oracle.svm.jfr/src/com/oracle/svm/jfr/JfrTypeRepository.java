@@ -69,6 +69,6 @@ public class JfrTypeRepository implements JfrRepository {
 
     @Override
     public boolean hasItems() {
-        return count > 0;
+        return JfrTraceIdLoadBarrier.classCount(JfrTraceIdEpoch.getInstance().previousEpoch()) > 0;
     }
 }
