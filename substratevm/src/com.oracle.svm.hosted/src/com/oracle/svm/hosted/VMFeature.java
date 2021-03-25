@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,6 +33,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -93,8 +93,7 @@ public class VMFeature implements Feature {
 
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
             System.out.println("# Static libraries:");
-            Path current = Paths.get(".").toAbsolutePath();
-            nativeLibraries.getStaticLibraries().stream().map(current::relativize).map(Path::toString).forEach(x -> System.out.println("#   " + x));
+            nativeLibraries.getStaticLibraries().stream().map(ReportUtils::getCWDRelativePath).map(Path::toString).forEach(x -> System.out.println("#   " + x));
             System.out.println("# Other libraries: " + String.join(",", nativeLibraries.getLibraries()));
         }
 
