@@ -103,14 +103,24 @@ public class ReportUtils {
 
             try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
                 try (PrintWriter writer = new PrintWriter(fw)) {
-                    Path cwd = Paths.get("").toAbsolutePath();
-                    System.out.println("# Printing " + description + " to: " + cwd.relativize(file));
+                    System.out.println("# Printing " + description + " to: " + getCWDRelativePath(file));
                     reporter.accept(writer);
                 }
             }
 
         } catch (IOException e) {
             throw JVMCIError.shouldNotReachHere(e);
+        }
+    }
+
+    /** Returns a path relative to the current working directory if possible. */
+    public static Path getCWDRelativePath(Path path) {
+        Path cwd = Paths.get("").toAbsolutePath();
+        try {
+            return cwd.relativize(path);
+        } catch (IllegalArgumentException e) {
+            /* Relativization failed (e.g., the `path` is not absolute or is on another drive). */
+            return path;
         }
     }
 
@@ -147,8 +157,7 @@ public class ReportUtils {
             Path file = reportDir.resolve(fileName);
             try (OutputStream fos = Files.newOutputStream(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
                             append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING)) {
-                Path cwd = Paths.get("").toAbsolutePath();
-                System.out.println("# Printing " + description + " to: " + cwd.relativize(file));
+                System.out.println("# Printing " + description + " to: " + getCWDRelativePath(file));
                 reporter.accept(fos);
                 fos.flush();
             }
