@@ -87,6 +87,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.gate + $.sulong + sc.jdk8 + sc.darwin_amd64 + sc.llvm4 + sc.llvm4_darwin_fix + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-v40-jdk8-darwin-amd64" },
     sc.gate + $.sulong + sc.jdk8 + sc.darwin_amd64 + sc.llvmBundled + sc.llvmBundled_darwin_fix + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk8-darwin-amd64" },
 
+    sc.Description("Run ruby downstream tests") +
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream-jdk8-linux-amd64" },
 
     sc.gate + $.sulong + sc.labsjdk_ce_11 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk11-linux-aarch64", timelimit: "30:00" },
