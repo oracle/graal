@@ -51,7 +51,7 @@ public interface SubstrateLoweringProvider extends LoweringProvider {
 
     Map<Class<? extends Node>, NodeLoweringProvider<?>> getLowerings();
 
-    ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value);
+    ValueNode implicitLoadConvertWithBooleanCoercionIfNecessary(StructuredGraph graph, JavaKind kind, ValueNode value);
 
     Stamp loadStamp(Stamp stamp, JavaKind kind);
 
