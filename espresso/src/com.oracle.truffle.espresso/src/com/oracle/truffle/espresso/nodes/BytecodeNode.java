@@ -1025,12 +1025,12 @@ public final class BytecodeNode extends EspressoMethodNode {
                         continue loop;
                     }
                     // @formatter:off
-                    case IRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn(popInt(primitives, top - 1)), loopCount[0]);
-                    case LRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popLong(primitives, top - 1)), loopCount[0]);
-                    case FRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popFloat(primitives, top - 1)), loopCount[0]);
-                    case DRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popDouble(primitives, top - 1)), loopCount[0]);
-                    case ARETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popObject(refs, top - 1)), loopCount[0]);
-                    case RETURN : return notifyReturn(frame, statementIndex, exitMethodAndReturn(), loopCount[0]);
+                    case IRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn(popInt(primitives, top - 1)));
+                    case LRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popLong(primitives, top - 1)));
+                    case FRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popFloat(primitives, top - 1)));
+                    case DRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popDouble(primitives, top - 1)));
+                    case ARETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popObject(refs, top - 1)));
+                    case RETURN : return notifyReturn(frame, statementIndex, exitMethodAndReturn());
 
                     // TODO(peterssen): Order shuffled.
                     case GETSTATIC : // fall through
@@ -1201,6 +1201,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                 CompilerDirectives.transferToInterpreter();
                 getRoot().abortMonitor(frame);
                 throw e;
+            } finally {
+                LoopNode.reportLoopCount(this, loopCount[0]);
             }
             // This check includes newly rewritten QUICK nodes, not just curOpcode == quick
             if (noForeignObjects.isValid() && (bs.currentBC(curBCI) == QUICK || bs.currentBC(curBCI) == SLIM_QUICK)) {
@@ -1267,11 +1269,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
     }
 
-    private Object notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn, int loopCount) {
+    private Object notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn) {
         if (instrumentation != null) {
             instrumentation.notifyReturn(frame, statementIndex, toReturn);
         }
-        LoopNode.reportLoopCount(this, loopCount);
         return toReturn;
     }
 
