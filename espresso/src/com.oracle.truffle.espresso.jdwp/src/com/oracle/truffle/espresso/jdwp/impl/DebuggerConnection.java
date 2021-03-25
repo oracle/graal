@@ -84,21 +84,21 @@ public final class DebuggerConnection implements Commands {
     @Override
     public void stepInto(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_INTO);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOver(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OVER, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_OVER);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOut(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OUT, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_OUT);
         addBlocking(debuggerCommand);
     }
 
@@ -167,17 +167,7 @@ public final class DebuggerConnection implements Commands {
                 DebuggerCommand debuggerCommand = awaitNextCommand(); // blocking
 
                 if (debuggerCommand != null) {
-                    RequestFilter filter = debuggerCommand.getRequestFilter();
                     switch (debuggerCommand.kind) {
-                        case STEP_INTO:
-                            controller.stepInto(filter);
-                            break;
-                        case STEP_OVER:
-                            controller.stepOver(filter);
-                            break;
-                        case STEP_OUT:
-                            controller.stepOut(filter);
-                            break;
                         case SUBMIT_LINE_BREAKPOINT:
                             controller.submitLineBreakpoint(debuggerCommand);
                             break;
@@ -186,6 +176,11 @@ public final class DebuggerConnection implements Commands {
                             break;
                         case SUBMIT_EXCEPTION_BREAKPOINT:
                             controller.submitExceptionBreakpoint(debuggerCommand);
+                            break;
+                        case STEP_OUT:
+                            controller.stepOut(debuggerCommand.getRequestFilter());
+                            break;
+                        default:
                             break;
                     }
                     synchronized (debuggerCommand) {
