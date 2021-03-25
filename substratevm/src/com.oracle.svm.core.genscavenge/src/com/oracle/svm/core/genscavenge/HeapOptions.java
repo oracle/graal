@@ -43,6 +43,12 @@ public final class HeapOptions {
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Verify the remembered set if VerifyHeap is enabled.")//
+    public static final HostedOptionKey<Boolean> VerifyRememberedSet = new HostedOptionKey<>(true);
+
+    @Option(help = "Verify all object references if VerifyHeap is enabled.")//
+    public static final HostedOptionKey<Boolean> VerifyReferences = new HostedOptionKey<>(true);
+
     @Option(help = "Soft references: this number of milliseconds multiplied by the free heap memory in MByte is the time span " +
                     "for which a soft reference will keep its referent alive after its last access.", type = OptionType.Expert) //
     public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000);

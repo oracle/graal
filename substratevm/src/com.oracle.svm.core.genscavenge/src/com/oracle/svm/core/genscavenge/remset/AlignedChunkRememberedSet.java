@@ -46,7 +46,6 @@ import com.oracle.svm.core.genscavenge.HeapPolicy;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -82,9 +81,6 @@ final class AlignedChunkRememberedSet {
 
     @AlwaysInline("GC performance")
     public static void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
-        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
-        assert !HeapChunk.getSpace(chunk).isYoungSpace();
-
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer startOffset = Word.objectToUntrackedPointer(obj).subtract(objectsStart);

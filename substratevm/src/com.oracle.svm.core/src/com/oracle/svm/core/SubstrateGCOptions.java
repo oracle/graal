@@ -49,12 +49,6 @@ public class SubstrateGCOptions {
     @Option(help = "Verify the heap before and after each collection.")//
     public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
 
-    @Option(help = "Verify the remembered set if VerifyHeap is enabled.")//
-    public static final HostedOptionKey<Boolean> VerifyRememberedSet = new HostedOptionKey<>(true);
-
-    @Option(help = "Verify all object references if VerifyHeap is enabled.")//
-    public static final HostedOptionKey<Boolean> VerifyReferences = new HostedOptionKey<>(true);
-
     @Option(help = "Ignore calls to System.gc()", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new RuntimeOptionKey<>(false);
 

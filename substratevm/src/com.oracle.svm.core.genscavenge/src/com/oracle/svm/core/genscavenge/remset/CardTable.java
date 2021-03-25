@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.lang.ref.Reference;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -195,6 +196,7 @@ final class CardTable {
         }
 
         @Override
+        @SuppressFBWarnings(value = {"NS_DANGEROUS_NON_SHORT_CIRCUIT"}, justification = "Non-short circuit logic is used on purpose here.")
         public boolean visitObjectReference(Pointer reference, boolean compressed) {
             Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(reference, compressed);
             success &= verifyReference(parentObject, cardTableStart, objectsStart, reference, referencedObject);
