@@ -54,6 +54,14 @@
     },
   },
 
+  labsjdk_ee_11: common["labsjdk-ee-11"] {
+    jdk:: "jdk11",
+  },
+
+  labsjdk_ee_16: common["labsjdk-ee-16"] {
+    jdk:: "jdk16",
+  },
+
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
   darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
@@ -61,6 +69,10 @@
 
   gate:: {
     targets+: ["gate"],
+  },
+
+  daily:: {
+    targets+: ["daily"],
   },
 
   weekly:: {
