@@ -700,6 +700,9 @@ public final class MethodVerifier implements ContextAccess {
         if (!useStackMaps || stackMapTableAttribute == null) {
             return;
         }
+        if (stackMapTableAttribute == StackMapTableAttribute.EMPTY) {
+            throw EspressoError.shouldNotReachHere("Class " + thisKlass.getExternalName() + " was determined to not need verification, but verification was invoked.");
+        }
         StackMapFrameParser.parse(this, stackMapTableAttribute, previous);
     }
 
@@ -715,7 +718,7 @@ public final class MethodVerifier implements ContextAccess {
      * Constructs a StackFrame object for the verifier from a StackMapFrame obtained from the
      * parser.
      */
-    public StackFrame getStackFrame(StackMapFrame smf, StackFrame previous) {
+    StackFrame getStackFrame(StackMapFrame smf, StackFrame previous) {
         int frameType = smf.getFrameType();
         if (frameType < SAME_FRAME_BOUND) {
             if (previous.top == 0) {
