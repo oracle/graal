@@ -39,8 +39,8 @@
   },
 
   defBuild(b):: $.build_template + b + {
-    assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name]
-  },
+    assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
+  } + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
 
   jdk8:: common.oraclejdk8 + {
     jdk:: "jdk8",
@@ -97,6 +97,8 @@
       std.asciiLower(s[0]) + s[1:]
     else s,
 
+  Description(description):: { description_text:: description },
+
   gateTags(tags):: $.mxCommand + {
     # sorted and unique
     local prefixes = std.uniq(std.sort(["sulong"] + if std.objectHasAll(self, "suite") then [self.suite] else [])),
@@ -122,7 +124,7 @@
       # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
       assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self);
       [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
-  },
+  } + self.Description("Run mx gate --tags " + tags),
 
   sulong_weekly_notifications:: {
     notify_groups:: ["sulong"],
