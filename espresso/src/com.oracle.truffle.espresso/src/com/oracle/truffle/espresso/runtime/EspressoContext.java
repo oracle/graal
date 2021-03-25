@@ -686,6 +686,19 @@ public final class EspressoContext {
         return object;
     }
 
+    public boolean needsVerify(StaticObject classLoader) {
+        switch (Verify) {
+            case NONE:
+                return false;
+            case REMOTE:
+                return !StaticObject.isNull(classLoader);
+            case ALL:
+                return true;
+            default:
+                return true;
+        }
+    }
+
     public void prepareDispose() {
         jdwpContext.finalizeContext();
     }
