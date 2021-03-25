@@ -6,13 +6,13 @@ overlay = 60620159e1b398d870996ef6fa75380987a4371d
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  oraclejdk8:      {name : oraclejdk, version : "8u281+09-jvmci-19.3-b23", platformspecific: true}
-  openjdk8:        {name : openjdk,   version : "8u282+07-jvmci-19.3-b22", platformspecific: true}
-  oraclejdk8Debug: {name : oraclejdk, version : "8u281+09-jvmci-19.3-b23-fastdebug", platformspecific: true}
+  oraclejdk8:      {name : oraclejdk, version : "8u291+08-jvmci-19.3-b24-20210318222832-8720d7e959", platformspecific: true}
+  openjdk8:        {name : openjdk,   version : "8u292+07-jvmci-19.3-b24-20210318222804-cc172503a8", platformspecific: true}
+  oraclejdk8Debug: {name : oraclejdk, version : "8u291+08-jvmci-19.3-b24-20210318222832-8720d7e959-fastdebug", platformspecific: true}
   oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
   openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
-  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.10+8-jvmci-19.3-b22", platformspecific: true}
-  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.10+8-jvmci-19.3-b22", platformspecific: true}
+  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.11+5-jvmci-19.3-b24-20210324132945-db82a53981", platformspecific: true}
+  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.11+8-jvmci-19.3-b24-20210323094839-42e1de7c00+1d2d02b4b6", platformspecific: true}
 }
 
 devkits: {
