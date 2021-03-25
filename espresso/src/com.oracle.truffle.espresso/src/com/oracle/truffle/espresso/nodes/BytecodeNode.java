@@ -328,6 +328,7 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualNodeGen;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -335,7 +336,6 @@ import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * Bytecode interpreter loop.
@@ -1025,30 +1025,12 @@ public final class BytecodeNode extends EspressoMethodNode {
                         continue loop;
                     }
                     // @formatter:off
-                    case IRETURN: {
-                        LoopNode.reportLoopCount(this, loopCount[0]);
-                        return notifyReturn(frame, statementIndex, exitMethodAndReturn(popInt(primitives, top - 1)));
-                    }
-                    case LRETURN: {
-                        LoopNode.reportLoopCount(this, loopCount[0]);
-                        return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popLong(primitives, top - 1)));
-                    }
-                    case FRETURN: {
-                        LoopNode.reportLoopCount(this, loopCount[0]);
-                        return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popFloat(primitives, top - 1)));
-                    }
-                    case DRETURN: {
-                        LoopNode.reportLoopCount(this, loopCount[0]);
-                        return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popDouble(primitives, top - 1)));
-                    }
-                    case ARETURN: {
-                        LoopNode.reportLoopCount(this, loopCount[0]);
-                        return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popObject(refs, top - 1)));
-                    }
-                    case RETURN : {
-                        LoopNode.reportLoopCount(this, loopCount[0]);
-                        return notifyReturn(frame, statementIndex, exitMethodAndReturn());
-                    }
+                    case IRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn(popInt(primitives, top - 1)), loopCount[0]);
+                    case LRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popLong(primitives, top - 1)), loopCount[0]);
+                    case FRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popFloat(primitives, top - 1)), loopCount[0]);
+                    case DRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popDouble(primitives, top - 1)), loopCount[0]);
+                    case ARETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popObject(refs, top - 1)), loopCount[0]);
+                    case RETURN : return notifyReturn(frame, statementIndex, exitMethodAndReturn(), loopCount[0]);
 
                     // TODO(peterssen): Order shuffled.
                     case GETSTATIC : // fall through
@@ -1285,10 +1267,11 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
     }
 
-    private Object notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn) {
+    private Object notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn, int loopCount) {
         if (instrumentation != null) {
             instrumentation.notifyReturn(frame, statementIndex, toReturn);
         }
+        LoopNode.reportLoopCount(this, loopCount);
         return toReturn;
     }
 
