@@ -240,6 +240,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI8VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadPointerVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMStructLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI16RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI1RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI32RMWNodeFactory;
@@ -846,8 +847,11 @@ public class BasicNodeFactory implements NodeFactory {
             } else {
                 throw new AssertionError(type);
             }
-        } else if (type instanceof PointerType || type instanceof StructureType || type instanceof ArrayType) {
+        } else if (type instanceof PointerType) {
             return LLVMPointerLoadNodeGen.create(targetAddress);
+        } else if (type instanceof StructureType || type instanceof ArrayType) {
+            // basically no-op
+            return LLVMStructLoadNodeGen.create(targetAddress);
         } else {
             throw new AssertionError(type + " is not supported for extractvalue");
         }
