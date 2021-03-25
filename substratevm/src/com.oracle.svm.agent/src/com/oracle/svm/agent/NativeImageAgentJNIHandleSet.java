@@ -55,6 +55,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     private JNIMethodId javaLangInvokeMethodTypeParameterArray = WordFactory.nullPointer();
     private JNIMethodId javaLangInvokeMethodTypeReturnType = WordFactory.nullPointer();
+    final JNIObjectHandle javaLangIllegalAccessException;
 
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
 
@@ -89,6 +90,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
+
+        javaLangIllegalAccessException = newClassGlobalRef(env, "java/lang/IllegalAccessException");
     }
 
     JNIMethodId getJavaLangInvokeMethodTypeReturnType(JNIEnvironment env) {

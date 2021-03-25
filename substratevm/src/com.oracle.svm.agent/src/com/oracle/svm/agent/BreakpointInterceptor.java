@@ -40,6 +40,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.getDirectCallerClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getMethodDeclaringClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getObjectArgument;
+import static com.oracle.svm.jvmtiagentbase.Support.handleException;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
@@ -81,6 +82,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.jni.JNIObjectHandles;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
@@ -750,9 +752,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, declaringClass, methodName, methodType);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         return methodMethodHandle(jni, declaringClass, callerClass, methodName, getParamTypes(jni, methodType), result);
     }
@@ -766,9 +766,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle specialCaller = getObjectArgument(4);
 
         JNIObjectHandle result = Support.callObjectMethodLLLL(jni, lookup, bp.method, declaringClass, methodName, methodType, specialCaller);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         return methodMethodHandle(jni, declaringClass, callerClass, methodName, getParamTypes(jni, methodType), result);
     }
@@ -781,9 +779,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, receiver, methodName, methodType);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         JNIObjectHandle declaringClass = Support.callObjectMethod(jni, receiver, agent.handles().javaLangObjectGetClass);
         if (clearException(jni)) {
@@ -808,9 +804,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(2);
 
         JNIObjectHandle result = Support.callObjectMethodLL(jni, lookup, bp.method, declaringClass, methodType);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         Object paramTypes = getClassArrayNames(jni, getParamTypes(jni, methodType));
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findConstructorHandle", result.notEqual(nullHandle()), paramTypes);
@@ -833,9 +827,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle fieldType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, declaringClass, fieldName, fieldType);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         String name = fromJniString(jni, fieldName);
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), name);
@@ -848,9 +840,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle className = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callObjectMethodL(jni, lookup, bp.method, className);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         String name = fromJniString(jni, className);
         traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, "findClass", result.notEqual(nullHandle()), name);
@@ -863,9 +853,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle field = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callObjectMethodL(jni, lookup, bp.method, field);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         JNIObjectHandle declaringClass = Support.callObjectMethod(jni, field, agent.handles().javaLangReflectMemberGetDeclaringClass);
         if (clearException(jni)) {
@@ -888,9 +876,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodHandle = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callStaticObjectMethodLL(jni, bp.clazz, bp.method, intfc, methodHandle);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         JNIObjectHandle intfcNameHandle = Support.callObjectMethod(jni, intfc, agent.handles().javaLangClassGetName);
         if (clearException(jni)) {
@@ -911,9 +897,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle declaringClass = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, lookup, fieldName, type, declaringClass);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         String name = fromJniString(jni, fieldName);
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), name);
@@ -953,6 +937,21 @@ final class BreakpointInterceptor {
 
         traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "methodTypeDescriptor", result.notEqual(nullHandle()), types);
         return true;
+    }
+
+    private static JNIObjectHandle shouldIncludeMethod(JNIEnvironment jni, JNIObjectHandle result) {
+        JNIObjectHandle exception = handleException(jni);
+        if (exception.notEqual(nullHandle())) {
+            if (jniFunctions().getIsInstanceOf().invoke(jni, exception, agent.handles().javaLangIllegalAccessException)) {
+                /*
+                 * We include methods if the lookup returned an IllegalAccessException to make sure
+                 * the right exception is thrown at runtime, instead of a NoSuchMethodException.
+                 */
+                return JNIObjectHandles.createLocal(Boolean.TRUE);
+            }
+            return nullHandle();
+        }
+        return result;
     }
 
     private static boolean objectStreamClassConstructor(JNIEnvironment jni, Breakpoint bp) {
