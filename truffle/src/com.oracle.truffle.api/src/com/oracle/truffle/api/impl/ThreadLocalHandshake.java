@@ -289,12 +289,6 @@ public abstract class ThreadLocalHandshake {
         private volatile boolean fastPendingSet;
         private boolean sideEffectsEnabled = true;
         private Interrupter blockedAction;
-        /*
-         * This is read outside the lock because some Interrupter's need to have resetInterrupted()
-         * called concurrently to interrupt(). interrupt() is called under the lock (avoids
-         * concurrent calls for the same thread), so resetInterrupted() must be called outside the
-         * lock.
-         */
         private boolean interrupted;
 
         private final LinkedList<HandshakeEntry> handshakes = new LinkedList<>();
