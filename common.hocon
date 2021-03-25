@@ -17,7 +17,7 @@ jdks: {
 
 devkits: {
   windows-oraclejdk8: { packages : { "devkit:VS2017-15.9.16+1" : "==0" }},
-  windows-openjdk8:   { packages : { "devkit:VS2017-15.5.5+1"  : "==0" }},
+  windows-openjdk8:   { packages : { "devkit:VS2017-15.9.16+1"  : "==0" }},
   windows-jdk11:      { packages : { "devkit:VS2017-15.9.16+1" : "==0" }},
 }
 
