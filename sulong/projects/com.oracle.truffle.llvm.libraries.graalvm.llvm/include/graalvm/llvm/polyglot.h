@@ -123,7 +123,7 @@ void *polyglot_get_arg(int i);
  * This function can be used to get the number of passed arguments, regular and
  * varargs, without using the va_list API.
  */
-int polyglot_get_arg_count();
+int polyglot_get_arg_count(void);
 
 /**
  * \defgroup typecheck type checking functions
