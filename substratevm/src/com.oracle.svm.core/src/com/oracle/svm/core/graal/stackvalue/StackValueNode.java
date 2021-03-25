@@ -35,7 +35,7 @@ import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.WordBase;
@@ -45,7 +45,7 @@ import com.oracle.svm.core.FrameAccess;
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public final class StackValueNode extends FixedWithNextNode implements LIRLowerable, IterableNodeType {
+public final class StackValueNode extends AbstractStateSplit implements LIRLowerable, IterableNodeType {
     public static final NodeClass<StackValueNode> TYPE = NodeClass.create(StackValueNode.class);
 
     /*
@@ -56,22 +56,29 @@ public final class StackValueNode extends FixedWithNextNode implements LIRLowera
 
     protected final int size;
 
-    /** All nodes with the same identity get the same stack slot assigned. */
-    protected final StackSlotIdentity slotIdentity;
+    /** All nodes with the same identity and recursion depth get the same stack slot assigned. */
+    private final StackSlotIdentity slotIdentity;
+    private int recursionDepth;
 
     /**
      * We need to make sure that the stack block is reserved only once, even when compiler
      * optimizations such as loop unrolling duplicate the actual {@link StackValueNode}. While the
      * node itself is cloned, this holder object is not cloned (it is a shallow object copy). The
-     * holders are created by the {@link StackValuePhase}.
+     * holders are created by the {@link StackValueSlotAssignmentPhase}.
      */
     protected StackSlotHolder stackSlotHolder;
 
     public static class StackSlotIdentity {
+        /**
+         * Determines if all C function calls that are inlined into the same Java method share the
+         * same stack slot.
+         */
+        protected final boolean shared;
         protected final String name;
 
-        public StackSlotIdentity(String name) {
+        public StackSlotIdentity(String name, boolean shared) {
             this.name = name;
+            this.shared = shared;
         }
 
         @Override
@@ -102,6 +109,20 @@ public final class StackValueNode extends FixedWithNextNode implements LIRLowera
         }
         this.size = (int) (numElements * elementSize);
         this.slotIdentity = slotIdentity;
+        this.recursionDepth = slotIdentity.shared ? 0 : -1;
+    }
+
+    StackSlotIdentity getSlotIdentity() {
+        return slotIdentity;
+    }
+
+    int getRecursionDepth() {
+        assert recursionDepth >= 0;
+        return recursionDepth;
+    }
+
+    void setRecursionDepth(int value) {
+        this.recursionDepth = value;
     }
 
     @Override

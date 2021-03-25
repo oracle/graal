@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,29 +24,38 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.Phase;
 
-import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotHolder;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class StackValuePhase extends Phase {
-
+/**
+ * Computes the inlined recursion depth based on the framestate. This is necessary so that the
+ * {@link StackValueSlotAssignmentPhase} can assign a shared stack slot for all
+ * {@link StackValueNode}s that have the same identity and recursion depth. As this phase uses the
+ * framestate, it needs to run before frame state assignment (FSA).
+ */
+public class StackValueRecursionDepthPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
-        Map<Object, StackSlotHolder> slots = new HashMap<>();
-
         for (StackValueNode node : graph.getNodes(StackValueNode.TYPE)) {
-            StackSlotHolder slotHolder = slots.get(node.slotIdentity);
-            if (slotHolder == null) {
-                slotHolder = new StackSlotHolder(node.size);
-                slots.put(node.slotIdentity, slotHolder);
+            if (!node.getSlotIdentity().shared) {
+                int recursionDepth = computeRecursionDepth(node);
+                node.setRecursionDepth(recursionDepth);
             }
-
-            assert node.stackSlotHolder == null;
-            node.stackSlotHolder = slotHolder;
         }
+    }
+
+    private static int computeRecursionDepth(StackValueNode node) {
+        int result = 0;
+        FrameState cur = node.stateAfter();
+        ResolvedJavaMethod method = cur.getMethod();
+        while ((cur = cur.outerFrameState()) != null) {
+            if (method.equals(cur.getMethod())) {
+                result++;
+            }
+        }
+        return result;
     }
 }
