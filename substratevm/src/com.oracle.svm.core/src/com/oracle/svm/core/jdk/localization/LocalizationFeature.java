@@ -505,7 +505,9 @@ public abstract class LocalizationFeature implements Feature {
             String errorMessage = "The bundle named: " + baseName + ", has not been found. " +
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
-            trace(errorMessage);
+            // Checkstyle: stop
+            System.out.println(errorMessage);
+            // Checkstyle: resume
         }
     }
 
@@ -516,7 +518,7 @@ public abstract class LocalizationFeature implements Feature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        trace("Adding bundle " + bundleName);
+        trace("Adding bundle " + bundleName + ", locale " + locale);
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
          * down to the root.
