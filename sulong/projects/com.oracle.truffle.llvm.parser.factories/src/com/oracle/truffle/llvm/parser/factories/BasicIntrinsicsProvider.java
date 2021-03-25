@@ -535,7 +535,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("dlopen", (args, nodeFactory) -> LLVMDLOpenNodeGen.create(args.get(1), args.get(2)));
         add("dlsym", (args, nodeFactory) -> LLVMDLSymNodeGen.create(args.get(1), args.get(2)));
         add("dlclose", (args, nodeFactory) -> LLVMDLCloseNodeGen.create(args.get(1)));
-        add("dlerror", (args, nodeFactory) -> LLVMDLErrorNodeGen.create());
     }
 
     private static void registerMemoryFunctionIntrinsics() {

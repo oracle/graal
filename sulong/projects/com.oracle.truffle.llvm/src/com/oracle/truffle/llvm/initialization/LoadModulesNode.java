@@ -210,7 +210,11 @@ public final class LoadModulesNode extends LLVMRootNode {
             LLVMScope scope = loadModule(frame, context);
             // Only the root library (not a dependency) will scope a non-null scope.
             if (scope != null) {
-                return new SulongLibrary(sourceName, scope, main, context, parserRuntime.getLocator());
+                SulongLibrary library = new SulongLibrary(sourceName, scope, main, context, parserRuntime.getLocator());
+                if (main != null) {
+                    context.setMainLibrary(library);
+                }
+                return library;
             }
         }
         return null;
