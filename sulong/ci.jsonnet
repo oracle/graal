@@ -69,13 +69,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  sulong_strict_native_image:: {
-    job::"strict-native-image",
-    run: [
-      ["mx", "--dynamicimports", "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", "gate", "--tags", "build"],
-    ],
-  },
-
   builds: [ sc.defBuild(b) for b in [
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + common.eclipse + sc.gateTags("style") + { name: "gate-sulong-style-jdk8-linux-amd64" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + common.eclipse + common.jdt + sc.gateTags("fullbuild") + { name: "gate-sulong-fullbuild-jdk8-linux-amd64" },
@@ -98,8 +91,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.labsjdk_ce_11 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk11-linux-aarch64", timelimit: "30:00" },
     sc.gate + $.sulong + sc.labsjdk_ce_11 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build") + $.sulong_test_toolchain + { name: "gate-sulong-build-jdk11-linux-amd64" },
-
-    sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + $.sulong_strict_native_image + { name: "gate-sulong-strict-native-image-jdk8-linux-amd64" },
 
     sc.weekly + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.sulong_weekly_notifications + $.sulong_coverage { name: "weekly-sulong-coverage-jdk8-linux-amd64" },
   ]],
