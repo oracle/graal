@@ -121,9 +121,8 @@ public class JfrSymbolRepository implements JfrRepository {
 
     private void replaceDotWithSlash(byte[] utf8String) {
         for (int i = 0; i < utf8String.length; i++) {
-            // '.' is 46 and '/' is 47 for StandardCharsets.UTF_8
-            if (utf8String[i] == 46) {
-                utf8String[i] = 47;
+            if (utf8String[i] == '.') {
+                utf8String[i] = '/';
             }
         }
     }
