@@ -115,7 +115,7 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
     }
 
     void registerLibrary(String libname) {
-        if (libname != null && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) != Boolean.TRUE) {
+        if (libname != null && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) == null) {
             /*
              * If a library is in our list of static standard libraries, add the library to the
              * linker command.
