@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -63,7 +64,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
         AbstractBeginNode falseBegin = graph.add(new BeginNode());
         falseBegin.setNext(falseEnd);
 
-        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, 0.5));
+        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, BranchProbabilityData.unknown()));
         graph.start().setNext(ifNode);
 
         AbstractMergeNode merge = graph.add(new MergeNode());

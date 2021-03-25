@@ -57,6 +57,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -92,7 +93,7 @@ public abstract class LoopTransformations {
         loop.inside().duplicate().insertBefore(loop);
         if (loop.isCounted()) {
             // For counted loops we assume that we have an effect on the loop frequency.
-            loop.loopBegin().setLoopFrequency(Math.max(1.0, loop.loopBegin().loopFrequency() - 1));
+            loop.loopBegin().setLoopFrequency(loop.loopBegin().profileData().decrementFrequency(1.0));
         }
         loop.loopBegin().incrementPeelings();
     }
@@ -212,7 +213,7 @@ public abstract class LoopTransformations {
             if (exit.next().hasExactlyOneUsage() && exit.next().usages().first() instanceof LoopBeginNode) {
                 LoopBeginNode possiblePostLoopBegin = (LoopBeginNode) exit.next().usages().first();
                 if (possiblePostLoopBegin.isPostLoop()) {
-                    possiblePostLoopBegin.setLoopFrequency(Math.max(1.0, loop.loopBegin().getUnrollFactor() - 1));
+                    possiblePostLoopBegin.setLoopFrequency(loop.loopBegin().profileData().copy(loop.loopBegin().getUnrollFactor() - 1));
                     break;
                 }
             }
@@ -383,9 +384,9 @@ public abstract class LoopTransformations {
             updatePreLoopLimit(preCounted);
         }
         double originalFrequency = loop.loopBegin().loopFrequency();
-        preLoopBegin.setLoopFrequency(1.0);
-        mainLoopBegin.setLoopFrequency(Math.max(1.0, mainLoopBegin.loopFrequency() - 2));
-        postLoopBegin.setLoopFrequency(1.0);
+        preLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
+        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().decrementFrequency(2.0));
+        postLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
         preLoopBegin.setLoopOrigFrequency(originalFrequency);
         mainLoopBegin.setLoopOrigFrequency(originalFrequency);
         postLoopBegin.setLoopOrigFrequency(originalFrequency);

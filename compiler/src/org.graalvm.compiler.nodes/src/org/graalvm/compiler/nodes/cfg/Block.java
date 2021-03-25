@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -287,9 +288,10 @@ public final class Block extends AbstractBlockBase<Block> {
      * However, since we know the loop is exited at some point the code after the loop has again a
      * block frequency set to 1 (loop entry frequency).
      *
-     * Graal {@link IfNode#setTrueSuccessorProbability(double) sets the profiles} during parsing and
-     * later computes loop frequencies for {@link LoopBeginNode}. Finally, the frequency for basic
-     * {@link Block}s is set during {@link ControlFlowGraph} construction.
+     * Graal {@linkplain IfNode#setTrueSuccessorProbability(BranchProbabilityData) sets the
+     * profiles} during parsing and later computes loop frequencies for {@link LoopBeginNode}.
+     * Finally, the frequency for basic {@link Block}s is set during {@link ControlFlowGraph}
+     * construction.
      */
     @Override
     public double getRelativeFrequency() {

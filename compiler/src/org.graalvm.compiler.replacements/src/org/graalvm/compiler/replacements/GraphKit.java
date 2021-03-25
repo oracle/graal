@@ -52,6 +52,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -466,13 +467,13 @@ public class GraphKit implements GraphBuilderTool {
      * {@link #endIf} to close the if-block.
      *
      * @param condition The condition for the if-block
-     * @param trueProbability The estimated probability the condition is true
+     * @param profileData The estimated probability the condition is true
      * @return the created {@link IfNode}.
      */
-    public IfNode startIf(LogicNode condition, double trueProbability) {
+    public IfNode startIf(LogicNode condition, BranchProbabilityData profileData) {
         AbstractBeginNode thenSuccessor = graph.add(new BeginNode());
         AbstractBeginNode elseSuccessor = graph.add(new BeginNode());
-        IfNode node = append(new IfNode(condition, thenSuccessor, elseSuccessor, trueProbability));
+        IfNode node = append(new IfNode(condition, thenSuccessor, elseSuccessor, profileData));
         lastFixedNode = null;
 
         IfStructure s = new IfStructure();
@@ -516,7 +517,7 @@ public class GraphKit implements GraphBuilderTool {
     }
 
     /**
-     * Ends an if block started with {@link #startIf(LogicNode, double)}.
+     * Ends an if block started with {@link #startIf(LogicNode, BranchProbabilityData)}.
      *
      * @return the created merge node, or {@code null} if no merge node was required (for example,
      *         when one part ended with a control sink).

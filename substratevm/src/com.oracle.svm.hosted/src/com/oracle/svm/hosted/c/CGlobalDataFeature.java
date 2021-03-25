@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.c;
 
 import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -56,6 +55,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
@@ -163,7 +163,7 @@ public class CGlobalDataFeature implements GraalFeature {
                     predecessor.setNext(null);
                     AbstractBeginNode falseBegin = b.add(new BeginNode());
                     trueBegin.setNext(null);
-                    IfNode ifNode = b.add(new IfNode(condition, trueBegin, falseBegin, NOT_LIKELY_PROBABILITY));
+                    IfNode ifNode = b.add(new IfNode(condition, trueBegin, falseBegin, BranchProbabilityNode.NOT_LIKELY_PROFILE));
                     falseBegin.setNext(null);
                     predecessor.setNext(ifNode);
 

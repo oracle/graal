@@ -213,12 +213,15 @@ public class StaticAnalysisResults implements ProfilingInfo {
 
     @Override
     public boolean isMature() {
-        /* Static analysis results are definitely correct and do not change. */
-        return true;
+        /*
+         * Static analysis results are definitely correct and do not change, but do not provide
+         * mature branch probability information.
+         */
+        return false;
     }
 
     @Override
     public void setMature() {
-        /* Nothing to do, results are always mature. */
+        /* Nothing to do, results cannot change. */
     }
 }

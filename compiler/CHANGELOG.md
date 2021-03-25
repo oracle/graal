@@ -11,3 +11,4 @@ Box node optimization is enabled per default. Disable it with `-Dgraal.ReuseOutO
 This improves ConcurrentHashMap performance.
 * (GR-29337) Volatile loads were losing type information about the underlying field, resulting in unneeded casts.
 This improves ConcurrentHashMap performance.
+* (GR-28956) Use more informative `ProfileData` objects instead of raw branch probabilities and loop frequencies.
