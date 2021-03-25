@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinAMD64Syscall> {
 
     public static final int RTLD_Global_Darwin = 8;
+    public static final int RTLD_First_Darwin = 100;
 
     DarwinAMD64PlatformCapability(boolean loadCxxLibraries) {
         super(DarwinAMD64Syscall.class, loadCxxLibraries);
@@ -51,6 +52,11 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
     @Override
     public boolean isGlobalDLOpenFlagSet(int flag) {
         return (flag & RTLD_Global_Darwin) == RTLD_Global_Darwin;
+    }
+
+    @Override
+    public boolean isFirstDLOpenFlagSet(int flag) {
+        return (flag & RTLD_First_Darwin) == RTLD_First_Darwin;
     }
 
     @Override

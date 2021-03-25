@@ -67,7 +67,8 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         RTLD_LAZY,          // 1 1
         RTLD_NOW,           // 2 2
         RTLD_GLOBAL,        // 256 8
-        RTLD_LOCAL;         // 0 4
+        RTLD_LOCAL,         // 0 4
+        RTLD_FIRST;        // - 100
 
         public boolean isActive(RTLDFlags phase) {
             return phase == this;
@@ -106,6 +107,8 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         // Default settings for RTLD flags.
         RTLDFlags globalOrLocal = RTLD_LOCAL;
         RTLDFlags lazyOrNow = RTLD_NOW;
+        boolean hasFirstFlag;
+
         // Check for flag settings for each platform.
         PlatformCapability<?> sysContextExt = LLVMLanguage.getLanguage().getCapability(PlatformCapability.class);
         if (sysContextExt.isGlobalDLOpenFlagSet(flag)) {
@@ -114,8 +117,9 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         if (sysContextExt.isLazyDLOpenFlagSet(flag)) {
             lazyOrNow = RTLD_LAZY;
         }
+        hasFirstFlag = sysContextExt.isFirstDLOpenFlagSet(flag);
         try {
-            return LLVMManagedPointer.create(new LLVMDLHandler(loadLibrary(ctx, globalOrLocal, lazyOrNow, flag, file, readStr)));
+            return LLVMManagedPointer.create(new LLVMDLHandler(loadLibrary(ctx, globalOrLocal, lazyOrNow, hasFirstFlag, flag, file, readStr)));
         } catch (RuntimeException e) {
             ctx.setDLError(1);
             return LLVMNativePointer.createNull();
@@ -123,12 +127,12 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
     }
 
     @TruffleBoundary
-    protected Object loadLibrary(LLVMContext ctx, RTLDFlags globalOrLocal, RTLDFlags lazyOrNow, int flag, Object file, LLVMReadStringNode readStr) {
+    protected Object loadLibrary(LLVMContext ctx, RTLDFlags globalOrLocal, RTLDFlags lazyOrNow, boolean hasFirstFlag, int flag, Object file, LLVMReadStringNode readStr) {
         if (file.equals(LLVMNativePointer.createNull())) {
-            if (lazyOrNow.isActive(RTLD_LAZY)) {
-                return LLVMNativePointer.createNull();
+            if (ctx.getMainLibrary() != null && (lazyOrNow.isActive(RTLD_LAZY) || hasFirstFlag)) {
+                return ctx.getMainLibrary();
             } else {
-                throw new IllegalStateException("Cannot dlopen NULL");
+                return LLVMNativePointer.createNull();
             }
         }
 
