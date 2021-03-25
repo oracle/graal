@@ -71,8 +71,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
-    public void register(Plugins plugins, Replacements replacements, Architecture architecture, boolean explicitUnsafeNullChecks, boolean registerForeignCallMath, boolean useFMAIntrinsics,
-                    OptionValues options) {
+    public void register(Plugins plugins, Replacements replacements, Architecture architecture, boolean registerForeignCallMath, boolean useFMAIntrinsics, OptionValues options) {
         register(plugins, replacements, (AMD64) architecture, useFMAIntrinsics, options);
     }
 

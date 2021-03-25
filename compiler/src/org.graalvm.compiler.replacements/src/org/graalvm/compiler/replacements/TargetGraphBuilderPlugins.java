@@ -31,5 +31,5 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.code.Architecture;
 
 public interface TargetGraphBuilderPlugins {
-    void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerForeignCallMath, boolean useFMAIntrinsics, OptionValues options);
+    void register(Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, boolean useFMAIntrinsics, OptionValues options);
 }

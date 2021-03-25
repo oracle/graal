@@ -1233,15 +1233,14 @@ public class NativeImageGenerator {
             }
         }
 
-        final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
         final boolean arrayEqualsSubstitution = !SubstrateOptions.useLLVMBackend();
-        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, reason == ParsingReason.JITCompilation,
-                        explicitUnsafeNullChecks, arrayEqualsSubstitution, providers.getLowerer());
+        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements,
+                        reason == ParsingReason.JITCompilation, true, arrayEqualsSubstitution, providers.getLowerer());
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
-                        explicitUnsafeNullChecks, /* registerForeignCallMath */false, JavaVersionUtil.JAVA_SPEC >= 11, options);
+                        /* registerForeignCallMath */ false, JavaVersionUtil.JAVA_SPEC >= 11, options);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we
