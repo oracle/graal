@@ -752,7 +752,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, declaringClass, methodName, methodType);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         return methodMethodHandle(jni, declaringClass, callerClass, methodName, getParamTypes(jni, methodType), result);
     }
@@ -766,7 +766,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle specialCaller = getObjectArgument(4);
 
         JNIObjectHandle result = Support.callObjectMethodLLLL(jni, lookup, bp.method, declaringClass, methodName, methodType, specialCaller);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         return methodMethodHandle(jni, declaringClass, callerClass, methodName, getParamTypes(jni, methodType), result);
     }
@@ -779,7 +779,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, receiver, methodName, methodType);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         JNIObjectHandle declaringClass = Support.callObjectMethod(jni, receiver, agent.handles().javaLangObjectGetClass);
         if (clearException(jni)) {
@@ -804,7 +804,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(2);
 
         JNIObjectHandle result = Support.callObjectMethodLL(jni, lookup, bp.method, declaringClass, methodType);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         Object paramTypes = getClassArrayNames(jni, getParamTypes(jni, methodType));
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findConstructorHandle", result.notEqual(nullHandle()), paramTypes);
@@ -827,7 +827,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle fieldType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, declaringClass, fieldName, fieldType);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         String name = fromJniString(jni, fieldName);
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), name);
@@ -840,7 +840,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle className = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callObjectMethodL(jni, lookup, bp.method, className);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         String name = fromJniString(jni, className);
         traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, "findClass", result.notEqual(nullHandle()), name);
@@ -853,7 +853,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle field = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callObjectMethodL(jni, lookup, bp.method, field);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         JNIObjectHandle declaringClass = Support.callObjectMethod(jni, field, agent.handles().javaLangReflectMemberGetDeclaringClass);
         if (clearException(jni)) {
@@ -876,7 +876,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodHandle = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callStaticObjectMethodLL(jni, bp.clazz, bp.method, intfc, methodHandle);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangInvokeWrongMethodTypeException, agent.handles().javaLangIllegalArgumentException);
 
         JNIObjectHandle intfcNameHandle = Support.callObjectMethod(jni, intfc, agent.handles().javaLangClassGetName);
         if (clearException(jni)) {
@@ -897,7 +897,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle declaringClass = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, lookup, fieldName, type, declaringClass);
-        result = shouldIncludeMethod(jni, result);
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         String name = fromJniString(jni, fieldName);
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), name);
@@ -939,15 +939,18 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    private static JNIObjectHandle shouldIncludeMethod(JNIEnvironment jni, JNIObjectHandle result) {
+    private static JNIObjectHandle shouldIncludeMethod(JNIEnvironment jni, JNIObjectHandle result, JNIObjectHandle... acceptedExceptions) {
         JNIObjectHandle exception = handleException(jni);
         if (exception.notEqual(nullHandle())) {
-            if (jniFunctions().getIsInstanceOf().invoke(jni, exception, agent.handles().javaLangIllegalAccessException)) {
-                /*
-                 * We include methods if the lookup returned an IllegalAccessException to make sure
-                 * the right exception is thrown at runtime, instead of a NoSuchMethodException.
-                 */
-                return JNIObjectHandles.createLocal(Boolean.TRUE);
+            for (JNIObjectHandle acceptedException : acceptedExceptions) {
+                if (jniFunctions().getIsInstanceOf().invoke(jni, exception, acceptedException)) {
+                    /*
+                     * We include methods if the lookup returned an IllegalAccessException or a
+                     * WrongMethodTypeException to make sure the right exception is thrown at
+                     * runtime, instead of a NoSuchMethodException.
+                     */
+                    return JNIObjectHandles.createLocal(Boolean.TRUE);
+                }
             }
             return nullHandle();
         }
