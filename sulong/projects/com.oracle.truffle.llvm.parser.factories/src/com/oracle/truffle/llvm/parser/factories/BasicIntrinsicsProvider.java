@@ -77,7 +77,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCTypeIntrinsicsFac
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMToUpperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMTolowerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLCloseNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLErrorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpenNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLSymNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMExitNodeGen;
