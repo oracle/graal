@@ -72,6 +72,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   builds: [ sc.defBuild(b) for b in [
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + common.eclipse + sc.gateTags("style") + { name: "gate-sulong-style-jdk8-linux-amd64" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + common.eclipse + common.jdt + sc.gateTags("fullbuild") + { name: "gate-sulong-fullbuild-jdk8-linux-amd64" },
+    sc.Description("Recreate generated sources (parsers, etc.) and check for modification") +
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + $.sulong_gate_generated_sources { name: "gate-sulong-generated-sources-jdk8-linux-amd64" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc") + $.sulong_test_toolchain + { name: "gate-sulong-misc-jdk8-linux-amd64" },
     sc.gate + $.sulong + sc.jdk8 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,parser") + { name: "gate-sulong-parser-jdk8-linux-amd64" },
