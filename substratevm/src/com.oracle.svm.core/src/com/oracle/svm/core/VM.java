@@ -35,26 +35,21 @@ import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 
 public final class VM {
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    public static final String valueSeparator = "=";
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    private static final String versionValue = getVersionValue();
+
+    public final String version;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static String getVersionValue() {
-        String version = System.getProperty("org.graalvm.version");
-        VMError.guarantee(version != null);
-        version = VM.class.getName() + valueSeparator + "GraalVM " + version;
-        version += " Java " + JavaVersionUtil.JAVA_SPEC;
-        String config = System.getProperty("org.graalvm.config", "");
-        if (!config.isEmpty()) {
-            version += " " + config;
-        }
-        return version;
+    public VM(String config) {
+        String versionStr = System.getProperty("org.graalvm.version");
+        VMError.guarantee(versionStr != null);
+        versionStr = "GraalVM " + versionStr;
+        versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
+        versionStr += " " + config;
+        version = versionStr;
     }
 
     private static final String VERSION_INFO_SYMBOL_NAME = "__svm_version_info";
-    private static final CGlobalData<CCharPointer> VERSION_INFO = CGlobalDataFactory.createCString(versionValue, VERSION_INFO_SYMBOL_NAME);
+    private static final CGlobalData<CCharPointer> VERSION_INFO = CGlobalDataFactory.createCString(version, VERSION_INFO_SYMBOL_NAME);
 
     private static final int versionValueHash = versionValue.hashCode();
 

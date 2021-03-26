@@ -91,6 +91,10 @@ public abstract class SystemPropertiesSupport {
 
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", "Oracle Corporation");
+<<<<<<< HEAD
+=======
+        initializeProperty("java.vm.version", ImageSingletons.lookup(VM.class).version);
+>>>>>>> b66e0ee850a ([GR-30023] Provide more robust setting of org.graalvm.config.)
         initializeProperty("java.vendor", "Oracle Corporation");
         initializeProperty("java.vendor.url", "https://www.graalvm.org/");
 
