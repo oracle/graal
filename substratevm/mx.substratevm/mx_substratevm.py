@@ -434,8 +434,9 @@ def svm_gate_body(args, tasks):
         if t:
             build()
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                test_classes = ['com.oracle.truffle.api.test.TruffleSafepointTest',
-                                'com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest']
+                test_classes = [
+                    'com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest', # must run first!
+                    'com.oracle.truffle.api.test.TruffleSafepointTest']
 
                 native_unittest_args = test_classes + ['--build-args', '--macro:truffle',
                                         '-H:MaxRuntimeCompileMethods=5000',
