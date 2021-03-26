@@ -457,6 +457,24 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
             return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
 
 
+class CMakeSupport(object):
+    @staticmethod
+    def check_cmake():
+        try:
+            CMakeSupport.run_cmake(["--version"], silent=False, nonZeroIsFatal=False)
+        except OSError as e:
+            mx.abort(str(e) + "\nError executing 'cmake --version'. Are you sure 'cmake' is installed? ")
+
+    @staticmethod
+    def run_cmake(cmdline, silent, *args, **kwargs):
+        if mx._opts.verbose:
+            mx.run(["cmake"] + cmdline, *args, **kwargs)
+        else:
+            with open(os.devnull, 'w') as fnull:
+                err = fnull if silent else None
+                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
+
+
 class CMakeBuildTask(mx.NativeBuildTask):
 
     def __str__(self):
@@ -505,12 +523,6 @@ class CMakeBuildTask(mx.NativeBuildTask):
     def _guard_data(self, source_dir, cmake_config):
         return source_dir + '\n' + '\n'.join(cmake_config)
 
-    def _check_cmake(self):
-        try:
-            self.run_cmake(["--version"], silent=False, nonZeroIsFatal=False)
-        except OSError as e:
-            mx.abort(str(e) + "\nError executing 'cmake --version'. Are you sure 'cmake' is installed? ")
-
     def _need_configure(self):
         source_dir = self.subject.source_dirs()[0]
         guard_file = self.guard_file()
@@ -535,17 +547,9 @@ class CMakeBuildTask(mx.NativeBuildTask):
             # remove cache file if it exist
             os.remove(cmakefile)
         cmdline = ["-G", "Unix Makefiles", source_dir] + self.subject.cmake_config()
-        self._check_cmake()
-        self.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
+        CMakeSupport.check_cmake()
+        CMakeSupport.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
         return True
-
-    def run_cmake(self, cmdline, silent, *args, **kwargs):
-        if mx._opts.verbose:
-            mx.run(["cmake"] + cmdline, *args, **kwargs)
-        else:
-            with open(os.devnull, 'w') as fnull:
-                err = fnull if silent else None
-                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
 
     def guard_file(self):
         return os.path.join(self.subject.dir, 'mx.cmake.rebuild.guard')
