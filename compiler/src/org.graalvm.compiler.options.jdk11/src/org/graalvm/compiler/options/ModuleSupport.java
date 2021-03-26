@@ -28,6 +28,8 @@ import java.util.ServiceLoader;
 
 public class ModuleSupport {
 
+    static final boolean USE_NI_JPMS = System.getenv().getOrDefault("USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM", "false").toLowerCase().equals("true");
+
     static Iterable<OptionDescriptors> getOptionsLoader() {
         /*
          * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class loader
@@ -35,6 +37,9 @@ public class ModuleSupport {
          * As such, we need to start the provider search at the app class loader instead of the
          * platform class loader.
          */
+        if (USE_NI_JPMS) {
+            return ServiceLoader.load(ModuleSupport.class.getModule().getLayer(), OptionDescriptors.class);
+        }
         return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
     }
 }

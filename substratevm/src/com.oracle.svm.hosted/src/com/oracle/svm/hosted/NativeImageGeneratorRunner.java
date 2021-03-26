@@ -88,6 +88,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         List<String> arguments = new ArrayList<>(Arrays.asList(args));
         arguments = extractDriverArguments(arguments);
         final String[] classPath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
+        final String[] modulePath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
         int watchPID = extractWatchPID(arguments);
         TimerTask timerTask = null;
         if (watchPID >= 0) {
@@ -115,7 +116,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         int exitStatus;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, new String[0]);
+            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, modulePath);
             exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), imageClassLoader);
         } finally {
             uninstallNativeImageClassLoader();
@@ -162,7 +163,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         nativeImageSystemClassLoader.setNativeImageClassLoader(nativeImageClassLoader);
 
         if (JavaVersionUtil.JAVA_SPEC >= 11 && !nativeImageClassLoaderSupport.imagecp.isEmpty()) {
-            ModuleSupport.openModule(JavaVersionUtil.class, null);
+            ModuleSupport.openModuleByClass(JavaVersionUtil.class, null);
         }
 
         /*
@@ -298,16 +299,24 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             }
 
             String className = SubstrateOptions.Class.getValue(parsedHostedOptions);
-            if (imageKind.isExecutable && className.isEmpty()) {
+            String moduleName = SubstrateOptions.Module.getValue(parsedHostedOptions);
+            if (imageKind.isExecutable && moduleName.isEmpty() && className.isEmpty()) {
                 throw UserError.abort("Must specify main entry point class when building %s native image. Use '%s'.", imageKind,
                                 SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
             }
 
-            if (!className.isEmpty()) {
+            if (!className.isEmpty() || !moduleName.isEmpty()) {
                 Method mainEntryPoint;
                 Class<?> mainClass;
                 try {
                     Object jpmsModule = null;
+                    if (!moduleName.isEmpty()) {
+                        jpmsModule = classLoader.findModule(moduleName)
+                                        .orElseThrow(() -> {
+                                            String errorMsg = "Module " + moduleName + " for mainclass not found.";
+                                            return UserError.abort(errorMsg);
+                                        });
+                    }
                     mainClass = classLoader.loadClassFromModule(jpmsModule, className);
                 } catch (ClassNotFoundException ex) {
                     throw UserError.abort("Main entry point class '%s' not found.", className);
@@ -549,6 +558,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     public static class JDK9Plus {
 
         public static void main(String[] args) {
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.sdk", false);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci", false);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.options;
+package hello.lib;
 
-import java.util.ServiceLoader;
-
-public class ModuleSupport {
-
-    static final boolean USE_NI_JPMS;
-
-    static {
-        USE_NI_JPMS = false;
-    }
-
-    static Iterable<OptionDescriptors> getOptionsLoader() {
-        // On JDK 8, Graal and its extensions are loaded by the same class loader.
-        return ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+public class Greeter {
+    public static void greet() {
+        System.out.println("Hello Module World!");
     }
 }

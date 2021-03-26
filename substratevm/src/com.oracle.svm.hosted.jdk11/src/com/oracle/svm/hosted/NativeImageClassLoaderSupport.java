@@ -39,6 +39,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoaderSupport {
@@ -58,16 +59,11 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
 
         moduleController = createModuleController(imagemp.toArray(Path[]::new), classPathClassLoader);
         ModuleLayer moduleLayer = moduleController.layer();
+        moduleFinder = moduleLayer::findModule;
         if (moduleLayer.modules().isEmpty()) {
             classLoader = classPathClassLoader;
-            moduleFinder = null;
         } else {
-            /*
-             * java.lang.ModuleLayer.defineModulesWithOneLoader creates a jdk.internal.loader.Loader
-             * which is a SecureClassLoader.
-             */
             classLoader = moduleLayer.modules().iterator().next().getClassLoader();
-            moduleFinder = moduleLayer::findModule;
         }
     }
 
@@ -106,9 +102,14 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
         if (m.getClassLoader() != classLoader) {
             throw new IllegalArgumentException("Argument `module` is java.lang.Module from different ClassLoader");
         }
-        Class<?> clazz = Class.forName(m, className);
+        String moduleClassName = className;
+        if (moduleClassName.isEmpty()) {
+            moduleClassName = m.getDescriptor().mainClass().orElseThrow(
+                            () -> UserError.abort("module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", m.getName()));
+        }
+        Class<?> clazz = Class.forName(m, moduleClassName);
         if (clazz == null) {
-            throw new ClassNotFoundException(className);
+            throw new ClassNotFoundException(moduleClassName);
         }
         return clazz;
     }

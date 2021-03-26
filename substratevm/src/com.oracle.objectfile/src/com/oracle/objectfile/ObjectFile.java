@@ -1281,8 +1281,12 @@ public abstract class ObjectFile {
         // sun.misc, so we need to call it reflectively to ensure binary compatibility between JDKs
         Object cleaner;
         try {
-            cleaner = getMethodAndSetAccessible(buffer.getClass(), "cleaner").invoke(buffer);
-            getMethodAndSetAccessible(cleaner.getClass(), "clean").invoke(cleaner);
+            Class<? extends ByteBuffer> bufferClass = buffer.getClass();
+            ModuleAccess.openModuleByClass(bufferClass, ObjectFile.class);
+            cleaner = getMethodAndSetAccessible(bufferClass, "cleaner").invoke(buffer);
+            Class<?> cleanerClass = cleaner.getClass();
+            ModuleAccess.openModuleByClass(cleanerClass, ObjectFile.class);
+            getMethodAndSetAccessible(cleanerClass, "clean").invoke(cleaner);
         } catch (ReflectiveOperationException e) {
             throw new IOException("Could not clean mapped ByteBuffer", e);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+module moduletests.hello.lib {
+    exports hello.lib;
+}
 
-@Platforms(Platform.HOSTED_ONLY.class)
-package com.oracle.svm.hosted.jni;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;

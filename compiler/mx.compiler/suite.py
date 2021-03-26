@@ -2104,13 +2104,14 @@ suite = {
           "jdk.unsupported" # sun.misc.Unsafe
         ],
         "exports" : [
-          "* to com.oracle.graal.graal_enterprise",
+          "* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise",
           "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver",
+          "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
           "org.graalvm.compiler.phases.common.jmx      to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
           "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
           "org.graalvm.util                            to jdk.internal.vm.compiler.management",
