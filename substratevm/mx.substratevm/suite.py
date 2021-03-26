@@ -1054,6 +1054,9 @@ suite = {
                     ],
                     "java.base": [
                         "sun.reflect.annotation",
+                        "sun.reflect.generics.reflectiveObjects",
+                        "sun.reflect.generics.repository",
+                        "sun.reflect.generics.tree",
                         "sun.util.calendar",
                         "sun.security.jca",
                         "sun.security.util",
