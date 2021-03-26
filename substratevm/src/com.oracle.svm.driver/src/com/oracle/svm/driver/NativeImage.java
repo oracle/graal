@@ -109,7 +109,6 @@ public class NativeImage {
     }
 
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
-    static final String graalvmConfig = System.getProperty("org.graalvm.config", "");
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
@@ -784,7 +783,6 @@ public class NativeImage {
             addImageBuilderJavaArgs("-Djava.awt.headless=true");
         }
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
-        addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
 
