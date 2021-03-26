@@ -43,6 +43,7 @@ from __future__ import print_function
 from abc import ABCMeta
 
 import mx
+import mx_javamodules
 import mx_subst
 import os
 import shutil
