@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -90,6 +91,7 @@ import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -657,5 +659,29 @@ public final class SVMHost implements HostVM {
         } catch (Throwable e) {
             throw bb.getDebug().handle(e);
         }
+    }
+
+    public static class Options {
+        @Option(help = "Enable the behavior of old GraalVM versions. When enabled, interfaces not available for the current platform are filtered.")//
+        public static final HostedOptionKey<Boolean> PlatformInterfaceCompatibilityMode = new HostedOptionKey<>(false);
+    }
+
+    @Override
+    public boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
+        if (!universe.platformSupported(interfaceType)) {
+            String message = "The interface " + interfaceType.toJavaName(true) + " is not available in the current platform, but used by " + implementingType.toJavaName(true) + ". " +
+                            "GraalVM before version 21.2 ignored such interfaces, but this was an oversight.";
+
+            String commandArgument = SubstrateOptionsParser.commandArgument(Options.PlatformInterfaceCompatibilityMode, "+");
+            if (Options.PlatformInterfaceCompatibilityMode.getValue()) {
+                System.out.println("Warning: " + message + " The interface is filtered because the compatibility option " + commandArgument +
+                                " is used. This option will be removed in a future GraalVM version.");
+                return true;
+            } else {
+                throw new UnsupportedFeatureException(
+                                message + " The old behavior can be temporarily restored using the option " + commandArgument + ". This option will be removed in a future GraalVM version.");
+            }
+        }
+        return false;
     }
 }

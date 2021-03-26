@@ -98,4 +98,8 @@ public interface HostVM {
         return AnalysisParsedGraph.parseBytecode(bb, analysisMethod);
     }
 
+    @SuppressWarnings("unused")
+    default boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
+        return false;
+    }
 }
