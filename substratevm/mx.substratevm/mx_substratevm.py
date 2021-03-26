@@ -1547,6 +1547,14 @@ class SubstrateCompilerFlagsBuildTask(mx.ArchivableBuildTask):
     def build(self):
         self.subject._computeResults()
 
+    def clean(self, forBuild=False):
+        driver_resources_dir = join(mx.dependency('substratevm:com.oracle.svm.driver').dir, 'resources')
+        ancient_config_files = glob(join(driver_resources_dir, 'graal-compiler-flags-*.config'))
+        for f in ancient_config_files:
+            mx.warn('Removing leftover ' + f)
+            os.remove(f)
+
+
 def _ensure_vm_built(config):
     # build "jvm" config used by native-image and native-image-configure commands
     rebuild_vm = False
