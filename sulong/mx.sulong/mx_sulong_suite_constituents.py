@@ -568,11 +568,16 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
         super(AbstractSulongNativeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
 
 
-class CMakeProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+class CMakeMixin(object):
+    def __init__(self, *args, **kwargs):
+        super(CMakeMixin, self).__init__(*args, **kwargs)
+        cmake_config = kwargs.pop('cmakeConfig', {})
+        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
+
+
+class CMakeProject(CMakeMixin, AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
         super(CMakeProject, self).__init__(suite, name, deps, workingSets, subDir, results=results, output=output, **args)
-        cmake_config = args.pop('cmakeConfig', {})
-        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
         self.dir = self.getOutput()
 
     def getBuildTask(self, args):
