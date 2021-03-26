@@ -128,11 +128,11 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
 
-            case "asInterfaceInstance":
             case "getDeclaredMethods": {
                 configuration.getOrCreateType(clazz).setAllDeclaredMethods();
                 break;
             }
+            case "asInterfaceInstance":
             case "getMethods": {
                 configuration.getOrCreateType(clazz).setAllPublicMethods();
                 break;
