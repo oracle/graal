@@ -654,10 +654,22 @@ public class NativeImage {
         } catch (NativeImage.NativeImageError | InvalidPathException e) {
             throw showError("The given " + oHPath + imagePath + " argument does not specify a valid path", e);
         }
+        boolean[] isPortable = {true};
         String classpathString = imageClasspath.stream()
-                        .map(imagePathPath::relativize)
+                        .map(path -> {
+                            try {
+                                return imagePathPath.relativize(path);
+                            } catch (IllegalArgumentException e) {
+                                isPortable[0] = false;
+                                return path;
+                            }
+                        })
                         .map(ClasspathUtils::classpathToString)
                         .collect(Collectors.joining(File.pathSeparator));
+        if (!isPortable[0]) {
+            showWarning("The produced fallback image will not be portable, because not all classpath entries" +
+                            " could be relativized (e.g., they are on another drive).");
+        }
         buildArgs.add(oHPath + imagePathPath.toString());
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorClasspath) + classpathString);
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorMainClass) + mainClass);
