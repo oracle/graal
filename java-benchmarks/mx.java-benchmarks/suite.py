@@ -5,15 +5,21 @@ suite = {
   "javac.lint.overrides": "none",
 
   "libraries" : {
+    "TIKA_1.0.0": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.0-SNAPSHOT.zip"],
+      "sha1": "b41a4d1985027cedb768b013f628fb622e02cd0a",
+      "packedResource": True,
+    },
+
     "PETCLINIC_0.0.1": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.0.1-SNAPSHOT.zip"],
-      "sha1": "8b05d51414a63d63ffc4b2e0ca7a240e1950b839",
+      "sha1": "4991c1d01f0fcb65e1baf7638601d32b0178dd76",
       "packedResource": True,
     },
 
     "SHOPCART_0.3.1": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.1.zip"],
-      "sha1": "a15ab9e66da1cefc7cff6b1464038f29481e8d7a",
+      "sha1": "b701cffcc76d3772678c1a23f9ddbb40ae1a93d2",
       "packedResource": True,
     },
 
