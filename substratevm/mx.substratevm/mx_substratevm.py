@@ -1002,7 +1002,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     polyglot_lib_build_args=[
         "--macro:truffle",
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
-        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${.}/../../../polyglot/",
+        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${java.home}" + ("/jre" if svm_java8() else "") + "/lib/polyglot/",
         "-H:CStandard=C11",
         "-H:+SpawnIsolates",
     ],
