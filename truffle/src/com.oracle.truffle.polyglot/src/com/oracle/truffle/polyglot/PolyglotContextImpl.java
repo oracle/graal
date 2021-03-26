@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -802,8 +802,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     void checkClosed() {
-        if (invalid && closingThread != Thread.currentThread()) {
-            // try closing if this is the last thread
+        if (invalid && closingThread != Thread.currentThread() && invalidMessage != null) {
+            /*
+             * If invalidMessage == null, then invalid flag was set by close.
+             */
             throw createCancelException(null);
         }
         if (closed) {
@@ -997,7 +999,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     public void close(Context sourceContext, boolean cancelIfExecuting) {
         try {
             checkCreatorAccess(sourceContext, "closed");
-            closeAndMaybeWait(cancelIfExecuting);
+            if (cancelIfExecuting) {
+                /*
+                 * Cancel does invalidate. We always need to invalidate before force-closing a
+                 * context that might be active in other threads.
+                 */
+                cancel(false, null, true);
+            } else {
+                closeAndMaybeWait(false);
+            }
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(engine, t);
         }
@@ -1384,6 +1394,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     cancelling = false;
                     if (success) {
                         closed = true;
+                        invalid = true;
                     }
                     // triggers a thread changed event which requires slow path enter
                     setCachedThreadInfo(PolyglotThreadInfo.NULL);
@@ -1933,6 +1944,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     synchronized boolean invalidate(boolean resourceLimit, String message) {
+        assert message != null;
         if (!invalid) {
             setCachedThreadInfo(PolyglotThreadInfo.NULL);
             /*

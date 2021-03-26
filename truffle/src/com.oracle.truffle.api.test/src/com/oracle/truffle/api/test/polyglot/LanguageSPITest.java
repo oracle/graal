@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -48,9 +50,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -101,12 +100,12 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -364,8 +363,14 @@ public class LanguageSPITest {
                 if (!(cause instanceof PolyglotException)) {
                     throw new AssertionError(cause);
                 }
-                PolyglotException polyglotException = (PolyglotException) cause;
-                assertTrue(polyglotException.isInterrupted());
+                /*
+                 * If interrupt is caused by polyglot context cancel, then the polyglot exception
+                 * should have isCancelled() == true, but that does not currently work (GR-28789)
+                 * and isInterrupted() != true either, because the exception type cannot be obtained
+                 * from interop, because context cancel made the context invalid.
+                 */
+                // PolyglotException polyglotException = (PolyglotException) cause;
+                // assertTrue(polyglotException.isCancelled());
             }
             engine.close();
         } finally {
