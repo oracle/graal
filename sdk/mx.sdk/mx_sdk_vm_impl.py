@@ -871,7 +871,8 @@ def _components_set(components=None, stage1=False):
     components_set = set([c.short_name for c in components])
     if stage1:
         components_set.add('stage1')
-    else:
+    elif 'svm' in components_set:
+        # forced bash launchers and skipped libraries only make a difference if we have svm
         for component in components:
             for launcher_config in _get_launcher_configs(component):
                 if _force_bash_launchers(launcher_config):
