@@ -56,6 +56,7 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -446,6 +447,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         GraalServices.load(PartialEvaluatorConfiguration.class);
         GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(HotSpotMBeanOperationProvider.class);
+        GraalServices.load(DisassemblerProvider.class);
 
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
             InvocationPlugins compilerPlugins = hotSpotSubstrateReplacements.getGraphBuilderPlugins().getInvocationPlugins();
