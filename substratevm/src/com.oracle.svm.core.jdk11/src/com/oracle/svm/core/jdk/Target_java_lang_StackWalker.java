@@ -359,6 +359,7 @@ final class Target_java_lang_StackWalker {
             this.thread = curThread;
         }
 
+        @Override
         protected void invalidate() {
             walk = WordFactory.nullPointer();
         }
@@ -384,6 +385,7 @@ final class Target_java_lang_StackWalker {
          * Get virtual frames to process in the next loop iteration, then update the physical stack
          * walker to the next physical frame to be ready when all virtual frames are processed.
          */
+        @Override
         @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
         protected void advancePhysically() {
             CodePointer ip = FrameAccess.singleton().readReturnAddress(walk.getSP());

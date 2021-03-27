@@ -121,6 +121,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getInt(a, TestClassInt.fieldOffset1) + UNSAFE.getInt(a, TestClassInt.fieldOffset2);
     }
 
+    @SuppressWarnings("cast")
     public static int unsafeSnippet5(long i1, boolean c) {
         int[] t = new int[2];
         UNSAFE.putLong(t, (long) Unsafe.ARRAY_INT_BASE_OFFSET, i1);
@@ -131,6 +132,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(t, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 6 + Unsafe.ARRAY_INT_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static int unsafeSnippet6(long i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -141,6 +143,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(b, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 6 + Unsafe.ARRAY_INT_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static int unsafeSnippet7(int i1, boolean c) {
         byte[] b = new byte[4];
         UNSAFE.putInt(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -151,6 +154,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(b, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 0 + Unsafe.ARRAY_INT_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static int unsafeSnippet8(long i1, int i2, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -162,6 +166,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(b, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 2 + Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static int unsafeSnippet9(long i1, short i2, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -173,6 +178,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(b, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 6 + Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static int unsafeSnippet10(double i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putDouble(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -183,6 +189,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(b, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 2 + Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static float unsafeSnippet11(double i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putDouble(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -193,6 +200,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getFloat(b, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 4 + Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static long unsafeSnippet12(double i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putDouble(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -203,6 +211,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static short unsafeSnippet13(short i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putShort(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -213,6 +222,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static int unsafeSnippet14(long l, int i, boolean c) {
         int[] t = new int[2];
         if (i < l) {
@@ -227,6 +237,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(t, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 6 + Unsafe.ARRAY_INT_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static int unsafeSnippet15(long i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -255,6 +266,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return b;
     }
 
+    @SuppressWarnings("cast")
     public static long unsafeSnippet17(long i1, boolean c) {
         byte[] t = new byte[8];
         UNSAFE.putLong(t, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
@@ -265,6 +277,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getLong(t, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    @SuppressWarnings("cast")
     public static long unsafeSnippet18(int i1, boolean c) {
         byte[] t = new byte[8];
         UNSAFE.putInt(t, getUnsafeByteArrayOffset(3), i1);

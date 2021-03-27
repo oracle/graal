@@ -118,6 +118,7 @@ public abstract class ByteArraySupport {
      * @return True if if the access is in bounds, false otherwise
      * @since 20.3
      */
+    @SuppressWarnings("static-method")
     public final boolean inBounds(byte[] buffer, int startByteOffset, int length) {
         return length >= 1 && startByteOffset >= 0 && startByteOffset <= buffer.length - length;
     }
