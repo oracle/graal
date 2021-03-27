@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.core.test;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -33,12 +36,16 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 
 /**
- *
+ * Tests {@link MemoryAccessProvider#readObjectConstant} and
+ * {@link MemoryAccessProvider#readPrimitiveConstant} by way of {@link Stamp#readConstant}.
  */
 public class StampMemoryAccessTest extends GraalCompilerTest {
 
+    long longField1 = Double.doubleToRawLongBits(Double.MAX_VALUE);
+    long longField2 = Double.doubleToRawLongBits(Double.MIN_VALUE);
+
     @Test
-    public void testReadPrimitive() {
+    public void testReadPrimitiveOutOfBounds() {
         MemoryAccessProvider memory = getConstantReflection().getMemoryAccessProvider();
         Stamp stamp = StampFactory.forKind(JavaKind.Long);
         JavaConstant objectBase = getSnippetReflection().forObject("");
@@ -48,12 +55,47 @@ public class StampMemoryAccessTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testReadObject() {
+    public void testReadObjectOutOfBounds() {
         MemoryAccessProvider memory = getConstantReflection().getMemoryAccessProvider();
         Stamp stamp = StampFactory.forKind(JavaKind.Object);
         JavaConstant objectBase = getSnippetReflection().forObject("");
         assertTrue(stamp.readConstant(memory, objectBase, 128) == null);
         JavaConstant arrayBase = getSnippetReflection().forObject(new int[]{});
         assertTrue(stamp.readConstant(memory, arrayBase, 128) == null);
+    }
+
+    @Test
+    public void testReadPrimitiveUnaligned() throws Exception {
+        MemoryAccessProvider memory = getConstantReflection().getMemoryAccessProvider();
+        Object object = this;
+        JavaConstant objectBase = getSnippetReflection().forObject(object);
+        Field f = getClass().getDeclaredField("longField1");
+        long baseDisplacement = UNSAFE.objectFieldOffset(f);
+        for (JavaKind kind : JavaKind.values()) {
+            if (kind.isPrimitive() && kind != JavaKind.Void && kind.getByteCount() > 1) {
+                for (long offset = 1; offset < kind.getByteCount(); offset++) {
+                    long displacement = baseDisplacement + offset;
+                    Stamp stamp = StampFactory.forKind(kind);
+                    JavaKind stackKind = stamp.getStackKind();
+                    JavaConstant expect = readPrimitiveUnsafe(stackKind, object, displacement);
+                    Assert.assertEquals(expect, stamp.readConstant(memory, objectBase, displacement));
+                }
+            }
+        }
+    }
+
+    private static JavaConstant readPrimitiveUnsafe(JavaKind kind, Object object, long displacement) {
+        switch (kind) {
+            case Int:
+                return JavaConstant.forInt(UNSAFE.getInt(object, displacement));
+            case Long:
+                return JavaConstant.forLong(UNSAFE.getLong(object, displacement));
+            case Float:
+                return JavaConstant.forFloat(UNSAFE.getFloat(object, displacement));
+            case Double:
+                return JavaConstant.forDouble(UNSAFE.getDouble(object, displacement));
+            default:
+                throw new AssertionError("Unexpected kind: " + kind);
+        }
     }
 }
