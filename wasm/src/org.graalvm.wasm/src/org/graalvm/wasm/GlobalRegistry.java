@@ -122,11 +122,35 @@ public class GlobalRegistry {
         return (int) globals[address];
     }
 
+    public int loadFloatAsInt(int address) {
+        if (address < 0) {
+            final Object global = externalGlobals[-address - 1];
+            try {
+                return Float.floatToRawIntBits((float) InteropLibrary.getUncached().readMember(global, "value"));
+            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
+            }
+        }
+        return (int) globals[address];
+    }
+
     public long loadAsLong(int address) {
         if (address < 0) {
             final Object global = externalGlobals[-address - 1];
             try {
                 return (long) InteropLibrary.getUncached().readMember(global, "value");
+            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
+            }
+        }
+        return globals[address];
+    }
+
+    public long loadDoubleAsLong(int address) {
+        if (address < 0) {
+            final Object global = externalGlobals[-address - 1];
+            try {
+                return Double.doubleToRawLongBits((double) InteropLibrary.getUncached().readMember(global, "value"));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
             }
