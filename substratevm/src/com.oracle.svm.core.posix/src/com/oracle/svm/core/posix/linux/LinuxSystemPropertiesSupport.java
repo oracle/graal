@@ -90,7 +90,7 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 @AutomaticFeature
 class LinuxSystemPropertiesFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(SystemPropertiesSupport.class, new LinuxSystemPropertiesSupport());
     }
 }
