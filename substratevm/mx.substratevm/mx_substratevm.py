@@ -1510,31 +1510,12 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             graal_compiler_flags_map[13] = graal_compiler_flags_map[11]
             graal_compiler_flags_map[14] = graal_compiler_flags_map[11]
             graal_compiler_flags_map[15] = graal_compiler_flags_map[11]
-
-            add_opens_packages_jdk16 = [
-                'java.base/jdk.internal.org.objectweb.asm',
-                'java.base/sun.util.locale.provider',
-                'java.base/sun.util.resources',
-                'java.base/sun.security.util',
-                'java.base/sun.util.calendar',
-                'java.base/sun.security.provider',
-                'java.base/sun.security.jca',
-                'java.base/sun.reflect.generics.repository',
-                'java.base/sun.reflect.generics.reflectiveObjects',
-                'java.base/sun.reflect.generics.tree',
-                'java.base/sun.reflect.annotation',
-                'java.base/sun.invoke.util',
-                'java.xml.crypto/org.jcp.xml.dsig.internal.dom'
-            ]
-            target_module = 'ALL-UNNAMED'
-            graal_compiler_flags_map[16] = graal_compiler_flags_map[11] + ['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages_jdk16]
-            add_opens_packages_jdk17 = [
-                'java.base/sun.util.calendar',
-                'jdk.jdeps/com.sun.tools.classfile',
-                'jdk.jfr/jdk.jfr.events',
-                'java.base/sun.security.jca', # to set initialization-at-runtime for Loom
-            ]
-            graal_compiler_flags_map[17] = graal_compiler_flags_map[16] + ['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages_jdk17]
+            graal_compiler_flags_map[16] = graal_compiler_flags_map[11]
+            graal_compiler_flags_map[17] = graal_compiler_flags_map[11]
+            # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
+            #
+            # Instead provide the correct requiresConcealed entries in the moduleInfo
+            # section of org.graalvm.nativeimage.builder in the substratevm suite.py.
 
         graal_compiler_flags_base = [
             '-XX:+UseParallelGC',  # native image generation is a throughput-oriented task
@@ -1565,6 +1546,14 @@ class SubstrateCompilerFlagsBuildTask(mx.ArchivableBuildTask):
 
     def build(self):
         self.subject._computeResults()
+
+    def clean(self, forBuild=False):
+        driver_resources_dir = join(mx.dependency('substratevm:com.oracle.svm.driver').dir, 'resources')
+        ancient_config_files = glob(join(driver_resources_dir, 'graal-compiler-flags-*.config'))
+        for f in ancient_config_files:
+            mx.warn('Removing leftover ' + f)
+            os.remove(f)
+
 
 def _ensure_vm_built(config):
     # build "jvm" config used by native-image and native-image-configure commands
