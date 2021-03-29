@@ -328,6 +328,7 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualNodeGen;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -335,7 +336,6 @@ import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * Bytecode interpreter loop.
@@ -1201,6 +1201,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                 CompilerDirectives.transferToInterpreter();
                 getRoot().abortMonitor(frame);
                 throw e;
+            } finally {
+                LoopNode.reportLoopCount(this, loopCount[0]);
             }
             // This check includes newly rewritten QUICK nodes, not just curOpcode == quick
             if (noForeignObjects.isValid() && (bs.currentBC(curBCI) == QUICK || bs.currentBC(curBCI) == SLIM_QUICK)) {
@@ -1455,6 +1457,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             checkStopping();
             if ((++loopCount[0] & (REPORT_LOOP_STRIDE - 1)) == 0) {
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
+                loopCount[0] -= REPORT_LOOP_STRIDE;
             }
         }
         if (instrument != null) {
