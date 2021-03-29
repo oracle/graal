@@ -190,6 +190,23 @@ public class CGlobalDataFeature implements GraalFeature {
         });
     }
 
+    /**
+     * Makes the provided object available in the binary as a global symbol
+     *
+     * Warning: Global symbols are affected by linking and loading rules that are OS dependent. So
+     * accessing a global symbol content at run time using the symbol name could return a different
+     * content than the one provided at build time. This happens for example on Linux when a shared
+     * library is loaded and the main executable already defines a symbol with the same name.
+     */
+    public void registerWithGlobalSymbol(CGlobalData<?> obj) {
+        registerWithGlobalSymbolImpl(obj);
+    }
+
+    private CGlobalDataInfo registerWithGlobalSymbolImpl(CGlobalData<?> obj) {
+        CGlobalDataInfo info = registerAsAccessedOrGet(obj);
+        info.makeGlobalSymbol();
+        return info;
+    }
     public CGlobalDataInfo registerAsAccessedOrGet(CGlobalData<?> obj) {
         CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) obj;
         VMError.guarantee(!isLayouted() || map.containsKey(data), "CGlobalData instance must have been discovered/registered before or during analysis");

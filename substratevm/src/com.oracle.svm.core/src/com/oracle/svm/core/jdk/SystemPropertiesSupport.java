@@ -31,6 +31,7 @@ import java.util.Properties;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -91,10 +92,7 @@ public abstract class SystemPropertiesSupport {
 
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", "Oracle Corporation");
-<<<<<<< HEAD
-=======
         initializeProperty("java.vm.version", ImageSingletons.lookup(VM.class).version);
->>>>>>> b66e0ee850a ([GR-30023] Provide more robust setting of org.graalvm.config.)
         initializeProperty("java.vendor", "Oracle Corporation");
         initializeProperty("java.vendor.url", "https://www.graalvm.org/");
 
@@ -117,7 +115,6 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.dir", this::userDir);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
-        lazyRuntimeValues.put("java.vm.version", VM::getVersion);
     }
 
     private void ensureFullyInitialized() {

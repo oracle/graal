@@ -51,6 +51,8 @@ public class VMFeature implements Feature {
 
     private NativeLibraries nativeLibraries;
     private static final String STATIC_BINARY_MARKER_SYMBOL_NAME = "__svm_vm_is_static_binary";
+    private static final String VERSION_INFO_SYMBOL_NAME = "__svm_version_info";
+    private static final String valueSeparator = "=";
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -111,7 +113,7 @@ public class VMFeature implements Feature {
     }
 
     private static void addCGlobalDataString(String infoType, String content) {
-        String data = VM.class.getName() + "." + infoType + VM.valueSeparator + content;
+        String data = VM.class.getName() + "." + infoType + valueSeparator + content;
         String symbolName = "__svm_vm_" + infoType.toLowerCase().replace(".", "_");
         CGlobalDataFeature.singleton().registerAsAccessedOrGet(CGlobalDataFactory.createCString(data, symbolName));
     }

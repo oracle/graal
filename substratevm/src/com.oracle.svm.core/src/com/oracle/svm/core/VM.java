@@ -43,24 +43,8 @@ public final class VM {
         String versionStr = System.getProperty("org.graalvm.version");
         VMError.guarantee(versionStr != null);
         versionStr = "GraalVM " + versionStr;
-        versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
         versionStr += " " + config;
         version = versionStr;
     }
 
-    private static final String VERSION_INFO_SYMBOL_NAME = "__svm_version_info";
-    private static final CGlobalData<CCharPointer> VERSION_INFO = CGlobalDataFactory.createCString(version, VERSION_INFO_SYMBOL_NAME);
-
-    private static final int versionValueHash = versionValue.hashCode();
-
-    public static String getVersion() {
-        CCharPointer versionInfoBytes = VERSION_INFO.get();
-        String version = Utf8.utf8ToString(versionInfoBytes);
-        if (version == null || version.hashCode() != versionValueHash) {
-            VMError.shouldNotReachHere("HashCode mismatch for " + VERSION_INFO_SYMBOL_NAME +
-                            ": actual " + (version == null ? "null" : String.valueOf(version.hashCode())) +
-                            " (expected " + versionValueHash + ")");
-        }
-        return SubstrateUtil.split(version, valueSeparator)[1];
-    }
 }
