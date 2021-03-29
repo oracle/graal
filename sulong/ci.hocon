@@ -189,7 +189,9 @@ builds += [
 
   ${sulong-gateTestLLVMorg-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
 
-  ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk-ce-11-only} ${linux-aarch64} { name: gate-sulong_bundled-llvm-linux-aarch64, run: [[mx, gate, --tags, "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm"]] }
+  # No more aarch64 tests
+  # ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk-ce-11-only} ${linux-aarch64} { name: gate-sulong_bundled-llvm-linux-aarch64, run: [[mx, gate, --tags, "build,sulong,sulongLL,interop,linker,debug,irdebug,bitcodeFormat,otherTests,llvm"]] }
+
   ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk-ce-11-only} { name: gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11, run: [
     [mx, gate, --tags, "build"]
   ] ${sulong-test-toolchain} }

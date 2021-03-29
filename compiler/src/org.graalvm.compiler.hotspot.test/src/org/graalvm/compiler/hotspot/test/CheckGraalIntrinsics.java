@@ -396,7 +396,15 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK11OrHigher()) {
-            // Relevant for Java flight recorder
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.abs(I)I",
+                                "java/lang/Math.abs(J)J",
+                                "java/lang/Math.max(DD)D",
+                                "java/lang/Math.max(FF)F",
+                                "java/lang/Math.min(DD)D",
+                                "java/lang/Math.min(FF)F");
+            }
             add(toBeInvestigated,
                             "java/lang/CharacterDataLatin1.isDigit(I)Z",
                             "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
@@ -665,9 +673,9 @@ public class CheckGraalIntrinsics extends GraalTest {
                 }
             } else {
                 if (toBeInvestigated.contains(m)) {
-                    mischaracterizedAsToBeInvestigated.add(m);
+                    mischaracterizedAsToBeInvestigated.add(m + " [plugin: " + plugin + "]");
                 } else if (ignore.contains(m)) {
-                    mischaracterizedAsIgnored.add(m);
+                    mischaracterizedAsIgnored.add(m + " [plugin: " + plugin + "]");
                 }
             }
         }
