@@ -59,6 +59,14 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
+/**
+ * Note this test class currently depends on being executed in its own SVM image as it uses the
+ * context preinitialization which only works for the first context of a native-image. An execution
+ * of this test on HotSpot is ignored. Use {@link ContextPreInitializationTest} for that purpose.
+ *
+ * This could potentially be improved using some white-box API that allows to explicitly store and
+ * restore the preinitialized context.
+ */
 public class ContextPreInitializationNativeImageTest {
 
     static final String LANGUAGE = "ContextPreintializationNativeImageLanguage";
