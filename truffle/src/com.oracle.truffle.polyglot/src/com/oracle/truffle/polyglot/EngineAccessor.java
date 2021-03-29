@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
@@ -1191,6 +1192,36 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
             if (currentContext != null && currentContext.sourcesToInvalidate != null) {
                 currentContext.sourcesToInvalidate.add(source);
+            }
+        }
+
+        @Override
+        public void onCloseableCreated(Object engineObject, Closeable closeable) {
+            if (engineObject instanceof PolyglotLanguageContext) {
+                ((PolyglotLanguageContext) engineObject).context.onCloseableCreated(closeable);
+            } else if (engineObject instanceof EmbedderFileSystemContext) {
+                /*
+                 * EmbedderFileSystemContext is a singleton held by PolyglotSource which is never
+                 * closed.
+                 */
+                return;
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("EngineObject must be either PolyglotLanguageContext or EmbedderFileSystemContext.");
+            }
+        }
+
+        @Override
+        public void onCloseableClosed(Object engineObject, Closeable closeable) {
+            if (engineObject instanceof PolyglotLanguageContext) {
+                ((PolyglotLanguageContext) engineObject).context.onCloseableClosed(closeable);
+            } else if (engineObject instanceof EmbedderFileSystemContext) {
+                /*
+                 * EmbedderFileSystemContext is a singleton held by PolyglotSource which is never
+                 * closed.
+                 */
+                return;
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("EngineObject must be either PolyglotLanguageContext or EmbedderFileSystemContext.");
             }
         }
 
