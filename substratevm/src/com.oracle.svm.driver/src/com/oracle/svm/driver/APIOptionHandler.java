@@ -43,8 +43,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -100,7 +98,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
         if (NativeImage.IS_AOT) {
-            apiOptions = ImageSingletons.lookup(APIOptionCollector.class).options;
+            apiOptions = ImageSingletons.lookup(APIOptionSupport.class).options;
         } else {
             List<Class<? extends OptionDescriptors>> optionDescriptorsList = new ArrayList<>();
             ServiceLoader<OptionDescriptors> serviceLoader = ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader());
@@ -401,19 +399,22 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 }
 
-@AutomaticFeature
-final class APIOptionCollector implements Feature {
+final class APIOptionSupport {
 
-    SortedMap<String, APIOptionHandler.OptionInfo> options;
+    final SortedMap<String, APIOptionHandler.OptionInfo> options;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    APIOptionCollector() {
+    APIOptionSupport(SortedMap<String, APIOptionHandler.OptionInfo> options) {
+        this.options = options;
     }
+}
+
+@AutomaticFeature
+final class APIOptionFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         List<Class<? extends OptionDescriptors>> optionClasses = accessImpl.getImageClassLoader().findSubclasses(OptionDescriptors.class, true);
-        options = APIOptionHandler.extractOptions(optionClasses);
+        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(APIOptionHandler.extractOptions(optionClasses)));
     }
 }

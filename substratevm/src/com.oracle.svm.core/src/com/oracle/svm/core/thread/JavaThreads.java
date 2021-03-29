@@ -59,7 +59,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
-import com.oracle.svm.core.heap.ReferenceHandlerThreadFeature;
+import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
@@ -577,7 +577,7 @@ public abstract class JavaThreads {
      * that they can check their interrupted status.
      */
     protected static void wakeUpVMConditionWaiters(Thread thread) {
-        if (ReferenceHandler.useDedicatedThread() && thread == ImageSingletons.lookup(ReferenceHandlerThreadFeature.class).getThread()) {
+        if (ReferenceHandler.useDedicatedThread() && thread == ImageSingletons.lookup(ReferenceHandlerThreadSupport.class).getThread()) {
             Heap.getHeap().wakeUpReferencePendingListWaiters();
         }
     }

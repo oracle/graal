@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.localization.substitutions.modes;
+package com.oracle.svm.core;
 
-import java.util.function.Predicate;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.core.option.HostedOptionKey;
 
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+public final class VMInspectionOptions {
+    @Option(help = "Enables features that allow the VM to be inspected during runtime.", type = OptionType.User) //
+    public static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false);
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public class SubstituteLoadLookup implements Predicate<String> {
-
-    @Override
-    public boolean test(String className) {
-        return LocalizationSupport.optimizedMode() || LocalizationFeature.Options.LocalizationSubstituteLoadLookup.getValue();
-    }
-
+    @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
 }

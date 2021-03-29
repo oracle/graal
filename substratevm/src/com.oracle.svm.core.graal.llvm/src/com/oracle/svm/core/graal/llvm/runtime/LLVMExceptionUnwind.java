@@ -140,11 +140,16 @@ public class LLVMExceptionUnwind {
         }
     }
 
-    public static void raiseException() {
-        _Unwind_Exception exceptionStructure = StackValue.get(_Unwind_Exception.class);
-        exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
-        exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
-        raiseException(exceptionStructure);
+    public static ExceptionUnwind createRaiseExceptionHandler() {
+        return new ExceptionUnwind() {
+            @Override
+            protected void customUnwindException(Pointer callerSP) {
+                _Unwind_Exception exceptionStructure = StackValue.get(_Unwind_Exception.class);
+                exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
+                exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
+                raiseException(exceptionStructure);
+            }
+        };
     }
 
     // Allow methods with non-standard names: Checkstyle: stop

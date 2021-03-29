@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk.localization;
 
 // Checkstyle: stop
+
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
@@ -56,8 +57,6 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
-import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -70,6 +69,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
+import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
@@ -117,21 +118,13 @@ import sun.util.resources.LocaleData;
  */
 public abstract class LocalizationFeature implements Feature {
 
-    protected final boolean optimizedMode = optimizedMode();
+    protected final boolean optimizedMode = LocalizationSupport.optimizedMode();
 
     private final boolean substituteLoadLookup = Options.LocalizationSubstituteLoadLookup.getValue();
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
     private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? new ForkJoinPool(Runtime.getRuntime().availableProcessors()) : null;
-
-    public static boolean optimizedMode() {
-        return Options.LocalizationOptimizedMode.getValue();
-    }
-
-    public static boolean jvmMode() {
-        return !optimizedMode();
-    }
 
     /**
      * The Locale that the native image is built for. Currently, switching the Locale at run time is

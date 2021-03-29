@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.DebugOptions;
@@ -58,12 +59,11 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.truffle.TruffleFeature;
+import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
-import java.util.function.Supplier;
 
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
@@ -126,7 +126,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
         truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
-            compileQueue = TruffleFeature.getSupport().createBackgroundCompileQueue(this);
+            compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
             if (!SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
@@ -172,7 +172,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public SubstrateTruffleCompiler newTruffleCompiler() {
-        return TruffleFeature.getSupport().createTruffleCompiler(this);
+        return TruffleSupport.singleton().createTruffleCompiler(this);
     }
 
     @Override
@@ -211,7 +211,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         if (profilingEnabled == null) {
             profilingEnabled = getEngineData(rootNode).profilingEnabled;
         }
-        OptimizedCallTarget callTarget = TruffleFeature.getSupport().createOptimizedCallTarget(source, rootNode);
+        OptimizedCallTarget callTarget = TruffleSupport.singleton().createOptimizedCallTarget(source, rootNode);
         ensureInitializedAtRuntime(callTarget);
         return callTarget;
     }
@@ -342,29 +342,29 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
-        return TruffleFeature.getSupport().registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
+        return TruffleSupport.singleton().registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
     }
 
     @Override
     public JavaConstant getCallTargetForCallNode(JavaConstant callNodeConstant) {
-        return TruffleFeature.getSupport().getCallTargetForCallNode(callNodeConstant);
+        return TruffleSupport.singleton().getCallTargetForCallNode(callNodeConstant);
     }
 
     @Override
     public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
-        return TruffleFeature.getSupport().asCompilableTruffleAST(constant);
+        return TruffleSupport.singleton().asCompilableTruffleAST(constant);
     }
 
     @Override
     public void log(String loggerId, CompilableTruffleAST compilable, String message) {
-        if (!TruffleFeature.getSupport().tryLog(this, loggerId, compilable, message)) {
+        if (!TruffleSupport.singleton().tryLog(this, loggerId, compilable, message)) {
             super.log(loggerId, compilable, message);
         }
     }
 
     @Override
     public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
-        TriState res = TruffleFeature.getSupport().tryIsSuppressedFailure(compilable, serializedException);
+        TriState res = TruffleSupport.singleton().tryIsSuppressedFailure(compilable, serializedException);
         switch (res) {
             case TRUE:
                 return true;

@@ -159,16 +159,16 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
-public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
+class LibGraalOptions {
+    // @formatter:off
+    @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
+            "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
+            "This option exists for the purpose of testing fatal error handling in libgraal.")
+    static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
+    // @formatter:on
+}
 
-    static class Options {
-        // @formatter:off
-        @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
-                       "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
-                       "This option exists for the purpose of testing fatal error handling in libgraal.")
-        static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
-        // @formatter:on
-    }
+public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
 
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 
@@ -789,7 +789,7 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
     @SuppressWarnings("unused")
     @Substitute()
     private static void notifyCrash(String crashMessage) {
-        if (LibGraalFeature.Options.CrashAtIsFatal.getValue()) {
+        if (LibGraalOptions.CrashAtIsFatal.getValue()) {
             LogHandler handler = ImageSingletons.lookup(LogHandler.class);
             if (handler instanceof FunctionPointerLogHandler) {
                 FunctionPointerLogHandler fpHandler = (FunctionPointerLogHandler) handler;
