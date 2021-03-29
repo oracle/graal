@@ -690,15 +690,17 @@ suite = {
       "subDir" : "projects",
       "vpath" : True,
       "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/llvm",
-      "class" : "CMakeProject",
-      "makeTarget" : ["install-libcxxabi", "install-libcxx"],
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
+      "ninja_targets" : ["<lib:c++abi>", "<lib:c++>"],
+      "ninja_install_targets" : ["install-libcxxabi", "install-libcxx"],
       "results" : ["native"],
       "cmakeConfig" : {
         "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
         "LLVM_INCLUDE_DOCS" : "NO",
         "LLVM_TARGETS_TO_BUILD" : "X86",
         "LIBCXXABI_INCLUDE_TESTS": "NO",
-        # "LIBCXXABI_INCLUDE_TESTS_x": "NO",
         "LIBCXXABI_LINK_TESTS_WITH_SHARED_LIBCXX" : "YES",
         "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_SRC>/libcxx/include",
         "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
@@ -714,8 +716,6 @@ suite = {
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
         "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
         "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
-        # Work around for mx not liking $ signs. We use '{{}}' as a placeholder and replace that in the CMakeProject.
-        "CMAKE_SHARED_LINKER_FLAGS" : "-Wl,-rpath,{{}}ORIGIN",
         "CMAKE_INSTALL_PREFIX" : "native",
       },
       "buildDependencies" : [

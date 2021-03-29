@@ -31,8 +31,10 @@ from __future__ import print_function
 
 import fnmatch
 import pipes
+import shutil
 
 import mx
+import mx_native
 import mx_unittest
 import mx_subst
 import os
@@ -596,6 +598,74 @@ class CMakeProject(CMakeMixin, AbstractSulongNativeProject):  # pylint: disable=
 
     def getBuildTask(self, args):
         return CMakeBuildTask(args, self)
+
+
+class CMakeNinjaBuildTask(mx_native.NinjaBuildTask):
+
+    def build(self):
+        super(CMakeNinjaBuildTask, self).build()
+        if self.subject._install_targets:
+            self.ninja._run(*self.subject._install_targets)
+
+
+class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d_rel = projectDir
+        elif subDir is None:
+            d_rel = name
+        else:
+            d_rel = os.path.join(subDir, name)
+        d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
+        srcDir = args.pop('sourceDir', d)
+        if not srcDir:
+            mx.abort("Exactly one 'sourceDir' is required")
+        srcDir = mx_subst.path_substitutions.substitute(srcDir)
+        self._install_targets = [mx_subst.path_substitutions.substitute(x) for x in args.pop('ninja_install_targets', [])]
+        self._ninja_targets = [mx_subst.path_substitutions.substitute(x) for x in args.pop('ninja_targets', [])]
+        super(CMakeNinjaProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, d, results=results, output=output, **args)
+        # self.dir = self.getOutput()
+
+    def generate_manifest(self, path):
+        source_dir = self.source_dirs()[0]
+        out_dir = os.path.dirname(path)
+        cmakefile = os.path.join(out_dir, 'CMakeCache.txt')
+        if os.path.exists(cmakefile):
+            # remove cache file if it exist
+            os.remove(cmakefile)
+        cmake_config = self.cmake_config()
+
+        # explicitly set ninja executable if not on path
+        cmake_make_program = 'CMAKE_MAKE_PROGRAM'
+        if cmake_make_program not in cmake_config and mx_native.Ninja.binary != 'ninja':
+            cmake_config.append('-D{}={}'.format(cmake_make_program, mx_native.Ninja.binary))
+
+        # cmake will always create build.ninja - there is nothing we can do about it ATM
+        cmdline = ["-G", "Ninja", source_dir] + cmake_config
+        CMakeSupport.check_cmake()
+        CMakeSupport.run_cmake(cmdline, silent=True, cwd=out_dir)
+        # move the build.ninja to the temporary path (just move it back later ... *sigh*)
+        shutil.copyfile(os.path.join(out_dir, mx_native.Ninja.default_manifest), path)
+        return True
+
+    def _build_task(self, target_arch, args):
+        return CMakeNinjaBuildTask(args, self, target_arch, self._ninja_targets)
+
+    def _archivable_results(self, target_arch, use_relpath, single):
+        def result(base_dir, file_path):
+            assert not mx.isabs(file_path)
+            archive_path = file_path if use_relpath else mx.basename(file_path)
+            return mx.join(base_dir, file_path), archive_path
+
+        out_dir_arch = mx.join(self.out_dir, target_arch)
+        for _result in self.results:
+            yield result(out_dir_arch, _result)
+
+    @property
+    def _target(self):
+        return self.results[0]
+        # return ''
 
 
 class DocumentationBuildTask(mx.AbstractNativeBuildTask):
