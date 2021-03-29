@@ -26,6 +26,8 @@ package org.graalvm.compiler.java;
 
 import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
 
+import java.util.BitSet;
+
 public final class SmallLocalLiveness extends LocalLiveness {
     /*
      * local n is represented by the bit accessible as (1 << n)
@@ -115,14 +117,9 @@ public final class SmallLocalLiveness extends LocalLiveness {
         }
 
         BciBlock block = blocks[blockID];
-        long tmp = block.loops;
-        int pos = 0;
-        while (tmp != 0) {
-            if ((tmp & 1L) == 1L) {
-                this.localsChangedInLoop[pos] |= bit;
-            }
-            tmp >>>= 1;
-            ++pos;
+        BitSet loops = block.loops;
+        for (int pos = -1; (pos = loops.nextSetBit(pos + 1)) >= 0;) {
+            this.localsChangedInLoop[pos] |= bit;
         }
     }
 
