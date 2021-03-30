@@ -303,11 +303,11 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "webpack --mode production",
-		"compile": "webpack --mode none",
+		"compile": "webpack --mode development",
 		"info": "webpack --display-modules",
-		"watch": "webpack --mode none --watch",
+		"watch": "webpack --mode development --watch",
 		"test-compile": "tsc -p ./",
-		"postinstall": "node ./node_modules/vscode/bin/install"
+		"lint": "tslint -p ./"
 	},
 	"dependencies": {
 		"tar": "^4.4.8",
