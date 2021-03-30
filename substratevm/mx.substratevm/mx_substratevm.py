@@ -433,12 +433,17 @@ def svm_gate_body(args, tasks):
     with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
             build()
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                native_unittest_args = ['com.oracle.truffle.api.test.TruffleSafepointTest', '--build-args', '--macro:truffle',
+
+            truffle_args = ['--build-args', '--macro:truffle',
                                         '-H:MaxRuntimeCompileMethods=5000',
                                         '-H:+TruffleCheckBlackListedMethods',
                                         '--run-args', '--very-verbose', '--enable-timing']
-                native_unittest(native_unittest_args)
+
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                # ContextPreInitializationNativeImageTest can only run with its own image.
+                # See class javadoc for details.
+                native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args)
+                native_unittest(['com.oracle.truffle.api.test.TruffleSafepointTest'] + truffle_args)
 
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
