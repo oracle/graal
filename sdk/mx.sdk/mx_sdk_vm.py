@@ -43,7 +43,6 @@ from __future__ import print_function
 from abc import ABCMeta
 
 import mx
-import mx_javamodules
 import mx_subst
 import os
 import shutil
@@ -125,12 +124,6 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
             required_module_name, required_package_name = required
             add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
         return sorted(add_exports)
-
-    def get_add_exports(self):
-        distributions = self.jar_distributions
-        distributions_transitive = mx.classpath_entries(distributions)
-        required_exports = mx_javamodules.requiredExports(distributions_transitive, base_jdk())
-        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
 
 
 class LauncherConfig(AbstractNativeImageConfig):
@@ -311,6 +304,7 @@ class GraalVmComponent(object):
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
 
+        assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
@@ -413,7 +407,7 @@ def register_graalvm_component(component):
         _graalvm_components_by_name[component.name] = component
 
 
-def graalvm_component_by_name(name):
+def graalvm_component_by_name(name, fatalIfMissing=True):
     """
     :rtype: GraalVmComponent
     """
@@ -422,7 +416,10 @@ def graalvm_component_by_name(name):
     elif name in _graalvm_components_by_name:
         return _graalvm_components_by_name[name]
     else:
-        raise Exception("Unknown component: {}".format(name))
+        if fatalIfMissing:
+            raise Exception("Unknown component: {}".format(name))
+        else:
+            return None
 
 
 def graalvm_components(opt_limit_to_suite=False):
