@@ -477,16 +477,40 @@ class CMakeSupport(object):
                 mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
 
 
-class CMakeBuildTask(mx.NativeBuildTask):
+class CMakeBuildTaskMixin(object):
 
-    def __init__(self, *args, **kwargs):
-        super(CMakeBuildTask, self).__init__(*args, **kwargs)
-        subject = self.subject
-        self._cmake_config_file = os.path.join(subject.suite.get_mx_output_dir(), 'cmakeConfig',
-                                               mx.get_os() + '-' + mx.get_arch() if subject.isPlatformDependent() else '',
-                                               type(subject).__name__,
-                                               subject._extra_artifact_discriminant(),
+    def __init__(self, args, project, *otherargs, **kwargs):
+        super(CMakeBuildTaskMixin, self).__init__(args, project, *otherargs, **kwargs)
+        self._cmake_config_file = os.path.join(project.suite.get_mx_output_dir(), 'cmakeConfig',
+                                               mx.get_os() + '-' + mx.get_arch() if project.isPlatformDependent() else '',
+                                               type(project).__name__,
+                                               project._extra_artifact_discriminant(),
                                                self.name)
+
+    def _write_guard(self, source_dir, cmake_config):
+        with mx.SafeFileCreation(self.guard_file()) as sfc:
+            with open(sfc.tmpPath, 'w') as fp:
+                fp.write(self._guard_data(source_dir, cmake_config))
+
+    def _guard_data(self, source_dir, cmake_config):
+        return source_dir + '\n' + '\n'.join(cmake_config)
+
+    def _need_configure(self):
+        source_dir = self.subject.source_dirs()[0]
+        guard_file = self.guard_file()
+        cmake_config = self.subject.cmake_config()
+        if not os.path.exists(guard_file):
+            return True, "No CMake configuration found - reconfigure"
+        with open(guard_file, 'r') as fp:
+            if fp.read() != self._guard_data(source_dir, cmake_config):
+                return True, "CMake configuration changed - reconfigure"
+            return False, None
+
+    def guard_file(self):
+        return self._cmake_config_file
+
+
+class CMakeBuildTask(CMakeBuildTaskMixin, mx.NativeBuildTask):
 
     def __str__(self):
         return 'Building {} with CMake'.format(self.subject.name)
@@ -527,26 +551,10 @@ class CMakeBuildTask(mx.NativeBuildTask):
         need_configure, reason = self._need_configure()
         return need_configure, "rebuild needed by CMake ({})".format(reason)
 
-    def _write_guard(self, source_dir, cmake_config):
-        with mx.SafeFileCreation(self.guard_file()) as sfc:
-            with open(sfc.tmpPath, 'w') as fp:
-                fp.write(self._guard_data(source_dir, cmake_config))
-
-    def _guard_data(self, source_dir, cmake_config):
-        return source_dir + '\n' + '\n'.join(cmake_config)
-
     def _need_configure(self):
-        source_dir = self.subject.source_dirs()[0]
-        guard_file = self.guard_file()
         if not os.path.exists(os.path.join(self.subject.dir, 'Makefile')):
             return True, "No existing Makefile - reconfigure"
-        cmake_config = self.subject.cmake_config()
-        if not os.path.exists(guard_file):
-            return True, "No CMake configuration found - reconfigure"
-        with open(guard_file, 'r') as fp:
-            if fp.read() != self._guard_data(source_dir, cmake_config):
-                return True, "CMake configuration changed - reconfigure"
-            return False, None
+        return super(CMakeBuildTask, self)._need_configure()
 
     def _configure(self, silent=False):
         need_configure, _ = self._need_configure()
@@ -562,9 +570,6 @@ class CMakeBuildTask(mx.NativeBuildTask):
         CMakeSupport.check_cmake()
         CMakeSupport.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
         return True
-
-    def guard_file(self):
-        return self._cmake_config_file
 
 
 class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
@@ -600,10 +605,21 @@ class CMakeProject(CMakeMixin, AbstractSulongNativeProject):  # pylint: disable=
         return CMakeBuildTask(args, self)
 
 
-class CMakeNinjaBuildTask(mx_native.NinjaBuildTask):
+class CMakeNinjaBuildTask(CMakeBuildTaskMixin, mx_native.NinjaBuildTask):
+
+    def needsBuild(self, newestInput):
+        mx.logv('Checking whether to reconfigure {} with CMake'.format(self.subject.name))
+        need_configure, reason = self._need_configure()
+        if need_configure:
+            return need_configure, "reconfigure needed by CMake ({})".format(reason)
+        return super(CMakeNinjaBuildTask, self).needsBuild(newestInput)
 
     def build(self):
         super(CMakeNinjaBuildTask, self).build()
+        # write guard file
+        source_dir = self.subject.source_dirs()[0]
+        self._write_guard(source_dir, self.subject.cmake_config())
+        # call install targets
         if self.subject._install_targets:
             self.ninja._run(*self.subject._install_targets)
 
