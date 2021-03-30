@@ -42,6 +42,6 @@ builds += [
   #${gateTest}          ${oraclejdk8}     ${gateLinuxSPARC}   {name: "weekly-test-compiler-test-8-linux-sparcv9",               timelimit: "1:00:00"} ${graalWeekly}
 
   # Linux AArch64
-  ${gateTest}           ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "gate-compiler-test-labsjdk-ce-11-linux-aarch64",                   timelimit: "1:50:00"}
-  ${gateTestCTW}        ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "gate-compiler-ctw-labsjdk-ce-11-linux-aarch64",                    timelimit: "1:50:00"}
+  #${gateTest}           ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "gate-compiler-test-labsjdk-ce-11-linux-aarch64",                   timelimit: "1:50:00"}
+  #${gateTestCTW}        ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "gate-compiler-ctw-labsjdk-ce-11-linux-aarch64",                    timelimit: "1:50:00"}
 ]
