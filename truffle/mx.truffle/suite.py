@@ -814,7 +814,8 @@ suite = {
           "static java.desktop",
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
-          "java.management"
+          "java.management",
+          "java.sql" # java.sql.date java.sql.Time
         ],
         "exports" : [
           # Qualified exports
