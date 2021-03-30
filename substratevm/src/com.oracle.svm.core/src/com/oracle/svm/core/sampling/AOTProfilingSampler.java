@@ -2,6 +2,7 @@ package com.oracle.svm.core.sampling;
 
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.svm.core.RuntimeAnalysisWorkarounds;
 import org.graalvm.collections.PrefixTree;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Threading;
@@ -49,9 +50,7 @@ public class AOTProfilingSampler implements ProfilingSampler {
     @Override
     public void registerSampler() {
         if (collectingActive) {
-            if (System.getProperty("avoid constant folding of the variable") != null) {
-                ImageSingletons.lookup(DebugCallStackFrameMethodData.class).samplingCodeStartId = 550;
-            }
+            RuntimeAnalysisWorkarounds.avoidFoldingSamplingCodeStart();
             Threading.registerRecurringCallback(10, TimeUnit.MILLISECONDS, (access) -> {
                 sampleThreadStack();
             });

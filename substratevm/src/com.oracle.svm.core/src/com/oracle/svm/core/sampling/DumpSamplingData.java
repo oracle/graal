@@ -25,10 +25,10 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 
 public class DumpSamplingData {
     private static final class CallFrame {
-        final ModeFrameData frameInfo;
+        final CallFrameInfo frameInfo;
         final CallFrame tail;
 
-        private CallFrame(ModeFrameData frameInfo, CallFrame tail) {
+        private CallFrame(CallFrameInfo frameInfo, CallFrame tail) {
             this.tail = tail;
             this.frameInfo = frameInfo;
         }
@@ -39,33 +39,23 @@ public class DumpSamplingData {
     }
 
     public static void dumpSamplingData() {
+        dumpToFile("sampling-java-stack.iprof", DumpMode.JavaStackView);
+        dumpToFile("sampling-compilation-stack.iprof", DumpMode.CompilationStackView);
+    }
+
+    private static void dumpToFile(String fileName, DumpMode dumpMode) {
         BufferedWriter profilesWriter = null;
         try {
-            Path pathProfiles = Paths.get("sampling-java-stack.iprof").toAbsolutePath();
-            profilesWriter = new BufferedWriter(new FileWriter(pathProfiles.toFile()));
-            dumpFromTree(profilesWriter, DUMP_MODE.JAVA_STACK_VIEW);
+            Path profilesPath = Paths.get(fileName).toAbsolutePath();
+            profilesWriter = new BufferedWriter(new FileWriter(profilesPath.toFile()));
+            dumpFromTree(profilesWriter, dumpMode);
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
             if (profilesWriter != null) {
                 try {
                     profilesWriter.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        try {
-            Path pathProfiles = Paths.get("sampling-compilation-stack.iprof").toAbsolutePath();
-            profilesWriter = new BufferedWriter(new FileWriter(pathProfiles.toFile()));
-            dumpFromTree(profilesWriter, DUMP_MODE.COMPILATION_STACK_VIEW);
-        } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            if (profilesWriter != null) {
-                try {
-                    profilesWriter.close();
-                } catch (IOException e) {
+                } catch (Throwable e) {
                     e.printStackTrace();
                 }
             }
@@ -85,7 +75,9 @@ public class DumpSamplingData {
         // return CodeInfoAccess.convert(untetheredCodeInfo);
     }
 
-    static List<ModeFrameData> decodeMethod(long address, DUMP_MODE mode) {
+    static List<CallFrameInfo> decodeMethod(long address, DumpMode mode) {
+        // The resulting list is ordered from callees to their callers to align with the format of
+        // the instrumentation profiles.
         CodePointer ip = WordFactory.pointer(address);
         CodeInfoQueryResult result = new AOTCodeInfoQueryResult(ip);
         CodeInfo codeInfo = codeInfo(ip);
@@ -95,54 +87,57 @@ public class DumpSamplingData {
         return createDecodedMethodEntry(frameInfo, mode);
     }
 
-    private static List<ModeFrameData> createDecodedMethodEntry(FrameInfoQueryResult frameInfo, DUMP_MODE mode) {
-        DebugCallStackFrameMethodData frameMethodData = ImageSingletons.lookup(DebugCallStackFrameMethodData.class);
-        if (mode == DUMP_MODE.JAVA_STACK_VIEW) {
-            List<ModeFrameData> frames = new ArrayList<>();
+    private static List<CallFrameInfo> createDecodedMethodEntry(FrameInfoQueryResult frameInfo, DumpMode mode) {
+        CallStackFrameMethodInfo frameMethodData = ImageSingletons.lookup(CallStackFrameMethodInfo.class);
+        if (mode == DumpMode.JavaStackView) {
+            List<CallFrameInfo> frames = new ArrayList<>();
             int frameInfoMethodId = frameInfo.getMethodID();
-            frames.add(new MethodIDBCI(frameInfoMethodId, frameInfo.getBci(), frameMethodData.methodInfo(frameInfoMethodId)));
+            frames.add(new CallFrameBciInfo(frameInfoMethodId, frameInfo.getBci(), frameMethodData.methodFor(frameInfoMethodId)));
             while (frameInfo.getCaller() != null) {
                 frameInfo = frameInfo.getCaller();
                 frameInfoMethodId = frameInfo.getMethodID();
-                frames.add(new MethodIDBCI(frameInfoMethodId, frameInfo.getBci(), frameMethodData.methodInfo(frameInfoMethodId)));
+                frames.add(new CallFrameBciInfo(frameInfoMethodId, frameInfo.getBci(), frameMethodData.methodFor(frameInfoMethodId)));
+            }
+            return frames;
+        } else if (mode == DumpMode.JavaStackWithoutBciView) {
+            List<CallFrameInfo> frames = new ArrayList<>();
+            int frameInfoMethodId = frameInfo.getMethodID();
+            frames.add(new CallFrameBciInfo(frameInfoMethodId, frameInfo.getBci(), frameMethodData.methodFor(frameInfoMethodId)));
+            while (frameInfo.getCaller() != null) {
+                frameInfo = frameInfo.getCaller();
+                frameInfoMethodId = frameInfo.getMethodID();
+                frames.add(new CallFrameNoBciInfo(frameInfoMethodId, frameMethodData.methodFor(frameInfoMethodId)));
             }
             return frames;
         } else {
+            assert mode == DumpMode.CompilationStackView;
             while (frameInfo.getCaller() != null) {
                 frameInfo = frameInfo.getCaller();
             }
             int frameInfoMethodId = frameInfo.getMethodID();
-            if (mode == DUMP_MODE.COMPILATION_STACK_VIEW) {
-                return Collections.singletonList(new MethodID(frameInfoMethodId, frameMethodData.methodInfo(frameInfoMethodId)));
+            return Collections.singletonList(new CallFrameNoBciInfo(frameInfoMethodId, frameMethodData.methodFor(frameInfoMethodId)));
 
-            } else {
-                assert mode == DUMP_MODE.COMPILATION_WITH_BCI_STACK_VIEW;
-                int bci = frameInfo.getBci();
-                return Collections.singletonList(new MethodIDBCI(frameInfoMethodId, bci, frameMethodData.methodInfo(frameInfoMethodId)));
-            }
         }
     }
 
-    static void dumpFromTree(BufferedWriter writer, DUMP_MODE mode) {
+    static void dumpFromTree(BufferedWriter writer, DumpMode mode) {
         PrefixTree prefixTree = ImageSingletons.lookup(ProfilingSampler.class).prefixTree();
-        prefixTree.topDown(new CallFrame(new MethodID(MethodID.TOTAL_ID, "<total>"), null), (context, address) -> {
-            List<ModeFrameData> frameDatas = decodeMethod(address, mode);
+        // TODO: remove total
+        prefixTree.topDown(new CallFrame(new CallFrameNoBciInfo(CallFrameNoBciInfo.TOTAL_ID, "<total>"), null), (context, address) -> {
+            List<CallFrameInfo> frameInfos = decodeMethod(address, mode);
             CallFrame head = context;
-            for (ModeFrameData frameData : frameDatas) {
-                head = new CallFrame(frameData, head);
+            for (CallFrameInfo frameInfo : frameInfos) {
+                head = new CallFrame(frameInfo, head);
             }
             return head;
         }, (context, value) -> {
-            // TODO: remove total
-            DebugCallStackFrameMethodData frameMethodData = ImageSingletons.lookup(DebugCallStackFrameMethodData.class);
+            CallStackFrameMethodInfo frameMethodData = ImageSingletons.lookup(CallStackFrameMethodInfo.class);
             CallFrame current = context;
 
             if (value > 0) {
                 boolean safepointFound = false;
-                ModeFrameData frameData;
                 while (!safepointFound) {
-                    frameData = current.frameInfo;
-                    if (frameMethodData.isSamplingCode(frameData.methodId)) {
+                    if (frameMethodData.isSamplingCodeEntry(current.frameInfo.methodId)) {
                         safepointFound = true;
                     }
                     current = current.tail;
@@ -150,12 +145,10 @@ public class DumpSamplingData {
                 StringBuilder contextString = new StringBuilder(current.frameInfo.toString());
                 current = current.tail;
                 while (current != null) {
-                    frameData = current.frameInfo;
-                    contextString.append(",").append(frameData);
+                    contextString.append(",").append(current.frameInfo);
                     current = current.tail;
                 }
                 contextString.append(" ").append(value);
-                System.out.println(contextString.toString());
                 try {
                     writer.write(contextString.toString());
                     writer.newLine();
@@ -174,15 +167,15 @@ public class DumpSamplingData {
         }
     }
 
-    static class ModeFrameData {
+    static class CallFrameInfo {
         int methodId;
     }
 
-    static class MethodIDBCI extends ModeFrameData {
+    static class CallFrameBciInfo extends CallFrameInfo {
         int bci;
         String methodName;
 
-        MethodIDBCI(int methodId, int bci, String methodName) {
+        CallFrameBciInfo(int methodId, int bci, String methodName) {
             this.methodId = methodId;
             this.bci = bci;
             this.methodName = methodName;
@@ -194,11 +187,11 @@ public class DumpSamplingData {
         }
     }
 
-    static class MethodID extends ModeFrameData {
+    static class CallFrameNoBciInfo extends CallFrameInfo {
         static final int TOTAL_ID = -5;
         String methodName;
 
-        MethodID(int methodId, String methodName) {
+        CallFrameNoBciInfo(int methodId, String methodName) {
             this.methodId = methodId;
             this.methodName = methodName;
         }
@@ -209,9 +202,9 @@ public class DumpSamplingData {
         }
     }
 
-    enum DUMP_MODE {
-        JAVA_STACK_VIEW,
-        COMPILATION_STACK_VIEW,
-        COMPILATION_WITH_BCI_STACK_VIEW;
+    enum DumpMode {
+        JavaStackView,
+        JavaStackWithoutBciView,
+        CompilationStackView;
     }
 }
