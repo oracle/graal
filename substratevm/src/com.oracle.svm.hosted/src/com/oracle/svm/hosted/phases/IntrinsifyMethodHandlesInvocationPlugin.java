@@ -166,8 +166,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     public static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
+
+        private static IntrinsificationRegistry singleton() {
+            return ImageSingletons.lookup(IntrinsificationRegistry.class);
+        }
+
         public static AutoCloseable startThreadLocalnRegistry() {
-            return ImageSingletons.lookup(IntrinsificationRegistry.class).startThreadLocalIntrinsificationRegistry();
+            return IntrinsificationPluginRegistry.startThreadLocalRegistry(singleton());
+        }
+
+        public static AutoCloseable pauseThreadLocalRegistry() {
+            return IntrinsificationPluginRegistry.pauseThreadLocalRegistry(singleton());
         }
     }
 
