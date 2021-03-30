@@ -46,7 +46,7 @@ public class StackValueSlotAssignmentPhase extends Phase {
         Map<RecursionAwareStackSlotIdentity, StackSlotHolder> slots = new HashMap<>();
 
         for (StackValueNode node : graph.getNodes(StackValueNode.TYPE)) {
-            RecursionAwareStackSlotIdentity slotIdentity = new RecursionAwareStackSlotIdentity(node.getSlotIdentity(), node.getRecursionDepth());
+            RecursionAwareStackSlotIdentity slotIdentity = new RecursionAwareStackSlotIdentity(node.slotIdentity, node.getRecursionDepth());
             StackSlotHolder slotHolder = slots.get(slotIdentity);
             if (slotHolder == null) {
                 slotHolder = new StackSlotHolder(node.size);
