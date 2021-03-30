@@ -207,7 +207,10 @@ public class PosixUtils {
                 return false;
             }
 
-            SignedWord n = Unistd.write(fd, curBuf, curLen);
+            SignedWord n;
+            do {
+                n = Unistd.write(fd, curBuf, curLen);
+            } while (n.equal(-1) && CErrorNumber.getCErrorNumber() == Errno.EINTR());
 
             if (n.equal(-1)) {
                 return false;
@@ -244,22 +247,6 @@ public class PosixUtils {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void checkStatusIs0(int status, String message) {
         VMError.guarantee(status == 0, message);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean readEntirely(int fd, CCharPointer buffer, int bufferLen) {
-        int bufferOffset = 0;
-        for (;;) {
-            int readBytes = readBytes(fd, buffer, bufferLen - 1, bufferOffset);
-            if (readBytes < 0) { // NOTE: also when file does not fit in buffer
-                return false;
-            }
-            bufferOffset += readBytes;
-            if (readBytes == 0) { // EOF, terminate string
-                buffer.write(bufferOffset, (byte) 0);
-                return true;
-            }
-        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

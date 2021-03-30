@@ -123,6 +123,9 @@ public class Unistd {
         public static native SignedWord read(int fd, PointerBase buf, UnsignedWord nbytes);
 
         @CFunction(transition = Transition.NO_TRANSITION)
+        public static native SignedWord write(int fd, PointerBase buf, UnsignedWord n);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
         public static native long sysconf(int name);
 
         @CFunction(transition = Transition.NO_TRANSITION)
