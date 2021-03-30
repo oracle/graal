@@ -1,0 +1,7 @@
+# /usr/lib/libSystem.B.dylib
+hello-darwin-link.bundle
+hello-darwin-link-fembed-bitcode.dylib
+hello-darwin-link-fembed-bitcode
+# ld-linux-x86-64.so.2
+hello-linux-link-fembed-bitcode
+hello-linux-link-fembed-bitcode.so
