@@ -303,7 +303,7 @@ class BaseTikaBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "1.0.0"
+        return "1.0.1"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -313,6 +313,9 @@ class BaseTikaBenchmarkSuite(object):
 
     def applicationPath(self):
         return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-SNAPSHOT-runner.jar")
+
+    def serviceEndpoint(self):
+        return 'parse'
 
     def applicationStartupRule(self, benchSuiteName, benchmark):
         # Example of Micronaut startup log:
@@ -430,6 +433,9 @@ class BaseShopCartBenchmarkSuite(object):
     def applicationPath(self):
         return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
 
+    def serviceEndpoint(self):
+        return 'clients'
+
     def applicationStartupRule(self, benchSuiteName, benchmark):
         # Example of Micronaut startup log:
         # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
@@ -522,16 +528,9 @@ class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Ba
 
     def loadConfiguration(self, benchmarkName):
         def postRequest(url, data):
-            req = urllib.Request(url)
+            req = mx_sdk_benchmark.urllib().Request(url)
             req.add_header('Content-Type', 'application/json')
-            mx.log(urllib.urlopen(req, str.encode(json.dumps(data))).read())
-        try:
-            if sys.version_info < (3, 0):
-                import urllib2 as urllib
-            else:
-                import urllib.request as urllib
-        except ImportError:
-            mx.abort("Failed to import {0} dependency module: urllib".format(ShopCartWrk2BenchmarkSuite.__name__))
+            mx.log(mx_sdk_benchmark.urllib().urlopen(req, str.encode(json.dumps(data))).read())
         config = super(ShopCartWrk2BenchmarkSuite, self).loadConfiguration(benchmarkName)
         for request in config["setup"]:
             postRequest(config["target-url"] + request["path"], request["msg"])
