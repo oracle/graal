@@ -154,15 +154,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     /**
      * Different stages of the compilation regarding the status of various graph properties.
      */
-    public enum StageFlags {
-        AFTER_PARTIAL_ESCAPE_PHASE,
-        AFTER_HIGH_TIER,
-        AFTER_FLOATING_READ_PHASE,
-        AFTER_GUARD_MOVEMENT,
-        AFTER_FIXED_READ_PHASE,
-        AFTER_VALUE_PROXY_REMOVAL,
-        AFTER_EXPAND_LOGIC,
-        AFTER_FINAL_CANONICALIZATION
+    public enum StageFlag {
+        PARTIAL_ESCAPE,
+        HIGH_TIER,
+        FLOATING_READS,
+        GUARD_MOVEMENT,
+        FIXED_READS,
+        VALUE_PROXY_REMOVAL,
+        EXPAND_LOGIC,
+        FINAL_CANONICALIZATION
     }
 
     public static class ScheduleResult {
@@ -358,7 +358,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final CompilationIdentifier compilationId;
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
-    private EnumSet<StageFlags> stageFlags = EnumSet.noneOf(StageFlags.class);
+    private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
     private FrameStateVerification frameStateVerification;
 
     /**
@@ -982,71 +982,20 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.guardsStage = guardsStage;
     }
 
-    public boolean isAfterFloatingReadPhase() {
-        return stageFlags.contains(StageFlags.AFTER_FLOATING_READ_PHASE);
+    public boolean isAfterStage(StageFlag state) {
+        return stageFlags.contains(state);
     }
 
-    public boolean isAfterFixedReadPhase() {
-        return stageFlags.contains(StageFlags.AFTER_FIXED_READ_PHASE);
+    public boolean isBeforeStage(StageFlag state) {
+        return !isAfterStage(state);
     }
 
-    public void setAfterFloatingReadPhase() {
-        stageFlags.add(StageFlags.AFTER_FLOATING_READ_PHASE);
+    public void setAfterStage(StageFlag state) {
+        assert isBeforeStage(state) : "Cannot set after state " + state + " since the graph is already in that state";
+        stageFlags.add(state);
     }
 
-    public void setAfterFixReadPhase() {
-        stageFlags.add(StageFlags.AFTER_FIXED_READ_PHASE);
-    }
-
-    public boolean hasValueProxies() {
-        return !stageFlags.contains(StageFlags.AFTER_VALUE_PROXY_REMOVAL);
-    }
-
-    public void setAfterValueProxyRemoval() {
-        stageFlags.add(StageFlags.AFTER_VALUE_PROXY_REMOVAL);
-    }
-
-    public boolean isAfterExpandLogic() {
-        return stageFlags.contains(StageFlags.AFTER_EXPAND_LOGIC);
-    }
-
-    public void setAfterExpandLogic() {
-        stageFlags.add(StageFlags.AFTER_EXPAND_LOGIC);
-    }
-
-    public boolean isAfterFinalCanonicalization() {
-        return stageFlags.contains(StageFlags.AFTER_FINAL_CANONICALIZATION);
-    }
-
-    public void setAfterFinalCanonicalization() {
-        stageFlags.add(StageFlags.AFTER_FINAL_CANONICALIZATION);
-    }
-
-    public boolean isAfterPEA() {
-        return stageFlags.contains(StageFlags.AFTER_PARTIAL_ESCAPE_PHASE);
-    }
-
-    public boolean isAfterHighTier() {
-        return stageFlags.contains(StageFlags.AFTER_HIGH_TIER);
-    }
-
-    public void setAfterHighTier() {
-        stageFlags.add(StageFlags.AFTER_HIGH_TIER);
-    }
-
-    public void setAfterPEA() {
-        stageFlags.add(StageFlags.AFTER_PARTIAL_ESCAPE_PHASE);
-    }
-
-    public void setAfterGuardMovement() {
-        stageFlags.add(StageFlags.AFTER_GUARD_MOVEMENT);
-    }
-
-    public boolean isAfterGuardMovement() {
-        return stageFlags.contains(StageFlags.AFTER_GUARD_MOVEMENT);
-    }
-
-    public EnumSet<StageFlags> getStageFlags() {
+    public EnumSet<StageFlag> getStageFlags() {
         return stageFlags;
     }
 
@@ -1316,7 +1265,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected void afterRegister(Node node) {
-        assert hasValueProxies() || !(node instanceof ValueProxyNode);
+        assert !isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode);
         if (GraalOptions.TraceInlining.getValue(getOptions())) {
             if (node instanceof Invokable) {
                 ((Invokable) node).updateInliningLogAfterRegister(this);

@@ -53,6 +53,7 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -235,8 +236,8 @@ public class FloatingReadPhase extends Phase {
             }
         }
         if (createFloatingReads) {
-            assert !graph.isAfterFloatingReadPhase();
-            graph.setAfterFloatingReadPhase();
+            assert graph.isBeforeStage(StageFlag.FLOATING_READS);
+            graph.setAfterStage(StageFlag.FLOATING_READS);
         }
     }
 

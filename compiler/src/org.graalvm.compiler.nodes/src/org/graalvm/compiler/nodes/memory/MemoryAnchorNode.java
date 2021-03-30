@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.StructuralInput.Memory;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
@@ -61,7 +62,7 @@ public final class MemoryAnchorNode extends FixedWithNextNode implements LIRLowe
     public Node canonical(CanonicalizerTool tool) {
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             // GR-27194
-            if (!this.graph().isAfterFixedReadPhase()) {
+            if (this.graph().isBeforeStage(StageFlag.FIXED_READS)) {
                 return null;
             }
         }
