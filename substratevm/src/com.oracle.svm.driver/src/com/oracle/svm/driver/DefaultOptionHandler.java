@@ -85,7 +85,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (NativeImage.IS_AOT) {
                     message = System.getProperty("java.vm.version");
                 } else {
-                    message = NativeImage.graalvmVersion;
+                    message = "native-image " + NativeImage.graalvmVersion + " " + NativeImage.graalvmConfig;
                 }
                 message += " (Java Version " + javaRuntimeVersion + ")";
                 nativeImage.showMessage(message);
