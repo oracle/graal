@@ -795,7 +795,8 @@ public class SubstrateUtil {
     }
 
     private static String stripPackage(String qualifiedClassName) {
-        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1);
+        /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
+        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
     }
 
     /**
