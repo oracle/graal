@@ -39,8 +39,8 @@
   },
 
   defBuild(b):: $.build_template + b + {
-    assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name]
-  },
+    assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
+  } + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
 
   jdk8:: common.oraclejdk8 + {
     jdk:: "jdk8",
@@ -54,6 +54,14 @@
     },
   },
 
+  labsjdk_ee_11: common["labsjdk-ee-11"] {
+    jdk:: "jdk11",
+  },
+
+  labsjdk_ee_16: common["labsjdk-ee-16"] {
+    jdk:: "jdk16",
+  },
+
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
   darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
@@ -61,6 +69,10 @@
 
   gate:: {
     targets+: ["gate"],
+  },
+
+  daily:: {
+    targets+: ["daily"],
   },
 
   weekly:: {
@@ -84,6 +96,8 @@
     if std.length(s) > 0 then
       std.asciiLower(s[0]) + s[1:]
     else s,
+
+  Description(description):: { description_text:: description },
 
   gateTags(tags):: $.mxCommand + {
     # sorted and unique
@@ -110,7 +124,7 @@
       # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
       assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self);
       [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
-  },
+  } + self.Description("Run mx gate --tags " + tags),
 
   sulong_weekly_notifications:: {
     notify_groups:: ["sulong"],
