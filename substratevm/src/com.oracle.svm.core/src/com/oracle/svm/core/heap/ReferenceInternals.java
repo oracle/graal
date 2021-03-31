@@ -193,10 +193,6 @@ public final class ReferenceInternals {
         } while (pendingList != null);
     }
 
-    /** Enqueues, avoiding the potentially overridden {@link Reference#enqueue()}. */
-    private static <T> void enqueueDirectly(Target_java_lang_ref_Reference<T> ref) {
-        ref.queue.enqueue(ref);
-    }
 
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
     public static boolean waitForReferenceProcessing() throws InterruptedException {
