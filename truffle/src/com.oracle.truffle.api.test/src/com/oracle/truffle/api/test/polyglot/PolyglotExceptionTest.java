@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -55,6 +56,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -429,6 +440,33 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         });
     }
 
+    @Test
+    public void testHostException() {
+        setupEnv(Context.newBuilder().allowAllAccess(true).build(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                Source source = request.getSource();
+                SizeNode callHost = PolyglotExceptionTestFactory.SizeNodeGen.create(
+                                PolyglotExceptionTestFactory.ReadBindingsNodeGen.create());
+                return Truffle.getRuntime().createCallTarget(new CallHostRootNode(languageInstance, source, callHost));
+            }
+        });
+        context.getPolyglotBindings().putMember("receiver", new BrokenList<>());
+        assertFails(() -> context.eval(ProxyLanguage.ID, ""), PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+            StackTraceElement prev = null;
+            for (StackTraceElement element : pe.getStackTrace()) {
+                if ("<proxyLanguage>".equals(element.getClassName())) {
+                    break;
+                }
+                prev = element;
+            }
+            assertNotNull("No host frame found.", prev);
+            assertEquals(BrokenList.class.getName(), prev.getClassName());
+            assertEquals("size", prev.getMethodName());
+        });
+    }
+
     static class ThrowStackOverflow implements Runnable {
 
         public void run() {
@@ -454,4 +492,65 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         });
     }
 
+    abstract static class BaseNode extends Node {
+        abstract Object execute(VirtualFrame frame);
+    }
+
+    abstract static class ReadBindingsNode extends BaseNode {
+
+        @Specialization
+        Object doGeneric(@CachedLibrary(limit = "1") InteropLibrary interop) {
+            try {
+                Object bindings = lookupContextReference(ProxyLanguage.class).get().getEnv().getPolyglotBindings();
+                return interop.readMember(bindings, "receiver");
+            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+    }
+
+    @NodeChild("receiver")
+    abstract static class SizeNode extends BaseNode {
+
+        @Specialization(limit = "1")
+        Object doGeneric(Object arg, @CachedLibrary(value = "arg") InteropLibrary interop) {
+            try {
+                return interop.getArraySize(arg);
+            } catch (UnsupportedMessageException unsupportedMessageException) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+    }
+
+    private static final class CallHostRootNode extends RootNode {
+
+        @Child BaseNode body;
+        Source source;
+
+        CallHostRootNode(TruffleLanguage<?> language, Source source, BaseNode body) {
+            super(language);
+            this.source = source;
+            this.body = body;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return body.execute(frame);
+        }
+
+        @Override
+        @TruffleBoundary
+        public SourceSection getSourceSection() {
+            return source.createSection(1);
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static final class BrokenList<T> extends ArrayList<T> {
+
+        @Override
+        public int size() {
+            throw new NullPointerException();
+        }
+    }
 }
