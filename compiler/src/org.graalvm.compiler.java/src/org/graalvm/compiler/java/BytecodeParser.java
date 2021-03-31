@@ -3718,7 +3718,7 @@ public class BytecodeParser implements GraphBuilderContext {
                      * will never see that the branch is taken. This can lead to deopt loops or OSR
                      * failure.
                      */
-                    BranchProbabilityData calculatedProbability = BranchProbabilityData.injected(BranchProbabilityNode.DEOPT_PROBABILITY, negated);
+                    BranchProbabilityData calculatedProbability = BranchProbabilityData.injected(BranchProbabilityNode.ALWAYS_TAKEN_PROBABILITY, negated);
                     FixedNode deoptSuccessor = BeginNode.begin(deopt);
                     ValueNode ifNode = genIfNode(condition, negated ? deoptSuccessor : noDeoptSuccessor, negated ? noDeoptSuccessor : deoptSuccessor, calculatedProbability);
                     postProcessIfNode(ifNode);

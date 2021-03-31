@@ -216,7 +216,7 @@ public class LoopFragmentInside extends LoopFragment {
             OpaqueNode opaque = opaqueUnrolledStrides.get(loop.loopBegin());
             CountedLoopInfo counted = loop.counted();
             ValueNode counterStride = counted.getCounter().strideNode();
-            if (opaque == null) {
+            if (opaque == null || opaque.isDeleted()) {
                 ValueNode limit = counted.getLimit();
                 opaque = new OpaqueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
                 ValueNode newLimit = partialUnrollOverflowCheck(opaque, limit, counted);
