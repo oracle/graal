@@ -1218,7 +1218,9 @@ public final class ClassfileParser {
             pool.classAt(outerClassIndex).validate(pool);
         }
         if (innerNameIndex != 0) {
-            pool.utf8At(innerNameIndex).validateClassName();
+            // Gradle (the build tool) generates classes with innerNameIndex -> empty string.
+            // HotSpot does not validates the class name, only that it is a valid UTF-8 constant.
+            pool.utf8At(innerNameIndex).validate(pool); // .validateClassName();
         }
         return new InnerClassesAttribute.Entry(innerClassIndex, outerClassIndex, innerNameIndex, innerClassAccessFlags);
     }
