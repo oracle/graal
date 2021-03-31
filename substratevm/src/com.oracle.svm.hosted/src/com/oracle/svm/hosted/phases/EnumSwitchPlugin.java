@@ -25,6 +25,8 @@
 package com.oracle.svm.hosted.phases;
 
 import java.lang.reflect.Method;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.GraalError;
@@ -96,8 +98,11 @@ final class EnumSwitchPlugin implements NodePlugin {
              * emits calls that end up in the same class or in the JDK.
              */
             AnalysisMethod aMethod = (AnalysisMethod) method;
-            StructuredGraph graph = aMethod.ensureGraphParsed(ImageSingletons.lookup(EnumSwitchFeature.class).bb, false).getGraph();
-            if (graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isNotEmpty()) {
+            EnumSwitchFeature feature = ImageSingletons.lookup(EnumSwitchFeature.class);
+            aMethod.ensureGraphParsed(feature.bb, false);
+            Boolean methodSafeForExecution = feature.methodsSafeForExecution.get(aMethod);
+            assert methodSafeForExecution != null : "after-parsing hook not executed for method " + aMethod.format("%H.%n(%p)");
+            if (!methodSafeForExecution.booleanValue()) {
                 return false;
 
             }
@@ -129,10 +134,21 @@ final class EnumSwitchFeature implements GraalFeature {
 
     BigBang bb;
 
+    final ConcurrentMap<AnalysisMethod, Boolean> methodsSafeForExecution = new ConcurrentHashMap<>();
+
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(EnumSwitchPluginRegistry.class, new EnumSwitchPluginRegistry());
-        bb = ((DuringSetupAccessImpl) access).getBigBang();
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        bb = access.getBigBang();
+        access.getHostVM().addMethodAfterParsingHook(this::onMethodParsed);
+    }
+
+    private void onMethodParsed(AnalysisMethod method, StructuredGraph graph) {
+        boolean methodSafeForExecution = graph != null && graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
+
+        Boolean existingValue = methodsSafeForExecution.put(method, methodSafeForExecution);
+        assert existingValue == null : "Method parsed twice: " + method.format("%H.%n(%p)");
     }
 
     @Override
