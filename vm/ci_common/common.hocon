@@ -275,6 +275,14 @@ weekly_vm_darwin: ${vm_darwin} {
   targets: [weekly]
 }
 
+ondemand_vm_linux: ${vm_linux} {
+  targets: [ondemand]
+}
+
+ondemand_vm_darwin: ${vm_darwin} {
+  targets: [ondemand]
+}
+
 mx_vm_common: [mx, --strip-jars, "--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
 mx_vm_installables: ${mx_vm_common}
 
@@ -499,7 +507,7 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [graalvm-show]
@@ -510,7 +518,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-java8-linux-amd64
   }
-  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [graalvm-show]
@@ -523,7 +531,7 @@ builds += [
   }
 
   # Darwin/AMD64
-  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${ondemand_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [graalvm-show]
