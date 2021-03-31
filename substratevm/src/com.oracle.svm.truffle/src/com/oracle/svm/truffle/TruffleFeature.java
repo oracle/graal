@@ -319,7 +319,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                         "Unsupported TruffleRuntime %s (only SubstrateTruffleRuntime or DefaultTruffleRuntime allowed)",
                         runtime.getClass().getName());
 
-        RuntimeClassInitialization.initializeAtBuildTime("com.oracle.graalvm.locator", "Truffle classes are always initialized at build time");
+        // Truffle classes are always initialized at build time
+        RuntimeClassInitialization.initializeAtBuildTime("com.oracle.graalvm.locator");
 
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) runtime;
