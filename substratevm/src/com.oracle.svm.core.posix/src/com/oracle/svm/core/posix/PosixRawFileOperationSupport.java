@@ -25,7 +25,6 @@
 package com.oracle.svm.core.posix;
 
 import java.io.File;
-import java.util.Objects;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -143,7 +142,7 @@ public class PosixRawFileOperationSupport extends RawFileOperationSupport {
             return Fcntl.O_WRONLY() | Fcntl.O_CREAT();
         }
 
-        throw new IllegalArgumentException("Illegal file access mode '" + Objects.toString(mode) + "'.");
+        throw new IllegalArgumentException("Illegal file access mode '" + mode + "'.");
     }
 }
 

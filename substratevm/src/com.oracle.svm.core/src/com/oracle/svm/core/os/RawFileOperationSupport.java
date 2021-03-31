@@ -232,6 +232,6 @@ public abstract class RawFileOperationSupport {
     public enum FileAccessMode {
         READ,
         READ_WRITE,
-        WRITE;
+        WRITE
     }
 }
