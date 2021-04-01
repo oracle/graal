@@ -81,6 +81,12 @@ public final class ReferenceInternals {
         return (T) SubstrateUtil.cast(instance, Target_java_lang_ref_Reference.class).referent;
     }
 
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
+    public static boolean refersTo(Reference<?> instance, Object value) {
+        // JDK-8188055
+        return value == ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset));
+    }
+
     /** Barrier-less write of {@link Target_java_lang_ref_Reference#referent} as pointer. */
     public static <T> void setReferentPointer(Reference<T> instance, Pointer value) {
         ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value.toObject());
