@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.common;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.graalvm.graphio.GraphOutput;
@@ -89,21 +88,7 @@ public final class TruffleOutputGroup implements Closeable {
      */
     public static TruffleOutputGroup openCallTarget(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) throws IOException {
         if (debug != null && debug.isDumpEnabled()) {
-            return new TruffleOutputGroup(debug, properties, "Truffle::" + compilable.getName());
-        }
-        return null;
-    }
-
-    /**
-     * Opens a new "Truffle::method_name" group.
-     *
-     * @param debug the {@link TruffleDebugContext} used for dumping
-     * @return the opened {@link TruffleOutputGroup}
-     * @throws IOException in case of IO error
-     */
-    public static TruffleOutputGroup openGraalGraphs(TruffleDebugContext debug) throws IOException {
-        if (debug != null && debug.isDumpEnabled()) {
-            return new TruffleOutputGroup(debug, Collections.emptyMap(), "Graal Graphs");
+            return new TruffleOutputGroup(debug, properties, "TruffleAST::" + compilable.getName());
         }
         return null;
     }

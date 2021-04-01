@@ -954,6 +954,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         String result = nameCache;
         if (result == null) {
             result = rootNode.toString();
+            if (sourceCallTarget != null) {
+                result += " <split-" + Integer.toHexString(hashCode()) + ">";
+            }
             nameCache = result;
         }
         return result;
