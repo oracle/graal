@@ -322,6 +322,96 @@ public final class CompilerDirectives {
     }
 
     /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(boolean value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(byte value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(short value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(char value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(int value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(long value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(float value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(double value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(Object value) {
+    }
+
+    /**
      * Casts the given object to the exact class represented by {@code clazz}. The cast succeeds
      * only if {@code object == null || object.getClass() == clazz} and thus fails for any subclass.
      *
