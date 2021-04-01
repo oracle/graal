@@ -5,7 +5,7 @@ This document is intended to provide an overview of these capabilities.
 
 Note that some of the features mentioned here are only supported in GraalVM EE.
 
-### Preinitialization of the First context
+### Preinitialization of the First Context
 
 Native image allows running Java code in static initializers at image build time.
 After static initialization was run, values referenced from static fields are snapshotted and persisted in the image.
@@ -42,12 +42,12 @@ The framework is able to initialize multiple contexts before the first context i
 
 The following criteria should be satisfied when supporting context independent code:
 
-* All speculation on constant values must be disabled with multiple contexts initialized, as they will lead to a guaranteed deoptimization when used with the second context.
-* Function inline caches should be modified and implemented as a two-level inline cache. The first level speculates on the function instance's identity and the second level on the underlying CallTarget instance. It makes sense to disable the first level cache if multiple contexts are initialized, as this would unnecessarily cause deoptimization.
+* All speculation on runtime value identity must be disabled with multiple contexts initialized, as they will lead to a guaranteed deoptimization when used with the second context.
+* Function inline caches should be modified and implemented as a two-level inline cache. The first level speculates on the function instance's identity and the second level on the underlying CallTarget instance. The first level cache must be disabled if multiple contexts are initialized, as this would unnecessarily cause deoptimization.
 * The DynamicObject root Shape instance should be stored in the language instance instead of the language context. Otherwise, any inline cache on shapes will not stabilize and ultimately end up in the generic state.
-* All Node implementations must not store context-dependent data structures or runtime values.
+* All Node implementations must not store context-dependent data structures or context-dependent runtime values.
 * Loading and parsing of sources, even with language-internal builtins, should be performed using [TruffleLanguage.Env.parse](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#parse-com.oracle.truffle.api.TruffleLanguage.ParsingRequest-) to cache Source parsing per language instance. 
-Alternatively, a source cache can be implemented manually and stored in the `TruffleLanguage` instance.
+* All assumption instances should be stored in the language instance instead of the context. With multiple contexts initialized, the context instance read using context references may no longer be a constant. In this case any assumption read from the context would not be folded and they would cause significant runtime performance overhead. Assumptions from the language can be folded by the compiler in both single and multiple context mode.
 
 It is expected that an AST created for multiple contexts is compiled to less efficient machine code as it does not allow for speculation on the identity of runtime values.
 For example, instead of speculating on the function instance in an inline cache, it is necessary to speculate on the contained CallTarget.
@@ -60,7 +60,7 @@ It may be costly to create context independent code, therefore, speculation on r
 ### Persistent Context Independent Code with Auxiliary Engine Caching (EE)
 
 GraalVM Enterprise Edition supports persisting code data structures to disk.
-This allows to almost eliminate warmup time for the first run of an application in an isolate/process.
+This enables to almost eliminate warmup time for the first run of an application in an isolate/process.
 The SVM auxiliary image feature is used to persist and load the necessary data structures to the disk.
 Persisting the image can take a significant amount of time as compilation needs to be performed.
 However, loading is designed to be as fast as possible, typically almost instantaneous.
