@@ -625,7 +625,18 @@ class CMakeNinjaBuildTask(CMakeBuildTaskMixin, mx_native.NinjaBuildTask):
 
 
 class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=too-many-ancestors
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+    """A CMake project that is built using Ninja.
+
+    Attributes
+        ninja_targets: list of str, optional
+            Targets that should be built using Ninja
+        ninja_install_targets: list of str, optional
+            Targets that executed after a successful build. In contrast to `ninja_targets`, the `ninja_install_targets`
+            are not considered when deciding whether a project needs to be rebuilt. This is needed because `install`
+            targets created by CMake are often executed unconditionally, which would cause the project to be always
+            rebuilt.
+    """
+    def __init__(self, suite, name, deps, workingSets, subDir, ninja_targets=None, ninja_install_targets=None, results=None, output=None, **args):
         projectDir = args.pop('dir', None)
         if projectDir:
             d_rel = projectDir
@@ -638,8 +649,8 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
         if not srcDir:
             mx.abort("Exactly one 'sourceDir' is required")
         srcDir = mx_subst.path_substitutions.substitute(srcDir)
-        self._install_targets = [mx_subst.path_substitutions.substitute(x) for x in args.pop('ninja_install_targets', [])]
-        self._ninja_targets = [mx_subst.path_substitutions.substitute(x) for x in args.pop('ninja_targets', [])]
+        self._install_targets = [mx_subst.path_substitutions.substitute(x) for x in ninja_install_targets or []]
+        self._ninja_targets = [mx_subst.path_substitutions.substitute(x) for x in ninja_targets or []]
         super(CMakeNinjaProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, d, results=results, output=output, **args)
         # self.dir = self.getOutput()
 
