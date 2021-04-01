@@ -29,6 +29,9 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.staticobject.StaticProperty;
+import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
+import com.oracle.truffle.espresso.staticobject.StaticShape;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -79,6 +82,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -466,6 +470,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     static final DebugCounter KLASS_LOOKUP_DECLARED_METHOD_COUNT = DebugCounter.create("Klass.lookupDeclaredMethod call count");
     static final DebugCounter KLASS_LOOKUP_DECLARED_FIELD_COUNT = DebugCounter.create("Klass.lookupDeclaredField call count");
 
+    private static final StaticProperty FOREIGN_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
+    private static final StaticShape<StaticObjectFactory> FOREIGN_SHAPE = StaticShape.newBuilder()
+            .property(FOREIGN_PROPERTY, "foreignObject", true)
+            .build(StaticObject.class, StaticObjectFactory.class);
+
     protected Symbol<Name> name;
     protected Symbol<Type> type;
     private final EspressoContext context;
@@ -597,6 +606,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         this.id = context.getNewKlassId();
         this.modifiers = modifiers;
         this.runtimePackage = initRuntimePackage();
+    }
+
+    public static StaticProperty getForeignProperty() {
+        return FOREIGN_PROPERTY;
+    }
+
+    public static StaticShape<StaticObjectFactory> getForeignShape() {
+        return FOREIGN_SHAPE;
     }
 
     @Override

@@ -46,9 +46,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.staticobject.StaticProperty;
-import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
-import com.oracle.truffle.espresso.staticobject.StaticShape;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
@@ -66,14 +63,6 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject(null);
     public static final String CLASS_TO_STATIC = "static";
 
-    private static final StaticProperty ARRAY_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
-    private static final StaticProperty FOREIGN_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
-    private static final StaticShape<StaticObjectFactory> ARRAY_SHAPE = StaticShape.newBuilder()
-            .property(ARRAY_PROPERTY, "array", true)
-            .build(StaticObject.class, StaticObjectFactory.class);;
-    private static final StaticShape<StaticObjectFactory> FOREIGN_SHAPE = StaticShape.newBuilder()
-            .property(FOREIGN_PROPERTY, "foreignObject", true)
-            .build(StaticObject.class, StaticObjectFactory.class);;
     private static final EspressoLock FOREIGN_MARKER = EspressoLock.create();
 
     private final Klass klass; // != PrimitiveKlass
@@ -143,8 +132,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        StaticObject newObj = ARRAY_SHAPE.getFactory().create(klass);
-        ARRAY_PROPERTY.setObject(newObj, array);
+        StaticObject newObj = ArrayKlass.getArrayShape().getFactory().create(klass);
+        ArrayKlass.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
 
@@ -175,8 +164,8 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     private static StaticObject createForeign(Klass klass, Object foreignObject) {
-        StaticObject newObj = FOREIGN_SHAPE.getFactory().create(klass);
-        FOREIGN_PROPERTY.setObject(newObj, foreignObject);
+        StaticObject newObj = Klass.getForeignShape().getFactory().create(klass);
+        Klass.getForeignProperty().setObject(newObj, foreignObject);
         newObj.lockOrForeignMarker = FOREIGN_MARKER;
         return trackAllocation(klass, newObj);
     }
@@ -303,7 +292,7 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public Object rawForeignObject() {
         assert isForeignObject();
-        return FOREIGN_PROPERTY.getObject(this);
+        return Klass.getForeignProperty().getObject(this);
     }
 
     public boolean isStaticStorage() {
@@ -388,7 +377,7 @@ public class StaticObject implements TruffleObject, Cloneable {
      * Start of Array manipulation.
      */
     private Object getArray() {
-        return ARRAY_PROPERTY.getObject(this);
+        return ArrayKlass.getArrayProperty().getObject(this);
     }
 
     @SuppressWarnings("unchecked")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
-import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 public final class ArrayKlass extends Klass {
@@ -52,6 +51,11 @@ public final class ArrayKlass extends Klass {
     private final Klass componentType;
     private final Klass elementalType;
     private final int dimension;
+
+    private static final StaticProperty ARRAY_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
+    private static final StaticShape<StaticObjectFactory> ARRAY_SHAPE = StaticShape.newBuilder()
+            .property(ARRAY_PROPERTY, "array", true)
+            .build(StaticObject.class, StaticObjectFactory.class);
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
@@ -65,6 +69,14 @@ public final class ArrayKlass extends Klass {
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
         this.dimension = Types.getArrayDimensions(getType());
+    }
+
+    public static StaticProperty getArrayProperty() {
+        return ARRAY_PROPERTY;
+    }
+
+    public static StaticShape<StaticObjectFactory> getArrayShape() {
+        return ARRAY_SHAPE;
     }
 
     @Override
