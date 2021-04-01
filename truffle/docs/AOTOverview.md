@@ -52,7 +52,7 @@ Alternatively, a source cache can be implemented manually and stored in the `Tru
 It is expected that an AST created for multiple contexts is compiled to less efficient machine code as it does not allow for speculation on the identity of runtime values.
 For example, instead of speculating on the function instance in an inline cache, it is necessary to speculate on the contained CallTarget.
 This is slower because it requires an additional read to access the CallTarget stored in the function.
-It may be costly to create independent context code, therefore, speculation on runtime values should still be performed if multiple contexts are not initialized.
+It may be costly to create context independent code, therefore, speculation on runtime values should still be performed if multiple contexts are not initialized.
 
 [SimpleLanguage](https://github.com/graalvm/simplelanguage/blob/master/language/src/main/java/com/oracle/truffle/sl/SLLanguage.java#L196) and [JavaScript](https://github.com/oracle/graaljs/blob/master/graal-js/src/com.oracle.truffle.js/src/com/oracle/truffle/js/lang/JavaScriptLanguage.java) are two languages that already support context independent code and might be useful as a guidance on concrete problems.
 
