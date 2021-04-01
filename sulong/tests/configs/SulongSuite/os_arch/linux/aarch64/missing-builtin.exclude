@@ -1,0 +1,5 @@
+# llvm.experimental.vector.reduce.add.v4i32
+c/arrays/intArray.c.dir
+c/truffle-c/arrayTest/arrayTest18.c.dir
+c/truffle-c/arrayTest/arrayTest5.c.dir
+c/truffle-c/programTest/programTest0.c.dir
