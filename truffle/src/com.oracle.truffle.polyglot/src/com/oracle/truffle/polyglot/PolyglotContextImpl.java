@@ -1734,8 +1734,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     try {
                         closeable.close();
                     } catch (IOException ioe) {
-                        // TODO: Should we log or throw?
-                        engine.getEngineLogger().log(Level.INFO, "Failed to close " + closeable, ioe);
+                        engine.getEngineLogger().log(Level.WARNING, "Failed to close " + closeable, ioe);
                     }
                 }
             }
@@ -2278,7 +2277,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return false;
     }
 
-    synchronized void onCloseableCreated(Closeable closeable) {
+    synchronized void registerOnDispose(Closeable closeable) {
         if (disposing) {
             throw new IllegalStateException("Cannot register closeable when context is being disposed.");
         }
@@ -2286,13 +2285,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             closeables = Collections.newSetFromMap(new WeakHashMap<>());
         }
         closeables.add(Objects.requireNonNull(closeable));
-    }
-
-    synchronized void onCloseableClosed(Closeable closeable) {
-        if (closeables == null) {
-            throw new IllegalStateException("Closeable not registered.");
-        }
-        closeables.remove(closeable);
     }
 
     final class ContextLocalsTL extends ThreadLocal<Object[]> {

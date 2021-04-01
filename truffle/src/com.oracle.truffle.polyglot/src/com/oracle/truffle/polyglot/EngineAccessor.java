@@ -1196,32 +1196,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public void onCloseableCreated(Object engineObject, Closeable closeable) {
+        public void registerOnDispose(Object engineObject, Closeable closeable) {
             if (engineObject instanceof PolyglotLanguageContext) {
-                ((PolyglotLanguageContext) engineObject).context.onCloseableCreated(closeable);
-            } else if (engineObject instanceof EmbedderFileSystemContext) {
-                /*
-                 * EmbedderFileSystemContext is a singleton held by PolyglotSource which is never
-                 * closed.
-                 */
-                return;
+                ((PolyglotLanguageContext) engineObject).context.registerOnDispose(closeable);
             } else {
-                throw CompilerDirectives.shouldNotReachHere("EngineObject must be either PolyglotLanguageContext or EmbedderFileSystemContext.");
-            }
-        }
-
-        @Override
-        public void onCloseableClosed(Object engineObject, Closeable closeable) {
-            if (engineObject instanceof PolyglotLanguageContext) {
-                ((PolyglotLanguageContext) engineObject).context.onCloseableClosed(closeable);
-            } else if (engineObject instanceof EmbedderFileSystemContext) {
-                /*
-                 * EmbedderFileSystemContext is a singleton held by PolyglotSource which is never
-                 * closed.
-                 */
-                return;
-            } else {
-                throw CompilerDirectives.shouldNotReachHere("EngineObject must be either PolyglotLanguageContext or EmbedderFileSystemContext.");
+                throw CompilerDirectives.shouldNotReachHere("EngineObject must be PolyglotLanguageContext.");
             }
         }
 

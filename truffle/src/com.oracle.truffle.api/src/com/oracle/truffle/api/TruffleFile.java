@@ -778,6 +778,11 @@ public final class TruffleFile {
 
     /**
      * Opens or creates a file returning a {@link SeekableByteChannel} to access the file content.
+     * In most cases, the returned {@link SeekableByteChannel} should be closed using
+     * try-with-resources construct. When the channel must keep being opened for the lifetime of a
+     * context it should be {@link Env#registerOnDispose(Closeable) registered} for automatic close
+     * on context dispose.
+     *
      *
      * @param options the options specifying how the file should be opened
      * @param attributes the optional attributes to set atomically when creating the new file
@@ -795,9 +800,7 @@ public final class TruffleFile {
     public SeekableByteChannel newByteChannel(Set<? extends OpenOption> options, FileAttribute<?>... attributes) throws IOException {
         try {
             checkFileOperationPreconditions();
-            SeekableByteChannel res = ByteChannelDecorator.create(this, fileSystemContext.fileSystem.newByteChannel(normalizedPath, options, attributes));
-            LanguageAccessor.engineAccess().onCloseableCreated(fileSystemContext.engineObject, res);
-            return res;
+            return ByteChannelDecorator.create(fileSystemContext.fileSystem.newByteChannel(normalizedPath, options, attributes));
         } catch (IOException | UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -806,7 +809,10 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for reading returning an {@link InputStream} to access the file content.
+     * Opens a file for reading returning an {@link InputStream} to access the file content. In most
+     * cases, the returned {@link InputStream} should be closed using try-with-resources construct.
+     * When the stream must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      *
      * @param options the options specifying how the file should be opened
      * @return the created {@link InputStream}
@@ -830,7 +836,10 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for reading returning a {@link BufferedReader} to access the file content.
+     * Opens a file for reading returning a {@link BufferedReader} to access the file content. In
+     * most cases, the returned {@link BufferedReader} should be closed using try-with-resources
+     * construct. When the reader must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      *
      * @param charset the file encoding
      * @return the created {@link BufferedReader}
@@ -844,7 +853,8 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for reading returning a {@link BufferedReader} to access the file content.
+     * Opens a file for reading returning a {@link BufferedReader} to access the file content. See
+     * {@link #newBufferedReader(Charset)}.
      *
      * @return the created {@link BufferedReader}
      * @throws IOException in case of IO error
@@ -904,7 +914,10 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for writing returning an {@link OutputStream}.
+     * Opens a file for writing returning an {@link OutputStream}. In most cases, the returned
+     * {@link OutputStream} should be closed using try-with-resources construct. When the stream
+     * must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      *
      * @param options the options specifying how the file should be opened
      * @return the created {@link OutputStream}
@@ -932,7 +945,10 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for writing returning an {@link BufferedWriter}.
+     * Opens a file for writing returning an {@link BufferedWriter}. In most cases, the returned
+     * {@link BufferedWriter} should be closed using try-with-resources construct. When the writer
+     * must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      *
      * @param charset the file encoding
      * @param options the options specifying how the file should be opened
@@ -948,7 +964,8 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for writing returning an {@link BufferedWriter}.
+     * Opens a file for writing returning an {@link BufferedWriter}. See
+     * {@link #newBufferedWriter(Charset, OpenOption...)}.
      *
      * @param options the options specifying how the file should be opened
      * @return the created {@link BufferedWriter}
@@ -1446,6 +1463,9 @@ public final class TruffleFile {
      * iterator} are created as if by {@link #resolve(java.lang.String) resolving} the name of the
      * directory entry against this {@link TruffleFile}.
      * <p>
+     * In most cases, the returned {@link DirectoryStream} should be closed using try-with-resources
+     * construct. When the stream must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      * When not using the try-with-resources construct, then the directory stream's
      * {@link DirectoryStream#close() close} method should be called after iteration is completed.
      * <p>
@@ -1460,9 +1480,7 @@ public final class TruffleFile {
     public DirectoryStream<TruffleFile> newDirectoryStream() throws IOException {
         try {
             checkFileOperationPreconditions();
-            DirectoryStream<TruffleFile> res = new TruffleFileDirectoryStream(this, fileSystemContext.fileSystem.newDirectoryStream(normalizedPath, AllFiles.INSTANCE));
-            LanguageAccessor.engineAccess().onCloseableCreated(fileSystemContext.engineObject, res);
-            return res;
+            return new TruffleFileDirectoryStream(this, fileSystemContext.fileSystem.newDirectoryStream(normalizedPath, AllFiles.INSTANCE));
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -2050,7 +2068,7 @@ public final class TruffleFile {
 
     static final class FileSystemContext {
 
-        // instance of PolyglotLanguageContext or PolyglotSource.EmbedderFileSystemContext
+        // instance of PolyglotContextConfig or PolyglotSource.EmbedderFileSystemContext
         final Object engineObject;
 
         private volatile Map<String, Collection<? extends FileTypeDetector>> fileTypeDetectors;
@@ -2187,11 +2205,9 @@ public final class TruffleFile {
 
     private static final class ByteChannelDecorator implements SeekableByteChannel {
 
-        private final TruffleFile file;
         private final SeekableByteChannel delegate;
 
-        ByteChannelDecorator(TruffleFile file, SeekableByteChannel delegate) {
-            this.file = file;
+        ByteChannelDecorator(final SeekableByteChannel delegate) {
             this.delegate = delegate;
         }
 
@@ -2212,11 +2228,7 @@ public final class TruffleFile {
 
         @Override
         public void close() throws IOException {
-            try {
-                delegate.close();
-            } finally {
-                LanguageAccessor.engineAccess().onCloseableClosed(file.fileSystemContext.engineObject, this);
-            }
+            delegate.close();
         }
 
         @Override
@@ -2241,10 +2253,9 @@ public final class TruffleFile {
             return this;
         }
 
-        static SeekableByteChannel create(TruffleFile truffleFile, SeekableByteChannel delegate) {
-            Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
+        static SeekableByteChannel create(final SeekableByteChannel delegate) {
             Objects.requireNonNull(delegate, "Delegate must be non null.");
-            return new ByteChannelDecorator(truffleFile, delegate);
+            return new ByteChannelDecorator(delegate);
         }
     }
 
@@ -2277,8 +2288,6 @@ public final class TruffleFile {
                 throw e;
             } catch (Throwable t) {
                 throw directory.wrapHostException(t);
-            } finally {
-                LanguageAccessor.engineAccess().onCloseableClosed(directory.fileSystemContext.engineObject, this);
             }
         }
 

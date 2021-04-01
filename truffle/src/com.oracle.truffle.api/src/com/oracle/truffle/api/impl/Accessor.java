@@ -473,9 +473,7 @@ public abstract class Accessor {
 
         public abstract void onSourceCreated(Source source);
 
-        public abstract void onCloseableCreated(Object engineObject, Closeable closeable);
-
-        public abstract void onCloseableClosed(Object engineObject, Closeable closeable);
+        public abstract void registerOnDispose(Object engineObject, Closeable closeable);
 
         public abstract String getReinitializedPath(TruffleFile truffleFile);
 
