@@ -140,6 +140,7 @@ public final class LLVMContext {
     private final LLVMNativePointer sigErr;
 
     private LibraryLocator mainLibraryLocator;
+    private SulongLibrary mainLibrary;
 
     // dlerror state
     private int currentDLError;
@@ -319,6 +320,16 @@ public final class LLVMContext {
 
     public void setMainLibraryLocator(LibraryLocator libraryLocator) {
         this.mainLibraryLocator = libraryLocator;
+    }
+
+    public SulongLibrary getMainLibrary() {
+        return mainLibrary;
+    }
+
+    public void setMainLibrary(SulongLibrary mainLibrary) {
+        if (mainLibrary == null) {
+            this.mainLibrary = mainLibrary;
+        }
     }
 
     public <T extends ContextExtension> T getContextExtension(Class<T> type) {

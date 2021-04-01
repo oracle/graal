@@ -54,6 +54,11 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
         return (flag & RTLD_LAZY) == RTLD_LAZY;
     }
 
+    @Override
+    public boolean isFirstDLOpenFlagSet(int flag) {
+        return false;
+    }
+
     public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
         if (LLVMInfo.SYSNAME.equalsIgnoreCase("linux")) {
             if (LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
