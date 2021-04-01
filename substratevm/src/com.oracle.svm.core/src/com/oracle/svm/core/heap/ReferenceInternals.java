@@ -199,7 +199,6 @@ public final class ReferenceInternals {
         } while (pendingList != null);
     }
 
-
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
     public static boolean waitForReferenceProcessing() throws InterruptedException {
         synchronized (processPendingLock) {
