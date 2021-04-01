@@ -36,7 +36,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.thread.VMThreads;
 
 @AutomaticFeature
 class PosixLogHandlerFeature implements Feature {
@@ -81,7 +81,7 @@ public class PosixLogHandler implements LogHandler {
     public void fatalError() {
         if (SubstrateUtil.isPrintDiagnosticsInProgress()) {
             // Delay the shutdown a bit if another thread has something important to report.
-            Unistd.sleep(3);
+            VMThreads.singleton().nativeSleep(3000);
         }
         LibC.abort();
     }

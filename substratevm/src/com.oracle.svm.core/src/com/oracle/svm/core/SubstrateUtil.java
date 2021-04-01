@@ -81,8 +81,11 @@ import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter.Stage0StackFramePrintVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter.Stage1StackFramePrintVisitor;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.Counter;
 
@@ -293,6 +296,17 @@ public class SubstrateUtil {
     private static volatile int diagnosticSections = 0;
     private static volatile int diagnosticThunkIndex = 0;
 
+    private static final FastThreadLocalBytes<CCharPointer> ThreadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setOnlyAttachedForCrashHandler(IsolateThread thread) {
+        ThreadOnlyAttachedForCrashHandler.getAddress(thread).write((byte) 1);
+    }
+
+    private static boolean isThreadOnlyAttachedForCrashHandler(IsolateThread thread) {
+        return ThreadOnlyAttachedForCrashHandler.getAddress(thread).read() != 0;
+    }
+
     public static boolean isPrintDiagnosticsInProgress() {
         return diagnosticThread.get().isNonNull();
     }
@@ -405,7 +419,7 @@ public class SubstrateUtil {
         }
 
         if (shouldPrint(OTHER_STACK_TRACES)) {
-            if (VMOperationControl.isFrozen()) {
+            if (VMOperation.isInProgressAtSafepoint()) {
                 /*
                  * Only used for diagnostics - iterate all threads without locking the threads
                  * mutex.
@@ -549,10 +563,15 @@ public class SubstrateUtil {
     }
 
     private static void dumpVMThreadState(Log log, IsolateThread currentThread) {
-        log.string("VM Thread State for current thread ").zhex(currentThread.rawValue()).string(":").newline();
-        log.indent(true);
-        VMThreadLocalInfos.dumpToLog(log, currentThread);
-        log.indent(false);
+        if (isThreadOnlyAttachedForCrashHandler(currentThread)) {
+            log.string("The current thread ").zhex(currentThread.rawValue()).string(" does not have a VM Thread State as it is an unattached thread.").newline();
+            log.newline();
+        } else {
+            log.string("VM Thread State for current thread ").zhex(currentThread.rawValue()).string(":").newline();
+            log.indent(true);
+            VMThreadLocalInfos.dumpToLog(log, currentThread);
+            log.indent(false);
+        }
     }
 
     private static void dumpRecentVMOperations(Log log) {

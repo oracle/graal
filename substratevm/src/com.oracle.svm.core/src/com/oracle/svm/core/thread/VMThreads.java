@@ -497,13 +497,20 @@ public abstract class VMThreads {
      * {@link #OSThreadHandleTL} is not set yet.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract OSThreadHandle getCurrentOSThreadHandle();
+    public abstract OSThreadHandle getCurrentOSThreadHandle();
 
     /**
      * Returns a unique identifier for the current thread.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract OSThreadId getCurrentOSThreadId();
+
+    /**
+     * Puts this thread to sleep on the operating-system level and does not care about Java
+     * semantics. May only be used in very specific situations, e.g., when printing diagnostics.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract void nativeSleep(int milliseconds);
 
     @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
     public boolean verifyThreadIsAttached(IsolateThread thread) {

@@ -424,7 +424,7 @@ final class Target_jdk_internal_misc_VM {
         final long minDiffSecs = -maxDiffSecs;
 
         Time.timeval tv = StackValue.get(Time.timeval.class);
-        int status = Time.gettimeofday(tv, WordFactory.nullPointer());
+        int status = Time.NoTransitions.gettimeofday(tv, WordFactory.nullPointer());
         assert status != -1 : "linux error";
         long seconds = tv.tv_sec();
         long nanos = tv.tv_usec() * 1000;
