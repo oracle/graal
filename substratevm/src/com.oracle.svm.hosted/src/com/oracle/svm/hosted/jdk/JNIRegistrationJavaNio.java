@@ -53,13 +53,17 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         rerunClassInit(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
         /* Ensure that the interrupt signal handler is initialized at runtime. */
         rerunClassInit(a, "sun.nio.ch.NativeThread");
+        rerunClassInit(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
 
         if (isPosix()) {
+            rerunClassInit(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
+                            "sun.nio.ch.SinkChannelImpl", "sun.nio.ch.SourceChannelImpl");
             rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
             if (isLinux()) {
                 rerunClassInit(a, "sun.nio.ch.sctp.SctpChannelImpl");
             }
         } else if (isWindows()) {
+            rerunClassInit(a, "sun.nio.ch.WindowsAsynchronousFileChannelImpl", "sun.nio.ch.WindowsAsynchronousFileChannelImpl$DefaultIocpHolder");
             rerunClassInit(a, "sun.nio.fs.WindowsNativeDispatcher", "sun.nio.fs.WindowsSecurity", "sun.nio.ch.Iocp",
                             "sun.nio.ch.WindowsAsynchronousServerSocketChannelImpl", "sun.nio.ch.WindowsAsynchronousSocketChannelImpl");
         }
