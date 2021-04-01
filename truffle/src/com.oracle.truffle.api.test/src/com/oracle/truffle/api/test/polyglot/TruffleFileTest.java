@@ -53,6 +53,8 @@ import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
 import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
+
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -85,6 +87,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -92,12 +95,19 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -700,6 +710,46 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
     }
 
+    @Test
+    public void testIOExceptionFromClose() {
+        TestHandler handler = new TestHandler();
+        setupEnv(Context.newBuilder().allowAllAccess(true).logHandler(handler).build());
+        Closeable closeable = new Closeable() {
+            @Override
+            public void close() throws IOException {
+                throw new IOException();
+            }
+        };
+        languageEnv.registerOnDispose(closeable);
+        context.close();
+        Optional<LogRecord> record = handler.findRecordByMessage("Failed to close.*");
+        assertTrue(record.isPresent());
+        assertEquals(Level.WARNING, record.map(LogRecord::getLevel).get());
+        assertEquals("engine", record.map(LogRecord::getLoggerName).get());
+    }
+
+    @Test
+    public void testUncheckedExceptionFromClose() {
+        TestHandler handler = new TestHandler();
+        setupEnv(Context.newBuilder().allowAllAccess(true).logHandler(handler).build());
+        Closeable closeable = new Closeable() {
+            @Override
+            public void close() throws IOException {
+                throw new RuntimeException();
+            }
+        };
+        languageEnv.registerOnDispose(closeable);
+        try {
+            assertFails(() -> context.close(), PolyglotException.class, (pe) -> {
+                assertTrue(pe.isInternalError());
+            });
+        } finally {
+            context = null;
+        }
+        Optional<LogRecord> record = handler.findRecordByMessage("Failed to close.*");
+        assertFalse(record.isPresent());
+    }
+
     private static void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
@@ -1081,6 +1131,29 @@ public class TruffleFileTest extends AbstractPolyglotTest {
                     openDirCount--;
                 }
             }
+        }
+    }
+
+    private static final class TestHandler extends Handler {
+
+        private final List<LogRecord> records = new ArrayList<>();
+
+        @Override
+        public void publish(LogRecord record) {
+            records.add(record);
+        }
+
+        @Override
+        public void flush() {
+        }
+
+        @Override
+        public void close() {
+        }
+
+        Optional<LogRecord> findRecordByMessage(String regex) {
+            Pattern pattern = Pattern.compile(regex);
+            return records.stream().filter((r) -> r.getMessage() != null && pattern.matcher(r.getMessage()).matches()).findAny();
         }
     }
 }

@@ -3517,7 +3517,9 @@ public abstract class TruffleLanguage<C> {
          * Registers {@link Closeable} for automatic close on context dispose. In most cases,
          * closeable should be closed using try-with-resources construct. When a closeable must keep
          * being opened for the lifetime of a context it should be registered using this method for
-         * automatic close on context dispose.
+         * automatic close on context dispose. The registered {@link Closeable} is weakly
+         * referenced. The guest language must strongly reference it otherwise, it may be garbage
+         * collected before it's closed.
          * <p>
          * If the registered closeable throws an {@link IOException} during close, the thrown
          * exception does not prevent successful context dispose. The IOException is logged to the
