@@ -2,6 +2,10 @@
 
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
+## Version 21.2.0
+* (GR-29770) Loop safepoint elimination: Not only consider 32bit loops for safepoint removal but also 64bit ones
+that iterate in 32bit ranges.
+
 ## Version 21.1.0
 * (GR-29126) Unify box optimizations in the compiler. Remove `-Dgraal.ReuseOutOfCacheBoxedValues=false`.
 * (GR-28523) Optimize Box nodes: Optimizes box operations by re-using boxed representations 

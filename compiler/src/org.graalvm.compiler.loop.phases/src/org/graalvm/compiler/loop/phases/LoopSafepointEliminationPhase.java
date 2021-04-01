@@ -42,6 +42,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
+    private static final long IntegerRangeDistance = Math.abs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
+
     /**
      * To be implemented by subclasses to perform additional checks. Returns <code>true</code> if
      * the safepoint was also disabled in subclasses and we therefore don't need to continue
@@ -63,13 +65,19 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
         }
-        Stamp s = loop.counted().getLimit().stamp(NodeView.DEFAULT);
-        if (s instanceof IntegerStamp) {
-            IntegerStamp i = (IntegerStamp) s;
-            final long lowerBound = i.lowerBound();
-            final long upperBound = i.upperBound();
-            if (lowerBound >= Integer.MIN_VALUE && upperBound <= Integer.MAX_VALUE) {
-                return true;
+        final Stamp limitStamp = loop.counted().getLimit().stamp(NodeView.DEFAULT);
+        if (limitStamp instanceof IntegerStamp) {
+            final IntegerStamp limitIStamp = (IntegerStamp) limitStamp;
+            final long upperBoundLimit = limitIStamp.upperBound();
+            final Stamp startStamp = loop.counted().getStart().stamp(NodeView.DEFAULT);
+            if (startStamp instanceof IntegerStamp) {
+                final IntegerStamp startIStamp = (IntegerStamp) startStamp;
+                final long lowerBoundStart = startIStamp.lowerBound();
+                if (IntegerStamp.subtractionOverflows(upperBoundLimit, lowerBoundStart, 64)) {
+                    return false;
+                }
+                final long startToLimitDistance = Math.abs(upperBoundLimit - lowerBoundStart);
+                return startToLimitDistance <= IntegerRangeDistance;
             }
         }
         return false;

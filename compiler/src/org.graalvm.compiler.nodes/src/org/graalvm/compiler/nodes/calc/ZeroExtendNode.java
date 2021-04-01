@@ -73,11 +73,6 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow>
         return create(input, inputBits, resultBits, view, false);
     }
 
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(getArithmeticOpTable(value).getZeroExtend().foldStamp(inputBits, resultBits, value.stamp(NodeView.DEFAULT)));
-    }
-
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view, boolean alwaysPositive) {
         IntegerConvertOp<ZeroExtend> signExtend = ArithmeticOpTable.forStamp(input.stamp(view)).getZeroExtend();
         ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp(view)));
