@@ -623,6 +623,9 @@ class CMakeNinjaBuildTask(CMakeBuildTaskMixin, mx_native.NinjaBuildTask):
         if self.subject._install_targets:
             self.ninja._run(*self.subject._install_targets)
 
+    def newestOutput(self):
+        return mx.TimeStampFile.newest([_path for _path, _ in self.subject.getArchivableResults()])
+
 
 class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=too-many-ancestors
     """A CMake project that is built using Ninja.
@@ -679,6 +682,9 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
     def _build_task(self, target_arch, args):
         return CMakeNinjaBuildTask(args, self, target_arch, self._ninja_targets)
 
+    def getResults(self, replaceVar=mx_subst.results_substitutions):
+        return [mx_subst.as_engine(replaceVar).substitute(rt, dependency=self) for rt in self.results]
+
     def _archivable_results(self, target_arch, use_relpath, single):
         def result(base_dir, file_path):
             assert not mx.isabs(file_path)
@@ -686,13 +692,8 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
             return mx.join(base_dir, file_path), archive_path
 
         out_dir_arch = mx.join(self.out_dir, target_arch)
-        for _result in self.results:
+        for _result in self.getResults():
             yield result(out_dir_arch, _result)
-
-    @property
-    def _target(self):
-        return self.results[0]
-        # return ''
 
 
 class DocumentationBuildTask(mx.AbstractNativeBuildTask):
