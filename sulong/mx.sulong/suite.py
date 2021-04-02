@@ -613,32 +613,32 @@ suite = {
     },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
-      "native" : True,
+      "class" : "CMakeNinjaProject",
       "vpath" : True,
+      "ninja_targets" : [
+        "<lib:sulong>",
+        "<lib:sulong++>",
+      ],
+      "ninja_install_targets" : ["install"],
       "results" : [
         "bin/<lib:sulong>",
         "bin/<lib:sulong++>",
       ],
       "buildDependencies" : [
-        "com.oracle.truffle.llvm.libraries.graalvm.llvm",
         "sdk:LLVM_TOOLCHAIN",
         "sdk:LLVM_ORG_SRC",
+        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "NATIVE_MODE_SUPPORT",
       ],
-	  "buildEnv" : {
-		"CFLAGS" : "-Xclang -disable-O0-optnone -DOS_<os> -DARCH_<arch>",
-		"CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
-		"CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
-		"CLANGXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
-		"OPT" : "<path:LLVM_TOOLCHAIN>/bin/opt",
-		"LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/llvm-link",
-		"LLVM_TOOLCHAIN_LIB" : "<path:LLVM_TOOLCHAIN>/lib",
-		"LIBSULONG" : "<lib:sulong>",
-		"LIBSULONGXX" : "<lib:sulong++>",
-		"LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
-		"OS" : "<os>",
-	  },
-
+      "cmakeConfig" : {
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
+        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang++",
+        "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
+        "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
+        "MX_OS" : "<os>",
+        "MX_ARCH" : "<arch>",
+      },
       "license" : "BSD-new",
     },
     "com.oracle.truffle.llvm.libraries.graalvm.llvm" : {
