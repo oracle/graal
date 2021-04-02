@@ -503,10 +503,13 @@ class CMakeBuildTaskMixin(object):
 
     def _need_configure(self):
         source_dir = self.subject.source_dirs()[0]
+        cmake_lists = os.path.join(source_dir, "CMakeLists.txt")
         guard_file = self.guard_file()
         cmake_config = self.subject.cmake_config()
         if not os.path.exists(guard_file):
             return True, "No CMake configuration found - reconfigure"
+        if os.path.exists(cmake_lists) and mx.TimeStampFile(cmake_lists).isNewerThan(mx.TimeStampFile(guard_file)):
+            return True, cmake_lists + " is newer than the configuration - reconfigure"
         with open(guard_file, 'r') as fp:
             if fp.read() != self._guard_data(source_dir, cmake_config):
                 return True, "CMake configuration changed - reconfigure"
