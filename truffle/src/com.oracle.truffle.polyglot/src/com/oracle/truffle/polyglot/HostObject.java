@@ -40,6 +40,25 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Array;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ReadOnlyBufferException;
+import java.sql.Time;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -58,8 +77,8 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -70,24 +89,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
-
-import java.lang.reflect.Array;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.ReadOnlyBufferException;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Objects;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("unused")
@@ -1513,7 +1514,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isDate() {
-        return obj instanceof LocalDate || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+        return obj instanceof LocalDate || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof java.sql.Date || isInstantDate(obj);
     }
 
     @ExportMessage
@@ -1527,7 +1528,9 @@ final class HostObject implements TruffleObject {
             return ((Instant) obj).atZone(UTC).toLocalDate();
         } else if (obj instanceof ZonedDateTime) {
             return ((ZonedDateTime) obj).toLocalDate();
-        } else if (obj instanceof Date) {
+        } else if (obj instanceof java.sql.Date) {
+            return ((java.sql.Date) obj).toLocalDate();
+        } else if (isInstantDate(obj)) {
             return ((Date) obj).toInstant().atZone(UTC).toLocalDate();
         }
         throw UnsupportedMessageException.create();
@@ -1535,7 +1538,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isTime() {
-        return obj instanceof LocalTime || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+        return obj instanceof LocalTime || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof java.sql.Time || isInstantDate(obj);
     }
 
     @ExportMessage
@@ -1549,15 +1552,26 @@ final class HostObject implements TruffleObject {
             return ((ZonedDateTime) obj).toLocalTime();
         } else if (obj instanceof Instant) {
             return ((Instant) obj).atZone(UTC).toLocalTime();
-        } else if (obj instanceof Date) {
+        } else if (obj instanceof java.sql.Time) {
+            return ((java.sql.Time) obj).toLocalTime();
+        } else if (isInstantDate(obj)) {
             return ((Date) obj).toInstant().atZone(UTC).toLocalTime();
         }
         throw UnsupportedMessageException.create();
     }
 
+    /**
+     * Returns <code>true</code> if this date object can be reliably converted to an instant.
+     * Weirdly, despite the contract of the base class the two subclasses {@link Time} and
+     * {@link java.sql.Date} are not supported to be convertable to an instant.
+     */
+    private static boolean isInstantDate(Object v) {
+        return v instanceof Date && !(v instanceof Time) && !(v instanceof java.sql.Date);
+    }
+
     @ExportMessage
     boolean isTimeZone() {
-        return obj instanceof ZoneId || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+        return obj instanceof ZoneId || obj instanceof Instant || obj instanceof ZonedDateTime || isInstantDate(obj);
     }
 
     @ExportMessage
@@ -1568,7 +1582,7 @@ final class HostObject implements TruffleObject {
             return ((ZonedDateTime) obj).getZone();
         } else if (obj instanceof Instant) {
             return UTC;
-        } else if (obj instanceof Date) {
+        } else if (isInstantDate(obj)) {
             return UTC;
         }
         throw UnsupportedMessageException.create();
@@ -1581,7 +1595,7 @@ final class HostObject implements TruffleObject {
             return ((ZonedDateTime) obj).toInstant();
         } else if (obj instanceof Instant) {
             return (Instant) obj;
-        } else if (obj instanceof Date) {
+        } else if (isInstantDate(obj)) {
             return ((Date) obj).toInstant();
         }
         throw UnsupportedMessageException.create();
