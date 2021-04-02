@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.StaticDeoptimizingNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.loop.LoopEx;
@@ -85,7 +86,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<CoreProviders> {
     @Override
     @SuppressWarnings("try")
     protected void run(final StructuredGraph graph, final CoreProviders context) {
-        assert graph.hasValueProxies() : "ConvertDeoptimizeToGuardPhase always creates proxies";
+        assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) : "ConvertDeoptimizeToGuardPhase always creates proxies";
         assert !graph.getGuardsStage().areFrameStatesAtDeopts() : graph.getGuardsStage();
         LazyValue<LoopsData> lazyLoops = new LazyValue<>(() -> context.getLoopsDataProvider().getLoopsData(graph));
 

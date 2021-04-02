@@ -62,6 +62,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -288,7 +289,7 @@ public abstract class LoopTransformations {
     // The pre loop is constrained to one iteration for now and will likely
     // be updated to produce vector alignment if applicable.
     public static PreMainPostResult insertPrePostLoops(LoopEx loop) {
-        assert loop.loopBegin().loopExits().isEmpty() || !loop.loopBegin().graph().hasValueProxies() ||
+        assert loop.loopBegin().loopExits().isEmpty() || loop.loopBegin().graph().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) ||
                         loop.counted().getCountedExit() instanceof LoopExitNode : "Can only unroll loops, if they have exits, if the counted exit is a regular loop exit " + loop;
         StructuredGraph graph = loop.loopBegin().graph();
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
@@ -330,7 +331,7 @@ public abstract class LoopTransformations {
         mainLoopBegin.setMainLoop();
         postLoopBegin.setPostLoop();
 
-        if (graph.hasValueProxies()) {
+        if (graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             // clear state to avoid problems with usages on the merge
             cleanupAndDeleteState(mainMergeNode);
             cleanupPostDominatingValues(mainLoopBegin, mainMergeNode, postEndNode);
@@ -348,8 +349,8 @@ public abstract class LoopTransformations {
             createExitState(mainLoopBegin, (LoopExitNode) mainLoopExitNode, loop.counted().isInverted(), mainLoop);
         }
 
-        assert !graph.hasValueProxies() || preLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
-        rewirePreToMainPhis(preLoopBegin, mainLoop, preLoop, graph.hasValueProxies() ? (LoopExitNode) preLoopExitNode : null, loop.counted().isInverted());
+        assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || preLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
+        rewirePreToMainPhis(preLoopBegin, mainLoop, preLoop, graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) ? (LoopExitNode) preLoopExitNode : null, loop.counted().isInverted());
 
         AbstractEndNode postEntryNode = postLoopBegin.forwardEnd();
         // Exits have been merged, find the continuation below the merge
@@ -361,8 +362,8 @@ public abstract class LoopTransformations {
         preLoopExitNode.setNext(mainLoopBegin.forwardEnd());
 
         // Add and update any phi edges as per merge usage as needed and update usages
-        assert !graph.hasValueProxies() || mainLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
-        processPreLoopPhis(loop, graph.hasValueProxies() ? (LoopExitNode) mainLoopExitNode : null, mainLoop, postLoop);
+        assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
+        processPreLoopPhis(loop, graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) ? (LoopExitNode) mainLoopExitNode : null, mainLoop, postLoop);
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing pre loop phis");
 
         continuationNode.predecessor().clearSuccessors();
@@ -371,7 +372,7 @@ public abstract class LoopTransformations {
         cleanupMerge(mainMergeNode, mainLandingNode);
 
         // Change the preLoop to execute one iteration for now
-        if (graph.hasValueProxies()) {
+        if (graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             /*
              * The pre-loop exit's condition's induction variable start node might be already
              * re-written to be a phi of merged loop exits from a previous pre-main-post creation,
@@ -391,7 +392,7 @@ public abstract class LoopTransformations {
         mainLoopBegin.setLoopOrigFrequency(originalFrequency);
         postLoopBegin.setLoopOrigFrequency(originalFrequency);
 
-        if (!graph.hasValueProxies()) {
+        if (graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             // The pre and post loops don't require safepoints at all
             for (SafepointNode safepoint : preLoop.nodes().filter(SafepointNode.class)) {
                 graph.removeFixed(safepoint);
@@ -536,7 +537,7 @@ public abstract class LoopTransformations {
     }
 
     private static void rewirePhi(PhiNode currentPhi, PhiNode outGoingPhi, LoopExitNode exitToProxy, LoopFragment loopToProxy, boolean inverted) {
-        if (currentPhi.graph().hasValueProxies()) {
+        if (currentPhi.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             ValueNode set = null;
             ValueNode toProxy = inverted ? currentPhi.singleBackValueOrThis() : currentPhi;
             if (loopToProxy.contains(toProxy)) {
@@ -567,7 +568,7 @@ public abstract class LoopTransformations {
              * Update all usages of the pre phi node below the original loop with the post phi
              * nodes, these are already properly proxied if we have loop proxies
              */
-            if (!graph.hasValueProxies()) {
+            if (graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
                 for (Node usage : prePhiNode.usages().snapshot()) {
                     if (usage == mainPhiNode) {
                         continue;

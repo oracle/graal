@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -597,7 +598,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     @Override
     protected void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects) {
-        if (exitNode.graph().hasValueProxies()) {
+        if (exitNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             EconomicMap<Integer, ProxyNode> proxies = EconomicMap.create(Equivalence.DEFAULT);
             for (ProxyNode proxy : exitNode.proxies()) {
                 ValueNode alias = getAlias(proxy.value());

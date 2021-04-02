@@ -106,7 +106,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         if (PartialEscapeAnalysis.getValue(options)) {
-            appendPhase(new PartialEscapePhase(true, canonicalizer, options));
+            appendPhase(new PartialEscapePhase(true, canonicalizer, options).setFinalPEA());
         }
 
         if (OptReadElimination.getValue(options)) {

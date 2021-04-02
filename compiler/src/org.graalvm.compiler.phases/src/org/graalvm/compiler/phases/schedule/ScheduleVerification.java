@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
@@ -135,7 +136,7 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                 }
             }
             assert nodeMap.get(n) == block;
-            if (graph.hasValueProxies() && block.getLoop() != null && !(n instanceof VirtualState)) {
+            if (graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) && block.getLoop() != null && !(n instanceof VirtualState)) {
                 for (Node usage : n.usages()) {
                     Node usageNode = usage;
 
