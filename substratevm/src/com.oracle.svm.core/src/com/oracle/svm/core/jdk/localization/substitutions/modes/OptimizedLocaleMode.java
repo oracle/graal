@@ -26,12 +26,8 @@ package com.oracle.svm.core.jdk.localization.substitutions.modes;
 
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
-@Platforms(Platform.HOSTED_ONLY.class)
 public class OptimizedLocaleMode implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
