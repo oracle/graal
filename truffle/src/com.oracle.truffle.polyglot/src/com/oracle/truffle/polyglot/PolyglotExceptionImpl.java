@@ -789,6 +789,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                     return element.getMethodName().equals("invokeHandle");
                 case "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MethodReflectImpl":
                     return element.getMethodName().equals("reflectInvoke");
+                case "com.oracle.truffle.polyglot.HostObject$GuestToHostCalls":
+                    return true;
                 default:
                     return element.getClassName().startsWith("com.oracle.truffle.polyglot.HostToGuestCodeCache$") && element.getMethodName().equals("executeImpl");
             }
