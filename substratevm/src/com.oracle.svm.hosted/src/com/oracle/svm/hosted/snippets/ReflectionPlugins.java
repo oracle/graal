@@ -90,10 +90,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * JDK so that any code that would rely on object identity is error-prone on any JVM.
  */
 public final class ReflectionPlugins {
-
     public static class ReflectionPluginRegistry extends IntrinsificationPluginRegistry {
+
+        private static ReflectionPluginRegistry singleton() {
+            return ImageSingletons.lookup(ReflectionPluginRegistry.class);
+        }
+
         public static AutoCloseable startThreadLocalRegistry() {
-            return ImageSingletons.lookup(ReflectionPluginRegistry.class).startThreadLocalReflectionRegistry();
+            return IntrinsificationPluginRegistry.startThreadLocalRegistry(singleton());
+        }
+
+        public static AutoCloseable pauseThreadLocalRegistry() {
+            return IntrinsificationPluginRegistry.pauseThreadLocalRegistry(singleton());
         }
     }
 
