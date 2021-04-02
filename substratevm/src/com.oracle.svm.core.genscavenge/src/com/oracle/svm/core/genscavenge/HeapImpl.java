@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
@@ -94,9 +95,9 @@ public final class HeapImpl extends Heap {
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
     private Reference<?> refPendingList;
     /** Total number of times when a new pending reference list became available. */
-    private long refListOfferCounter;
+    private volatile long refListOfferCounter;
     /** Total number of times when threads waiting for a pending reference list were interrupted. */
-    private long refListWaiterWakeUpCounter;
+    private volatile long refListWaiterWakeUpCounter;
 
     /** Head of the linked list of object pins. */
     private final AtomicReference<PinnedObjectImpl> pinHead = new AtomicReference<>();
@@ -438,11 +439,13 @@ public final class HeapImpl extends Heap {
         return RememberedSet.get().createBarrierSet(metaAccess);
     }
 
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "Only the GC increments the volatile field 'refListOfferCounter'.")
     void addToReferencePendingList(Reference<?> list) {
         VMOperation.guaranteeGCInProgress("Must only be called during a GC.");
         if (list == null) {
             return;
         }
+
         REF_MUTEX.lock();
         try {
             if (refPendingList != null) { // append
@@ -469,51 +472,41 @@ public final class HeapImpl extends Heap {
     public boolean hasReferencePendingList() {
         REF_MUTEX.lockNoTransition();
         try {
-            return (refPendingList != null);
+            return refPendingList != null;
         } finally {
             REF_MUTEX.unlock();
         }
     }
 
     @Override
-    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
     public void waitForReferencePendingList() throws InterruptedException {
-        long initialOffers;
-        long initialWakeUps;
-        REF_MUTEX.lockNoTransition();
-        try {
-            if (refPendingList != null) {
-                return;
-            }
-            /*
-             * Remember current counter values to detect changes when waiting in native. We need to
-             * do this right after the above check while holding the lock to prevent lost updates.
-             */
-            initialOffers = refListOfferCounter;
-            initialWakeUps = refListWaiterWakeUpCounter;
-        } finally {
-            REF_MUTEX.unlock();
+        /*-
+         * The order is crucial here to prevent transient issues. First, we read the wakeup count
+         * and the offer count. Then, we check if a reference list is available or if the thread was
+         * interrupted in the meanwhile. This ensures that awaitPendingRefsInNative() is able to
+         * properly detect the following cases:
+         * a. the thread may be interrupted right before awaitPendingRefsInNative() locks the mutex.
+         * b. a new reference pending list may be set right before awaitPendingRefsInNative() locks
+         * the mutex.
+         */
+        long initialOffers = refListOfferCounter;
+        long initialWakeUps = refListWaiterWakeUpCounter;
+        if (hasReferencePendingList()) {
+            return;
         }
-        transitionToParkedInNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
+
+        // Throw an InterruptedException if the thread is interrupted before or after waiting.
+        if (Thread.interrupted() || !waitForPendingReferenceList(initialOffers, initialWakeUps) && Thread.interrupted()) {
+            throw new InterruptedException();
+        }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
-    private static void transitionToParkedInNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) throws InterruptedException {
-        doTransitionToParkedInNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
-    }
-
-    private static void doTransitionToParkedInNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) throws InterruptedException {
+    private static boolean waitForPendingReferenceList(long initialOffers, long initialWakeUps) {
         Thread currentThread = Thread.currentThread();
         int oldThreadStatus = JavaThreads.getThreadStatus(currentThread);
         JavaThreads.setThreadStatus(currentThread, ThreadStatus.PARKED);
         try {
-            boolean offered;
-            do {
-                if (Thread.interrupted()) {
-                    throw new InterruptedException();
-                }
-                offered = transitionToNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
-            } while (!offered);
+            return transitionToNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
         } finally {
             JavaThreads.setThreadStatus(currentThread, oldThreadStatus);
         }
@@ -541,13 +534,10 @@ public final class HeapImpl extends Heap {
          */
         REF_MUTEX.lockNoTransition();
         try {
-            while (getHeapImpl().refListOfferCounter == initialOffers) {
+            while (getHeapImpl().refListOfferCounter == initialOffers && getHeapImpl().refListWaiterWakeUpCounter == initialWakeUps) {
                 REF_CONDITION.blockNoTransition();
-                if (getHeapImpl().refListWaiterWakeUpCounter != initialWakeUps) {
-                    return false;
-                }
             }
-            return true;
+            return getHeapImpl().refListWaiterWakeUpCounter == initialWakeUps;
         } finally {
             REF_MUTEX.unlock();
         }
@@ -555,6 +545,7 @@ public final class HeapImpl extends Heap {
 
     @Override
     @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "We use a lock when incrementing the volatile field 'refListWaiterWakeUpCounter'.")
     public void wakeUpReferencePendingListWaiters() {
         REF_MUTEX.lockNoTransition();
         try {
@@ -571,7 +562,9 @@ public final class HeapImpl extends Heap {
         REF_MUTEX.lockNoTransition();
         try {
             Reference<?> list = refPendingList;
-            refPendingList = null;
+            if (list != null) {
+                refPendingList = null;
+            }
             return list;
         } finally {
             REF_MUTEX.unlock();
