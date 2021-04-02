@@ -403,6 +403,13 @@ class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many
     def isPlatformDependent(self):
         return True
 
+    def getJavaProperties(self, replaceVar=mx_subst.path_substitutions):
+        ret = {}
+        if hasattr(self, "javaProperties"):
+            for key, value in self.javaProperties.items():
+                ret[key] = replaceVar.substitute(value, dependency=self)
+        return ret
+
 
 def _quote_windows(arg):
     return '"{}"'.format(arg)
@@ -450,7 +457,12 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
         extra_props = ['-Dorg.graalvm.launcher.executablename="{}"'.format(exe)]
         main_class = self.subject.suite.toolchain._tool_to_main(tool)
+        # add jvm args from dependencies
         jvm_args = [_quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        # add properties from the project
+        if hasattr(self.subject, "getJavaProperties"):
+            for key, value in sorted(self.subject.getJavaProperties().items()):
+                jvm_args.append("-D" + key + "=" + value)
         command = [java] + jvm_args + extra_props + [main_class, all_params]
         # create script
         if mx.is_windows():

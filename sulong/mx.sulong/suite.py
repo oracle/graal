@@ -434,6 +434,20 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "bootstrap-toolchain-launchers-no-home": {
+      "subDir": "projects",
+      "class" : "BootstrapToolchainLauncherProject",
+      "buildDependencies" : [
+        "sdk:LLVM_TOOLCHAIN",
+        "com.oracle.truffle.llvm.toolchain.launchers",
+      ],
+      "javaProperties" : {
+        # we intentionally set llvm home to a non-existent location to avoid picking up outdated files
+        "org.graalvm.language.llvm.home" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/nonexistent",
+      },
+      "license" : "BSD-new",
+    },
+
     "toolchain-launchers-tests": {
       "subDir": "tests",
       "native": True,
@@ -1483,15 +1497,25 @@ suite = {
     "SULONG_BOOTSTRAP_TOOLCHAIN": {
       "native": True,
       "relpath": False,
-      "platformDependent": False,
+      "platformDependent": True,
       "layout": {
         "./": "dependency:bootstrap-toolchain-launchers/*",
       },
-      "dependencies": [
-        "bootstrap-toolchain-launchers",
+      "buildDependencies" : [
         "SULONG_TOOLCHAIN_LAUNCHERS",
       ],
-      "distDependencies" : [
+      "license": "BSD-new",
+    },
+
+    "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME": {
+      "description" : "Bootstrap toolchain without an llvm.home. Use for bootstrapping libraries that should be contained in llvm.home.",
+      "native": True,
+      "relpath": False,
+      "platformDependent": True,
+      "layout": {
+        "./": "dependency:bootstrap-toolchain-launchers-no-home/*",
+      },
+      "buildDependencies": [
         "SULONG_TOOLCHAIN_LAUNCHERS",
       ],
       "license": "BSD-new",
