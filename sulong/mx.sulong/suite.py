@@ -675,14 +675,13 @@ suite = {
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
-        "com.oracle.truffle.llvm.libraries.bitcode",
         "sdk:LLVM_TOOLCHAIN",
         "NATIVE_MODE_SUPPORT",
       ],
       "buildEnv" : {
         "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
         "LIBSULONG" : "<lib:sulong-native>",
-        "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
+        "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
