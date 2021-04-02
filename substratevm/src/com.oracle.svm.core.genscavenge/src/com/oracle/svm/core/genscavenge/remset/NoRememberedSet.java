@@ -47,6 +47,11 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+/**
+ * This implementation is only used if remembered sets are disabled, so most operations are no-ops.
+ * Without a remembered set, the GC won't be able to collect the young and the old generation
+ * independently.
+ */
 public final class NoRememberedSet implements RememberedSet {
     @Override
     public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {

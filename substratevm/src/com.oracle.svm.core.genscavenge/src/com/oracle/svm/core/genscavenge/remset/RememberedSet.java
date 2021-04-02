@@ -43,53 +43,112 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+/**
+ * A remembered set keeps track where the image heap or old generation has references to the young
+ * generation. When collecting the young generation, the remembered set is used to avoid having to
+ * scan through the whole image heap and old generation.
+ */
 public interface RememberedSet {
     @Fold
     static RememberedSet get() {
         return ImageSingletons.lookup(RememberedSet.class);
     }
 
+    /** Creates the barrier set that the compiler should use for emitting read/write barriers. */
     BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
 
+    /** Returns the header size of aligned chunks. */
     UnsignedWord getHeaderSizeOfAlignedChunk();
 
+    /** Returns the header size of unaligned chunks. */
     UnsignedWord getHeaderSizeOfUnalignedChunk();
 
+    /**
+     * Enables remembered set tracking for an aligned chunk and its objects. Must be called when
+     * adding a new chunk to the image heap or old generation.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     void enableRememberedSetForAlignedChunk(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects);
 
+    /**
+     * Enables remembered set tracking for an unaligned chunk and its objects. Must be called when
+     * adding a new chunk to the image heap or old generation.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk);
 
+    /**
+     * Enables remembered set tracking for an aligned chunk and its objects. Must be called when
+     * adding a new chunk to the image heap or old generation.
+     */
     void enableRememberedSetForChunk(AlignedHeader chunk);
 
+    /**
+     * Enables remembered set tracking for an unaligned chunk and its objects. Must be called when
+     * adding a new chunk to the image heap or old generation.
+     */
     void enableRememberedSetForChunk(UnalignedHeader chunk);
 
+    /**
+     * Enables remembered set tracking for a single object in an aligned chunk. Must be called when
+     * an object is added to the image heap or old generation.
+     */
     void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
 
+    /** Clears the remembered set of an aligned chunk. */
     void clearRememberedSet(AlignedHeader chunk);
 
+    /** Clears the remembered set of an unaligned chunk. */
     void clearRememberedSet(UnalignedHeader chunk);
 
+    /** Checks if remembered set tracking is enabled for an object. */
     @AlwaysInline("GC performance")
     boolean hasRememberedSet(UnsignedWord header);
 
+    /**
+     * Marks an object as dirty. May only be called for objects for which remembered set tracking is
+     * enabled. This tells the GC that the object may contain a reference to the young generation.
+     */
     @AlwaysInline("GC performance")
     void dirtyCardForAlignedObject(Object object, boolean verifyOnly);
 
+    /**
+     * Marks an object as dirty. May only be called for objects for which remembered set tracking is
+     * enabled. This tells the GC that the object may contain a reference to the young generation.
+     */
     @AlwaysInline("GC performance")
     void dirtyCardForUnalignedObject(Object object, boolean verifyOnly);
 
+    /**
+     * Marks the {@code holderObject} as dirty if {@code object} is in the young generation. May
+     * only be called for {@code holderObject}s for which remembered set tracking is enabled. This
+     * tells the GC that the {@code holderObject} may contain a reference to the young generation.
+     */
     @AlwaysInline("GC performance")
     void dirtyCardIfNecessary(Object holderObject, Object object);
 
+    /**
+     * Walks all dirty objects in an aligned chunk.
+     */
     void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor);
 
+    /**
+     * Walks all dirty objects in an unaligned chunk.
+     */
     void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor);
 
+    /**
+     * Walks all dirty objects in a {@link Space}.
+     */
     void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor);
 
+    /**
+     * Verify the remembered set for an aligned chunk.
+     */
     boolean verify(AlignedHeader firstAlignedHeapChunk);
 
+    /**
+     * Verify the remembered set for an unaligned chunk.
+     */
     boolean verify(UnalignedHeader firstUnalignedHeapChunk);
 }

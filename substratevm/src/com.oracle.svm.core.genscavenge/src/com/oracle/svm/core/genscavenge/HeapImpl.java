@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-//Checkstyle: stop
-
 import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;

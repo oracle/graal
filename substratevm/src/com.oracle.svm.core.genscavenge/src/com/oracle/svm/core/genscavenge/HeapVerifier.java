@@ -100,7 +100,7 @@ public final class HeapVerifier {
             }
         }
 
-        success &= verify(youngGeneration.getEden());
+        success &= verifySpace(youngGeneration.getEden());
 
         for (int i = 0; i < youngGeneration.getMaxSurvivorSpaces(); i++) {
             Space fromSpace = youngGeneration.getSurvivorFromSpaceAt(i);
@@ -112,8 +112,8 @@ public final class HeapVerifier {
                 success = false;
             }
 
-            success &= verify(fromSpace);
-            success &= verify(toSpace);
+            success &= verifySpace(fromSpace);
+            success &= verifySpace(toSpace);
         }
 
         return success;
@@ -131,8 +131,8 @@ public final class HeapVerifier {
             success = false;
         }
 
-        success &= verify(fromSpace);
-        success &= verify(toSpace);
+        success &= verifySpace(fromSpace);
+        success &= verifySpace(toSpace);
         return success;
     }
 
@@ -140,7 +140,7 @@ public final class HeapVerifier {
         /*
          * After we are done with all other verifications, it is guaranteed that the heap is in a
          * reasonable state. Now, we can verify the remembered sets without having to worry about
-         * heap consistency basic.
+         * basic heap consistency.
          */
         if (!SubstrateOptions.useRememberedSet() || !HeapOptions.VerifyRememberedSet.getValue()) {
             return true;
@@ -176,7 +176,7 @@ public final class HeapVerifier {
         return success;
     }
 
-    private static boolean verify(Space space) {
+    private static boolean verifySpace(Space space) {
         boolean success = true;
         success &= verifyChunkList(space, "aligned", space.getFirstAlignedHeapChunk(), space.getLastAlignedHeapChunk());
         success &= verifyChunkList(space, "unaligned", space.getFirstUnalignedHeapChunk(), space.getLastUnalignedHeapChunk());

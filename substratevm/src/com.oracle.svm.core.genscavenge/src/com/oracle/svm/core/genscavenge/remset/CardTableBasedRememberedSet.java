@@ -48,6 +48,10 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * A card table based remembered set where the {@link CardTable} and the {@link FirstObjectTable}
+ * are placed in the individual {@link HeapChunk}s.
+ */
 public class CardTableBasedRememberedSet implements RememberedSet {
     @Platforms(Platform.HOSTED_ONLY.class)
     public CardTableBasedRememberedSet() {

@@ -74,8 +74,8 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * +=================+-------+-------------------------------------+
  * </pre>
  *
- * The HeapChunk fields can be accessed as declared fields. The card table is optional, and both the
- * card table and the location of the object are just computed pointers.
+ * The HeapChunk fields can be accessed as declared fields. The size of the card table depends on
+ * the used {@link RememberedSet} implementation and may even be zero.
  *
  * In this implementation, I am only implementing imprecise card remembered sets, so I only need one
  * entry for the whole Object. But for consistency I am treating it as a 1-element table.

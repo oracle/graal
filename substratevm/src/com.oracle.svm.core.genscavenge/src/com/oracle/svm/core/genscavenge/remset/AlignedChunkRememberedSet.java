@@ -168,6 +168,7 @@ final class AlignedChunkRememberedSet {
 
     @Fold
     static UnsignedWord getCardTableSize() {
+        // We conservatively compute the size as a fraction of the size of the entire chunk.
         UnsignedWord structSize = getStructSize();
         UnsignedWord available = HeapPolicy.getAlignedHeapChunkSize().subtract(structSize);
         UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(available);
