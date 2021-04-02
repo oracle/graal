@@ -469,12 +469,18 @@ class CMakeSupport(object):
 
     @staticmethod
     def run_cmake(cmdline, silent, *args, **kwargs):
+        log_error = kwargs.pop("log_error", False)
         if mx._opts.verbose:
             mx.run(["cmake"] + cmdline, *args, **kwargs)
         else:
             with open(os.devnull, 'w') as fnull:
-                err = fnull if silent else None
-                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
+                err = mx.OutputCapture() if silent else None
+                try:
+                    mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
+                except:
+                    if log_error and err and err.data:
+                        mx.log_error(err.data)
+                    raise
 
 
 class CMakeBuildTaskMixin(object):
@@ -674,7 +680,7 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
         # cmake will always create build.ninja - there is nothing we can do about it ATM
         cmdline = ["-G", "Ninja", source_dir] + cmake_config
         CMakeSupport.check_cmake()
-        CMakeSupport.run_cmake(cmdline, silent=True, cwd=out_dir)
+        CMakeSupport.run_cmake(cmdline, silent=True, cwd=out_dir, log_error=True)
         # move the build.ninja to the temporary path (just move it back later ... *sigh*)
         shutil.copyfile(os.path.join(out_dir, mx_native.Ninja.default_manifest), path)
         return True
