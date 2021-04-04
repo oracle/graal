@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,9 +34,12 @@
  * (i.e., when O0 is used), as LLVM uses extern_inline code for all stat() functions otherwise.
  */
 
-struct stat;
-
-struct stat64;
+#if defined(ARCH_aarch64) && defined(OS_linux)
+// This _STAT_VER value comes from bits/stat.h
+#define _STAT_VER 0
+#else
+#define _STAT_VER 1
+#endif
 
 int __xstat(int version, const char *path, struct stat *buf);
 
@@ -55,33 +58,33 @@ int __lxstat64(int version, const char *path, struct stat64 *buf);
 int __fxstatat64(int version, int fd, const char *path, struct stat64 *buf, int flag);
 
 int stat(const char *path, struct stat *buf) {
-    return __xstat(1, path, buf);
+    return __xstat(_STAT_VER, path, buf);
 }
 
 int fstat(int fd, struct stat *buf) {
-    return __fxstat(1, fd, buf);
+    return __fxstat(_STAT_VER, fd, buf);
 }
 
 int lstat(const char *path, struct stat *buf) {
-    return __lxstat(1, path, buf);
+    return __lxstat(_STAT_VER, path, buf);
 }
 
 int fstatat(int fd, const char *path, struct stat *buf, int flag) {
-    return __fxstatat(1, fd, path, buf, flag);
+    return __fxstatat(_STAT_VER, fd, path, buf, flag);
 }
 
 int stat64(const char *path, struct stat64 *buf) {
-    return __xstat64(1, path, buf);
+    return __xstat64(_STAT_VER, path, buf);
 }
 
 int fstat64(int fd, struct stat64 *buf) {
-    return __fxstat64(1, fd, buf);
+    return __fxstat64(_STAT_VER, fd, buf);
 }
 
 int lstat64(const char *path, struct stat64 *buf) {
-    return __lxstat64(1, path, buf);
+    return __lxstat64(_STAT_VER, path, buf);
 }
 
 int fstatat64(int fd, const char *path, struct stat64 *buf, int flag) {
-    return __fxstatat64(1, fd, path, buf, flag);
+    return __fxstatat64(_STAT_VER, fd, path, buf, flag);
 }
