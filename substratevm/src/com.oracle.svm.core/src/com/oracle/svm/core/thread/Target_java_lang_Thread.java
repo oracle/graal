@@ -260,7 +260,15 @@ final class Target_java_lang_Thread {
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     private boolean isInterrupted(boolean clearInterrupted) {
         final boolean result = interrupted;
-        if (clearInterrupted) {
+        if (result && clearInterrupted) {
+            /*
+             * As we don't use a lock, it is possible to observe any kinds of races with other
+             * threads that try to set interrupted to true. However, those races don't cause any
+             * correctness issues as we only reset interrupted to false if we observed that it was
+             * true earlier. There also can't be any problematic races with other calls to
+             * isInterrupted as clearInterrupted may only be true if this method is being executed
+             * by the current thread.
+             */
             interrupted = false;
         }
         return result;
