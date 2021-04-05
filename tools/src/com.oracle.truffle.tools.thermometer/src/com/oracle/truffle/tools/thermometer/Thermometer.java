@@ -97,7 +97,7 @@ public final class Thermometer implements AutoCloseable {
                 final int line = Integer.parseInt(config.getIterationLocation().substring(index + 1));
 
                 final SourceSectionFilter iterationNodeFilter = SourceSectionFilter.newBuilder()
-                        .tagIs(StandardTags.RootTag.class) // Thermometer TODO: I want the root of compilation units, so I catch OSR methods
+                        .tagIs(StandardTags.StatementTag.class)
                         .sourceIs((source) -> source.getName().endsWith(file))
                         .lineIs(line)
                         .build();
