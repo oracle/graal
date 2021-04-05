@@ -129,6 +129,7 @@ final class InstrumentationHandler {
     private final Collection<EventBinding<? extends OutputStream>> outputStdBindings = new EventBindingList<>(1);
     private final Collection<EventBinding<? extends OutputStream>> outputErrBindings = new EventBindingList<>(1);
     private final Collection<EventBinding.Allocation<? extends AllocationListener>> allocationBindings = new EventBindingList<>(2);
+    private final Collection<EventBinding.Compilation<? extends CompilationEventListener>> compilationBindings = new EventBindingList<>(2);
     private final Collection<EventBinding<? extends ContextsListener>> contextsBindings = new EventBindingList<>(8);
     private final Collection<EventBinding<? extends ThreadsListener>> threadsBindings = new EventBindingList<>(8);
     private final Collection<EventBinding<? extends ThreadsActivationListener>> threadsActivationBindings = new EventBindingList<>(8);
@@ -477,6 +478,19 @@ final class InstrumentationHandler {
 
         if (TRACE) {
             trace("END: Added allocation binding %s%n", binding.getElement());
+        }
+        return binding;
+    }
+
+    private <T extends CompilationEventListener> EventBinding<T> addCompilationBinding(EventBinding.Compilation<T> binding) {
+        if (TRACE) {
+            trace("BEGIN: Adding compilation binding %s%n", binding.getElement());
+        }
+
+        this.compilationBindings.add(binding);
+
+        if (TRACE) {
+            trace("END: Added compilation binding %s%n", binding.getElement());
         }
         return binding;
     }
@@ -891,6 +905,10 @@ final class InstrumentationHandler {
 
     private <T extends AllocationListener> EventBinding<T> attachAllocationListener(AbstractInstrumenter instrumenter, AllocationEventFilter filter, T listener) {
         return addAllocationBinding(new EventBinding.Allocation<>(instrumenter, filter, listener));
+    }
+
+    private <T extends CompilationEventListener> EventBinding<T> attachCompilationEventListener(AbstractInstrumenter instrumenter, T listener) {
+        return addCompilationBinding(new EventBinding.Compilation<>(instrumenter, listener));
     }
 
     private <T extends ContextsListener> EventBinding<T> attachContextsListener(AbstractInstrumenter instrumenter, T listener, boolean includeActiveContexts) {
@@ -2453,6 +2471,11 @@ final class InstrumentationHandler {
         @Override
         public <T extends OutputStream> EventBinding<T> attachErrConsumer(T stream) {
             return InstrumentationHandler.this.attachOutputConsumer(this, stream, true);
+        }
+
+        @Override
+        public EventBinding<? extends CompilationEventListener> attachCompilationEventListener(CompilationEventListener listener) {
+            return InstrumentationHandler.this.attachCompilationEventListener(this, listener);
         }
 
         // XXXXXXXXXX

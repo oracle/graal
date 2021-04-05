@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.thermometer;
 
 import static com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 
+import com.oracle.truffle.api.instrumentation.CompilationEventListener;
 import com.oracle.truffle.api.instrumentation.CompilationState;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -124,6 +125,42 @@ public final class Thermometer implements AutoCloseable {
                 loadedSource.addAndGet(loadSourceEvent.getSource().getLength());
             }
         }, true);
+
+        // Track compilation
+
+        env.getInstrumenter().attachCompilationEventListener(new CompilationEventListener() {
+
+            @Override
+            public void onQueued(CompilationInfo info) {
+                System.err.println("onQueued");
+            }
+
+            @Override
+            public void onDequeued(CompilationAbortInfo info) {
+                System.err.println("onDequeued");
+            }
+
+            @Override
+            public void onStart(CompilationInfo info) {
+                System.err.println("onStart");
+            }
+
+            @Override
+            public void onSuccess(CompilationSuccessInfo info) {
+                System.err.println("onSuccess");
+            }
+
+            @Override
+            public void onFailed(CompilationAbortInfo info) {
+                System.err.println("onFailed");
+            }
+
+            @Override
+            public void onInvalidate(CompilationAbortInfo info) {
+                System.err.println("onInvalidate");
+            }
+
+        });
 
         // Create a scheduler with a daemon worker thread with high priority
 

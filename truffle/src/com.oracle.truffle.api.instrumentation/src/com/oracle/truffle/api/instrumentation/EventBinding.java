@@ -433,4 +433,12 @@ public class EventBinding<T> {
 
     }
 
+    static final class Compilation<T> extends EventBinding<T> {
+
+        Compilation(AbstractInstrumenter instrumenter, T listener) {
+            super(instrumenter, listener);
+        }
+
+    }
+
 }
