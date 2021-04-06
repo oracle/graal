@@ -1152,14 +1152,14 @@ public final class ClassfileParser {
                     if (innerClassIndex == otherInnerClassInfo.innerClassIndex && outerClassIndex == otherInnerClassInfo.outerClassIndex) {
                         throw ConstantPool.classFormatError("Duplicate entry in InnerClasses attribute");
                     }
-                }
-                if (innerClassIndex == otherInnerClassInfo.innerClassIndex ||
-                                // The same class can be referenced by two different CP indices,
-                                // compare by name instead.
-                                (innerClassIndex != 0 &&
-                                                otherInnerClassInfo.innerClassIndex != 0 &&
-                                                pool.classAt(innerClassIndex).getName(pool) == pool.classAt(otherInnerClassInfo.innerClassIndex).getName(pool))) {
-                    duplicateInnerClass = true;
+                    if (innerClassIndex == otherInnerClassInfo.innerClassIndex ||
+                                    // The same class can be referenced by two different CP indices,
+                                    // compare by name instead.
+                                    (innerClassIndex != 0 &&
+                                                    otherInnerClassInfo.innerClassIndex != 0 &&
+                                                    pool.classAt(innerClassIndex).getName(pool) == pool.classAt(otherInnerClassInfo.innerClassIndex).getName(pool))) {
+                        duplicateInnerClass = true;
+                    }
                 }
             }
         }
