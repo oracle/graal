@@ -101,13 +101,14 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public static StaticObject createNew(ObjectKlass klass) {
-        assert !klass.isAbstract() && !klass.isInterface();
+        assert klass != null && !klass.isAbstract() && !klass.isInterface();
         StaticObject newObj = klass.getLinkedKlass().getShape(false).getFactory().create(klass);
         newObj.initInstanceFields(klass);
         return trackAllocation(klass, newObj);
     }
 
     public static StaticObject createClass(Klass klass) {
+        assert klass != null;
         ObjectKlass guestClass = klass.getMeta().java_lang_Class;
         StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
         newObj.initInstanceFields(guestClass);
@@ -122,6 +123,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public static StaticObject createStatics(ObjectKlass klass) {
+        assert klass != null;
         StaticObject newObj = klass.getLinkedKlass().getShape(true).getFactory().create(klass);
         newObj.initStaticFields(klass);
         return trackAllocation(klass, newObj);
@@ -129,6 +131,7 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     // Use an explicit method to create array, avoids confusion.
     public static StaticObject createArray(ArrayKlass klass, Object array) {
+        assert klass != null;
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
@@ -150,20 +153,20 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
-        assert foreignObject != null;
         if (interopLibrary.isNull(foreignObject)) {
             return createForeignNull(foreignObject);
         }
+        assert klass != null;
         return createForeign(klass, foreignObject);
     }
 
     public static StaticObject createForeignNull(Object foreignObject) {
-        assert foreignObject != null;
         assert InteropLibrary.getUncached().isNull(foreignObject);
         return createForeign(null, foreignObject);
     }
 
     private static StaticObject createForeign(Klass klass, Object foreignObject) {
+        assert foreignObject != null;
         StaticObject newObj = Klass.getForeignShape().getFactory().create(klass);
         Klass.getForeignProperty().setObject(newObj, foreignObject);
         newObj.lockOrForeignMarker = FOREIGN_MARKER;
