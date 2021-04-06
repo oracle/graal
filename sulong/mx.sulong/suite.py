@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.290.0",
+  "mxversion" : "5.292.4",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -691,8 +691,11 @@ suite = {
       "subDir" : "projects",
       "vpath" : True,
       "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/llvm",
-      "class" : "CMakeProject",
-      "makeTarget" : ["install-libcxxabi", "install-libcxx"],
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
+      "ninja_targets" : ["<lib:c++abi>", "<lib:c++>"],
+      "ninja_install_targets" : ["install-libcxxabi", "install-libcxx"],
       "results" : ["native"],
       "cmakeConfig" : {
         "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
@@ -714,8 +717,6 @@ suite = {
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
         "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
         "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
-        # Work around for mx not liking $ signs. We use '{{}}' as a placeholder and replace that in the CMakeProject.
-        "CMAKE_SHARED_LINKER_FLAGS" : "-Wl,-rpath,{{}}ORIGIN",
         "CMAKE_INSTALL_PREFIX" : "native",
       },
       "buildDependencies" : [

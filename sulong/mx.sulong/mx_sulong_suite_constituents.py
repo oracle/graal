@@ -31,8 +31,10 @@ from __future__ import print_function
 
 import fnmatch
 import pipes
+import shutil
 
 import mx
+import mx_native
 import mx_unittest
 import mx_subst
 import os
@@ -457,7 +459,58 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
             return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
 
 
-class CMakeBuildTask(mx.NativeBuildTask):
+class CMakeSupport(object):
+    @staticmethod
+    def check_cmake():
+        try:
+            CMakeSupport.run_cmake(["--version"], silent=False, nonZeroIsFatal=False)
+        except OSError as e:
+            mx.abort(str(e) + "\nError executing 'cmake --version'. Are you sure 'cmake' is installed? ")
+
+    @staticmethod
+    def run_cmake(cmdline, silent, *args, **kwargs):
+        if mx._opts.verbose:
+            mx.run(["cmake"] + cmdline, *args, **kwargs)
+        else:
+            with open(os.devnull, 'w') as fnull:
+                err = fnull if silent else None
+                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
+
+
+class CMakeBuildTaskMixin(object):
+
+    def __init__(self, args, project, *otherargs, **kwargs):
+        super(CMakeBuildTaskMixin, self).__init__(args, project, *otherargs, **kwargs)
+        self._cmake_config_file = os.path.join(project.suite.get_mx_output_dir(), 'cmakeConfig',
+                                               mx.get_os() + '-' + mx.get_arch() if project.isPlatformDependent() else '',
+                                               type(project).__name__,
+                                               project._extra_artifact_discriminant(),
+                                               self.name)
+
+    def _write_guard(self, source_dir, cmake_config):
+        with mx.SafeFileCreation(self.guard_file()) as sfc:
+            with open(sfc.tmpPath, 'w') as fp:
+                fp.write(self._guard_data(source_dir, cmake_config))
+
+    def _guard_data(self, source_dir, cmake_config):
+        return source_dir + '\n' + '\n'.join(cmake_config)
+
+    def _need_configure(self):
+        source_dir = self.subject.source_dirs()[0]
+        guard_file = self.guard_file()
+        cmake_config = self.subject.cmake_config()
+        if not os.path.exists(guard_file):
+            return True, "No CMake configuration found - reconfigure"
+        with open(guard_file, 'r') as fp:
+            if fp.read() != self._guard_data(source_dir, cmake_config):
+                return True, "CMake configuration changed - reconfigure"
+            return False, None
+
+    def guard_file(self):
+        return self._cmake_config_file
+
+
+class CMakeBuildTask(CMakeBuildTaskMixin, mx.NativeBuildTask):
 
     def __str__(self):
         return 'Building {} with CMake'.format(self.subject.name)
@@ -491,38 +544,17 @@ class CMakeBuildTask(mx.NativeBuildTask):
         self._newestOutput = None
         # END super(CMakeBuildTask, self).build()
         source_dir = self.subject.source_dirs()[0]
-        self._write_guard(self.guard_file(), source_dir, self.subject.cmake_config())
+        self._write_guard(source_dir, self.subject.cmake_config())
 
     def needsBuild(self, newestInput):
         mx.logv('Checking whether to build {} with CMake'.format(self.subject.name))
         need_configure, reason = self._need_configure()
         return need_configure, "rebuild needed by CMake ({})".format(reason)
 
-    def _write_guard(self, guard_file, source_dir, cmake_config):
-        with open(guard_file, 'w') as fp:
-            fp.write(self._guard_data(source_dir, cmake_config))
-
-    def _guard_data(self, source_dir, cmake_config):
-        return source_dir + '\n' + '\n'.join(cmake_config)
-
-    def _check_cmake(self):
-        try:
-            self.run_cmake(["--version"], silent=False, nonZeroIsFatal=False)
-        except OSError as e:
-            mx.abort(str(e) + "\nError executing 'cmake --version'. Are you sure 'cmake' is installed? ")
-
     def _need_configure(self):
-        source_dir = self.subject.source_dirs()[0]
-        guard_file = self.guard_file()
         if not os.path.exists(os.path.join(self.subject.dir, 'Makefile')):
             return True, "No existing Makefile - reconfigure"
-        cmake_config = self.subject.cmake_config()
-        if not os.path.exists(guard_file):
-            return True, "No guard file - reconfigure"
-        with open(guard_file, 'r') as fp:
-            if fp.read() != self._guard_data(source_dir, cmake_config):
-                return True, "Guard file changed - reconfigure"
-            return False, None
+        return super(CMakeBuildTask, self)._need_configure()
 
     def _configure(self, silent=False):
         need_configure, _ = self._need_configure()
@@ -535,20 +567,9 @@ class CMakeBuildTask(mx.NativeBuildTask):
             # remove cache file if it exist
             os.remove(cmakefile)
         cmdline = ["-G", "Unix Makefiles", source_dir] + self.subject.cmake_config()
-        self._check_cmake()
-        self.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
+        CMakeSupport.check_cmake()
+        CMakeSupport.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
         return True
-
-    def run_cmake(self, cmdline, silent, *args, **kwargs):
-        if mx._opts.verbose:
-            mx.run(["cmake"] + cmdline, *args, **kwargs)
-        else:
-            with open(os.devnull, 'w') as fnull:
-                err = fnull if silent else None
-                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
-
-    def guard_file(self):
-        return os.path.join(self.subject.dir, 'mx.cmake.rebuild.guard')
 
 
 class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
@@ -568,15 +589,111 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
         super(AbstractSulongNativeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
 
 
-class CMakeProject(AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
+class CMakeMixin(object):
+    def __init__(self, *args, **kwargs):
+        super(CMakeMixin, self).__init__(*args, **kwargs)
+        cmake_config = kwargs.pop('cmakeConfig', {})
+        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
+
+
+class CMakeProject(CMakeMixin, AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
         super(CMakeProject, self).__init__(suite, name, deps, workingSets, subDir, results=results, output=output, **args)
-        cmake_config = args.pop('cmakeConfig', {})
-        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
         self.dir = self.getOutput()
 
     def getBuildTask(self, args):
         return CMakeBuildTask(args, self)
+
+
+class CMakeNinjaBuildTask(CMakeBuildTaskMixin, mx_native.NinjaBuildTask):
+
+    def needsBuild(self, newestInput):
+        mx.logv('Checking whether to reconfigure {} with CMake'.format(self.subject.name))
+        need_configure, reason = self._need_configure()
+        if need_configure:
+            return need_configure, "reconfigure needed by CMake ({})".format(reason)
+        return super(CMakeNinjaBuildTask, self).needsBuild(newestInput)
+
+    def build(self):
+        super(CMakeNinjaBuildTask, self).build()
+        # write guard file
+        source_dir = self.subject.source_dirs()[0]
+        self._write_guard(source_dir, self.subject.cmake_config())
+        # call install targets
+        if self.subject._install_targets:
+            self.ninja._run(*self.subject._install_targets)
+
+    def newestOutput(self):
+        return mx.TimeStampFile.newest([_path for _path, _ in self.subject.getArchivableResults()])
+
+
+class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=too-many-ancestors
+    """A CMake project that is built using Ninja.
+
+    Attributes
+        ninja_targets: list of str, optional
+            Targets that should be built using Ninja
+        ninja_install_targets: list of str, optional
+            Targets that executed after a successful build. In contrast to `ninja_targets`, the `ninja_install_targets`
+            are not considered when deciding whether a project needs to be rebuilt. This is needed because `install`
+            targets created by CMake are often executed unconditionally, which would cause the project to be always
+            rebuilt.
+    """
+    def __init__(self, suite, name, deps, workingSets, subDir, ninja_targets=None, ninja_install_targets=None, results=None, output=None, **args):
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d_rel = projectDir
+        elif subDir is None:
+            d_rel = name
+        else:
+            d_rel = os.path.join(subDir, name)
+        d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
+        srcDir = args.pop('sourceDir', d)
+        if not srcDir:
+            mx.abort("Exactly one 'sourceDir' is required")
+        srcDir = mx_subst.path_substitutions.substitute(srcDir)
+        self._install_targets = [mx_subst.path_substitutions.substitute(x) for x in ninja_install_targets or []]
+        self._ninja_targets = [mx_subst.path_substitutions.substitute(x) for x in ninja_targets or []]
+        super(CMakeNinjaProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, d, results=results, output=output, **args)
+        # self.dir = self.getOutput()
+
+    def generate_manifest(self, path):
+        source_dir = self.source_dirs()[0]
+        out_dir = os.path.dirname(path)
+        cmakefile = os.path.join(out_dir, 'CMakeCache.txt')
+        if os.path.exists(cmakefile):
+            # remove cache file if it exist
+            os.remove(cmakefile)
+        cmake_config = self.cmake_config()
+
+        # explicitly set ninja executable if not on path
+        cmake_make_program = 'CMAKE_MAKE_PROGRAM'
+        if cmake_make_program not in cmake_config and mx_native.Ninja.binary != 'ninja':
+            cmake_config.append('-D{}={}'.format(cmake_make_program, mx_native.Ninja.binary))
+
+        # cmake will always create build.ninja - there is nothing we can do about it ATM
+        cmdline = ["-G", "Ninja", source_dir] + cmake_config
+        CMakeSupport.check_cmake()
+        CMakeSupport.run_cmake(cmdline, silent=True, cwd=out_dir)
+        # move the build.ninja to the temporary path (just move it back later ... *sigh*)
+        shutil.copyfile(os.path.join(out_dir, mx_native.Ninja.default_manifest), path)
+        return True
+
+    def _build_task(self, target_arch, args):
+        return CMakeNinjaBuildTask(args, self, target_arch, self._ninja_targets)
+
+    def getResults(self, replaceVar=mx_subst.results_substitutions):
+        return [mx_subst.as_engine(replaceVar).substitute(rt, dependency=self) for rt in self.results]
+
+    def _archivable_results(self, target_arch, use_relpath, single):
+        def result(base_dir, file_path):
+            assert not mx.isabs(file_path)
+            archive_path = file_path if use_relpath else mx.basename(file_path)
+            return mx.join(base_dir, file_path), archive_path
+
+        out_dir_arch = mx.join(self.out_dir, target_arch)
+        for _result in self.getResults():
+            yield result(out_dir_arch, _result)
 
 
 class DocumentationBuildTask(mx.AbstractNativeBuildTask):
