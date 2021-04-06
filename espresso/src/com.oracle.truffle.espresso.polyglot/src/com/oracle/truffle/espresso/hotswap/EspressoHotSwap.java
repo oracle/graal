@@ -57,6 +57,12 @@ public final class EspressoHotSwap {
         }
     }
 
+    public static void registerPostHotSwapAction(HotSwapAction action) {
+        if (handler != null) {
+            handler.registerPostHotSwapAction(action);
+        }
+    }
+
     public static void registerHotSwapAction(Class<?> klass, HotSwapAction action) {
         if (handler != null) {
             handler.registerHotSwapAction(klass, action);

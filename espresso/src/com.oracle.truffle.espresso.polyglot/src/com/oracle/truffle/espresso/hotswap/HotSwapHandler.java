@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.espresso.hotswap;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -52,6 +54,7 @@ final class HotSwapHandler {
 
     private final Set<HotSwapPlugin> plugins = Collections.synchronizedSet(new HashSet<>());
     private final Map<Class<?>, Set<HotSwapAction>> hotSwapActions = new HashMap<>();
+    private final List<HotSwapAction> postHotSwapActions = Collections.synchronizedList(new ArrayList<>());
     private final Map<Class<?>, Boolean> staticInitializerHotSwap = new HashMap<>();
 
     private HotSwapHandler() {
@@ -77,12 +80,16 @@ final class HotSwapHandler {
         hotSwapActions.get(klass).add(action);
     }
 
+    public void registerPostHotSwapAction(HotSwapAction action) {
+        postHotSwapActions.add(action);
+    }
+
     public void registerStaticClassInitHotSwap(Class<?> klass, boolean onChange) {
-         if (!staticInitializerHotSwap.containsKey(klass)) {
-             staticInitializerHotSwap.put(klass, onChange);
-         } else if (!onChange) {
+        if (!staticInitializerHotSwap.containsKey(klass)) {
+            staticInitializerHotSwap.put(klass, onChange);
+        } else if (!onChange) {
             staticInitializerHotSwap.put(klass, false);
-         }
+        }
     }
 
     @SuppressWarnings("unused")
@@ -96,6 +103,8 @@ final class HotSwapHandler {
         for (HotSwapPlugin plugin : plugins) {
             plugin.postHotSwap();
         }
+        // fire all registered post HotSwap actions
+        postHotSwapActions.forEach(HotSwapAction::onHotSwap);
     }
 
     @SuppressWarnings("unused")
@@ -103,6 +112,14 @@ final class HotSwapHandler {
         if (staticInitializerHotSwap.containsKey(klass)) {
             boolean onlyOnChange = staticInitializerHotSwap.get(klass);
             return !onlyOnChange || changed;
+        } else {
+            // check class hierarchy
+            for (Map.Entry<Class<?>, Boolean> entry : staticInitializerHotSwap.entrySet()) {
+                Class<?> key = entry.getKey();
+                if (key.isAssignableFrom(klass)) {
+                    return !entry.getValue() || changed;
+                }
+            }
         }
         return false;
     }
