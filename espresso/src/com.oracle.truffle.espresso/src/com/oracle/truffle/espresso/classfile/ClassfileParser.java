@@ -1145,6 +1145,11 @@ public final class ClassfileParser {
                 throw ConstantPool.classFormatError("Class is both outer and inner class");
             }
 
+            Symbol<Name> innerClassName = null;
+            if (innerClassIndex != 0) {
+                innerClassName = pool.classAt(innerClassIndex).getName(pool);
+            }
+
             for (int j = 0; j < i; ++j) {
                 // Inner class info is often small: better to use array lookup for startup.
                 final InnerClassesAttribute.Entry otherInnerClassInfo = innerClassInfos[j];
@@ -1157,7 +1162,7 @@ public final class ClassfileParser {
                                     // compare by name instead.
                                     (innerClassIndex != 0 &&
                                                     otherInnerClassInfo.innerClassIndex != 0 &&
-                                                    pool.classAt(innerClassIndex).getName(pool) == pool.classAt(otherInnerClassInfo.innerClassIndex).getName(pool))) {
+                                                    innerClassName.equals(pool.classAt(otherInnerClassInfo.innerClassIndex).getName(pool)))) {
                         duplicateInnerClass = true;
                     }
                 }
@@ -1176,7 +1181,7 @@ public final class ClassfileParser {
         return new InnerClassesAttribute(name, innerClassInfos);
     }
 
-    int findInnerClassIndexEntry(InnerClassesAttribute.Entry[] entries, int innerClass) {
+    int findInnerClassIndexEntry(InnerClassesAttribute.Entry[] entries, Symbol<Name> innerClassName) {
         for (int i = 0; i < entries.length; i++) {
             InnerClassesAttribute.Entry entry = entries[i];
             if (entry.innerClassIndex == 0) {
@@ -1184,7 +1189,7 @@ public final class ClassfileParser {
             }
             // The same class can be referenced by two different CP indices, compare by name
             // instead.
-            if (pool.classAt(innerClass).getName(pool) == pool.classAt(entry.innerClassIndex).getName(pool)) {
+            if (innerClassName == pool.classAt(entry.innerClassIndex).getName(pool)) {
                 return i;
             }
         }
@@ -1204,7 +1209,7 @@ public final class ClassfileParser {
                 if (v == 0) {
                     break;
                 }
-                int index = findInnerClassIndexEntry(entries, v);
+                int index = findInnerClassIndexEntry(entries, pool.classAt(v).getName(pool));
                 if (index < 0) { // no edge found
                     break;
                 }
