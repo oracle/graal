@@ -847,7 +847,7 @@ suite = {
         "org.graalvm.compiler.bytecode",
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
       ],

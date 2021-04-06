@@ -93,7 +93,7 @@ suite = {
       "exports" : [
         "com.oracle.truffle.regex.chardata",
       ],
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
       "spotbugsIgnoresGenerated" : True,

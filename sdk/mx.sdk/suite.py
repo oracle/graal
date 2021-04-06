@@ -191,7 +191,7 @@ suite = {
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "workingSets" : "API,SDK",
     },
 

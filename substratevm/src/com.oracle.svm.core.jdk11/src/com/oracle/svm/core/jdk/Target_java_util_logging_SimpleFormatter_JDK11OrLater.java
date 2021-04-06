@@ -43,6 +43,7 @@ class FormatAccessors {
 
     private static String format = null;
 
+    @SuppressWarnings("unused")
     public static String getFormat(java.util.logging.SimpleFormatter parent) {
         if (format == null) {
             /*
@@ -55,6 +56,7 @@ class FormatAccessors {
         return format;
     }
 
+    @SuppressWarnings("unused")
     public static void setFormat(java.util.logging.SimpleFormatter parent, String f) {
         format = f;
     }

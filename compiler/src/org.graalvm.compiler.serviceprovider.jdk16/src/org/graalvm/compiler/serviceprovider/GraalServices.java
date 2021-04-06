@@ -25,13 +25,14 @@
 package org.graalvm.compiler.serviceprovider;
 
 import static java.lang.Thread.currentThread;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -40,29 +41,19 @@ import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 
-import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.EncodedSpeculationReason;
-import jdk.vm.ci.meta.JavaType;
-import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup.SpeculationContextObject;
-
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.EncodedSpeculationReason;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-import jdk.vm.ci.meta.SpeculationLog.SpeculationReasonEncoding;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
-
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
 /**
  * JDK 16+ version of {@link GraalServices}.
