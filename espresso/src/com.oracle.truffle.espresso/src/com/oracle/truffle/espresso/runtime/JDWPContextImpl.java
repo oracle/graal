@@ -882,7 +882,6 @@ public final class JDWPContextImpl implements JDWPContext {
         }
 
         private void fire() {
-            System.out.println("running clinit action for klass: " + klass);
             klass.reRunClinit();
         }
     }
