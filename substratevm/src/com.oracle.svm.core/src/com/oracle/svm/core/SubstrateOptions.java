@@ -171,8 +171,12 @@ public class SubstrateOptions {
     }
 
     @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
-    @Option(help = "Use a card remembered set heap for GC")//
-    public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
+    @Option(help = "Use a serial GC")//
+    public static final HostedOptionKey<Boolean> UseSerialGC = new HostedOptionKey<>(true);
+
+    @APIOption(name = "epsilon", group = GCGroup.class, customHelp = "Epsilon garbage collector")//
+    @Option(help = "Use a no-op GC")//
+    public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
@@ -497,6 +501,11 @@ public class SubstrateOptions {
     @Option(help = "Size of the reserved address space of each compilation isolate (0: default for new isolates).") //
     public static final RuntimeOptionKey<Long> CompilationIsolateAddressSpaceSize = new RuntimeOptionKey<>(0L);
 
+    @Fold
+    public static boolean useRememberedSet() {
+        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
+    }
+
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
 
@@ -518,6 +527,9 @@ public class SubstrateOptions {
 
         @Option(help = "Activate runtime compilation in separate isolates (enable support during image build with option SupportCompileInIsolates).") //
         public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true);
+
+        @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
+        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//

@@ -32,12 +32,12 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class UseCardRememberedSetHeap implements BooleanSupplier {
-    UseCardRememberedSetHeap() {
+class UseSerialGC implements BooleanSupplier {
+    UseSerialGC() {
     }
 
     @Override
     public boolean getAsBoolean() {
-        return SubstrateOptions.UseCardRememberedSetHeap.getValue();
+        return SubstrateOptions.UseSerialGC.getValue();
     }
 }
