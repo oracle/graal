@@ -135,15 +135,32 @@ static TruffleEnv *getTruffleEnv(TruffleContext *context) {
 static TruffleEnv *attachCurrentThread(TruffleContext *context) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     JavaVM *vm = ctx->javaVM;
+    jboolean attachSuccess;
 
     JNIEnv *env;
-    int ret = (*vm)->AttachCurrentThread(vm, (void**) &env, NULL);
+    int ret = (*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6);
+    if (ret == JNI_EDETACHED) {
+        ret = (*vm)->AttachCurrentThread(vm, (void**) &env, NULL);
+        if (ret == JNI_OK) {
+            attachSuccess = (*env)->CallBooleanMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_attachThread);
+            if (!attachSuccess) {
+                (*vm)->DetachCurrentThread(vm);
+                return NULL;
+            }
+        }
+    }
     return lookupTruffleEnvOrError(ret, env, ctx);
 }
 
 static void detachCurrentThread(TruffleContext *context) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     JavaVM *vm = ctx->javaVM;
+
+    JNIEnv *env;
+    int ret = (*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6);
+    if (ret == JNI_OK) {
+        (*env)->CallVoidMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_detachThread);
+    }
 
     (*vm)->DetachCurrentThread(vm);
 }

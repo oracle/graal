@@ -110,6 +110,23 @@ class LibFFIContext {
         return nativeEnv.get().pointer;
     }
 
+    // called from native, and only from a "new" thread that can not be entered already
+    boolean attachThread() {
+        try {
+            Object ret = env.getContext().enter(null);
+            assert ret == null : "thread already entered";
+            return true;
+        } catch (Throwable t) {
+            // can't enter the context (e.g. because of a single-threded language being active)
+            return false;
+        }
+    }
+
+    // called from native immediately before detaching that thread from the VM
+    void detachThread() {
+        env.getContext().leave(null, null);
+    }
+
     void initialize() {
         loadNFILib();
         NativeAllocation.ensureGCThreadRunning();
