@@ -28,7 +28,7 @@
 #include "common.h"
 
 #ifdef _WIN32
-#error "TODO"
+#include <windows.h>
 #else
 #include <pthread.h>
 #endif
@@ -39,7 +39,11 @@ private:
     int64_t (*const fn)(TruffleEnv *, int64_t arg);
     const int64_t arg;
 
+#ifdef _WIN32
+    HANDLE thread;
+#else
     pthread_t thread;
+#endif
 
 public:
     Thread(TruffleEnv *env, int64_t (*fn)(TruffleEnv *, int64_t), int64_t arg);
@@ -59,25 +63,46 @@ EXPORT int64_t joinThread(TruffleEnv *env, Thread *t) {
     return ret;
 }
 
+#ifdef _WIN32
+static DWORD WINAPI threadStart(LPVOID x) {
+    int64_t ret = static_cast<Thread*>(x)->run();
+    return static_cast<DWORD>(ret);
+}
+#else
 static void *threadStart(void *x) {
     int64_t ret = static_cast<Thread*>(x)->run();
     return reinterpret_cast<void *>(ret);
 }
+#endif
 
 Thread::Thread(TruffleEnv *env, int64_t (*fn)(TruffleEnv *, int64_t), int64_t arg)
         :ctx(env->getTruffleContext()), fn(env->dupClosureRef(fn)), arg(arg) {
+#ifdef _WIN32
+    thread = CreateThread(NULL, 0, &threadStart, this, 0, NULL);
+#else
     pthread_create(&thread, NULL, &threadStart, this);
+#endif
 }
 
 Thread::~Thread() {
     TruffleEnv *env = ctx->getTruffleEnv();
     env->releaseClosureRef(fn);
+#ifdef _WIN32
+    CloseHandle(thread);
+#endif
 }
 
 int64_t Thread::join(TruffleEnv *env) {
+#ifdef _WIN32
+    DWORD ret;
+    WaitForSingleObject(thread, INFINITE);
+    GetExitCodeThread(thread, &ret);
+    return ret;
+#else
     void *ret;
     pthread_join(thread, &ret);
     return reinterpret_cast<int64_t>(ret);
+#endif
 }
 
 int64_t Thread::run() {
