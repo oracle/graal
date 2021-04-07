@@ -116,12 +116,15 @@ public class JfrSymbolRepository implements JfrRepository {
             JfrSymbol entry = entries[i];
             if (entry.isNonNull()) {
                 while (entry.isNonNull()) {
+                    JfrSymbol tmp = entry;
                     writeSymbol(writer, entry);
                     entry = entry.getNext();
+                    table.free(tmp);
                 }
+                entries[i] = WordFactory.nullPointer();
             }
         }
-
+        table.setSize(0);
     }
 
     private void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) throws IOException {

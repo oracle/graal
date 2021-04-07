@@ -77,6 +77,11 @@ public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void teardown() {
         clear();
     }
