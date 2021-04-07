@@ -167,46 +167,46 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private byte flags;
 
     /**
-     * The result of {@link Class#isLocalClass()}.
-     */
-    private static final int IS_LOCAL_CLASS_FLAG_BIT = 0;
-
-    /**
      * Has the type been discovered as instantiated by the static analysis?
      */
-    private static final int IS_INSTANTIATED_FLAG_BIT = 1;
+    private static final int IS_INSTANTIATED_FLAG_BIT = 0;
 
     /**
      * Is this a Hidden Class (Since JDK 15).
      */
-    private static final int IS_HIDDED_FLAG_BIT = 2;
+    private static final int IS_HIDDED_FLAG_BIT = 1;
 
     /**
      * Is this a Record Class (Since JDK 15).
      */
-    private static final int IS_RECORD_FLAG_BIT = 3;
+    private static final int IS_RECORD_FLAG_BIT = 2;
 
     /**
      * Holds assertionStatus determined by {@link RuntimeAssertionsSupport}.
      */
-    private static final int ASSERTION_STATUS_FLAG_BIT = 4;
+    private static final int ASSERTION_STATUS_FLAG_BIT = 3;
 
     /**
      * Class/superclass/implemented interfaces has default methods. Necessary metadata for class
      * initialization, but even for classes/interfaces that are already initialized during image
      * generation, so it cannot be a field in {@link ClassInitializationInfo}.
      */
-    private static final int HAS_DEFAULT_METHODS_FLAG_BIT = 5;
+    private static final int HAS_DEFAULT_METHODS_FLAG_BIT = 4;
 
     /**
      * Directly declares default methods. Necessary metadata for class initialization, but even for
      * interfaces that are already initialized during image generation, so it cannot be a field in
      * {@link ClassInitializationInfo}.
      */
-    private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 6;
+    private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 5;
 
     /**
-     * Boolean value or exception that happend at image-build time.
+     * Boolean value or exception that happened at image-build time.
+     */
+    private Object isLocalClass;
+
+    /**
+     * Boolean value or exception that happened at image-build time.
      */
     private Object isAnonymousClass;
 
@@ -355,13 +355,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
+    public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
                     String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
         this.referenceType = referenceType.getValue();
-        setFlag(IS_LOCAL_CLASS_FLAG_BIT, isLocalClass);
+        this.isLocalClass = isLocalClass;
         this.isAnonymousClass = isAnonymousClass;
         this.superHub = superType;
         this.componentType = componentHub;
@@ -807,15 +807,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private boolean isAnonymousClass() {
-        if (isAnonymousClass instanceof Boolean) {
-            return (Boolean) isAnonymousClass;
-        } else if (isAnonymousClass instanceof LinkageError) {
-            throw (LinkageError) isAnonymousClass;
-        } else if (isAnonymousClass instanceof InternalError) {
-            throw (InternalError) isAnonymousClass;
-        } else {
-            throw VMError.shouldNotReachHere();
-        }
+        return booleanOrError(isAnonymousClass);
     }
 
     @Substitute
@@ -832,7 +824,19 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private boolean isLocalClass() {
-        return isFlagSet(IS_LOCAL_CLASS_FLAG_BIT);
+        return booleanOrError(isLocalClass);
+    }
+
+    private static boolean booleanOrError(Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        } else if (value instanceof LinkageError) {
+            throw (LinkageError) value;
+        } else if (value instanceof InternalError) {
+            throw (InternalError) value;
+        } else {
+            throw VMError.shouldNotReachHere();
+        }
     }
 
     @KeepOriginal
