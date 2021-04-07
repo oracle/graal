@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinition
 import com.oracle.truffle.espresso.redefinition.plugins.api.MethodLocator;
 import com.oracle.truffle.espresso.redefinition.plugins.api.TriggerClass;
 
-public class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
+public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
 
     private static final String PROXY_GENERATOR_CLASS = "sun.misc.ProxyGenerator";
     private static final String GENERATOR_METHOD = "generateProxyClass";
