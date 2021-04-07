@@ -41,5 +41,5 @@
 package com.oracle.truffle.espresso.hotswap;
 
 public interface HotSwapAction {
-    void onHotSwap();
+    void fire();
 }

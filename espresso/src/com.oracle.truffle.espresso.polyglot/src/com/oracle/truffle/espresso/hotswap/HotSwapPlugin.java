@@ -43,5 +43,5 @@ package com.oracle.truffle.espresso.hotswap;
 public interface HotSwapPlugin {
     String getName();
 
-    void postHotSwap();
+    void postHotSwap(Class<?>[] changedClasses);
 }

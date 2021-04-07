@@ -69,9 +69,9 @@ public final class EspressoHotSwap {
         }
     }
 
-    public static void registerClassInitHotSwap(Class<?> klass, boolean onChange) {
+    public static void registerClassInitHotSwap(Class<?> klass, boolean onChange, HotSwapAction callback) {
         if (handler != null) {
-            handler.registerStaticClassInitHotSwap(klass, onChange);
+            handler.registerStaticClassInitHotSwap(klass, onChange, callback);
         }
     }
 }
