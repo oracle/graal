@@ -663,9 +663,19 @@ suite = {
     },
     "com.oracle.truffle.llvm.libraries.graalvm.llvm.libs" : {
       "subDir" : "projects",
-      "native" : True,
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
       "vpath" : True,
+      "ninja_targets" : [
+        "<libv:graalvm-llvm.1>",
+      ],
+      "ninja_install_targets" : ["install"],
       "results" : [
+        # "bin/<lib:graalvm-llvm>",
+        # We on purpose exclude the symlink from the results because the layout distribution would dereference it and
+        # create a copy instead of keeping the symlink.
+        # The symlink is added manually in the layout definition of the distribution.
         "bin/<libv:graalvm-llvm.1>",
       ],
       "buildDependencies" : [
@@ -673,11 +683,10 @@ suite = {
         "com.oracle.truffle.llvm.libraries.graalvm.llvm",
         "NATIVE_MODE_SUPPORT",
       ],
-      "buildEnv" : {
-        "SONAME" : "<libv:graalvm-llvm.1>",
-        "CLANG" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
-        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
-        "OS" : "<os>",
+      "cmakeConfig" : {
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
+        "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
       },
       "license" : "BSD-new",
     },
