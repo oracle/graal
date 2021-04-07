@@ -614,6 +614,8 @@ suite = {
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
       "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
       "vpath" : True,
       "ninja_targets" : [
         "<lib:sulong>",
