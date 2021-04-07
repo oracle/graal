@@ -874,7 +874,7 @@ public final class JDWPContextImpl implements JDWPContext {
         }
     }
 
-    private class ReloadingAction {
+    private final class ReloadingAction {
         private ObjectKlass klass;
 
         private ReloadingAction(ObjectKlass klass) {
