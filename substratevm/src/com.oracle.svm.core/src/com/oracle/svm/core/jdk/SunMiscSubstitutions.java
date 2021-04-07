@@ -207,16 +207,6 @@ final class Target_Unsafe_Core {
     }
 
     @Substitute
-    private long staticFieldOffset(Field f) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
-    }
-
-    @Substitute
-    private Object staticFieldBase(Field f) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
-    }
-
-    @Substitute
     private Class<?> defineClass(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
         throw VMError.unsupportedFeature("Defining new classes at run time is not supported. All classes need to be known at image build time.");
     }
