@@ -673,13 +673,14 @@ suite = {
         "solaris" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
-            "ldflags" : ["-m64"],
+            "ldflags" : ["-m64", "-pthread"],
             "ldlibs" : ["-lm"],
           },
         },
         "<others>" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror"],
+            "ldflags" : ["-pthread"],
             "ldlibs" : ["-lm"],
           },
         },
