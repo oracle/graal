@@ -548,7 +548,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else {
             try {
                 exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, context.cancelling || context.cancelled,
-                                languageContext, e, true, entered);
+                                languageContext, e);
             } catch (Throwable t) {
                 /*
                  * It is possible that we fail to enter or produce a guest value using a context at

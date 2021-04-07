@@ -100,18 +100,16 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     private final String message;
 
     PolyglotExceptionImpl(PolyglotEngineImpl engine, boolean polyglotContextCancellingOrCancelled, Throwable original) {
-        this(engine.impl, engine, polyglotContextCancellingOrCancelled, null, original, false, false);
+        this(engine.impl, engine, polyglotContextCancellingOrCancelled, null, original);
     }
 
     // Exception coming from an instrument
     PolyglotExceptionImpl(PolyglotImpl polyglot, Throwable original) {
-        this(polyglot, null, false, null, original, true, false);
+        this(polyglot, null, false, null, original);
     }
 
     @SuppressWarnings("deprecation")
-    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, boolean polyglotContextCancellingOrCancelled, PolyglotLanguageContext languageContext, Throwable original,
-                    boolean allowInterop,
-                    boolean entered) {
+    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, boolean polyglotContextCancellingOrCancelled, PolyglotLanguageContext languageContext, Throwable original) {
         super(polyglot);
         this.polyglot = polyglot;
         this.engine = engine;
