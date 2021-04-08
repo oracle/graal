@@ -128,7 +128,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
                 this.incompleteSource = this.syntaxError ? interop.isExceptionIncompleteSource(exception) : false;
-                this.interrupted = exceptionType == ExceptionType.INTERRUPT;
+                this.interrupted = !cancelled && exceptionType == ExceptionType.INTERRUPT;
 
                 if (interop.hasSourceLocation(exception)) {
                     this.sourceLocation = newSourceSection(interop.getSourceLocation(exception));
