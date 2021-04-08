@@ -130,17 +130,19 @@ public final class RedefinitionPluginHandler implements RedefineListener, ClassL
     // listener methods
     @Override
     public boolean rerunClinit(ObjectKlass klass, boolean changed) {
+        boolean rerun = false;
         // internal plugins
         for (InternalRedefinitionPlugin plugin : internalPlugins) {
             if (plugin.reRunClinit(klass, changed)) {
-                return true;
+                rerun = true;
+                break;
             }
         }
         // external plugins
         if (externalPluginHandler != null) {
-            return externalPluginHandler.rerunClassInit(klass, changed);
+            rerun |= externalPluginHandler.rerunClassInit(klass, changed);
         }
-        return false;
+        return rerun;
     }
 
     @Override
