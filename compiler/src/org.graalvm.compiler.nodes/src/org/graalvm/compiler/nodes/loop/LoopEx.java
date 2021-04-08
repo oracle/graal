@@ -382,7 +382,7 @@ public class LoopEx {
         return false;
     }
 
-    protected boolean isCfgLoopExit(AbstractBeginNode begin) {
+    public boolean isCfgLoopExit(AbstractBeginNode begin) {
         Block block = data.getCFG().blockFor(begin);
         return loop.getDepth() > block.getLoopDepth() || loop.isNaturalExit(block);
     }
