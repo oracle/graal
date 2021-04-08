@@ -35,13 +35,14 @@
   builds: common.builds + [
     // Benchmarks
     // AWFY peak perf. benchmarks
-    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*',    extra_args=['--vm.Xmx1g', '--vm.Xms1g'])  + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk8-linux-amd64'},
-    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*', guest_jvm_config='no-shape-checks', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])+ {name: 'weekly-bench-espresso-jvm-ce-awfy-no-shape-checks-jdk8-linux-amd64'},
-    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('native-ce', 'awfy:*', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])  + {name: 'weekly-bench-espresso-native-ce-awfy-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*',    extra_args=['--vm.Xmx1g', '--vm.Xms1g'])                                        + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*', guest_jvm_config='no-shape-checks', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])    + {name: 'weekly-bench-espresso-jvm-ce-awfy-no-shape-checks-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('native-ce', 'awfy:*', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])                                     + {name: 'weekly-bench-espresso-native-ce-awfy-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('native-ce', 'awfy:*', guest_jvm_config='no-shape-checks', extra_args=['--vm.Xmx1g', '--vm.Xms1g']) + {name: 'weekly-bench-espresso-native-ce-awfy-no-shape-checks-jdk8-linux-amd64'},
 
     // AWFY interpreter benchmarks
-    common.jdk8_weekly_bench_linux              + common.espresso_interpreter_benchmark('jvm-ce', 'awfy:*')                        + {name: 'weekly-bench-espresso-jvm-ce-awfy_interpreter-jdk8-linux-amd64'},
-    common.jdk8_weekly_bench_linux              + common.espresso_interpreter_benchmark('native-ce', 'awfy:*')                     + {name: 'weekly-bench-espresso-native-ce-awfy_interpreter-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_interpreter_benchmark('jvm-ce', 'awfy:*')                            + {name: 'weekly-bench-espresso-jvm-ce-awfy_interpreter-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_interpreter_benchmark('native-ce', 'awfy:*')                         + {name: 'weekly-bench-espresso-native-ce-awfy_interpreter-jdk8-linux-amd64'},
 
     // Scala DaCapo warmup benchmarks
     common.jdk8_weekly_bench_linux              + common.scala_dacapo_warmup_benchmark('jvm-ce', 'single-tier', extra_args=['--vm.XX:ReservedCodeCacheSize=1g'])                    + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-single_tier-jdk8-linux-amd64'},
