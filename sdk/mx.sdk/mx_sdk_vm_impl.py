@@ -1189,10 +1189,10 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             component_dir = _get_component_type_base(component, apply_substitutions=True)
             dir_name = component.dir_name
             if dir_name:
-                component_dir = component_dir + dir_name + '/'
+                component_dir = component_dir + dir_name + os.sep
             component_dir_rel = relpath(component_dir, start)
-            if not component_dir_rel.endswith('/'):
-                component_dir_rel += '/'
+            if not component_dir_rel.endswith(os.sep):
+                component_dir_rel += os.sep
             location_classpath.append(component_dir_rel + '*')
         return location_classpath
 
