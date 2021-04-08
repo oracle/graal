@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -245,7 +245,7 @@ public abstract class DebugInfoBase {
 
             /* Search for a method defining this primary range. */
             ClassEntry classEntry = ensureClassEntry(className);
-            MethodEntry methodEntry = classEntry.ensureMethodEntry(debugCodeInfo, this, debugContext);
+            MethodEntry methodEntry = classEntry.getMethodEntry(debugCodeInfo, this, debugContext);
             Range primaryRange = classEntry.makePrimaryRange(symbolName, stringTable, methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
@@ -263,7 +263,7 @@ public abstract class DebugInfoBase {
                  * symbol for them and don't see a break in the address range.
                  */
                 ClassEntry subClassEntry = ensureClassEntry(classNameAtLine);
-                MethodEntry subMethodEntry = subClassEntry.ensureMethodEntry(debugLineInfo, this, debugContext);
+                MethodEntry subMethodEntry = subClassEntry.getMethodEntry(debugLineInfo, this, debugContext);
                 Range subRange = new Range(symbolNameAtLine, stringTable, subMethodEntry, loAtLine, hiAtLine, line, primaryRange);
                 classEntry.indexSubRange(subRange);
                 try (DebugContext.Scope s = debugContext.scope("Subranges")) {

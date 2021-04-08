@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -35,9 +35,11 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugType
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 
 /**
@@ -134,7 +136,9 @@ public class ClassEntry extends StructureTypeEntry {
         /* Add details of fields and field types */
         debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
         /* Add details of methods and method types */
-        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.processMethod(methodFieldInfo, debugInfoBase, debugContext));
+        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.methods.add(this.processMethod(methodFieldInfo, debugInfoBase, debugContext)));
+        /* Sort methods to improve lookup speed */
+        this.methods.sort(MethodEntry::compareTo);
     }
 
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
@@ -294,9 +298,7 @@ public class ClassEntry extends StructureTypeEntry {
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        final MethodEntry methodEntry = new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget());
-        methods.add(methodEntry);
-        return methodEntry;
+        return new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget());
     }
 
     @Override
@@ -346,16 +348,30 @@ public class ClassEntry extends StructureTypeEntry {
         return new Range(symbolName, stringTable, method, fileEntryToUse, lo, hi, primaryLine);
     }
 
-    public MethodEntry ensureMethodEntry(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    public MethodEntry getMethodEntry(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        assert listIsSorted(methods);
         String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
         String paramSignature = debugMethodInfo.paramSignature();
         String returnTypeName = debugMethodInfo.valueType();
-        // TODO improve data structure to avoid loops...
-        for (MethodEntry methodEntry : methods) {
-            if (methodEntry.match(methodName, paramSignature, returnTypeName)) {
+        ListIterator<MethodEntry> methodIterator = methods.listIterator();
+        while (methodIterator.hasNext()) {
+            MethodEntry methodEntry = methodIterator.next();
+            int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
+            if (comparisonResult == 0) {
                 return methodEntry;
+            } else if (comparisonResult > 0) {
+                methodIterator.previous();
+                break;
             }
         }
-        return processMethod(debugMethodInfo, debugInfoBase, debugContext);
+        MethodEntry newMethodEntry = processMethod(debugMethodInfo, debugInfoBase, debugContext);
+        methodIterator.add(newMethodEntry);
+        return newMethodEntry;
+    }
+
+    private boolean listIsSorted(List<MethodEntry> list) {
+        List<MethodEntry> copy = new ArrayList<>(list);
+        copy.sort(MethodEntry::compareTo);
+        return list.equals(copy);
     }
 }

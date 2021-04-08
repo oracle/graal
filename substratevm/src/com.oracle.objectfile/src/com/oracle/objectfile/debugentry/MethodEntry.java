@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class MethodEntry extends MemberEntry {
+public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> {
     final TypeEntry[] paramTypes;
     final String[] paramNames;
     final boolean isDeoptTarget;
@@ -74,30 +74,51 @@ public class MethodEntry extends MemberEntry {
         return paramNames[idx];
     }
 
-    public boolean match(String methodName, String paramSignature, String returnTypeName) {
-        if (!methodName.equals(this.memberName)) {
-            return false;
+    public int compareTo(String methodName, String paramSignature, String returnTypeName) {
+        if (!memberName.equals(methodName)) {
+            return memberName.compareTo(methodName);
         }
-        if (!returnTypeName.equals(valueType.getTypeName())) {
-            return false;
+        if (!valueType.getTypeName().equals(returnTypeName)) {
+            return valueType.getTypeName().compareTo(returnTypeName);
         }
         int paramCount = getParamCount();
         if (paramCount == 0) {
-            return paramSignature.trim().length() == 0;
+            return 0 - paramSignature.trim().length();
         }
         String[] paramTypeNames = paramSignature.split((","));
         if (paramCount != paramTypeNames.length) {
-            return false;
+            return paramCount - paramTypeNames.length;
         }
         for (int i = 0; i < paramCount; i++) {
             if (!paramTypeNames[i].trim().equals(getParamTypeName(i))) {
-                return false;
+                return getParamTypeName(i).compareTo(paramTypeNames[i].trim());
             }
         }
-        return true;
+        return 0;
     }
 
     public boolean isDeoptTarget() {
         return isDeoptTarget;
+    }
+
+    @Override
+    public int compareTo(MethodEntry other) {
+        assert other != null;
+        int result = methodName().compareTo(other.methodName());
+        if (result == 0) {
+            result = valueType.getTypeName().compareTo(other.valueType.getTypeName());
+        }
+        if (result == 0) {
+            result = getParamCount() - other.getParamCount();
+        }
+        if (result == 0) {
+            for (int i = 0; i < getParamCount(); i++) {
+                result = getParamTypeName(i).compareTo(other.getParamTypeName(i));
+                if (result != 0) {
+                    break;
+                }
+            }
+        }
+        return result;
     }
 }
