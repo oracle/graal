@@ -1549,10 +1549,12 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         return 'Building {}'.format(self.subject.name)
 
     def _config(self):
+        final_graalvm_distribution = get_final_graalvm_distribution()
         return [
+            'components: {}'.format(', '.join(component.short_name for component in final_graalvm_distribution.components)),
             'include sources: {}'.format(_include_sources_str()),
             'strip jars: {}'.format(mx.get_opts().strip_jars),
-            'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
+            'vendor-version: {}'.format(graalvm_vendor_version(final_graalvm_distribution)),
         ]
 
     def _config_file(self):
