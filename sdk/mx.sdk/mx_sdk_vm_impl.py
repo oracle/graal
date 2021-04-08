@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -223,6 +223,7 @@ def registered_graalvm_components(stage1=False):
                                '--tool:all',
                            ],
                         is_polyglot=True,
+                        build_time=25,
                     )],
                 )
                 mx_sdk_vm.register_graalvm_component(libpolyglot_component)
@@ -1572,6 +1573,7 @@ class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
         if svm_support.is_supported():
             deps += self.native_image_jar_distributions
         super(GraalVmNativeImage, self).__init__(component, name=name, deps=deps, **kw_args)
+        self.build_time = native_image_config.build_time
         if svm_support.is_supported() and self.is_native():
             if not hasattr(self, 'buildDependencies'):
                 self.buildDependencies = []
