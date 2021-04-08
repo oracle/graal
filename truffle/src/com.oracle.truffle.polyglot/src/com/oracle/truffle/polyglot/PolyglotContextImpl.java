@@ -174,6 +174,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      * closed state.
      */
     volatile boolean cancelling;
+    volatile boolean cancelled;
     volatile String invalidMessage;
     volatile boolean invalidResourceLimit;
     volatile Thread closingThread;
@@ -1390,6 +1391,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     engine.leave(prev, this);
                     if (success) {
                         remainingThreads = threads.keySet().toArray(new Thread[0]);
+                    }
+                    if (success && cancelling) {
+                        cancelled = true;
                     }
                     cancelling = false;
                     if (success) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -544,12 +544,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotContextImpl context = languageContext.context;
         PolyglotExceptionImpl exceptionImpl;
         if (context.closed || context.invalid) {
-            exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
+            exceptionImpl = new PolyglotExceptionImpl(context.engine, context.cancelling || context.cancelled, e);
         } else {
             try {
                 Object prev = context.engine.enterIfNeeded(context);
                 try {
-                    exceptionImpl = new PolyglotExceptionImpl(languageContext, e);
+                    exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, context.cancelling || context.cancelled,
+                                    languageContext, e);
                 } finally {
                     context.engine.leaveIfNeeded(prev, context);
                 }
@@ -562,7 +563,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                  * exception only using the engine, which does not require a context to be entered.
                  */
                 e.addSuppressed(t);
-                exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
+                exceptionImpl = new PolyglotExceptionImpl(context.engine, context.cancelling || context.cancelled, e);
             }
         }
         APIAccess access = getInstance().getAPIAccess();
@@ -574,7 +575,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineException.rethrow(e);
 
         APIAccess access = engine.getAPIAccess();
-        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, e);
+        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, false, e);
         return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
     }
 
