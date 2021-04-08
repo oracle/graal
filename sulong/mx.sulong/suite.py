@@ -708,11 +708,9 @@ suite = {
         "LIBCXXABI_ENABLE_STATIC" : "NO",
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
-        "LIBCXX_CXX_ABI" : "libcxxabi",
-        # shouldn't this be detected automatically?
-        "LIBCXX_CXX_ABI_LIBRARY_PATH" : "<path:com.oracle.truffle.llvm.libraries.bitcode.libcxx>/native/lib",
-        # shouldn't this be detected automatically?
-        "LIBCXX_CXX_ABI_INCLUDE_PATHS" : "<path:sdk:LLVM_ORG_SRC>/libcxxabi/include",
+        # using "default" will choose the in-tree version libc++abi and add a build dependency
+        # from libc++ to libc++abi
+        "LIBCXX_CXX_ABI" : "default",
         "LIBCXX_ENABLE_STATIC" : "NO",
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
         "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
