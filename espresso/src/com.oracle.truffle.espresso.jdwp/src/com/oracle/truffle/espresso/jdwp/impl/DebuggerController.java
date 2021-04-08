@@ -52,8 +52,8 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
@@ -983,7 +983,11 @@ public final class DebuggerController implements ContextsListener {
                 byte typeTag;
                 long codeIndex;
 
-                RootNode root = frame.getRawNode(context.getLanguageClass()).getRootNode();
+                Node rawNode = frame.getRawNode(context.getLanguageClass());
+                if (rawNode == null) {
+                    continue;
+                }
+                RootNode root = rawNode.getRootNode();
                 if (root == null) {
                     // since we can't lookup the root node, we have to
                     // construct a jdwp-like location from the frame
@@ -999,33 +1003,11 @@ public final class DebuggerController implements ContextsListener {
                 methodId = ids.getIdAsLong(method);
                 typeTag = TypeTag.getKind(klass);
 
-                codeIndex = -1;
-
                 // check if we have a dedicated step out code index on the top frame
                 if (frameCount == 0 && steppingInfo != null && steppingInfo.isStepOutFrame(methodId, klassId)) {
                     codeIndex = steppingInfo.getStepOutBCI();
                 } else {
-                    try {
-                        // for bytecode-based languages (Espresso) we can
-                        // read the precise bci from the frame instance
-                        codeIndex = context.readBCIFromFrame(root, rawFrame);
-                    } catch (Throwable t) {
-                        JDWPLogger.log("Unable to read BCI: %s.%s", JDWPLogger.LogLevel.ALL, klass.getNameAsString(), method.getNameAsString());
-                    }
-
-                    if (codeIndex == -1) {
-                        // fall back to line precision through the source section
-                        SourceSection sourceSection = frame.getSourceSection();
-                        if (sourceSection.hasLines()) {
-                            if (sourceSection.getStartLine() != sourceSection.getEndLine()) {
-                                JDWPLogger.log("Not able to get a precise encapsulated source section", JDWPLogger.LogLevel.ALL);
-                            }
-                            codeIndex = method.getBCIFromLine(sourceSection.getStartLine());
-                        } else {
-                            // no lines! Fall back to bci 0 then
-                            codeIndex = 0;
-                        }
-                    }
+                    codeIndex = context.getBCI(rawNode, rawFrame);
                 }
 
                 list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, frame, context));
