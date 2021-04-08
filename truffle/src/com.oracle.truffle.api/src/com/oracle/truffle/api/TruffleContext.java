@@ -165,9 +165,12 @@ public final class TruffleContext implements AutoCloseable {
      * times from the same thread. If the context is currently not entered by any thread then it is
      * allowed be entered by an arbitrary thread. Entering the context from two or more different
      * threads at the same time is possible, unless one of the loaded languages denies access to the
-     * thread, in which case an {@link IllegalStateException} is thrown. The result of the enter
-     * function is unspecified and must only be passed to {@link #leave(Node, Object)}. The result
-     * value must not be stored permanently.
+     * thread, in which case an {@link IllegalStateException} is thrown.
+     * <p>
+     * If the current thread was not previously entered in any context, the enter function returns
+     * {@code null}. If the return value is not {@code null}, the result of the enter function is
+     * unspecified and must only be passed to {@link #leave(Node, Object)}. The result value must
+     * not be stored permanently.
      * <p>
      * An adopted node may be passed to allow perform optimizations on the fast-path. If a
      * <code>null</code> node is passed then entering a context will result in a
