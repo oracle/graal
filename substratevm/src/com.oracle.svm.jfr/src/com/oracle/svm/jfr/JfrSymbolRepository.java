@@ -129,7 +129,7 @@ public class JfrSymbolRepository implements JfrRepository {
 
     private void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) throws IOException {
         writer.writeCompressedLong(symbol.getId());
-        writer.writeByte(JfrChunkWriter.TYPE_UTF8);
+        writer.writeByte(JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
         byte[] value = symbol.getValue().getBytes(StandardCharsets.UTF_8);
         if (symbol.getReplaceDotWithSlash()) {
             replaceDotWithSlash(value);
