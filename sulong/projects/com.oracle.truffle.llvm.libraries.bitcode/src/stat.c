@@ -41,6 +41,9 @@
 #define _STAT_VER 1
 #endif
 
+struct stat;
+struct stat64;
+
 int __xstat(int version, const char *path, struct stat *buf);
 
 int __fxstat(int version, int fd, struct stat *buf);
