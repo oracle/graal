@@ -27,8 +27,10 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+
 from __future__ import print_function
 
+import abc
 import fnmatch
 import pipes
 import shutil
@@ -125,9 +127,7 @@ class SulongTestSuiteBuildTask(mx.NativeBuildTask):
             self.subject._is_needs_rebuild_call = False
 
 
-class SulongTestSuiteBase(mx.NativeProject):  # pylint: disable=too-many-ancestors
-    def __init__(self, suite, name, subDir, deps, workingSets, results, output, d, **args):
-        super(SulongTestSuiteBase, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
+class SulongTestSuiteBaseMixin(mx._with_metaclass(abc.ABCMeta, object)):
 
     def getVariants(self):
         if not hasattr(self, '_variants'):
@@ -139,19 +139,51 @@ class SulongTestSuiteBase(mx.NativeProject):  # pylint: disable=too-many-ancesto
                 self._variants.append(v)
         return self._variants
 
+    @abc.abstractmethod
+    def getTests(self):
+        """Returns a list of tests."""
+
+    def getTestDirExt(self):
+        return ""
+
     def getResults(self, replaceVar=mx_subst.results_substitutions):
         if not self.results:
             self.results = []
             for t in self.getTests():
+                t = t + self.getTestDirExt()
                 if self.buildRef:
                     self.results.append(os.path.join(t, 'ref.out'))
                 for v in self.getVariants():
                     result_file = mx.add_lib_suffix(v) if self.buildSharedObject else v + '.bc'
                     self.results.append(os.path.join(t, result_file))
-        return super(SulongTestSuiteBase, self).getResults(replaceVar=replaceVar)
+        return super(SulongTestSuiteBaseMixin, self).getResults(replaceVar=replaceVar)
 
 
-class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestors
+class SulongTestSuiteMixin(SulongTestSuiteBaseMixin):
+
+    def getTestDirExt(self):
+        return ".dir"
+
+    def getTests(self):
+        if not hasattr(self, '_tests'):
+            self._tests = []
+            # collect tests from VPATH (defaults to self.dir)
+            root = os.path.join(self._get_vpath())
+            for path, _, files in os.walk(root):
+                for f in files:
+                    absPath = os.path.join(path, f)
+                    relPath = os.path.relpath(absPath, root)
+                    _, ext = os.path.splitext(relPath)
+                    if ext in getattr(self, "fileExts", ['.c', '.cpp', '.ll']):
+                        self._tests.append(relPath)
+        return self._tests
+
+    @abc.abstractmethod
+    def _get_vpath(self):
+        """Return the source directory."""
+
+
+class SulongTestSuite(SulongTestSuiteMixin, mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, bundledLLVMOnly=False, **args):
         projectDir = args.pop('dir', None)
@@ -162,7 +194,7 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
         else:
             d_rel = os.path.join(subDir, name)
         d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
-        super(SulongTestSuite, self).__init__(suite, name, subDir, deps, workingSets, results, output, d, **args)
+        super(SulongTestSuite, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
         if bundledLLVMOnly and mx.get_env('CLANG_CC', None):
             self.ignore = "Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'"
         self.vpath = True
@@ -178,20 +210,6 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
     def defaultTestClasses(self):
         return ["SulongSuite"]
 
-    def getTests(self):
-        if not hasattr(self, '_tests'):
-            self._tests = []
-            # collect tests from VPATH (defaults to self.dir)
-            root = os.path.join(self._get_vpath())
-            for path, _, files in os.walk(root):
-                for f in files:
-                    absPath = os.path.join(path, f)
-                    relPath = os.path.relpath(absPath, root)
-                    _, ext = os.path.splitext(relPath)
-                    if ext in getattr(self, "fileExts", ['.c', '.cpp', '.ll']):
-                        self._tests.append(relPath + ".dir")
-        return self._tests
-
     def _get_vpath(self):
         env = super(SulongTestSuite, self).getBuildEnv()
         return env.get('VPATH', self.dir)
@@ -199,7 +217,7 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
         env['PROJECT'] = self.name
-        env['TESTS'] = ' '.join(self.getTests())
+        env['TESTS'] = ' '.join([t + self.getTestDirExt() for t in self.getTests()])
         env['VARIANTS'] = ' '.join(self.getVariants())
         env['BUILD_REF'] = '1' if self.buildRef else '0'
         env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
@@ -229,11 +247,11 @@ def llirtestgen(args=None, out=None):
     return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
 
 
-class GeneratedTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestors
+class GeneratedTestSuite(SulongTestSuiteBaseMixin, mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, **args):
         d = os.path.join(suite.dir, subDir, name)
-        super(GeneratedTestSuite, self).__init__(suite, name, subDir, deps, workingSets, results, output, d, **args)
+        super(GeneratedTestSuite, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
         self.vpath = True
         self.buildRef = buildRef
         self.buildSharedObject = buildSharedObject
@@ -357,7 +375,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
                 relPath = os.path.relpath(absPath, root)
                 _, ext = os.path.splitext(relPath)
                 if ext in self.fileExts and relPath not in exclude_files and not _match_pattern(relPath):
-                    _tests.append(relPath + ".dir")
+                    _tests.append(relPath)
 
         return _tests
 
