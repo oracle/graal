@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -471,6 +472,8 @@ public abstract class Accessor {
         public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
+
+        public abstract void registerOnDispose(Object engineObject, Closeable closeable);
 
         public abstract String getReinitializedPath(TruffleFile truffleFile);
 

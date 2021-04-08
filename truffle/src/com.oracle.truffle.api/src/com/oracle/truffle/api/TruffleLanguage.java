@@ -42,6 +42,7 @@ package com.oracle.truffle.api;
 
 import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -68,6 +69,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -79,6 +81,7 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 
@@ -3508,6 +3511,26 @@ public abstract class TruffleLanguage<C> {
          */
         public Future<Void> submitThreadLocal(Thread[] threads, ThreadLocalAction action) {
             return submitThreadLocalInternal(threads, action, true);
+        }
+
+        /**
+         * Registers {@link Closeable} for automatic close on context dispose. In most cases,
+         * closeable should be closed using try-with-resources construct. When a closeable must keep
+         * being opened for the lifetime of a context it should be registered using this method for
+         * automatic close on context dispose. The registered {@link Closeable} is weakly
+         * referenced. The guest language must strongly reference it otherwise, it may be garbage
+         * collected before it's closed.
+         * <p>
+         * If the registered closeable throws an {@link IOException} during close, the thrown
+         * exception does not prevent successful context dispose. The IOException is logged to the
+         * engine logger with a {@link Level#WARNING} level. Other exceptions are rethrown as
+         * internal {@link PolyglotException}.
+         *
+         * @param closeable to be closed on context dispose.
+         * @since 21.2
+         */
+        public void registerOnDispose(Closeable closeable) {
+            LanguageAccessor.engineAccess().registerOnDispose(polyglotLanguageContext, closeable);
         }
 
         /*
