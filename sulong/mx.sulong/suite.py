@@ -692,8 +692,14 @@ suite = {
     },
     "com.oracle.truffle.llvm.libraries.native" : {
       "subDir" : "projects",
-      "native" : True,
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
       "vpath" : True,
+      "ninja_targets" : [
+        "<lib:sulong-native>",
+      ],
+      "ninja_install_targets" : ["install"],
       "results" : [
         "bin/<lib:sulong-native>",
       ],
@@ -702,11 +708,11 @@ suite = {
         "sdk:LLVM_TOOLCHAIN",
         "NATIVE_MODE_SUPPORT",
       ],
-      "buildEnv" : {
-        "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
-        "LIBSULONG" : "<lib:sulong-native>",
-        "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include",
-        "OS" : "<os>",
+      "cmakeConfig" : {
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
+        "CMAKE_SHARED_LINKER_FLAGS" : "-lm",
+        "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/clang",
+        "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
       },
       "license" : "BSD-new",
     },
