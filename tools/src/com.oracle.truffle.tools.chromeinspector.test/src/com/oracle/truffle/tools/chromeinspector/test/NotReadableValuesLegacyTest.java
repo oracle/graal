@@ -83,7 +83,7 @@ public class NotReadableValuesLegacyTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"TestRootNode\"," +
                                                  "\"scopeChain\":[{\"name\":\"TestRootNode\",\"type\":\"local\",\"object\":{\"description\":\"TestRootNode\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"top\",\"type\":\"global\",\"object\":{\"description\":\"top\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"url\":\"" + sourceURI + "\"" +
@@ -92,20 +92,20 @@ public class NotReadableValuesLegacyTest {
         tester.sendMessage("{\"id\":10,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"object\"," +
-                                                  "\"value\":{\"description\":\"Object VariablesObject\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"4\"},\"configurable\":true,\"writable\":false}," +
+                                                  "\"value\":{\"description\":\"Object VariablesObject\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"3\"},\"configurable\":true,\"writable\":false}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"array\"," +
-                                                  "\"value\":{\"subtype\":\"array\",\"description\":\"Object ArrayValue\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"5\"},\"configurable\":true,\"writable\":false}]," +
+                                                  "\"value\":{\"subtype\":\"array\",\"description\":\"Object ArrayValue\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"4\"},\"configurable\":true,\"writable\":false}]," +
                                 "\"internalProperties\":[]},\"id\":10}\n"));
         // Ask for variable properties
-        tester.sendMessage("{\"id\":20,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"4\"}}");
+        tester.sendMessage("{\"id\":20,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"3\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"object\"," +
-                                                  "\"value\":{\"description\":\"Object VariablesObject\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"6\"},\"configurable\":true,\"writable\":false}," +
+                                                  "\"value\":{\"description\":\"Object VariablesObject\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"5\"},\"configurable\":true,\"writable\":false}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"array\"," +
-                                                  "\"value\":{\"subtype\":\"array\",\"description\":\"Object ArrayValue\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"7\"},\"configurable\":true,\"writable\":false}]," +
+                                                  "\"value\":{\"subtype\":\"array\",\"description\":\"Object ArrayValue\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"6\"},\"configurable\":true,\"writable\":false}]," +
                                 "\"internalProperties\":[]},\"id\":20}\n"));
         // Ask for array elements
-        tester.sendMessage("{\"id\":30,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"5\"}}");
+        tester.sendMessage("{\"id\":30,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"4\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"0\",\"value\":{\"description\":\"6\",\"type\":\"number\",\"value\":6},\"configurable\":true,\"writable\":false}," +
                                                  "{\"isOwn\":true,\"enumerable\":true,\"name\":\"1\",\"value\":{\"description\":\"5\",\"type\":\"number\",\"value\":5},\"configurable\":true,\"writable\":false}," +

@@ -58,6 +58,7 @@ public final class RemoteObject {
     private final String objectId;
     private final InspectorExecutionContext context;
     private final IndexRange indexRange;
+    private DebugValue scopeReceiver;
     private TypeInfo typeInfo;
     private Object value;
     private boolean replicableValue;
@@ -219,6 +220,14 @@ public final class RemoteObject {
         this.objectId = Long.toString(LAST_ID.incrementAndGet());
         this.description = description;
         this.jsonObject = createJSON();
+    }
+
+    public void setScopeReceiver(DebugValue scopeReceiver) {
+        this.scopeReceiver = scopeReceiver;
+    }
+
+    public DebugValue getScopeReceiver() {
+        return this.scopeReceiver;
     }
 
     public static RemoteObject createSimpleObject(String type, String className, String description) {

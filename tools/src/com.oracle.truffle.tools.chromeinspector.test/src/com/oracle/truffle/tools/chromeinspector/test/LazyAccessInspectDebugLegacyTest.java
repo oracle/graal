@@ -105,7 +105,7 @@ public class LazyAccessInspectDebugLegacyTest {
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"TestRootNode\"," +
                                                  "\"scopeChain\":[{\"name\":\"TestRootNode\",\"type\":\"local\",\"object\":{\"description\":\"TestRootNode\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"top\",\"type\":\"global\",\"object\":{\"description\":\"top\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"url\":\"" + sourceURI + "\"" +
@@ -114,20 +114,20 @@ public class LazyAccessInspectDebugLegacyTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"1\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true," +
-                                "\"name\":\"o\",\"value\":{\"description\":\"Object LazyReadObject\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"4\"},\"configurable\":true,\"writable\":true}]," +
+                                "\"name\":\"o\",\"value\":{\"description\":\"Object LazyReadObject\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"3\"},\"configurable\":true,\"writable\":true}]," +
                                 "\"internalProperties\":[]},\"id\":1}\n"));
         // Ask for properties of 'o':
-        tester.sendMessage("{\"id\":2,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"4\"}}");
+        tester.sendMessage("{\"id\":2,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"3\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[" +
                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":false}," +
-                                "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"6\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":false}]," +
+                                "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"5\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":false}]," +
                                 "\"internalProperties\":[]},\"id\":2}\n"));
         // The lazy value was not read yet:
         assertEquals(0, readLazyCount.get());
         // Invoke the lazy read (getter):
         tester.sendMessage("{\"id\":10,\"method\":\"Runtime.callFunctionOn\",\"params\":" +
-                        "{\"objectId\":\"4\"," +
+                        "{\"objectId\":\"3\"," +
                          INVOKE_GETTER1 + "," +
                          "\"arguments\":[{\"value\":\"[\\\"readLazy\\\"]\"}]," +
                          "\"silent\":true}}");
@@ -137,7 +137,7 @@ public class LazyAccessInspectDebugLegacyTest {
         assertEquals(1, readLazyCount.get());
         // Test an alternate getter function:
         tester.sendMessage("{\"id\":11,\"method\":\"Runtime.callFunctionOn\",\"params\":" +
-                        "{\"objectId\":\"4\"," +
+                        "{\"objectId\":\"3\"," +
                          INVOKE_GETTER2 + "," +
                          "\"arguments\":[{\"value\":\"readLazy\"}]," +
                          "\"silent\":true}}");
@@ -149,7 +149,7 @@ public class LazyAccessInspectDebugLegacyTest {
         tester.sendMessage("{\"id\":20,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":false}," +
-                                                 "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"8\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":false}]," +
+                                                 "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"7\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":false}]," +
                                 "\"internalProperties\":[]},\"id\":20}\n"));
         assertEquals(2, readLazyCount.get());
         // Invoke the lazy read (getter):
