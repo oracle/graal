@@ -119,7 +119,9 @@ suite = {
 
   "distributions" : {
     "TREGEX" : {
-      "moduleName" : "com.oracle.truffle.regex",
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.regex",
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],
       "distDependencies" : [
