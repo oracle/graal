@@ -29,7 +29,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_INNER_CLASS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
@@ -171,7 +170,6 @@ public final class ClassfileParser {
     private final StaticObject[] constantPoolPatches;
 
     private Symbol<Type> classType;
-    private Symbol<Type> classOuterClassType;
 
     private int minorVersion;
     private int majorVersion;
@@ -1124,6 +1122,9 @@ public final class ClassfileParser {
     private InnerClassesAttribute parseInnerClasses(Symbol<Name> name) {
         assert Name.InnerClasses.equals(name);
         final int entryCount = stream.readU2();
+
+        boolean duplicateInnerClass = false;
+
         final InnerClassesAttribute.Entry[] innerClassInfos = new InnerClassesAttribute.Entry[entryCount];
         for (int i = 0; i < entryCount; ++i) {
             final InnerClassesAttribute.Entry innerClassInfo = parseInnerClassEntry();
@@ -1144,6 +1145,11 @@ public final class ClassfileParser {
                 throw ConstantPool.classFormatError("Class is both outer and inner class");
             }
 
+            Symbol<Name> innerClassName = null;
+            if (innerClassIndex != 0) {
+                innerClassName = pool.classAt(innerClassIndex).getName(pool);
+            }
+
             for (int j = 0; j < i; ++j) {
                 // Inner class info is often small: better to use array lookup for startup.
                 final InnerClassesAttribute.Entry otherInnerClassInfo = innerClassInfos[j];
@@ -1151,35 +1157,73 @@ public final class ClassfileParser {
                     if (innerClassIndex == otherInnerClassInfo.innerClassIndex && outerClassIndex == otherInnerClassInfo.outerClassIndex) {
                         throw ConstantPool.classFormatError("Duplicate entry in InnerClasses attribute");
                     }
+                    if (innerClassIndex == otherInnerClassInfo.innerClassIndex ||
+                                    // The same class can be referenced by two different CP indices,
+                                    // compare by name instead.
+                                    (innerClassIndex != 0 &&
+                                                    otherInnerClassInfo.innerClassIndex != 0 &&
+                                                    innerClassName.equals(pool.classAt(otherInnerClassInfo.innerClassIndex).getName(pool)))) {
+                        duplicateInnerClass = true;
+                    }
                 }
-            }
-
-            // The JVM specification allows a null inner class but don't ask me what it means!
-            if (innerClassIndex == 0) {
-                continue;
-            }
-
-            // If no outer class is specified, then this entry denotes a local or anonymous class
-            // that will have an EnclosingMethod attribute instead. That is, these classes are
-            // not *immediately* enclosed by another class
-            if (outerClassIndex == 0) {
-                continue;
-            }
-
-            // If this entry refers to the current class, then the current class must be an inner
-            // class:
-            // it's enclosing class is recorded and it's flags are updated.
-            final Symbol<Type> innerClassType = context.getTypes().fromName(pool.classAt(innerClassIndex, "inner class descriptor").getName(pool));
-            if (innerClassType.equals(classType)) {
-                if (classOuterClassType != null) {
-                    throw ConstantPool.classFormatError("Duplicate outer class");
-                }
-                classFlags |= ACC_INNER_CLASS;
-                classOuterClassType = context.getTypes().fromName(pool.classAt(outerClassIndex).getName(pool));
             }
         }
-        return new InnerClassesAttribute(name, innerClassInfos);
 
+        if (duplicateInnerClass || hasCycles(innerClassInfos)) {
+            // Mimic HotSpot: Ignore the whole InnerClasses attribute and return an empty one.
+            final String cause = duplicateInnerClass
+                            ? "Duplicate inner_class_info_index (class names)"
+                            : "Cycle detected";
+            context.getLogger().warning(cause + " in InnerClassesAttribute, in class " + classType);
+            return new InnerClassesAttribute(name, new InnerClassesAttribute.Entry[0]);
+        }
+
+        return new InnerClassesAttribute(name, innerClassInfos);
+    }
+
+    int findInnerClassIndexEntry(InnerClassesAttribute.Entry[] entries, Symbol<Name> innerClassName) {
+        for (int i = 0; i < entries.length; i++) {
+            InnerClassesAttribute.Entry entry = entries[i];
+            if (entry.innerClassIndex == 0) {
+                continue;
+            }
+            // The same class can be referenced by two different CP indices, compare by name
+            // instead.
+            if (innerClassName == pool.classAt(entry.innerClassIndex).getName(pool)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    boolean hasCycles(InnerClassesAttribute.Entry[] entries) {
+        int curMark = 0;
+        int[] mark = new int[entries.length];
+        for (int i = 0; i < entries.length; i++) {
+            if (mark[i] != 0) { // already visited
+                continue;
+            }
+            mark[i] = ++curMark;
+            int v = entries[i].outerClassIndex;
+            while (true) {
+                if (v == 0) {
+                    break;
+                }
+                int index = findInnerClassIndexEntry(entries, pool.classAt(v).getName(pool));
+                if (index < 0) { // no edge found
+                    break;
+                }
+                if (mark[index] == curMark) { // cycle found
+                    return true;
+                }
+                if (mark[index] != 0) { // already visited
+                    break;
+                }
+                mark[index] = curMark;
+                v = entries[index].outerClassIndex;
+            }
+        }
+        return false;
     }
 
     private NestHostAttribute parseNestHostAttribute(Symbol<Name> attributeName) {
@@ -1218,7 +1262,9 @@ public final class ClassfileParser {
             pool.classAt(outerClassIndex).validate(pool);
         }
         if (innerNameIndex != 0) {
-            pool.utf8At(innerNameIndex).validateClassName();
+            // Gradle (the build tool) generates classes with innerNameIndex -> empty string.
+            // HotSpot does not validates the class name, only that it is a valid UTF-8 constant.
+            pool.utf8At(innerNameIndex).validate(pool); // .validateClassName();
         }
         return new InnerClassesAttribute.Entry(innerClassIndex, outerClassIndex, innerNameIndex, innerClassAccessFlags);
     }
