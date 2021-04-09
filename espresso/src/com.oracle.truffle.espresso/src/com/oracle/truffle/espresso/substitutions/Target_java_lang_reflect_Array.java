@@ -147,10 +147,19 @@ public final class Target_java_lang_reflect_Array {
     @Substitution
     public static boolean getBoolean(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
-        checkNonNullArray(array, meta, profiler);
+        // `getBoolean` should only access boolean arrays
+        if (StaticObject.isNull(array)) {
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
+        }
+        Klass arrayKlass = array.getKlass();
+        if (arrayKlass != arrayKlass.getMeta()._boolean_array) {
+            profiler.profile(1);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        }
         try {
             return Array.getByte(array.unwrap(), index) != 0;
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+        } catch (ArrayIndexOutOfBoundsException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
         }
@@ -277,10 +286,20 @@ public final class Target_java_lang_reflect_Array {
     @Substitution
     public static void setBoolean(@Host(Object.class) StaticObject array, int index, boolean value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
-        checkNonNullArray(array, meta, profiler);
+        // host `setByte` can write in all primitive arrays beside boolean array
+        // `setBoolean` should only access boolean arrays
+        if (StaticObject.isNull(array)) {
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
+        }
+        Klass arrayKlass = array.getKlass();
+        if (arrayKlass != arrayKlass.getMeta()._boolean_array) {
+            profiler.profile(1);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        }
         try {
             Array.setByte(array.unwrap(), index, value ? (byte) 1 : (byte) 0);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+        } catch (ArrayIndexOutOfBoundsException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
         }
