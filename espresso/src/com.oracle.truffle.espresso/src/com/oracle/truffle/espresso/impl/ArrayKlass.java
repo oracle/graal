@@ -29,6 +29,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -53,9 +55,10 @@ public final class ArrayKlass extends Klass {
     private final int dimension;
 
     private static final StaticProperty ARRAY_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
-    private static final StaticShape<StaticObjectFactory> ARRAY_SHAPE = StaticShape.newBuilder()
-            .property(ARRAY_PROPERTY, "array", true)
-            .build(StaticObject.class, StaticObjectFactory.class);
+    // This field should be static final, but until we move the static object model we cannot have a
+    // SubstrateVM feature which will allow us to set the right field offsets at image build time.
+    @CompilationFinal //
+    private static StaticShape<StaticObjectFactory> ARRAY_SHAPE;
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
@@ -76,7 +79,17 @@ public final class ArrayKlass extends Klass {
     }
 
     public static StaticShape<StaticObjectFactory> getArrayShape() {
+        if (ARRAY_SHAPE == null) {
+            initializeArrayShape();
+        }
         return ARRAY_SHAPE;
+    }
+
+    @TruffleBoundary
+    private synchronized static void initializeArrayShape() {
+        if (ARRAY_SHAPE == null) {
+            ARRAY_SHAPE = StaticShape.newBuilder().property(ARRAY_PROPERTY, "array", true).build(StaticObject.class, StaticObjectFactory.class);
+        }
     }
 
     @Override
