@@ -191,15 +191,13 @@ class LibFFIContext {
         int pointerIdx = NativeSimpleType.POINTER.ordinal();
 
         assert simpleTypeMap[idx] == null : "initializeSimpleType called twice for " + simpleType;
-        if (language.simpleTypeMap[idx] == null) {
-            synchronized (language) {
-                if (language.simpleTypeMap[idx] == null) {
-                    assert language.arrayTypeMap[idx] == null;
-                    language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
-                    language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
-                    if (idx == pointerIdx) {
-                        language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
-                    }
+        synchronized (language) {
+            if (language.simpleTypeMap[idx] == null) {
+                assert language.arrayTypeMap[idx] == null;
+                language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
+                language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
+                if (idx == pointerIdx) {
+                    language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
                 }
             }
         }
