@@ -1174,7 +1174,7 @@ def hellomodule(args):
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
-    with native_image_context(hosted_assertions=False) as native_image:
+    with native_image_context(hosted_assertions=False, config=graalvm_jvm_config(), build_if_missing=True) as native_image:
         build_dir = join(svmbuild_dir(), 'hellomodule')
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
