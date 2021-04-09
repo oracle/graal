@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.c.function;
 
-import com.oracle.svm.core.ParsingReason;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -33,6 +32,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -66,9 +67,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticFeature
 public class CEntryPointSupport implements GraalFeature {
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, ParsingReason reason) {
-        registerEntryPointActionsPlugins(invocationPlugins);
-        registerCurrentIsolatePlugins(invocationPlugins);
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+        registerEntryPointActionsPlugins(plugins.getInvocationPlugins());
+        registerCurrentIsolatePlugins(plugins.getInvocationPlugins());
     }
 
     private static void registerEntryPointActionsPlugins(InvocationPlugins plugins) {

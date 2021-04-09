@@ -2142,7 +2142,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         String error(String format, Object... a) {
-            return String.format(format, a) + String.format("%n\tplugin at %s", plugin.getApplySourceLocation(getMetaAccess()));
+            return String.format(format, a) + String.format("%n\tplugin at %s", plugin.getSourceLocation());
         }
 
         boolean check(boolean pluginResult) {
