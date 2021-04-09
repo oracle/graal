@@ -32,7 +32,6 @@ import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -175,9 +174,7 @@ public class PermissionsFeature implements Feature {
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
         try {
-            if (Files.exists(reportFilePath) && Files.size(reportFilePath) > 0) {
-                Files.newOutputStream(reportFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            }
+            Files.deleteIfExists(reportFilePath);
         } catch (IOException ioe) {
             throw UserError.abort("Cannot delete existing report file %s.", reportFilePath);
         }
