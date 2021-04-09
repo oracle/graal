@@ -79,7 +79,10 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
-        buildcp = Collections.unmodifiableList(Arrays.stream(System.getProperty("java.class.path").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList()));
+        buildcp = Collections.unmodifiableList(Arrays.stream(System.getProperty("java.class.path")
+                        .split(File.pathSeparator))
+                        .map(Paths::get).map(Path::toAbsolutePath)
+                        .collect(Collectors.toList()));
     }
 
     List<Path> classpath() {
