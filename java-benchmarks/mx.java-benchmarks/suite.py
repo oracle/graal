@@ -333,6 +333,15 @@ suite = {
     },
   },
 
+  "imports" : {
+    "suites": [
+      {
+        "name" : "sdk",
+        "subdir": True
+      }
+    ]
+  },
+
   "distributions" : {
     "GRAAL_BENCH_MISC" : {
       "subDir" : "java",
