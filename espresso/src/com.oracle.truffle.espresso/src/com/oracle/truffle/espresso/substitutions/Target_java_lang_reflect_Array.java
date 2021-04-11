@@ -147,11 +147,11 @@ public final class Target_java_lang_reflect_Array {
     @Substitution
     public static boolean getBoolean(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
-        // `getBoolean` should only access boolean arrays
         if (StaticObject.isNull(array)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
+        // `getBoolean` should only access boolean arrays
         Klass arrayKlass = array.getKlass();
         if (arrayKlass != arrayKlass.getMeta()._boolean_array) {
             profiler.profile(1);
@@ -286,12 +286,12 @@ public final class Target_java_lang_reflect_Array {
     @Substitution
     public static void setBoolean(@Host(Object.class) StaticObject array, int index, boolean value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
-        // host `setByte` can write in all primitive arrays beside boolean array
-        // `setBoolean` should only access boolean arrays
         if (StaticObject.isNull(array)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
+        // host `setByte` can write in all primitive arrays beside boolean array
+        // `setBoolean` should only access boolean arrays
         Klass arrayKlass = array.getKlass();
         if (arrayKlass != arrayKlass.getMeta()._boolean_array) {
             profiler.profile(1);
