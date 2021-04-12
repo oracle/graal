@@ -41,6 +41,7 @@ add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME}
 add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME})
 
 add_library(sulong-native SHARED
+    src/stat.c
     src/misc.c
     src/posix.c
     src/fp80.c
