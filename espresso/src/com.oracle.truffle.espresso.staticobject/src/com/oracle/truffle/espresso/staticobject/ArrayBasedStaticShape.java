@@ -38,7 +38,7 @@ import static com.oracle.truffle.espresso.staticobject.StaticPropertyKind.N_PRIM
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     private static final Unsafe UNSAFE = getUnsafe();
     @CompilationFinal //
-    private static Boolean DISABLE_SHAPE_CHECKS;
+    private static Boolean disableShapeChecks;
     @CompilationFinal(dimensions = 1) //
     private final StaticShape<T>[] superShapes;
     private final ArrayBasedPropertyLayout propertyLayout;
@@ -58,16 +58,16 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     }
 
     public static boolean shapeChecks() {
-        if (DISABLE_SHAPE_CHECKS == null) {
+        if (disableShapeChecks == null) {
             initializeShapeChecks();
         }
-        return !DISABLE_SHAPE_CHECKS;
+        return !disableShapeChecks;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private synchronized static void initializeShapeChecks() {
-        if (DISABLE_SHAPE_CHECKS == null) {
-            DISABLE_SHAPE_CHECKS = Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.DisableShapeChecks");
+    private static synchronized void initializeShapeChecks() {
+        if (disableShapeChecks == null) {
+            disableShapeChecks = Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.DisableShapeChecks");
         }
     }
 

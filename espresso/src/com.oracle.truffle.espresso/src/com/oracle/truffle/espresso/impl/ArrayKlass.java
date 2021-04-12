@@ -58,7 +58,7 @@ public final class ArrayKlass extends Klass {
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilationFinal //
-    private static StaticShape<StaticObjectFactory> ARRAY_SHAPE;
+    private static StaticShape<StaticObjectFactory> arrayShape;
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
@@ -79,16 +79,16 @@ public final class ArrayKlass extends Klass {
     }
 
     public static StaticShape<StaticObjectFactory> getArrayShape() {
-        if (ARRAY_SHAPE == null) {
+        if (arrayShape == null) {
             initializeArrayShape();
         }
-        return ARRAY_SHAPE;
+        return arrayShape;
     }
 
     @TruffleBoundary
-    private synchronized static void initializeArrayShape() {
-        if (ARRAY_SHAPE == null) {
-            ARRAY_SHAPE = StaticShape.newBuilder().property(ARRAY_PROPERTY, "array", true).build(StaticObject.class, StaticObjectFactory.class);
+    private static synchronized void initializeArrayShape() {
+        if (arrayShape == null) {
+            arrayShape = StaticShape.newBuilder().property(ARRAY_PROPERTY, "array", true).build(StaticObject.class, StaticObjectFactory.class);
         }
     }
 

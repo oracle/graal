@@ -64,7 +64,7 @@ abstract class ShapeGenerator<T> {
             } else {
                 DEFINE_CLASS = Lookup.class.getDeclaredMethod("defineClass", byte[].class);
             }
-        } catch(NoSuchMethodException e) {
+        } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }
@@ -116,7 +116,7 @@ abstract class ShapeGenerator<T> {
             } else {
                 clazz = DEFINE_CLASS.invoke(MethodHandles.lookup(), bytes);
             }
-        } catch(IllegalAccessException | InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
         return (Class<T>) clazz;
