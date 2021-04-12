@@ -71,6 +71,15 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     // region Constructors
     protected StaticObject(Klass klass) {
+        this(klass, false);
+    }
+
+    protected StaticObject(Klass klass, boolean isForeign) {
+        if (isForeign) {
+            // This assignment is visible by all threads as a side-effect of the setting of the
+            // final `klass` field in the constructor.
+            lockOrForeignMarker = FOREIGN_MARKER;
+        }
         this.klass = klass;
     }
 
@@ -167,9 +176,8 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     private static StaticObject createForeign(Klass klass, Object foreignObject) {
         assert foreignObject != null;
-        StaticObject newObj = Klass.getForeignShape().getFactory().create(klass);
+        StaticObject newObj = Klass.getForeignShape().getFactory().create(klass, true);
         Klass.getForeignProperty().setObject(newObj, foreignObject);
-        newObj.lockOrForeignMarker = FOREIGN_MARKER;
         return trackAllocation(klass, newObj);
     }
 
@@ -503,9 +511,12 @@ public class StaticObject implements TruffleObject, Cloneable {
     // region Factory interface.
     public interface StaticObjectFactory {
         StaticObject create(Klass klass);
+
+        StaticObject create(Klass klass, boolean isForeign);
     }
     // endregion Factory interface.
 
+    // This class mimics the layout of generated storage classes
     public static final class DefaultArrayBasedStaticObject extends StaticObject {
         public final byte[] primitive;
         public final Object[] object;
@@ -515,8 +526,15 @@ public class StaticObject implements TruffleObject, Cloneable {
             primitive = new byte[primitiveArraySize];
             object = new Object[objectArraySize];
         }
+
+        private DefaultArrayBasedStaticObject(Klass klass, boolean isForeign, int primitiveArraySize, int objectArraySize) {
+            super(klass, isForeign);
+            primitive = new byte[primitiveArraySize];
+            object = new Object[objectArraySize];
+        }
     }
 
+    // This class mimics the layout of generated storage factory classes
     public static final class DefaultArrayBasedStaticObjectFactory implements StaticObjectFactory {
         private final int primitiveArraySize;
         private final int objectArraySize;
@@ -529,6 +547,11 @@ public class StaticObject implements TruffleObject, Cloneable {
         @Override
         public StaticObject create(Klass klass) {
             return new DefaultArrayBasedStaticObject(klass, primitiveArraySize, objectArraySize);
+        }
+
+        @Override
+        public StaticObject create(Klass klass, boolean isForeign) {
+            return new DefaultArrayBasedStaticObject(klass, isForeign, primitiveArraySize, objectArraySize);
         }
     }
 }
