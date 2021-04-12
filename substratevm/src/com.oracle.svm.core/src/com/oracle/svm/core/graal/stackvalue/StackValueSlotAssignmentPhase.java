@@ -31,22 +31,57 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.Phase;
 
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotHolder;
+import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 
-public class StackValuePhase extends Phase {
+/**
+ * Assigns stack slots to all {@link StackValueNode}s. All nodes with the same identity and
+ * recursion depth share a stack slot. This phase needs to run at a point in the compilation
+ * pipeline when it is guaranteed that no additional {@link StackValueNode}s will be created later
+ * on.
+ */
+public class StackValueSlotAssignmentPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        Map<Object, StackSlotHolder> slots = new HashMap<>();
+        Map<RecursionAwareStackSlotIdentity, StackSlotHolder> slots = new HashMap<>();
 
         for (StackValueNode node : graph.getNodes(StackValueNode.TYPE)) {
-            StackSlotHolder slotHolder = slots.get(node.slotIdentity);
+            RecursionAwareStackSlotIdentity slotIdentity = new RecursionAwareStackSlotIdentity(node.slotIdentity, node.getRecursionDepth());
+            StackSlotHolder slotHolder = slots.get(slotIdentity);
             if (slotHolder == null) {
                 slotHolder = new StackSlotHolder(node.size);
-                slots.put(node.slotIdentity, slotHolder);
+                slots.put(slotIdentity, slotHolder);
             }
 
             assert node.stackSlotHolder == null;
             node.stackSlotHolder = slotHolder;
+        }
+    }
+
+    private static class RecursionAwareStackSlotIdentity {
+        private final StackSlotIdentity slotIdentity;
+        private final int recursionDepth;
+
+        RecursionAwareStackSlotIdentity(StackSlotIdentity slotIdentity, int recursionDepth) {
+            this.slotIdentity = slotIdentity;
+            this.recursionDepth = recursionDepth;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 1;
+            result = 31 * result + slotIdentity.hashCode();
+            result = 31 * result + Integer.hashCode(recursionDepth);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof RecursionAwareStackSlotIdentity) {
+                RecursionAwareStackSlotIdentity other = (RecursionAwareStackSlotIdentity) obj;
+                return slotIdentity == other.slotIdentity && recursionDepth == other.recursionDepth;
+            }
+            return false;
         }
     }
 }
