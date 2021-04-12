@@ -56,8 +56,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
-import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -96,7 +94,6 @@ import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -168,6 +165,8 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
+import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.NoLibC;
@@ -197,7 +196,6 @@ import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
-import com.oracle.svm.core.graal.stackvalue.StackValuePhase;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
@@ -1377,10 +1375,6 @@ public class NativeImageGenerator {
             highTier.prependPhase(new RemoveUnwindPhase());
             highTier.prependPhase(new DeadStoreRemovalPhase());
         }
-
-        ListIterator<BasePhase<? super LowTierContext>> pos = lowTier.findPhase(LoweringPhase.class);
-        pos.next();
-        pos.add(new StackValuePhase());
 
         lowTier.addBeforeLast(new OptimizeExceptionCallsPhase());
 
