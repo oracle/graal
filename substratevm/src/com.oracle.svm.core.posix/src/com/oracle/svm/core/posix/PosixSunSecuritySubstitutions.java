@@ -58,33 +58,35 @@ class NativeSecureRandomFilesCloser implements Feature {
     }
 
     private static void registerShutdownHook(@SuppressWarnings("unused") DuringAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(new Runnable() {
-            @Override
-            public void run() {
-                Target_sun_security_provider_NativePRNG_RandomIO instance = Target_sun_security_provider_NativePRNG.INSTANCE;
-                if (instance != null) {
-                    close(instance.nextIn);
-                    close(instance.seedIn);
-                    close(instance.seedOut);
-                }
-            }
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(new NativeSecureRandomFilesCloserShutdownHook());
+    }
+}
 
-            private void close(Closeable stream) {
-                if (stream != null) {
-                    Closeable c = stream;
-                    if (stream instanceof FilterInputStream) {
-                        // Java 11 wraps RandomIO InputStreams so that they cannot be closed and
-                        // puts them in a pool for reuse, access the inner stream to close
-                        Target_java_io_FilterInputStream outer = SubstrateUtil.cast(c, Target_java_io_FilterInputStream.class);
-                        c = outer.in;
-                    }
-                    try {
-                        c.close();
-                    } catch (Throwable ignored) {
-                    }
-                }
+final class NativeSecureRandomFilesCloserShutdownHook implements Runnable {
+    @Override
+    public void run() {
+        Target_sun_security_provider_NativePRNG_RandomIO instance = Target_sun_security_provider_NativePRNG.INSTANCE;
+        if (instance != null) {
+            close(instance.nextIn);
+            close(instance.seedIn);
+            close(instance.seedOut);
+        }
+    }
+
+    private static void close(Closeable stream) {
+        if (stream != null) {
+            Closeable c = stream;
+            if (stream instanceof FilterInputStream) {
+                // Java 11 wraps RandomIO InputStreams so that they cannot be closed and
+                // puts them in a pool for reuse, access the inner stream to close
+                Target_java_io_FilterInputStream outer = SubstrateUtil.cast(c, Target_java_io_FilterInputStream.class);
+                c = outer.in;
             }
-        });
+            try {
+                c.close();
+            } catch (Throwable ignored) {
+            }
+        }
     }
 }
 

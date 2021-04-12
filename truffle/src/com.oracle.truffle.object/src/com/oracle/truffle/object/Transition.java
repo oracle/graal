@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,10 @@ public abstract class Transition {
     /** @since 0.17 or earlier */
     public abstract boolean isDirect();
 
+    protected boolean hasConstantLocation() {
+        return false;
+    }
+
     /** @since 0.17 or earlier */
     public abstract static class PropertyTransition extends Transition {
         protected final Property property;
@@ -134,6 +138,11 @@ public abstract class Transition {
 
         public int getPropertyFlags() {
             return flags;
+        }
+
+        @Override
+        protected boolean hasConstantLocation() {
+            return getProperty().getLocation().isConstant();
         }
     }
 
@@ -318,6 +327,11 @@ public abstract class Transition {
         @Override
         public String toString() {
             return String.format("replace(%s,%s)", getPropertyBefore(), getPropertyAfter());
+        }
+
+        @Override
+        protected boolean hasConstantLocation() {
+            return getPropertyBefore().getLocation().isConstant() || getPropertyAfter().getLocation().isConstant();
         }
     }
 

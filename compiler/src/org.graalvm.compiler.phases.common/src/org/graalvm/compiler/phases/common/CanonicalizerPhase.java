@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
@@ -263,7 +264,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
         @Override
         protected void run(StructuredGraph graph) {
-            if (graph.isAfterFinalCanonicalization()) {
+            if (graph.isAfterStage(StageFlag.FINAL_CANONICALIZATION)) {
                 GraalError.shouldNotReachHere("cannot run further canonicalizations after the final canonicalization");
             }
             this.debug = graph.getDebug();
@@ -281,7 +282,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             tool = new Tool(graph.getAssumptions(), graph.getOptions());
             processWorkSet(graph);
             if (features.contains(FINAL_CANONICALIZATION)) {
-                graph.setAfterFinalCanonicalization();
+                graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
             }
         }
 

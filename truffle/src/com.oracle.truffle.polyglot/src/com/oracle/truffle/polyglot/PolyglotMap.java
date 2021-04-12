@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -801,7 +801,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         if (isObjectKey(key)) {
                             String member = (String) key;
                             Object readValue = interop.readMember(receiver, member);
-                            if (!equalsBoundary(expectedValue, readValue)) {
+                            Object guestExpectedValue = toGuest.execute(languageContext, expectedValue);
+                            if (!equalsBoundary(guestExpectedValue, readValue)) {
                                 return false;
                             }
                             interop.removeMember(receiver, ((String) key));
@@ -812,7 +813,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         if (isArrayKey(key)) {
                             int index = intValue(key);
                             Object readValue = interop.readArrayElement(receiver, index);
-                            if (!equalsBoundary(expectedValue, readValue)) {
+                            Object guestExpectedValue = toGuest.execute(languageContext, expectedValue);
+                            if (!equalsBoundary(guestExpectedValue, readValue)) {
                                 return false;
                             }
                             interop.removeArrayElement(receiver, index);

@@ -46,7 +46,7 @@ import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
@@ -160,7 +160,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
         throw new UnsupportedFeatureException(msg + " " + classInitialization.objectInstantiationTraceMessage(obj, initializerAction) + " " +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "You can request class initialization at image runtime by using the option " +
-                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>", "initialize-at-run-time") + ". " +
+                        SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<class-name>", "initialize-at-run-time") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 

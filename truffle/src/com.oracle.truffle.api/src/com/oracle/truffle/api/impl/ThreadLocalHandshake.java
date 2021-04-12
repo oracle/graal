@@ -75,6 +75,13 @@ public abstract class ThreadLocalHandshake {
      */
     private static final Map<Thread, TruffleSafepointImpl> SAFEPOINTS = Collections.synchronizedMap(new WeakHashMap<>());
 
+    static void resetNativeImageState() {
+        for (TruffleSafepointImpl impl : SAFEPOINTS.values()) {
+            impl.verifyUnused();
+        }
+        SAFEPOINTS.clear();
+    }
+
     protected ThreadLocalHandshake() {
     }
 
@@ -289,19 +296,37 @@ public abstract class ThreadLocalHandshake {
         private volatile boolean fastPendingSet;
         private boolean sideEffectsEnabled = true;
         private Interrupter blockedAction;
-        /*
-         * This is read outside the lock because some Interrupter's need to have resetInterrupted()
-         * called concurrently to interrupt(). interrupt() is called under the lock (avoids
-         * concurrent calls for the same thread), so resetInterrupted() must be called outside the
-         * lock.
-         */
-        private volatile boolean interrupted;
+        private boolean interrupted;
 
         private final LinkedList<HandshakeEntry> handshakes = new LinkedList<>();
 
         TruffleSafepointImpl(ThreadLocalHandshake handshake) {
             super(DefaultRuntimeAccessor.ENGINE);
             this.impl = handshake;
+        }
+
+        void verifyUnused() throws AssertionError {
+            if (this.lock.isHeldByCurrentThread() || this.lock.isLocked()) {
+                throw new AssertionError("Invalid locked state for safepoint.");
+            }
+            this.lock.lock();
+            try {
+                if (this.blockedAction != null) {
+                    throw new AssertionError("Invalid pending blocked action.");
+                }
+                if (this.interrupted) {
+                    throw new AssertionError("Invalid pending interrupted state.");
+                }
+                if (this.isPending()) {
+                    throw new AssertionError("Invalid pending handshakes.");
+                }
+                // correct usage always needs to reset the side-effects enabled state
+                if (!this.sideEffectsEnabled) {
+                    throw new AssertionError("Invalid side-effects disabled state");
+                }
+            } finally {
+                this.lock.unlock();
+            }
         }
 
         void processHandshakes(Node location, List<HandshakeEntry> toProcess) {
@@ -577,18 +602,14 @@ public abstract class ThreadLocalHandshake {
         }
 
         private void interruptIfPending(final Interrupter interrupter) {
-            boolean doInterrupt = false;
             lock.lock();
             try {
                 if (interrupter != null && isPending()) {
-                    doInterrupt = true;
+                    interrupted = true;
+                    interrupter.interrupt(Thread.currentThread());
                 }
             } finally {
                 lock.unlock();
-            }
-            if (doInterrupt) {
-                interrupted = true;
-                interrupter.interrupt(Thread.currentThread());
             }
         }
 

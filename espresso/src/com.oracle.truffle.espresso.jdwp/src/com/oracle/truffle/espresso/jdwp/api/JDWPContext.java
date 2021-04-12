@@ -490,4 +490,13 @@ public interface JDWPContext {
      * @return the nearest instrumentable node
      */
     Node getInstrumentableNode(Node node);
+
+    /**
+     * Returns the current BCI of the node.
+     *
+     * @param rawNode the current node
+     * @param frame the current frame
+     * @return the current bci
+     */
+    long getBCI(Node rawNode, Frame frame);
 }

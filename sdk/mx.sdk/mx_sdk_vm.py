@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -91,7 +91,7 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False, home_finder=False):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -106,6 +106,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.is_polyglot = is_polyglot
         self.dir_jars = dir_jars
         self.home_finder = home_finder
+        self.build_time = build_time
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, list)
@@ -319,6 +320,7 @@ class GraalVmComponent(object):
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
 
+        assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
@@ -421,7 +423,7 @@ def register_graalvm_component(component):
         _graalvm_components_by_name[component.name] = component
 
 
-def graalvm_component_by_name(name):
+def graalvm_component_by_name(name, fatalIfMissing=True):
     """
     :rtype: GraalVmComponent
     """
@@ -430,7 +432,10 @@ def graalvm_component_by_name(name):
     elif name in _graalvm_components_by_name:
         return _graalvm_components_by_name[name]
     else:
-        raise Exception("Unknown component: {}".format(name))
+        if fatalIfMissing:
+            raise Exception("Unknown component: {}".format(name))
+        else:
+            return None
 
 
 def graalvm_components(opt_limit_to_suite=False):

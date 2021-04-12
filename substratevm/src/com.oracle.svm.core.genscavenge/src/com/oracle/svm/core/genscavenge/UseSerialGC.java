@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.hosted.Feature;
+import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-@AutomaticFeature
-public class ReferenceHandlerThreadFeature implements Feature {
-    private Thread thread;
+import com.oracle.svm.core.SubstrateOptions;
 
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ReferenceHandler.useDedicatedThread();
+@Platforms(Platform.HOSTED_ONLY.class)
+class UseSerialGC implements BooleanSupplier {
+    UseSerialGC() {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        thread = new Thread(new ReferenceHandlerRunnable(), "Reference Handler");
-        thread.setPriority(Thread.MAX_PRIORITY);
-        thread.setDaemon(true);
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(thread::start);
-    }
-
-    public Thread getThread() {
-        return thread;
+    public boolean getAsBoolean() {
+        return SubstrateOptions.UseSerialGC.getValue();
     }
 }

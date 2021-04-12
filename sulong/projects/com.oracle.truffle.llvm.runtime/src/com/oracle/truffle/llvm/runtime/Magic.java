@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,22 +41,42 @@ public enum Magic {
     MH_CIGAM(0xCEFAEDFEL, LLVMLanguage.LLVM_MACHO_MIME_TYPE),
     MH_MAGIC_64(0xFEEDFACFL, LLVMLanguage.LLVM_MACHO_MIME_TYPE),
     MH_CIGAM_64(0xCFFAEDFEL, LLVMLanguage.LLVM_MACHO_MIME_TYPE),
+    /**
+     * Windows Intel AMD64 COFF object file.
+     * 
+     * @see <a href=
+     *      "https://msdn.microsoft.com/en-us/library/windows/desktop/ms680313(v=vs.85).aspx">IMAGE_FILE_HEADER
+     *      structure (winnt.h)</a>
+     */
+    COFF_INTEL_AMD64(0x8664L, null, Short.SIZE),
+    MS_DOS(0x5A4DL /* MZ */, LLVMLanguage.LLVM_MS_DOS_MIME_TYPE, Short.SIZE),
     XAR_MAGIC(0x21726178L, null),
     UNKNOWN(0, null);
 
     public final long magic;
     public final String mimeType;
+    private final long mask;
 
     Magic(long magic, String mimeType) {
+        this(magic, mimeType, Integer.SIZE);
+    }
+
+    Magic(long magic, String mimeType, int bitSize) {
         this.magic = magic;
         this.mimeType = mimeType;
+        int shift = Long.SIZE - bitSize;
+        if (shift > 0) {
+            this.mask = 0xFFFFFFFF_FFFFFFFFL >>> shift;
+        } else {
+            this.mask = 0xFFFFFFFF_FFFFFFFFL;
+        }
     }
 
     private static final Magic[] VALUES = Magic.values();
 
     public static Magic get(long magic) {
         for (Magic m : VALUES) {
-            if (m.magic == magic) {
+            if (m.magic == (magic & m.mask)) {
                 return m;
             }
         }

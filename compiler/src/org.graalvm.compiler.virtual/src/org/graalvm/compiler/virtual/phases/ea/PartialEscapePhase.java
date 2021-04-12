@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
@@ -83,6 +84,7 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
     private final boolean readElimination;
     private final BasePhase<CoreProviders> cleanupPhase;
+    private boolean finalPEA;
 
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, OptionValues options) {
         this(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, null, options);
@@ -119,6 +121,9 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
             if (readElimination || graph.hasVirtualizableAllocation()) {
                 runAnalysis(graph, context);
             }
+            if (finalPEA) {
+                graph.setAfterStage(StageFlag.PARTIAL_ESCAPE);
+            }
         }
     }
 
@@ -140,4 +145,8 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
         return false;
     }
 
+    public PartialEscapePhase setFinalPEA() {
+        this.finalPEA = true;
+        return this;
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,7 +130,7 @@ public abstract class SwitchNode extends ControlSplitNode {
         assert newProbability <= 1.0 && newProbability >= 0.0 : newProbability;
         assert assertProbabilities();
 
-        double[] keyProbabilities = getKeyProbabilities();
+        double[] keyProbabilities = getKeyProbabilities().clone();
         double sum = 0;
         double otherSum = 0;
         for (int i = 0; i < keySuccessors.length; i++) {
@@ -155,8 +155,8 @@ public abstract class SwitchNode extends ControlSplitNode {
                 keyProbabilities[i] = Math.max(0.0, keyProbabilities[i] - (delta * keyProbabilities[i]) / otherSum);
             }
         }
-        assert assertProbabilities();
         profileData = SwitchProbabilityData.create(keyProbabilities, profileData.getProfileSource().combine(successorProfileData.getProfileSource()));
+        assert assertProbabilities();
         return true;
     }
 

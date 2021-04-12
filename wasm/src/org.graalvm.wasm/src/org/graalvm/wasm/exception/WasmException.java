@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.nodes.WasmBlockNode;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -88,10 +87,6 @@ public final class WasmException extends AbstractTruffleException {
     @TruffleBoundary
     public static WasmException format(Failure failure, Node location, String format, Object... args) {
         return create(failure, location, String.format(format, args));
-    }
-
-    public static WasmException fromArithmeticException(WasmBlockNode location, ArithmeticException exception) {
-        return create(Failure.fromArithmeticException(exception), location, exception.getMessage());
     }
 
     @ExportMessage

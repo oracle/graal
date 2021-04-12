@@ -696,6 +696,16 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public long getBCI(Node rawNode, Frame frame) {
+        Node node = getInstrumentableNode(rawNode);
+        if (node == null) {
+            return -1;
+        }
+        EspressoInstrumentableNode instrumentableNode = (EspressoInstrumentableNode) node;
+        return instrumentableNode.getCurrentBCI(frame);
+    }
+
+    @Override
     public synchronized int redefineClasses(RedefineInfo[] redefineInfos) {
         try {
             JDWPLogger.log("Redefining %d classes", JDWPLogger.LogLevel.REDEFINE, redefineInfos.length);

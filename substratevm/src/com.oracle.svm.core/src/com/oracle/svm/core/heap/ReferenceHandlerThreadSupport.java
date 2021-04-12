@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.heap;
 
-import java.util.function.BooleanSupplier;
-
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class UseCardRememberedSetHeap implements BooleanSupplier {
-    UseCardRememberedSetHeap() {
+public class ReferenceHandlerThreadSupport {
+    private final Thread thread;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    ReferenceHandlerThreadSupport() {
+        thread = new Thread(new ReferenceHandlerRunnable(), "Reference Handler");
+        thread.setPriority(Thread.MAX_PRIORITY);
+        thread.setDaemon(true);
+        RuntimeSupport.getRuntimeSupport().addInitializationHook(thread::start);
+    }
+
+    public Thread getThread() {
+        return thread;
+    }
+}
+
+@AutomaticFeature
+class ReferenceHandlerThreadFeature implements Feature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ReferenceHandler.useDedicatedThread();
     }
 
     @Override
-    public boolean getAsBoolean() {
-        return SubstrateOptions.UseCardRememberedSetHeap.getValue();
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.add(ReferenceHandlerThreadSupport.class, new ReferenceHandlerThreadSupport());
     }
 }

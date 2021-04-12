@@ -48,6 +48,8 @@ import com.oracle.svm.core.util.VMError;
 
 /** HeapPolicy contains policies for the parameters and behaviors of the heap and collector. */
 public final class HeapPolicy {
+    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded.");
+
     static final long LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE = 0;
     static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
 
@@ -313,15 +315,26 @@ public final class HeapPolicy {
     }
 
     public static void maybeCollectOnAllocation() {
-        UnsignedWord maxYoungSize = getMaximumYoungGenerationSize();
-        maybeCollectOnAllocation(maxYoungSize);
+        if (GCImpl.hasNeverCollectPolicy()) {
+            // Don't initiate a safepoint if we won't do a collection anyways.
+            if (HeapPolicy.getEdenUsedBytes().aboveThan(HeapPolicy.getMaximumHeapSize())) {
+                throw OUT_OF_MEMORY_ERROR;
+            }
+        } else {
+            UnsignedWord maxYoungSize = getMaximumYoungGenerationSize();
+            boolean outOfMemory = maybeCollectOnAllocation(maxYoungSize);
+            if (outOfMemory) {
+                throw OUT_OF_MEMORY_ERROR;
+            }
+        }
     }
 
     @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
-    private static void maybeCollectOnAllocation(UnsignedWord maxYoungSize) {
+    private static boolean maybeCollectOnAllocation(UnsignedWord maxYoungSize) {
         if (youngUsedBytes.get().aboveOrEqual(maxYoungSize)) {
-            GCImpl.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
+            return GCImpl.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
+        return false;
     }
 
     public static void maybeCauseUserRequestedCollection() {

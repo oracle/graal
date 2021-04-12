@@ -565,21 +565,25 @@ public final class Target_java_lang_Class {
             if (enclosingMethodAttr == null) {
                 return StaticObject.NULL;
             }
-            if (enclosingMethodAttr.getMethodIndex() == 0) {
+            int classIndex = enclosingMethodAttr.getClassIndex();
+            if (classIndex == 0) {
                 return StaticObject.NULL;
             }
             StaticObject arr = meta.java_lang_Object.allocateReferenceArray(3);
             RuntimeConstantPool pool = klass.getConstantPool();
-            Klass enclosingKlass = pool.resolvedKlassAt(klass, enclosingMethodAttr.getClassIndex());
+            Klass enclosingKlass = pool.resolvedKlassAt(klass, classIndex);
 
             vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
 
-            NameAndTypeConstant nmt = pool.nameAndTypeAt(enclosingMethodAttr.getMethodIndex());
-            StaticObject name = meta.toGuestString(nmt.getName(pool));
-            StaticObject desc = meta.toGuestString(nmt.getDescriptor(pool));
+            int methodIndex = enclosingMethodAttr.getMethodIndex();
+            if (methodIndex != 0) {
+                NameAndTypeConstant nmt = pool.nameAndTypeAt(methodIndex);
+                StaticObject name = meta.toGuestString(nmt.getName(pool));
+                StaticObject desc = meta.toGuestString(nmt.getDescriptor(pool));
 
-            vm.setArrayObject(name, 1, arr);
-            vm.setArrayObject(desc, 2, arr);
+                vm.setArrayObject(name, 1, arr);
+                vm.setArrayObject(desc, 2, arr);
+            }
 
             return arr;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionDescriptors;
@@ -1750,6 +1751,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 }
             }
         }
+        checkTruffleRuntime();
         return context.creatorApi;
     }
 
@@ -1810,6 +1812,17 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         }
         return context;
+    }
+
+    private void checkTruffleRuntime() {
+        if (getEngineOptionValues().get(PolyglotEngineOptions.WarnInterpreterOnly) && Truffle.getRuntime().getClass() == DefaultTruffleRuntime.class) {
+            getEngineLogger().log(Level.WARNING, "" +
+                            "The polyglot context is using an implementation that does not support runtime compilation.\n" +
+                            "The guest application code will therefore be executed in interpreted mode only.\n" +
+                            "Execution only in interpreted mode will strongly impact the guest application performance.\n" +
+                            "For more information on using GraalVM see https://www.graalvm.org/java/quickstart/.\n" +
+                            "To disable this warning the '--engine.WarnInterpreterOnly=false' option or use the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.");
+        }
     }
 
     OptionValuesImpl getEngineOptionValues() {

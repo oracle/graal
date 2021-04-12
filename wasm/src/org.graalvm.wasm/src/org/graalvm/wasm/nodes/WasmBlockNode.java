@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -383,10 +383,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         check(intConstants.length, (1 << 31) - 1);
         check(profileCounters.length, (1 << 31) - 1);
         check(stacklocals.length, (1 << 31) - 1);
+        int opcode = UNREACHABLE;
         try {
             while (offset < offsetLimit) {
                 byte byteOpcode = BinaryStreamParser.rawPeek1(data, offset);
-                int opcode = byteOpcode & 0xFF;
+                opcode = byteOpcode & 0xFF;
                 offset++;
                 CompilerAsserts.partialEvaluationConstant(offset);
                 switch (opcode) {
@@ -1368,7 +1369,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
             }
         } catch (ArithmeticException e) {
-            throw WasmException.fromArithmeticException(this, e);
+            if (opcode == I32_DIV_S || opcode == I32_DIV_U || opcode == I32_REM_S || opcode == I32_REM_U || opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U) {
+                throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
+            } else {
+                throw e;
+            }
         }
         return -1;
     }
@@ -1600,13 +1605,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             }
             case WasmType.F32_TYPE: {
                 int address = instance().globalAddress(index);
-                int value = context.globals().loadAsInt(address);
+                int value = context.globals().loadFloatAsInt(address);
                 pushInt(stack, stackPointer, value);
                 break;
             }
             case WasmType.F64_TYPE: {
                 int address = instance().globalAddress(index);
-                long value = context.globals().loadAsLong(address);
+                long value = context.globals().loadDoubleAsLong(address);
                 push(stack, stackPointer, value);
                 break;
             }

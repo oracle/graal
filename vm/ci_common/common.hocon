@@ -145,6 +145,9 @@ fastr_darwin: ${fastr} {
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
     PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib"
   }
+  downloads: {
+    BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "8.3.0", platformspecific: true },
+  }
 }
 
 fastr_no_recommended: {
@@ -270,6 +273,14 @@ weekly_vm_linux: ${vm_linux} {
 
 weekly_vm_darwin: ${vm_darwin} {
   targets: [weekly]
+}
+
+ondemand_vm_linux: ${vm_linux} {
+  targets: [ondemand]
+}
+
+ondemand_vm_darwin: ${vm_darwin} {
+  targets: [ondemand]
 }
 
 mx_vm_common: [mx, --strip-jars, "--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
@@ -496,7 +507,7 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [graalvm-show]
@@ -507,7 +518,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-java8-linux-amd64
   }
-  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [graalvm-show]
@@ -520,7 +531,7 @@ builds += [
   }
 
   # Darwin/AMD64
-  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${ondemand_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [graalvm-show]

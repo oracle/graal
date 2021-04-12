@@ -54,6 +54,7 @@ from mx_sulong_suite_constituents import ExternalTestSuite #pylint: disable=unus
 from mx_sulong_suite_constituents import BootstrapToolchainLauncherProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import CMakeProject #pylint: disable=unused-import
+from mx_sulong_suite_constituents import CMakeNinjaProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import DocumentationProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import HeaderProject #pylint: disable=unused-import
 

@@ -132,7 +132,7 @@ suite = {
       # if warnings as errors is enabled. See GR-14683.
       "forceJavac" : "true",
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "workingSets" : "API,Truffle",
     },
 
@@ -297,7 +297,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -696,7 +696,7 @@ suite = {
         "truffle:ANTLR4"
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -735,7 +735,7 @@ suite = {
         "TRUFFLE_API",
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -748,7 +748,7 @@ suite = {
         "com.oracle.truffle.st"
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
       "testProject" : True,
@@ -814,7 +814,8 @@ suite = {
           "static java.desktop",
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
-          "java.management"
+          "java.management",
+          "java.sql" # java.sql.date java.sql.Time
         ],
         "exports" : [
           # Qualified exports

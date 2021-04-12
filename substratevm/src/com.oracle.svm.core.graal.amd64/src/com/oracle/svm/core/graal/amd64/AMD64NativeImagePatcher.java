@@ -45,22 +45,24 @@ import com.oracle.svm.core.util.VMError;
 class AMD64NativeImagePatcherFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PatchConsumerFactory.NativePatchConsumerFactory.class, new PatchConsumerFactory.NativePatchConsumerFactory() {
-            @Override
-            public Consumer<Assembler.CodeAnnotation> newConsumer(CompilationResult compilationResult) {
-                return new Consumer<Assembler.CodeAnnotation>() {
-                    @Override
-                    public void accept(Assembler.CodeAnnotation annotation) {
-                        if (annotation instanceof OperandDataAnnotation) {
-                            compilationResult.addAnnotation(new AMD64NativeImagePatcher((OperandDataAnnotation) annotation));
+        ImageSingletons.add(PatchConsumerFactory.NativePatchConsumerFactory.class, new AMD64NativePatchConsumerFactory());
+    }
+}
 
-                        } else if (annotation instanceof AddressDisplacementAnnotation) {
-                            throw VMError.shouldNotReachHere("Image heap constants do not need patching in runtime compiled code");
-                        }
-                    }
-                };
+final class AMD64NativePatchConsumerFactory extends PatchConsumerFactory.NativePatchConsumerFactory {
+    @Override
+    public Consumer<Assembler.CodeAnnotation> newConsumer(CompilationResult compilationResult) {
+        return new Consumer<Assembler.CodeAnnotation>() {
+            @Override
+            public void accept(Assembler.CodeAnnotation annotation) {
+                if (annotation instanceof OperandDataAnnotation) {
+                    compilationResult.addAnnotation(new AMD64NativeImagePatcher((OperandDataAnnotation) annotation));
+
+                } else if (annotation instanceof AddressDisplacementAnnotation) {
+                    throw VMError.shouldNotReachHere("Image heap constants do not need patching in runtime compiled code");
+                }
             }
-        });
+        };
     }
 }
 

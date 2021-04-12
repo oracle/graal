@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 
 from __future__ import print_function
 
+import sys
 import os.path
 import time
 import signal
@@ -49,6 +50,7 @@ import json
 import argparse
 import mx
 import mx_benchmark
+import datetime
 
 def parse_prefixed_args(prefix, args):
     ret = []
@@ -67,6 +69,18 @@ def parse_prefixed_arg(prefix, args, errorMsg):
         return None
     else:
         return ret[0]
+
+
+def urllib():
+    try:
+        if sys.version_info < (3, 0):
+            import urllib2 as urllib
+        else:
+            import urllib.request as urllib
+        return urllib
+    except ImportError:
+        mx.abort("Failed to import dependency module: urllib")
+
 
 class NativeImageBenchmarkMixin(object):
 
@@ -117,6 +131,33 @@ class NativeImageBenchmarkMixin(object):
             return None
 
 
+def timeToFirstResponse(cmd, bmSuite):
+    def timeToFirstResponseThread(startTime):
+        protocolHost = bmSuite.serviceHost()
+        servicePath = bmSuite.serviceEndpoint()
+        if not (protocolHost.startswith('http') or protocolHost.startswith('https')):
+            protocolHost = "http://" + protocolHost
+        if not (servicePath.startswith('/') or protocolHost.endswith('/')):
+            servicePath = '/' + servicePath
+        url = "{}:{}{}".format(protocolHost, bmSuite.servicePort(), servicePath)
+        for _ in range(60*100):
+            try:
+                req = urllib().urlopen(url)
+                if req.getcode() == 200:
+                    finishTime = datetime.datetime.now()
+                    msToFirstResponse = (finishTime - startTime).total_seconds() * 1000
+                    bmSuite.timeToFirstResponseOutput = "First response received in {} ms".format(msToFirstResponse)
+                    mx.log(bmSuite.timeToFirstResponseOutput)
+                    return
+            except IOError:
+                time.sleep(.01)
+        mx.abort("Failed measure time to first response. Service not reachable at " + url)
+    name = bmSuite.benchMicroserviceName()
+    if name in ''.join(cmd):
+        threading.Thread(target=timeToFirstResponseThread, args=[datetime.datetime.now()]).start()
+    return cmd
+
+
 class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImageBenchmarkMixin):
     """
     Base class for Microservice benchmark suites. A Microservice is an application that opens a port that is ready to
@@ -128,14 +169,31 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     def __init__(self):
         super(BaseMicroserviceBenchmarkSuite, self).__init__()
         self.testerOutput = None
+        self.timeToFirstResponseOutput = None
         self.bmSuiteArgs = None
         self.workloadPath = None
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
             "--workload-configuration", type=str, default=None, help="Path to workload configuration.")
+        self.register_command_mapper_hook("TimeToFirstResponse", timeToFirstResponse)
 
     def benchSuiteName(self):
         return self.name()
+
+    def benchMicroserviceName(self):
+        """
+        Returns the microservice name. The convention here is that the benchmark name contains two elements separated
+        by a hyphen ('-'):
+        - the microservice name (shopcart, for example);
+        - the tester tool name (jmeter, for example).
+
+        :return: Microservice name.
+        :rtype: str
+        """
+
+        if len(self.benchSuiteName().split('-')) < 2:
+            mx.abort("Invalid benchmark suite name: " + self.benchSuiteName())
+        return self.benchSuiteName().split("-")[0]
 
     def defaultWorkloadPath(self, benchmarkName):
         """Returns the workload configuration path.
@@ -160,13 +218,29 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         """
         raise NotImplementedError()
 
-    def applicationPort(self):
-        """Returns the application port.
+    def serviceHost(self):
+        """Returns the microservice host.
 
-        :return: Port that the application is using to receive requests.
+        :return: Host used to access the microservice.
+        :rtype: str
+        """
+        return 'localhost'
+
+    def servicePort(self):
+        """Returns the microservice port.
+
+        :return: Port that the microservice is using to receive requests.
         :rtype: int
         """
         return 8080
+
+    def serviceEndpoint(self):
+        """Returns the microservice path that checks if the service is running.
+
+        :return: service path
+        :rtype: str
+        """
+        return ''
 
     def inNativeMode(self):
         return self.jvm(self.bmSuiteArgs) == "native-image"
@@ -193,7 +267,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
         ret_code, applicationOutput, dims = super(BaseMicroserviceBenchmarkSuite, self).runAndReturnStdOut(benchmarks, bmSuiteArgs)
-        return ret_code, self.testerOutput.underlying.data + applicationOutput, dims
+        return ret_code, self.testerOutput.underlying.data + self.timeToFirstResponseOutput + applicationOutput, dims
 
     @staticmethod
     def terminateApplication(port):
@@ -206,10 +280,10 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def runTesterInBackground(benchmarkSuite):
-        if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.applicationPort()):
+        if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.runTester()
-        if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.applicationPort()):
+        if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
     def run_stage(self, stage, server_command, out, err, cwd, nonZeroIsFatal):
@@ -220,6 +294,22 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             # For run stages, we need to run the server and the loader
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self]).start()
             return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(
+                r"^First response received in (?P<startup>\d*[.,]?\d*) ms",
+                {
+                    "benchmark": benchmarks[0],
+                    "bench-suite": self.benchSuiteName(),
+                    "metric.name": "startup",
+                    "metric.value": ("<startup>", float),
+                    "metric.unit": "ms",
+                    "metric.better": "lower",
+                }
+            )
+        ]
+
 
     def run(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) > 1:
@@ -257,7 +347,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
                     "warnings": ("<errors>", str),
                 }
             )
-        ]
+        ] + super(BaseJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
     def runTester(self):
         jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
@@ -385,7 +475,7 @@ class BaseWrk1BenchmarkSuite(BaseWrkBenchmarkSuite):
                     "metric.better": "higher",
                 }
             )
-        ]
+        ] + super(BaseWrk1BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
     def getLibraryDirectory(self):
         return mx.library("WRK", True).get_path(True)
@@ -413,7 +503,7 @@ class BaseWrk2BenchmarkSuite(BaseWrkBenchmarkSuite):
                     "metric.percentile": ("<percentile>", float),
                 }
             )
-        ]
+        ] + super(BaseWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
     def getLibraryDirectory(self):
         return mx.library("WRK2", True).get_path(True)

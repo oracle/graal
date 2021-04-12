@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk.localization;
 
 // Checkstyle: stop
+
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
@@ -56,8 +57,6 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
-import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -70,6 +69,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
+import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
@@ -117,21 +118,13 @@ import sun.util.resources.LocaleData;
  */
 public abstract class LocalizationFeature implements Feature {
 
-    protected final boolean optimizedMode = optimizedMode();
+    protected final boolean optimizedMode = LocalizationSupport.optimizedMode();
 
     private final boolean substituteLoadLookup = Options.LocalizationSubstituteLoadLookup.getValue();
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
     private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? new ForkJoinPool(Runtime.getRuntime().availableProcessors()) : null;
-
-    public static boolean optimizedMode() {
-        return Options.LocalizationOptimizedMode.getValue();
-    }
-
-    public static boolean jvmMode() {
-        return !optimizedMode();
-    }
 
     /**
      * The Locale that the native image is built for. Currently, switching the Locale at run time is
@@ -415,8 +408,7 @@ public abstract class LocalizationFeature implements Feature {
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
                         "sun.util.logging.resources.logging",
-                        "sun.util.resources.TimeZoneNames",
-                        "sun.text.resources.FormatData"
+                        "sun.util.resources.TimeZoneNames"
         };
         for (String bundleName : alwaysRegisteredResourceBundles) {
             prepareBundle(bundleName);
@@ -505,7 +497,9 @@ public abstract class LocalizationFeature implements Feature {
             String errorMessage = "The bundle named: " + baseName + ", has not been found. " +
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
-            trace(errorMessage);
+            // Checkstyle: stop
+            System.out.println(errorMessage);
+            // Checkstyle: resume
         }
     }
 
@@ -516,7 +510,7 @@ public abstract class LocalizationFeature implements Feature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        trace("Adding bundle " + bundleName);
+        trace("Adding bundle " + bundleName + ", locale " + locale);
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
          * down to the root.

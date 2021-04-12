@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -71,6 +72,19 @@ final class HostClassCache {
     private final boolean mapAccess;
     private final Map<Class<?>, Object> targetMappings;
     private final Object unnamedModule;
+    private final WeakReference<HostClassCache> weakHostClassRef = new WeakReference<>(this);
+
+    private final ClassValue<HostClassDesc> descs = new ClassValue<HostClassDesc>() {
+        @Override
+        protected HostClassDesc computeValue(Class<?> type) {
+            /*
+             * The weak reference is a workaround for JDK-8169425. Cyclic references are not
+             * supported for values in ClassValue. In practice the passed in weak reference should
+             * never become null during a usage of HostClassDesc.
+             */
+            return new HostClassDesc(weakHostClassRef, type);
+        }
+    };
 
     private HostClassCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
         this.hostAccess = conf;
@@ -176,13 +190,6 @@ final class HostClassCache {
         }
         return cache;
     }
-
-    private final ClassValue<HostClassDesc> descs = new ClassValue<HostClassDesc>() {
-        @Override
-        protected HostClassDesc computeValue(Class<?> type) {
-            return new HostClassDesc(HostClassCache.this, type);
-        }
-    };
 
     @TruffleBoundary
     public static HostClassCache forInstance(HostObject receiver) {

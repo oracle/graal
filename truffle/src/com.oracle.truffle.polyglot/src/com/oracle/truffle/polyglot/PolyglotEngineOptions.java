@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,5 +88,9 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Prints the stack trace for all threads for a time interval. By default 0, which disables the output.")//
     static final OptionKey<Long> TraceStackTraceInterval = new OptionKey<>(0L);
+
+    @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
+                    "Print warning when the engine is using a default Truffle runtime.")//
+    static final OptionKey<Boolean> WarnInterpreterOnly = new OptionKey<>(true);
 
 }

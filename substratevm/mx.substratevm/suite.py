@@ -166,7 +166,7 @@ suite = {
                 "com.oracle.svm.util",
             ],
             "javaCompliance": "8+",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "8.36.1",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -368,7 +368,7 @@ suite = {
             ],
             "checkstyle": "com.oracle.graal.pointsto",
             "javaCompliance": "8+",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "8.36.1",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -383,7 +383,7 @@ suite = {
                 "com.oracle.graal.pointsto",
             ],
             "javaCompliance": "8+",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "8.36.1",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -550,7 +550,7 @@ suite = {
                 "com.oracle.svm.hosted",
             ],
             "checkstyle": "com.oracle.svm.driver",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "8.36.1",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -779,7 +779,7 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "8+",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "8.36.1",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -856,7 +856,7 @@ suite = {
                 "com.oracle.svm.hosted",
             ],
             "checkstyle": "org.graalvm.polyglot.nativeapi",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "8.36.1",
             "javaCompliance" : "8+",
             "annotationProcessors" : [
                 "compiler:GRAAL_PROCESSOR",
@@ -1054,6 +1054,9 @@ suite = {
                     ],
                     "java.base": [
                         "sun.reflect.annotation",
+                        "sun.reflect.generics.reflectiveObjects",
+                        "sun.reflect.generics.repository",
+                        "sun.reflect.generics.tree",
                         "sun.util.calendar",
                         "sun.security.jca",
                         "sun.security.util",

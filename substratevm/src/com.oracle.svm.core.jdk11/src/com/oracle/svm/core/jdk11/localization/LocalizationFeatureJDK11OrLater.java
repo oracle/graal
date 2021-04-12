@@ -61,6 +61,8 @@ final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
         for (Locale locale : allLocales) {
             prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorResources(locale), locale);
         }
+
+        prepareBundle("sun.text.resources.FormatData");
     }
 
     @Override

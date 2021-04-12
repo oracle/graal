@@ -114,7 +114,6 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     private int gpOffset;
     private int fpOffset;
 
-    private LLVMPointer nativized;
     private LLVMPointer overflowArgAreaBaseNativePtr;
 
     private RegSaveArea gpSaveArea;
@@ -730,8 +729,8 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
             // TODO (chaeubl): this generates pretty bad machine code as we don't know anything
             // about the arguments
-            for (int i = 0; i < vaLength; i++) {
-                final Object object = realArguments[numberOfExplicitArguments + i];
+            for (int i = 0; i < realArguments.length; i++) {
+                final Object object = realArguments[i];
 
                 if (i >= expansionStart + expansionLength) {
                     ei++;
@@ -740,6 +739,10 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                     remainingExpLength = expansionLength;
                 } else {
                     remainingExpLength--;
+                }
+
+                if (i < numberOfExplicitArguments) {
+                    continue;
                 }
 
                 final VarArgArea area = getVarArgArea(object);

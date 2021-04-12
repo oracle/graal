@@ -25,8 +25,6 @@
 package com.oracle.svm.test.jdk11;
 
 import java.net.Socket;
-import java.net.SocketOption;
-import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,7 +35,7 @@ public class ReusePortAvailableTest {
     public void testReusePortAvailable() throws Exception {
         Socket s = new Socket();
         try {
-            Set<SocketOption<?>> opts = s.supportedOptions();
+            s.supportedOptions();
         } catch (Exception e) {
             Assert.fail("Call to supportedOptions() failed");
         }

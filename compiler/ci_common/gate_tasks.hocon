@@ -37,6 +37,8 @@ builds += [
   ${gateMathStubsListener}                                                {name: "daily-hotspot-mathstubs-listener"}
 
   # Linux AArch64
-  ${gateTest}           ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "gate-compiler-test-labsjdk-ce-11-linux-aarch64",                   timelimit: "1:50:00"}
-  ${gateTestCTW}        ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "gate-compiler-ctw-labsjdk-ce-11-linux-aarch64",                    timelimit: "1:50:00"}
+  ${gateTest}           ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "gate-compiler-test-labsjdk-ce-11-linux-aarch64",                     timelimit: "1:50:00"}
+  ${gateTestCTW}        ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "gate-compiler-ctw-labsjdk-ce-11-linux-aarch64",                      timelimit: "1:50:00"}
+  ${gateCoverage}       ${labsjdk-ce-11}      ${gateLinuxAArch64} {name: "weekly-compiler-coverage-11-linux-aarch64"}          ${graalWeekly} {timelimit: "1:50:00"}
+  ${gateTestCTWWeekly}  ${labsjdk-ee-11}      ${gateLinuxAArch64} {name: "weekly-test-compiler-ctw-labsjdk-ee-11-linux-aarch64"} ${graalWeekly}
 ]

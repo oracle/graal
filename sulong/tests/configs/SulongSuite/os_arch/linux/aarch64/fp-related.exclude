@@ -1,5 +1,3 @@
-## Tests that fail.
-c/arrays/intArray.c.dir
 c/builtin_gcc/__builtin_copysign.c.dir
 c/builtin_gcc/__builtin_fabsl.c.dir
 c/builtin_gcc/__builtin_fpclassify.c.dir
@@ -14,14 +12,6 @@ c/longdouble/longdouble-add.c.dir
 c/longdouble/longdouble-div.c.dir
 c/longdouble/longdouble-mul.c.dir
 c/longdouble/longdouble-sub.c.dir
-c/max-unsigned-int-to-double-cast.c.dir
 c/stdlib/math/fmodl.c.dir
 c/stdlib/math/sqrt.c.dir
-c/stdlib/stat.c.dir
-c/truffle-c/arrayTest/arrayTest18.c.dir
-c/truffle-c/arrayTest/arrayTest22.c.dir
-c/truffle-c/arrayTest/arrayTest5.c.dir
-c/truffle-c/charTest/charArray.c.dir
-c/truffle-c/programTest/programTest0.c.dir
-c/truffle-c/unionTest/memberInitialization2.c.dir
-c/truffle-c/unionTest/unionTest12.c.dir
+c/varargs/var80bit.c.dir

@@ -5,9 +5,9 @@ suite = {
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "TIKA_1.0.0": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.0-SNAPSHOT.zip"],
-      "sha1": "b41a4d1985027cedb768b013f628fb622e02cd0a",
+    "TIKA_1.0.1": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.1-SNAPSHOT.zip"],
+      "sha1": "a1a325355ee129528221a0eae487fbe9a3895fcd",
       "packedResource": True,
     },
 
@@ -331,6 +331,15 @@ suite = {
       "workingSets" : "Graal,Bench",
       "testProject" : True,
     },
+  },
+
+  "imports" : {
+    "suites": [
+      {
+        "name" : "sdk",
+        "subdir": True
+      }
+    ]
   },
 
   "distributions" : {

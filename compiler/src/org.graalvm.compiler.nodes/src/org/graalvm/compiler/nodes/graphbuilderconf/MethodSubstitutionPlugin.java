@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -213,15 +213,11 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     }
 
     @Override
-    public StackTraceElement getApplySourceLocation(MetaAccessProvider metaAccess) {
+    public String getSourceLocation() {
         Class<?> c = getClass();
-        if (IS_IN_NATIVE_IMAGE) {
-            // Provide a dummy result so exceptions can be properly thrown
-            return new StackTraceElement(c.getName(), "execute", null, -1);
-        }
         for (Method m : c.getDeclaredMethods()) {
             if (m.getName().equals("execute")) {
-                return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
+                return String.format("%s.%s()", m.getClass().getName(), m.getName());
             }
         }
         throw new GraalError("could not find method named \"execute\" in " + c.getName());

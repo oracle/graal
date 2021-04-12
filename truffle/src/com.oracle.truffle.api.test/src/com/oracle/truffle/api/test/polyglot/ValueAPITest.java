@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1774,6 +1774,29 @@ public class ValueAPITest {
 
         ValueAssert.assertValue(v1);
         ValueAssert.assertValue(v2);
+    }
+
+    @Test
+    public void testPolyglotMapRemoveEntry() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("key", ProxyObject.fromMap(Collections.singletonMap("field", "value")));
+        Value mapValue = context.asValue(ProxyObject.fromMap(map));
+        Map<String, Object> membersMap = mapValue.as(new TypeLiteral<Map<String, Object>>() {
+        });
+        assertEquals(1, membersMap.size());
+        Map.Entry<String, Object> membersEntry = membersMap.entrySet().iterator().next();
+        membersMap.entrySet().remove(membersEntry);
+        assertEquals(0, membersMap.size());
+
+        List<Object> list = new ArrayList<>();
+        list.add(Collections.singletonMap("field", "value"));
+        Value arrayValue = context.asValue(ProxyArray.fromList(list));
+        Map<Integer, Object> arrayMap = arrayValue.as(new TypeLiteral<Map<Integer, Object>>() {
+        });
+        assertEquals(1, arrayMap.size());
+        Map.Entry<Integer, Object> arrayEntry = arrayMap.entrySet().iterator().next();
+        arrayMap.entrySet().remove(arrayEntry);
+        assertEquals(0, arrayMap.size());
     }
 
     @Implementable

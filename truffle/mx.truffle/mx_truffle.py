@@ -179,6 +179,8 @@ def _path_args(depNames=None):
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
+    # Disable DefaultRuntime warning
+    vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
     jdk = mx.get_jdk(tag='default')
     if jdk.javaCompliance > '1.8':
         # This is required to access jdk.internal.module.Modules which

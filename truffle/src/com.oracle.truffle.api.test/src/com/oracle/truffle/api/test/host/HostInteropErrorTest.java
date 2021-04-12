@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,20 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
+import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
@@ -209,6 +218,179 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         assertFalse(INTEROP.hasIteratorNextElement(iterator));
         assertFails(() -> INTEROP.getIteratorNextElement(iterator), StopIterationException.class, null);
 
+    }
+
+    @Test
+    @SuppressWarnings("serial")
+    public void testHostObjectThrowsHostException() {
+        List<Object> list = Collections.singletonList(1);
+        Value listValue = context.asValue(list);
+        assertTrue(listValue.hasMembers());
+        AbstractPolyglotTest.assertFails(() -> {
+            listValue.setArrayElement(0, 2);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        AbstractPolyglotTest.assertFails(() -> {
+            listValue.removeArrayElement(0);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        list = new ArrayList<Object>() {
+            @Override
+            public Object get(int index) {
+                throw new NullPointerException();
+            }
+        };
+        list.add(1);
+        Value listValueGet = context.asValue(list);
+        assertTrue(listValueGet.hasMembers());
+        AbstractPolyglotTest.assertFails(() -> {
+            listValueGet.getArrayElement(0);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        list = new ArrayList<Object>() {
+            @Override
+            public int size() {
+                throw new NullPointerException();
+            }
+        };
+        Value listValueSize = context.asValue(list);
+        assertTrue(listValueSize.hasMembers());
+        AbstractPolyglotTest.assertFails(() -> {
+            listValueSize.getArraySize();
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+
+        Map.Entry<Object, Object> entry = new AbstractMap.SimpleImmutableEntry<>(1, 1);
+        Value entryValue = context.asValue(entry);
+        assertTrue(entryValue.hasMembers());
+        AbstractPolyglotTest.assertFails(() -> {
+            entryValue.setArrayElement(1, 2);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+
+        entry = new Map.Entry<Object, Object>() {
+            @Override
+            public Object getKey() {
+                throw new NullPointerException();
+            }
+
+            @Override
+            public Object getValue() {
+                throw new NullPointerException();
+            }
+
+            @Override
+            public Object setValue(Object value) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        Value entryValueGet = context.asValue(entry);
+        assertTrue(entryValueGet.hasMembers());
+        AbstractPolyglotTest.assertFails(() -> {
+            entryValueGet.getArrayElement(0);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        AbstractPolyglotTest.assertFails(() -> {
+            entryValueGet.getArrayElement(1);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+
+        Iterable<Object> iterable = new Iterable<Object>() {
+            @Override
+            public Iterator<Object> iterator() {
+                throw new NullPointerException();
+            }
+        };
+        Value iterableValue = context.asValue(iterable);
+        assertTrue(iterableValue.hasIterator());
+        AbstractPolyglotTest.assertFails(() -> {
+            iterableValue.getIterator();
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        Iterator<Object> iterator = new Iterator<Object>() {
+            @Override
+            public boolean hasNext() {
+                throw new NullPointerException();
+            }
+
+            @Override
+            public Object next() {
+                throw new NullPointerException();
+            }
+        };
+        Value iteratorValue = context.asValue(iterator);
+        assertTrue(iteratorValue.isIterator());
+        AbstractPolyglotTest.assertFails(() -> {
+            iteratorValue.hasIteratorNextElement();
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        AbstractPolyglotTest.assertFails(() -> {
+            iteratorValue.getIteratorNextElement();
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+
+        Map<Object, Object> map = Collections.singletonMap(1, 1);
+        Value mapValue = context.asValue(map);
+        assertTrue(mapValue.hasHashEntries());
+        AbstractPolyglotTest.assertFails(() -> {
+            mapValue.putHashEntry(2, 2);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        AbstractPolyglotTest.assertFails(() -> {
+            mapValue.removeHashEntry(1);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        map = new HashMap<Object, Object>() {
+            @Override
+            public int size() {
+                throw new NullPointerException();
+            }
+        };
+        Value mapValueSize = context.asValue(map);
+        assertTrue(mapValueSize.hasHashEntries());
+        AbstractPolyglotTest.assertFails(() -> {
+            mapValueSize.getHashSize();
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        map = new HashMap<Object, Object>() {
+            @Override
+            public Object getOrDefault(Object key, Object defaultValue) {
+                throw new NullPointerException();
+            }
+        };
+        Value mapValueGet = context.asValue(map);
+        assertTrue(mapValueGet.hasHashEntries());
+        AbstractPolyglotTest.assertFails(() -> {
+            mapValueGet.getHashValue(1);
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
+        map = new HashMap<Object, Object>() {
+            @Override
+            public Set<Entry<Object, Object>> entrySet() {
+                throw new NullPointerException();
+            }
+        };
+        Value mapValueIterator = context.asValue(map);
+        assertTrue(mapValueIterator.hasHashEntries());
+        AbstractPolyglotTest.assertFails(() -> {
+            mapValueIterator.getHashEntriesIterator();
+        }, PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+        });
     }
 
     @ExportLibrary(InteropLibrary.class)

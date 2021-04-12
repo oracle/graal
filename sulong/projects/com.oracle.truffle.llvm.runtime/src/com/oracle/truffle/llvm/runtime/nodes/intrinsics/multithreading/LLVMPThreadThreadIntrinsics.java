@@ -174,6 +174,11 @@ public final class LLVMPThreadThreadIntrinsics {
 
         @TruffleBoundary
         protected byte[] getThreadNameAsBytes(Thread thread) {
+            if (thread == null) {
+                throw new IllegalStateException("The thread is null");
+            } else if (thread.getName() == null) {
+                throw new IllegalStateException("The thread's name is null");
+            }
             return thread.getName().getBytes();
         }
     }

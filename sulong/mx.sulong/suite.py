@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.290.0",
+  "mxversion" : "5.292.4",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -434,6 +434,20 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "bootstrap-toolchain-launchers-no-home": {
+      "subDir": "projects",
+      "class" : "BootstrapToolchainLauncherProject",
+      "buildDependencies" : [
+        "sdk:LLVM_TOOLCHAIN",
+        "com.oracle.truffle.llvm.toolchain.launchers",
+      ],
+      "javaProperties" : {
+        # we intentionally set llvm home to a non-existent location to avoid picking up outdated files
+        "org.graalvm.language.llvm.home" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/nonexistent",
+      },
+      "license" : "BSD-new",
+    },
+
     "toolchain-launchers-tests": {
       "subDir": "tests",
       "native": True,
@@ -599,30 +613,33 @@ suite = {
     },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
-      "native" : True,
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
       "vpath" : True,
+      "ninja_targets" : [
+        "<lib:sulong>",
+        "<lib:sulong++>",
+      ],
+      "ninja_install_targets" : ["install"],
       "results" : [
         "bin/<lib:sulong>",
         "bin/<lib:sulong++>",
       ],
       "buildDependencies" : [
-        "com.oracle.truffle.llvm.libraries.graalvm.llvm",
         "sdk:LLVM_TOOLCHAIN",
         "sdk:LLVM_ORG_SRC",
+        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "NATIVE_MODE_SUPPORT",
       ],
-      "buildEnv" : {
-        "CFLAGS" : "-Xclang -disable-O0-optnone",
-        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
-        "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
-        "CLANGXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
-        "OPT" : "<path:LLVM_TOOLCHAIN>/bin/opt",
-        "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/llvm-link",
-        "LLVM_TOOLCHAIN_LIB" : "<path:LLVM_TOOLCHAIN>/lib",
-        "LIBSULONG" : "<lib:sulong>",
-        "LIBSULONGXX" : "<lib:sulong++>",
+      "cmakeConfig" : {
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
+        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang++",
+        "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
-        "OS" : "<os>",
+        "MX_OS" : "<os>",
+        "MX_ARCH" : "<arch>",
       },
       "license" : "BSD-new",
     },
@@ -646,43 +663,56 @@ suite = {
     },
     "com.oracle.truffle.llvm.libraries.graalvm.llvm.libs" : {
       "subDir" : "projects",
-      "native" : True,
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
       "vpath" : True,
+      "ninja_targets" : [
+        "<libv:graalvm-llvm.1>",
+      ],
+      "ninja_install_targets" : ["install"],
       "results" : [
+        # "bin/<lib:graalvm-llvm>",
+        # We on purpose exclude the symlink from the results because the layout distribution would dereference it and
+        # create a copy instead of keeping the symlink.
+        # The symlink is added manually in the layout definition of the distribution.
         "bin/<libv:graalvm-llvm.1>",
       ],
       "buildDependencies" : [
-        "SULONG_TOOLCHAIN_LAUNCHERS",
-        "SULONG_BOOTSTRAP_TOOLCHAIN",
+        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "com.oracle.truffle.llvm.libraries.graalvm.llvm",
         "NATIVE_MODE_SUPPORT",
       ],
-      "buildEnv" : {
-        "SONAME" : "<libv:graalvm-llvm.1>",
-        "CLANG" : "<toolchainGetToolPath:native,CC>",
-        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
-        "OS" : "<os>",
+      "cmakeConfig" : {
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
+        "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
       },
       "license" : "BSD-new",
     },
     "com.oracle.truffle.llvm.libraries.native" : {
       "subDir" : "projects",
-      "native" : True,
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
       "vpath" : True,
+      "ninja_targets" : [
+        "<lib:sulong-native>",
+      ],
+      "ninja_install_targets" : ["install"],
       "results" : [
         "bin/<lib:sulong-native>",
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
-        "com.oracle.truffle.llvm.libraries.bitcode",
         "sdk:LLVM_TOOLCHAIN",
         "NATIVE_MODE_SUPPORT",
       ],
-      "buildEnv" : {
-        "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
-        "LIBSULONG" : "<lib:sulong-native>",
-        "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
-        "OS" : "<os>",
+      "cmakeConfig" : {
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
+        "CMAKE_SHARED_LINKER_FLAGS" : "-lm",
+        "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/clang",
+        "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
       },
       "license" : "BSD-new",
     },
@@ -690,8 +720,11 @@ suite = {
       "subDir" : "projects",
       "vpath" : True,
       "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/llvm",
-      "class" : "CMakeProject",
-      "makeTarget" : ["install-libcxxabi", "install-libcxx"],
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
+      "ninja_targets" : ["<lib:c++abi>", "<lib:c++>"],
+      "ninja_install_targets" : ["install-libcxxabi", "install-libcxx"],
       "results" : ["native"],
       "cmakeConfig" : {
         "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
@@ -704,22 +737,18 @@ suite = {
         "LIBCXXABI_ENABLE_STATIC" : "NO",
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
-        "LIBCXX_CXX_ABI" : "libcxxabi",
-        # shouldn't this be detected automatically?
-        "LIBCXX_CXX_ABI_LIBRARY_PATH" : "<path:com.oracle.truffle.llvm.libraries.bitcode.libcxx>/native/lib",
-        # shouldn't this be detected automatically?
-        "LIBCXX_CXX_ABI_INCLUDE_PATHS" : "<path:sdk:LLVM_ORG_SRC>/libcxxabi/include",
+        # using "default" will choose the in-tree version libc++abi and add a build dependency
+        # from libc++ to libc++abi
+        "LIBCXX_CXX_ABI" : "default",
         "LIBCXX_ENABLE_STATIC" : "NO",
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
-        "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
-        "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
-        # Work around for mx not liking $ signs. We use '{{}}' as a placeholder and replace that in the CMakeProject.
-        "CMAKE_SHARED_LINKER_FLAGS" : "-Wl,-rpath,{{}}ORIGIN",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
+        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang++",
         "CMAKE_INSTALL_PREFIX" : "native",
       },
       "buildDependencies" : [
         "sdk:LLVM_ORG_SRC",
-        "SULONG_BOOTSTRAP_TOOLCHAIN",
+        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "sdk:LLVM_TOOLCHAIN",
         "NATIVE_MODE_SUPPORT",
       ],
@@ -1056,6 +1085,8 @@ suite = {
         "bitcodeformat/hello-darwin-link-fembed-bitcode",
         "bitcodeformat/hello-darwin-link-fembed-bitcode.dylib",
         "bitcodeformat/hello-darwin-link.bundle",
+        "bitcodeformat/hello-windows-compile-fembed-bitcode.o",
+        "bitcodeformat/hello-windows-link-fembed-bitcode.exe",
       ],
       "buildEnv": {
         "SUITE_CPPFLAGS": "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
@@ -1484,15 +1515,25 @@ suite = {
     "SULONG_BOOTSTRAP_TOOLCHAIN": {
       "native": True,
       "relpath": False,
-      "platformDependent": False,
+      "platformDependent": True,
       "layout": {
         "./": "dependency:bootstrap-toolchain-launchers/*",
       },
-      "dependencies": [
-        "bootstrap-toolchain-launchers",
+      "buildDependencies" : [
         "SULONG_TOOLCHAIN_LAUNCHERS",
       ],
-      "distDependencies" : [
+      "license": "BSD-new",
+    },
+
+    "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME": {
+      "description" : "Bootstrap toolchain without an llvm.home. Use for bootstrapping libraries that should be contained in llvm.home.",
+      "native": True,
+      "relpath": False,
+      "platformDependent": True,
+      "layout": {
+        "./": "dependency:bootstrap-toolchain-launchers-no-home/*",
+      },
+      "buildDependencies": [
         "SULONG_TOOLCHAIN_LAUNCHERS",
       ],
       "license": "BSD-new",

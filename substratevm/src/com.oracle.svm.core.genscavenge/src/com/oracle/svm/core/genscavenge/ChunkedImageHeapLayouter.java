@@ -35,7 +35,6 @@ import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.Chunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.UnalignedChunk;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.image.ImageHeapObject;
 
 public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
@@ -131,14 +130,11 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
             if (current instanceof AlignedChunk) {
                 AlignedChunk aligned = (AlignedChunk) current;
                 writer.initializeAlignedChunk(chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
-                for (ImageHeapObject obj : aligned.getObjects()) {
-                    long offsetInChunk = obj.getOffset() - chunkPosition;
-                    long endOffsetInChunk = offsetInChunk + obj.getSize();
-                    writer.insertIntoAlignedChunkFirstObjectTable(chunkPosition, offsetInChunk, endOffsetInChunk);
-                }
+                writer.enableRememberedSetForAlignedChunk(chunkPosition, aligned.getObjects());
             } else {
                 assert current instanceof UnalignedChunk;
                 writer.initializeUnalignedChunk(chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
+                writer.enableRememberedSetForUnalignedChunk(chunkPosition);
             }
         }
     }
