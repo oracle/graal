@@ -50,6 +50,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
@@ -175,7 +176,18 @@ public class SubstrateGraphKit extends GraphKit {
 
         }
 
-        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature, SubstrateCallingConventionType.NativeCall);
+        /*
+         * For CFunction calls that return a value smaller than int, we must assume that the C
+         * compiler generated code that returns a value that is in the int range. In GraalVM, we
+         * have the invariant that all values smaller than int are represented by int. To preserve
+         * this invariant, some special handling is needed as we cannot rely on the native C
+         * compiler doing this for us.
+         */
+        JavaKind javaReturnKind = signature.getReturnKind();
+        JavaKind cReturnKind = javaReturnKind.getStackKind();
+        JavaType returnType = signature.getReturnType(null);
+        Stamp returnStamp = returnStamp(returnType, cReturnKind);
+        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, SubstrateCallingConventionType.NativeCall);
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
@@ -187,41 +199,47 @@ public class SubstrateGraphKit extends GraphKit {
             deoptEntry.setStateAfter(invoke.stateAfter());
         }
 
-        /*
-         * Sign extend or zero the upper bits of a return value smaller than an int to preserve the
-         * invariant that all such values are represented by an int in the VM. We cannot rely on the
-         * native C compiler doing this for us.
-         */
-        return getLoweringProvider().implicitLoadConvert(getGraph(), asKind(signature.getReturnType(null)), invoke);
+        ValueNode result = invoke;
+        if (javaReturnKind != cReturnKind) {
+            // Narrow the int value that we received from the C-side to 1 or 2 bytes.
+            assert javaReturnKind.getByteCount() < cReturnKind.getByteCount();
+            result = append(new NarrowNode(result, javaReturnKind.getByteCount() << 3));
+        }
+
+        // Sign or zero extend to get a clean int value. If a boolean result is expected, the int
+        // value is coerced to true or false.
+        return getLoweringProvider().implicitLoadConvertWithBooleanCoercionIfNecessary(getGraph(), asKind(returnType), result);
     }
 
     public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, CallingConvention.Type callType) {
         assert arguments.size() == signature.getParameterCount(false);
+        assert callType != SubstrateCallingConventionType.NativeCall : "return kind and stamp would be incorrect";
+        JavaKind returnKind = signature.getReturnKind();
+        Stamp returnStamp = returnStamp(signature.getReturnType(null), returnKind);
+        return createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, returnKind, callType);
+    }
+
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind, CallingConvention.Type callType) {
         frameState.clearStack();
 
-        Stamp stamp = returnStamp(signature);
         int bci = bci();
-
         CallTargetNode callTarget = getGraph().add(
-                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(stamp), signature.toParameterTypes(null), null,
+                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
                                         callType, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         // Insert framestate.
-        frameState.pushReturn(signature.getReturnKind(), invoke);
+        frameState.pushReturn(returnKind, invoke);
         FrameState stateAfter = frameState.create(bci, invoke);
         invoke.setStateAfter(stateAfter);
         return invoke;
     }
 
-    public Stamp returnStamp(Signature signature) {
-        JavaType returnType = signature.getReturnType(null);
-        JavaKind returnKind = signature.getReturnKind();
-
+    private Stamp returnStamp(JavaType returnType, JavaKind returnKind) {
         if (returnKind == JavaKind.Object && returnType instanceof ResolvedJavaType) {
             return StampFactory.object(TypeReference.createTrustedWithoutAssumptions((ResolvedJavaType) returnType));
         } else {
-            return getLoweringProvider().loadStamp(StampFactory.forKind(returnKind), signature.getReturnKind());
+            return getLoweringProvider().loadStamp(StampFactory.forKind(returnKind), returnKind);
         }
     }
 
