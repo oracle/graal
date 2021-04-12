@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -163,6 +164,7 @@ public abstract class SubstrateSegfaultHandler {
          */
         private static final CGlobalData<Pointer> baseIsolate = CGlobalDataFactory.createWord();
 
+        @Fold
         public static SingleIsolateSegfaultSetup singleton() {
             return (SingleIsolateSegfaultSetup) ImageSingletons.lookup(IsolateCreationWatcher.class);
         }

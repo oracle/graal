@@ -44,6 +44,7 @@ import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -57,6 +58,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.log.Log;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
@@ -246,6 +248,11 @@ public class SubstrateUtil {
 
         /** The method to be supplied by the implementor. */
         void invoke();
+    }
+
+    /** Prints extensive diagnostic information to the given Log. */
+    public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
+        SubstrateDiagnostics.print(log, sp, ip, WordFactory.nullPointer());
     }
 
     /**
