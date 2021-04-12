@@ -219,6 +219,7 @@ innr public final static DARWIN_AARCH64
 innr public final static DARWIN_AMD64
 innr public final static HOSTED_ONLY
 innr public final static IOS_AARCH64
+innr public final static IOS_AMD64
 innr public final static LINUX_AARCH64
 innr public final static WINDOWS_AMD64
 innr public static LINUX_AMD64
@@ -281,6 +282,13 @@ CLSS public final static org.graalvm.nativeimage.Platform$IOS_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AARCH64
+intf org.graalvm.nativeimage.Platform$IOS
+supr java.lang.Object
+
+CLSS public final static org.graalvm.nativeimage.Platform$IOS_AMD64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$IOS
 supr java.lang.Object
 
