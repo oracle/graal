@@ -729,6 +729,7 @@ suite = {
       "cmakeConfig" : {
         "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
         "LLVM_INCLUDE_DOCS" : "NO",
+        "LLVM_INCLUDE_BENCHMARKS": "NO",
         "LLVM_TARGETS_TO_BUILD" : "X86",
         "LIBCXXABI_INCLUDE_TESTS": "NO",
         "LIBCXXABI_LINK_TESTS_WITH_SHARED_LIBCXX" : "YES",
