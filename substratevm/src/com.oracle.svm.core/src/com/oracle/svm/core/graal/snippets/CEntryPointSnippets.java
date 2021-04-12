@@ -65,6 +65,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -175,10 +176,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    public interface IsolateCreationWatcher {
-        void registerIsolate(Isolate isolate);
-    }
-
     @Snippet
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters, @ConstantParameter int vmThreadSize) {
         if (MultiThreaded.getValue()) {
@@ -210,9 +207,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
 
-        if (ImageSingletons.contains(IsolateCreationWatcher.class)) {
-            ImageSingletons.lookup(IsolateCreationWatcher.class).registerIsolate(isolate.read());
-        }
+        IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
 
         CodeInfoTable.prepareImageCodeInfo();
         if (MultiThreaded.getValue()) {
@@ -716,5 +711,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
+    }
+
+    // IsolateCreationWatcher will be removed, see GR-30740. Use
+    // IsolateListener and IsolateListenerSupport instead.
+    public interface IsolateCreationWatcher {
+        @Uninterruptible(reason = "Thread state not yet set up.")
+        void registerIsolate(Isolate isolate);
     }
 }
