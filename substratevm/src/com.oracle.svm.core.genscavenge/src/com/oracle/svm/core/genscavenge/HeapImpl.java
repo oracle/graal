@@ -33,6 +33,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -58,6 +59,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
@@ -480,15 +482,27 @@ public final class HeapImpl extends Heap {
 
     @Override
     public void waitForReferencePendingList() throws InterruptedException {
-        /*-
-         * The order is crucial here to prevent transient issues. First, we read the wakeup count
-         * and the offer count. Then, we check if a reference list is available or if the thread was
-         * interrupted in the meanwhile. This ensures that awaitPendingRefsInNative() is able to
-         * properly detect the following cases:
-         * a. the thread may be interrupted right before awaitPendingRefsInNative() locks the mutex.
-         * b. a new reference pending list may be set right before awaitPendingRefsInNative() locks
-         * the mutex.
+        /*
+         * This method is only execute by the reference handler thread. So, it does not cause any
+         * harm if it wakes up too frequently. However, we must guarantee that it does not miss any
+         * updates. As awaitPendingRefsInNative() can't directly use object references, we use the
+         * offer count and the wakeup count to detect if this thread was interrupted or if a new
+         * pending reference list was set in the meanwhile. To prevent transient issues, the
+         * execution order is crucial:
+         *
+         * - Another thread could set a new reference pending list at any safepoint. As
+         * awaitPendingRefsInNative() can only access the offer count, it is necessary to ensure
+         * that the offer count is reasonably accurate. So, we read the offer count *before*
+         * checking if there is already a pending reference list. If there is no pending reference
+         * list, then the read offer count is accurate (there is no other thread that could clear
+         * the pending reference list in the meanwhile).
+         *
+         * - Another thread could interrupt this thread at any time. Interrupting will first set the
+         * interrupted flag and then increment the wakeup count. So, it is crucial that we do
+         * everything in the reverse order here: we read the wakeup count *before* the call to
+         * Thread.interrupted().
          */
+        assert Thread.currentThread() == ImageSingletons.lookup(ReferenceHandlerThreadSupport.class).getThread();
         long initialOffers = refListOfferCounter;
         long initialWakeUps = refListWaiterWakeUpCounter;
         if (hasReferencePendingList()) {
@@ -496,7 +510,7 @@ public final class HeapImpl extends Heap {
         }
 
         // Throw an InterruptedException if the thread is interrupted before or after waiting.
-        if (Thread.interrupted() || !waitForPendingReferenceList(initialOffers, initialWakeUps) && Thread.interrupted()) {
+        if (Thread.interrupted() || (!waitForPendingReferenceList(initialOffers, initialWakeUps) && Thread.interrupted())) {
             throw new InterruptedException();
         }
     }
