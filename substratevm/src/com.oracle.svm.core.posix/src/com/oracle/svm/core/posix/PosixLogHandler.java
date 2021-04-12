@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.CErrorNumber;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.LibC;
@@ -79,7 +79,7 @@ public class PosixLogHandler implements LogHandler {
 
     @Override
     public void fatalError() {
-        if (SubstrateUtil.isPrintDiagnosticsInProgress()) {
+        if (SubstrateDiagnostics.isInProgress()) {
             // Delay the shutdown a bit if another thread has something important to report.
             VMThreads.singleton().nativeSleep(3000);
         }

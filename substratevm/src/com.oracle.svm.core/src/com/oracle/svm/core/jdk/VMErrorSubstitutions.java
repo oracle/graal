@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
@@ -133,7 +133,7 @@ public class VMErrorSubstitutions {
                     log.newline();
                 }
 
-                SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+                SubstrateDiagnostics.print(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
 
                 /*
                  * Print the error message again, so that the most important bit of information

@@ -68,6 +68,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -359,7 +360,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (inCrashHandler) {
             // If we are in the crash handler then we only want to make sure that this thread can
             // print diagnostics. A full attach operation would be too dangerous.
-            SubstrateUtil.setOnlyAttachedForCrashHandler(thread);
+            SubstrateDiagnostics.setOnlyAttachedForCrashHandler(thread);
         } else {
             int error = VMThreads.singleton().attachThread(thread);
             if (error != CEntryPointErrors.NO_ERROR) {

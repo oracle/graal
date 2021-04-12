@@ -175,7 +175,7 @@ class DumpRuntimeCompilation implements SignalHandler {
     public void handle(Signal arg0) {
         JavaVMOperation.enqueueBlockingSafepoint("DumpRuntimeCompilation", () -> {
             Log log = Log.log();
-            SubstrateUtil.dumpRuntimeCompilation(log);
+            SubstrateDiagnostics.dumpRuntimeCompilation(log);
             log.flush();
         });
     }

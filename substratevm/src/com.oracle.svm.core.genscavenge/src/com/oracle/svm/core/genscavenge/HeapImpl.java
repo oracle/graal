@@ -40,9 +40,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.SubstrateUtil.DiagnosticThunk;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -109,7 +109,7 @@ public final class HeapImpl extends Heap {
         this.gcImpl = new GCImpl(access);
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.heapPolicy = new HeapPolicy();
-        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(new HeapDiagnosticsPrinter());
+        SubstrateDiagnostics.DiagnosticThunkRegister.getSingleton().register(new HeapDiagnosticsPrinter());
     }
 
     @Fold
