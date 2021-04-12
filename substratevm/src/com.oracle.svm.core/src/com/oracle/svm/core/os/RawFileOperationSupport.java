@@ -45,7 +45,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
  * in a way that it can be used from uninterruptible code.
  */
 public abstract class RawFileOperationSupport {
-    public static RawFileOperationSupport get() {
+    public static RawFileOperationSupport singleton() {
         return ImageSingletons.lookup(RawFileOperationSupport.class);
     }
 

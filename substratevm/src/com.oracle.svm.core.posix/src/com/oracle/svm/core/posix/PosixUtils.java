@@ -207,12 +207,12 @@ public class PosixUtils {
                 return false;
             }
 
-            SignedWord n;
-            do {
-                n = Unistd.write(fd, curBuf, curLen);
-            } while (n.equal(-1) && CErrorNumber.getCErrorNumber() == Errno.EINTR());
-
+            SignedWord n = Unistd.write(fd, curBuf, curLen);
             if (n.equal(-1)) {
+                if (CErrorNumber.getCErrorNumber() == Errno.EINTR()) {
+                    // Retry the write if it was interrupted before any bytes were written.
+                    continue;
+                }
                 return false;
             }
             curBuf = curBuf.addressOf(n);

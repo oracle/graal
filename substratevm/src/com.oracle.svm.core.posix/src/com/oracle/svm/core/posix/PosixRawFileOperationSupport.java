@@ -99,12 +99,12 @@ public class PosixRawFileOperationSupport extends RawFileOperationSupport {
         Pointer position = data;
         UnsignedWord remaining = size;
         while (remaining.aboveThan(0)) {
-            SignedWord writtenBytes;
-            do {
-                writtenBytes = Unistd.NoTransitions.write(posixFd, position, remaining);
-            } while (writtenBytes.equal(-1) && CErrorNumber.getCErrorNumber() == Errno.EINTR());
-
+            SignedWord writtenBytes = Unistd.NoTransitions.write(posixFd, position, remaining);
             if (writtenBytes.equal(-1)) {
+                if (CErrorNumber.getCErrorNumber() == Errno.EINTR()) {
+                    // Retry the write if it was interrupted before any bytes were written.
+                    continue;
+                }
                 return false;
             }
             position = position.add((UnsignedWord) writtenBytes);
@@ -134,15 +134,16 @@ public class PosixRawFileOperationSupport extends RawFileOperationSupport {
     }
 
     private static int parseMode(FileAccessMode mode) {
-        if (mode == FileAccessMode.READ) {
-            return Fcntl.O_RDONLY();
-        } else if (mode == FileAccessMode.READ_WRITE) {
-            return Fcntl.O_RDWR() | Fcntl.O_CREAT();
-        } else if (mode == FileAccessMode.WRITE) {
-            return Fcntl.O_WRONLY() | Fcntl.O_CREAT();
+        switch (mode) {
+            case READ:
+                return Fcntl.O_RDONLY();
+            case READ_WRITE:
+                return Fcntl.O_RDWR() | Fcntl.O_CREAT();
+            case WRITE:
+                return Fcntl.O_WRONLY() | Fcntl.O_CREAT();
+            default:
+                throw new IllegalArgumentException("Illegal file access mode '" + mode + "'.");
         }
-
-        throw new IllegalArgumentException("Illegal file access mode '" + mode + "'.");
     }
 }
 
