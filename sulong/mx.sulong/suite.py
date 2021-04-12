@@ -1004,11 +1004,8 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.sulongcpp.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O0_OUT", "O1_OUT"],
-      "buildEnv" : {
-        "OS" : "<os>",
-      },
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["executable-O0", "executable-O1"],
       "dependencies" : [
         "SULONG_TEST",
       ],
