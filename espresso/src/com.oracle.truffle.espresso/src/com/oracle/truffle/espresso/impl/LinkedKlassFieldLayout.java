@@ -81,7 +81,8 @@ final class LinkedKlassFieldLayout {
                 instanceShape = instanceBuilder.build(superKlass.getShape(false));
             } else {
                 // The redefining klass is a subshape of the redefined klass.
-                // This allows shape checks on field accesses using the old StaticProperty instances, but it might not work if the redefined shape has other subshapes.
+                // This allows shape checks on field accesses using the old StaticProperty
+                // instances, but it might not work if the redefined shape has other subshapes.
                 instanceShape = instanceBuilder.build(redefinedKlass.getShape(false));
             }
         }

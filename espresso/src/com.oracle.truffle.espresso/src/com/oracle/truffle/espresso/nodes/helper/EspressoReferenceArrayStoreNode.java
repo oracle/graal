@@ -46,7 +46,7 @@ public class EspressoReferenceArrayStoreNode extends Node {
     public void arrayStore(StaticObject value, int index, StaticObject array) {
         if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) array.getKlass()).getComponentType())) {
             try {
-                (array.<Object[]>unwrap())[index] = value;
+                (array.<Object[]> unwrap())[index] = value;
             } catch (ArrayIndexOutOfBoundsException e) {
                 enterOutOfBound1();
                 Meta meta = typeCheck.getMeta();

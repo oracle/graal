@@ -71,13 +71,14 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         }
     }
 
-    static <T> ArrayBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, ArrayBasedStaticShape<T> parentShape, Collection<ExtendedProperty> extendedProperties,
-                    int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
+    static <T> ArrayBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, ArrayBasedStaticShape<T> parentShape,
+                    Collection<ExtendedProperty> extendedProperties, int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
         try {
             ArrayBasedPropertyLayout parentPropertyLayout = parentShape == null ? null : parentShape.getPropertyLayout();
             ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(parentPropertyLayout, extendedProperties, byteArrayOffset, objectArrayOffset, shapeOffset);
             ArrayBasedStaticShape<T> shape = new ArrayBasedStaticShape<>(parentShape, generatedStorageClass, propertyLayout);
-            T factory = generatedFactoryClass.cast(generatedFactoryClass.getConstructor(Object.class, int.class, int.class).newInstance(shape, propertyLayout.getPrimitiveArraySize(), propertyLayout.getObjectArraySize()));
+            T factory = generatedFactoryClass.cast(
+                            generatedFactoryClass.getConstructor(Object.class, int.class, int.class).newInstance(shape, propertyLayout.getPrimitiveArraySize(), propertyLayout.getObjectArraySize()));
             shape.setFactory(factory);
             return shape;
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
