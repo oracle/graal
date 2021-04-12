@@ -41,6 +41,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -97,7 +98,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * Types that are used to implement the secondary storage for monitor slots cannot themselves
      * use the additionalMonitors map. That could result in recursive manipulation of the
      * additionalMonitors map which could lead to table corruptions and double insertion of a
-     * monitor for the same object. Therefore these types will alawys get a monitor slot.
+     * monitor for the same object. Therefore these types will always get a monitor slot.
      */
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final Set<Class<?>> FORCE_MONITOR_SLOT_TYPES;
@@ -143,6 +144,16 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * SplittableRandomAccessors.
              */
             monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors"));
+
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                /*
+                 * PhantomCleanable.remove() synchronizes on an instance of PhantomCleanable. When
+                 * the secondary storage monitors map is modified it can trigger a
+                 * slow-path-new-instance allocation which in turn can trigger a GC which processes
+                 * all the pending cleaners.
+                 */
+                monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
+            }
 
             FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
         } catch (ClassNotFoundException e) {
