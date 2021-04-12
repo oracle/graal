@@ -100,7 +100,11 @@ public final class LinkedKlass {
     }
 
     public static LinkedKlass create(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
-        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(parserKlass, superKlass);
+        return redefine(parserKlass, superKlass, interfaces, null);
+    }
+
+    public static LinkedKlass redefine(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, LinkedKlass redefinedKlass) {
+        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(parserKlass, superKlass, redefinedKlass);
         return new LinkedKlass(
                         parserKlass,
                         superKlass,
@@ -110,25 +114,6 @@ public final class LinkedKlass {
                         fieldLayout.instanceFields,
                         fieldLayout.staticFields,
                         fieldLayout.fieldTableLength);
-    }
-
-    public static LinkedKlass redefine(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, LinkedKlass redefinedKlass) {
-        // On class redefinition we need to re-use the old shape.
-        // If we don't do it, shape checks on field accesses fail because `Field` instances in
-        // `ObjectKlass.fieldTable` hold references to the old shape, which does not match the shape
-        // of the new object instances.
-        // If we work around this issue by patching the `ObjectKlass.fieldTable` on class
-        // redefinition, these new `Field` instances cannot be used to access object instances with
-        // the old shape.
-        return new LinkedKlass(
-                        parserKlass,
-                        superKlass,
-                        interfaces,
-                        redefinedKlass.instanceShape,
-                        redefinedKlass.staticShape,
-                        redefinedKlass.instanceFields,
-                        redefinedKlass.staticFields,
-                        redefinedKlass.fieldTableLength);
     }
 
     int getFlags() {
