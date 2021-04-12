@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.223.0",
+  "mxversion" : "5.292.5",
 
   "name" : "regex",
 
@@ -119,7 +119,9 @@ suite = {
 
   "distributions" : {
     "TREGEX" : {
-      "moduleName" : "com.oracle.truffle.regex",
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.regex",
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],
       "distDependencies" : [
