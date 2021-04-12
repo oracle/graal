@@ -337,6 +337,22 @@ public interface Platform {
     }
 
     /**
+     * Supported leaf platform: iOS on x86 64-bit.
+     *
+     * @since 21.1
+     */
+    final class IOS_AMD64 implements IOS, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 21.1
+         */
+        public IOS_AMD64() {
+        }
+    }
+
+    /**
      * Supported leaf platform: Windows on x86 64-bit.
      *
      * @since 19.0
