@@ -403,6 +403,13 @@ class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many
     def isPlatformDependent(self):
         return True
 
+    def getJavaProperties(self, replaceVar=mx_subst.path_substitutions):
+        ret = {}
+        if hasattr(self, "javaProperties"):
+            for key, value in self.javaProperties.items():
+                ret[key] = replaceVar.substitute(value, dependency=self)
+        return ret
+
 
 def _quote_windows(arg):
     return '"{}"'.format(arg)
@@ -450,7 +457,12 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
         extra_props = ['-Dorg.graalvm.launcher.executablename="{}"'.format(exe)]
         main_class = self.subject.suite.toolchain._tool_to_main(tool)
+        # add jvm args from dependencies
         jvm_args = [_quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        # add properties from the project
+        if hasattr(self.subject, "getJavaProperties"):
+            for key, value in sorted(self.subject.getJavaProperties().items()):
+                jvm_args.append("-D" + key + "=" + value)
         command = [java] + jvm_args + extra_props + [main_class, all_params]
         # create script
         if mx.is_windows():
@@ -469,12 +481,18 @@ class CMakeSupport(object):
 
     @staticmethod
     def run_cmake(cmdline, silent, *args, **kwargs):
+        log_error = kwargs.pop("log_error", False)
         if mx._opts.verbose:
             mx.run(["cmake"] + cmdline, *args, **kwargs)
         else:
             with open(os.devnull, 'w') as fnull:
-                err = fnull if silent else None
-                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
+                err = mx.OutputCapture() if silent else None
+                try:
+                    mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
+                except:
+                    if log_error and err and err.data:
+                        mx.log_error(err.data)
+                    raise
 
 
 class CMakeBuildTaskMixin(object):
@@ -497,10 +515,13 @@ class CMakeBuildTaskMixin(object):
 
     def _need_configure(self):
         source_dir = self.subject.source_dirs()[0]
+        cmake_lists = os.path.join(source_dir, "CMakeLists.txt")
         guard_file = self.guard_file()
         cmake_config = self.subject.cmake_config()
         if not os.path.exists(guard_file):
             return True, "No CMake configuration found - reconfigure"
+        if os.path.exists(cmake_lists) and mx.TimeStampFile(cmake_lists).isNewerThan(mx.TimeStampFile(guard_file)):
+            return True, cmake_lists + " is newer than the configuration - reconfigure"
         with open(guard_file, 'r') as fp:
             if fp.read() != self._guard_data(source_dir, cmake_config):
                 return True, "CMake configuration changed - reconfigure"
@@ -674,7 +695,7 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
         # cmake will always create build.ninja - there is nothing we can do about it ATM
         cmdline = ["-G", "Ninja", source_dir] + cmake_config
         CMakeSupport.check_cmake()
-        CMakeSupport.run_cmake(cmdline, silent=True, cwd=out_dir)
+        CMakeSupport.run_cmake(cmdline, silent=True, cwd=out_dir, log_error=True)
         # move the build.ninja to the temporary path (just move it back later ... *sigh*)
         shutil.copyfile(os.path.join(out_dir, mx_native.Ninja.default_manifest), path)
         return True
