@@ -24,15 +24,21 @@ package com.oracle.truffle.espresso.staticobject;
 
 public abstract class StaticShape<T> {
     protected final Class<?> storageClass;
-    protected final T factory;
+    protected T factory;
 
-    StaticShape(Class<?> storageClass, T factory) {
+    StaticShape(Class<?> storageClass) {
         this.storageClass = storageClass;
-        this.factory = factory;
     }
 
     public static StaticShapeBuilder newBuilder() {
         return new StaticShapeBuilder();
+    }
+
+    final protected void setFactory(T factory) {
+        if (this.factory != null) {
+            throw new RuntimeException("Attempt to reinitialize the offset of a static property. Was it added to more than one builder?");
+        }
+        this.factory = factory;
     }
 
     public final T getFactory() {
@@ -45,7 +51,7 @@ public abstract class StaticShape<T> {
 
     abstract Object getStorage(Object obj, boolean primitive);
 
-    static Object cast(Object obj, Class<?> type) {
+    static <T> T cast(Object obj, Class<T> type) {
         return type.cast(obj);
     }
 

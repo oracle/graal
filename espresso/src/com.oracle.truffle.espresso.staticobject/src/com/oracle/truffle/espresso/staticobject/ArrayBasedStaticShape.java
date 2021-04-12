@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder.ExtendedProperty;
 
@@ -35,25 +36,50 @@ import sun.misc.Unsafe;
 import static com.oracle.truffle.espresso.staticobject.StaticPropertyKind.N_PRIMITIVES;
 
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
-    private static final Unsafe UNSAFE;
-    static {
-        UNSAFE = getUnsafe();
-    }
-
+    private static final Unsafe UNSAFE = getUnsafe();
+    @CompilationFinal //
+    private static Boolean DISABLE_SHAPE_CHECKS;
+    @CompilationFinal(dimensions = 1) //
+    private final StaticShape<T>[] superShapes;
     private final ArrayBasedPropertyLayout propertyLayout;
 
-    private ArrayBasedStaticShape(Class<?> storageClass, T factory, ArrayBasedPropertyLayout propertyLayout) {
-        super(storageClass, factory);
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private ArrayBasedStaticShape(ArrayBasedStaticShape<T> parentShape, Class<?> storageClass, ArrayBasedPropertyLayout propertyLayout) {
+        super(storageClass);
+        if (parentShape == null) {
+            superShapes = new StaticShape[]{this};
+        } else {
+            int depth = parentShape.superShapes.length;
+            superShapes = new StaticShape[depth + 1];
+            System.arraycopy(parentShape.superShapes, 0, superShapes, 0, depth);
+            superShapes[depth] = this;
+        }
         this.propertyLayout = propertyLayout;
     }
 
-    static <T> ArrayBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, StaticShape<T> parentShape, Collection<ExtendedProperty> extendedProperties,
-                    int byteArrayOffset, int objectArrayOffset) {
+    public static boolean shapeChecks() {
+        if (DISABLE_SHAPE_CHECKS == null) {
+            initializeShapeChecks();
+        }
+        return !DISABLE_SHAPE_CHECKS;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private synchronized static void initializeShapeChecks() {
+        if (DISABLE_SHAPE_CHECKS == null) {
+            DISABLE_SHAPE_CHECKS = Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.DisableShapeChecks");
+        }
+    }
+
+    static <T> ArrayBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, ArrayBasedStaticShape<T> parentShape, Collection<ExtendedProperty> extendedProperties,
+                    int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
         try {
-            ArrayBasedPropertyLayout parentPropertyLayout = parentShape == null ? null : ((ArrayBasedStaticShape<T>) parentShape).getPropertyLayout();
-            ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(parentPropertyLayout, extendedProperties, byteArrayOffset, objectArrayOffset);
-            T factory = generatedFactoryClass.cast(generatedFactoryClass.getConstructor(int.class, int.class).newInstance(propertyLayout.getPrimitiveArraySize(), propertyLayout.getObjectArraySize()));
-            return new ArrayBasedStaticShape<>(generatedStorageClass, factory, propertyLayout);
+            ArrayBasedPropertyLayout parentPropertyLayout = parentShape == null ? null : parentShape.getPropertyLayout();
+            ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(parentPropertyLayout, extendedProperties, byteArrayOffset, objectArrayOffset, shapeOffset);
+            ArrayBasedStaticShape<T> shape = new ArrayBasedStaticShape<>(parentShape, generatedStorageClass, propertyLayout);
+            T factory = generatedFactoryClass.cast(generatedFactoryClass.getConstructor(Object.class, int.class, int.class).newInstance(shape, propertyLayout.getPrimitiveArraySize(), propertyLayout.getObjectArraySize()));
+            shape.setFactory(factory);
+            return shape;
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -62,7 +88,18 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     @Override
     Object getStorage(Object obj, boolean primitive) {
         Object receiverObject = cast(obj, storageClass);
+        if (shapeChecks()) {
+            checkShape(receiverObject);
+        }
         return UNSAFE.getObject(receiverObject, (long) (primitive ? propertyLayout.byteArrayOffset : propertyLayout.objectArrayOffset));
+    }
+
+    private void checkShape(Object receiverObject) {
+        ArrayBasedStaticShape<?> receiverShape = cast(UNSAFE.getObject(receiverObject, (long) propertyLayout.shapeOffset), ArrayBasedStaticShape.class);
+        if (this != receiverShape && (receiverShape.superShapes.length < superShapes.length || receiverShape.superShapes[superShapes.length - 1] != this)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new RuntimeException("Incompatible shape on property access. Expected '" + this + "' got '" + receiverShape + "'.");
+        }
     }
 
     private ArrayBasedPropertyLayout getPropertyLayout() {
@@ -162,10 +199,12 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
 
         private final int byteArrayOffset;
         private final int objectArrayOffset;
+        private final int shapeOffset;
 
-        ArrayBasedPropertyLayout(ArrayBasedPropertyLayout parentLayout, Collection<ExtendedProperty> extendedProperties, int byteArrayOffset, int objectArrayOffset) {
+        ArrayBasedPropertyLayout(ArrayBasedPropertyLayout parentLayout, Collection<ExtendedProperty> extendedProperties, int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
             this.byteArrayOffset = byteArrayOffset;
             this.objectArrayOffset = objectArrayOffset;
+            this.shapeOffset = shapeOffset;
 
             // Stats about primitive fields
             int superTotalByteCount;

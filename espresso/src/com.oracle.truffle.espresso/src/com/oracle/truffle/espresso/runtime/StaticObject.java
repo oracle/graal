@@ -518,40 +518,45 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     // This class mimics the layout of generated storage classes
     public static final class DefaultArrayBasedStaticObject extends StaticObject {
+        public final Object shape;
         public final byte[] primitive;
         public final Object[] object;
 
-        private DefaultArrayBasedStaticObject(Klass klass, int primitiveArraySize, int objectArraySize) {
+        private DefaultArrayBasedStaticObject(Klass klass, Object shape, int primitiveArraySize, int objectArraySize) {
             super(klass);
-            primitive = new byte[primitiveArraySize];
-            object = new Object[objectArraySize];
+            this.shape = shape;
+            this.primitive = new byte[primitiveArraySize];
+            this.object = new Object[objectArraySize];
         }
 
-        private DefaultArrayBasedStaticObject(Klass klass, boolean isForeign, int primitiveArraySize, int objectArraySize) {
+        private DefaultArrayBasedStaticObject(Klass klass, boolean isForeign, Object shape, int primitiveArraySize, int objectArraySize) {
             super(klass, isForeign);
-            primitive = new byte[primitiveArraySize];
-            object = new Object[objectArraySize];
+            this.shape = shape;
+            this.primitive = new byte[primitiveArraySize];
+            this.object = new Object[objectArraySize];
         }
     }
 
     // This class mimics the layout of generated storage factory classes
     public static final class DefaultArrayBasedStaticObjectFactory implements StaticObjectFactory {
+        private final Object shape;
         private final int primitiveArraySize;
         private final int objectArraySize;
 
-        public DefaultArrayBasedStaticObjectFactory(int primitiveArraySize, int objectArraySize) {
+        public DefaultArrayBasedStaticObjectFactory(Object shape, int primitiveArraySize, int objectArraySize) {
+            this.shape = shape;
             this.primitiveArraySize = primitiveArraySize;
             this.objectArraySize = objectArraySize;
         }
 
         @Override
         public StaticObject create(Klass klass) {
-            return new DefaultArrayBasedStaticObject(klass, primitiveArraySize, objectArraySize);
+            return new DefaultArrayBasedStaticObject(klass, shape, primitiveArraySize, objectArraySize);
         }
 
         @Override
         public StaticObject create(Klass klass, boolean isForeign) {
-            return new DefaultArrayBasedStaticObject(klass, isForeign, primitiveArraySize, objectArraySize);
+            return new DefaultArrayBasedStaticObject(klass, isForeign, shape, primitiveArraySize, objectArraySize);
         }
     }
 }
