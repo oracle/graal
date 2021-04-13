@@ -24,23 +24,18 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Used by a {@link GraphBuilderPlugin} to interface with an object that builds a graph.
  */
-public interface GraphBuilderTool {
+public interface GraphBuilderTool extends CoreProviders {
 
     /**
      * Adds the given node to the graph and also adds recursively all referenced inputs.
@@ -50,21 +45,9 @@ public interface GraphBuilderTool {
      */
     <T extends ValueNode> T append(T value);
 
-    CoreProviders getProviders();
-
-    StampProvider getStampProvider();
-
-    MetaAccessProvider getMetaAccess();
-
-    Replacements getReplacements();
-
     default Assumptions getAssumptions() {
         return getGraph().getAssumptions();
     }
-
-    ConstantReflectionProvider getConstantReflection();
-
-    ConstantFieldProvider getConstantFieldProvider();
 
     /**
      * Gets the graph being constructed.

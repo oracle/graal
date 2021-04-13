@@ -71,7 +71,7 @@ public final class LazyConstantNode extends FloatingNode implements Canonicaliza
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ValueNode result = findSynonym(stamp, constantSupplier, tool.getProviders());
+        ValueNode result = findSynonym(stamp, constantSupplier, tool);
         if (result != null) {
             return result;
         }
