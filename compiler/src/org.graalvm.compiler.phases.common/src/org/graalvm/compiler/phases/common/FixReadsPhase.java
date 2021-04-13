@@ -29,8 +29,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -41,7 +39,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.Position;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -74,7 +71,9 @@ import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
@@ -84,10 +83,10 @@ import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
 
@@ -159,33 +158,17 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         private final BlockMap<Integer> blockActionStart;
         private final EconomicMap<MergeNode, EconomicMap<ValueNode, Stamp>> endMaps;
         private final DebugContext debug;
-        private final RawCanonicalizerTool rawCanonicalizerTool = new RawCanonicalizerTool();
+        private final RawCanonicalizerTool rawCanonicalizerTool;
 
-        private class RawCanonicalizerTool implements NodeView, CanonicalizerTool {
+        private class RawCanonicalizerTool extends CoreProvidersDelegate implements NodeView, CanonicalizerTool {
+
+            RawCanonicalizerTool(CoreProviders providers) {
+                super(providers);
+            }
 
             @Override
             public Assumptions getAssumptions() {
                 return graph.getAssumptions();
-            }
-
-            @Override
-            public MetaAccessProvider getMetaAccess() {
-                return metaAccess;
-            }
-
-            @Override
-            public ConstantReflectionProvider getConstantReflection() {
-                return null;
-            }
-
-            @Override
-            public ConstantFieldProvider getConstantFieldProvider() {
-                return null;
-            }
-
-            @Override
-            public MetaAccessExtensionProvider getMetaAccessExtensionProvider() {
-                return null;
             }
 
             @Override
@@ -225,6 +208,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             this.debug = graph.getDebug();
             this.schedule = schedule;
             this.metaAccess = metaAccess;
+            this.rawCanonicalizerTool = new RawCanonicalizerTool(new Providers(metaAccess, null, null, null, null, null, null, null, null, null, null, null, null));
             blockActionStart = new BlockMap<>(schedule.getCFG());
             endMaps = EconomicMap.create(Equivalence.IDENTITY);
             stampMap = graph.createNodeMap();

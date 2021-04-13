@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
@@ -48,6 +49,8 @@ public interface GraphBuilderTool {
      * @return either the node added or an equivalent node
      */
     <T extends ValueNode> T append(T value);
+
+    CoreProviders getProviders();
 
     StampProvider getStampProvider();
 

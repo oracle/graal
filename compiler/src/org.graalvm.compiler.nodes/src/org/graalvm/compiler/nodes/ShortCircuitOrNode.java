@@ -28,24 +28,21 @@ import static org.graalvm.compiler.nodeinfo.InputType.Condition;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
@@ -262,7 +259,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         return this;
     }
 
-    private static class ProxyCanonicalizerTool implements CanonicalizerTool, NodeView {
+    private static class ProxyCanonicalizerTool extends CoreProvidersDelegate implements CanonicalizerTool, NodeView {
 
         private final Stamp stamp;
         private final ValueNode node;
@@ -270,6 +267,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         private final NodeView view;
 
         ProxyCanonicalizerTool(Stamp stamp, ValueNode node, CanonicalizerTool tool, NodeView view) {
+            super(tool.getProviders());
             this.stamp = stamp;
             this.node = node;
             this.tool = tool;
@@ -287,26 +285,6 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         @Override
         public Assumptions getAssumptions() {
             return tool.getAssumptions();
-        }
-
-        @Override
-        public MetaAccessProvider getMetaAccess() {
-            return tool.getMetaAccess();
-        }
-
-        @Override
-        public ConstantReflectionProvider getConstantReflection() {
-            return tool.getConstantReflection();
-        }
-
-        @Override
-        public ConstantFieldProvider getConstantFieldProvider() {
-            return tool.getConstantFieldProvider();
-        }
-
-        @Override
-        public MetaAccessExtensionProvider getMetaAccessExtensionProvider() {
-            return tool.getMetaAccessExtensionProvider();
         }
 
         @Override

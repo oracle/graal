@@ -37,6 +37,8 @@ public interface CanonicalizerTool {
 
     Assumptions getAssumptions();
 
+    CoreProviders getProviders();
+
     MetaAccessProvider getMetaAccess();
 
     ConstantReflectionProvider getConstantReflection();
