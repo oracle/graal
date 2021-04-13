@@ -429,22 +429,19 @@ abstract class DynamicObjectLibraryImpl {
             this.toOrd = toOrd;
         }
 
-        void perform(DynamicObject obj, boolean clear) {
-            performSet(obj, performGet(obj), clear);
+        void perform(DynamicObject obj) {
+            performSet(obj, performGet(obj));
         }
 
         Object performGet(DynamicObject obj) {
             return fromLoc.get(obj, false);
         }
 
-        void performSet(DynamicObject obj, Object value, boolean clear) {
+        void performSet(DynamicObject obj, Object value) {
             try {
                 toLoc.setInternal(obj, value, false);
             } catch (IncompatibleLocationException e) {
                 throw shouldNotHappen(e);
-            }
-            if (clear) {
-                clear(obj);
             }
         }
 
@@ -503,7 +500,10 @@ abstract class DynamicObjectLibraryImpl {
             if (canMoveInPlace) {
                 // perform the moves in inverse order
                 for (int i = moves.length - 1; i >= 0; i--) {
-                    moves[i].perform(object, i == 0);
+                    moves[i].perform(object);
+                    if (i == 0) {
+                        moves[i].clear(object);
+                    }
                 }
                 ACCESS.trimToSize(object, shapeBefore, shapeAfter);
                 ACCESS.setShape(object, shapeAfter);
@@ -512,10 +512,11 @@ abstract class DynamicObjectLibraryImpl {
                 Object[] tempValues = new Object[moves.length];
                 for (int i = moves.length - 1; i >= 0; i--) {
                     tempValues[i] = moves[i].performGet(object);
+                    moves[i].clear(object);
                 }
                 ACCESS.resizeAndSetShape(object, shapeBefore, shapeAfter);
                 for (int i = moves.length - 1; i >= 0; i--) {
-                    moves[i].performSet(object, tempValues[i], true);
+                    moves[i].performSet(object, tempValues[i]);
                 }
             }
         }
