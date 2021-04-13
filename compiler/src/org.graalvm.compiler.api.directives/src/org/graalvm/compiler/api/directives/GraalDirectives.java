@@ -419,4 +419,13 @@ public final class GraalDirectives {
      */
     public static void breakpoint() {
     }
+
+    /**
+     * Returns a boolean indicating whether or not a given value is seen as constant in optimized
+     * code.
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(Object value) {
+        return false;
+    }
 }
