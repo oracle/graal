@@ -25,8 +25,6 @@
 package org.graalvm.compiler.core.phases;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
@@ -34,6 +32,10 @@ import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.memory.MemoryMap;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
@@ -67,8 +69,8 @@ public enum CEOptimization {
      *
      * This phase is unconditionally enabled.
      *
-     * @see org.graalvm.compiler.graph.spi.Canonicalizable#canonical(CanonicalizerTool)
-     * @see org.graalvm.compiler.graph.Node#simplify(SimplifierTool)
+     * @see Canonicalizable#canonical(CanonicalizerTool)
+     * @see Simplifiable#simplify(SimplifierTool)
      * @see org.graalvm.compiler.graph.Node.ValueNumberable
      *
      */

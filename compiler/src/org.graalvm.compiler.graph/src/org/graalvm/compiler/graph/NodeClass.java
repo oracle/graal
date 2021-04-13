@@ -60,9 +60,9 @@ import org.graalvm.compiler.graph.Node.Input;
 import org.graalvm.compiler.graph.Node.OptionalInput;
 import org.graalvm.compiler.graph.Node.Successor;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.BinaryCommutativeMarker;
+import org.graalvm.compiler.graph.spi.CanonicalizableMarker;
+import org.graalvm.compiler.graph.spi.SimplifiableMarker;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -159,19 +159,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     private static final CounterKey ITERABLE_NODE_TYPES = DebugContext.counter("IterableNodeTypes");
 
-    /**
-     * Determines if this node type implements {@link Canonicalizable}.
-     */
     private final boolean isCanonicalizable;
-
-    /**
-     * Determines if this node type implements {@link BinaryCommutative}.
-     */
     private final boolean isCommutative;
-
-    /**
-     * Determines if this node type implements {@link Simplifiable}.
-     */
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
 
@@ -188,13 +177,9 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.superNodeClass = superNodeClass;
         assert NODE_CLASS.isAssignableFrom(clazz);
 
-        this.isCanonicalizable = Canonicalizable.class.isAssignableFrom(clazz);
-        this.isCommutative = BinaryCommutative.class.isAssignableFrom(clazz);
-        if (Canonicalizable.Unary.class.isAssignableFrom(clazz) || Canonicalizable.Binary.class.isAssignableFrom(clazz)) {
-            assert Canonicalizable.Unary.class.isAssignableFrom(clazz) ^ Canonicalizable.Binary.class.isAssignableFrom(clazz) : clazz + " should implement either Unary or Binary, not both";
-        }
-
-        this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
+        this.isCanonicalizable = CanonicalizableMarker.class.isAssignableFrom(clazz);
+        this.isCommutative = BinaryCommutativeMarker.class.isAssignableFrom(clazz);
+        this.isSimplifiable = SimplifiableMarker.class.isAssignableFrom(clazz);
 
         NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass, debug);
         try (DebugCloseable t = Init_FieldScanning.start(debug)) {
@@ -392,21 +377,21 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     /**
-     * Determines if this node type implements {@link Canonicalizable}.
+     * Determines if this node type is {@link CanonicalizableMarker canonicalizable}.
      */
     public boolean isCanonicalizable() {
         return isCanonicalizable;
     }
 
     /**
-     * Determines if this node type implements {@link BinaryCommutative}.
+     * Determines if this node type is {@link BinaryCommutativeMarker commutative}.
      */
     public boolean isCommutative() {
         return isCommutative;
     }
 
     /**
-     * Determines if this node type implements {@link Simplifiable}.
+     * Determines if this node type is {@link SimplifiableMarker simplifiable}.
      */
     public boolean isSimplifiable() {
         return isSimplifiable;

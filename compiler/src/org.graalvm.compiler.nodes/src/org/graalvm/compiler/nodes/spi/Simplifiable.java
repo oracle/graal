@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.graph.spi.SimplifiableMarker;
 
-public interface CanonicalizableLocation {
-    ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool);
+/**
+ * This interface allows nodes to perform more complicated simplifications, in contrast to
+ * {@link Canonicalizable}, which supports only replacing the current node.
+ *
+ * Implementors of this interface need to be aware that they need to call
+ * {@link SimplifierTool#addToWorkList(org.graalvm.compiler.graph.Node)} for each node that might be
+ * influenced (in terms of simplification and canonicalization) by the actions performed in
+ * simplify.
+ */
+public interface Simplifiable extends SimplifiableMarker {
+
+    void simplify(SimplifierTool tool);
 }

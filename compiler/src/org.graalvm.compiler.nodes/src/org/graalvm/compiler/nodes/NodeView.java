@@ -25,7 +25,7 @@
 package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 /**
  * Interface that overrides properties of a node, such as the node's stamp.

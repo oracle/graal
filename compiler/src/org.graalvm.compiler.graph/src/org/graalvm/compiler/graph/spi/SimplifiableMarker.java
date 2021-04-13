@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package org.graalvm.compiler.graph.spi;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.FrameState;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class ExceptionStateNode extends AbstractStateSplit implements Canonicalizable {
-    public static final NodeClass<ExceptionStateNode> TYPE = NodeClass.create(ExceptionStateNode.class);
-
-    public ExceptionStateNode(FrameState stateAfter) {
-        super(TYPE, StampFactory.forVoid(), stateAfter);
-        assert stateAfter != null;
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (stateAfter == null) {
-            /* After the FrameStateAssignmentPhase, the node is unnecessary. */
-            return null;
-        }
-        return this;
-    }
+/**
+ * A marker interface for {@link Node} classes that can be efficiently queried via
+ * {@link NodeClass#isSimplifiable()}.
+ *
+ * Since the "graph" infrastructure is general and not limited to compiler graphs, this interface
+ * does not define any meaning for "simplifiable".
+ */
+public interface SimplifiableMarker {
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,15 @@
  */
 package org.graalvm.compiler.graph.spi;
 
-/**
- * This interface allows nodes to perform more complicated simplifications, in contrast to
- * {@link Canonicalizable}, which supports only replacing the current node.
- *
- * Implementors of this interface need to be aware that they need to call
- * {@link SimplifierTool#addToWorkList(org.graalvm.compiler.graph.Node)} for each node that might be
- * influenced (in terms of simplification and canonicalization) by the actions performed in
- * simplify.
- */
-public interface Simplifiable {
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
 
-    void simplify(SimplifierTool tool);
+/**
+ * A marker interface for {@link Node} classes that can be efficiently queried via
+ * {@link NodeClass#isCanonicalizable()}.
+ *
+ * Since the "graph" infrastructure is general and not limited to compiler graphs, this interface
+ * does not define any meaning for "canonicalizeable".
+ */
+public interface CanonicalizableMarker {
 }

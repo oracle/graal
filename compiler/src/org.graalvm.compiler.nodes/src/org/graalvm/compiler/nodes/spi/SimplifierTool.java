@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.graph.Node;
 
-public interface CanonicalizableLocation {
-    ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool);
+/**
+ * @see Simplifiable
+ */
+public interface SimplifierTool extends CanonicalizerTool {
+
+    void deleteBranch(Node branch);
+
+    /**
+     * Adds a node to the worklist independent of whether it has already been on the worklist.
+     */
+    void addToWorkList(Node node);
+
+    void addToWorkList(Iterable<? extends Node> nodes);
+
+    void removeIfUnused(Node node);
 }
