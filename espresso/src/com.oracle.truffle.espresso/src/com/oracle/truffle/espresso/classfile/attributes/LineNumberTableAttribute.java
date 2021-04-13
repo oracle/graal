@@ -43,7 +43,6 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
     public static final LineNumberTableAttribute EMPTY = new LineNumberTableAttribute(NAME, new char[0], 0);
 
     private final char[] bciToLineEntries;
-    private final int length;
 
     private int lastLine = -1;
 
@@ -51,28 +50,32 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
     public LineNumberTableAttribute(Symbol<Name> name, char[] entries, int entryCount) {
         super(name, null);
+        assert entries.length % 2 == 0;
         this.bciToLineEntries = entries;
-        this.length = entryCount;
     }
 
     public List<Entry> getEntries() {
         return new ListWrapper();
     }
 
+    private int length() {
+        return bciToLineEntries.length >> 1;
+    }
+
     /**
      * Gets a source line number for bytecode index {@code atBci}.
      */
     public int getLineNumber(int atBci) {
-        for (int i = 0; i < length - 1; i++) {
+        for (int i = 0; i < length() - 1; i++) {
             if (bciAt(i) <= atBci && atBci < bciAt(i + 1)) {
                 return lineAt(i);
             }
         }
-        return lineAt(length - 1);
+        return lineAt(length() - 1);
     }
 
     public long getBCI(int line) {
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < length(); i++) {
             if (lineAt(i) == line) {
                 return bciAt(i);
             }
@@ -85,7 +88,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
             return lastLine;
         }
         int max = -1;
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < length(); i++) {
             max = Math.max(max, lineAt(i));
         }
         return max;
@@ -96,7 +99,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
             return firstLine;
         }
         int min = Integer.MAX_VALUE;
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < length(); i++) {
             min = Math.min(min, lineAt(i));
         }
         return min;
@@ -104,7 +107,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
     public int getNextLine(int line) {
         int next = Integer.MAX_VALUE;
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < length(); i++) {
             if (lineAt(i) > line) {
                 next = Math.min(next, lineAt(i));
             }
@@ -153,12 +156,12 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
             if (index >= 0 && index < size()) {
                 return new Entry(bciAt(index), lineAt(index));
             }
-            throw new IndexOutOfBoundsException("index " + index + " out of bounds for list of size " + length + ".");
+            throw new IndexOutOfBoundsException("index " + index + " out of bounds for list of size " + length() + ".");
         }
 
         @Override
         public int size() {
-            return length;
+            return length();
         }
     }
 }
