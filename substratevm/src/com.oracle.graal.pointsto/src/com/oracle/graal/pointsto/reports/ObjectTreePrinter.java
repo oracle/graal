@@ -295,7 +295,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
     private final SimpleMatcher defaultSuppressRootMatcher;
 
     private ObjectTreePrinter(BigBang bigbang) {
-        super(bigbang, new ReusableSet());
+        super(bigbang, null, new ReusableSet());
 
         /* Use linked hash map for predictable iteration order. */
         this.constantToNode = new LinkedHashMap<>();
