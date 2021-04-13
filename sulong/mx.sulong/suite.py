@@ -1316,17 +1316,17 @@ suite = {
     },
     "llvm" : {
       "subDir" : "tests/llvm",
-      "class" : "ExternalTestSuite",
+      "class" : "ExternalCMakeTestSuite",
       "testDir" : "test-suite-3.2.src",
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0_OUT"],
+      "variants" : ["executable-O0"],
       "buildRef" : True,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
-        "SUITE_CFLAGS" : "-Wno-everything",
-        "SUITE_CXXFLAGS" : "-Wno-everything",
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-Wno-everything",
+        "CMAKE_CXX_FLAGS" : "-Wno-everything",
+        "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
       },
       "dependencies" : [
         "SULONG_TEST",
