@@ -39,7 +39,8 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
     public static final Symbol<Name> NAME = Name.LineNumberTable;
 
-    public static final LineNumberTableAttribute EMPTY = new LineNumberTableAttribute(NAME, Entry.EMPTY_ARRAY);
+    // Use an empty char array rather than null to throw IooB exceptions, rather than NPE.
+    public static final LineNumberTableAttribute EMPTY = new LineNumberTableAttribute(NAME, new char[0], 0);
 
     private final char[] bciToLineEntries;
     private final int length;
@@ -48,20 +49,10 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
     private int firstLine = -1;
 
-    public LineNumberTableAttribute(Symbol<Name> name, Entry[] entries) {
+    public LineNumberTableAttribute(Symbol<Name> name, char[] entries, int entryCount) {
         super(name, null);
-        this.bciToLineEntries = buildFromEntries(entries);
-        this.length = entries.length;
-    }
-
-    private static char[] buildFromEntries(Entry[] entries) {
-        char[] array = new char[entries.length << 1];
-        for (int i = 0; i < entries.length; i++) {
-            int index = i * 2;
-            array[index] = (char) entries[i].getBCI();
-            array[index + 1] = (char) entries[i].getLineNumber();
-        }
-        return array;
+        this.bciToLineEntries = entries;
+        this.length = entryCount;
     }
 
     public List<Entry> getEntries() {
@@ -131,8 +122,6 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
     public static final class Entry implements EntryRef {
 
-        public static final Entry[] EMPTY_ARRAY = new Entry[0];
-
         private final int bci;
         private final int lineNumber;
 
@@ -161,7 +150,10 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
     private class ListWrapper extends AbstractList<Entry> {
         @Override
         public Entry get(int index) {
-            return new Entry(bciAt(index), lineAt(index));
+            if (index >= 0 && index < size()) {
+                return new Entry(bciAt(index), lineAt(index));
+            }
+            throw new IndexOutOfBoundsException("index " + index + " out of bounds for list of size " + length + ".");
         }
 
         @Override

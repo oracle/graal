@@ -1009,13 +1009,15 @@ public final class ClassfileParser {
         if (entryCount == 0) {
             return LineNumberTableAttribute.EMPTY;
         }
-        LineNumberTableAttribute.Entry[] entries = new LineNumberTableAttribute.Entry[entryCount];
+        char[] entries = new char[entryCount << 1];
         for (int i = 0; i < entryCount; i++) {
-            int bci = stream.readU2();
-            int lineNumber = stream.readU2();
-            entries[i] = new LineNumberTableAttribute.Entry(bci, lineNumber);
+            int idx = i << 1;
+            char bci = (char) stream.readU2();
+            char lineNumber = (char) stream.readU2();
+            entries[idx] = bci;
+            entries[idx + 1] = lineNumber;
         }
-        return new LineNumberTableAttribute(name, entries);
+        return new LineNumberTableAttribute(name, entries, entryCount);
     }
 
     private LocalVariableTable parseLocalVariableAttribute(Symbol<Name> name) {
