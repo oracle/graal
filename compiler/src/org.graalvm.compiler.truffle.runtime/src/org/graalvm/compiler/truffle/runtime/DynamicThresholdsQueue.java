@@ -76,6 +76,6 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
 
     private void scaleThresholds() {
         double slope = (1 - minScale) / normalLoad;
-        runtime.setCompilationThresholdScale(Math.min(1.0, slope * load() + minScale));
+        runtime.setCompilationThresholdScale(slope * load() + minScale);
     }
 }
