@@ -106,7 +106,7 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public void registerField(Class<?> type, String fieldName, boolean allowWrite, boolean allowUnsafeAccess) throws NoSuchFieldException {
+    public void registerField(Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
         registry.register(allowWrite, type.getDeclaredField(fieldName));
     }
 
