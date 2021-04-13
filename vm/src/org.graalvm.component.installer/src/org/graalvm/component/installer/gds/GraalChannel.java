@@ -294,11 +294,11 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
     String receiveEmailAddress() {
         String mail = input.optValue(GdsCommands.OPTION_EMAIL_ADDRESS);
         if (mail == null) {
-            fb.output("MSG_EmailAddressEntry");
-            fb.outputPart("PROMPT_EmailAddressEntry");
             if (prompted || fb.isNonInteractive()) {
                 return null;
             }
+            fb.output("MSG_EmailAddressEntry");
+            fb.outputPart("PROMPT_EmailAddressEntry");
             mail = fb.acceptLine(true);
             if (mail == Feedback.AUTO_YES) {
                 mail = null;
