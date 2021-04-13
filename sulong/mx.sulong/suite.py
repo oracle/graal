@@ -1244,16 +1244,15 @@ suite = {
     },
     "gcc_cpp" : {
       "subDir" : "tests/gcc",
-      "class" : "ExternalTestSuite",
+      "class" : "ExternalCMakeTestSuite",
       "testDir" : "gcc-5.2.0/gcc/testsuite",
       "fileExts" : [".cpp", ".C", ".cc"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0_OUT"],
+      "variants" : ["executable-O0"],
       "buildRef" : True,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
-        "SUITE_CXXFLAGS" : "-Wno-everything",
+      "cmakeConfig" : {
+        "CMAKE_CXX_FLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
