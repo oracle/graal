@@ -532,14 +532,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return iterateImpl(visitor, 0);
     }
 
-    private double scale = 1;
+    private volatile double compilationThresholdScale = 1.0;
 
-    public double scale() {
-        return scale;
+    public double compilationThresholdScale() {
+        return compilationThresholdScale;
     }
 
     void setCompilationThresholdScale(double scale) {
-        this.scale = scale;
+        this.compilationThresholdScale = scale;
     }
 
     private static final class FrameVisitor<T> implements InspectedFrameVisitor<T> {

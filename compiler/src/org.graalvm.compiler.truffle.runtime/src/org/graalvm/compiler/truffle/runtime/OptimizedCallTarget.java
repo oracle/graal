@@ -561,7 +561,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                          */
                         && !(getRootNode() instanceof OSRRootNode) //
                         && intCallCount >= engine.callThresholdInInterpreter //
-                        && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter * runtime().scale(); //
+                        && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter * runtime().compilationThresholdScale(); //
     }
 
     public final boolean shouldCompile() {
@@ -596,7 +596,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (!compilationFailed //
                         && !isSubmittedForCompilation()//
                         && firstTierCallCount >= engine.callThresholdInFirstTier //
-                        && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier * runtime().scale()) {
+                        && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier * runtime().compilationThresholdScale()) {
             return lastTierCompile();
         }
         return false;
