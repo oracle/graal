@@ -29,6 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
+
+import java.util.AbstractList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.UnaryOperator;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -142,15 +151,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMShouldPrintSt
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMToolchainNodeFactory;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-import java.util.AbstractList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.UnaryOperator;
-
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
-
 /**
  * If an intrinsic is defined for a function, then the intrinsic is used instead of doing a call to
  * native code. The intrinsic is also preferred over LLVM bitcode that is part of a Sulong-internal
@@ -194,18 +194,22 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         return factory.generate(Arrays.asList(arguments), nodeFactory, language, argTypes);
     }
 
-    private LLVMTypedIntrinsicFactory getFactory(String name) {
-        LLVMTypedIntrinsicFactory factory = getFactories().get(name);
+    protected static LLVMTypedIntrinsicFactory getFactoryDemangle(String name, Map<String, LLVMTypedIntrinsicFactory> factories) {
+        LLVMTypedIntrinsicFactory factory = factories.get(name);
         if (factory != null) {
             return factory;
         }
         String demangledName = DEMANGLER.demangle(name);
-        if (demangledName == null || (factory = getFactories().get(demangledName)) == null) {
+        if (demangledName == null || (factory = factories.get(demangledName)) == null) {
             return null;
         }
-        // add the demangled name to make subsequent lookups faster
-        add(name, factory);
+        // add the mangled name to make subsequent lookups faster
+        add(name, factory, factories);
         return factory;
+    }
+
+    protected LLVMTypedIntrinsicFactory getFactory(String name) {
+        return getFactoryDemangle(name, FACTORIES);
     }
 
     private RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
@@ -567,28 +571,32 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("__mulxc3", (args, nodeFactory) -> LLVMComplex80BitFloatMulNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
     }
 
-    private static void add(String name, LLVMTypedIntrinsicFactory factory) {
-        LLVMTypedIntrinsicFactory existing = FACTORIES.put(name, factory);
+    protected static void add(String name, LLVMTypedIntrinsicFactory factory, Map<String, LLVMTypedIntrinsicFactory> factories) {
+        LLVMTypedIntrinsicFactory existing = factories.put(name, factory);
         assert existing == null : "same intrinsic was added more than once";
     }
 
+    private static void add(String name, LLVMTypedIntrinsicFactory factory) {
+        add(name, factory, FACTORIES);
+    }
+
     private static void add(String name, LLVMIntrinsicFactory factory) {
-        add(name, (LLVMTypedIntrinsicFactory) factory);
+        add(name, factory, FACTORIES);
     }
 
     private static void add(String name1, String name2, LLVMIntrinsicFactory factory) {
-        add(name1, factory);
-        add(name2, factory);
+        add(name1, factory, FACTORIES);
+        add(name2, factory, FACTORIES);
     }
 
     private static void addFloatingPointMathFunction(String functionName, LLVMIntrinsicFactory factory) {
-        add(functionName, factory);
-        add(functionName + "f", factory);
-        add(functionName + "l", factory);
+        add(functionName, factory, FACTORIES);
+        add(functionName + "f", factory, FACTORIES);
+        add(functionName + "l", factory, FACTORIES);
     }
 
     private static void addIntegerMathFunction(String functionName, LLVMIntrinsicFactory factory) {
-        add(functionName, factory);
-        add("l" + functionName, factory);
+        add(functionName, factory, FACTORIES);
+        add("l" + functionName, factory, FACTORIES);
     }
 }
