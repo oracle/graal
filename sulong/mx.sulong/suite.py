@@ -988,12 +988,10 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.pthread.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O0"],
-      "buildEnv" : {
-        "SUITE_CFLAGS" : "-pthread",
-        "SUITE_LDFLAGS" : "-pthread",
-        "OS" : "<os>",
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O0"],
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-pthread",
       },
       "dependencies" : [
         "SULONG_TEST",
