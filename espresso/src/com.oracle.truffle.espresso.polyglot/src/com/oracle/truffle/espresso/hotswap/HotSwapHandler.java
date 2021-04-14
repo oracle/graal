@@ -57,6 +57,7 @@ final class HotSwapHandler {
     private final List<HotSwapAction> postHotSwapActions = Collections.synchronizedList(new ArrayList<>());
     private final Map<Class<?>, Boolean> staticInitializerHotSwap = new HashMap<>();
     private final Map<Class<?>, List<HotSwapAction>> staticReInitCallBacks = new HashMap<>();
+    private final ServiceWatcher serviceWatcher = new ServiceWatcher();
 
     private HotSwapHandler() {
     }
@@ -99,6 +100,10 @@ final class HotSwapHandler {
             }
             reInitCallbacks.add(callback);
         }
+    }
+
+    public void registerMetaInfServicesListener(Class<?> service, ClassLoader loader, HotSwapAction callback) {
+        serviceWatcher.addServiceWatcher(service, loader, callback);
     }
 
     @SuppressWarnings("unused")

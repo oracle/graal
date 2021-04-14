@@ -74,4 +74,10 @@ public final class EspressoHotSwap {
             handler.registerStaticClassInitHotSwap(klass, onChange, callback);
         }
     }
+
+    public static void registerMetaInfServicesListener(Class<?> serviceType, ClassLoader loader, HotSwapAction callback) {
+        if (handler != null) {
+            handler.registerMetaInfServicesListener(serviceType, loader, callback);
+        }
+    }
 }
