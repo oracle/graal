@@ -1014,10 +1014,9 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.libc.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O0_OUT", "plain_toolchain"],
-      "buildEnv" : {
-        "OS" : "<os>",
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["executable-O0", "toolchain-plain"],
+      "cmakeConfig" : {
         "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
         "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
       },
@@ -1029,16 +1028,16 @@ suite = {
       "os_arch" : {
         "darwin": {
           "<others>" : {
-            "buildEnv" : {
-              "SUITE_LDFLAGS" : "-lm",
-              "SUITE_CFLAGS" : "-Wno-deprecated-declarations",
+            "cmakeConfig" : {
+              "CMAKE_EXE_LINKER_FLAGS" : "-lm",
+              "CMAKE_C_FLAGS" : "-Wno-deprecated-declarations",
             },
           },
         },
         "<others>": {
           "<others>" : {
-            "buildEnv" : {
-              "SUITE_LDFLAGS" : "-lm -lrt",
+            "cmakeConfig" : {
+              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lrt",
             },
           },
         },
