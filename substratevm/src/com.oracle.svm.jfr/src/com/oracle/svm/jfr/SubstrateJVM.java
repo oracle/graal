@@ -229,6 +229,7 @@ class SubstrateJVM {
     }
 
     /** See {@link JVM#getClassId}. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getClassId(Class<?> clazz) {
         return typeRepo.getClassId(clazz);
     }

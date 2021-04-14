@@ -26,6 +26,7 @@ package com.oracle.svm.jfr;
 
 import java.io.IOException;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.jfr.traceid.JfrTraceIdLoadBarrier;
@@ -42,6 +43,7 @@ public class JfrTypeRepository implements JfrRepository {
         this.symbolRepo = symbolRepo;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getClassId(Class<?> clazz) {
         return JfrTraceId.load(clazz);
     }

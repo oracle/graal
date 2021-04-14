@@ -95,6 +95,7 @@ public class JfrTraceId {
         return traceid >>> TRACE_ID_SHIFT;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long load(Class<?> clazz) {
         return JfrTraceIdLoadBarrier.load(clazz);
     }
