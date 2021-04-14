@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -430,36 +429,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         Class<?> result = dispatch;
         if (result == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (isPrimitive()) {
-                result = BaseInterop.class;
-            } else if (isArray()) {
-                result = EspressoInterop.class;
+            if (getMeta().getContext().metaInitialized()) {
+                result = getMeta().resolveDispatch(this);
+                dispatch = result;
             } else {
-                if (getMeta().INTEROP_CLASSES == null) {
-                    // shortcut to not update the cache.
-                    return EspressoInterop.class;
+                /*
+                 * Meta is not fully initialized: return the generic interop, without updating the
+                 * dispatch cache. This is fine, as we are not expecting any meaningful interop
+                 * until context is fully initialized.
+                 */
+                if (isPrimitive()) {
+                    return BaseInterop.class;
                 }
-                exclusiveLoop: //
-                for (Pair<ObjectKlass, Class<?>>[] exclusive : getMeta().INTEROP_CLASSES) {
-                    for (Pair<ObjectKlass, Class<?>> pair : exclusive) {
-                        if (pair.getLeft().isAssignableFrom(this)) {
-                            if (result != null) {
-                                // Class implements multiple mutually exclusive interop classes.
-                                result = EspressoInterop.class;
-                                break exclusiveLoop;
-                            }
-                            result = pair.getRight();
-                            // Found a match. Keep going to check for mutual exclusivity.
-                            continue exclusiveLoop;
-                        }
-                    }
-                }
-                if (result == null) {
-                    // No match in known interop classes.
-                    result = EspressoInterop.class;
-                }
+                return EspressoInterop.class;
             }
-            dispatch = result;
         }
         return result;
     }

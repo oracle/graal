@@ -752,11 +752,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_time_ZoneId = StaticSymbols.putType("Ljava/time/ZoneId;");
 
         // List / Map / Iterator
+        public static final Symbol<Type> java_lang_Iterable = StaticSymbols.putType("Ljava/lang/Iterable;");
         public static final Symbol<Type> java_util_List = StaticSymbols.putType("Ljava/util/List;");
         public static final Symbol<Type> java_util_Map = StaticSymbols.putType("Ljava/util/Map;");
         public static final Symbol<Type> java_util_Iterator = StaticSymbols.putType("Ljava/util/Iterator;");
         public static final Symbol<Type> java_util_NoSuchElementException = StaticSymbols.putType("Ljava/util/NoSuchElementException;");
-        public static final Symbol<Type> java_util_Iterable = StaticSymbols.putType("Ljava/util/Iterable;");
         public static final Symbol<Type> java_util_Map_Entry = StaticSymbols.putType("Ljava/util/Map$Entry;");
         public static final Symbol<Type> java_util_Set = StaticSymbols.putType("Ljava/util/Set;");
 
