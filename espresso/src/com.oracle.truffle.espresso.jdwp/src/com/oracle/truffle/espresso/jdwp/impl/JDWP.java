@@ -2990,8 +2990,6 @@ final class JDWP {
             JDWPLogger.log("Internal Espresso error: %s", JDWPLogger.LogLevel.ALL, t);
             JDWPLogger.throwing(JDWPLogger.LogLevel.ALL, t);
             reply.errorCode(ErrorCodes.INTERNAL);
-            System.out.println("ERROR!");
-            t.printStackTrace();
         }
     }
 

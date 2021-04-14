@@ -719,7 +719,7 @@ public final class JDWPContextImpl implements JDWPContext {
                        // while rerunning class initializers
                        // in the guest, some anomalies are to
                        // be expected. Treat those as non-fatal
-                       // TODO - add logging
+                       JDWPLogger.log("Exception caught while re-running <clinit>", JDWPLogger.LogLevel.REDEFINE);
                    }
                }
             }
