@@ -1005,11 +1005,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return hasActiveHook.get();
     }
 
-    public MethodHook[] getMethodHooks() {
-        return hooks;
+    public synchronized MethodHook[] getMethodHooks() {
+        return Arrays.copyOf(hooks, hooks.length);
     }
 
-    public void addMethodHook(MethodHook info) {
+    public synchronized void addMethodHook(MethodHook info) {
         hasActiveHook.set(true);
         if (hooks.length == 0) {
             hooks = new MethodHook[]{info};
@@ -1020,13 +1020,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         hooks[hooks.length - 1] = info;
     }
 
-    public void removeActiveHook(int requestId) {
+    public synchronized void removeActiveHook(int requestId) {
         // shrink the array to avoid null values
         if (hooks.length == 0) {
             throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
         } else if (hooks.length == 1) {
-            hooks = new MethodHook[0];
-            hasActiveHook.set(false);
+            // make sure it's the right hook
+            if (hooks[0].getRequestId() == requestId) {
+                hooks = new MethodHook[0];
+                hasActiveHook.set(false);
+            }
         } else {
             int removeIndex = -1;
             for (int i = 0; i < hooks.length; i++) {
@@ -1043,13 +1046,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    public void removeActiveHook(MethodHook hook) {
+    public synchronized void removeActiveHook(MethodHook hook) {
         // shrink the array to avoid null values
         if (hooks.length == 0) {
             throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
         } else if (hooks.length == 1) {
-            hooks = new MethodHook[0];
-            hasActiveHook.set(false);
+            // make sure it's the right hook
+            if (hooks[0] == hook) {
+                hooks = new MethodHook[0];
+                hasActiveHook.set(false);
+            }
         } else {
             int removeIndex = -1;
             for (int i = 0; i < hooks.length; i++) {
