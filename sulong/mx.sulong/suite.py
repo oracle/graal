@@ -1337,16 +1337,16 @@ suite = {
     },
     "shootout" : {
       "subDir" : "tests/benchmarksgame",
-      "class" : "ExternalTestSuite",
+      "class" : "ExternalCMakeTestSuite",
       "testDir" : "benchmarksgame-2014-08-31/benchmarksgame/bench/",
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m", ".gcc", ".cint", ".gpp"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O1_OUT"],
+      "variants" : ["executable-O1"],
       "buildRef" : True,
-      "buildEnv" : {
-        "SUITE_LDFLAGS" : "-lm -lgmp",
-        "SUITE_CFLAGS" : "-Wno-everything",
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-Wno-everything",
+        "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
       },
       "dependencies" : [
         "SULONG_TEST",
