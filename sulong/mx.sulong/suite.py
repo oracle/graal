@@ -1266,7 +1266,7 @@ suite = {
     },
     "gcc_fortran" : {
       "subDir" : "tests/gcc",
-      "class" : "ExternalTestSuite",
+      "class" : "ExternalNinjaLegacyTestSuite",
       "testDir" : "gcc-5.2.0/gcc/testsuite",
       "fileExts" : [".f90", ".f", ".f03"],
       "requireDragonegg" : True,
@@ -1275,9 +1275,6 @@ suite = {
       "variants" : ["O0_OUT"],
       "single_job" : True, # problem with parallel builds and temporary module files
       "buildRef" : True,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
-      },
       "dependencies" : [
         "SULONG_TEST",
       ],
