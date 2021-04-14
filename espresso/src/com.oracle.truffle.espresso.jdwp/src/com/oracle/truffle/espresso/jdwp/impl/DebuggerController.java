@@ -534,6 +534,7 @@ public final class DebuggerController implements ContextsListener {
     @Override
     public void onLanguageContextInitialized(TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
         truffleContext = con;
+        context.setTruffleContext(con);
     }
 
     public void suspend(CallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs, SteppingInfo steppingInfo, boolean breakpointHit) {

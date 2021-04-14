@@ -33,6 +33,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.regex.Matcher;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
@@ -83,6 +84,7 @@ public final class JDWPContextImpl implements JDWPContext {
     private static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
 
     private final EspressoContext context;
+    private TruffleContext truffleContext;
     private final Ids<Object> ids;
     private JDWPSetup setup;
     private VMListener eventListener = new EmptyListener();
@@ -99,7 +101,6 @@ public final class JDWPContextImpl implements JDWPContext {
         this.innerClassRedefiner = new InnerClassRedefiner(context);
         this.redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
         this.classRedefinition = new ClassRedefinition(context, ids, redefinitionPluginHandler);
-        initializeReloaderThread();
     }
 
     public VMListener jdwpInit(TruffleLanguage.Env env, Object mainThread) {
@@ -706,22 +707,33 @@ public final class JDWPContextImpl implements JDWPContext {
         return hostThread == reloaderThread;
     }
 
+    @Override
+    public void setTruffleContext(TruffleContext con) {
+        this.truffleContext = con;
+    }
+
     private void initializeReloaderThread() {
         reloaderThread = new Thread(new Runnable() {
             @Override
             public void run() {
-               while (!reloaderThread.isInterrupted()) {
-                   try {
-                       queue.take().fire();
-                   } catch (InterruptedException e) {
-                       reloaderThread.interrupt();
-                   } catch (Throwable t) {
-                       // while rerunning class initializers
-                       // in the guest, some anomalies are to
-                       // be expected. Treat those as non-fatal
-                       JDWPLogger.log("Exception caught while re-running <clinit>", JDWPLogger.LogLevel.REDEFINE);
-                   }
-               }
+                Object prev = null;
+                try {
+                    prev = truffleContext.enter(null);
+                    while (!reloaderThread.isInterrupted()) {
+                        try {
+                            queue.take().fire();
+                        } catch (InterruptedException e) {
+                            reloaderThread.interrupt();
+                        } catch (Throwable t) {
+                            // while rerunning class initializers
+                            // in the guest, some anomalies are to
+                            // be expected. Treat those as non-fatal
+                            JDWPLogger.log("Exception caught while re-running <clinit>", JDWPLogger.LogLevel.REDEFINE);
+                        }
+                    }
+                } finally {
+                    truffleContext.leave(null, prev);
+                }
             }
         }, "reloader");
         reloaderThread.start();
@@ -731,25 +743,17 @@ public final class JDWPContextImpl implements JDWPContext {
         queue.add(new ReloadingAction(oldKlass));
     }
 
-    public void ensureReloadingDone() {
-        while (!queue.isEmpty()) {
-            // poll at intervals
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-               Thread.currentThread().interrupt();
-            }
-        }
-    }
-
     @Override
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
+        if (reloaderThread == null) {
+            initializeReloaderThread();
+        }
+        List<ObjectKlass> changedKlasses = new ArrayList<>(redefineInfos.size());
         try {
             // begin redefine transaction
             ClassRedefinition.begin();
 
             // list to collect all changed classes
-            List<ObjectKlass> changedKlasses = new ArrayList<>(redefineInfos.size());
 
             // redefine classes based on direct code changes first
             doRedefine(redefineInfos, changedKlasses);
@@ -760,13 +764,16 @@ public final class JDWPContextImpl implements JDWPContext {
             classRedefinition.addExtraReloadClasses(redefineInfos, additional);
             // redefine additional classes now
             doRedefine(additional, changedKlasses);
-
-            // run post redefinition plugins
-            classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {
             ClassRedefinition.end();
+        }
+        // run post redefinition plugins
+        try {
+            classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
+        } catch (Throwable t) {
+            JDWPLogger.throwing(JDWPLogger.LogLevel.REDEFINE, t);
         }
         return 0;
     }

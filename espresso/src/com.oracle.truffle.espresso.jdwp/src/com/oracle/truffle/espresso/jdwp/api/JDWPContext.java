@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.jdwp.api;
 import java.nio.file.Path;
 import java.util.List;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
@@ -491,5 +492,19 @@ public interface JDWPContext {
      */
     Node getInstrumentableNode(Node node);
 
+    /**
+     * Determines if hostThread is a VM internal thread.
+     *
+     * @param hostThread the thread
+     * @return true if hostThread is a VM internal thread
+     */
     boolean isSystemThread(Thread hostThread);
+
+    /**
+     * Sets the Truffle context.
+     *
+     * @param con the Truffle context.
+     */
+    void setTruffleContext(TruffleContext con);
+
 }
