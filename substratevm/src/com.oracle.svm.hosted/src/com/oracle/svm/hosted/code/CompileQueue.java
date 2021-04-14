@@ -185,7 +185,7 @@ public class CompileQueue {
     protected final HostedUniverse universe;
     private final Boolean deoptimizeAll;
     protected CompletionExecutor executor;
-    private final ConcurrentMap<HostedMethod, CompileTask> compilations;
+    protected final ConcurrentMap<HostedMethod, CompileTask> compilations;
     protected final RuntimeConfiguration runtimeConfig;
     private Suites regularSuites = null;
     private Suites deoptTargetSuites = null;
@@ -285,6 +285,10 @@ public class CompileQueue {
         @Override
         public Description getDescription() {
             return new Description(method, compilationIdentifier.toString(Verbosity.ID));
+        }
+
+        public CompileReason getReason() {
+            return reason;
         }
     }
 
@@ -699,18 +703,25 @@ public class CompileQueue {
 
     protected void compileAll() throws InterruptedException {
         executor.init();
-        universe.getMethods().stream()
-                        .filter(method -> method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method))
-                        .forEach(method -> ensureCompiled(method, new EntryPointReason()));
+        scheduleEntryPoints();
+        executor.start();
+        executor.complete();
+        executor.shutdown();
+    }
 
+    public void scheduleEntryPoints() {
+        universe.getMethods().stream()
+                        .filter(method -> !ignoreEntryPoint(method) && (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method)))
+                        .forEach(method -> ensureCompiled(method, new EntryPointReason()));
         universe.getMethods().stream()
                         .map(method -> method.compilationInfo.getDeoptTargetMethod())
                         .filter(deoptTargetMethod -> deoptTargetMethod != null)
                         .forEach(deoptTargetMethod -> ensureCompiled(deoptTargetMethod, new EntryPointReason()));
+    }
 
-        executor.start();
-        executor.complete();
-        executor.shutdown();
+    @SuppressWarnings("unused")
+    protected boolean ignoreEntryPoint(HostedMethod method) {
+        return false;
     }
 
     protected void ensureParsed(HostedMethod method, CompileReason reason) {
@@ -1167,19 +1178,7 @@ public class CompileQueue {
                 if (method.compilationInfo.isDeoptTarget()) {
                     assert verifyDeoptTarget(method, result);
                 }
-                for (Infopoint infopoint : result.getInfopoints()) {
-                    if (infopoint instanceof Call) {
-                        Call call = (Call) infopoint;
-                        HostedMethod callTarget = (HostedMethod) call.target;
-                        if (call.direct) {
-                            ensureCompiled(callTarget, new DirectCallReason(method, reason));
-                        } else if (callTarget != null && callTarget.getImplementations() != null) {
-                            for (HostedMethod impl : callTarget.getImplementations()) {
-                                ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
-                            }
-                        }
-                    }
-                }
+                ensureCalleesCompiled(method, reason, result);
 
                 /* Shrink resulting code array to minimum size, to reduze memory footprint. */
                 if (result.getTargetCode().length > result.getTargetCodeSize()) {
@@ -1192,6 +1191,22 @@ public class CompileQueue {
             GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
             error.addContext("method: " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
             throw error;
+        }
+    }
+
+    protected void ensureCalleesCompiled(HostedMethod method, CompileReason reason, CompilationResult result) {
+        for (Infopoint infopoint : result.getInfopoints()) {
+            if (infopoint instanceof Call) {
+                Call call = (Call) infopoint;
+                HostedMethod callTarget = (HostedMethod) call.target;
+                if (call.direct) {
+                    ensureCompiled(callTarget, new DirectCallReason(method, reason));
+                } else if (callTarget != null && callTarget.getImplementations() != null) {
+                    for (HostedMethod impl : callTarget.getImplementations()) {
+                        ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
+                    }
+                }
+            }
         }
     }
 
@@ -1373,5 +1388,9 @@ public class CompileQueue {
             result.put(entry.getKey(), entry.getValue().result);
         }
         return result;
+    }
+
+    public Suites getRegularSuites() {
+        return regularSuites;
     }
 }
