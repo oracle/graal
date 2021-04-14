@@ -1045,11 +1045,8 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.inlineasm.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O0"],
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
-      },
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O0"],
       "buildDependencies" : [
         "LINUX_AMD64_SUPPORT",
       ],
@@ -1058,11 +1055,11 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.standalone.other.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O1"],
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O1"],
       "buildRef" : False,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -lm",
+      "cmakeConfig" : {
+        "CMAKE_EXE_LINKER_FLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",
