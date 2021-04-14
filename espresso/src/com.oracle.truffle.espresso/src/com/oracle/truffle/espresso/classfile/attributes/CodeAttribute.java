@@ -48,9 +48,6 @@ public final class CodeAttribute extends Attribute {
     private final int maxLocals;
 
     @CompilationFinal(dimensions = 1) //
-    private volatile byte[] code = null;
-
-    @CompilationFinal(dimensions = 1) //
     private final byte[] originalCode; // no bytecode patching
 
     @CompilationFinal(dimensions = 1) //
@@ -84,18 +81,6 @@ public final class CodeAttribute extends Attribute {
 
     public Attribute[] getAttributes() {
         return attributes;
-    }
-
-    public byte[] getCode() {
-        if (code == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                if (code == null) {
-                    code = Arrays.copyOf(originalCode, originalCode.length);
-                }
-            }
-        }
-        return code;
     }
 
     public byte[] getOriginalCode() {
@@ -158,11 +143,11 @@ public final class CodeAttribute extends Attribute {
         return majorVersion;
     }
 
-    public CodeAttribute forceSplit() {
+    public CodeAttribute forceSplit(byte[] code) {
         return new CodeAttribute(getName(), maxStack, maxLocals, code.clone(), exceptionHandlerEntries, attributes, majorVersion);
     }
 
-    public void print(Klass klass, PrintStream out) {
+    public void print(Klass klass, byte[] code, PrintStream out) {
         try {
             new BytecodeStream(code).printBytecode(klass, out);
             out.println("\n");

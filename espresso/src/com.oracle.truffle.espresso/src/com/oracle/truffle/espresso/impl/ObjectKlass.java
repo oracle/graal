@@ -1100,7 +1100,9 @@ public final class ObjectKlass extends Klass {
         for (int i = 0; i < superInterfaces.length; i++) {
             interfaces[i] = superInterfaces[i].getLinkedKlass();
         }
-        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
+
+        LinkedKlass linkedKlass = getContext().getCache().getOrCreateLinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
+        //LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
 
         // fields
         if (!change.getOuterFields().isEmpty()) {
