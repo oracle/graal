@@ -66,6 +66,7 @@ public class JfrTraceIdMap {
         return traceIDs[index];
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setId(Class<?> clazz, long id) {
         traceIDs[getIndex(clazz)] = id;
     }
