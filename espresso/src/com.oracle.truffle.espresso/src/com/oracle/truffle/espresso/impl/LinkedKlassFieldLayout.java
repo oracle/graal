@@ -45,7 +45,7 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass redefinedKlass) {
+    LinkedKlassFieldLayout(ParserKlass parserKlass, LinkedKlass superKlass) {
         StaticShapeBuilder instanceBuilder = StaticShape.newBuilder();
         StaticShapeBuilder staticBuilder = StaticShape.newBuilder();
 
@@ -77,14 +77,7 @@ final class LinkedKlassFieldLayout {
         if (superKlass == null) {
             instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
         } else {
-            if (redefinedKlass == null) {
-                instanceShape = instanceBuilder.build(superKlass.getShape(false));
-            } else {
-                // The redefining klass is a subshape of the redefined klass.
-                // This allows shape checks on field accesses using the old StaticProperty
-                // instances, but it might not work if the redefined shape has other subshapes.
-                instanceShape = instanceBuilder.build(redefinedKlass.getShape(false));
-            }
+            instanceShape = instanceBuilder.build(superKlass.getShape(false));
         }
         staticShape = staticBuilder.build(StaticObject.class, StaticObjectFactory.class);
         fieldTableLength = nextInstanceFieldSlot;
