@@ -774,9 +774,13 @@ suite = {
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O1", "O0", "O0_MEM2REG"],
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O1", "bitcode-O0", "bitcode-O0-MEM2REG"],
       "buildRef" : False,
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-Wno-bitfield-constant-conversion",
+        "CMAKE_CXX_FLAGS" : "-Wno-bitfield-constant-conversion",
+      },
       "buildEnv" : {
         "SUITE_CFLAGS" : "-g -Wno-unused-variable -Wno-bitfield-constant-conversion",
         "SUITE_CXXFLAGS" : "-g -Wno-unused-variable -Wno-bitfield-constant-conversion",
