@@ -767,6 +767,9 @@ suite = {
         "org.graalvm.compiler.replacements.test",
       ],
       "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
         ],

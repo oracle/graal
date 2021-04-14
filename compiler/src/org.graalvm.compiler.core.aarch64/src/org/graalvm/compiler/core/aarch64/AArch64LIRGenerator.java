@@ -55,6 +55,8 @@ import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackSyncOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Compare;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
@@ -640,6 +642,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AArch64PauseOp());
+    }
+
+    @Override
+    public void emitCacheWriteback(Value address) {
+        append(new AArch64CacheWritebackOp(asAddressValue(address)));
+    }
+
+    @Override
+    public void emitCacheWritebackSync(boolean isPreSync) {
+        append(new AArch64CacheWritebackSyncOp(isPreSync));
     }
 
     public abstract void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args);

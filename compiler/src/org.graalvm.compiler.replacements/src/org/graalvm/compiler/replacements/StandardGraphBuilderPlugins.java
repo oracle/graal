@@ -98,6 +98,8 @@ import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BoxNode.TrustedBoxedValue;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.extended.CacheWritebackNode;
+import org.graalvm.compiler.nodes.extended.CacheWritebackSyncNode;
 import org.graalvm.compiler.nodes.extended.ClassIsArrayNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -172,8 +174,14 @@ import sun.misc.Unsafe;
  */
 public class StandardGraphBuilderPlugins {
 
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, Replacements replacements,
-                    boolean allowDeoptimization, boolean explicitUnsafeNullChecks, boolean arrayEqualsSubstitution, LoweringProvider lowerer) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess,
+                    SnippetReflectionProvider snippetReflection,
+                    InvocationPlugins plugins,
+                    Replacements replacements,
+                    boolean allowDeoptimization,
+                    boolean explicitUnsafeNullChecks,
+                    boolean arrayEqualsSubstitution,
+                    LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
@@ -512,6 +520,14 @@ public class StandardGraphBuilderPlugins {
 
         if (!sunMiscUnsafe) {
             r.register2("getUncompressedObject", Receiver.class, long.class, new UnsafeGetPlugin(JavaKind.Object, explicitUnsafeNullChecks));
+
+            if (JavaVersionUtil.JAVA_SPEC >= 14) {
+                // These methods are only called if UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE != 0
+                // which implies that the current processor and OS supports writeback to memory.
+                r.register2("writeback0", Receiver.class, long.class, new CacheWritebackPlugin(false));
+                r.register1("writebackPreSync0", Receiver.class, new CacheWritebackPlugin(true));
+                r.register1("writebackPostSync0", Receiver.class, new CacheWritebackPlugin(false));
+            }
         }
     }
 
@@ -1286,6 +1302,30 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             b.add(new MembarNode(barriers));
+            return true;
+        }
+    }
+
+    public static final class CacheWritebackPlugin implements InvocationPlugin {
+        final boolean isPreSync;
+
+        public CacheWritebackPlugin(boolean isPreSync) {
+            this.isPreSync = isPreSync;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address) {
+            // Emits a null-check for the otherwise unused receiver
+            unsafe.get();
+            b.add(new CacheWritebackNode(address));
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe) {
+            // Emits a null-check for the otherwise unused receiver
+            unsafe.get();
+            b.add(new CacheWritebackSyncNode(isPreSync));
             return true;
         }
     }

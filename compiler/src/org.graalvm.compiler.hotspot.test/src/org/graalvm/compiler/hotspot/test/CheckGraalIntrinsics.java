@@ -380,10 +380,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "java/lang/Math.min(DD)D",
                                 "java/lang/Math.min(FF)F");
             }
-            add(toBeInvestigated,
-                            "jdk/internal/misc/Unsafe.writeback0(J)V",
-                            "jdk/internal/misc/Unsafe.writebackPostSync0()V",
-                            "jdk/internal/misc/Unsafe.writebackPreSync0()V");
         }
 
         if (isJDK14OrHigher()) {
