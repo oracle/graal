@@ -1290,17 +1290,16 @@ suite = {
     },
     "parserTorture" : {
       "subDir" : "tests/gcc",
-      "class" : "ExternalTestSuite",
+      "class" : "ExternalCMakeTestSuite",
       "testDir" : "gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile",
       "configDir" : "configs/gcc.c-torture/compile",
       "fileExts" : [".c"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
+      "variants" : ["bitcode-O0"],
       "buildRef" : False,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
-        "SUITE_CFLAGS" : "-Wno-everything",
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
