@@ -305,6 +305,7 @@ public final class ClassRegistries {
         this.classLoadListener = listener;
     }
 
+    @TruffleBoundary
     public void onKlassDefined(ObjectKlass klass) {
         if (classLoadListener != null) {
             classLoadListener.onClassLoad(klass);
