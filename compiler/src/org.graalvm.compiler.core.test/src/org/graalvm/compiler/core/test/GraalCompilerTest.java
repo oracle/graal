@@ -843,6 +843,20 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    protected final Result test(OptionValues options, Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
+        try {
+            ResolvedJavaMethod method = getResolvedJavaMethod(name);
+            Object receiver = method.isStatic() ? null : this;
+            Result expect = executeExpected(method, receiver, args);
+            testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
+            return expect;
+        } catch (AssumptionViolatedException e) {
+            // Suppress so that subsequent calls to this method within the
+            // same Junit @Test annotated method can proceed.
+            return null;
+        }
+    }
+
     /**
      * Type denoting a lambda that supplies a fresh value each time it is called. This is useful
      * when supplying an argument to {@link GraalCompilerTest#test(String, Object...)} where the
