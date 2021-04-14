@@ -971,12 +971,11 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.sulongavx.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O1", "O2", "O3"],
-      "buildEnv" : {
-        "SUITE_CFLAGS" : "-mavx2",
-        "SUITE_LDFLAGS" : "-lm",
-        "OS" : "<os>",
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O1", "bitcode-O2", "bitcode-O3"],
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-mavx2",
+        "CMAKE_EXE_LINKER_FLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",
