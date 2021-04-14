@@ -58,7 +58,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilabl
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callOnCompilationFailed;
 import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
 import static org.graalvm.libgraal.jni.JNILibGraalScope.scope;
-import static org.graalvm.libgraal.jni.JNIUtil.createString;
+import static org.graalvm.nativebridge.jni.JNIUtil.createString;
 
 import java.util.function.Supplier;
 
@@ -70,12 +70,12 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.HSObject;
-import org.graalvm.libgraal.jni.JNI.JNIEnv;
-import org.graalvm.libgraal.jni.JNI.JObject;
-import org.graalvm.libgraal.jni.JNI.JObjectArray;
-import org.graalvm.libgraal.jni.JNI.JString;
+import org.graalvm.nativebridge.jni.JNI.JNIEnv;
+import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNI.JObjectArray;
+import org.graalvm.nativebridge.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNILibGraalScope;
-import org.graalvm.libgraal.jni.JNIUtil;
+import org.graalvm.nativebridge.jni.JNIUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -93,22 +93,22 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     private Long cachedFailedSpeculationsAddress;
 
     /**
-     * Creates a new {@link HSCompilableTruffleAST} holding the JNI {@code JObject} by a global
-     * reference.
+     * Creates a new {@link HSCompilableTruffleAST} holding the org.graalvm.nativebridge.jni.JNI
+     * {@code JObject} by a global reference.
      *
      * @param env the JNIEnv
-     * @param handle the JNI object reference
+     * @param handle the org.graalvm.nativebridge.jni.JNI object reference
      */
     HSCompilableTruffleAST(JNIEnv env, JObject handle) {
         super(env, handle);
     }
 
     /**
-     * Creates a new {@link HSCompilableTruffleAST} holding the JNI {@code JObject} by a local
-     * reference.
+     * Creates a new {@link HSCompilableTruffleAST} holding the org.graalvm.nativebridge.jni.JNI
+     * {@code JObject} by a local reference.
      *
      * @param scope the owning scope
-     * @param handle the JNI object reference
+     * @param handle the org.graalvm.nativebridge.jni.JNI object reference
      */
     HSCompilableTruffleAST(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
         super(scope, handle);

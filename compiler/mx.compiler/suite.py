@@ -425,11 +425,26 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.nativebridge.jni" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "org.graalvm.compiler.serviceprovider",
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.libgraal.jni" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
+        "org.graalvm.nativebridge.jni",
         "org.graalvm.libgraal.jni.annotation",
         "sdk:GRAAL_SDK",
       ],

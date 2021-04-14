@@ -24,8 +24,8 @@
  */
 package org.graalvm.libgraal.jni;
 
-import static org.graalvm.libgraal.jni.JNIUtil.DeleteGlobalRef;
-import static org.graalvm.libgraal.jni.JNIUtil.NewGlobalRef;
+import static org.graalvm.nativebridge.jni.JNIUtil.DeleteGlobalRef;
+import static org.graalvm.nativebridge.jni.JNIUtil.NewGlobalRef;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
@@ -34,19 +34,21 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.libgraal.jni.JNI.JNIEnv;
-import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNI.JNIEnv;
+import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNIUtil;
 import org.graalvm.word.WordFactory;
 
 /**
- * Encapsulates a JNI handle to an object in the HotSpot heap. Depending on which constructor is
- * used, the handle is either local to a {@link JNILibGraalScope} and thus invalid once the scope
- * exits or a global JNI handle that is only released sometime after the {@link HSObject} dies.
+ * Encapsulates a org.graalvm.nativebridge.jni.JNI handle to an object in the HotSpot heap.
+ * Depending on which constructor is used, the handle is either local to a {@link JNILibGraalScope}
+ * and thus invalid once the scope exits or a global org.graalvm.nativebridge.jni.JNI handle that is
+ * only released sometime after the {@link HSObject} dies.
  */
 public abstract class HSObject {
 
     /**
-     * JNI handle to the HotSpot object.
+     * org.graalvm.nativebridge.jni.JNI handle to the HotSpot object.
      */
     private final JObject handle;
 
@@ -116,7 +118,7 @@ public abstract class HSObject {
 
     public JObject getHandle() {
         if (next == this) {
-            throw new IllegalArgumentException("Reclaimed JNI reference: " + this);
+            throw new IllegalArgumentException("Reclaimed org.graalvm.nativebridge.jni.JNI reference: " + this);
         }
         return handle;
     }
@@ -148,7 +150,7 @@ public abstract class HSObject {
         for (Cleaner cleaner : CLEANERS) {
             synchronized (cleaner) {
                 if (cleaner.handle.isNonNull() && JNIUtil.IsSameObject(env, handle, cleaner.handle)) {
-                    throw new IllegalArgumentException("Global JNI handle already exists for object referenced by " + handle.rawValue());
+                    throw new IllegalArgumentException("Global org.graalvm.nativebridge.jni.JNI handle already exists for object referenced by " + handle.rawValue());
                 }
             }
         }

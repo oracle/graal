@@ -39,8 +39,8 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.libgraal.jni.HSObject;
 import org.graalvm.libgraal.jni.JNILibGraalScope;
-import org.graalvm.libgraal.jni.JNI.JObject;
-import org.graalvm.libgraal.jni.JNIUtil;
+import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNIUtil;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 

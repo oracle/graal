@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.libgraal.jni;
+package org.graalvm.nativebridge.jni;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -86,7 +86,7 @@ public final class JNI {
     }
 
     /**
-     * Access to the {@code jvalue} JNI union.
+     * Access to the {@code jvalue} org.graalvm.nativebridge.jni.JNI union.
      *
      * <pre>
      * typedef union jvalue {

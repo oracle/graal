@@ -33,7 +33,7 @@ import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.libgraal.jni.JNILibGraalScope;
-import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNI.JObject;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 

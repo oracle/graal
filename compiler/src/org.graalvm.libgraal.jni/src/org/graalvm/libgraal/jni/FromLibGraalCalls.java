@@ -24,13 +24,13 @@
  */
 package org.graalvm.libgraal.jni;
 
-import static org.graalvm.libgraal.jni.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
+import static org.graalvm.nativebridge.jni.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
 
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
-import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
-import static org.graalvm.libgraal.jni.JNIUtil.NewGlobalRef;
-import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
-import static org.graalvm.libgraal.jni.JNIUtil.trace;
+import static org.graalvm.nativebridge.jni.JNIUtil.GetStaticMethodID;
+import static org.graalvm.nativebridge.jni.JNIUtil.NewGlobalRef;
+import static org.graalvm.nativebridge.jni.JNIUtil.getBinaryName;
+import static org.graalvm.nativebridge.jni.JNIUtil.trace;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 import java.lang.annotation.ElementType;
@@ -46,26 +46,21 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.libgraal.jni.JNI.JClass;
-import org.graalvm.libgraal.jni.JNI.JMethodID;
-import org.graalvm.libgraal.jni.JNI.JNIEnv;
-import org.graalvm.libgraal.jni.JNI.JObject;
-import org.graalvm.libgraal.jni.JNI.JValue;
+import org.graalvm.nativebridge.jni.JNI;
+import org.graalvm.nativebridge.jni.JNI.JClass;
+import org.graalvm.nativebridge.jni.JNI.JMethodID;
+import org.graalvm.nativebridge.jni.JNI.JNIEnv;
+import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNI.JValue;
+import org.graalvm.nativebridge.jni.JNIUtil;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 /**
- * Helpers for calling methods in HotSpot heap via JNI.
+ * Helpers for calling methods in HotSpot heap via org.graalvm.nativebridge.jni.JNI.
  */
 public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
 
     private static final Map<String, JNIClass> classes = new ConcurrentHashMap<>();
-    /**
-     * Prevents recursion when an exception happens in {@link #getJNIClass} or {@link #getJNIMethod}
-     * called from
-     * {@link JNIExceptionWrapper#wrapAndThrowPendingJNIException(org.graalvm.libgraal.jni.JNI.JNIEnv, java.lang.Class...)}
-     * .
-     */
-    private static final ThreadLocal<Boolean> inExceptionHandler = new ThreadLocal<>();
 
     private final EnumMap<T, JNIMethod<T>> methods;
     private volatile JClass peer;
@@ -80,7 +75,8 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     protected abstract JClass resolvePeer(JNIEnv env);
 
     /**
-     * Describes a class and holds a reference to its {@linkplain #jclass JNI value}.
+     * Describes a class and holds a reference to its {@linkplain #jclass
+     * org.graalvm.nativebridge.jni.JNI value}.
      */
     static final class JNIClass {
         final String className;
@@ -93,7 +89,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     }
 
     /**
-     * Describes a method in {@link #peer(org.graalvm.libgraal.jni.JNI.JNIEnv) HotSpot peer class}.
+     * Describes a method in {@link #peer(JNI.JNIEnv) HotSpot peer class}.
      */
     static final class JNIMethod<T extends Enum<T> & FromLibGraalId> {
         final T hcId;
@@ -188,14 +184,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
                 }
             });
         } catch (InternalError ie) {
-            if (inExceptionHandler.get() != Boolean.TRUE) {
-                inExceptionHandler.set(true);
-                try {
-                    wrapAndThrowPendingJNIException(env);
-                } finally {
-                    inExceptionHandler.remove();
-                }
-            }
+            wrapAndThrowPendingJNIException(env);
             throw ie;
         }
     }
@@ -218,14 +207,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
                 }
             });
         } catch (InternalError ie) {
-            if (inExceptionHandler.get() != Boolean.TRUE) {
-                inExceptionHandler.set(true);
-                try {
-                    wrapAndThrowPendingJNIException(env);
-                } finally {
-                    inExceptionHandler.remove();
-                }
-            }
+            wrapAndThrowPendingJNIException(env);
             throw ie;
         }
     }

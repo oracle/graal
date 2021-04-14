@@ -30,7 +30,7 @@ import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFro
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callGetFactory;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callSignalRegistrationRequest;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callUnregister;
-import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
+import static org.graalvm.nativebridge.jni.JNIUtil.getBinaryName;
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.DataInputStream;
@@ -56,9 +56,9 @@ import org.graalvm.compiler.hotspot.management.LibGraalMBean;
 import org.graalvm.compiler.hotspot.management.JMXFromLibGraalEntryPoints;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.libgraal.jni.JNI;
-import org.graalvm.libgraal.jni.JNIExceptionWrapper;
-import org.graalvm.libgraal.jni.JNIUtil;
+import org.graalvm.nativebridge.jni.JNI;
+import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
+import org.graalvm.nativebridge.jni.JNIUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -83,7 +83,7 @@ class MBeanProxy<T extends DynamicMBean> {
         getCurrentJavaThreadMethod = m;
     }
 
-    // Classes defined in HotSpot heap by JNI.
+    // Classes defined in HotSpot heap by org.graalvm.nativebridge.jni.JNI.
     private static final ClassData HS_BEAN_CLASS = ClassData.create(LibGraalMBean.class);
     private static final ClassData HS_BEAN_FACTORY_CLASS = ClassData.create(Factory.class);
     private static final ClassData HS_CALLS_CLASS = ClassData.create(JMXToLibGraalCalls.class);
@@ -98,7 +98,7 @@ class MBeanProxy<T extends DynamicMBean> {
      */
     private static Queue<MBeanProxy<?>> registrations = new ArrayDeque<>();
 
-    // JNI Globals
+    // org.graalvm.nativebridge.jni.JNI Globals
     private static JNI.JClass fromLibGraalEntryPoints;
 
     /**
@@ -309,7 +309,7 @@ class MBeanProxy<T extends DynamicMBean> {
     }
 
     /**
-     * Uses JNI to define the classes in HotSpot heap.
+     * Uses org.graalvm.nativebridge.jni.JNI to define the classes in HotSpot heap.
      */
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
         Pointer barrier = getDefineClassesStatePointer();
@@ -370,7 +370,7 @@ class MBeanProxy<T extends DynamicMBean> {
     }
 
     /**
-     * Defines a class in HotSpot heap using JNI.
+     * Defines a class in HotSpot heap using org.graalvm.nativebridge.jni.JNI.
      *
      * @param env the {@code JNIEnv}
      * @param classLoader the class loader to define class in.
