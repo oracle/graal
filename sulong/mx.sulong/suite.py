@@ -1360,15 +1360,15 @@ suite = {
     },
     "nwcc" : {
       "subDir" : "tests/nwcc",
-      "class" : "ExternalTestSuite",
+      "class" : "ExternalCMakeTestSuite",
       "testDir" : "nwcc_0.8.3",
       "fileExts" : [".c"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
+      "variants" : ["bitcode-O0"],
       "buildRef" : True,
-      "buildEnv" : {
-        "SUITE_CFLAGS" : "-Wno-everything",
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
