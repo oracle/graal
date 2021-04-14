@@ -55,11 +55,22 @@ public final class DataSection implements Iterable<Data> {
         private DataSectionReference ref;
 
         protected Data(int alignment, int size) {
-            this.alignment = alignment;
+            this.alignment = getAdjustedDataAlignment(alignment);
             this.size = size;
 
             // initialized in DataSection.insertData(Data)
             ref = null;
+        }
+
+        /**
+         * Calculates the data alignment (in bytes) that is possible for the given required
+         * alignment.
+         *
+         * @param requiredAlignment The required alignment of the current data (in bytes)
+         * @return the alignment that is possible for the required value
+         */
+        protected int getAdjustedDataAlignment(int requiredAlignment) {
+            return requiredAlignment;
         }
 
         protected abstract void emit(ByteBuffer buffer, Patches patches);
@@ -68,7 +79,7 @@ public final class DataSection implements Iterable<Data> {
             if (newAlignment == alignment) {
                 return;
             }
-            alignment = lcm(alignment, newAlignment);
+            alignment = lcm(alignment, getAdjustedDataAlignment(newAlignment));
         }
 
         public int getAlignment() {
@@ -106,7 +117,7 @@ public final class DataSection implements Iterable<Data> {
         }
     }
 
-    public static final class RawData extends Data {
+    public static class RawData extends Data {
 
         private final byte[] data;
 
@@ -121,13 +132,9 @@ public final class DataSection implements Iterable<Data> {
         }
     }
 
-    public static final class SerializableData extends Data {
+    public static class SerializableData extends Data {
 
         private final SerializableConstant constant;
-
-        public SerializableData(SerializableConstant constant) {
-            this(constant, 1);
-        }
 
         public SerializableData(SerializableConstant constant, int alignment) {
             super(alignment, constant.getSerializedSize());
@@ -158,47 +165,8 @@ public final class DataSection implements Iterable<Data> {
 
     public static class ZeroData extends Data {
 
-        protected ZeroData(int alignment, int size) {
+        public ZeroData(int alignment, int size) {
             super(alignment, size);
-        }
-
-        public static ZeroData create(int alignment, int size) {
-            switch (size) {
-                case 1:
-                    return new ZeroData(alignment, size) {
-                        @Override
-                        protected void emit(ByteBuffer buffer, Patches patches) {
-                            buffer.put((byte) 0);
-                        }
-                    };
-
-                case 2:
-                    return new ZeroData(alignment, size) {
-                        @Override
-                        protected void emit(ByteBuffer buffer, Patches patches) {
-                            buffer.putShort((short) 0);
-                        }
-                    };
-
-                case 4:
-                    return new ZeroData(alignment, size) {
-                        @Override
-                        protected void emit(ByteBuffer buffer, Patches patches) {
-                            buffer.putInt(0);
-                        }
-                    };
-
-                case 8:
-                    return new ZeroData(alignment, size) {
-                        @Override
-                        protected void emit(ByteBuffer buffer, Patches patches) {
-                            buffer.putLong(0);
-                        }
-                    };
-
-                default:
-                    return new ZeroData(alignment, size);
-            }
         }
 
         @Override
@@ -215,24 +183,13 @@ public final class DataSection implements Iterable<Data> {
         }
     }
 
-    public static final class PackedData extends Data {
+    public static class PackedData extends Data {
 
         private final Data[] nested;
 
-        private PackedData(int alignment, int size, Data[] nested) {
+        public PackedData(int alignment, int size, Data[] nested) {
             super(alignment, size);
             this.nested = nested;
-        }
-
-        public static PackedData create(Data[] nested) {
-            int size = 0;
-            int alignment = 1;
-            for (int i = 0; i < nested.length; i++) {
-                assert size % nested[i].getAlignment() == 0 : "invalid alignment in packed constants";
-                alignment = DataSection.lcm(alignment, nested[i].getAlignment());
-                size += nested[i].getSize();
-            }
-            return new PackedData(alignment, size, nested);
         }
 
         @Override
@@ -433,7 +390,7 @@ public final class DataSection implements Iterable<Data> {
         return dataItems.iterator();
     }
 
-    private static int lcm(int x, int y) {
+    public static int lcm(int x, int y) {
         if (x == 0) {
             return y;
         } else if (y == 0) {
