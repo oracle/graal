@@ -50,11 +50,11 @@ public class InteropKlassesDispatch {
      * {@link com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop}.
      */
     @CompilerDirectives.CompilationFinal(dimensions = 2) //
-    private final Pair<ObjectKlass, Class<?>>[][] INTEROP_CLASSES;
+    private final Pair<ObjectKlass, Class<?>>[][] classes;
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     InteropKlassesDispatch(Meta meta) {
-        INTEROP_CLASSES = new Pair[][]{
+        classes = new Pair[][]{
                         new Pair[]{Pair.create(meta.java_util_List, ListInterop.class), Pair.create(meta.java_lang_Iterable, IterableInterop.class)},
                         new Pair[]{Pair.create(meta.java_util_Map, MapInterop.class)},
                         new Pair[]{Pair.create(meta.java_util_Map_Entry, MapEntryInterop.class)},
@@ -70,7 +70,7 @@ public class InteropKlassesDispatch {
             result = EspressoInterop.class;
         } else {
             exclusiveLoop: //
-            for (Pair<ObjectKlass, Class<?>>[] exclusive : INTEROP_CLASSES) {
+            for (Pair<ObjectKlass, Class<?>>[] exclusive : classes) {
                 for (Pair<ObjectKlass, Class<?>> pair : exclusive) {
                     if (pair.getLeft().isAssignableFrom(k)) {
                         if (result != null) {
