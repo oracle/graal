@@ -804,7 +804,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerUnsafeMemoryLoadNode(UnsafeMemoryLoadNode load) {
         StructuredGraph graph = load.graph();
         JavaKind readKind = load.getKind();
-        assert readKind != JavaKind.Object;
         Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, false);
         AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(load.getAddress()));
         ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE));

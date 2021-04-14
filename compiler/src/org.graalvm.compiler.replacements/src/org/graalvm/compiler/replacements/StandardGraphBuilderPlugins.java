@@ -509,6 +509,10 @@ public class StandardGraphBuilderPlugins {
         r.register1("loadFence", Receiver.class, new UnsafeFencePlugin(LOAD_LOAD | LOAD_STORE));
         r.register1("storeFence", Receiver.class, new UnsafeFencePlugin(STORE_STORE | LOAD_STORE));
         r.register1("fullFence", Receiver.class, new UnsafeFencePlugin(LOAD_LOAD | STORE_STORE | LOAD_STORE | STORE_LOAD));
+
+        if (!sunMiscUnsafe) {
+            r.register2("getUncompressedObject", Receiver.class, long.class, new UnsafeGetPlugin(JavaKind.Object, explicitUnsafeNullChecks));
+        }
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {
