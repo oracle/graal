@@ -1008,9 +1008,9 @@ abstract class CoreLocations {
         LocationImpl internal = loc.getInternalLocation();
         boolean isPrimitive = internal instanceof CoreLocations.LongLocation;
         if (internal instanceof CoreLocations.FieldLocation) {
-            return (isPrimitive ? Integer.MIN_VALUE : 0) + ((CoreLocations.FieldLocation) internal).getIndex();
+            return (isPrimitive ? -Integer.MAX_VALUE : 0) + ((CoreLocations.FieldLocation) internal).getIndex();
         } else if (internal instanceof CoreLocations.ArrayLocation) {
-            return (isPrimitive ? Integer.MIN_VALUE : 0) + MAX_DYNAMIC_FIELDS + ((CoreLocations.ArrayLocation) internal).getIndex();
+            return (isPrimitive ? -Integer.MAX_VALUE : 0) + MAX_DYNAMIC_FIELDS + ((CoreLocations.ArrayLocation) internal).getIndex();
         } else {
             throw new IllegalArgumentException(internal.getClass().getName());
         }
