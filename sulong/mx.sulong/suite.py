@@ -1266,13 +1266,16 @@ suite = {
     },
     "gcc_fortran" : {
       "subDir" : "tests/gcc",
-      "class" : "ExternalNinjaLegacyTestSuite",
+      # The Ninja generator used by mx (version 1.8.2) does not support Fortran using Ninja version [GR-30808]
+      # "class" : "ExternalCMakeTestSuite",
+      # "variants" : ["executable-O0"],
+      "class" : "ExternalTestSuite",
+      "variants" : ["O0_OUT"],
       "testDir" : "gcc-5.2.0/gcc/testsuite",
       "fileExts" : [".f90", ".f", ".f03"],
       "requireDragonegg" : True,
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0_OUT"],
       "single_job" : True, # problem with parallel builds and temporary module files
       "buildRef" : True,
       "dependencies" : [
