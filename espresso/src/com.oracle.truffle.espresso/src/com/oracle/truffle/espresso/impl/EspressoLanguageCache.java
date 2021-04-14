@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -82,7 +83,7 @@ public final class EspressoLanguageCache {
         private final LinkedKlass superKlass;
         private final LinkedKlass[] interfaces;
 
-        public LinkedKey(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+        LinkedKey(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
             this.parserKlass = parserKlass;
             this.superKlass = superKlass;
             this.interfaces = interfaces;
@@ -90,8 +91,12 @@ public final class EspressoLanguageCache {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
             LinkedKey linkedKey = (LinkedKey) o;
             return parserKlass.equals(linkedKey.parserKlass) && Objects.equals(superKlass, linkedKey.superKlass) && Arrays.equals(interfaces, linkedKey.interfaces);
         }
