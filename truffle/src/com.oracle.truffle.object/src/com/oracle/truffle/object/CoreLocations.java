@@ -430,6 +430,11 @@ abstract class CoreLocations {
         }
 
         @Override
+        protected void clear(DynamicObject store) {
+            setInternal(store, null, false);
+        }
+
+        @Override
         public int objectArrayCount() {
             return OBJECT_SLOT_SIZE;
         }
@@ -464,6 +469,11 @@ abstract class CoreLocations {
 
         public boolean isNonNull() {
             return false;
+        }
+
+        @Override
+        protected void clear(DynamicObject store) {
+            setInternal(store, null, false);
         }
 
         @Override

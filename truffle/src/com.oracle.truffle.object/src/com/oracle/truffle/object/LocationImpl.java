@@ -313,6 +313,10 @@ public abstract class LocationImpl extends Location {
         return false;
     }
 
+    protected boolean isObjectLocation() {
+        return false;
+    }
+
     static boolean expectBoolean(Object value) throws UnexpectedResultException {
         if (value instanceof Boolean) {
             return (boolean) value;
@@ -343,6 +347,9 @@ public abstract class LocationImpl extends Location {
 
     public Class<?> getType() {
         return null;
+    }
+
+    protected void clear(@SuppressWarnings("unused") DynamicObject store) {
     }
 
     @Override
