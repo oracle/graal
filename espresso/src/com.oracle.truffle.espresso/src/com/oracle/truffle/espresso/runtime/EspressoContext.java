@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.espresso.FinalizationFeature;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
@@ -112,6 +113,8 @@ public final class EspressoContext {
 
     private String[] mainArguments;
     private String[] vmArguments;
+    private long startupClockNanos;
+    private EspressoLanguageCache languageCache;
 
     // region Debug
     private final TimerCollection timers;
@@ -319,6 +322,12 @@ public final class EspressoContext {
         return language;
     }
 
+    public EspressoLanguageCache getCache() {
+        if (languageCache == null)
+            languageCache = getJavaVersion().java8OrEarlier() ? language.getV8Cache() : language.getV11Cache();
+        return languageCache;
+    }
+
     public boolean multiThreadingEnabled() {
         return multiThreadingDisabled == null;
     }
@@ -402,6 +411,7 @@ public final class EspressoContext {
                         "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
+        startupClockNanos = System.nanoTime();
         eventListener = new EmptyListener();
         if (!ImageInfo.inImageRuntimeCode()) {
             // Setup finalization support in the host VM.
@@ -436,6 +446,8 @@ public final class EspressoContext {
     public Meta getMeta() {
         return meta;
     }
+
+    public long getStartupClockNanos() { return startupClockNanos; }
 
     public NativeAccess getNativeAccess() {
         return nativeAccess;

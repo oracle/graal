@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
@@ -64,7 +65,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
                 version = EspressoLanguage.VERSION, //
-                contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
+                contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 dependentLanguages = {"nfi", "llvm"})
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> implements ClassLoaderCache {
@@ -89,7 +90,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     private final Types types;
     private final Signatures signatures;
 
-    private long startupClockNanos = 0;
+    // Multiple caches are nececary depending of the Java version (8 or 11)
+    private final EspressoLanguageCache cache8;
+    private final EspressoLanguageCache cache11;
 
     private ClassLoader cl;
 
@@ -122,6 +125,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         this.names = new Names(symbols);
         this.types = new Types(symbols);
         this.signatures = new Signatures(symbols, types);
+
+        this.cache8 = new EspressoLanguageCache();
+        this.cache11 = new EspressoLanguageCache();
     }
 
     @Override
@@ -139,13 +145,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        startupClockNanos = System.nanoTime();
         context.initializeContext();
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        long elapsedTimeNanos = System.nanoTime() - startupClockNanos;
+        long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
         if (seconds > 10) {
             context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", seconds);
@@ -204,6 +209,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public Signatures getSignatures() {
         return signatures;
+    }
+
+    public EspressoLanguageCache getV8Cache() {
+        return cache8;
+    }
+
+    public EspressoLanguageCache getV11Cache() {
+        return cache11;
     }
 
     public static EspressoContext getCurrentContext() {
