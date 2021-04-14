@@ -43,6 +43,7 @@ package org.graalvm.nativeimage.hosted;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -113,6 +114,10 @@ public final class RuntimeReflection {
     @Deprecated
     public static void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
         register(fields);
+    }
+
+    public static boolean isInvoked(Method method) {
+        return ImageSingletons.lookup(RuntimeReflectionSupport.class).isInvoked(method);
     }
 
     /**

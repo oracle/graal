@@ -60,7 +60,7 @@ public final class Target_java_lang_reflect_Method {
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         if (methodAccessor == null) {
-            throw VMError.unsupportedFeature("Runtime reflection is not supported.");
+            throw VMError.unsupportedFeature("Runtime reflection is not supported for " + this);
         }
         return methodAccessor;
     }

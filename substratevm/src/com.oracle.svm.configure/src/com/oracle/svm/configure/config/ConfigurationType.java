@@ -27,7 +27,9 @@ package com.oracle.svm.configure.config;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import com.oracle.svm.configure.json.JsonPrintable;
@@ -39,6 +41,7 @@ public class ConfigurationType implements JsonPrintable {
 
     private Map<String, FieldInfo> fields;
     private Map<ConfigurationMethod, ConfigurationMemberKind> methods;
+    private Set<ConfigurationMethod> invokedMethods;
 
     private boolean allDeclaredClasses;
     private boolean allPublicClasses;
@@ -84,6 +87,10 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     public void addMethod(String name, String internalSignature, ConfigurationMemberKind memberKind) {
+        addMethod(name, internalSignature, memberKind, false);
+    }
+
+    public void addMethod(String name, String internalSignature, ConfigurationMemberKind memberKind, boolean invoked) {
         boolean matchesAllSignatures = (internalSignature == null);
         if (ConfigurationMethod.isConstructorName(name) ? (haveAllDeclaredConstructors() || (memberKind.includes(ConfigurationMemberKind.PUBLIC) && haveAllPublicConstructors()))
                         : ((memberKind.includes(ConfigurationMemberKind.DECLARED) && haveAllDeclaredMethods()) || (memberKind.includes(ConfigurationMemberKind.PUBLIC) && haveAllPublicMethods()))) {
@@ -104,6 +111,12 @@ public class ConfigurationType implements JsonPrintable {
             methods.compute(method, (k, v) -> memberKind.intersect(v));
         }
         assert methods.containsKey(method);
+        if (invoked) {
+            if (invokedMethods == null) {
+                invokedMethods = new HashSet<>();
+            }
+            invokedMethods.add(method);
+        }
     }
 
     public boolean haveAllDeclaredClasses() {
@@ -198,6 +211,13 @@ public class ConfigurationType implements JsonPrintable {
                             methods.keySet(),
                             Comparator.comparing(ConfigurationMethod::getName).thenComparing(Comparator.nullsFirst(Comparator.comparing(ConfigurationMethod::getInternalSignature))),
                             JsonPrintable::printJson);
+        }
+        if (invokedMethods != null) {
+            writer.append(',').newline().quote("invokedMethods").append(':');
+            JsonPrinter.printCollection(writer,
+                    invokedMethods,
+                    Comparator.comparing(ConfigurationMethod::getName).thenComparing(Comparator.nullsFirst(Comparator.comparing(ConfigurationMethod::getInternalSignature))),
+                    JsonPrintable::printJson);
         }
         writer.unindent().newline();
         writer.append('}');

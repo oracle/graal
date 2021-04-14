@@ -57,7 +57,8 @@ public final class ExecutableAccessorComputer implements RecomputeFieldValue.Cus
         Class<?> proxyClass = subst.getProxyClass(member);
         if (proxyClass == null) {
             // should never happen, but better check for it here than segfault later
-            throw VMError.shouldNotReachHere();
+//            throw VMError.shouldNotReachHere();
+            return null;
         }
         try {
             Proxy proxyInstance = (Proxy) UNSAFE.allocateInstance(proxyClass);

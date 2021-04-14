@@ -40,6 +40,10 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.lang.reflect.Method;
+
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // specific to java.lang.reflect reflection
+
+    boolean isInvoked(Method method);
 }

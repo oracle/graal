@@ -124,7 +124,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                         delegate.registerPublicClasses(clazz);
                     }
                 } else if (name.equals("methods")) {
-                    parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                    parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz, false);
+                } else if (name.equals("invokedMethods")) {
+                    parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz, true);
                 } else if (name.equals("fields")) {
                     parseFields(asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
                 } else {
@@ -173,13 +175,13 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         }
     }
 
-    private void parseMethods(List<Object> methods, T clazz) {
+    private void parseMethods(List<Object> methods, T clazz, boolean invoked) {
         for (Object method : methods) {
-            parseMethod(asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz);
+            parseMethod(asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz, invoked);
         }
     }
 
-    private void parseMethod(Map<String, Object> data, T clazz) {
+    private void parseMethod(Map<String, Object> data, T clazz, boolean invoked) {
         String methodName = null;
         List<T> methodParameterTypes = null;
         for (Map.Entry<String, Object> entry : data.entrySet()) {
@@ -208,7 +210,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                 if (isConstructor) {
                     delegate.registerConstructor(clazz, methodParameterTypes);
                 } else {
-                    delegate.registerMethod(clazz, methodName, methodParameterTypes);
+                    delegate.registerMethod(clazz, methodName, methodParameterTypes, invoked);
                 }
             } catch (NoSuchMethodException e) {
                 handleError("Method " + formatMethod(clazz, methodName, methodParameterTypes) + " not found.");
@@ -216,6 +218,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                 handleError("Could not register method " + formatMethod(clazz, methodName, methodParameterTypes) + " for reflection.", e);
             }
         } else {
+            assert !invoked;
             try {
                 boolean found;
                 if (isConstructor) {

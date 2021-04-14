@@ -557,4 +557,10 @@ public class SubstrateOptions {
             return getValueOrDefault(values.getMap());
         }
     };
+
+    @Option(help = "Include proxies only for invoked methods")
+    public static final HostedOptionKey<Boolean> IncludeOnlyInvokedProxies = new HostedOptionKey<>(false);
+
+    @Option(help = "Include reflection metadata for all methods")
+    public static final HostedOptionKey<Boolean> IncludeAllReflectionMetadata = new HostedOptionKey<>(false);
 }

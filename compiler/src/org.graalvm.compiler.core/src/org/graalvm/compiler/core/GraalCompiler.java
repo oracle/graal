@@ -139,6 +139,10 @@ public class GraalCompiler {
     @SuppressWarnings("try")
     public static <T extends CompilationResult> T compile(Request<T> r) {
         DebugContext debug = r.graph.getDebug();
+        if (r.graph.method() != null && r.graph.method().format("%H.%n").contains("org.openjdk.jmh.runner.options.TimeValue.valueOf")) {
+            System.out.println("Found");
+            new Throwable().printStackTrace();
+        }
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(r.graph.getOptions())) {
             assert !r.graph.isFrozen();
             try (DebugContext.Scope s0 = debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache()); DebugCloseable a = CompilerTimer.start(debug)) {

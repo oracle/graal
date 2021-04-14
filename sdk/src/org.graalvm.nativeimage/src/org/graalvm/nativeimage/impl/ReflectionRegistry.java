@@ -42,6 +42,9 @@ package org.graalvm.nativeimage.impl;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 public interface ReflectionRegistry {
     void register(Class<?>... classes);
@@ -50,4 +53,7 @@ public interface ReflectionRegistry {
 
     void register(boolean finalIsWritable, Field... fields);
 
+    default void registerAsInvoked(Method... methods) {
+        throw shouldNotReachHere();
+    }
 }

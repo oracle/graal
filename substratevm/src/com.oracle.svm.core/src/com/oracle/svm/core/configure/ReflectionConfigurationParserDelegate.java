@@ -62,7 +62,7 @@ public interface ReflectionConfigurationParserDelegate<T> {
 
     boolean registerAllMethodsWithName(T type, String methodName);
 
-    void registerMethod(T type, String methodName, List<T> methodParameterTypes) throws NoSuchMethodException;
+    void registerMethod(T type, String methodName, List<T> methodParameterTypes, boolean invoked) throws NoSuchMethodException;
 
     void registerConstructor(T type, List<T> methodParameterTypes) throws NoSuchMethodException;
 

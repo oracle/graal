@@ -67,8 +67,8 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerMethod(ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes) {
-        type.addMethod(methodName, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberKind.PRESENT);
+    public void registerMethod(ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes, boolean invoked) {
+        type.addMethod(methodName, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberKind.PRESENT, invoked);
     }
 
     @Override

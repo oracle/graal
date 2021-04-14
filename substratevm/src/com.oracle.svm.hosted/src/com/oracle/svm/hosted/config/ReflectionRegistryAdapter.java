@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.config;
 
 import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
@@ -133,9 +134,13 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public void registerMethod(Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerMethod(Class<?> type, String methodName, List<Class<?>> methodParameterTypes, boolean invoked) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = methodParameterTypes.toArray(new Class<?>[0]);
-        registry.register((Executable) type.getDeclaredMethod(methodName, parameterTypesArray));
+        if (invoked) {
+            registry.registerAsInvoked((Method) type.getDeclaredMethod(methodName, parameterTypesArray));
+        } else {
+            registry.register((Executable) type.getDeclaredMethod(methodName, parameterTypesArray));
+        }
     }
 
     @Override

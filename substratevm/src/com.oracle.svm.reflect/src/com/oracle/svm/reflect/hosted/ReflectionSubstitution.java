@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -57,6 +58,9 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ReflectionRegistry;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 /**
  * Maintains a mapping between reflection-accessible {@link Executable}s and {@link Proxy} classes
@@ -205,6 +209,8 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         /* } Allow reflection in hosted code. Checkstyle: resume. */
     }
 
+    private static final AtomicInteger excludedProxies = new AtomicInteger(0);
+
     /**
      * Gets or creates a proxy class for accessing a given {@link Executable} reflectively.
      * <p>
@@ -214,9 +220,14 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
     synchronized Class<?> getProxyClass(Executable member) {
         Class<?> proxyClass = proxyMap.get(member);
         if (proxyClass == null) {
+            if (SubstrateOptions.IncludeOnlyInvokedProxies.getValue() && member instanceof Method && !RuntimeReflection.isInvoked((Method) member)) {
+                System.out.println("Excluded proxy no " + excludedProxies.incrementAndGet());
+                return null;
+            }
             /* the unique ID is added for unit tests that don't change the class loader */
             ClassLoader loader = imageClassLoader.getClassLoader();
             String name = getStableProxyName(member) + PROXY_NAME_SEPARATOR + proxyNr.incrementAndGet();
+            System.out.println("Total of " + proxyNr.get());
             Class<?>[] ifaces;
             if (member instanceof Method && !Modifier.isStatic(member.getModifiers()) && !Modifier.isAbstract(member.getModifiers())) {
                 ifaces = new Class<?>[]{getAccessorInterface(member), ReflectionProxy.class, InvokeSpecialReflectionProxy.class};

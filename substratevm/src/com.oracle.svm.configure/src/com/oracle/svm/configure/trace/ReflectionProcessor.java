@@ -173,14 +173,15 @@ class ReflectionProcessor extends AbstractProcessor {
             case "findMethodHandle":
                 memberKind = "findMethodHandle".equals(function) ? ConfigurationMemberKind.PRESENT : ConfigurationMemberKind.DECLARED;
                 // fall through
-            case "getMethod": {
+            case "getMethod":
+            case "invoke": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 List<?> parameterTypes = (List<?>) args.get(1);
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
+                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind, function.equals("invoke"));
                 if (!clazzOrDeclaringClass.equals(clazz)) {
                     configuration.getOrCreateType(clazz);
                 }

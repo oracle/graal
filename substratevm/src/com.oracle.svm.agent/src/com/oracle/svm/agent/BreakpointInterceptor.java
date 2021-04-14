@@ -355,6 +355,31 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean invokeMethod(JNIEnvironment jni, Breakpoint bp) {
+        JNIObjectHandle callerClass = getDirectCallerClass();
+        JNIObjectHandle self = getObjectArgument(0);
+
+        JNIObjectHandle declaring = Support.callObjectMethod(jni, self, agent.handles().javaLangReflectMemberGetDeclaringClass);
+        if (clearException(jni)) {
+            declaring = nullHandle();
+        }
+
+        JNIObjectHandle nameHandle = Support.callObjectMethod(jni, self, agent.handles().javaLangReflectMemberGetName);
+        if (clearException(jni)) {
+            nameHandle = nullHandle();
+        }
+        String name = fromJniString(jni, nameHandle);
+
+        JNIObjectHandle paramTypesHandle = Support.callObjectMethod(jni, self, agent.handles().javaLangReflectMethodGetParameterTypes);
+        if (clearException(jni)) {
+            paramTypesHandle = nullHandle();
+        }
+        Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
+
+        traceBreakpoint(jni, declaring, declaring, callerClass, bp.specification.methodName, self.notEqual(nullHandle()), name, paramTypes);
+        return true;
+    }
+
     private static boolean newInstance(JNIEnvironment jni, Breakpoint bp) {
         JNIObjectHandle callerClass = getDirectCallerClass();
         JNIMethodId result = nullPointer();
@@ -1129,6 +1154,7 @@ final class BreakpointInterceptor {
                     brk("java/lang/Class", "getEnclosingMethod", "()Ljava/lang/reflect/Method;", BreakpointInterceptor::getEnclosingMethod),
                     brk("java/lang/Class", "getEnclosingConstructor", "()Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getEnclosingMethod),
 
+                    brk("java/lang/reflect/Method", "invoke", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeMethod),
                     brk("java/lang/Class", "newInstance", "()Ljava/lang/Object;", BreakpointInterceptor::newInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),

@@ -42,6 +42,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIMethodId javaLangReflectMemberGetName;
     final JNIMethodId javaLangReflectMemberGetDeclaringClass;
+    final JNIMethodId javaLangReflectMethodGetParameterTypes;
 
     final JNIMethodId javaUtilEnumerationHasMoreElements;
 
@@ -70,8 +71,10 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
 
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
+        JNIObjectHandle javaLangReflectMethod = findClass(env, "java/lang/reflect/Method");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
         javaLangReflectMemberGetDeclaringClass = getMethodId(env, javaLangReflectMember, "getDeclaringClass", "()Ljava/lang/Class;", false);
+        javaLangReflectMethodGetParameterTypes = getMethodId(env, javaLangReflectMethod, "getParameterTypes", "()[Ljava/lang/Class;", false);
 
         JNIObjectHandle javaUtilEnumeration = findClass(env, "java/util/Enumeration");
         javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);

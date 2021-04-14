@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
@@ -54,6 +55,8 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
+
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
@@ -69,6 +72,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private final Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Field> reflectionFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Method> invokedMethods = ConcurrentHashMap.newKeySet();
 
     /* Keep track of classes already processed for reflection. */
     private final Set<Class<?>> processedClasses = new HashSet<>();
@@ -86,7 +90,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             Method getPublicMethodsMethod = ReflectionUtil.lookupMethod(Class.class, "privateGetPublicMethods");
             publicArrayMethods = (Method[]) getPublicMethodsMethod.invoke(Object[].class);
         } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
+            throw shouldNotReachHere(e);
         }
 
         // array classes only have methods inherited from Object
@@ -121,6 +125,19 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         if (reflectionMethods.addAll(Arrays.asList(methods))) {
             modified = true;
         }
+    }
+
+    @Override
+    public void registerAsInvoked(Method... methods) {
+        checkNotSealed();
+        if (invokedMethods.addAll(Arrays.asList(methods))) {
+            modified = true;
+        }
+    }
+
+    @Override
+    public boolean isInvoked(Method method) {
+        return invokedMethods.contains(method);
     }
 
     @Override
@@ -172,7 +189,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                      */
                     continue;
                 }
-                if (type.isArray() || enclosingMethodOrConstructor(originalClass) != null) {
+                if (SubstrateOptions.IncludeAllReflectionMetadata.getValue() || type.isArray() || enclosingMethodOrConstructor(originalClass) != null) {
                     /*
                      * This type is either an array or it has an enclosing method or constructor. In
                      * either case we process the class, i.e., initialize its reflection data, mark
@@ -252,6 +269,22 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         if (type.isArray()) {
             // Always register reflection data for array classes
             reflectionData = arrayReflectionData;
+        } else if (SubstrateOptions.IncludeAllReflectionMetadata.getValue()) {
+            reflectionData = new DynamicHub.ReflectionData(
+                    filterFields(accessors.getDeclaredFields(originalReflectionData), f -> true, access),
+                    filterFields(accessors.getPublicFields(originalReflectionData), f -> true, access),
+                    filterFields(accessors.getPublicFields(originalReflectionData), f -> !isHiddenIn(f, clazz), access),
+                    filterMethods(accessors.getDeclaredMethods(originalReflectionData), m -> true, access),
+                    filterMethods(accessors.getPublicMethods(originalReflectionData), m -> true, access),
+                    filterConstructors(accessors.getDeclaredConstructors(originalReflectionData), m -> true, access),
+                    filterConstructors(accessors.getPublicConstructors(originalReflectionData), m -> true, access),
+                    nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), m -> true, access),
+                    filterFields(accessors.getDeclaredPublicFields(originalReflectionData), f -> true, access),
+                    filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), m -> true, access),
+                    catchLinkingErrors(clazz, c -> true, access, Class::getDeclaredClasses),
+                    catchLinkingErrors(clazz, c -> true, access, Class::getClasses),
+                    enclosingMethodOrConstructor(clazz),
+                    buildRecordComponents(clazz, access));
         } else {
             reflectionData = new DynamicHub.ReflectionData(
                             filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields, access),
@@ -290,13 +323,22 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
          * DynamicHub.getRecordComponents0().
          */
         Method[] allMethods = support.getRecordComponentAccessorMethods(clazz);
-        Method[] filteredMethods = filterMethods(allMethods, reflectionMethods, access);
+        Method[] filteredMethods;
+        if (SubstrateOptions.IncludeAllReflectionMetadata.getValue()) {
+            filteredMethods = filterMethods(allMethods, m -> true, access);
+        } else {
+            filteredMethods = filterMethods(allMethods, reflectionMethods, access);
+        }
 
         if (allMethods.length == filteredMethods.length) {
             return support.getRecordComponents(clazz);
         } else {
             return null;
         }
+    }
+
+    private static Class<?>[] catchLinkingErrors(Class<?> clazz, Set<Class<?>> filter, DuringAnalysisAccessImpl access, Function<Class<?>, Class<?>[]> innerClassAccessor) {
+        return catchLinkingErrors(clazz, filter::contains, access, innerClassAccessor);
     }
 
     /**
@@ -306,7 +348,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
      * @param innerClassAccessor method that extracts the inner classes
      * @return filtered inner classes or empty array in case of a linking/verification error
      */
-    private static Class<?>[] catchLinkingErrors(Class<?> clazz, Set<Class<?>> filter, DuringAnalysisAccessImpl access, Function<Class<?>, Class<?>[]> innerClassAccessor) {
+    private static Class<?>[] catchLinkingErrors(Class<?> clazz, Predicate<Class<?>> filter, DuringAnalysisAccessImpl access, Function<Class<?>, Class<?>[]> innerClassAccessor) {
         try {
             return filterClasses(innerClassAccessor.apply(clazz), filter, access);
         } catch (TypeNotPresentException | LinkageError e) {
@@ -329,9 +371,13 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods, DuringAnalysisAccessImpl access) {
+    private static Constructor<?> nullaryConstructor(Object constructors, Set<Executable> reflectionMethods, DuringAnalysisAccessImpl access) {
+        return nullaryConstructor(constructors, reflectionMethods::contains, access);
+    }
+
+    private static Constructor<?> nullaryConstructor(Object constructors, Predicate<Constructor<?>> reflectionMethods, DuringAnalysisAccessImpl access) {
         for (Constructor<?> constructor : (Constructor<?>[]) constructors) {
-            if (constructor.getParameterCount() == 0 && reflectionMethods.contains(constructor) &&
+            if (constructor.getParameterCount() == 0 && reflectionMethods.test(constructor) &&
                             !SubstitutionReflectivityFilter.shouldExclude(constructor, access.getMetaAccess(), access.getUniverse())) {
                 return constructor;
             }
@@ -366,12 +412,12 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             return null;
         }
         if (enclosingMethod != null && enclosingConstructor != null) {
-            throw VMError.shouldNotReachHere("Class has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
+            throw shouldNotReachHere("Class has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
         }
 
         Executable enclosingMethodOrConstructor = enclosingMethod != null ? enclosingMethod : enclosingConstructor;
 
-        if (reflectionMethods.contains(enclosingMethodOrConstructor)) {
+        if (SubstrateOptions.IncludeAllReflectionMetadata.getValue() || reflectionMethods.contains(enclosingMethodOrConstructor)) {
             return enclosingMethodOrConstructor;
         } else {
             return null;
@@ -386,7 +432,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         try {
             return !clazz.getField(field.getName()).equals(field);
         } catch (NoSuchFieldException e) {
-            throw VMError.shouldNotReachHere(e);
+            throw shouldNotReachHere(e);
         }
     }
 
@@ -401,28 +447,36 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     private static Constructor<?>[] filterConstructors(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access) {
+        return filterMethods(methods, filter::contains, access, EMPTY_CONSTRUCTORS);
+    }
+
+    private static Constructor<?>[] filterConstructors(Object methods, Predicate<Executable> filter, DuringAnalysisAccessImpl access) {
         return filterMethods(methods, filter, access, EMPTY_CONSTRUCTORS);
     }
 
     private static Method[] filterMethods(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access) {
+        return filterMethods(methods, filter::contains, access, EMPTY_METHODS);
+    }
+
+    private static Method[] filterMethods(Object methods, Predicate<Executable> filter, DuringAnalysisAccessImpl access) {
         return filterMethods(methods, filter, access, EMPTY_METHODS);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access, T[] prototypeArray) {
+    private static <T extends Executable> T[] filterMethods(Object methods, Predicate<Executable> filter, DuringAnalysisAccessImpl access, T[] prototypeArray) {
         List<T> result = new ArrayList<>();
         for (T method : (T[]) methods) {
-            if (filter.contains(method) && !SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
+            if (filter.test(method) && !SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
                 result.add(method);
             }
         }
         return result.toArray(prototypeArray);
     }
 
-    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access) {
+    private static Class<?>[] filterClasses(Object classes, Predicate<Class<?>> filter, DuringAnalysisAccessImpl access) {
         List<Class<?>> result = new ArrayList<>();
         for (Class<?> clazz : (Class<?>[]) classes) {
-            if (filter.contains(clazz) && !SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse())) {
+            if (filter.test(clazz) && !SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse())) {
                 result.add(clazz);
             }
         }
@@ -457,7 +511,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return reflectionDataMethod.invoke(clazz);
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -465,7 +519,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return declaredFieldsField.get(obj);
             } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -473,7 +527,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return publicFieldsField.get(obj);
             } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -481,7 +535,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return declaredMethodsField.get(obj);
             } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -489,7 +543,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return publicMethodsField.get(obj);
             } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -497,7 +551,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return declaredConstructorsField.get(obj);
             } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -505,7 +559,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return publicConstructorsField.get(obj);
             } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -513,7 +567,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return declaredPublicFieldsField.get(obj);
             } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -521,7 +575,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 return declaredPublicMethodsField.get(obj);
             } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
+                throw shouldNotReachHere(e);
             }
         }
     }
