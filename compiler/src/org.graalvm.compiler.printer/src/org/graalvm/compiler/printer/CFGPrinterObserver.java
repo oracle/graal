@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -193,11 +193,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
             if (object instanceof BciBlockMapping) {
                 BciBlockMapping blockMap = (BciBlockMapping) object;
-                cfgPrinter.printCFG(message, blockMap);
-                if (blockMap.code.getCode() != null) {
-                    cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.code));
+                if (blockMap.getBlocks() != null) {
+                    cfgPrinter.printCFG(message, blockMap);
+                    if (blockMap.code.getCode() != null) {
+                        cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.code));
+                    }
                 }
-
             } else if (object instanceof LIR) {
                 // Currently no node printing for lir
                 cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), false);

@@ -1556,6 +1556,18 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register1("isCompilationConstant", Object.class, new InvocationPlugin() {
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(value.isJavaConstant()));
+                return true;
+            }
+        });
     }
 
     private static void registerJMHBlackholePlugins(InvocationPlugins plugins, Replacements replacements) {
