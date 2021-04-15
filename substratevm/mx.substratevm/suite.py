@@ -565,7 +565,8 @@ suite = {
                     "jdk.jfr.events"
                 ],
                 "jdk.internal.vm.ci": [
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code"
                 ],
                 "java.base": [
                     "jdk.internal.event",
