@@ -44,7 +44,7 @@ public class EspressoReferenceArrayStoreNode extends Node {
     }
 
     public void arrayStore(StaticObject value, int index, StaticObject array) {
-        if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) array.getKlass()).getComponentType())) {
+        if (StaticObject.isNull(value) || typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
             try {
                 (array.<Object[]> unwrap())[index] = value;
             } catch (ArrayIndexOutOfBoundsException e) {
