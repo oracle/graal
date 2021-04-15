@@ -31,8 +31,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
-
 public class EspressoReferenceArrayStoreNode extends Node {
     @Child TypeCheckNode typeCheck;
     @CompilationFinal boolean noOutOfBoundEx1 = true;
