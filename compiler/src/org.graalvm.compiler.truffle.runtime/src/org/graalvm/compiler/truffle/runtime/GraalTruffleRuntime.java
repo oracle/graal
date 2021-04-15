@@ -532,7 +532,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return iterateImpl(visitor, 0);
     }
 
-    private volatile double compilationThresholdScale = 1.0;
+    private double compilationThresholdScale = 1.0;
 
     public double compilationThresholdScale() {
         return compilationThresholdScale;
