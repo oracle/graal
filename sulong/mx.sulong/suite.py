@@ -797,12 +797,11 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.debugexpr.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O1", "O0", "O0_MEM2REG"],
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O1", "bitcode-O0", "bitcode-O0-MEM2REG"],
       "buildRef" : False,
-      "buildEnv" : {
-        "SUITE_CFLAGS" : "-g -Wno-everything",
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
