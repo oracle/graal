@@ -325,13 +325,7 @@ public abstract class JavaThreads {
      * PosixJavaThreads.pthreadStartRoutine, e.g., called from PosixJavaThreads.start0.
      */
     public static void assignJavaThread(Thread thread, boolean manuallyStarted) {
-<<<<<<< HEAD
-        VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
-        currentThread.set(thread);
-        ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
-=======
         assignJavaThread0(thread);
->>>>>>> upstream/master
 
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
@@ -353,17 +347,13 @@ public abstract class JavaThreads {
 
         assert toTarget(thread).isolateThread.isNull();
         toTarget(thread).isolateThread = CurrentIsolate.getCurrentThread();
+        ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
     }
 
     @Uninterruptible(reason = "Called during isolate initialization")
     public void initializeIsolate() {
         /* The thread that creates the isolate is considered the "main" thread. */
-<<<<<<< HEAD
-        currentThread.set(mainThread);
-        ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), mainThread);
-=======
         assignJavaThread0(mainThread);
->>>>>>> upstream/master
     }
 
     /**

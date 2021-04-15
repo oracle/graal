@@ -74,17 +74,6 @@ public class VMInspection implements Feature {
     public static boolean isEnabled() {
         return VMInspectionOptions.AllowVMInspection.getValue();
     }
-<<<<<<< HEAD
-
-    public static class IsEnabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return VMInspectionOptions.AllowVMInspection.getValue();
-        }
-    }
-}
-=======
->>>>>>> upstream/master
 
     public static final class IsEnabled implements BooleanSupplier {
         @Override
