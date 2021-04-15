@@ -63,6 +63,11 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
     private static final String OPTION_LLDEBUG_SOURCES = "llvm.llDebug.sources";
 
     @BeforeClass
+    public static void bundledOnly() {
+        TestOptions.assumeBundledLLVM();
+    }
+
+    @BeforeClass
     public static void checkLinuxAMD64() {
         Assume.assumeTrue("Skipping linux/amd64 only test", Platform.isLinux() && Platform.isAMD64());
     }

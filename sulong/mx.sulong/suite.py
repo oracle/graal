@@ -813,6 +813,7 @@ suite = {
       "variants" : ["bitcode-O0"],
       "fileExts" : [".ll"],
       "buildRef" : False,
+      "bundledLLVMOnly" : True,
       "dependencies" : [
         "SULONG_TEST",
       ],
