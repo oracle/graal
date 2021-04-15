@@ -148,8 +148,8 @@ public abstract class CCompilerInvoker {
                     targetArch = scanner.next();
                 }
                 /*
-                 * Some languages has "... Microsoft (R) C/C++ ... ##.##.#####" other has
-                 * "...C/C++ ... Microsoft (R) ... ##.##.#####" in cl.exe banner.
+                 * Some cl.exe print "... Microsoft (R) C/C++ ... ##.##.#####" while others print
+                 * "...C/C++ ... Microsoft (R) ... ##.##.#####".
                  */
                 if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null &&
                                 scanner.findInLine("C/C\\+\\+.*Microsoft.*\\(R\\)") == null) {
