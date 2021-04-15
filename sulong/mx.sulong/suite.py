@@ -781,11 +781,6 @@ suite = {
         "CMAKE_C_FLAGS" : "-Wno-bitfield-constant-conversion",
         "CMAKE_CXX_FLAGS" : "-Wno-bitfield-constant-conversion",
       },
-      "buildEnv" : {
-        "SUITE_CFLAGS" : "-g -Wno-unused-variable -Wno-bitfield-constant-conversion",
-        "SUITE_CXXFLAGS" : "-g -Wno-unused-variable -Wno-bitfield-constant-conversion",
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
-      },
       "dependencies" : [
         "SULONG_TEST",
       ],
@@ -833,38 +828,37 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.interop.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O1"],
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["toolchain-plain"],
       "buildRef" : False,
       "buildSharedObject" : True,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
-        "SUITE_CFLAGS" : "-Wno-unused-function",
-        "SUITE_CXXFLAGS" : "-Wno-unused-function",
-        "OS" : "<os>",
+      "bundledLLVMOnly" : True,
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
+        "CMAKE_CXX_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
+        "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
+        "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
       },
       "os_arch" : {
         "darwin": {
           "<others>" : {
-            "buildEnv" : {
-              "SUITE_LDFLAGS" : "-lgraalvm-llvm -L<path:SULONG_HOME>/native/lib -lsulongtest -L<path:SULONG_TEST_NATIVE>",
+            "cmakeConfig" : {
+              "CMAKE_SHARED_LINKER_FLAGS" : "-lgraalvm-llvm -L<path:SULONG_HOME>/native/lib -lsulongtest -L<path:SULONG_TEST_NATIVE>",
             },
           },
         },
         "<others>": {
           "<others>": {
-            "buildEnv" : {
-              "SUITE_LDFLAGS" : "--no-undefined -lgraalvm-llvm -L<path:SULONG_HOME>/native/lib -Wl,--undefined=callbackPointerArgTest -lsulongtest -L<path:SULONG_TEST_NATIVE>",
+            "cmakeConfig" : {
+              "CMAKE_SHARED_LINKER_FLAGS" : "--no-undefined -lgraalvm-llvm -L<path:SULONG_HOME>/native/lib -Wl,--undefined=callbackPointerArgTest -lsulongtest -L<path:SULONG_TEST_NATIVE>",
             },
           },
         },
       },
-      "dependencies" : [
-        "SULONG_TEST",
-      ],
       "buildDependencies" : [
         "SULONG_HOME",
         "SULONG_TEST_NATIVE",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
       "testProject" : True,
       "defaultBuild" : False,
