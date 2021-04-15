@@ -103,14 +103,14 @@ public class EagerParsingLazyFailingTest {
 
     @Test
     public void unsupportedInlineAsmNotExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c")) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll")) {
             Assert.assertEquals(2, runner.load().invokeMember("run", 0).asInt());
         }
     }
 
     @Test
     public void unsupportedInlineAsmExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c")) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll")) {
             exception.expect(PolyglotException.class);
             exception.expectMessage(containsString("Unsupported operation"));
             Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());
@@ -119,14 +119,14 @@ public class EagerParsingLazyFailingTest {
 
     @Test
     public void unsupportedInlineAsmEagerParsingNotExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c", eagerParsingOptions())) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll", eagerParsingOptions())) {
             Assert.assertEquals(2, runner.load().invokeMember("run", 0).asInt());
         }
     }
 
     @Test
     public void unsupportedInlineAsmEagerParsingExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c", eagerParsingOptions())) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll", eagerParsingOptions())) {
             exception.expect(PolyglotException.class);
             exception.expectMessage(containsString("Unsupported operation"));
             Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());
