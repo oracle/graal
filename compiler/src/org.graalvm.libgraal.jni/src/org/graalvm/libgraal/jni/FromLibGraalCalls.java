@@ -46,6 +46,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.graalvm.nativebridge.jni.HotSpotCalls;
 import org.graalvm.nativebridge.jni.JNI;
 import org.graalvm.nativebridge.jni.JNI.JClass;
 import org.graalvm.nativebridge.jni.JNI.JMethodID;
@@ -106,49 +107,35 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
         }
     }
 
-    @HotSpotCall
     public final void callVoid(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, void.class);
         traceCall(id);
-        env.getFunctions().getCallStaticVoidMethodA().call(env, peer(env), method.jniId, args);
-        wrapAndThrowPendingJNIException(env);
+        HotSpotCalls.callStaticVoid(env, peer(env), method.jniId, args);
     }
 
-    @HotSpotCall
     public final boolean callBoolean(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, boolean.class);
         traceCall(id);
-        boolean res = env.getFunctions().getCallStaticBooleanMethodA().call(env, peer(env), method.jniId, args);
-        wrapAndThrowPendingJNIException(env);
-        return res;
+        return HotSpotCalls.callStaticBoolean(env, peer(env), method.jniId, args);
     }
 
-    @HotSpotCall
     public final long callLong(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, long.class);
         traceCall(id);
-        long res = env.getFunctions().getCallStaticLongMethodA().call(env, peer(env), method.jniId, args);
-        wrapAndThrowPendingJNIException(env);
-        return res;
+        return HotSpotCalls.callStaticLong(env, peer(env), method.jniId, args);
     }
 
-    @HotSpotCall
     public final int callInt(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, int.class);
         traceCall(id);
-        int res = env.getFunctions().getCallStaticIntMethodA().call(env, peer(env), method.jniId, args);
-        wrapAndThrowPendingJNIException(env);
-        return res;
+        return HotSpotCalls.callStaticInt(env, peer(env), method.jniId, args);
     }
 
     @SuppressWarnings("unchecked")
-    @HotSpotCall
     public final <R extends JObject> R callJObject(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, Object.class);
         traceCall(id);
-        JObject res = env.getFunctions().getCallStaticObjectMethodA().call(env, peer(env), method.jniId, args);
-        wrapAndThrowPendingJNIException(env);
-        return (R) res;
+        return HotSpotCalls.callStaticJObject(env, peer(env), method.jniId, args);
     }
 
     public static JClass getJNIClass(JNIEnv env, Class<?> clazz) {
@@ -217,57 +204,5 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
             peer = resolvePeer(env);
         }
         return peer;
-    }
-
-    /**
-     * Determines if {@code frame} is for a method denoting a call into HotSpot.
-     */
-    public static boolean isHotSpotCall(StackTraceElement frame) {
-        boolean res = isHotSpotCallImpl(frame);
-        return res;
-    }
-
-    private static boolean isHotSpotCallImpl(StackTraceElement frame) {
-        if (!FromLibGraalCalls.class.getName().equals(frame.getClassName())) {
-            return false;
-        }
-        return HotSpotCallNames.contains(frame.getMethodName());
-    }
-
-    /**
-     * Marker annotation for the helper methods for calling a method in HotSpot.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.METHOD)
-    private static @interface HotSpotCall {
-    }
-
-    /**
-     * Names of the methods in this class annotated by {@link HotSpotCall}.
-     */
-    private static final Set<String> HotSpotCallNames;
-    static {
-        Map<String, Method> entryPoints = new HashMap<>();
-        Map<String, Method> others = new HashMap<>();
-
-        for (Method m : FromLibGraalCalls.class.getDeclaredMethods()) {
-            if (m.getAnnotation(HotSpotCall.class) != null) {
-                Method existing = entryPoints.put(m.getName(), m);
-                if (existing != null) {
-                    throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
-                                    " must have unique name: " + m + " and " + existing);
-                }
-            } else {
-                others.put(m.getName(), m);
-            }
-        }
-        for (Map.Entry<String, Method> e : entryPoints.entrySet()) {
-            Method existing = others.get(e.getKey());
-            if (existing != null) {
-                throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
-                                " must have unique name: " + e.getValue() + " and " + existing);
-            }
-        }
-        HotSpotCallNames = Collections.unmodifiableSet(entryPoints.keySet());
     }
 }

@@ -99,13 +99,11 @@ import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocatio
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.jni.LibGraalStackTraceRecognizer;
 import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
 import org.graalvm.libgraal.jni.JNILibGraalScope;
 import org.graalvm.libgraal.jni.LibGraalTraceHandler;
 import org.graalvm.nativebridge.jni.JNI;
 import org.graalvm.nativebridge.jni.JNIUtil;
-import org.graalvm.nativebridge.jni.StackTraceRecognizer;
 import org.graalvm.nativebridge.jni.TraceHandler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -204,7 +202,6 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(TraceHandler.class, new LibGraalTraceHandler());
-        ImageSingletons.add(StackTraceRecognizer.class, new LibGraalStackTraceRecognizer());
     }
 
     @Override

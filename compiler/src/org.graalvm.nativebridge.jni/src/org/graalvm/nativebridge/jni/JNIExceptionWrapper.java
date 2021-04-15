@@ -66,7 +66,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
 
     private static final MethodResolver CreateException = MethodResolver.create("createException", Throwable.class, String.class);
     private static final MethodResolver GetClassName = MethodResolver.create("getClassName", String.class, Class.class);
-    private static final MethodResolver GetStackTraceElementClassName = MethodResolver.create("GetStackTraceElementClassName", String.class, StackTraceElement.class);
+    private static final MethodResolver GetStackTraceElementClassName = MethodResolver.create("getStackTraceElementClassName", String.class, StackTraceElement.class);
     private static final MethodResolver GetStackTraceElementFileName = MethodResolver.create("getStackTraceElementFileName", String.class, StackTraceElement.class);
     private static final MethodResolver GetStackTraceElementLineNumber = MethodResolver.create("getStackTraceElementLineNumber", int.class, StackTraceElement.class);
     private static final MethodResolver GetStackTraceElementMethodName = MethodResolver.create("getStackTraceElementMethodName", String.class, StackTraceElement.class);
@@ -214,10 +214,9 @@ public final class JNIExceptionWrapper extends RuntimeException {
         boolean useHotSpotStack = originatedInHotSpot;
         int hotSpotStackIndex = hotSpotStackStartIndex;
         int libGraalStackIndex = libGraalStackStartIndex;
-        StackTraceRecognizer recognizer = StackTraceRecognizer.getInstance();
         while (hotSpotStackIndex < hotSpotStackTrace.length || libGraalStackIndex < libGraalStackTrace.length) {
             if (useHotSpotStack) {
-                while (hotSpotStackIndex < hotSpotStackTrace.length && (startingHotSpotFrame || !recognizer.isNativeCall(hotSpotStackTrace[hotSpotStackIndex]))) {
+                while (hotSpotStackIndex < hotSpotStackTrace.length && (startingHotSpotFrame || !hotSpotStackTrace[hotSpotStackIndex].isNativeMethod())) {
                     startingHotSpotFrame = false;
                     merged[targetIndex++] = hotSpotStackTrace[hotSpotStackIndex++];
                 }
@@ -225,7 +224,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
             } else {
                 useHotSpotStack = true;
             }
-            while (libGraalStackIndex < libGraalStackTrace.length && (startingLibGraalFrame || !recognizer.isHotSpotCall(libGraalStackTrace[libGraalStackIndex]))) {
+            while (libGraalStackIndex < libGraalStackTrace.length && (startingLibGraalFrame || !HotSpotCalls.isHotSpotCall(libGraalStackTrace[libGraalStackIndex]))) {
                 startingLibGraalFrame = false;
                 merged[targetIndex++] = libGraalStackTrace[libGraalStackIndex++];
             }
@@ -284,9 +283,8 @@ public final class JNIExceptionWrapper extends RuntimeException {
      * Determines if {@code stackTrace} contains a frame denoting a call into HotSpot.
      */
     private static boolean containsHotSpotCall(StackTraceElement[] stackTrace) {
-        StackTraceRecognizer recognizer = StackTraceRecognizer.getInstance();
         for (StackTraceElement e : stackTrace) {
-            if (recognizer.isHotSpotCall(e)) {
+            if (HotSpotCalls.isHotSpotCall(e)) {
                 return true;
             }
         }
@@ -343,67 +341,65 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     // JNI calls
-    @SuppressWarnings("unchecked")
     static <T extends JObject> T callCreateException(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return (T) env.getFunctions().getCallStaticObjectMethodA().call(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
+        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
     }
 
-    @SuppressWarnings("unchecked")
     static <T extends JObject> T callUpdateStackTrace(JNIEnv env, JObject p0, JObject p1) {
         JNI.JValue args = StackValue.get(2, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         args.addressOf(1).setJObject(p1);
-        return (T) env.getFunctions().getCallStaticObjectMethodA().call(env, getHotSpotEntryPoints(env), UpdateStackTrace.resolve(env), args);
+        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), UpdateStackTrace.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetThrowableMessage(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return (T) env.getFunctions().getCallStaticObjectMethodA().call(env, getHotSpotEntryPoints(env), GetThrowableMessage.resolve(env), args);
+        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetThrowableMessage.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetClassName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return (T) env.getFunctions().getCallStaticObjectMethodA().call(env, getHotSpotEntryPoints(env), GetClassName.resolve(env), args);
+        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetClassName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetStackTrace(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return (T) env.getFunctions().getCallStaticObjectMethodA().call(env, getHotSpotEntryPoints(env), GetStackTrace.resolve(env), args);
+        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTrace.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetStackTraceElementClassName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return (T) env.getFunctions().getCallStaticObjectMethodA().call(env, getHotSpotEntryPoints(env), GetStackTraceElementClassName.resolve(env), args);
+        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementClassName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetStackTraceElementMethodName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return (T) env.getFunctions().getCallStaticObjectMethodA().call(env, getHotSpotEntryPoints(env), GetStackTraceElementMethodName.resolve(env), args);
+        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementMethodName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetStackTraceElementFileName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return (T) env.getFunctions().getCallStaticObjectMethodA().call(env, getHotSpotEntryPoints(env), GetStackTraceElementFileName.resolve(env), args);
+        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementFileName.resolve(env), args);
     }
 
     static int callGetStackTraceElementLineNumber(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return env.getFunctions().getCallStaticIntMethodA().call(env, getHotSpotEntryPoints(env), GetStackTraceElementLineNumber.resolve(env), args);
+        return HotSpotCalls.callStaticInt(env, getHotSpotEntryPoints(env), GetStackTraceElementLineNumber.resolve(env), args);
     }
 
     private static final class MethodResolver {
