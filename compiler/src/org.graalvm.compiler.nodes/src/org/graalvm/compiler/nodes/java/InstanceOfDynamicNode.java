@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,6 +68,10 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
 
     public static LogicNode create(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode mirror, ValueNode object, boolean allowNull) {
         return create(assumptions, constantReflection, mirror, object, allowNull, false);
+    }
+
+    public static LogicNode create(ValueNode mirror, ValueNode object) {
+        return new InstanceOfDynamicNode(mirror, object, false, false);
     }
 
     protected InstanceOfDynamicNode(ValueNode mirror, ValueNode object, boolean allowNull, boolean exact) {

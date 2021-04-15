@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,7 @@ public abstract class AllocationSnippets implements Snippets {
             result = formatObject(hub, prototypeMarkWord, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewInstanceStub(hub);
+            result = callNewInstanceStub(hub, size);
         }
         profileAllocation(profilingData, size);
         return verifyOop(result);
@@ -352,6 +352,11 @@ public abstract class AllocationSnippets implements Snippets {
     protected abstract int instanceHeaderSize();
 
     public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
+
+    @SuppressWarnings("unused")
+    protected Object callNewInstanceStub(Word hub, UnsignedWord size) {
+        return callNewInstanceStub(hub);
+    }
 
     protected abstract Object callNewInstanceStub(Word hub);
 

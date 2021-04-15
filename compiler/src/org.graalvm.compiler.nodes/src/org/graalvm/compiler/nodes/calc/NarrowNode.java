@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,16 +87,24 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, IntegerConvertO
 
     @Override
     public boolean isLossless() {
-        return checkLossless(this.getResultBits());
+        return checkLossless(this.getResultBits(), this.getValue());
     }
 
-    private boolean checkLossless(int bits) {
-        Stamp valueStamp = this.getValue().stamp(NodeView.DEFAULT);
+    public static boolean checkLossless(int bits, ValueNode value) {
+        Stamp valueStamp = value.stamp(NodeView.DEFAULT);
         if (bits > 0 && valueStamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) valueStamp;
-            long valueUpMask = integerStamp.upMask();
-            if ((valueUpMask & CodeUtil.mask(bits)) == valueUpMask) {
+            long bitsRangeMin = CodeUtil.minValue(bits);
+            long bitsRangeMax = CodeUtil.maxValue(bits);
+            if (bitsRangeMin <= integerStamp.lowerBound() && integerStamp.upperBound() <= bitsRangeMax) {
+                // all signed values fit
                 return true;
+            } else if (integerStamp.isPositive()) {
+                long valueUpMask = integerStamp.upMask();
+                if ((valueUpMask & CodeUtil.mask(bits)) == valueUpMask) {
+                    // value is unsigned and fits
+                    return true;
+                }
             }
         }
         return false;
@@ -107,9 +115,9 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, IntegerConvertO
         switch (cond) {
             case LT:
                 // Must guarantee that also sign bit does not flip.
-                return checkLossless(this.getResultBits() - 1);
+                return checkLossless(this.getResultBits() - 1, this.getValue());
             default:
-                return checkLossless(this.getResultBits());
+                return checkLossless(this.getResultBits(), this.getValue());
         }
     }
 

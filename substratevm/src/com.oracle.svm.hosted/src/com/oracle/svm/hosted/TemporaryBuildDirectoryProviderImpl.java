@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
-import com.oracle.svm.core.util.VMError;
-
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
@@ -35,7 +32,10 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
-public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirectoryProvider {
+import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+import com.oracle.svm.core.util.VMError;
+
+public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirectoryProvider, AutoCloseable {
 
     private Path tempDirectory;
     private boolean deleteTempDirectory;
@@ -60,6 +60,13 @@ public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirect
         return tempDirectory.toAbsolutePath();
     }
 
+    @Override
+    public void close() {
+        if (deleteTempDirectory) {
+            deleteAll(getTemporaryBuildDirectory());
+        }
+    }
+
     private static void deleteAll(Path path) {
         try {
             Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
@@ -79,11 +86,4 @@ public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirect
             throw VMError.shouldNotReachHere(ex);
         }
     }
-
-    void clean() {
-        if (deleteTempDirectory) {
-            deleteAll(getTemporaryBuildDirectory());
-        }
-    }
-
 }

@@ -54,7 +54,7 @@ public final class SubstrateArraysCopyOfWithExceptionNode extends WithExceptionN
     @Input ValueNode originalLength;
     @Input ValueNode newLength;
     /** The type of the array copy. */
-    @Input ValueNode newArrayType;
+    @Input ValueNode newObjectArrayType;
     int bci;
 
     /**
@@ -65,7 +65,7 @@ public final class SubstrateArraysCopyOfWithExceptionNode extends WithExceptionN
         this.original = original;
         this.originalLength = originaLength;
         this.newLength = newLength;
-        this.newArrayType = newArrayType;
+        this.newObjectArrayType = newArrayType;
         this.bci = bci;
     }
 
@@ -80,8 +80,8 @@ public final class SubstrateArraysCopyOfWithExceptionNode extends WithExceptionN
     }
 
     @Override
-    public ValueNode getNewArrayType() {
-        return newArrayType;
+    public ValueNode getNewObjectArrayType() {
+        return newObjectArrayType;
     }
 
     @Override
@@ -116,7 +116,7 @@ public final class SubstrateArraysCopyOfWithExceptionNode extends WithExceptionN
 
     @Override
     public FixedNode replaceWithNonThrowing() {
-        SubstrateArraysCopyOfNode plainArrayCopy = this.asNode().graph().add(new SubstrateArraysCopyOfNode(stamp, getOriginal(), getOriginalLength(), getNewLength(), getNewArrayType()));
+        SubstrateArraysCopyOfNode plainArrayCopy = this.asNode().graph().add(new SubstrateArraysCopyOfNode(stamp, getOriginal(), getOriginalLength(), getNewLength(), getNewObjectArrayType()));
         plainArrayCopy.setStateBefore(stateBefore());
         AbstractBeginNode oldException = exceptionEdge();
         graph().replaceSplitWithFixed(this, plainArrayCopy, this.next());

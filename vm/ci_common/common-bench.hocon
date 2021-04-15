@@ -3,10 +3,10 @@ vm_bench_common: {
   upload: [bench-uploader.py, ${vm_bench_common.result_file}]
   capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
   targets: [bench]
-  timelimit: "1:00:00"
+  timelimit: "1:30:00"
 }
 
-vm_bench_js_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} {
+vm_bench_js_linux: ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${vm_bench_common} {
   cmd_base: ${mx_vm_common} [--dynamicimports, js-benchmarks, benchmark, --results-file, ${vm_bench_common.result_file}]
   config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}"]
   cmd: ${vm_bench_js_linux.cmd_base} ["${BENCH_SUITE}:*", --] ${vm_bench_js_linux.config_base}
@@ -22,7 +22,7 @@ vm_bench_js_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${s
   ]
 }
 
-vm_bench_polybench_linux_common: ${vm_bench_common} ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} {
+vm_bench_polybench_linux_common: ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} ${vm_bench_common} {
   base_cmd: [mx, --env, "polybench-${VM_ENV}"]
   downloads: {
     WABT_DIR: {name: wabt, version: "1.0.12", platformspecific: true},

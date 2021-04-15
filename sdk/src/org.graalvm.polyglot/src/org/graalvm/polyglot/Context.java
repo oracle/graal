@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
@@ -558,6 +564,22 @@ public final class Context implements AutoCloseable {
      * it will be interpreted as polyglot {@link Value#isString() string}.
      * <li>If the <code>hostValue</code> is an instance of {@link Boolean}, then it will be
      * interpreted as polyglot {@link Value#isBoolean() boolean}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Instant}, {@link LocalTime},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Date} or
+     * {@link java.sql.Time} then it will be interpreted as polyglot {@link Value#isTime() time}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Instant}, {@link LocalDate},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} or
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isDate() date}.
+     * <li>If the <code>hostValue</code> is an instance of {@link ZoneId}, {@link Instant},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} and
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isTimeZone() time
+     * zone}.
+     * <li>If the <code>hostValue</code> is an instance of {@link ZonedDateTime}, {@link Instant},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} and
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isInstant()
+     * instant}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Duration} then it will be
+     * interpreted as polyglot {@link Value#isDuration() duration}.
      * <li>If the <code>hostValue</code> is a {@link Proxy polyglot proxy}, then it will be
      * interpreted according to the behavior specified by the proxy. See the javadoc of the proxy
      * subclass for further details.
@@ -567,12 +589,15 @@ public final class Context implements AutoCloseable {
      * back to a polyglot value.
      * <li>Any other <code>hostValue</code> will be interpreted as {@link Value#isHostObject() host
      * object}. Host objects expose all their public java fields and methods as
-     * {@link Value#getMember(String) members}. In addition, Java arrays and subtypes of
-     * {@link List} will be interpreted as a value with {@link Value#hasArrayElements() array
-     * elements} and single method interfaces annotated with {@link FunctionalInterface} are
-     * {@link Value#execute(Object...) executable} directly. Java {@link Class} instances are
-     * interpreted as {@link Value#canInstantiate() instantiable}, but they do not expose Class
-     * methods as members.
+     * {@link Value#getMember(String) members}. In addition, Java arrays, subtypes of {@link List}
+     * and {@link Entry} will be interpreted as a value with {@link Value#hasArrayElements() array
+     * elements}. The subtypes of {@link Iterable} will be interpreted as a value with
+     * {@link Value#hasIterator()} iterator}. The subtypes of {@link Iterator} will be interpreted
+     * as an {@link Value#isIterator() iterator} value. The subtypes of {@link Map} will be
+     * interpreted as a value with {@link Value#hasHashEntries()} hash entries}. And single method
+     * interfaces annotated with {@link FunctionalInterface} are {@link Value#execute(Object...)
+     * executable} directly. Java {@link Class} instances are interpreted as
+     * {@link Value#canInstantiate() instantiable}, but they do not expose Class methods as members.
      * </ol>
      * <p>
      * <b>Basic Examples:</b>
@@ -771,7 +796,7 @@ public final class Context implements AutoCloseable {
      * context is still usable after this method finishes. Please note that guest finally blocks are
      * executed during interrupt. A context thread may not be interruptiple if it uses
      * non-interruptible waiting or executes non-interruptible host code.
-     * 
+     *
      * This method may be used as a "soft exit", meaning that it can be used before
      * {@link #close(boolean) close(true)} is executed.
      *
@@ -788,6 +813,52 @@ public final class Context implements AutoCloseable {
         if (!impl.interrupt(this, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
+    }
+
+    /**
+     * Polls safepoints events and executes them for the current thread. This allows guest languages
+     * to run actions between long running host method calls. Polyglot embeddings that rely on
+     * cancellation should call this method whenev a potentially long running host operation is
+     * executed. For example, iterating an unbounded array. Guest language code and operations
+     * automatically poll safepoints regularly.
+     *
+     * <p>
+     * In this example we allow {@link Context#interrupt(Duration) interruption} and
+     * {@link Context#close(boolean) cancellation} to stop the processing of our event queue.
+     *
+     * <pre>
+     * class EventProcessor {
+     *
+     *   List<Object> events = new ArrayDeque(); // list of arbitrary size
+     *
+     *   public void processEvents() {
+     *     Context context = Context.getCurrent();
+     *
+     *     while (Object event = events.pop()) {
+     *
+     *         // process event
+     *
+     *         // allow cancellation and interruptions
+     *         try {
+     *             context.safepoint();
+     *         } catch (PolyglotException e) {
+     *             if (e.isInterrupted() || e.isCancelled()) {
+     *                 // break event processing if interrupted or cancelled
+     *                 throw e;
+     *             }
+     *             // other handling of guest errors or rethrow
+     *         }
+     *     }
+     *  }
+     * }
+     * </pre>
+     *
+     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws IllegalStateException if the context is already {@link #close() closed}.
+     * @since 21.1
+     */
+    public void safepoint() {
+        impl.safepoint();
     }
 
     /**

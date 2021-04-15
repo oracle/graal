@@ -30,7 +30,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -39,6 +38,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CErrorNumber;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
@@ -85,8 +85,8 @@ final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
-        if (ImageInfo.isSharedLibrary()) {
-            throw new IllegalArgumentException("Installing signal handlers is not allowed for native-image shared libraries.");
+        if (!SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw new IllegalArgumentException("Installing signal handlers is not enabled");
         }
         return Util_jdk_internal_misc_Signal.handle0(sig, nativeH);
     }
@@ -392,25 +392,25 @@ class IgnoreSIGPIPEFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new IgnoreSIGPIPEStartupHook());
+    }
+}
 
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new Runnable() {
+final class IgnoreSIGPIPEStartupHook implements Runnable {
 
-            @Override
-            /**
-             * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide
-             * signal whose default action is to terminate the process, will instead return an error
-             * code from the specific write operation.
-             *
-             * From pipe(7}: If all file descriptors referring to the read end of a pipe have been
-             * closed, then a write(2) will cause a SIGPIPE signal to be generated for the calling
-             * process. If the calling process is ignoring this signal, then write(2) fails with the
-             * error EPIPE.
-             */
-            public void run() {
-                final Signal.SignalDispatcher signalResult = Signal.signal(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
-                VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
-            }
-        });
+    /**
+     * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide signal whose
+     * default action is to terminate the process, will instead return an error code from the
+     * specific write operation.
+     *
+     * From pipe(7}: If all file descriptors referring to the read end of a pipe have been closed,
+     * then a write(2) will cause a SIGPIPE signal to be generated for the calling process. If the
+     * calling process is ignoring this signal, then write(2) fails with the error EPIPE.
+     */
+    @Override
+    public void run() {
+        final SignalDispatcher signalResult = Signal.signal(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
+        VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -165,8 +165,7 @@ public class CompilationResultBuilder {
 
     /**
      * These position maps are used for estimating offsets of forward branches. Used for
-     * architectures where certain branch instructions have limited displacement such as ARM tbz or
-     * SPARC cbcond.
+     * architectures where certain branch instructions have limited displacement such as ARM tbz.
      */
     private EconomicMap<Label, Integer> labelBindLirPositions;
     private EconomicMap<LIRInstruction, Integer> lirPositions;

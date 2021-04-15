@@ -25,6 +25,7 @@
 package com.oracle.svm.core.option;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -37,14 +38,22 @@ public class OptionUtils {
 
     /**
      * Utility for string option values that are a, e.g., comma-separated list, but can also be
-     * provided multiple times on the command line (so the option type is String[]). The returned
-     * list contains all {@link String#trim() trimmed} string parts, with empty strings filtered
-     * out.
+     * provided multiple times on the command line (so the option type is
+     * LocatableMultiOptionValue.Strings). The returned list contains all {@link String#trim()
+     * trimmed} string parts, with empty strings filtered out.
      */
+    public static List<String> flatten(String delimiter, LocatableMultiOptionValue.Strings values) {
+        return flatten(delimiter, values.values());
+    }
+
     public static List<String> flatten(String delimiter, String[] values) {
         if (values == null) {
             return Collections.emptyList();
         }
+        return flatten(delimiter, Arrays.asList(values));
+    }
+
+    public static List<String> flatten(String delimiter, List<String> values) {
         List<String> result = new ArrayList<>();
         for (String value : values) {
             if (value != null && !value.isEmpty()) {

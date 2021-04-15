@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -354,9 +354,16 @@ public abstract class LibraryFactory<T extends Library> {
             assert validateExport(receiver, dispatchClass, uncached);
             return uncached;
         }
+        return getUncachedSlowPath(receiver, dispatchClass);
+    }
+
+    /**
+     * Handles {@link #getUncached(Object)} cache miss.
+     */
+    private T getUncachedSlowPath(Object receiver, Class<?> dispatchClass) {
         ensureLibraryInitialized();
         LibraryExport<T> export = lookupExport(receiver, dispatchClass);
-        uncached = export.createUncached(receiver);
+        T uncached = export.createUncached(receiver);
         assert validateExport(receiver, dispatchClass, uncached);
         assert uncached.accepts(receiver);
         assert (uncached = createAssertionsImpl(export, uncached)) != null;

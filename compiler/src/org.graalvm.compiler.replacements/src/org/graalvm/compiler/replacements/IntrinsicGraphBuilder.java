@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -349,6 +349,9 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @SuppressWarnings("try")
     public StructuredGraph buildGraph(InvocationPlugin plugin) {
+        // The caller is expected to have filtered out decorator plugins since they cannot be
+        // processed without special handling.
+        assert !plugin.isDecorator() : plugin;
         NodeSourcePosition position = graph.trackNodeSourcePosition() ? NodeSourcePosition.placeholder(method) : null;
         try (DebugCloseable context = graph.withNodeSourcePosition(position)) {
             Receiver receiver = method.isStatic() ? null : this;

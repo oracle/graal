@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.util.UserError;
@@ -67,8 +68,8 @@ public class ScalaFeature implements GraalFeature {
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
-        if (hosted && analysis) {
+    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             plugins.appendNodePlugin(new ScalaAnalysisPlugin());
         }
     }

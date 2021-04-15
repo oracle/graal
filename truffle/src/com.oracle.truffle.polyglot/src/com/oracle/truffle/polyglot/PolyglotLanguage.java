@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
@@ -461,6 +462,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         PolyglotContextImpl context = PolyglotContextImpl.requireContext();
         PolyglotLanguageContext languageContext = context.getContext(this);
         if (languageContext.isInitialized() && languageContext.language.engine != this.engine) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw shouldNotReachHere(String.format("Context reference was used from an Engine that is currently not entered. " +
                             "ContextReference of engine %s was used but engine %s is currently entered. " +
                             "ContextReference must not be shared between multiple Engine instances.",

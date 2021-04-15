@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,9 +90,6 @@ public class GraalHotSpotVMConfigAccess {
             case "x86_64":
                 arch = "amd64";
                 break;
-            case "sparcv9":
-                arch = "sparc";
-                break;
         }
         osArch = arch;
         assert KNOWN_ARCHITECTURES.contains(arch) : arch;
@@ -114,8 +111,8 @@ public class GraalHotSpotVMConfigAccess {
         return getProperty(name, null);
     }
 
-    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "sparc", "aarch64"));
-    public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin", "solaris"));
+    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "aarch64"));
+    public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin"));
 
     /**
      * Name for current OS. Will be a value in {@value #KNOWN_OS_NAMES}.
@@ -128,6 +125,7 @@ public class GraalHotSpotVMConfigAccess {
     public final String osArch;
 
     protected static final Version JVMCI_0_55 = new Version2(0, 55);
+    protected static final Version JVMCI_21_1_b02 = new Version3(21, 1, 2);
     public static final Version JVMCI_20_3_b04 = new Version3(20, 3, 4);
     protected static final Version JVMCI_20_2_b04 = new Version3(20, 2, 4);
     protected static final Version JVMCI_20_2_b01 = new Version3(20, 2, 1);

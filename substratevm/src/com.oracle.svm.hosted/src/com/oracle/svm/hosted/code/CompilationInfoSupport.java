@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,15 @@ package com.oracle.svm.hosted.code;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -40,13 +42,86 @@ import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class CompilationInfoSupport {
+
+    /**
+     * Stores the value kinds present at a deoptimization point's (deoptimization source)
+     * FrameState. This information is used to validate the deoptimization point's target
+     * (deoptimization entry point).
+     */
+    public static final class DeoptSourceFrameInfo {
+        public final List<JavaKind> expectedKinds;
+        public final int numLocals;
+        public final int numStack;
+        public final int numLocks;
+
+        private DeoptSourceFrameInfo(List<JavaKind> expectedKinds, int numLocals, int numStack, int numLocks) {
+            this.expectedKinds = expectedKinds;
+            this.numLocals = numLocals;
+            this.numStack = numStack;
+            this.numLocks = numLocks;
+        }
+
+        public static DeoptSourceFrameInfo create(FrameState state) {
+            return new DeoptSourceFrameInfo(getKinds(state), state.localsSize(), state.stackSize(), state.locksSize());
+        }
+
+        private static List<JavaKind> getKinds(FrameState state) {
+            return state.values().stream().map(DeoptSourceFrameInfo::getKind).collect(Collectors.toList());
+        }
+
+        private static JavaKind getKind(ValueNode value) {
+            if (value == null) {
+                return JavaKind.Illegal;
+            } else {
+                return value.getStackKind();
+            }
+        }
+
+        /**
+         * Potentially there are multiple deoptimization points which target the same deoptimization
+         * entry point. If so, the state used at the deoptimization entry point must be a subset of
+         * the intersection of all potential deoptimization points.
+         */
+        public DeoptSourceFrameInfo mergeStateInfo(FrameState state) {
+            List<JavaKind> otherKinds = getKinds(state);
+
+            boolean matchingSizes = numLocals == state.localsSize() &&
+                            numStack == state.stackSize() &&
+                            numLocks == state.locksSize() &&
+                            expectedKinds.size() == otherKinds.size();
+            if (!matchingSizes) {
+                StringBuilder errorMessage = new StringBuilder();
+                errorMessage.append("Unexpected number of values in state to merge.\n");
+                errorMessage.append(String.format("DeoptSourceFrameInfo: locals-%d, stack-%d, locks-%d.\n", numLocals, numStack, numLocks));
+                errorMessage.append(String.format("Merge FrameState: locals-%d, stack-%d, locks-%d.\n", state.localsSize(), state.stackSize(), state.locksSize()));
+                VMError.shouldNotReachHere(errorMessage.toString());
+            }
+
+            for (int i = 0; i < expectedKinds.size(); i++) {
+                JavaKind current = expectedKinds.get(i);
+                JavaKind other = otherKinds.get(i);
+
+                if (current != JavaKind.Illegal && current != other) {
+                    /*
+                     * The deopt target cannot have a value in this slot which matches all seen
+                     * frame states.
+                     */
+                    expectedKinds.set(i, JavaKind.Illegal);
+                }
+            }
+            return this;
+        }
+    }
 
     protected boolean sealed;
 
     private final Set<AnalysisMethod> forcedCompilations = new HashSet<>();
     private final Set<AnalysisMethod> frameInformationRequired = new HashSet<>();
-    private final Map<AnalysisMethod, Set<Long>> deoptEntries = new HashMap<>();
+    private final Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> deoptEntries = new HashMap<>();
     private final Set<AnalysisMethod> deoptInliningExcludes = new HashSet<>();
 
     public static CompilationInfoSupport singleton() {
@@ -72,7 +147,7 @@ public class CompilationInfoSupport {
          * deoptimization target. No bci needs to be registered, it is enough to have a non-null
          * value in the map.
          */
-        deoptEntries.computeIfAbsent(method, m -> new HashSet<>());
+        deoptEntries.computeIfAbsent(method, m -> new HashMap<>());
     }
 
     public boolean isFrameInformationRequired(ResolvedJavaMethod method) {
@@ -80,11 +155,13 @@ public class CompilationInfoSupport {
         return frameInformationRequired.contains(toAnalysisMethod(method));
     }
 
-    public void registerDeoptEntry(ResolvedJavaMethod method, int bci, boolean duringCall, boolean rethrowException) {
+    public void registerDeoptEntry(FrameState state) {
         assert !sealed;
-        assert bci >= 0;
-        long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
-        deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new HashSet<>()).add(encodedBci);
+        assert state.bci >= 0;
+        long encodedBci = FrameInfoEncoder.encodeBci(state.bci, state.duringCall(), state.rethrowException());
+
+        Map<Long, DeoptSourceFrameInfo> sourceFrameInfoMap = deoptEntries.computeIfAbsent(toAnalysisMethod(state.getMethod()), m -> new HashMap<>());
+        sourceFrameInfoMap.compute(encodedBci, (k, v) -> v == null ? DeoptSourceFrameInfo.create(state) : v.mergeStateInfo(state));
     }
 
     public boolean isDeoptTarget(ResolvedJavaMethod method) {
@@ -94,11 +171,11 @@ public class CompilationInfoSupport {
 
     protected boolean isDeoptEntry(ResolvedJavaMethod method, int bci, boolean duringCall, boolean rethrowException) {
         assert seal();
-        Set<Long> bciSet = deoptEntries.get(toAnalysisMethod(method));
-        assert bciSet != null : "can only query for deopt entries for methods registered as deopt targets";
+        Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod(method));
+        assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
 
         long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
-        return bciSet.contains(encodedBci);
+        return bciMap.containsKey(encodedBci);
     }
 
     public void registerAsDeoptInlininingExclude(ResolvedJavaMethod method) {
@@ -111,7 +188,7 @@ public class CompilationInfoSupport {
         return deoptInliningExcludes.contains(toAnalysisMethod(method));
     }
 
-    public Map<AnalysisMethod, Set<Long>> getDeoptEntries() {
+    public Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> getDeoptEntries() {
         assert seal();
         return deoptEntries;
     }

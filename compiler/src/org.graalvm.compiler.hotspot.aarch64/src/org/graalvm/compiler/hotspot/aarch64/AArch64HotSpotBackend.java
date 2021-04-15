@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMM
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.Label;
@@ -169,9 +168,11 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
     private class HotSpotFrameContext implements FrameContext {
         final boolean isStub;
+        final boolean preserveFramePointer;
 
-        HotSpotFrameContext(boolean isStub) {
+        HotSpotFrameContext(boolean isStub, boolean preserveFramePointer) {
             this.isStub = isStub;
+            this.preserveFramePointer = preserveFramePointer;
         }
 
         @Override
@@ -179,7 +180,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             FrameMap frameMap = crb.frameMap;
             final int frameSize = frameMap.frameSize();
             final int totalFrameSize = frameMap.totalFrameSize();
-            assert frameSize + 2 * crb.target.arch.getWordSize() == totalFrameSize : "total framesize should be framesize + 2 words";
+            int wordSize = crb.target.arch.getWordSize();
+            assert frameSize + 2 * wordSize == totalFrameSize : "total framesize should be framesize + 2 words";
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             if (!isStub) {
                 emitStackOverflowCheck(crb);
@@ -187,16 +189,21 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             crb.blockComment("[method prologue]");
 
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                int wordSize = 8;
                 Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
                 AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
                 if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                     masm.sub(64, sp, sp, totalFrameSize);
                     masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
+                    if (preserveFramePointer) {
+                        masm.add(64, fp, sp, frameSize);
+                    }
                 } else {
                     int frameRecordSize = 2 * wordSize;
                     masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
+                    if (preserveFramePointer) {
+                        masm.mov(64, fp, sp);
+                    }
                     masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
                 }
             }
@@ -267,7 +274,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
         Stub stub = gen.getStub();
         Assembler masm = new AArch64MacroAssembler(getTarget());
-        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, config.preserveFramePointer);
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, lir.getOptions(), lir.getDebug(), compilationResult,
@@ -449,11 +456,6 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     @Override
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        return new AArch64HotSpotRegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
-    }
-
-    @Override
-    public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
-        return calleeRegisters;
+        return new AArch64HotSpotRegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo, config.preserveFramePointer);
     }
 }

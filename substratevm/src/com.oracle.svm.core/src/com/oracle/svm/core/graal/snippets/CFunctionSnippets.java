@@ -98,7 +98,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
      * A unique object that identifies the frame anchor stack value. Multiple C function calls
      * inlined into the same Java method share the stack slots for the frame anchor.
      */
-    private static final StackSlotIdentity frameAnchorIdentity = new StackSlotIdentity("CFunctionSnippets.frameAnchorIdentifier");
+    private static final StackSlotIdentity frameAnchorIdentity = new StackSlotIdentity("CFunctionSnippets.frameAnchorIdentifier", true);
 
     @Snippet
     private static CPrologueData prologueSnippet(@ConstantParameter int newThreadStatus) {

@@ -103,6 +103,13 @@ class ReflectionProcessor extends AbstractProcessor {
                 configuration.getOrCreateType(name);
             }
             return;
+        } else if (function.equals("methodTypeDescriptor")) {
+            List<String> typeNames = singleElement(args);
+            for (String type : typeNames) {
+                if (!advisor.shouldIgnore(lazyValue(type), lazyValue(callerClass))) {
+                    configuration.getOrCreateType(type);
+                }
+            }
         }
         String clazz = (String) entry.get("class");
         if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
@@ -121,11 +128,11 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
 
-            case "asInterfaceInstance":
             case "getDeclaredMethods": {
                 configuration.getOrCreateType(clazz).setAllDeclaredMethods();
                 break;
             }
+            case "asInterfaceInstance":
             case "getMethods": {
                 configuration.getOrCreateType(clazz).setAllPublicMethods();
                 break;

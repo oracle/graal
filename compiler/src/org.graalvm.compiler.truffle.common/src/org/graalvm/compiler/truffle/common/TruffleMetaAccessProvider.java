@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,6 +60,11 @@ public interface TruffleMetaAccessProvider {
      * compilation unit.
      */
     void setInlinedCallCount(int count);
+
+    /**
+     * @return How many calls were inlined.
+     */
+    int countInlinedCalls();
 
     /**
      * To be used from the compiler side.

@@ -153,6 +153,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
      *
      * @return the value of the referenced variable
      */
+    @TruffleBoundary
     public Object getValue() {
         if (value == null) {
             return "";
@@ -805,6 +806,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         }
     }
 
+    @TruffleBoundary
     public static LLVMDebugObject create(LLVMSourceType type, long baseOffset, LLVMDebugValue value, LLVMSourceLocation declaration) {
         if (type.getActualType() == LLVMSourceType.UNKNOWN || type.getActualType() == LLVMSourceType.UNSUPPORTED) {
             return new Unsupported(value, baseOffset, LLVMSourceType.UNSUPPORTED, declaration);

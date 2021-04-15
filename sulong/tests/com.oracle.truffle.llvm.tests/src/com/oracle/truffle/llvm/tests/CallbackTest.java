@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,7 +46,8 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class CallbackTest extends BaseSulongOnlyHarness {
 
-    private static final String OTHER_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "..", "tests", "other").toString();
+    private static final String TEST_DIST_ROOT = TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES");
+    private static final String TEST_DIR = Paths.get(TEST_DIST_ROOT, "callback").toString();
     private static final String testSuffix = "O1.bc";
 
     @Parameter(value = 0) public Path path;
@@ -57,30 +58,31 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
     public static Collection<Object[]> data() {
 
         final Map<Path, RunConfiguration> runs = new HashMap<>();
-        runs.put(Paths.get(OTHER_DIR, "callbackTest002.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackTest002.c.dir", testSuffix),
                         new RunConfiguration(14, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest003.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackTest003.c.dir", testSuffix),
                         new RunConfiguration(42, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest004.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackTest004.c.dir", testSuffix),
                         new RunConfiguration(42, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest005.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackTest005.c.dir", testSuffix),
                         new RunConfiguration(42, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest006.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackTest006.c.dir", testSuffix),
                         new RunConfiguration(0, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest008.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackTest008.c.dir", testSuffix),
                         new RunConfiguration(0, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest007.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackTest007.c.dir", testSuffix),
                         new RunConfiguration(0, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackIntrinsic.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackIntrinsic.c.dir", testSuffix),
                         new RunConfiguration(0, "calling f64 callback\n-0.416147\n"));
-        runs.put(Paths.get(OTHER_DIR, "returnNativeCallback.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "returnNativeCallback.c.dir", testSuffix),
                         new RunConfiguration(10, null));
-        runs.put(Paths.get(OTHER_DIR, "nativeCallbackInStruct.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "nativeCallbackInStruct.c.dir", testSuffix),
                         new RunConfiguration(42, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackCast.c.dir", testSuffix),
+        runs.put(Paths.get(TEST_DIR, "callbackCast.c.dir", testSuffix),
                         new RunConfiguration(0, "126\n"));
 
-        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());
+        Path other = Paths.get(TEST_DIST_ROOT);
+        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), other.relativize(k.getParent()).toString()}).collect(Collectors.toList());
     }
 
     @Override

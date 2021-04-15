@@ -67,6 +67,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -82,11 +83,13 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -95,6 +98,8 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry;
+import com.oracle.svm.hosted.snippets.ReflectionPlugins.ReflectionPluginRegistry;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -133,7 +138,6 @@ public final class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
-    private static final Method isRecordMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isRecord") : null;
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ForkJoinPool executor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
@@ -149,7 +153,7 @@ public final class SVMHost implements HostVM {
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
-        String[] forbiddenTypesOptionValues = SubstrateOptions.ReportAnalysisForbiddenType.getValue(options);
+        List<String> forbiddenTypesOptionValues = SubstrateOptions.ReportAnalysisForbiddenType.getValue(options).values();
         Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes = new HashMap<>();
         for (String forbiddenTypesOptionValue : forbiddenTypesOptionValues) {
             String[] typeNameUsageKind = forbiddenTypesOptionValue.split(":", 2);
@@ -356,11 +360,9 @@ public final class SVMHost implements HostVM {
          * JDK 15 added support for Hidden Classes. Record if this javaClass is hidden.
          */
         boolean isHidden = false;
-        boolean isRecord = false;
         if (JavaVersionUtil.JAVA_SPEC >= 15) {
             try {
                 isHidden = (boolean) isHiddenMethod.invoke(javaClass);
-                isRecord = (boolean) isRecordMethod.invoke(javaClass);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -375,6 +377,7 @@ public final class SVMHost implements HostVM {
             }
         }
 
+        boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
 
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub,
@@ -423,7 +426,7 @@ public final class SVMHost implements HostVM {
         classReachabilityListeners.add(listener);
     }
 
-    void notifyClassReachabilityListener(AnalysisUniverse universe, DuringAnalysisAccess access) {
+    public void notifyClassReachabilityListener(AnalysisUniverse universe, DuringAnalysisAccess access) {
         for (AnalysisType type : universe.getTypes()) {
             if (type.isReachable() && !type.getReachabilityListenerNotified()) {
                 type.setReachabilityListenerNotified(true);
@@ -453,6 +456,8 @@ public final class SVMHost implements HostVM {
         } else if (type.isInstanceClass()) {
             if (Reference.class.isAssignableFrom(type.getJavaClass())) {
                 return HubType.InstanceReference;
+            } else if (type.getJavaClass().equals(StoredContinuation.class)) {
+                return HubType.StoredContinuation;
             }
             assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
             return HubType.Instance;
@@ -628,5 +633,20 @@ public final class SVMHost implements HostVM {
 
     public boolean isAnalysisTrivialMethod(AnalysisMethod method) {
         return analysisTrivialMethods.containsKey(method);
+    }
+
+    @Override
+    @SuppressWarnings("try")
+    public AnalysisParsedGraph parseBytecode(BigBang bb, AnalysisMethod analysisMethod) {
+        /*
+         * Temporarily pause the thread local registries. The results of parsing need to be
+         * persistent.
+         */
+        try (AutoCloseable ignored1 = ReflectionPluginRegistry.pauseThreadLocalRegistry();
+                        AutoCloseable ignored2 = IntrinsificationRegistry.pauseThreadLocalRegistry()) {
+            return AnalysisParsedGraph.parseBytecode(bb, analysisMethod);
+        } catch (Throwable e) {
+            throw bb.getDebug().handle(e);
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_type;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class NFIInitialization {
 
@@ -55,31 +54,32 @@ public final class NFIInitialization {
     interface InitializeNativeSimpleTypeCallback extends CFunctionPointer {
     }
 
-    private static void initializeNativeSimpleType(Target_com_oracle_truffle_nfi_impl_NFIContext context, NativeSimpleType simpleType, ffi_type ffiType) {
+    private static void initializeNativeSimpleType(Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType simpleType,
+                    ffi_type ffiType) {
         int size = (int) ffiType.size().rawValue();
         int alignment = ffiType.alignment();
         context.initializeSimpleType(simpleType, size, alignment, ffiType.rawValue());
     }
 
-    static void initializeSimpleTypes(Target_com_oracle_truffle_nfi_impl_NFIContext context) {
+    static void initializeSimpleTypes(Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context) {
         // it's important to initialize POINTER first, since the primitive array types depend on it
-        initializeNativeSimpleType(context, NativeSimpleType.POINTER, ffi_type_pointer.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.POINTER, ffi_type_pointer.get());
 
-        initializeNativeSimpleType(context, NativeSimpleType.VOID, ffi_type_void.get());
-        initializeNativeSimpleType(context, NativeSimpleType.UINT8, ffi_type_uint8.get());
-        initializeNativeSimpleType(context, NativeSimpleType.SINT8, ffi_type_sint8.get());
-        initializeNativeSimpleType(context, NativeSimpleType.UINT16, ffi_type_uint16.get());
-        initializeNativeSimpleType(context, NativeSimpleType.SINT16, ffi_type_sint16.get());
-        initializeNativeSimpleType(context, NativeSimpleType.UINT32, ffi_type_uint32.get());
-        initializeNativeSimpleType(context, NativeSimpleType.SINT32, ffi_type_sint32.get());
-        initializeNativeSimpleType(context, NativeSimpleType.UINT64, ffi_type_uint64.get());
-        initializeNativeSimpleType(context, NativeSimpleType.SINT64, ffi_type_sint64.get());
-        initializeNativeSimpleType(context, NativeSimpleType.FLOAT, ffi_type_float.get());
-        initializeNativeSimpleType(context, NativeSimpleType.DOUBLE, ffi_type_double.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.VOID, ffi_type_void.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.UINT8, ffi_type_uint8.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.SINT8, ffi_type_sint8.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.UINT16, ffi_type_uint16.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.SINT16, ffi_type_sint16.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.UINT32, ffi_type_uint32.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.SINT32, ffi_type_sint32.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.UINT64, ffi_type_uint64.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.SINT64, ffi_type_sint64.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.FLOAT, ffi_type_float.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.DOUBLE, ffi_type_double.get());
 
-        initializeNativeSimpleType(context, NativeSimpleType.STRING, ffi_type_pointer.get());
-        initializeNativeSimpleType(context, NativeSimpleType.OBJECT, ffi_type_pointer.get());
-        initializeNativeSimpleType(context, NativeSimpleType.NULLABLE, ffi_type_pointer.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.STRING, ffi_type_pointer.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.OBJECT, ffi_type_pointer.get());
+        initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.NULLABLE, ffi_type_pointer.get());
     }
 
     static void initializeContext(NativeTruffleContext ctx) {

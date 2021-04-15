@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,6 +84,7 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -371,7 +372,7 @@ public class InliningUtil extends ValueMergeUtil {
         final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
 
         assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal();
-        assert !invokeNode.graph().isAfterFloatingReadPhase() : "inline isn't handled correctly after floating reads phase";
+        assert invokeNode.graph().isBeforeStage(StageFlag.FLOATING_READS) : "inline isn't handled correctly after floating reads phase";
 
         if (receiverNullCheck && !((MethodCallTargetNode) invoke.callTarget()).isStatic()) {
             nonNullReceiver(invoke);
@@ -589,9 +590,6 @@ public class InliningUtil extends ValueMergeUtil {
             GraphUtil.killCFG(invoke.next());
         }
 
-        // Copy assumptions from inlinee to caller
-        graph.recordAssumptions(inlineGraph);
-
         // Copy inlined methods from inlinee to caller
         graph.updateMethods(inlineGraph);
 
@@ -696,13 +694,13 @@ public class InliningUtil extends ValueMergeUtil {
             } else {
                 NodeSourcePosition oldPos = cursor.getKey().getNodeSourcePosition();
                 if (oldPos != null) {
-                    if (inlineeRoot == null) {
-                        assert (inlineeRoot = oldPos.getRootMethod()) != null;
-                    } else {
-                        assert oldPos.verifyRootMethod(inlineeRoot);
-                    }
                     NodeSourcePosition updatedPos = posMap.get(oldPos);
                     if (updatedPos == null) {
+                        if (inlineeRoot == null) {
+                            assert (inlineeRoot = oldPos.getRootMethod()) != null;
+                        } else {
+                            assert oldPos.verifyRootMethod(inlineeRoot);
+                        }
                         updatedPos = oldPos.addCaller(oldPos.getSourceLanguage(), invokePos, isSubstitution);
                         posMap.put(oldPos, updatedPos);
                     }

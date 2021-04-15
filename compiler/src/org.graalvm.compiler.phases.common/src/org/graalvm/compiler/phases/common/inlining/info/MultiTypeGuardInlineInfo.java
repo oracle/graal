@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -374,7 +375,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             keyProbabilities[i] /= totalProbability;
         }
 
-        TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors, constantReflection));
+        TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keySuccessors, constantReflection, SwitchProbabilityData.profiled(keyProbabilities)));
         FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
         pred.setNext(typeSwitch);
         return false;

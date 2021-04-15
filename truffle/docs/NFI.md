@@ -182,6 +182,21 @@ Depending on the configuration of components you are running, available backends
 * `native`
 * `llvm`, which uses the GraalVM LLVM runtime to run the native code
 
+### Truffle NFI on Native Image
+
+To build a native image that contains the Truffle NFI, it is sufficient to use the `--langeage:nfi` argument, or specify `Requires = language:nfi` in `native-image.properties`.
+It is possible to select what implementation to use for the `native` backend using `--language:nfi=<backend>`.
+
+Note that the `--language:nfi=<backend>` argument must come before any other arguments that might pull in the NFI as dependency via `Requires = language:nfi`.
+The first instance of `language:nfi` wins and determines what backend will be built into the native image.
+
+Available arguments for `--language:nfi=<backend>` are:
+* `libffi` (the default)
+* `none`
+
+Selecting the `none` native backend will effectively disable access to native functions using the Truffle NFI.
+This will break users of the NFI that rely on native access (e.g. the GraalVM LLVM Runtime, unless used with `--llvm.managed` on EE).
+
 ## Native API
 
 The NFI can be used with unmodified, already compiled native code, but it can also be used with a Truffle-specific API being used by the native code.

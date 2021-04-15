@@ -263,9 +263,25 @@ public class Linker {
     void resolveGlobalInitialization(WasmContext context, WasmInstance instance, int globalIndex, int sourceGlobalIndex) {
         final Runnable resolveAction = () -> {
             final int sourceAddress = instance.globalAddress(sourceGlobalIndex);
-            final long sourceValue = context.globals().loadAsLong(sourceAddress);
+            final byte type = instance.symbolTable().globalValueType(sourceGlobalIndex);
             final int address = instance.globalAddress(globalIndex);
-            context.globals().storeLong(address, sourceValue);
+            final GlobalRegistry globals = context.globals();
+            switch (type) {
+                case WasmType.I32_TYPE:
+                    globals.storeInt(address, globals.loadAsInt(sourceAddress));
+                    break;
+                case WasmType.I64_TYPE:
+                    globals.storeLong(address, globals.loadAsLong(sourceAddress));
+                    break;
+                case WasmType.F32_TYPE:
+                    globals.storeFloat(address, globals.loadAsFloat(sourceAddress));
+                    break;
+                case WasmType.F64_TYPE:
+                    globals.storeDouble(address, globals.loadAsDouble(sourceAddress));
+                    break;
+                default:
+                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
+            }
         };
         final Sym[] dependencies = new Sym[]{new InitializeGlobalSym(instance.name(), sourceGlobalIndex)};
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies, resolveAction);

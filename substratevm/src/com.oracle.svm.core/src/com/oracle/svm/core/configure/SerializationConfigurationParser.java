@@ -27,19 +27,14 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.core.util.json.JSONParser;
-import com.oracle.svm.core.util.json.JSONParserException;
 
 public class SerializationConfigurationParser extends ConfigurationParser {
 
     public static final String NAME_KEY = "name";
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
-    public static final String CHECKSUM_KEY = "checksum";
 
     private final SerializationParserFunction consumer;
 
@@ -56,25 +51,12 @@ public class SerializationConfigurationParser extends ConfigurationParser {
             String targetSerializationClass = asString(data.get(NAME_KEY));
             Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            Object checksumValue = data.get(CHECKSUM_KEY);
-            List<String> checksums = new ArrayList<>();
-            if (checksumValue != null) {
-                List<Object> jsonChecksums;
-                try {
-                    jsonChecksums = asList(checksumValue, "list of checksums");
-                } catch (JSONParserException e) {
-                    jsonChecksums = Collections.singletonList(asString(checksumValue, "checksum"));
-                }
-                for (Object jsonChecksum : jsonChecksums) {
-                    checksums.add(asString(jsonChecksum, "checksum"));
-                }
-            }
-            consumer.accept(targetSerializationClass, customTargetConstructorClass, checksums);
+            consumer.accept(targetSerializationClass, customTargetConstructorClass);
         }
     }
 
     @FunctionalInterface
     public interface SerializationParserFunction {
-        void accept(String targetSerializationClass, String customTargetConstructorClass, List<String> checksum);
+        void accept(String targetSerializationClass, String customTargetConstructorClass);
     }
 }

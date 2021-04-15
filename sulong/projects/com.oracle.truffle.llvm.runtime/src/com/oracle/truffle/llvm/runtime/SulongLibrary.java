@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -72,12 +73,14 @@ public final class SulongLibrary implements TruffleObject {
     private final LLVMScope scope;
     private final LLVMContext context;
     final CachedMainFunction main;
+    private final LibraryLocator libraryLocator;
 
-    public SulongLibrary(String name, LLVMScope scope, CachedMainFunction main, LLVMContext context) {
+    public SulongLibrary(String name, LLVMScope scope, CachedMainFunction main, LLVMContext context, LibraryLocator libraryLocator) {
         this.name = name;
         this.scope = scope;
         this.main = main;
         this.context = context;
+        this.libraryLocator = libraryLocator;
     }
 
     public static final class CachedMainFunction {
@@ -217,13 +220,17 @@ public final class SulongLibrary implements TruffleObject {
         @Specialization(guards = {"library.main == cachedMain", "cachedMain != null"})
         static Object doCached(SulongLibrary library, Object[] args,
                         @Cached("library.main") @SuppressWarnings("unused") CachedMainFunction cachedMain,
-                        @Cached("create(cachedMain.getMainCallTarget())") DirectCallNode call) {
+                        @Cached("create(cachedMain.getMainCallTarget())") DirectCallNode call,
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+            ctx.setMainLibraryLocator(library.libraryLocator);
             return call.call(args);
         }
 
         @Specialization(replaces = "doCached", guards = "library.main != null")
         static Object doGeneric(SulongLibrary library, Object[] args,
-                        @Cached("create()") IndirectCallNode call) {
+                        @Cached("create()") IndirectCallNode call,
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+            ctx.setMainLibraryLocator(library.libraryLocator);
             return call.call(library.main.getMainCallTarget(), args);
         }
 

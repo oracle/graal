@@ -622,16 +622,17 @@ public abstract class BigBang {
     private void checkObjectGraph() throws InterruptedException {
         scannedObjects.reset();
         // scan constants
-        ObjectScanner objectScanner = new AnalysisObjectScanner(this, scannedObjects);
+        boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
+        ObjectScanner objectScanner = new AnalysisObjectScanner(this, isParallel ? executor : null, scannedObjects);
         checkObjectGraph(objectScanner);
-        if (PointstoOptions.ScanObjectsParallel.getValue(options)) {
+        if (isParallel) {
             executor.start();
-            objectScanner.scanBootImageHeapRoots(executor);
+            objectScanner.scanBootImageHeapRoots(null, null);
             executor.complete();
             executor.shutdown();
             executor.init(timing);
         } else {
-            objectScanner.scanBootImageHeapRoots(null);
+            objectScanner.scanBootImageHeapRoots(null, null);
         }
         AnalysisType.updateAssignableTypes(this);
     }

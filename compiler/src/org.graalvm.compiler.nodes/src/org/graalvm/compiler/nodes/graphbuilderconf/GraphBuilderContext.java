@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,12 +45,14 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PluginReplacementNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -327,7 +329,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
 
         AbstractBeginNode trueSuccessor = passingOnTrue ? null : exceptionPath;
         AbstractBeginNode falseSuccessor = passingOnTrue ? exceptionPath : null;
-        double probability = passingOnTrue ? BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY : BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
+        boolean negate = !passingOnTrue;
+        BranchProbabilityData probability = BranchProbabilityData.injected(BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY, negate);
         IfNode ifNode = append(new IfNode(condition, trueSuccessor, falseSuccessor, probability));
 
         BeginNode passingSuccessor = append(new BeginNode());
@@ -420,6 +423,15 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      */
     default void replacePlugin(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args, PluginReplacementNode.ReplacementFunction replacementFunction) {
         throw GraalError.unimplemented();
+    }
+
+    /**
+     * A hook for subclasses to add other instructions around the provided instruction.
+     *
+     * @param instr The instruction used to determine which instructions must be added.
+     */
+    default void processInstruction(FixedWithNextNode instr) {
+        /* By default, no additional processing is needed. */
     }
 }
 

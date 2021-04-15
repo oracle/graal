@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,11 +34,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 import org.graalvm.polyglot.PolyglotException;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.TruffleRunner;
 
@@ -47,7 +50,17 @@ import com.oracle.truffle.tck.TruffleRunner;
  */
 public class BigEndianTest {
 
-    private static final Path TEST_DIR = new File(TestOptions.LL_TEST_SUITE_PATH, "other").toPath();
+    @Before
+    public void bundledLLVMOnly() {
+        TestOptions.assumeBundledLLVM();
+    }
+
+    @Before
+    public void checkLinuxAMD64() {
+        Assume.assumeTrue("Skipping linux/amd64 only test", Platform.isLinux() && Platform.isAMD64());
+    }
+
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
     private static final String FILENAME = "O0.bc";
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();

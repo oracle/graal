@@ -1,0 +1,27 @@
+[
+  {
+    "name": "java.lang.String",
+    "fields": [
+      {
+        "name": "value"
+      },
+      {
+        "name": "hash"
+      }
+    ]
+  },
+  {
+    "name": "com.oracle.truffle.nfi.backend.libffi.LibFFILibrary",
+    "fields": [
+      {
+        "name": "handle"
+      }
+    ]
+  },
+  {
+    "name": "java.util.concurrent.atomic.AtomicLong",
+    "fields": [
+      { "name": "VM_SUPPORTS_LONG_CAS" }
+    ]
+  }
+]

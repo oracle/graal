@@ -68,6 +68,7 @@ public final class ConvertUnknownValueNode extends FixedWithNextNode implements 
 
     @Override
     public void lower(LoweringTool tool) {
-        graph().replaceFixed(this, object);
+        replaceAtUsages(object);
+        graph().removeFixed(this);
     }
 }

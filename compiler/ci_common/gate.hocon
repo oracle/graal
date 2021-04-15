@@ -23,7 +23,7 @@ gateCoverage : {
     EXTRA_VM_ARGS : ""
   }
   run : [
-    ${gateCmd} ["build,coverage", --jacocout, html]
+    ${gateCmd} ["build,coverage", --jacoco-omit-excluded, --jacocout, html]
     [mx, coverage-upload]
     # GR-18258 [mx, sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."${jvm-config.default}, "-Dsonar.projectName=GraalVM - Compiler ("${jvm-config.default}")", --exclude-generated, --skip-coverage]
   ]
@@ -82,7 +82,7 @@ gateTestCTWWeekly : {
   run : [
     # At least one gate build should run without strict
     # compliance as that's how Travis runs on JDK9
-    ["mx"] ${gateCmdSuffix} ["build,ctw", "--jacocout", "html"]
+    ["mx"] ${gateCmdSuffix} ["build,ctw", "--jacoco-omit-excluded", "--jacocout", "html"]
     ["mx", "coverage-upload"]
   ]
   timelimit : "1:30:00"
@@ -150,20 +150,7 @@ gateDarwinAMD64 : ${darwin-amd64} ${gateCommon}
 
 gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
 
-gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
-
-gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
-
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
-
-gateJAOTC : {
-  environment : {
-    EXTRA_VM_ARGS : ""
-  }
-  run : [
-    ${gateCmd} ["build,jaotc"]
-  ]
-}
 
 # This task listens to the hotspot math stubs changes. In case of failure, please check if the hotspot changes affect the
 # emitted stub code in C2, and update corresponding recasts in the org.graalvm.compiler.lir.amd64 package accordingly.
@@ -190,15 +177,6 @@ gateMathStubsListener: ${linux-amd64} {
   ]
 }
 
-dailyJDK15Debug: ${labsjdk-ee-15Debug} {
-    targets: [daily]
-    notify_emails: [
-      "doug.simon@oracle.com"
-      "tom.rodriguez@oracle.com"
-    ]
-    timelimit: "2:00:00"
-}
-
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
   capabilities : ["linux", "amd64", "x82"]
   notify_emails: [
@@ -208,5 +186,3 @@ gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
 
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
-gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }
-gateLinuxSPARCBootstrap : ${gateLinuxSPARC} # No manycore

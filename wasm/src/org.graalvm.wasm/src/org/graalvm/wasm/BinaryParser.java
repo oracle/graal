@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.collection.ByteArrayList;
@@ -240,7 +241,80 @@ public class BinaryParser extends BinaryStreamParser {
         Assert.assertUnsignedIntLessOrEqual(offset, sectionEndOffset, Failure.UNEXPECTED_END);
         Assert.assertUnsignedIntLessOrEqual(sectionEndOffset, data.length, Failure.UNEXPECTED_END);
         module.allocateCustomSection(name, offset, sectionEndOffset - offset);
+        if ("name".equals(name)) {
+            try {
+                readNameSection();
+            } catch (WasmException ex) {
+                // Malformed name section should not result in invalidation of the module
+                assert ex.getExceptionType() == ExceptionType.PARSE_ERROR;
+            }
+        }
         offset = sectionEndOffset;
+    }
+
+    /**
+     * @see <a href=
+     *      "https://webassembly.github.io/spec/core/appendix/custom.html#binary-namesubsection"><code>namedata</code>
+     *      binary specification</a>
+     */
+    private void readNameSection() {
+        if (!isEOF() && peek1() == 0) {
+            readModuleName();
+        }
+        if (!isEOF() && peek1() == 1) {
+            readFunctionNames();
+        }
+        if (!isEOF() && peek1() == 2) {
+            readLocalNames();
+        }
+    }
+
+    /**
+     * @see <a href=
+     *      "https://webassembly.github.io/spec/core/appendix/custom.html#binary-modulenamesec"><code>modulenamesubsec</code>
+     *      binary specification</a>
+     */
+    private void readModuleName() {
+        final int subsectionId = read1();
+        assert subsectionId == 0;
+        final int size = readLength();
+        // We don't currently use debug module name.
+        offset += size;
+    }
+
+    /**
+     * @see <a href=
+     *      "https://webassembly.github.io/spec/core/appendix/custom.html#binary-funcnamesec"><code>funcnamesubsec</code>
+     *      binary specification</a>
+     */
+    private void readFunctionNames() {
+        final int subsectionId = read1();
+        assert subsectionId == 1;
+        final int size = readLength();
+        final int startOffset = offset;
+        final int length = readLength();
+        final int maxFunctionIndex = module.numFunctions() - 1;
+        for (int i = 0; i < length; ++i) {
+            final int functionIndex = readFunctionIndex();
+            assertIntLessOrEqual(0, functionIndex, "Negative function index", Failure.UNSPECIFIED_MALFORMED);
+            assertIntLessOrEqual(functionIndex, maxFunctionIndex, "Function index too large", Failure.UNSPECIFIED_MALFORMED);
+            final String functionName = readName();
+            module.function(functionIndex).setDebugName(functionName);
+        }
+        assertIntEqual(offset - startOffset, size, Failure.SECTION_SIZE_MISMATCH);
+    }
+
+    /**
+     * @see <a href=
+     *      "https://webassembly.github.io/spec/core/appendix/custom.html#local-names"><code>localnamesubsec</code>
+     *      binary specification</a>
+     */
+    private void readLocalNames() {
+        final int subsectionId = read1();
+        assert subsectionId == 2;
+        final int size = readLength();
+        // We don't currently use debug local names.
+        offset += size;
     }
 
     private void readTypeSection() {
@@ -594,6 +668,8 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
+                    assertTrue(module.symbolTable().tableExists(), Failure.UNKNOWN_TABLE);
+
                     int expectedFunctionTypeIndex = readTypeIndex();
 
                     // Pop the function index to call
@@ -1329,7 +1405,9 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private int readTypeIndex() {
-        return readUnsignedInt32();
+        final int result = readUnsignedInt32();
+        assertUnsignedIntLess(result, module.symbolTable().typeCount(), Failure.UNKNOWN_TYPE);
+        return result;
     }
 
     private int readFunctionIndex() {

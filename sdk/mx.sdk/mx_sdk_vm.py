@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -87,10 +87,11 @@ _graalvm_hostvm_configs = [
     ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
 ]
 _known_vms = set()
+_base_jdk = None
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False, home_finder=False):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -105,6 +106,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.is_polyglot = is_polyglot
         self.dir_jars = dir_jars
         self.home_finder = home_finder
+        self.build_time = build_time
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, list)
@@ -125,27 +127,23 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
             add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
         return sorted(add_exports)
 
-    def get_add_exports(self):
-        distributions = self.jar_distributions
-        distributions_transitive = mx.classpath_entries(distributions)
-        required_exports = mx_javamodules.requiredExports(distributions_transitive, base_jdk())
-        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
-
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
-                 option_vars=None, home_finder=True, **kwargs):
+                 is_module_launcher=False, option_vars=None, home_finder=True, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
         :param bool default_symlinks
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
+        :param bool is_module_launcher: Whether it uses classpath or module-path for the application
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, home_finder=home_finder, **kwargs)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
+        self.module_launcher = is_module_launcher
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
@@ -159,6 +157,15 @@ class LauncherConfig(AbstractNativeImageConfig):
             raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
                 language, self.relative_home_paths[language], path, self.destination))
         self.relative_home_paths[language] = path
+
+    def get_add_exports(self, missing_jars):
+        if not self.module_launcher:
+            return ''
+        distributions = self.jar_distributions
+        distributions_transitive = mx.classpath_entries(distributions)
+        distributions_transitive_clean = [entry for entry in distributions_transitive if str(entry) not in missing_jars]
+        required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
+        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
 
 
 class LanguageLauncherConfig(LauncherConfig):
@@ -206,11 +213,15 @@ class GraalVmComponent(object):
                  has_polyglot_lib_entrypoints=False,
                  boot_jars=None,
                  jvmci_parent_jars=None,
+                 jlink=True,
                  priority=None,
                  installable=None,
                  post_install_msg=None,
                  installable_id=None,
-                 dependencies=None):
+                 dependencies=None,
+                 supported=None,
+                 early_adopter=False,
+                 stability=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -241,6 +252,7 @@ class GraalVmComponent(object):
         :type installable: bool
         :type installable_id: str
         :type post_install_msg: str
+        :type stability: str | None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -273,6 +285,25 @@ class GraalVmComponent(object):
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
 
+        if supported is not None or early_adopter:
+            if stability is not None:
+                raise mx.abort("{}: Cannot use `stability` attribute in combination with deprecated `supported` and `early_adopter` attributes".format(name))
+            mx.warn("{}: `supported` and `early_adopter` attributes are deprecated, please use `stability`".format(name))
+
+        if supported:
+            if early_adopter:
+                stability = "earlyadopter"
+            else:
+                stability = "supported"
+        else:
+            if early_adopter:
+                stability = "experimental-earlyadopter"
+            else:
+                stability = "experimental"
+        self.stability = stability
+
+        self.jlink = jlink
+
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
         assert isinstance(self.support_distributions, list)
@@ -288,6 +319,8 @@ class GraalVmComponent(object):
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
+
+        assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
@@ -390,7 +423,7 @@ def register_graalvm_component(component):
         _graalvm_components_by_name[component.name] = component
 
 
-def graalvm_component_by_name(name):
+def graalvm_component_by_name(name, fatalIfMissing=True):
     """
     :rtype: GraalVmComponent
     """
@@ -399,7 +432,10 @@ def graalvm_component_by_name(name):
     elif name in _graalvm_components_by_name:
         return _graalvm_components_by_name[name]
     else:
-        raise Exception("Unknown component: {}".format(name))
+        if fatalIfMissing:
+            raise Exception("Unknown component: {}".format(name))
+        else:
+            return None
 
 
 def graalvm_components(opt_limit_to_suite=False):
@@ -446,9 +482,6 @@ def register_known_vm(name):
     _known_vms.add(name)
 
 
-_base_jdk = None
-
-
 def base_jdk():
     global _base_jdk
     if _base_jdk is None:
@@ -480,7 +513,7 @@ def jdk_has_new_jlink_options(jdk):
         output = mx.OutputCapture()
         jlink_exe = jdk.javac.replace('javac', 'jlink')
         mx.run([jlink_exe, '--list-plugins'], out=output)
-        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data)
+        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data or '--add-options ' in output.data)
     return getattr(jdk, '.supports_new_jlink_options')
 
 def jdk_supports_enablejvmciproduct(jdk):
@@ -512,7 +545,7 @@ def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable
         setattr(jdk, '.omits_ThreadPriorityPolicy_warning', '-XX:ThreadPriorityPolicy=1 may require system level permission' not in out.data)
     return getattr(jdk, '.omits_ThreadPriorityPolicy_warning')
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   root_module_names=None,
                   missing_export_target_action='create',
                   with_source=lambda x: True,
@@ -525,10 +558,11 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
     :param JDKConfig jdk: source JDK
     :param str dst_jdk_dir: path to use for the jlink --output option
     :param list module_dists: list of distributions defining modules
+    :param list ignore_dists: list of distributions that should be ignored for missing_export_target_action
     :param list root_module_names: list of strings naming the module root set for the new JDK image.
                      The named modules must either be in `module_dists` or in `jdk`. If None, then
                      the root set will be all the modules in ``module_dists` and `jdk`.
-    :param str missing_export_target_action: the action to perform for a qualifed export target that
+    :param str missing_export_target_action: the action to perform for a qualified export target that
                      is not present in `module_dists` and does not have a hash stored in java.base.
                      The choices are:
                        "create" - an empty module is created
@@ -553,7 +587,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
     if not isdir(jmods_dir):
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods_dir + ' is missing or is not a directory')
 
-    jdk_modules = {jmd.name: jmd for jmd in jdk.get_modules()}
+    # Exclude jdk.aot due to GR-10545 and JDK-8255616
+    jdk_modules = {jmd.name: jmd for jmd in jdk.get_modules() if jmd.name != 'jdk.aot'}
     modules = [as_java_module(dist, jdk) for dist in module_dists]
     all_module_names = frozenset(list(jdk_modules.keys()) + [m.name for m in modules])
 
@@ -570,24 +605,27 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
             hashes[module_name] = (algorithm, hash_value)
 
     build_dir = mx.ensure_dir_exists(join(dst_jdk_dir + ".build"))
+
+    synthetic_modules = []
     try:
-        # Handle targets of qualified exports that are not present in `modules`
+        ignore_module_names = set(mx_javamodules.get_module_name(mx.dependency(ignore_dist)) for ignore_dist in ignore_dists)
+        # Synthesize modules for targets of qualified exports that are not present in `modules`.
+        # Without this, runtime module resolution will fail due to missing modules.
         target_requires = {}
         for jmd in modules:
             for targets in jmd.exports.values():
                 for target in targets:
-                    if target not in all_module_names and target not in hashes:
+                    if target not in all_module_names and target not in ignore_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
         if target_requires and missing_export_target_action is not None:
             if missing_export_target_action == 'error':
                 mx.abort('Target(s) of qualified exports cannot be resolved: ' + '.'.join(target_requires.keys()))
             assert missing_export_target_action == 'create', 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
 
-            extra_modules = []
             for name, requires in target_requires.items():
                 module_jar = join(build_dir, name + '.jar')
                 jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
-                extra_modules.append(jmd)
+                synthetic_modules.append(jmd)
                 module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
                 module_info_java = join(module_build_dir, 'module-info.java')
                 module_info_class = join(module_build_dir, 'module-info.class')
@@ -603,7 +641,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
                     os.remove(jmd.get_jmod_path())
                 mx.run([jdk.javac.replace('javac', 'jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
 
-            modules.extend(extra_modules)
+            modules.extend(synthetic_modules)
             all_module_names = frozenset(list(jdk_modules.keys()) + [m.name for m in modules])
 
         # Extract src.zip from source JDK
@@ -720,7 +758,8 @@ grant codeBase "file:${java.home}/languages/-" {
                 thread_priority_policy_option = ''
 
             if jdk_supports_enablejvmciproduct(jdk):
-                if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
+                non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
+                if 'jdk.internal.vm.compiler' in non_synthetic_modules:
                     jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
                 else:
                     # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
@@ -802,3 +841,51 @@ grant codeBase "file:${java.home}/languages/-" {
     if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
         mx.log(out.data)
         mx.abort('Error generating CDS shared archive')
+
+
+def verify_graalvm_configs(suites=None):
+    """
+    Check the consistency of registered GraalVM configs.
+    :param suites: optionally restrict the check to the configs registered by this list of suites.
+    :type suites: list[str] or None
+    """
+    import mx_sdk_vm_impl
+    child_env = os.environ.copy()
+    for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS', 'DISABLE_POLYGLOT', 'DISABLE_LIBPOLYGLOT']:
+        if env_var in child_env:
+            del child_env[env_var]
+    for dist_name, _, components, suite, env_file in _vm_configs:
+        if env_file is not False and (suites is None or suite.name in suites):
+            _env_file = env_file or dist_name
+            graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=mx_sdk_vm_impl._graalvm_base_name, dist_name=dist_name, jdk_version=mx_sdk_vm_impl._src_jdk_version).upper().replace('-', '_')
+            mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(_env_file, suite.name, graalvm_dist_name))
+            out = mx.LinesOutputCapture()
+            err = mx.LinesOutputCapture()
+            retcode = mx.run_mx(['--quiet', '--no-warning', '--env', _env_file, 'graalvm-dist-name'], suite, out=out, err=err, env=child_env, nonZeroIsFatal=False)
+            if retcode != 0:
+                mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output:\n{}\nError:\n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines), '\n'.join(err.lines)))
+            if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
+                out2 = mx.LinesOutputCapture()
+                retcode2 = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-components'], suite, out=out2, err=out2, env=child_env, nonZeroIsFatal=False)
+                if retcode2 or len(out2.lines) != 1:
+                    got_components = '<error>'
+                    diff = ''
+                else:
+                    got_components = out2.lines[0]  # example string: "['bpolyglot', 'cmp']"
+                    got_components_set = set(got_components[1:-1].replace('\'', '').split(', '))
+                    components_set = set(components)
+                    added = list(got_components_set - components_set)
+                    removed = list(components_set - got_components_set)
+                    diff = ('Added:\n{}\n'.format(added) if added else '') + ('Removed:\n{}\n'.format(removed) if removed else '')
+                mx.abort("""\
+Unexpected GraalVM dist name for env file '{}' in suite '{}'.
+Expected dist name: '{}'
+Actual dist name: '{}'.
+Expected component list:
+{}
+Actual component list:
+{}
+{}Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components, diff))
+
+
+register_known_vm('truffle')

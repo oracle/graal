@@ -198,12 +198,12 @@ public class ValidationSuite extends WasmFileSuite {
                         // Validated in: SymbolTable#allocateFunction
                         stringCase(
                                         "Function - invalid type index",
-                                        "Function type out of bounds: 1 should be < 1.",
+                                        "unknown type: 1 should be < 1",
                                         "(type (func (result i32))) (func (export \"f\") (type 1))",
                                         Failure.Type.INVALID),
                         stringCase(
                                         "Function - invalid type index",
-                                        "Function type out of bounds: 4294967254 should be < 1.",
+                                        "unknown type: 4294967254 should be < 1",
                                         "(type (func (result i32))) (func (export \"f\") (type 4294967254))",
                                         Failure.Type.INVALID),
 

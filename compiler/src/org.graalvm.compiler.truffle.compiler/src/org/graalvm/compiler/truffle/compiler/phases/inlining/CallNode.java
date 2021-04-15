@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,7 +104,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         callTree.add(root);
         root.ir = request.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
-        final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
+        final GraphManager.Entry entry = callTree.getGraphManager().peRoot(callTree.truffleTierOnExpand);
         EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
         root.verifyTrivial(entry);
         addChildren(root, invokeToTruffleCallNode);
@@ -223,7 +223,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         assert ir == null;
         GraphManager.Entry entry;
         try {
-            entry = getCallTree().getGraphManager().pe(truffleAST);
+            entry = getCallTree().getGraphManager().pe(truffleAST, getCallTree().truffleTierOnExpand);
         } catch (PermanentBailoutException e) {
             state = State.BailedOut;
             return;
@@ -249,9 +249,14 @@ public final class CallNode extends Node implements Comparable<CallNode> {
             public void accept(UnmodifiableEconomicMap<Node, Node> duplicates) {
                 final EconomicMap<Invoke, TruffleCallNode> replacements = EconomicMap.create();
                 for (Invoke original : entry.invokeToTruffleCallNode.getKeys()) {
+                    if (!original.isAlive()) {
+                        continue;
+                    }
                     final TruffleCallNode truffleCallNode = entry.invokeToTruffleCallNode.get(original);
                     Invoke replacement = (Invoke) duplicates.get((Node) original);
-                    replacements.put(replacement, truffleCallNode);
+                    if (replacement != null && replacement.isAlive()) {
+                        replacements.put(replacement, truffleCallNode);
+                    }
                 }
                 addChildren(CallNode.this, replacements);
             }

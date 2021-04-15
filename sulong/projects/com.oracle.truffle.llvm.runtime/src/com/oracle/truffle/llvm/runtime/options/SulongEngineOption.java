@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -78,11 +78,6 @@ public final class SulongEngineOption {
             category = OptionCategory.EXPERT,
             help = "Enables using C++ code and features via interop.")
     public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
-
-    @Option(name = "llvm.enableExternalNativeAccess",
-            category = OptionCategory.INTERNAL,
-            help = "Enable Sulongs native interface.")
-    public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
 
     @Option(name = "llvm.debugSysCalls",
             category = OptionCategory.INTERNAL,
@@ -177,6 +172,11 @@ public final class SulongEngineOption {
                    "Files with a relative path will be looked up relative to llvm.libraryPath. " +
                    "Libraries are delimited by a colon \'" + OPTION_ARRAY_SEPARATOR + "\'.")
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
+
+    public static final String VERIFY_BITCODE_NAME = "llvm.verifyBitcode";
+    @Option(name = VERIFY_BITCODE_NAME, category = OptionCategory.EXPERT,
+            help = "Sanity check whether loaded bitcode files are compiled correctly.")
+    public static final OptionKey<Boolean> VERIFY_BITCODE = new OptionKey<>(true);
     // @formatter:on
 
     public static List<OptionDescriptor> describeOptions() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -227,6 +228,24 @@ public class Graph {
 
     public static boolean trackNodeSourcePositionDefault(OptionValues options, DebugContext debug) {
         return (GraalOptions.TrackNodeSourcePosition.getValue(options) || debug.isDumpEnabledForMethod());
+    }
+
+    /**
+     * Add any per graph properties that might be useful for debugging (e.g., to view in the ideal
+     * graph visualizer).
+     */
+    public void getDebugProperties(Map<Object, Object> properties) {
+        properties.put("graph", toString());
+    }
+
+    /**
+     * This is called before nodes are transferred to {@code sourceGraph} by
+     * {@link NodeClass#addGraphDuplicate} to allow the transfer of any other state which should
+     * also be transferred.
+     *
+     * @param sourceGraph the source of the nodes that were duplicated
+     */
+    public void beforeNodeDuplication(Graph sourceGraph) {
     }
 
     /**
@@ -893,6 +912,15 @@ public class Graph {
 
     private static final CounterKey GraphCompressions = DebugContext.counter("GraphCompressions");
 
+    @SuppressWarnings("unused")
+    protected Object beforeNodeIdChange(Node node) {
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    protected void afterNodeIdChange(Node node, Object value) {
+    }
+
     /**
      * If the {@linkplain Options#GraphCompressionThreshold compression threshold} is met, the list
      * of nodes is compressed such that all non-null entries precede all null entries while
@@ -916,7 +944,9 @@ public class Graph {
                 assert n.id == i;
                 if (i != nextId) {
                     assert n.id > nextId;
+                    Object value = beforeNodeIdChange(n);
                     n.id = nextId;
+                    afterNodeIdChange(n, value);
                     nodes[nextId] = n;
                     nodes[i] = null;
                 }

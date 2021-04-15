@@ -27,23 +27,19 @@ package com.oracle.graal.pointsto.reports;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.function.Consumer;
 
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.WRITE;
-import static java.nio.file.StandardOpenOption.APPEND;
-
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import java.io.OutputStream;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -107,13 +103,24 @@ public class ReportUtils {
 
             try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
                 try (PrintWriter writer = new PrintWriter(fw)) {
-                    System.out.println("Printing " + description + " to " + file.toAbsolutePath());
+                    System.out.println("# Printing " + description + " to: " + getCWDRelativePath(file));
                     reporter.accept(writer);
                 }
             }
 
         } catch (IOException e) {
             throw JVMCIError.shouldNotReachHere(e);
+        }
+    }
+
+    /** Returns a path relative to the current working directory if possible. */
+    public static Path getCWDRelativePath(Path path) {
+        Path cwd = Paths.get("").toAbsolutePath();
+        try {
+            return cwd.relativize(path);
+        } catch (IllegalArgumentException e) {
+            /* Relativization failed (e.g., the `path` is not absolute or is on another drive). */
+            return path;
         }
     }
 
@@ -148,8 +155,9 @@ public class ReportUtils {
         try {
             Path reportDir = Files.createDirectories(folder);
             Path file = reportDir.resolve(fileName);
-            try (OutputStream fos = Files.newOutputStream(file, CREATE, WRITE, append ? APPEND : TRUNCATE_EXISTING)) {
-                System.out.println("Printing " + description + " to " + file.toAbsolutePath());
+            try (OutputStream fos = Files.newOutputStream(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
+                            append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING)) {
+                System.out.println("# Printing " + description + " to: " + getCWDRelativePath(file));
                 reporter.accept(fos);
                 fos.flush();
             }

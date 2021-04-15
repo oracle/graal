@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,7 @@ public @interface TruffleFromLibGraal {
         CancelCompilation(boolean.class, Object.class, String.class),
         CompilableToString(String.class, Object.class),
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
+        CountInlinedCalls(int.class, Object.class),
         CreateInliningPlan(Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueInlined(void.class, Object.class),
@@ -95,6 +96,7 @@ public @interface TruffleFromLibGraal {
         GetOffsetStart(int.class, Object.class),
         GetPosition(Object.class, Object.class, long.class),
         GetSuppliedString(String.class, Supplier.class),
+        GetThreadLocalPendingHandshakeOffset(int.class, Object.class),
         GetTruffleCallBoundaryMethods(long[].class, Object.class),
         GetURI(String.class, Object.class),
         IsBytecodeInterpreterSwitch(boolean.class, Object.class, long.class),

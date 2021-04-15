@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 
 public interface MemberAccessible {
-    DebugExprType getType();
+    DebugExprType getType(VirtualFrame frame);
 
-    Object getMember();
+    Object getMember(VirtualFrame frame);
 }

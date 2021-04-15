@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,6 +118,7 @@ import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.TargetProvider;
@@ -621,6 +622,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected final MidTierContext getDefaultMidTierContext() {
         return new MidTierContext(getProviders(), getTargetProvider(), getOptimisticOptimizations(), null);
+    }
+
+    protected final LowTierContext getDefaultLowTierContext() {
+        return new LowTierContext(getProviders(), getTargetProvider());
     }
 
     protected SnippetReflectionProvider getSnippetReflection() {
@@ -1314,12 +1319,20 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withFullInfopoints(true));
     }
 
+    protected CompilationIdentifier createCompilationId() {
+        return null;
+    }
+
     @SuppressWarnings("try")
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
         builder.speculationLog(getSpeculationLog());
         if (builder.getCancellable() == null) {
             builder.cancellable(getCancellable(javaMethod));
+        }
+        CompilationIdentifier id = createCompilationId();
+        if (id != null) {
+            builder.compilationId(id);
         }
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         StructuredGraph graph = builder.build();
@@ -1493,6 +1506,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getReplacements();
     }
 
+    protected Architecture getArchitecture() {
+        return backend.getTarget().arch;
+    }
+
     /**
      * Test if the current test runs on the given platform. The name must match the name given in
      * the {@link Architecture#getName()}.
@@ -1501,7 +1518,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return true if we run on the architecture given by name
      */
     protected boolean isArchitecture(String name) {
-        return name.equals(backend.getTarget().arch.getName());
+        return name.equals(getArchitecture().getName());
     }
 
     protected CanonicalizerPhase createCanonicalizerPhase() {

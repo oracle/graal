@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 
 @NodeInfo(allowedUsageTypes = {Condition}, size = SIZE_1)
@@ -43,21 +44,21 @@ public abstract class LogicNode extends FloatingNode implements IndirectCanonica
         super(c, StampFactory.forVoid());
     }
 
-    public static LogicNode and(LogicNode a, LogicNode b, double shortCircuitProbability) {
+    public static LogicNode and(LogicNode a, LogicNode b, BranchProbabilityData shortCircuitProbability) {
         return and(a, false, b, false, shortCircuitProbability);
     }
 
-    public static LogicNode and(LogicNode a, boolean negateA, LogicNode b, boolean negateB, double shortCircuitProbability) {
+    public static LogicNode and(LogicNode a, boolean negateA, LogicNode b, boolean negateB, BranchProbabilityData shortCircuitProbability) {
         StructuredGraph graph = a.graph();
         ShortCircuitOrNode notAorNotB = graph.unique(new ShortCircuitOrNode(a, !negateA, b, !negateB, shortCircuitProbability));
         return graph.unique(new LogicNegationNode(notAorNotB));
     }
 
-    public static LogicNode or(LogicNode a, LogicNode b, double shortCircuitProbability) {
+    public static LogicNode or(LogicNode a, LogicNode b, BranchProbabilityData shortCircuitProbability) {
         return or(a, false, b, false, shortCircuitProbability);
     }
 
-    public static LogicNode or(LogicNode a, boolean negateA, LogicNode b, boolean negateB, double shortCircuitProbability) {
+    public static LogicNode or(LogicNode a, boolean negateA, LogicNode b, boolean negateB, BranchProbabilityData shortCircuitProbability) {
         return a.graph().unique(new ShortCircuitOrNode(a, negateA, b, negateB, shortCircuitProbability));
     }
 

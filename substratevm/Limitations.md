@@ -39,10 +39,6 @@ Native Image employs a simple static analysis that intercepts calls to `java.lan
 Where the analysis fails the lists of interfaces can be specified in a [configuration file](BuildConfiguration.md).
 For more details, read the [Dynamic Proxies support](DynamicProxy.md) guide.
 
-### JCA (Java Cryptography Architecture)
-The JCA security services must be enabled using the option `--enable-all-security-services`.
-They require a custom configuration in Native Image since the JCA framework relies on reflection to achieve algorithm extensibility. For more details, read the [Security Services](JCASecurityServices.md) guide.
-
 ### JNI (Java Native Interface)
 Native code may access Java objects, classes, methods and fields by name, in a similar way to using the reflection API in Java code.
 For the same reasons, any Java artifacts accessed by name via JNI must be specified during a native image generation in a [configuration file](BuildConfiguration.md). For more details, read the [JNI Implementation](JNI.md) guide.

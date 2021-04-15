@@ -243,7 +243,7 @@ public final class NativeImageHeap implements ImageHeap {
          * fields manually.
          */
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isInImageHeap()) {
                 assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addObject(readObjectField(field, null), false, field);
             }
@@ -292,7 +292,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         final ObjectInfo existing = objects.get(original);
         if (existing == null) {
-            addObjectToBootImageHeap(original, immutableFromParent, identityHashCode, reason);
+            addObjectToImageHeap(original, immutableFromParent, identityHashCode, reason);
         }
     }
 
@@ -362,7 +362,7 @@ public final class NativeImageHeap implements ImageHeap {
      * This is the mechanics of recursively adding the object and all its fields and array elements
      * to the model of the native image heap.
      */
-    private void addObjectToBootImageHeap(final Object object, boolean immutableFromParent, final int identityHashCode, final Object reason) {
+    private void addObjectToImageHeap(final Object object, boolean immutableFromParent, final int identityHashCode, final Object reason) {
 
         final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
         final HostedType type = requireType(optionalType, object, reason);

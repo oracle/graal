@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -119,6 +120,9 @@ public final class Configurations {
      */
     public static OptionDescriptors getOptionDescriptors() {
         List<OptionDescriptor> optionDescriptors = new ArrayList<>();
+        // add core options
+        optionDescriptors.addAll(SulongEngineOption.describeOptions());
+        // add configuration specific options
         for (ConfigurationFactory<?> f : factories) {
             optionDescriptors.addAll(f.getOptionDescriptors());
         }

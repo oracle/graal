@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,7 +114,6 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
      */
     @SuppressWarnings("unchecked")
     public JNILibGraalScope(Enum<T> id, JNIEnv env) {
-        JNIUtil.trace(1, "HS->LIBGRAAL[enter]: %s", idString(id));
         this.id = id;
         JNILibGraalScope<?> top = topScope.get();
         this.env = env;
@@ -132,6 +131,7 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
             parent = top.leaf;
         }
         top.leaf = this;
+        JNIUtil.trace(1, "HS->LIBGRAAL[enter]: %s", idString(id));
     }
 
     private String idString(Enum<T> v) {
@@ -154,6 +154,7 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
 
     @Override
     public void close() {
+        JNIUtil.trace(1, "HS->LIBGRAAL[ exit]: %s", idString(id));
         HSObject.invalidate(locals);
         if (parent == null) {
             if (topScope.get() != this) {
@@ -168,7 +169,6 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
             }
             top.leaf = parent;
         }
-        JNIUtil.trace(1, "HS->LIBGRAAL[ exit]: %s", idString(id));
     }
 
     int depth() {

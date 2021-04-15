@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -64,9 +65,11 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl {
@@ -99,17 +102,19 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     private final Value guestObject;
     private final String message;
 
-    PolyglotExceptionImpl(PolyglotEngineImpl engine, Throwable original) {
-        this(engine.impl, engine, null, original, false, false);
+    PolyglotExceptionImpl(PolyglotEngineImpl engine, boolean polyglotContextCancellingOrCancelled, Throwable original) {
+        this(engine.impl, engine, polyglotContextCancellingOrCancelled, null, original, false, false);
     }
 
     // Exception coming from an instrument
     PolyglotExceptionImpl(PolyglotImpl polyglot, Throwable original) {
-        this(polyglot, null, null, original, true, false);
+        this(polyglot, null, false, null, original, true, false);
     }
 
     @SuppressWarnings("deprecation")
-    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Throwable original, boolean allowInterop, boolean entered) {
+    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, boolean polyglotContextCancellingOrCancelled, PolyglotLanguageContext languageContext, Throwable original,
+                    boolean allowInterop,
+                    boolean entered) {
         super(polyglot);
         this.polyglot = polyglot;
         this.engine = engine;
@@ -123,8 +128,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
-                this.cancelled = isLegacyTruffleExceptionCancelled(exception);    // Handle legacy
-                                                                                  // TruffleException
+                this.cancelled = polyglotContextCancellingOrCancelled || isLegacyTruffleExceptionCancelled(exception);
                 this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
@@ -137,8 +141,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                     this.sourceLocation = null;
                 }
                 Object exceptionObject;
-                if (entered && languageContext != null && !(exception instanceof HostException) &&
-                                (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
+                if (entered && languageContext != null && languageContext.isCreated() &&
+                                !(exception instanceof HostException) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
                     /*
                      * Allow proxies in guest language objects. This is for legacy support. Ideally
                      * we should get rid of this if it is no longer relied upon.
@@ -155,7 +159,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 throw CompilerDirectives.shouldNotReachHere(ume);
             }
         } else {
-            this.cancelled = (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
+            this.cancelled = polyglotContextCancellingOrCancelled || (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
             /*
              * When polyglot context is invalid, we cannot obtain the exception type from
              * InterruptExecution exception via interop. Please note that in this case the
@@ -444,6 +448,24 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     @Override
     public Value getGuestObject() {
         return guestObject;
+    }
+
+    static String printStackToString(PolyglotLanguageContext context, Node node) {
+        StackTraceException stack = new StackTraceException(node);
+        TruffleStackTrace.fillIn(stack);
+        PolyglotException e = PolyglotImpl.guestToHostException(context, stack, true);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        e.printStackTrace(new PrintStream(out));
+        return new String(out.toByteArray());
+    }
+
+    @SuppressWarnings("serial")
+    static class StackTraceException extends AbstractTruffleException {
+
+        StackTraceException(Node location) {
+            super(location);
+        }
+
     }
 
     Object getFileSystemContext(PolyglotLanguage language) {
@@ -767,6 +789,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                     return element.getMethodName().equals("invokeHandle");
                 case "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MethodReflectImpl":
                     return element.getMethodName().equals("reflectInvoke");
+                case "com.oracle.truffle.polyglot.HostObject$GuestToHostCalls":
+                    return true;
                 default:
                     return element.getClassName().startsWith("com.oracle.truffle.polyglot.HostToGuestCodeCache$") && element.getMethodName().equals("executeImpl");
             }

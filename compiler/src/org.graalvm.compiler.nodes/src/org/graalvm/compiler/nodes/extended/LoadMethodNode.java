@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,7 +74,6 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
         this.callerType = callerType;
         this.hub = hub;
         this.method = method;
-        assert method.isConcrete() : "Cannot load abstract method from a hub";
         assert method.hasReceiver() : "Cannot load a static method from a hub";
         if (!method.isInVirtualMethodTable(receiverType)) {
             throw new GraalError("%s does not have a vtable entry in type %s", method, receiverType);

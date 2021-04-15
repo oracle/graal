@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.280.0",
+  "mxversion" : "5.292.5",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -147,16 +147,6 @@ suite = {
             "sha1": "fb71a14c57a6e6f494aaaa5a84773a3e35344b9b",
             "urls": ["{urlbase}/hsdis-aarch64-linux-fcc9b70ac91c00db8a50b0d4345490a68e3743e1.tar.gz"],
           },
-          "sparcv9": {
-            "sha1": "1c611db3b3b89f78e1e3223fcf4d83c9a4a0dcd0",
-            "urls": ["{urlbase}/hsdis-sparcv9-linux-0c375986d727651dee1819308fbbc0de4927d5d9.tar.gz"],
-          },
-        },
-        "solaris": {
-          "sparcv9": {
-            "sha1": "73c911e408a0e23624020a536dd2fed680c8fd9e",
-            "urls": ["{urlbase}/hsdis-sparcv9-solaris-970640a9af0bd63641f9063c11275b371a59ee60.tar.gz"],
-          },
         },
         "darwin": {
           "amd64": {
@@ -237,10 +227,31 @@ suite = {
         ],
       },
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "13+",
+      "javaCompliance" : "13..15",
       "checkPackagePrefix" : "false",
       "overlayTarget" : "org.graalvm.compiler.serviceprovider",
       "multiReleaseJarVersion" : "13",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.compiler.serviceprovider.jdk16" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+          "jdk.vm.ci.code.site",
+          "jdk.vm.ci.services",
+          "jdk.vm.ci.runtime",
+        ],
+      },
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "16+",
+      "checkPackagePrefix" : "false",
+      "overlayTarget" : "org.graalvm.compiler.serviceprovider",
+      "multiReleaseJarVersion" : "16",
       "workingSets" : "API,Graal",
     },
 
@@ -580,7 +591,7 @@ suite = {
       "overlayTarget" : "org.graalvm.compiler.hotspot",
       "multiReleaseJarVersion" : "13",
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "13+",
+      "javaCompliance" : "13..14",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -705,7 +716,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.core.amd64",
         "org.graalvm.compiler.hotspot",
-        "org.graalvm.compiler.replacements.amd64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -713,20 +723,6 @@ suite = {
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot,AMD64",
-    },
-
-    "org.graalvm.compiler.hotspot.sparc" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.hotspot",
-        "org.graalvm.compiler.core.sparc",
-        "org.graalvm.compiler.replacements.sparc",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : ["GRAAL_PROCESSOR"],
-      "javaCompliance" : "8..14",
-      "workingSets" : "Graal,HotSpot,SPARC",
     },
 
     "org.graalvm.compiler.hotspot.test" : {
@@ -851,7 +847,7 @@ suite = {
         "org.graalvm.compiler.bytecode",
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
       ],
@@ -906,29 +902,6 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Assembler,AMD64",
-    },
-
-    "org.graalvm.compiler.asm.sparc" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.asm",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8..14",
-      "workingSets" : "Graal,Assembler,SPARC",
-    },
-
-    "org.graalvm.compiler.asm.sparc.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.asm.test",
-        "org.graalvm.compiler.asm.sparc",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8..14",
-      "workingSets" : "Graal,Assembler,SPARC,Test",
     },
 
     "org.graalvm.compiler.bytecode" : {
@@ -1031,26 +1004,6 @@ suite = {
       "workingSets" : "Graal,LIR,AArch64",
     },
 
-    "org.graalvm.compiler.lir.aarch64.jdk11" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.lir.aarch64",
-      ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.code",
-          "jdk.vm.ci.aarch64",
-        ],
-      },
-      "annotationProcessors" : ["GRAAL_PROCESSOR"],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,LIR,AArch64",
-      "overlayTarget" : "org.graalvm.compiler.lir.aarch64",
-      "multiReleaseJarVersion" : "11",
-    },
-
     "org.graalvm.compiler.lir.amd64" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1062,18 +1015,6 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,LIR,AMD64",
-    },
-
-    "org.graalvm.compiler.lir.sparc" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.asm.sparc",
-        "org.graalvm.compiler.lir",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8..14",
-      "workingSets" : "Graal,LIR,SPARC",
     },
 
     "org.graalvm.compiler.word" : {
@@ -1131,17 +1072,6 @@ suite = {
         "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements,AMD64",
-    },
-
-    "org.graalvm.compiler.replacements.sparc" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.replacements",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8..14",
-      "workingSets" : "Graal,Replacements,SPARC",
     },
 
     "org.graalvm.compiler.replacements.test" : {
@@ -1440,9 +1370,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.replacements.amd64",
         "org.graalvm.compiler.core",
-        "org.graalvm.compiler.lir.amd64",
-        "org.graalvm.compiler.java",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1464,35 +1393,6 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,AMD64,Test",
-    },
-
-    "org.graalvm.compiler.core.sparc" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.core",
-        "org.graalvm.compiler.lir.sparc",
-        "org.graalvm.compiler.java"
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-      ],
-      "javaCompliance" : "8..14",
-      "workingSets" : "Graal,SPARC",
-    },
-
-    "org.graalvm.compiler.hotspot.sparc.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.hotspot",
-        "org.graalvm.compiler.lir.jtt",
-        "JVMCI_HOTSPOT"
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8..14",
-      "workingSets" : "Graal,SPARC,Test",
     },
 
     "org.graalvm.compiler.runtime" : {
@@ -1631,58 +1531,6 @@ suite = {
       "jacoco" : "exclude",
       "spotbugs" : "false",
       "testProject" : True,
-    },
-
-    # ------------- JDK AOT -------------
-
-    "jdk.tools.jaotc" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "JVMCI_HOTSPOT",
-        "jdk.tools.jaotc.binformat",
-        "org.graalvm.compiler.asm.amd64",
-        "org.graalvm.compiler.asm.aarch64",
-      ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : '*',
-      },
-      "requires" : [
-        "java.management"
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
-    "jdk.tools.jaotc.binformat" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "JVMCI_HOTSPOT",
-        "org.graalvm.compiler.hotspot",
-      ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.services"
-        ]
-      },
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
-    "jdk.tools.jaotc.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.tools.jaotc",
-        "mx:JUNIT",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,Test",
     },
 
     # ------------- GraalTruffle -------------
@@ -2085,19 +1933,6 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
-    "org.graalvm.compiler.truffle.compiler.hotspot.sparc" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.compiler.hotspot",
-        "org.graalvm.compiler.hotspot.sparc",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8..14",
-      "annotationProcessors" : ["GRAAL_PROCESSOR"],
-      "workingSets" : "Graal,Truffle,SPARC",
-    },
-
     "org.graalvm.compiler.truffle.compiler.hotspot.aarch64" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -2162,7 +1997,6 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.api.directives.test",
-        "org.graalvm.compiler.asm.sparc.test",
         "org.graalvm.compiler.asm.aarch64.test",
         "org.graalvm.compiler.asm.amd64.test",
         "org.graalvm.compiler.test",
@@ -2172,7 +2006,6 @@ suite = {
         "org.graalvm.compiler.hotspot.aarch64.test",
         "org.graalvm.compiler.hotspot.amd64.test",
         "org.graalvm.compiler.hotspot.lir.test",
-        "org.graalvm.compiler.hotspot.sparc.test",
         "org.graalvm.compiler.hotspot.jdk15.test",
         "org.graalvm.compiler.hotspot.jdk9.test",
         "org.graalvm.compiler.options.test",
@@ -2228,7 +2061,6 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
-        "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
         "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
         "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
       ],
@@ -2272,37 +2104,14 @@ suite = {
           "jdk.unsupported" # sun.misc.Unsafe
         ],
         "exports" : [
-          "* to com.oracle.graal.graal_enterprise",
-          "org.graalvm.compiler.api.directives         to jdk.aot",
-          "org.graalvm.compiler.api.runtime            to jdk.aot",
-          "org.graalvm.compiler.api.replacements       to jdk.aot",
-          "org.graalvm.compiler.asm.amd64              to jdk.aot",
-          "org.graalvm.compiler.asm.aarch64            to jdk.aot",
-          "org.graalvm.compiler.bytecode               to jdk.aot",
-          "org.graalvm.compiler.code                   to jdk.aot",
-          "org.graalvm.compiler.core                   to jdk.aot",
-          "org.graalvm.compiler.core.common            to jdk.aot,jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.core.target            to jdk.aot",
-          "org.graalvm.compiler.debug                  to jdk.aot,jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.graph                  to jdk.aot",
-          "org.graalvm.compiler.hotspot                to jdk.aot,jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.hotspot.meta           to jdk.aot",
-          "org.graalvm.compiler.hotspot.replacements   to jdk.aot",
-          "org.graalvm.compiler.hotspot.stubs          to jdk.aot",
-          "org.graalvm.compiler.hotspot.word           to jdk.aot",
-          "org.graalvm.compiler.java                   to jdk.aot",
-          "org.graalvm.compiler.lir.asm                to jdk.aot",
-          "org.graalvm.compiler.lir.phases             to jdk.aot",
-          "org.graalvm.compiler.nodes                  to jdk.aot",
-          "org.graalvm.compiler.nodes.graphbuilderconf to jdk.aot",
-          "org.graalvm.compiler.options                to jdk.aot,jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.phases                 to jdk.aot",
+          "* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise",
+          "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
+          "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver",
+          "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
           "org.graalvm.compiler.phases.common.jmx      to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.phases.tiers           to jdk.aot",
-          "org.graalvm.compiler.printer                to jdk.aot",
-          "org.graalvm.compiler.runtime                to jdk.aot",
-          "org.graalvm.compiler.replacements           to jdk.aot",
-          "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
           "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
           "org.graalvm.util                            to jdk.internal.vm.compiler.management",
@@ -2354,11 +2163,8 @@ suite = {
         "org.graalvm.compiler.replacements.aarch64",
         "org.graalvm.compiler.core.amd64",
         "org.graalvm.compiler.replacements.amd64",
-        "org.graalvm.compiler.core.sparc",
-        "org.graalvm.compiler.replacements.sparc",
         "org.graalvm.compiler.hotspot.aarch64",
         "org.graalvm.compiler.hotspot.amd64",
-        "org.graalvm.compiler.hotspot.sparc",
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.lir.aarch64",
         "org.graalvm.compiler.truffle.compiler.amd64",
@@ -2367,7 +2173,6 @@ suite = {
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
         "org.graalvm.compiler.truffle.runtime.hotspot.libgraal",
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
-        "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
         "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
         "org.graalvm.compiler.truffle.jfr",
       ],
@@ -2426,42 +2231,6 @@ suite = {
       ],
       "maven": False,
       "javaCompliance" : "8+",
-    },
-
-    "JAOTC" : {
-      # This distribution defines a module.
-      "moduleInfo" : {
-        "name":"jdk.aot",
-      },
-      "subDir" : "src",
-      "dependencies" : [
-        "jdk.tools.jaotc",
-      ],
-      "distDependencies" : [
-        "GRAAL",
-        "GRAAL_MANAGEMENT",
-      ],
-      "exclude" : [
-        "JVMCI_SERVICES",
-        "JVMCI_API",
-        "JVMCI_HOTSPOT",
-      ],
-      "maven": False,
-    },
-
-    "JAOTC_TEST" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "jdk.tools.jaotc.test",
-      ],
-      "distDependencies" : [
-        "JAOTC",
-      ],
-      "exclude" : [
-        "mx:JUNIT",
-      ],
-      "testDistribution" : True,
-      "maven": False,
     },
 
     "GRAAL_COMPILER_WHITEBOX_MICRO_BENCHMARKS" : {

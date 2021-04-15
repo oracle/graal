@@ -1,0 +1,6 @@
+nwcc_0.8.3/tests/gnustuff.c.dir
+nwcc_0.8.3/tests/trailing_comma_bug.c.dir
+nwcc_0.8.3/tests/init.c.dir
+nwcc_0.8.3/tests/structinitbug.c.dir
+nwcc_0.8.3/tests/structret.c.dir
+nwcc_0.8.3/tests/abitest.c.dir

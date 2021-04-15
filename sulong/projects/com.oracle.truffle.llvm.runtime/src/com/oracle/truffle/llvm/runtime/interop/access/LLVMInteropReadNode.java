@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,6 +48,10 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+/**
+ * Read from a foreign object using standard interop messages for accessing named members or array
+ * indices.
+ */
 @GenerateUncached
 public abstract class LLVMInteropReadNode extends LLVMNode {
 

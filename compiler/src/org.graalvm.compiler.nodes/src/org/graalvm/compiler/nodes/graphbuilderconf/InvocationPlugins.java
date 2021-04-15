@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -922,6 +923,15 @@ public class InvocationPlugins {
         return true;
     }
 
+    /**
+     * Subclasses can choose to only allow intrinsification of types matched by at least one
+     * registered predicate. By default, InvocationPlugins allows any type to be intrinsified.
+     *
+     * @param predicate controls which types may be intrinsified.
+     */
+    public void registerIntrinsificationPredicate(Predicate<ResolvedJavaType> predicate) {
+    }
+
     LateClassPlugins findLateClassPlugins(String internalClassName) {
         for (LateClassPlugins lcp = lateRegistrations; lcp != null; lcp = lcp.next) {
             if (lcp.className.equals(internalClassName)) {
@@ -1194,17 +1204,33 @@ public class InvocationPlugins {
      * Gets the plugin for a given method.
      *
      * @param method the method to lookup
+     * @param allowDecorators return {@link InvocationPlugin#isDecorator()} plugins only if true
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
-    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators) {
         if (parent != null) {
-            InvocationPlugin plugin = parent.lookupInvocation(method);
+            InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators);
             if (plugin != null) {
                 return plugin;
             }
         }
         InvocationPlugin invocationPlugin = get(method);
-        return invocationPlugin;
+        if (invocationPlugin == null || allowDecorators || !invocationPlugin.isDecorator()) {
+            return invocationPlugin;
+        }
+        return null;
+    }
+
+    /**
+     * Gets the plugin for a given method. By default this will hide
+     * {@link InvocationPlugin#isDecorator()}} plugins since they can only be applied in certain
+     * contexts.
+     *
+     * @param method the method to lookup
+     * @return the plugin associated with {@code method} or {@code null} if none exists
+     */
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
+        return lookupInvocation(method, false);
     }
 
     /**

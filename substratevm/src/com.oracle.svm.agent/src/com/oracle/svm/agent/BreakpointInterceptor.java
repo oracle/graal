@@ -40,7 +40,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.getDirectCallerClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getMethodDeclaringClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getObjectArgument;
-import static com.oracle.svm.jvmtiagentbase.Support.getObjectField;
+import static com.oracle.svm.jvmtiagentbase.Support.handleException;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
@@ -54,8 +54,8 @@ import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,11 +78,11 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.jni.JNIObjectHandles;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
@@ -100,7 +100,6 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
-import com.oracle.svm.util.SerializationChecksumCalculator;
 
 /**
  * Intercepts events of interest via breakpoints in Java code.
@@ -143,9 +142,6 @@ final class BreakpointInterceptor {
 
     /** Enables experimental support for instrumenting class lookups via {@code ClassLoader}. */
     private static boolean experimentalClassLoaderSupport = false;
-
-    /* Write checksums into serialization-config.json file */
-    private static boolean writeSerializationChecksums = false;
 
     /**
      * Locations in methods where explicit calls to {@code ClassLoader.loadClass} have been found.
@@ -756,9 +752,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, declaringClass, methodName, methodType);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         return methodMethodHandle(jni, declaringClass, callerClass, methodName, getParamTypes(jni, methodType), result);
     }
@@ -772,9 +766,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle specialCaller = getObjectArgument(4);
 
         JNIObjectHandle result = Support.callObjectMethodLLLL(jni, lookup, bp.method, declaringClass, methodName, methodType, specialCaller);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         return methodMethodHandle(jni, declaringClass, callerClass, methodName, getParamTypes(jni, methodType), result);
     }
@@ -787,9 +779,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, receiver, methodName, methodType);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         JNIObjectHandle declaringClass = Support.callObjectMethod(jni, receiver, agent.handles().javaLangObjectGetClass);
         if (clearException(jni)) {
@@ -814,9 +804,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodType = getObjectArgument(2);
 
         JNIObjectHandle result = Support.callObjectMethodLL(jni, lookup, bp.method, declaringClass, methodType);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         Object paramTypes = getClassArrayNames(jni, getParamTypes(jni, methodType));
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findConstructorHandle", result.notEqual(nullHandle()), paramTypes);
@@ -839,9 +827,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle fieldType = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, declaringClass, fieldName, fieldType);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         String name = fromJniString(jni, fieldName);
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), name);
@@ -854,9 +840,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle className = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callObjectMethodL(jni, lookup, bp.method, className);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         String name = fromJniString(jni, className);
         traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, "findClass", result.notEqual(nullHandle()), name);
@@ -869,9 +853,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle field = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callObjectMethodL(jni, lookup, bp.method, field);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         JNIObjectHandle declaringClass = Support.callObjectMethod(jni, field, agent.handles().javaLangReflectMemberGetDeclaringClass);
         if (clearException(jni)) {
@@ -894,9 +876,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle methodHandle = getObjectArgument(1);
 
         JNIObjectHandle result = Support.callStaticObjectMethodLL(jni, bp.clazz, bp.method, intfc, methodHandle);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         JNIObjectHandle intfcNameHandle = Support.callObjectMethod(jni, intfc, agent.handles().javaLangClassGetName);
         if (clearException(jni)) {
@@ -917,51 +897,61 @@ final class BreakpointInterceptor {
         JNIObjectHandle declaringClass = getObjectArgument(3);
 
         JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, lookup, fieldName, type, declaringClass);
-        if (clearException(jni)) {
-            result = nullHandle();
-        }
+        result = shouldIncludeMethod(jni, result);
 
         String name = fromJniString(jni, fieldName);
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), name);
         return true;
     }
 
-    static class CheckSumCalculator extends SerializationChecksumCalculator.JVMCIAgentCalculator {
-        private final JNIEnvironment jni;
-        private final Breakpoint bp;
+    private static boolean methodTypeFromDescriptor(JNIEnvironment jni, Breakpoint bp) {
+        JNIObjectHandle callerClass = getDirectCallerClass();
+        JNIObjectHandle descriptor = getObjectArgument(0);
+        JNIObjectHandle classLoader = getObjectArgument(1);
 
-        CheckSumCalculator(JNIEnvironment jni, Breakpoint bp) {
-            this.jni = jni;
-            this.bp = bp;
+        JNIObjectHandle result = Support.callStaticObjectMethodLL(jni, bp.clazz, bp.method, descriptor, classLoader);
+        if (clearException(jni)) {
+            result = nullHandle();
         }
 
-        @Override
-        protected WordBase getSuperClass(WordBase clazz) {
-            return jniFunctions().getGetSuperclass().invoke(jni, (JNIObjectHandle) clazz);
-        }
-
-        @Override
-        public Long calculateFromComputeDefaultSUID(WordBase clazz) {
-            JNIMethodId computeDefaultSUIDMId = agent.handles().getJavaIoObjectStreamClassComputeDefaultSUID(jni, bp.clazz);
-            JNIValue args = StackValue.get(1, JNIValue.class);
-            args.setObject((JNIObjectHandle) clazz);
-            return jniFunctions().getCallStaticLongMethodA().invoke(jni, bp.clazz, computeDefaultSUIDMId, args);
-        }
-
-        @Override
-        protected boolean isClassAbstract(WordBase clazz) {
-            CIntPointer modifiers = StackValue.get(CIntPointer.class);
-            if (jvmtiFunctions().GetClassModifiers().invoke(jvmtiEnv(), (JNIObjectHandle) clazz, modifiers) != JvmtiError.JVMTI_ERROR_NONE) {
-                return false;
+        List<String> types = new ArrayList<>();
+        if (result.notEqual(nullHandle())) {
+            JNIObjectHandle rtype = Support.callObjectMethod(jni, result, agent.handles().getJavaLangInvokeMethodTypeReturnType(jni));
+            if (clearException(jni)) {
+                rtype = nullHandle();
             }
-            // Checkstyle: allow reflection
-            return (modifiers.read() & java.lang.reflect.Modifier.ABSTRACT) != 0;
+            String rtypeName = getClassNameOrNull(jni, rtype);
+            if (rtypeName != null) {
+                types.add(rtypeName);
+            }
+
+            JNIObjectHandle ptypes = Support.callObjectMethod(jni, result, agent.handles().getJavaLangInvokeMethodTypeParameterArray(jni));
+            if (clearException(jni)) {
+                ptypes = nullHandle();
+            }
+            Object ptypeNames = getClassArrayNames(jni, ptypes);
+            if (ptypeNames instanceof String[]) {
+                types.addAll(Arrays.asList((String[]) ptypeNames));
+            }
         }
 
-        @Override
-        public String getClassName(WordBase clazz) {
-            return getClassNameOrNull(jni, (JNIObjectHandle) clazz);
+        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "methodTypeDescriptor", result.notEqual(nullHandle()), types);
+        return true;
+    }
+
+    private static JNIObjectHandle shouldIncludeMethod(JNIEnvironment jni, JNIObjectHandle result) {
+        JNIObjectHandle exception = handleException(jni);
+        if (exception.notEqual(nullHandle())) {
+            if (jniFunctions().getIsInstanceOf().invoke(jni, exception, agent.handles().javaLangIllegalAccessException)) {
+                /*
+                 * We include methods if the lookup returned an IllegalAccessException to make sure
+                 * the right exception is thrown at runtime, instead of a NoSuchMethodException.
+                 */
+                return JNIObjectHandles.createLocal(Boolean.TRUE);
+            }
+            return nullHandle();
         }
+        return result;
     }
 
     private static boolean objectStreamClassConstructor(JNIEnvironment jni, Breakpoint bp) {
@@ -979,22 +969,8 @@ final class BreakpointInterceptor {
             return true;
         }
 
-        String checksum = null;
-        CheckSumCalculator checkSumCalculator = null;
-        if (writeSerializationChecksums) {
-            checksum = "0";
-            if (validObjectStreamClassInstance) {
-                try {
-                    checkSumCalculator = new CheckSumCalculator(jni, bp);
-                    checksum = checkSumCalculator.calculateChecksum(getConsClassName(jni, bp.clazz, objectStreamClassInstance), serializeTargetClassName, serializeTargetClass);
-                } catch (NoSuchAlgorithmException e) {
-                    throw VMError.shouldNotReachHere("Building serialization checksum failed", e);
-                }
-            }
-        }
-
-        List<SerializationInfo> traceCandidates = new ArrayList<>();
-        traceCandidates.add(new SerializationInfo(serializeTargetClassName, checksum));
+        List<String> transitiveSerializeTargets = new ArrayList<>();
+        transitiveSerializeTargets.add(serializeTargetClassName);
 
         /*
          * When the ObjectStreamClass instance is created for the given serializeTargetClass, some
@@ -1019,22 +995,13 @@ final class BreakpointInterceptor {
                         if (!jniFunctions().getIsSameObject().invoke(jni, oscInstanceInSlot, objectStreamClassInstance)) {
                             JNIObjectHandle oscClazz = callObjectMethod(jni, oscInstanceInSlot, javaIoObjectStreamClassForClassMId);
                             String oscClassName = getClassNameOrNull(jni, oscClazz);
-                            String calculatedChecksum = null;
-                            if (checkSumCalculator != null) {
-                                try {
-                                    calculatedChecksum = checkSumCalculator.calculateChecksum(getConsClassName(jni,
-                                                    bp.clazz, oscInstanceInSlot), oscClassName, oscClazz);
-                                } catch (NoSuchAlgorithmException e) {
-                                    throw VMError.shouldNotReachHere("Building serialization checksum failed", e);
-                                }
-                            }
-                            traceCandidates.add(new SerializationInfo(oscClassName, calculatedChecksum));
+                            transitiveSerializeTargets.add(oscClassName);
                         }
                     }
                 }
             }
         }
-        for (SerializationInfo serializationInfo : traceCandidates) {
+        for (String className : transitiveSerializeTargets) {
             if (traceWriter != null) {
                 traceWriter.traceCall("serialization",
                                 "ObjectStreamClass.<init>",
@@ -1042,22 +1009,12 @@ final class BreakpointInterceptor {
                                 null,
                                 null,
                                 validObjectStreamClassInstance,
-                                // serializeTargetClassName, checksum);
-                                serializationInfo.className, serializationInfo.checksum);
+                                /*- String serializationTargetClass, String customTargetConstructorClass */
+                                className, null);
                 guarantee(!testException(jni));
             }
         }
         return true;
-    }
-
-    private static String getConsClassName(JNIEnvironment jni, JNIObjectHandle objectStreamClassClazz, JNIObjectHandle objectStreamClassInstance) {
-        JNIObjectHandle cons = getObjectField(jni, objectStreamClassClazz, objectStreamClassInstance, "cons", "Ljava/lang/reflect/Constructor;");
-        String targetConstructorClassName = "";
-        if (nullHandle().notEqual(cons)) {
-            // Compute hashcode from the first unserializable superclass
-            targetConstructorClassName = getClassNameOrNull(jni, callObjectMethod(jni, cons, agent.handles().javaLangReflectMemberGetDeclaringClass));
-        }
-        return targetConstructorClassName;
     }
 
     @CEntryPoint
@@ -1138,12 +1095,11 @@ final class BreakpointInterceptor {
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
 
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, NativeImageAgent nativeImageTracingAgent,
-                    boolean exptlClassLoaderSupport, boolean serializationChecksums) {
+                    boolean exptlClassLoaderSupport) {
 
         BreakpointInterceptor.traceWriter = writer;
         BreakpointInterceptor.agent = nativeImageTracingAgent;
         BreakpointInterceptor.experimentalClassLoaderSupport = exptlClassLoaderSupport;
-        BreakpointInterceptor.writeSerializationChecksums = serializationChecksums;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
@@ -1427,7 +1383,10 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::asInterfaceInstance),
                     optionalBrk("java/lang/invoke/ConstantBootstraps", "getStaticFinal",
                                     "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)Ljava/lang/Object;",
-                                    BreakpointInterceptor::constantBootstrapGetStaticFinal)
+                                    BreakpointInterceptor::constantBootstrapGetStaticFinal),
+                    optionalBrk("java/lang/invoke/MethodType", "fromMethodDescriptorString",
+                                    "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;",
+                                    BreakpointInterceptor::methodTypeFromDescriptor)
     };
 
     private static final BreakpointSpecification CLASSLOADER_LOAD_CLASS_BREAKPOINT_SPECIFICATION = optionalBrk("java/lang/ClassLoader", "loadClass",
@@ -1538,16 +1497,6 @@ final class BreakpointInterceptor {
         @Override
         public int hashCode() {
             return 31 * Long.hashCode(method.rawValue()) + bci;
-        }
-    }
-
-    private static final class SerializationInfo {
-        private final String className;
-        private final String checksum;
-
-        SerializationInfo(String serializeTargetClassName, String checksum) {
-            this.className = serializeTargetClassName;
-            this.checksum = checksum;
         }
     }
 

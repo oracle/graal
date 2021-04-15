@@ -32,7 +32,6 @@ import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -58,7 +57,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -71,6 +69,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -100,7 +99,8 @@ public class PermissionsFeature implements Feature {
         @Option(help = "Path to file where to store report of Truffle language privilege access.") public static final HostedOptionKey<String> TruffleTCKPermissionsReportFile = new HostedOptionKey<>(
                         null);
 
-        @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<String[]> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(null);
+        @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(
+                        new LocatableMultiOptionValue.Strings());
 
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(
                         -1);
@@ -174,9 +174,7 @@ public class PermissionsFeature implements Feature {
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
         try {
-            if (Files.exists(reportFilePath) && Files.size(reportFilePath) > 0) {
-                Files.newOutputStream(reportFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            }
+            Files.deleteIfExists(reportFilePath);
         } catch (IOException ioe) {
             throw UserError.abort("Cannot delete existing report file %s.", reportFilePath);
         }
@@ -736,15 +734,10 @@ public class PermissionsFeature implements Feature {
     /**
      * Options facade for a resource containing the JRE white list.
      */
-    private static final class ResourceAsOptionDecorator extends HostedOptionKey<String[]> {
+    private static final class ResourceAsOptionDecorator extends HostedOptionKey<LocatableMultiOptionValue.Strings> {
 
         ResourceAsOptionDecorator(String defaultValue) {
-            super(new String[]{defaultValue});
-        }
-
-        @Override
-        public String[] getValue(OptionValues values) {
-            return getDefaultValue();
+            super(new LocatableMultiOptionValue.Strings(Collections.singletonList(defaultValue)));
         }
     }
 }

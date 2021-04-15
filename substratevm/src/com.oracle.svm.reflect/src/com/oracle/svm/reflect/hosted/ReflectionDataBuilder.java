@@ -47,16 +47,14 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -80,6 +78,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private final Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<Field, EnumSet<FieldFlag>> reflectionFields = new ConcurrentHashMap<>();
     private final Set<Field> analyzedFinalFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    private final Set<Field> preregisteredAsWritable = ConcurrentHashMap.newKeySet();
 
     /* Keep track of classes already processed for reflection. */
     private final Set<Class<?>> processedClasses = new HashSet<>();
@@ -114,6 +114,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                         EMPTY_METHODS,
                         EMPTY_CLASSES,
                         EMPTY_CLASSES,
+                        null,
                         null);
     }
 
@@ -138,7 +139,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         checkNotSealed();
         for (Field field : fields) {
             EnumSet<FieldFlag> flags = EnumSet.noneOf(FieldFlag.class);
-            if (finalIsWritable) {
+            if (finalIsWritable || preregisteredAsWritable.contains(field)) {
                 flags.add(FieldFlag.FINAL_BUT_WRITABLE);
             }
             if (allowUnsafeAccess) {
@@ -237,6 +238,10 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
+        if (SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse())) {
+            return;
+        }
+
         AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
         /*
          * Make sure the class is registered as reachable before its fields are accessed below to
@@ -286,21 +291,49 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             reflectionData = arrayReflectionData;
         } else {
             reflectionData = new DynamicHub.ReflectionData(
-                            filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                            filterFields(accessors.getPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                            filterFields(accessors.getPublicFields(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access.getMetaAccess()),
-                            filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            filterMethods(accessors.getPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            filterConstructors(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            filterConstructors(accessors.getPublicConstructors(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods),
-                            filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                            filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                            catchLinkingErrors(clazz, reflectionClasses, access.getMetaAccess(), Class::getDeclaredClasses),
-                            catchLinkingErrors(clazz, reflectionClasses, access.getMetaAccess(), Class::getClasses),
-                            enclosingMethodOrConstructor(clazz));
+                            filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields.keySet(), access),
+                            filterFields(accessors.getPublicFields(originalReflectionData), reflectionFields.keySet(), access),
+                            filterFields(accessors.getPublicFields(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access),
+                            filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access),
+                            filterMethods(accessors.getPublicMethods(originalReflectionData), reflectionMethods, access),
+                            filterConstructors(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access),
+                            filterConstructors(accessors.getPublicConstructors(originalReflectionData), reflectionMethods, access),
+                            nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access),
+                            filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields.keySet(), access),
+                            filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access),
+                            catchLinkingErrors(clazz, reflectionClasses, access, Class::getDeclaredClasses),
+                            catchLinkingErrors(clazz, reflectionClasses, access, Class::getClasses),
+                            enclosingMethodOrConstructor(clazz),
+                            buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
+    }
+
+    private Object[] buildRecordComponents(Class<?> clazz, DuringAnalysisAccessImpl access) {
+        RecordSupport support = RecordSupport.singleton();
+        if (!support.isRecord(clazz)) {
+            return null;
+        }
+
+        /*
+         * RecordComponent objects expose the "accessor method" as a java.lang.reflect.Method
+         * object. We leverage this tight coupling of RecordComponent and its accessor method to
+         * avoid a separate reflection configuration for record components: When all accessor
+         * methods of the record class are registered for reflection, then the record components are
+         * available. We do not want to expose a partial list of record components, that would be
+         * confusing and error-prone. So as soon as a single accessor method is missing from the
+         * reflection configuration, we provide no record components. Accessing the record
+         * components in that case will throw an exception at image run time, see
+         * DynamicHub.getRecordComponents0().
+         */
+        Method[] allMethods = support.getRecordComponentAccessorMethods(clazz);
+        Method[] filteredMethods = filterMethods(allMethods, reflectionMethods, access);
+
+        if (allMethods.length == filteredMethods.length) {
+            return support.getRecordComponents(clazz);
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -310,7 +343,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
      * @param innerClassAccessor method that extracts the inner classes
      * @return filtered inner classes or empty array in case of a linking/verification error
      */
-    private static Class<?>[] catchLinkingErrors(Class<?> clazz, Set<Class<?>> filter, AnalysisMetaAccess access, Function<Class<?>, Class<?>[]> innerClassAccessor) {
+    private static Class<?>[] catchLinkingErrors(Class<?> clazz, Set<Class<?>> filter, DuringAnalysisAccessImpl access, Function<Class<?>, Class<?>[]> innerClassAccessor) {
         try {
             return filterClasses(innerClassAccessor.apply(clazz), filter, access);
         } catch (TypeNotPresentException | LinkageError e) {
@@ -333,9 +366,10 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods) {
+    private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods, DuringAnalysisAccessImpl access) {
         for (Constructor<?> constructor : (Constructor<?>[]) constructors) {
-            if (constructor.getParameterCount() == 0 && reflectionMethods.contains(constructor)) {
+            if (constructor.getParameterCount() == 0 && reflectionMethods.contains(constructor) &&
+                            !SubstitutionReflectivityFilter.shouldExclude(constructor, access.getMetaAccess(), access.getUniverse())) {
                 return constructor;
             }
         }
@@ -356,10 +390,12 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
              */
             return null;
         } catch (InternalError ex) {
-            // Checkstyle: stop
-            System.err.println("GR-7731: Could not find the enclosing method of class " + clazz.getTypeName() +
-                            ". This is a known transient error and most likely does not cause any problems, unless your code relies on the enclosing method of exactly this class. If you can reliably reproduce this problem, please send us a test case.");
-            // Checkstyle: resume
+            /*
+             * Could not find the enclosing method of the class. This is a host VM error which can
+             * happen due to invalid bytecode. For example if the eclosing method index points to a
+             * synthetic method for a anonymous class declared inside a lambda. We skip registering
+             * the enclosing method for such classes.
+             */
             return null;
         }
 
@@ -379,8 +415,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static Field[] filterFields(Object fields, Set<Field> filterSet, AnalysisMetaAccess metaAccess) {
-        return filterFields(fields, filterSet::contains, metaAccess);
+    private static Field[] filterFields(Object fields, Set<Field> filterSet, DuringAnalysisAccessImpl access) {
+        return filterFields(fields, filterSet::contains, access);
     }
 
     private static boolean isHiddenIn(Field field, Class<?> clazz) {
@@ -391,55 +427,59 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static Field[] filterFields(Object fields, Predicate<Field> filter, AnalysisMetaAccess metaAccess) {
+    private static Field[] filterFields(Object fields, Predicate<Field> filter, DuringAnalysisAccessImpl access) {
         List<Field> result = new ArrayList<>();
         for (Field field : (Field[]) fields) {
-            if (filter.test(field) && !SubstitutionReflectivityFilter.shouldExclude(field, metaAccess)) {
-                try {
-                    if (!metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
-                        result.add(field);
-                    }
-                } catch (DeletedElementException ignored) { // filter
-                }
+            if (filter.test(field) && !SubstitutionReflectivityFilter.shouldExclude(field, access.getMetaAccess(), access.getUniverse())) {
+                result.add(field);
             }
         }
         return result.toArray(EMPTY_FIELDS);
     }
 
-    private static Constructor<?>[] filterConstructors(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
-        return filterMethods(methods, filter, metaAccess, EMPTY_CONSTRUCTORS);
+    private static Constructor<?>[] filterConstructors(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access) {
+        return filterMethods(methods, filter, access, EMPTY_CONSTRUCTORS);
     }
 
-    private static Method[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
-        return filterMethods(methods, filter, metaAccess, EMPTY_METHODS);
+    private static Method[] filterMethods(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access) {
+        return filterMethods(methods, filter, access, EMPTY_METHODS);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess, T[] prototypeArray) {
+    private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, DuringAnalysisAccessImpl access, T[] prototypeArray) {
         List<T> result = new ArrayList<>();
         for (T method : (T[]) methods) {
-            if (filter.contains(method) && !SubstitutionReflectivityFilter.shouldExclude(method, metaAccess)) {
+            if (filter.contains(method) && !SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
                 result.add(method);
             }
         }
         return result.toArray(prototypeArray);
     }
 
-    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, AnalysisMetaAccess metaAccess) {
+    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access) {
         List<Class<?>> result = new ArrayList<>();
         for (Class<?> clazz : (Class<?>[]) classes) {
-            if (filter.contains(clazz) && !SubstitutionReflectivityFilter.shouldExclude(clazz, metaAccess)) {
+            if (filter.contains(clazz) && !SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse())) {
                 result.add(clazz);
             }
         }
         return result.toArray(EMPTY_CLASSES);
     }
 
-    boolean inspectFinalFieldWritableForAnalysis(Field field) {
-        assert Modifier.isFinal(field.getModifiers());
+    @Override
+    public boolean inspectFinalFieldWritableForAnalysis(Field field) {
+        if (field == null || !Modifier.isFinal(field.getModifiers())) {
+            return false;
+        }
         EnumSet<FieldFlag> flags = reflectionFields.get(field);
         analyzedFinalFields.add(field);
-        return flags != null && flags.contains(FieldFlag.FINAL_BUT_WRITABLE);
+        return (flags != null && flags.contains(FieldFlag.FINAL_BUT_WRITABLE)) || preregisteredAsWritable.contains(field);
+    }
+
+    @Override
+    public void preregisterAsWritableForAnalysis(Field field) {
+        UserError.guarantee(!analyzedFinalFields.contains(field), "A field that was already processed by the analysis cannot be preregistered as writable: %s", field);
+        preregisteredAsWritable.add(field);
     }
 
     static final class ReflectionDataAccessors {

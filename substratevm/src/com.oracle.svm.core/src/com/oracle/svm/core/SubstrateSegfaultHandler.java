@@ -58,7 +58,18 @@ class SubstrateSegfaultHandlerFeature implements Feature {
             return; /* No segfault handler. */
         }
         VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
-        RuntimeSupport.getRuntimeSupport().addStartupHook(SubstrateSegfaultHandler::startupHook);
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateSegfaultHandlerStartupHook());
+    }
+}
+
+final class SubstrateSegfaultHandlerStartupHook implements Runnable {
+
+    @Override
+    public void run() {
+        Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
+        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
+            ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+        }
     }
 }
 
@@ -67,13 +78,6 @@ public abstract class SubstrateSegfaultHandler {
     public static class Options {
         @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library.")//
         static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
-    }
-
-    static void startupHook() {
-        Boolean optionValue = Options.InstallSegfaultHandler.getValue();
-        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
-            ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
-        }
     }
 
     /** Installs the platform dependent segfault handler. */

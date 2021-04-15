@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,7 +69,7 @@ public class EnumPartialEvaluationTest extends PartialEvaluationTest {
     @Test
     public void enumSwitchConstantFolding() {
         AbstractTestNode result = new SwitchTestNode(TestEnum.Test0);
-        assertPartialEvalEquals("constant42", new RootTestNode(new FrameDescriptor(), "enumSwitchConstantFolding", result));
+        assertPartialEvalEquals(EnumPartialEvaluationTest::constant42, new RootTestNode(new FrameDescriptor(), "enumSwitchConstantFolding", result));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class EnumPartialEvaluationTest extends PartialEvaluationTest {
                 return TestEnum.Test0.ordinal();
             }
         };
-        assertPartialEvalEquals("constant0", new RootTestNode(new FrameDescriptor(), "enumOrdinalConstant", result));
+        assertPartialEvalEquals(EnumPartialEvaluationTest::constant0, new RootTestNode(new FrameDescriptor(), "enumOrdinalConstant", result));
     }
 
     @Ignore("Currently only works if compiled with ecj")
@@ -92,6 +92,6 @@ public class EnumPartialEvaluationTest extends PartialEvaluationTest {
                 return TestEnum.values()[0].ordinal();
             }
         };
-        assertPartialEvalEquals("constant0", new RootTestNode(new FrameDescriptor(), "enumValuesConstant", result));
+        assertPartialEvalEquals(EnumPartialEvaluationTest::constant0, new RootTestNode(new FrameDescriptor(), "enumValuesConstant", result));
     }
 }

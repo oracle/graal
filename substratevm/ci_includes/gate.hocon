@@ -43,6 +43,15 @@ builds += [
       ${svm-cmd-gate} ["build,helloworld,test,maven,nativeimagehelp,muslcbuild"]
     ]
   }
+  ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
+    name: "gate-svm-modules-basic"
+    environment : {
+      USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM : "true"
+    }
+    run: [
+      ${svm-cmd-gate} ["build,hellomodule"]
+    ]
+  }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
     name: "gate-svm-style-fullbuild"
     timelimit: "45:00"

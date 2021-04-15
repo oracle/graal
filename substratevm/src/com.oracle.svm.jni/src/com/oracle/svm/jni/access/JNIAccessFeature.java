@@ -41,7 +41,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
@@ -105,8 +104,6 @@ public class JNIAccessFeature implements Feature {
 
     private final Map<JNINativeLinkage, JNINativeLinkage> nativeLinkages = new ConcurrentHashMap<>();
 
-    private boolean haveJavaRuntimeReflectionSupport;
-
     public static class Options {
         @Option(help = "Print JNI methods added to generated image")//
         public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
@@ -168,7 +165,6 @@ public class JNIAccessFeature implements Feature {
 
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         this.nativeLibraries = access.getNativeLibraries();
-        this.haveJavaRuntimeReflectionSupport = ImageSingletons.contains(RuntimeReflectionSupport.class);
 
         varargsCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.VARARGS, false);
         arrayCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.ARRAY, false);
@@ -254,7 +250,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
-        if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess())) {
+        if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess(), access.getUniverse())) {
             return null;
         }
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
@@ -269,7 +265,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private void addMethod(Executable method, DuringAnalysisAccessImpl access) {
-        if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess())) {
+        if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
             return;
         }
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
@@ -306,7 +302,7 @@ public class JNIAccessFeature implements Feature {
 
     private static void addField(Field reflField, boolean writable, DuringAnalysisAccessImpl access) {
         access.getMetaAccess().lookupJavaType(reflField.getDeclaringClass()).registerAsReachable();
-        if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess())) {
+        if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess(), access.getUniverse())) {
             return;
         }
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), access);
@@ -364,10 +360,5 @@ public class JNIAccessFeature implements Feature {
                 access.registerAsImmutable(method); // for constant address to use as identifier
             }
         }
-    }
-
-    @Fold
-    public boolean haveJavaRuntimeReflectionSupport() {
-        return haveJavaRuntimeReflectionSupport;
     }
 }

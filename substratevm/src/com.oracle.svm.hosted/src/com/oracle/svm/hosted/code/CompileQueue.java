@@ -89,6 +89,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
@@ -325,7 +326,6 @@ public class CompileQueue {
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
 
-        // let aotjs override the replacements registration
         callForReplacements(debug, runtimeConfig);
     }
 
@@ -471,7 +471,7 @@ public class CompileQueue {
         System.out.println("Number of deopt during calls entries       ; " + totalNumDuringCallEntryPoints);
     }
 
-    private void parseAll() throws InterruptedException {
+    protected void parseAll() throws InterruptedException {
         executor.init();
 
         parseDeoptimizationTargetMethods();
@@ -525,7 +525,7 @@ public class CompileQueue {
         ensureParsed(universe.createDeoptTarget(method), new EntryPointReason());
     }
 
-    private void checkTrivial(HostedMethod method) {
+    protected void checkTrivial(HostedMethod method) {
         if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(method.compilationInfo.getGraph())) {
             method.compilationInfo.setTrivialMethod(true);
             inliningProgress = true;
@@ -533,7 +533,7 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("try")
-    private void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
+    protected void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
         for (HostedMethod method : universe.getMethods()) {
             try (DebugContext.Scope s = debug.scope("InlineTrivial", method.compilationInfo.getGraph(), method, this)) {
                 if (method.compilationInfo.getGraph() != null) {
@@ -1038,6 +1038,7 @@ public class CompileQueue {
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         VMError.guarantee(highTier.removePhase(PartialEscapePhase.class));
         VMError.guarantee(highTier.removePhase(ReadEliminationPhase.class));
+        VMError.guarantee(highTier.removePhase(BoxNodeOptimizationPhase.class));
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         VMError.guarantee(midTier.removePhase(FloatingReadPhase.class));
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();

@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.223.0",
+  "mxversion" : "5.292.5",
 
   "name" : "regex",
 
@@ -93,7 +93,7 @@ suite = {
       "exports" : [
         "com.oracle.truffle.regex.chardata",
       ],
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
       "spotbugsIgnoresGenerated" : True,
@@ -119,7 +119,9 @@ suite = {
 
   "distributions" : {
     "TREGEX" : {
-      "moduleName" : "com.oracle.truffle.regex",
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.regex",
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],
       "distDependencies" : [

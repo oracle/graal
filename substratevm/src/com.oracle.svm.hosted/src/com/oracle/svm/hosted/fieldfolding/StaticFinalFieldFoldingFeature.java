@@ -65,10 +65,12 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -93,11 +95,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * a static final field as written and does not perform constant folding. Without constant folding
  * during parsing already, other graph builder plugins like
  * {@link IntrinsifyMethodHandlesInvocationPlugin} do not work on such fields.
- * 
+ *
  * This feature performs constant folding for a limited but important class of static final fields:
  * the class initializer contains a single field store and the stored value is a constant. That
  * single constant is propagated to field loads.
- * 
+ *
  * The specification of Java class initializers and static final fields complicate this
  * optimization: Even if it is guaranteed that the field eventually gets a constant value assigned
  * in the class initializer, field loads that happen before the field store while the class
@@ -108,7 +110,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * slow-path case of returning the uninitialized value. All these boolean values are stored in the
  * {@link #fieldInitializationStatus} array, and {@link #fieldCheckIndexMap} stores the index for
  * the optimized fields.
- * 
+ *
  * The optimized field load is also preceded by a {@link EnsureClassInitializedNode} to trigger the
  * necessary class initialization. It would be possible to combine the class initialization check
  * and the field initialization check to a single check. But that leads to several corner cases and
@@ -167,7 +169,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
+    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         plugins.appendNodePlugin(new StaticFinalFieldFoldingNodePlugin(this));
     }
 
@@ -178,9 +180,26 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
         bb = access.getBigBang();
     }
 
+    /**
+     * Computes a unique index for each optimized field, and prepares the boolean[] array for the
+     * image heap that tracks the field initialization state at run time.
+     */
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         bb = null;
+
+        List<AnalysisField> foldedFields = new ArrayList<>(foldedFieldValues.keySet());
+        /* Make the fieldCheckIndex deterministic by using an (arbitrary) sort order. */
+        foldedFields.sort(Comparator.comparing(field -> field.format("%H.%n")));
+
+        fieldCheckIndexMap = new HashMap<>();
+        int fieldCheckIndex = 0;
+        for (AnalysisField field : foldedFields) {
+            fieldCheckIndexMap.put(field, fieldCheckIndex);
+            fieldCheckIndex++;
+        }
+
+        fieldInitializationStatus = new boolean[fieldCheckIndex];
     }
 
     /**
@@ -230,6 +249,11 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
             return;
         }
 
+        if (ImageSingletons.lookup(RuntimeReflectionSupport.class).inspectFinalFieldWritableForAnalysis(field.getJavaField())) {
+            /* Final field is explicitly made writable using the reflection configuration. */
+            return;
+        }
+
         if (node.value().isJavaConstant() && !ineligibleFields.contains(field)) {
             JavaConstant existingValue = optimizableFields.get(field);
             JavaConstant newValue = node.value().asJavaConstant();
@@ -272,26 +296,6 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
                             "This violates the Java bytecode specification. " +
                             "You can use " + SubstrateOptionsParser.commandArgument(Options.OptStaticFinalFieldFolding, "-") + " to disable the optimization.");
         }
-    }
-
-    /**
-     * Computes a unique index for each optimized field, and prepares the boolean[] array for the
-     * image heap that tracks the field initialization state at run time.
-     */
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        List<AnalysisField> foldedFields = new ArrayList<>(foldedFieldValues.keySet());
-        /* Make the fieldCheckIndex deterministic by using an (arbitrary) sort order. */
-        foldedFields.sort(Comparator.comparing(field -> field.format("%H.%n")));
-
-        fieldCheckIndexMap = new HashMap<>();
-        int fieldCheckIndex = 0;
-        for (AnalysisField field : foldedFields) {
-            fieldCheckIndexMap.put(field, fieldCheckIndex);
-            fieldCheckIndex++;
-        }
-
-        fieldInitializationStatus = new boolean[fieldCheckIndex];
     }
 
     static AnalysisField toAnalysisField(ResolvedJavaField field) {
@@ -378,7 +382,7 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
 
         EndNode uninitializedEndNode = b.getGraph().add(new EndNode());
         EndNode initializedEndNode = b.getGraph().add(new EndNode());
-        b.add(new IfNode(isUninitializedNode, uninitializedEndNode, initializedEndNode, BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY));
+        b.add(new IfNode(isUninitializedNode, uninitializedEndNode, initializedEndNode, BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROFILE));
 
         MergeNode merge = b.append(new MergeNode());
         merge.addForwardEnd(uninitializedEndNode);

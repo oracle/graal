@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.methodhandles;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
@@ -32,13 +33,16 @@ import java.lang.invoke.MethodHandle;
 // Checkstyle: stop
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 // Checkstyle: resume
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
@@ -47,11 +51,18 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesNotSupported;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK15OrEarlier;
 import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
+
+// Checkstyle: stop
+import sun.invoke.util.VerifyAccess;
+// Checkstyle: resume
 
 /**
  * Native Image implementation of the parts of the JDK method handles engine implemented in C++. We
@@ -131,15 +142,30 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         if (self.intrinsic != null) {
             return -1L;
         }
-        return GraalUnsafeAccess.getUnsafe().objectFieldOffset((Field) self.reflectAccess);
+        int offset = SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).offset;
+        if (offset == -1) {
+            throw unsupportedFeature("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
+        }
+        return offset;
     }
 
     @Substitute
     private static long staticFieldOffset(Target_java_lang_invoke_MemberName self) {
+        if (self.reflectAccess == null && self.intrinsic == null) {
+            throw new InternalError("unresolved field");
+        }
         if (!self.isField() || !self.isStatic()) {
             throw new InternalError("static field required");
         }
-        return 0L; /* Static fields are accessed through their base */
+        /* Intrinsic arguments are not accessed through their offset. */
+        if (self.intrinsic != null) {
+            return -1L;
+        }
+        int offset = SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).offset;
+        if (offset == -1) {
+            throw unsupportedFeature("Trying to access field " + self.reflectAccess + " without registering it as unsafe accessed.");
+        }
+        return offset;
     }
 
     @Substitute
@@ -150,7 +176,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         if (!self.isField() || !self.isStatic()) {
             throw new InternalError("static field required");
         }
-        return SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class).acquireFieldAccessor(false);
+        return ((Field) self.reflectAccess).getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
     }
 
     @Substitute
@@ -182,62 +208,10 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 
     // JDK 11
 
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
     @Substitute
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
-        if (self.reflectAccess != null) {
-            return self;
-        }
-        Class<?> declaringClass = self.getDeclaringClass();
-        if (declaringClass == null) {
-            return null;
-        }
-
-        /* Intrinsic methods */
-        self.intrinsic = MethodHandleIntrinsic.resolve(self);
-        if (self.intrinsic != null) {
-            self.flags |= self.intrinsic.variant.flags;
-            return self;
-        }
-
-        /* Fill the member through reflection */
-        try {
-            if (self.isMethod()) {
-                Class<?>[] parameterTypes = self.getMethodType().parameterArray();
-                Method method = Util_java_lang_invoke_MethodHandleNatives.lookupMethod(declaringClass, self.name, parameterTypes);
-                if (method.getReturnType() != self.getMethodType().returnType()) {
-                    /* Method handle lookup also checks return type */
-                    throw new NoSuchMethodException(SubstrateUtil.cast(declaringClass, DynamicHub.class).methodToString(self.name, parameterTypes));
-                }
-                self.reflectAccess = method;
-                self.flags |= method.getModifiers();
-            } else if (self.isConstructor()) {
-                Constructor<?> constructor = declaringClass.getDeclaredConstructor(self.getMethodType().parameterArray());
-                self.reflectAccess = constructor;
-                self.flags |= constructor.getModifiers();
-            } else if (self.isField()) {
-                Field field = Util_java_lang_invoke_MethodHandleNatives.lookupField(declaringClass, self.name);
-                if (field.getType() != self.getFieldType()) {
-                    /* Method handle lookup also checks field type */
-                    throw new NoSuchFieldException(declaringClass.getName() + "." + self.name);
-                }
-                self.reflectAccess = field;
-                self.flags |= field.getModifiers();
-            }
-            return self;
-        } catch (NoSuchMethodException e) {
-            if (speculativeResolve) {
-                return null;
-            } else {
-                throw new NoSuchMethodError(e.getMessage());
-            }
-        } catch (NoSuchFieldException e) {
-            if (speculativeResolve) {
-                return null;
-            } else {
-                throw new NoSuchFieldError(e.getMessage());
-            }
-        }
+        return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
     }
 
     @Delete
@@ -250,18 +224,25 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         throw unimplemented("CallSiteContext not supported");
     }
 
-    // JDK 16
-
-    @Delete
-    @TargetElement(onlyWith = JDK16OrLater.class)
-    private static native Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
-                    throws LinkageError, ClassNotFoundException;
-
     @AnnotateOriginal
     static native boolean refKindIsMethod(byte refKind);
 
     @AnnotateOriginal
     static native String refKindName(byte refKind);
+
+    // JDK 16
+    @Substitute
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException {
+        Class<?> declaringClass = self.getDeclaringClass();
+        Target_java_lang_invoke_MemberName resolved = Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
+        if (resolved != null && !Util_java_lang_invoke_MethodHandleNatives.verifyAccess(declaringClass, resolved.reflectAccess.getDeclaringClass(), resolved.reflectAccess.getModifiers(), caller,
+                        lookupMode)) {
+            throw new IllegalAccessError(resolved + " is not accessible from " + caller);
+        }
+        return resolved;
+    }
 }
 
 /**
@@ -306,6 +287,82 @@ final class Util_java_lang_invoke_MethodHandleNatives {
             } else {
                 return lookupField(superClass, name, newOriginalException);
             }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException {
+        if (self.reflectAccess != null) {
+            return self;
+        }
+        Class<?> declaringClass = self.getDeclaringClass();
+        if (declaringClass == null) {
+            return null;
+        }
+
+        /* Intrinsic methods */
+        self.intrinsic = MethodHandleIntrinsicImpl.resolve(self);
+        if (self.intrinsic != null) {
+            self.flags |= ((MethodHandleIntrinsicImpl) self.intrinsic).variant.flags;
+            return self;
+        }
+
+        /* Fill the member through reflection */
+        try {
+            if (self.isMethod()) {
+                Class<?>[] parameterTypes = self.getMethodType().parameterArray();
+                Method method = Util_java_lang_invoke_MethodHandleNatives.lookupMethod(declaringClass, self.name, parameterTypes);
+                if (method.getReturnType() != self.getMethodType().returnType()) {
+                    /* Method handle lookup also checks return type */
+                    throw new NoSuchMethodException(SubstrateUtil.cast(declaringClass, DynamicHub.class).methodToString(self.name, parameterTypes));
+                }
+                self.reflectAccess = method;
+                self.flags |= method.getModifiers();
+            } else if (self.isConstructor()) {
+                Constructor<?> constructor = declaringClass.getDeclaredConstructor(self.getMethodType().parameterArray());
+                self.reflectAccess = constructor;
+                self.flags |= constructor.getModifiers();
+            } else if (self.isField()) {
+                Field field = Util_java_lang_invoke_MethodHandleNatives.lookupField(declaringClass, self.name);
+                if (field.getType() != self.getFieldType()) {
+                    /* Method handle lookup also checks field type */
+                    throw new NoSuchFieldException(declaringClass.getName() + "." + self.name);
+                }
+                self.reflectAccess = field;
+                self.flags |= field.getModifiers();
+            }
+            return self;
+        } catch (NoSuchMethodException e) {
+            if (speculativeResolve) {
+                return null;
+            } else {
+                throw new NoSuchMethodError(e.getMessage());
+            }
+        } catch (NoSuchFieldException e) {
+            if (speculativeResolve) {
+                return null;
+            } else {
+                throw new NoSuchFieldError(e.getMessage());
+            }
+        }
+    }
+
+    private static Method verifyAccess;
+
+    static boolean verifyAccess(Class<?> refc, Class<?> defc, int mods, Class<?> lookupClass, int allowedModes) {
+        assert JavaVersionUtil.JAVA_SPEC >= 16;
+        if (verifyAccess == null) {
+            try {
+                verifyAccess = VerifyAccess.class.getDeclaredMethod("isMemberAccessible", Class.class, Class.class, int.class, Class.class, Class.class, int.class);
+            } catch (NoSuchMethodException e) {
+                throw shouldNotReachHere();
+            }
+        }
+        try {
+            return (boolean) verifyAccess.invoke(null, refc, defc, mods, lookupClass, null, allowedModes);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new GraalError(e);
         }
     }
 }
@@ -399,7 +456,7 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     // JDK 11
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
     private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException;
 
@@ -410,4 +467,11 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
     private static native void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context);
+
+    // JDK 16
+
+    @Delete
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, int lookupMode, boolean speculativeResolve)
+                    throws LinkageError, ClassNotFoundException;
 }

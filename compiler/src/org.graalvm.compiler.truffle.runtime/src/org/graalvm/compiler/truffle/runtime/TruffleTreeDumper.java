@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,6 @@ public final class TruffleTreeDumper {
     }
 
     private static final ASTDumpStructure AST_DUMP_STRUCTURE = new ASTDumpStructure();
-    private static final String AFTER_PROFILING = "After Profiling";
 
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
@@ -72,7 +71,6 @@ public final class TruffleTreeDumper {
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget root, TruffleInlining inlining) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
             try {
-
                 CompilableTruffleAST[] inlinedTargets = inlining.inlinedTargets();
                 Set<CompilableTruffleAST> uniqueTargets = new HashSet<>(Arrays.asList(inlinedTargets));
                 uniqueTargets.remove(root);
@@ -98,9 +96,7 @@ public final class TruffleTreeDumper {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget, nodeSources);
             final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
-            astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
-            astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
-            astOutput.endGroup(); // AST
+            astOutput.print(ast, Collections.emptyMap(), 0, callTarget.getName());
             astOutput.close();
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -272,8 +272,12 @@ final class TruffleToLibGraalEntryPoints {
         try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(CloseCompilation, env)) {
             TruffleCompilation compilation = LibGraalObjectHandles.resolve(compilationHandle, TruffleCompilation.class);
             HSCompilableTruffleAST compilable = (HSCompilableTruffleAST) compilation.getCompilable();
-            compilable.release(env);
-            HSObject.cleanHandles(env);
+            try {
+                compilation.close();
+            } finally {
+                compilable.release(env);
+                HSObject.cleanHandles(env);
+            }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }

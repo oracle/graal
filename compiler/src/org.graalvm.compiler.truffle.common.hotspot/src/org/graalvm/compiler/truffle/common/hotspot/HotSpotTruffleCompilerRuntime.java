@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,4 +44,11 @@ public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
      * @param installedCode code that has just been installed in the code cache
      */
     void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode);
+
+    /**
+     * Gets the offset in a {@code JavaThread*} object of the int field used to denote that a
+     * safepoint has been requested for the thread (i.e. its value is non-zero). If the offset
+     * returns -1 this means that the underlying runtime does not support it.
+     */
+    int getThreadLocalPendingHandshakeOffset();
 }

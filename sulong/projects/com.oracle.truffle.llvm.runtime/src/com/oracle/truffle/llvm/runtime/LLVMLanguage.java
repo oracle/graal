@@ -39,13 +39,11 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
@@ -53,19 +51,19 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguageFactory.InitializeContextNode
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprExecutableNode;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
@@ -77,7 +75,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
-                byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
+                byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
+                                LLVMLanguage.LLVM_MS_DOS_MIME_TYPE}, //
                 fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
@@ -90,6 +89,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     static final String LLVM_ELF_LINUX_EXTENSION = "so";
 
     static final String LLVM_MACHO_MIME_TYPE = "application/x-mach-binary";
+    static final String LLVM_MS_DOS_MIME_TYPE = "application/x-dosexec";
 
     static final String MAIN_ARGS_KEY = "Sulong Main Args";
     static final String PARSE_ONLY_KEY = "Parse only";
@@ -147,6 +147,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
 
     private final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
+
+    private DataLayout defaultDataLayout;
+    private TargetTriple defaultTargetTriple;
 
     @CompilationFinal private LLVMFunctionCode sulongInitContextCode;
     @CompilationFinal private LLVMFunction sulongDisposeContext;
@@ -309,7 +312,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) {
         Object globalScope = getScope(getCurrentContext(LLVMLanguage.class));
-        final DebugExprParser d = new DebugExprParser(request, globalScope, getCurrentContext(LLVMLanguage.class));
+        final DebugExprParser d = new DebugExprParser(request, globalScope);
         try {
             return new DebugExprExecutableNode(d.parse());
         } catch (DebugExprException | LLVMParserException e) {
@@ -446,6 +449,29 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return freeGlobalBlocks;
     }
 
+    public synchronized void setDefaultBitcode(DataLayout datalayout, TargetTriple targetTriple) {
+        // Libsulong datalayout can only be set once.
+        if (defaultDataLayout == null) {
+            this.defaultDataLayout = datalayout;
+        } else {
+            throw new NullPointerException("The default datalayout cannot be overwritten");
+        }
+        // Libsulong targettriple can only be set once.
+        if (defaultTargetTriple == null) {
+            this.defaultTargetTriple = targetTriple;
+        } else {
+            throw new NullPointerException("The default targetTriple cannot be overwritten");
+        }
+    }
+
+    public DataLayout getDefaultDataLayout() {
+        return defaultDataLayout;
+    }
+
+    public TargetTriple getDefaultTargetTriple() {
+        return defaultTargetTriple;
+    }
+
     public AtomicInteger getRawRunnerID() {
         return nextID;
     }
@@ -527,16 +553,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         super.disposeThread(context, thread);
         if (context.isInitialized()) {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);
-        }
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected Iterable<com.oracle.truffle.api.Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
-        if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
-            return LLVMDebuggerScopeFactory.createIRLevelScope(node, frame, context);
-        } else {
-            return LLVMDebuggerScopeFactory.createSourceLevelScope(node, frame, context);
         }
     }
 

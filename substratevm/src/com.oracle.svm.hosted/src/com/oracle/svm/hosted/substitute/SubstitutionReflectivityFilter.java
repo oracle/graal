@@ -27,9 +27,11 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -41,24 +43,27 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class SubstitutionReflectivityFilter {
 
-    public static boolean shouldExclude(Class<?> classObj, AnalysisMetaAccess metaAccess) {
+    public static boolean shouldExclude(Class<?> classObj, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
             ResolvedJavaType analysisClass = metaAccess.lookupJavaType(classObj);
-            if (analysisClass.isAnnotationPresent(Delete.class)) {
-                return true; // Deleted class, accesses would fail at runtime
+            if (!universe.platformSupported(analysisClass)) {
+                return true;
+            } else if (analysisClass.isAnnotationPresent(Delete.class)) {
+                return true; // accesses would fail at runtime
             }
-        } catch (DeletedElementException ignored) {
-            return true; // Deleted class, reachability would break the image build
+        } catch (UnsupportedFeatureException ignored) {
+            return true; // unsupported platform or deleted: reachability breaks image build
         }
         return false;
     }
 
-    public static boolean shouldExclude(Executable method, AnalysisMetaAccess metaAccess) {
+    public static boolean shouldExclude(Executable method, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
             AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
-            if (aMethod.isAnnotationPresent(Delete.class)) {
-                // Deleted method, accesses would fail at runtime
+            if (!universe.platformSupported(aMethod)) {
                 return true;
+            } else if (aMethod.isAnnotationPresent(Delete.class)) {
+                return true; // accesses would fail at runtime
             } else if (aMethod.isSynthetic() && aMethod.getDeclaringClass().isAnnotationPresent(TargetClass.class)) {
                 /*
                  * Synthetic methods are usually methods injected by javac to provide access to
@@ -69,22 +74,23 @@ public class SubstitutionReflectivityFilter {
                  */
                 return true;
             }
-        } catch (DeletedElementException ignored) {
-            // Deleted method, reachability would break the image build
-            return true;
+        } catch (UnsupportedFeatureException ignored) {
+            return true; // unsupported platform or deleted: reachability breaks image build
         }
         return false;
     }
 
-    public static boolean shouldExclude(Field field, AnalysisMetaAccess metaAccess) {
-        AnalysisField aField;
+    public static boolean shouldExclude(Field field, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
-            aField = metaAccess.lookupJavaField(field);
-            if (aField.isAnnotationPresent(Delete.class)) {
-                return true; // Deleted field, accesses would fail at runtime
+            AnalysisField aField = metaAccess.lookupJavaField(field);
+            if (!universe.platformSupported(aField)) {
+                return true;
             }
-        } catch (DeletedElementException ignored) {
-            return true; // Deleted field, reachability would break the image build
+            if (aField.isAnnotationPresent(Delete.class)) {
+                return true; // accesses would fail at runtime
+            }
+        } catch (UnsupportedFeatureException ignored) {
+            return true; // unsupported platform or deleted: reachability breaks image build
         }
         return false;
     }

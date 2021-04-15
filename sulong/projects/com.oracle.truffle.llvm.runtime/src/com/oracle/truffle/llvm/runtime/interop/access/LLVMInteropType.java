@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,6 +66,7 @@ import java.util.stream.Collectors;
 public abstract class LLVMInteropType implements TruffleObject {
 
     public static final LLVMInteropType.Value UNKNOWN = Value.primitive(null, 0);
+    public static final LLVMInteropType.Buffer BUFFER = new Buffer();
 
     private final long size;
 
@@ -187,6 +188,18 @@ public abstract class LLVMInteropType implements TruffleObject {
             } else {
                 return baseType.toString(visited) + "*";
             }
+        }
+    }
+
+    public static final class Buffer extends LLVMInteropType {
+
+        private Buffer() {
+            super(0);
+        }
+
+        @Override
+        protected String toString(EconomicSet<LLVMInteropType> visited) {
+            return "buffer";
         }
     }
 

@@ -25,7 +25,8 @@
 package com.oracle.svm.driver;
 
 import java.util.List;
-import java.util.Queue;
+
+import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
 class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
 
@@ -37,7 +38,7 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
     }
 
     @Override
-    public boolean consume(Queue<String> args) {
+    public boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
         switch (headArg) {
             case "--help-experimental-build-server":

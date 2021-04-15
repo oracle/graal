@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,6 +62,8 @@ import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase.SubstrateBytecodeParser;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -111,7 +113,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         /* We never have floating guards in AOT compiled code. */
         getGraph().setGuardsStage(GuardsStage.FIXED_DEOPTS);
 
-        assert !getMethod().isEntryPoint() : "Cannot directly use as entry point, create a call stub";
+        assert !getMethod().isEntryPoint() : "Cannot directly use as entry point, create a call stub ";
 
         if (getMethod().compilationInfo.isDeoptTarget()) {
             /*
@@ -163,9 +165,54 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         if (getMethod().compilationInfo.isDeoptEntry(bci, false, false)) {
             DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
             deoptEntry.setStateAfter(frameState.create(bci, deoptEntry));
-            deoptEntries.put(Long.valueOf(bci), deoptEntry);
+            long encodedBci = FrameInfoEncoder.encodeBci(bci, false, false);
+            deoptEntries.put(encodedBci, deoptEntry);
             insertProxies(deoptEntry, state);
         }
+    }
+
+    /**
+     * Creates a DeoptEntryNode which corresponds to the state before executing an invoke.
+     */
+    private void addBeforeInvokeDeoptEntry(ResolvedJavaMethod targetMethod, int invokeBci, ValueNode[] args) {
+        FrameState stateAfter = frameState.create(invokeBci, getNonIntrinsicAncestor(), false, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args);
+        assert !stateAfter.rethrowException() : "Shouldn't be rethrowing an exception.";
+        long encodedBci = FrameInfoEncoder.encodeBci(stateAfter.bci, stateAfter.duringCall(), stateAfter.rethrowException());
+        if (!deoptEntries.containsKey(encodedBci)) {
+            DeoptEntryNode deoptEntry = graph.add(new DeoptEntryNode());
+            deoptEntry.setStateAfter(stateAfter);
+            insertProxies(deoptEntry, frameState);
+
+            lastInstr.setNext(deoptEntry);
+            lastInstr = deoptEntry;
+
+            for (int i = 0; i < args.length; i++) {
+                args[i] = createProxyNode(args[i], deoptEntry);
+            }
+        }
+        /*
+         * Ensure that no one registers a later state (after the replacement) with the same frame
+         * state.
+         */
+        deoptEntries.put(encodedBci, STICKY_DEOPT_ENTRY);
+    }
+
+    @Override
+    protected Invoke createNonInlinedInvoke(ExceptionEdgeAction exceptionEdge, int invokeBci, ValueNode[] invokeArgs, ResolvedJavaMethod targetMethod,
+                    InvokeKind invokeKind, JavaKind resultType, JavaType returnType, JavaTypeProfile profile) {
+
+        if (!parsingIntrinsic() && getMethod().compilationInfo.isRegisteredDeoptEntry(invokeBci, false, false)) {
+            /*
+             * Since it possible for this method to be inlined during runtime compilation, a
+             * DeoptEntryNode must be registered for this invoke. Replacements use the frame state
+             * before the invoke for all nodes that need a state, i.e., we want to re-execute the
+             * whole replacement in case of deoptimization. The frame state used for the
+             * DeoptEntryNode needs to be the same state that will be used later on in the
+             * intrinsic.
+             */
+            addBeforeInvokeDeoptEntry(targetMethod, invokeBci, invokeArgs);
+        }
+        return super.createNonInlinedInvoke(exceptionEdge, invokeBci, invokeArgs, targetMethod, invokeKind, resultType, returnType, profile);
     }
 
     @Override
@@ -179,25 +226,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
              * frame state used for the DeoptEntryNode needs to be the same state that will be used
              * later on in the intrinsic.
              */
-            FrameState stateAfter = frameState.create(bci(), getNonIntrinsicAncestor(), false, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args);
-            long encodedBci = FrameInfoEncoder.encodeBci(stateAfter.bci, stateAfter.duringCall(), stateAfter.rethrowException());
-            if (!deoptEntries.containsKey(encodedBci)) {
-                DeoptEntryNode deoptEntry = graph.add(new DeoptEntryNode());
-                deoptEntry.setStateAfter(stateAfter);
-                insertProxies(deoptEntry, frameState);
-
-                lastInstr.setNext(deoptEntry);
-                lastInstr = deoptEntry;
-
-                for (int i = 0; i < args.length; i++) {
-                    args[i] = createProxyNode(args[i], deoptEntry);
-                }
-            }
-            /*
-             * Ensure that no one registers a later state (after the replacement) with the same
-             * frame state.
-             */
-            deoptEntries.put(encodedBci, STICKY_DEOPT_ENTRY);
+            addBeforeInvokeDeoptEntry(targetMethod, bci(), args);
         }
 
         super.parseAndInlineCallee(targetMethod, args, calleeIntrinsicContext);
@@ -205,9 +234,10 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     /**
      * Insert deopt entries after all state splits.
+     *
+     * @return the new DeoptEntryNode (if added) or the original instruction.
      */
-    @Override
-    protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, FrameStateBuilder stateBuilder) {
+    private FixedWithNextNode appendDeoptEntry(FixedWithNextNode instr, FrameStateBuilder stateBuilder) {
         if (getMethod().compilationInfo.isDeoptTarget() && !parsingIntrinsic()) {
             FrameState stateAfter = null;
             if (instr instanceof StateSplit && !(instr instanceof DeoptEntryNode)) {
@@ -306,7 +336,45 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
                 }
             }
         }
-        return super.finishInstruction(instr, stateBuilder);
+        return instr;
+    }
+
+    @Override
+    public void processInstruction(FixedWithNextNode instr) {
+        /*
+         * Call processInstruction with frameState to add a deoptimization entry point, if needed.
+         */
+        processInstruction(instr, frameState);
+    }
+
+    @Override
+    protected FixedWithNextNode processInstruction(FixedWithNextNode instr, FrameStateBuilder state) {
+        /*
+         * If the instruction has a successor, remove and re-append it after all modifications have
+         * been performed.
+         */
+        FixedNode originalNext = instr.next();
+        if (originalNext != null) {
+            instr.setNext(null);
+        }
+
+        /*
+         * Call appendDeoptEntry to guarantee all needed deoptimization entrypoints have been added.
+         */
+        FixedWithNextNode endInstr = appendDeoptEntry(instr, state);
+        if (originalNext != null) {
+            endInstr.setNext(originalNext);
+        }
+
+        if (instr == lastInstr && instr != endInstr) {
+            assert originalNext == null;
+            /*
+             * Need to update last instruction if it changed.
+             */
+            lastInstr = endInstr;
+        }
+
+        return super.processInstruction(endInstr, state);
     }
 
     private DeoptProxyAnchorNode createDeoptEntry(FrameStateBuilder stateBuilder, FrameState stateAfter, boolean anchorOnly) {

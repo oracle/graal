@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind.Static;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.lang.reflect.Method;
@@ -50,6 +52,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -61,6 +64,7 @@ import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -200,6 +204,9 @@ public class GraphKit implements GraphBuilderTool {
 
     @Override
     public <T extends ValueNode> T append(T node) {
+        if (node.graph() != null) {
+            return node;
+        }
         T result = graph.addOrUniqueWithInputs(changeToWord(node));
         if (result instanceof FixedNode) {
             updateLastFixed((FixedNode) result);
@@ -276,17 +283,26 @@ public class GraphKit implements GraphBuilderTool {
             MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, method, args, returnStamp, bci));
             InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
-            if (frameStateBuilder != null) {
-                if (invoke.getStackKind() != JavaKind.Void) {
-                    frameStateBuilder.push(invoke.getStackKind(), invoke);
-                }
-                invoke.setStateAfter(frameStateBuilder.create(bci, invoke));
-                if (invoke.getStackKind() != JavaKind.Void) {
-                    frameStateBuilder.pop(invoke.getStackKind());
-                }
-            }
+            pushForStateSplit(frameStateBuilder, bci, invoke);
             return invoke;
         }
+    }
+
+    private static void pushForStateSplit(FrameStateBuilder frameStateBuilder, int bci, StateSplit stateSplit) {
+        if (frameStateBuilder != null) {
+            JavaKind stackKind = stateSplit.asNode().getStackKind();
+            if (stackKind != JavaKind.Void) {
+                frameStateBuilder.push(stackKind, stateSplit.asNode());
+            }
+            stateSplit.setStateAfter(frameStateBuilder.create(bci, stateSplit));
+            if (stackKind != JavaKind.Void) {
+                frameStateBuilder.pop(stackKind);
+            }
+        }
+    }
+
+    public InvokeNode createIntrinsicInvoke(ResolvedJavaMethod method, ValueNode... args) {
+        return createInvoke(method, Static, null, UNKNOWN_BCI, args);
     }
 
     @SuppressWarnings("try")
@@ -451,13 +467,13 @@ public class GraphKit implements GraphBuilderTool {
      * {@link #endIf} to close the if-block.
      *
      * @param condition The condition for the if-block
-     * @param trueProbability The estimated probability the condition is true
+     * @param profileData The estimated probability the condition is true
      * @return the created {@link IfNode}.
      */
-    public IfNode startIf(LogicNode condition, double trueProbability) {
+    public IfNode startIf(LogicNode condition, BranchProbabilityData profileData) {
         AbstractBeginNode thenSuccessor = graph.add(new BeginNode());
         AbstractBeginNode elseSuccessor = graph.add(new BeginNode());
-        IfNode node = append(new IfNode(condition, thenSuccessor, elseSuccessor, trueProbability));
+        IfNode node = append(new IfNode(condition, thenSuccessor, elseSuccessor, profileData));
         lastFixedNode = null;
 
         IfStructure s = new IfStructure();
@@ -501,7 +517,7 @@ public class GraphKit implements GraphBuilderTool {
     }
 
     /**
-     * Ends an if block started with {@link #startIf(LogicNode, double)}.
+     * Ends an if block started with {@link #startIf(LogicNode, BranchProbabilityData)}.
      *
      * @return the created merge node, or {@code null} if no merge node was required (for example,
      *         when one part ended with a control sink).
@@ -511,35 +527,39 @@ public class GraphKit implements GraphBuilderTool {
 
         FixedWithNextNode thenPart = s.thenPart instanceof FixedWithNextNode ? (FixedWithNextNode) s.thenPart : null;
         FixedWithNextNode elsePart = s.elsePart instanceof FixedWithNextNode ? (FixedWithNextNode) s.elsePart : null;
-        AbstractMergeNode merge = null;
+        AbstractMergeNode merge = mergeControlSplitBranches(thenPart, elsePart);
+        s.state = IfState.FINISHED;
+        popStructure();
+        return merge;
+    }
 
-        if (thenPart != null && elsePart != null) {
+    private AbstractMergeNode mergeControlSplitBranches(FixedWithNextNode x, FixedWithNextNode y) {
+        AbstractMergeNode merge = null;
+        if (x != null && y != null) {
             /* Both parts are alive, we need a real merge. */
-            EndNode thenEnd = graph.add(new EndNode());
-            graph.addAfterFixed(thenPart, thenEnd);
-            EndNode elseEnd = graph.add(new EndNode());
-            graph.addAfterFixed(elsePart, elseEnd);
+            EndNode xEnd = graph.add(new EndNode());
+            graph.addAfterFixed(x, xEnd);
+            EndNode yEnd = graph.add(new EndNode());
+            graph.addAfterFixed(y, yEnd);
 
             merge = graph.add(new MergeNode());
-            merge.addForwardEnd(thenEnd);
-            merge.addForwardEnd(elseEnd);
+            merge.addForwardEnd(xEnd);
+            merge.addForwardEnd(yEnd);
 
             lastFixedNode = merge;
 
-        } else if (thenPart != null) {
-            /* elsePart ended with a control sink, so we can continue with thenPart. */
-            lastFixedNode = thenPart;
+        } else if (x != null) {
+            /* y ended with a control sink, so we can continue with x. */
+            lastFixedNode = x;
 
-        } else if (elsePart != null) {
-            /* thenPart ended with a control sink, so we can continue with elsePart. */
-            lastFixedNode = elsePart;
+        } else if (y != null) {
+            /* x ended with a control sink, so we can continue with y. */
+            lastFixedNode = y;
 
         } else {
-            /* Both parts ended with a control sink, so no nodes can be added after the if. */
+            /* Both parts ended with a control sink, so no nodes can be added afterwards. */
             assert lastFixedNode == null;
         }
-        s.state = IfState.FINISHED;
-        popStructure();
         return merge;
     }
 
@@ -577,15 +597,7 @@ public class GraphKit implements GraphBuilderTool {
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionObject, invokeBci));
         AbstractBeginNode noExceptionEdge = graph.add(KillingBeginNode.create(LocationIdentity.any()));
         invoke.setNext(noExceptionEdge);
-        if (frameStateBuilder != null) {
-            if (invoke.getStackKind() != JavaKind.Void) {
-                frameStateBuilder.push(invoke.getStackKind(), invoke);
-            }
-            invoke.setStateAfter(frameStateBuilder.create(invokeBci, invoke));
-            if (invoke.getStackKind() != JavaKind.Void) {
-                frameStateBuilder.pop(invoke.getStackKind());
-            }
-        }
+        pushForStateSplit(frameStateBuilder, invokeBci, invoke);
         lastFixedNode = null;
 
         InvokeWithExceptionStructure s = new InvokeWithExceptionStructure();
@@ -600,14 +612,20 @@ public class GraphKit implements GraphBuilderTool {
 
     protected ExceptionObjectNode createExceptionObjectNode(FrameStateBuilder frameStateBuilder, int exceptionEdgeBci) {
         ExceptionObjectNode exceptionObject = add(new ExceptionObjectNode(getMetaAccess()));
+        setStateAfterException(frameStateBuilder, exceptionEdgeBci, exceptionObject, true);
+        return exceptionObject;
+    }
+
+    protected void setStateAfterException(FrameStateBuilder frameStateBuilder, int exceptionEdgeBci, StateSplit exceptionObject, boolean rethrow) {
         if (frameStateBuilder != null) {
             FrameStateBuilder exceptionState = frameStateBuilder.copy();
-            exceptionState.clearStack();
-            exceptionState.push(JavaKind.Object, exceptionObject);
-            exceptionState.setRethrowException(true);
+            if (rethrow) {
+                exceptionState.clearStack();
+                exceptionState.setRethrowException(true);
+            }
+            exceptionState.push(JavaKind.Object, exceptionObject.asNode());
             exceptionObject.setStateAfter(exceptionState.create(exceptionEdgeBci, exceptionObject));
         }
-        return exceptionObject;
     }
 
     private InvokeWithExceptionStructure saveLastInvokeWithExceptionNode() {
@@ -657,23 +675,7 @@ public class GraphKit implements GraphBuilderTool {
         InvokeWithExceptionStructure s = saveLastInvokeWithExceptionNode();
         FixedWithNextNode noExceptionEdge = s.noExceptionEdge instanceof FixedWithNextNode ? (FixedWithNextNode) s.noExceptionEdge : null;
         FixedWithNextNode exceptionEdge = s.exceptionEdge instanceof FixedWithNextNode ? (FixedWithNextNode) s.exceptionEdge : null;
-        AbstractMergeNode merge = null;
-        if (noExceptionEdge != null && exceptionEdge != null) {
-            EndNode noExceptionEnd = graph.add(new EndNode());
-            graph.addAfterFixed(noExceptionEdge, noExceptionEnd);
-            EndNode exceptionEnd = graph.add(new EndNode());
-            graph.addAfterFixed(exceptionEdge, exceptionEnd);
-            merge = graph.add(new MergeNode());
-            merge.addForwardEnd(noExceptionEnd);
-            merge.addForwardEnd(exceptionEnd);
-            lastFixedNode = merge;
-        } else if (noExceptionEdge != null) {
-            lastFixedNode = noExceptionEdge;
-        } else if (exceptionEdge != null) {
-            lastFixedNode = exceptionEdge;
-        } else {
-            assert lastFixedNode == null;
-        }
+        AbstractMergeNode merge = mergeControlSplitBranches(noExceptionEdge, exceptionEdge);
         s.state = InvokeWithExceptionStructure.State.FINISHED;
         popStructure();
         return merge;

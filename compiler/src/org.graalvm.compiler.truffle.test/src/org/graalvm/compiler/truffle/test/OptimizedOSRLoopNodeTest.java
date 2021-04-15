@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertSame;
 
 import java.util.concurrent.ExecutionException;
@@ -118,14 +118,14 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @SuppressWarnings("try")
     @Theory
     public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
-        setupContext("engine.CompilationThreshold", "3");
+        setupContext("engine.SingleTierCompilationThreshold", "3");
         TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(osrThreshold, factory, new TestRepeatingNode());
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         target.call(osrThreshold + 1);
         assertCompiled(rootNode.getOSRTarget());
         assertNotCompiled(target);
         target.nodeReplaced(rootNode.toReplace, new TestRepeatingNode(), "test");
-        for (int i = 0; i < target.getOptionValue(CompilationThreshold) + target.getOptionValue(ReplaceReprofileCount) - 1; i++) {
+        for (int i = 0; i < target.getOptionValue(SingleTierCompilationThreshold) + target.getOptionValue(ReplaceReprofileCount) - 1; i++) {
             target.call(2);
         }
         assertCompiled(rootNode.getOSRTarget());

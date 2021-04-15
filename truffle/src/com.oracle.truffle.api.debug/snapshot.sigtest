@@ -109,6 +109,7 @@ hfds depth,frame,frameInstance,section,session
 CLSS public final com.oracle.truffle.api.debug.DebugScope
 meth public boolean isFunctionScope()
 meth public com.oracle.truffle.api.debug.DebugScope getParent()
+meth public com.oracle.truffle.api.debug.DebugValue convertRawValue(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>,java.lang.Object)
 meth public com.oracle.truffle.api.debug.DebugValue getDeclaredValue(java.lang.String)
 meth public com.oracle.truffle.api.debug.DebugValue getReceiver()
 meth public com.oracle.truffle.api.debug.DebugValue getRootInstance()
@@ -329,6 +330,7 @@ meth public java.util.List<java.util.List<com.oracle.truffle.api.debug.DebugStac
 meth public void prepareContinue()
 meth public void prepareKill()
 meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame)
+meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame,com.oracle.truffle.api.debug.DebugValue)
 meth public void setReturnValue(com.oracle.truffle.api.debug.DebugValue)
 supr java.lang.Object
 hfds HOST_INTEROP_NODE_NAME,breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,materializedFrame,nextStrategy,returnValue,session,sourceSection,suspendAnchor,thread

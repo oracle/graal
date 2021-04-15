@@ -50,6 +50,6 @@ You should now put this wrapper on your `PATH` by running `export PATH=$PATH:${R
  1. Build gcc with `musl-gcc`.
  2. Use `libstdc++.a` from your distribution. If you choose this path, check the [FAQs](https://www.musl-libc.org/faq.html) page, "How do I use the musl-gcc wrapper?":
   >  The existing libstdc++ is actually compatible with musl in most cases and could be used by copying it into the musl library path, but the C++ header files are usually not compatible.
- Since do not need C++ header files, this approach should work. If you run into issues, make sure they are not caused by your ditribution's `libstdc++.a`.
+  > Since you do not need C++ header files, this approach should work. If you run into issues, make sure they are not caused by your ditribution's `libstdc++.a`.
  3. Take `libstdc++.a` from Alpine.
 In each case, `libstdc++.a` must be placed in `${RESULT_DIR}/lib`.

@@ -68,7 +68,6 @@ import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.WasmMath.maxUnsigned;
 import static org.graalvm.wasm.WasmMath.minUnsigned;
-import static org.graalvm.wasm.WasmMath.unsignedIntToLong;
 
 /**
  * Contains the symbol information of a module.
@@ -468,9 +467,7 @@ public abstract class SymbolTable {
     private WasmFunction allocateFunction(int typeIndex, ImportDescriptor importDescriptor) {
         checkNotParsed();
         ensureFunctionsCapacity(numFunctions);
-        if (typeIndex < 0 || typeIndex >= typeCount) {
-            throw WasmException.create(Failure.UNKNOWN_TYPE, String.format("Function type out of bounds: %d should be < %d.", unsignedIntToLong(typeIndex), typeCount));
-        }
+        assertUnsignedIntLess(typeIndex, typeCount(), Failure.UNKNOWN_TYPE);
         final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importDescriptor);
         functions[numFunctions] = function;
         numFunctions++;

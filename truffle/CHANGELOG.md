@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 21.2.0
+* Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
+* Added `CompilerDirectives.blackhole(value)` which can be helpful for benchmarking.
+* Added `TruffleLanguage#Env.registerOnDispose(Closeable)` registering `Closeable`s for automatic close on context dispose.
+
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
 * Added `TruffleContext.isCancelling()` to check whether a truffle context is being cancelled.
@@ -19,9 +24,49 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `readBufferByte(Object, long)`, `readBufferShort(Object, ByteOrder, long)`, `readBufferInt(Object, ByteOrder, long)`, `readBufferLong(Object, ByteOrder, long)`, `readBufferFloat(Object, ByteOrder, long)`  and `readBufferDouble(Object, ByteOrder, long)` to read a primitive from this buffer at the given index.
     * Added `writeBufferByte(Object, long, byte)`, `writeBufferShort(Object, ByteOrder, long, short)`, `writeBufferInt(Object, ByteOrder, long, int)`, `writeBufferLong(Object, ByteOrder, long, long)`, `writeBufferFloat(Object, ByteOrder, long, float)`  and `writeBufferDouble(Object, ByteOrder, long, double)` to write a primitive in this buffer at the given index (supported only if `isBufferWritable(Object)` returns `true`).
 * Added `Shape.getLayoutClass()` as a replacement for `Shape.getLayout().getType()`. Returns the DynamicObject subclass provided to `Shape.Builder.layout`.
+* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
+* The native image build fails if a method known as not suitable for partial evaluation is reachable for runtime compilation. The check can be disabled by the `-H:-TruffleCheckBlackListedMethods` native image option.
+* Added `ExactMath.truncate(float)` and `ExactMath.truncate(double)` methods to remove the decimal part (round toward zero) of a float or of a double respectively. These methods are intrinsified.
+* Added `SuspendedEvent.prepareUnwindFrame(DebugStackFrame, Object)` to support forced early return values from a debugger.
+* Added `DebugScope.convertRawValue(Class<? extends TruffleLanguage<?>>, Object)` to enable wrapping a raw guest language object into a DebugValue.
+* Added new messages to the `InteropLibrary` to support iterables and iterators:
+	* Added `hasIterator(Object)` that allows to specify that the receiver is an iterable.
+    * Added `getIterator(Object)` to return the iterator for an iterable receiver.
+    * Added `isIterator(Object)` that allows to specify that the receiver is an iterator.
+    * Added `hasIteratorNextElement(Object)`  that allows to specify that the iterator receiver has element(s) to return by calling the `getIteratorNextElement(Object)` method.
+    * Added `getIteratorNextElement(Object)` to return the current iterator element.
+* Added `TruffleContext.leaveAndEnter(Node, Supplier)` to wait for another thread without triggering multithreading.
+* Removed deprecated `TruffleLanguage.Env.getTruffleFile(String)`, `TruffleLanguage.Env.getTruffleFile(URI)` methods.
+* Deprecated CompilationThreshold for prefered LastTierCompilationThreshold and SingleTierCompilationThreshold.
+* Added new features to the DSL `@NodeChild` annotation:
+    * Added `implicit` and `implicitCreate` attributes to allow implicit creation of child nodes by the parent factory method.
+    * Added `allowUncached` and `uncached` attributes to allow using `@NodeChild` with `@GenerateUncached`.
+* Added `TruffleLanguage.Env#getTruffleFileInternal(String, Predicate<TruffleFile>)` and `TruffleLanguage.Env#getTruffleFileInternal(URI, Predicate<TruffleFile>)` methods performing the guest language standard libraries check using a supplied predicate. These methods have a better performance compared to the `TruffleLanguage.Env#getInternalTruffleFile(String)` and `TruffleLanguage.Env#getInternalTruffleFile(URI)` as the guest language standard libraries check is performed only for files in the language home when IO is not enabled by the Context.
+* Added `TruffleLanguage.Env.getLogger(String)` and `TruffleLanguage.Env.getLogger(Class<?>)` creating a context-bound logger. The returned `TruffleLogger` always uses a logging handler and options from Env's context and does not depend on being entered on any thread.
+* Added new messages to the `InteropLibrary` to support hash maps:
+	* Added `hasHashEntries(Object)` that allows to specify that the receiver provides hash entries.
+	* Added `getHashSize(Object)` to return hash entries count.
+	* Added `isHashEntryReadable(Object, Object)` that allows to specify that mapping for the given key exists and is readable.
+	* Added `readHashValue(Object, Object)` to read the value for the specified key.
+	* Added `readHashValueOrDefault(Object, Object, Object)` to read the value for the specified key or to return the default value when the mapping for the specified key does not exist.
+	* Added `isHashEntryModifiable(Object, Object)` that allows to specify that mapping for the specified key exists and is writable.
+	* Added `isHashEntryInsertable(Object, Object)` that allows to specify that mapping for the specified key does not exist and is writable.
+	* Added `isHashEntryWritable(Object, Object)` that allows to specify that mapping is either modifiable or insertable.
+	* Added `writeHashEntry(Object, Object, Object)` associating the specified value with the specified key.
+	* Added `isHashEntryRemovable(Object, Object)` that allows to specify that mapping for the specified key exists and is removable.
+	* Added `removeHashEntry(Object, Object)` removing the mapping for a given key.
+	* Added `isHashEntryExisting(Object, Object)` that allows to specify that that mapping for a given key is existing.
+	* Added `getHashEntriesIterator(Object)` to return the hash entries iterator.
+    * Added `getHashKeysIterator(Object)` to return the hash keys iterator.
+    * Added `getHashValuesIterator(Object)` to return the hash values iterator.
+* Added `TypeDescriptor.HASH` and `TypeDescriptor.hash(TypeDescriptor, TypeDescriptor)` representing hash map types in the TCK.
+* Added support for Truffle safepoints and thread local actions. See `TruffleSafepoint` and `ThreadLocalAction`. There is also a [tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md) that explains how to adopt and use in language or tool implementations.
+* Make the Truffle NFI more modular.
+    * Provide option `--language:nfi=none` for disabling native access via the Truffle NFI in native-image even if the NFI is included in the image (e.g. as dependency of another language).
+    * Moved `trufflenfi.h` header from the JDK root include directory into the NFI language home (`languages/nfi/include`).
 
 ## Version 21.0.0
-* If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:
+* If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the exception interop messages are executed without a context being entered. The event listeners called during the context enter are:
     * `ThreadsActivationListener.onEnterThread(TruffleContext)`
     * `ThreadsListener.onThreadInitialized(TruffleContext, Thread)`
     * `TruffleInstrument.onCreate(Env)`
@@ -33,7 +78,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `HostCompilerDirectives.BytecodeInterpreterSwitchBoundary` - to denote methods that do not need to be inlined into the bytecode interpreter switch
 * Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
-* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.

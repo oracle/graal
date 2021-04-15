@@ -578,6 +578,12 @@ intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.Class<? extends org.graalvm.word.WordBase> value()
 meth public abstract !hasdefault java.lang.String nameOfCType()
 
+CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.RawPointerTo
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.Class<? extends org.graalvm.word.WordBase> value()
+
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.CStruct
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])

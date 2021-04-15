@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -365,12 +365,12 @@ public class LanguageSPITest {
                 }
                 /*
                  * If interrupt is caused by polyglot context cancel, then the polyglot exception
-                 * should have isCancelled() == true, but that does not currently work (GR-28789)
-                 * and isInterrupted() != true either, because the exception type cannot be obtained
-                 * from interop, because context cancel made the context invalid.
+                 * should have isCancelled() == true even though an exception of type interrupt was
+                 * thrown. Moreover isInterrupted() == false as the cancellation fully overrides the
+                 * interrupt in this case.
                  */
-                // PolyglotException polyglotException = (PolyglotException) cause;
-                // assertTrue(polyglotException.isCancelled());
+                PolyglotException polyglotException = (PolyglotException) cause;
+                assertTrue(polyglotException.isCancelled());
             }
             engine.close();
         } finally {

@@ -28,6 +28,7 @@ package com.oracle.svm.test;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -315,6 +316,94 @@ class UnsafeAccess {
     }
 }
 
+/**
+ * Class initializer references a helper class that can be initialized early. Since the early class
+ * initializer analysis recursviely processes dependent classes, this class is also safe for early
+ * initialization.
+ */
+class ReferencesOtherPureClassMustBeSafeEarly {
+    static {
+        HelperClassMustBeSafeEarly.foo();
+    }
+
+    static void foo() {
+    }
+}
+
+class HelperClassMustBeSafeEarly {
+    static void foo() {
+    }
+}
+
+/**
+ * Cycle between this class and a helper class. Even though both classes could be initialized early,
+ * the early analysis bails out because analyzing cycles would be too complicated.
+ */
+class CycleMustBeSafeLate {
+    static {
+        HelperClassMustBeSafeLate.foo();
+    }
+
+    static void foo() {
+    }
+}
+
+class HelperClassMustBeSafeLate {
+    static {
+        CycleMustBeSafeLate.foo();
+    }
+
+    static void foo() {
+    }
+}
+
+/** Various reflection lookup methods are safe for execution at image build time. */
+class ReflectionMustBeSafeEarly {
+    static Class<?> c1;
+    static Class<?> c2;
+    static Method m1;
+    static Field f2;
+
+    static {
+        try {
+            Class<?> c1Local = Class.forName("com.oracle.svm.test.ForNameMustBeSafeEarly", true, ReflectionMustBeSafeEarly.class.getClassLoader());
+            c1 = c1Local;
+
+            /**
+             * Looking up a class that cannot be initialized at build time is allowed, as long as
+             * `initialize` is `false`.
+             */
+            Class<?> c2Local = Class.forName("com.oracle.svm.test.ForNameMustBeDelayed", false, ReflectionMustBeSafeEarly.class.getClassLoader());
+            c2 = c2Local;
+
+            /*
+             * Calling getDeclaredMethod on the field c1 instead of the variable c1Local would not
+             * work, because the field load cannot be constant folded by the
+             * EarlyClassInitializerAnalysis.
+             */
+            m1 = c1Local.getDeclaredMethod("foo", int.class);
+            f2 = c2Local.getDeclaredField("field");
+
+        } catch (ReflectiveOperationException ex) {
+            throw new Error(ex);
+        }
+    }
+}
+
+@SuppressWarnings("unused")
+class ForNameMustBeSafeEarly {
+    static void foo(int arg) {
+    }
+}
+
+class ForNameMustBeDelayed {
+    static {
+        System.out.println("Delaying " + ForNameMustBeDelayed.class);
+    }
+
+    int field;
+}
+
 class TestClassInitializationMustBeSafeFeature implements Feature {
 
     static final Class<?>[] checkedClasses = new Class<?>[]{
@@ -343,7 +432,11 @@ class TestClassInitializationMustBeSafeFeature implements Feature {
                     RecursionInInitializerMustBeSafeLate.class,
                     UnsafeAccessMustBeSafeLate.class,
                     EnumMustBeSafeEarly.class,
-                    NativeMethodMustBeDelayed.class};
+                    NativeMethodMustBeDelayed.class,
+                    ReferencesOtherPureClassMustBeSafeEarly.class, HelperClassMustBeSafeEarly.class,
+                    CycleMustBeSafeLate.class, HelperClassMustBeSafeLate.class,
+                    ReflectionMustBeSafeEarly.class, ForNameMustBeSafeEarly.class, ForNameMustBeDelayed.class
+    };
 
     private static void checkClasses(boolean checkSafeEarly, boolean checkSafeLate) {
         System.out.println("=== Checking initialization state of classes: checkSafeEarly=" + checkSafeEarly + ", checkSafeLate=" + checkSafeLate);
@@ -504,6 +597,19 @@ public class TestClassInitializationMustBeSafe {
 
         System.out.println(NativeMethodMustBeDelayed.i);
         NativeMethodMustBeDelayed.foo();
+        ReferencesOtherPureClassMustBeSafeEarly.foo();
+        CycleMustBeSafeLate.foo();
+
+        assertSame(ForNameMustBeSafeEarly.class, ReflectionMustBeSafeEarly.c1);
+        assertSame(ForNameMustBeDelayed.class, ReflectionMustBeSafeEarly.c2);
+        assertSame("foo", ReflectionMustBeSafeEarly.m1.getName());
+        assertSame("field", ReflectionMustBeSafeEarly.f2.getName());
+    }
+
+    private static void assertSame(Object expected, Object actual) {
+        if (expected != actual) {
+            throw new RuntimeException("expected " + expected + " but found " + actual);
+        }
     }
 }
 // Checkstyle: resume

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -234,7 +234,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, useAllowExperimentalOptions);
 
             logHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(logConfig, dispatchErr);
-            EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels, logConfig.logFile);
+            EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
 
             impl = (PolyglotEngineImpl) EngineAccessor.RUNTIME.tryLoadCachedEngine(engineOptions, loggerProvider);
             if (impl == null && boundEngine && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
@@ -269,7 +269,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 messageInterceptor,
                                 logHandler);
             }
-            loggerProvider.setEngine(impl);
 
             Engine engine = getAPIAccess().newEngine(impl);
             impl.creatorApi = engine;
@@ -324,11 +323,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream out = INSTRUMENT.createDispatchOutput(System.out);
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
-        EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels, logConfig.logFile);
+        EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(), true, true, null, logHandler);
-        // ready for use -> allowed to escape instance
-        loggerProvider.setEngine(engine);
         return engine;
     }
 
@@ -537,10 +534,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotContextImpl context = languageContext.context;
         PolyglotExceptionImpl exceptionImpl;
         if (context.closed || context.invalid) {
-            exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
+            exceptionImpl = new PolyglotExceptionImpl(context.engine, context.cancelling || context.cancelled, e);
         } else {
             try {
-                exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine,
+                exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, context.cancelling || context.cancelled,
                                 languageContext, e, true, entered);
             } catch (Throwable t) {
                 /*
@@ -548,7 +545,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                  * Report the exception as an internal error.
                  */
                 e.addSuppressed(t);
-                exceptionImpl = new PolyglotExceptionImpl(context.engine, e);
+                exceptionImpl = new PolyglotExceptionImpl(context.engine, context.cancelling || context.cancelled, e);
             }
         }
         APIAccess access = getInstance().getAPIAccess();
@@ -560,7 +557,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineException.rethrow(e);
 
         APIAccess access = engine.getAPIAccess();
-        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, e);
+        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, false, e);
         return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
     }
 

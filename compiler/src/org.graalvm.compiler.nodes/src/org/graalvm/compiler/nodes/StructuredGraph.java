@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -153,12 +154,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     /**
      * Different stages of the compilation regarding the status of various graph properties.
      */
-    public enum StageFlags {
-        AFTER_FLOATING_READ_PHASE,
-        AFTER_FIXED_READ_PHASE,
-        AFTER_VALUE_PROXY_REMOVAL,
-        AFTER_EXPAND_LOGIC,
-        AFTER_FINAL_CANONICALIZATION
+    public enum StageFlag {
+        PARTIAL_ESCAPE,
+        HIGH_TIER,
+        FLOATING_READS,
+        GUARD_MOVEMENT,
+        FIXED_READS,
+        VALUE_PROXY_REMOVAL,
+        EXPAND_LOGIC,
+        FINAL_CANONICALIZATION
     }
 
     public static class ScheduleResult {
@@ -354,7 +358,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final CompilationIdentifier compilationId;
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
-    private EnumSet<StageFlags> stageFlags = EnumSet.noneOf(StageFlags.class);
+    private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
     private FrameStateVerification frameStateVerification;
 
     /**
@@ -525,6 +529,34 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void clearLastSchedule() {
         setLastSchedule(null);
+    }
+
+    @Override
+    public void getDebugProperties(Map<Object, Object> properties) {
+        super.getDebugProperties(properties);
+        properties.put("compilationIdentifier", compilationId());
+        properties.put("assumptions", String.valueOf(getAssumptions()));
+    }
+
+    @Override
+    public void beforeNodeDuplication(Graph sourceGraph) {
+        super.beforeNodeDuplication(sourceGraph);
+        recordAssumptions((StructuredGraph) sourceGraph);
+    }
+
+    @Override
+    protected Object beforeNodeIdChange(Node node) {
+        if (node instanceof Invokable) {
+            return inliningLog.removeLeafCallsite((Invokable) node);
+        }
+        return null;
+    }
+
+    @Override
+    protected void afterNodeIdChange(Node node, Object value) {
+        if (node instanceof Invokable) {
+            inliningLog.addLeafCallsite((Invokable) node, (InliningLog.Callsite) value);
+        }
     }
 
     @Override
@@ -950,44 +982,21 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.guardsStage = guardsStage;
     }
 
-    public boolean isAfterFloatingReadPhase() {
-        return stageFlags.contains(StageFlags.AFTER_FLOATING_READ_PHASE);
+    public boolean isAfterStage(StageFlag state) {
+        return stageFlags.contains(state);
     }
 
-    public boolean isAfterFixedReadPhase() {
-        return stageFlags.contains(StageFlags.AFTER_FIXED_READ_PHASE);
+    public boolean isBeforeStage(StageFlag state) {
+        return !isAfterStage(state);
     }
 
-    public void setAfterFloatingReadPhase() {
-        stageFlags.add(StageFlags.AFTER_FLOATING_READ_PHASE);
+    public void setAfterStage(StageFlag state) {
+        assert isBeforeStage(state) : "Cannot set after state " + state + " since the graph is already in that state";
+        stageFlags.add(state);
     }
 
-    public void setAfterFixReadPhase() {
-        stageFlags.add(StageFlags.AFTER_FIXED_READ_PHASE);
-    }
-
-    public boolean hasValueProxies() {
-        return !stageFlags.contains(StageFlags.AFTER_VALUE_PROXY_REMOVAL);
-    }
-
-    public void setAfterValueProxyRemoval() {
-        stageFlags.add(StageFlags.AFTER_VALUE_PROXY_REMOVAL);
-    }
-
-    public boolean isAfterExpandLogic() {
-        return stageFlags.contains(StageFlags.AFTER_EXPAND_LOGIC);
-    }
-
-    public void setAfterExpandLogic() {
-        stageFlags.add(StageFlags.AFTER_EXPAND_LOGIC);
-    }
-
-    public boolean isAfterFinalCanonicalization() {
-        return stageFlags.contains(StageFlags.AFTER_FINAL_CANONICALIZATION);
-    }
-
-    public void setAfterFinalCanonicalization() {
-        stageFlags.add(StageFlags.AFTER_FINAL_CANONICALIZATION);
+    public EnumSet<StageFlag> getStageFlags() {
+        return stageFlags;
     }
 
     /**
@@ -1045,8 +1054,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void recordAssumptions(StructuredGraph inlineGraph) {
-        if (this != inlineGraph && getAssumptions() != null) {
-            if (inlineGraph.getAssumptions() != null) {
+        if (getAssumptions() != null) {
+            if (this != inlineGraph && inlineGraph.getAssumptions() != null) {
                 getAssumptions().record(inlineGraph.getAssumptions());
             }
         } else {
@@ -1256,7 +1265,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected void afterRegister(Node node) {
-        assert hasValueProxies() || !(node instanceof ValueProxyNode);
+        assert !isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode);
         if (GraalOptions.TraceInlining.getValue(getOptions())) {
             if (node instanceof Invokable) {
                 ((Invokable) node).updateInliningLogAfterRegister(this);

@@ -69,7 +69,7 @@ public final class Target_java_lang_reflect_Field {
     Target_java_lang_reflect_Field root;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
-    int offset;
+    public int offset;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedTypeComputer.class) //
     AnnotatedType annotatedType;

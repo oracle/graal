@@ -38,6 +38,7 @@ from tempfile import mkdtemp, mkstemp
 import mx
 import mx_benchmark
 from mx_benchmark import ParserEntry
+import mx_sdk_benchmark
 
 
 _suite = mx.suite('java-benchmarks')
@@ -145,6 +146,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         super(TemporaryWorkdirMixin, self).before(otherArgs)
 
     def _create_tmp_workdir(self):
+        mx.log_deprecation("mx_java_benchmarks.mx_benchmark.TemporaryWorkdirMixin is deprecated. Use mx_benchmark.mx_benchmark.TemporaryWorkdirMixin instead.")
         self.workdir = mkdtemp(prefix=self.name() + '-work.', dir='.')
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
@@ -170,12 +172,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
-class ShopCartBenchmarkSuite(mx_benchmark.JMeterBenchmarkSuite):
-    """Benchmark suite for the ShopCart benchmark."""
-
-    def name(self):
-        return "shopcart"
-
+class BasePetClinicBenchmarkSuite(object):
     def group(self):
         return "Graal"
 
@@ -183,10 +180,251 @@ class ShopCartBenchmarkSuite(mx_benchmark.JMeterBenchmarkSuite):
         return "graal-compiler"
 
     def version(self):
-        return "0.1"
+        return "0.0.1"
+
+    def validateReturnCode(self, retcode):
+        return retcode == 143
+
+    def applicationDist(self):
+        return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        raise NotImplementedError()
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        lib = self.applicationDist()
+        classpath = os.path.join(lib, "BOOT-INF/classes")
+        for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
+            if filename.endswith(".jar"):
+                classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
+        mainclass = "org.springframework.samples.petclinic.PetClinicApplication"
+        return self.vmArgs(bmSuiteArgs) + ["-cp", classpath, mainclass]
+
+    def applicationStartupRule(self, benchSuiteName, benchmark):
+        # Example of SpringBoot startup log:
+        # "2021-03-08 15:49:36.155  INFO 21174 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 4.367 seconds (JVM running for 4.812)"
+        return [
+            mx_benchmark.StdOutRule(
+                r"Started PetClinicApplication in (?P<appstartup>\d*[.,]?\d*) seconds \(JVM running for (?P<startup>\d*[.,]?\d*)\)$",
+                {
+                    "benchmark": benchmark,
+                    "bench-suite": benchSuiteName,
+                    "metric.name": "app-startup",
+                    "metric.value": ("<startup>", float),
+                    "metric.unit": "s",
+                    "metric.better": "lower",
+                }
+            )
+        ]
+
+    def skip_agent_assertions(self, benchmark, args):
+        # This method overrides NativeImageMixin.skip_agent_assertions
+        user_args = super(BasePetClinicBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def stages(self, args):
+        # This method overrides NativeImageMixin.stages
+        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else ['instrument-image', 'instrument-run', 'image', 'run']
+
+
+
+class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
+    """PetClinic benchmark suite that measures throughput using JMeter."""
+
+    def name(self):
+        return "petclinic-jmeter"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["tiny", "small", "large"]
+        return ["tiny"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+
+mx_benchmark.add_bm_suite(PetClinicJMeterBenchmarkSuite())
+
+
+class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+    """PetClinic benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "petclinic-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
+
+
+class PetClinicWrk2BenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
+    """PetClinic benchmark suite that measures latency using Wrk2."""
+
+    def name(self):
+        return "petclinic-wrk2"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["read", "write"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(PetClinicWrk2BenchmarkSuite())
+
+
+class BaseTikaBenchmarkSuite(object):
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def version(self):
+        return "1.0.1"
+
+    def validateReturnCode(self, retcode):
+        return retcode == 143
+
+    def applicationDist(self):
+        return mx.library("TIKA_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-SNAPSHOT-runner.jar")
+
+    def serviceEndpoint(self):
+        return 'parse'
+
+    def applicationStartupRule(self, benchSuiteName, benchmark):
+        # Example of Micronaut startup log:
+        # "2021-03-17 20:03:33,893 INFO  [io.quarkus] (main) tika-quickstart 1.0.0-SNAPSHOT on JVM (powered by Quarkus 1.12.1.Final) started in 1.210s. Listening on: <url>"
+        return [
+            mx_benchmark.StdOutRule(
+                r"started in (?P<startup>\d*[.,]?\d*)s.",
+                {
+                    "benchmark": benchmark,
+                    "bench-suite": benchSuiteName,
+                    "metric.name": "app-startup",
+                    "metric.value": ("<startup>", float),
+                    "metric.unit": "s",
+                    "metric.better": "lower",
+                }
+            )
+        ]
+
+    def skip_agent_assertions(self, benchmark, args):
+        # This method overrides NativeImageMixin.skip_agent_assertions
+        user_args = super(BaseTikaBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def stages(self, args):
+        # This method overrides NativeImageMixin.stages
+        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else ['image', 'run']
+
+    def extra_image_build_argument(self, benchmark, args):
+        return ['-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
+                '-J-Dsun.nio.ch.maxUpdateArraySize=100',
+                '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
+                '-J-Dvertx.disableDnsResolver=true,'
+                '-J-Dio.netty.leakDetection.level=DISABLED',
+                '-J-Dio.netty.allocator.maxOrder=1',
+                '-J-Duser.language=en',
+                '-J-Duser.country=US -J-Dfile.encoding=UTF-8',
+                '--initialize-at-build-time=',
+                '-H:InitialCollectionPolicy=com.oracle.svm.core.genscavenge.CollectionPolicy$BySpaceAndTime',
+                '-H:+JNI',
+                '-H:+AllowFoldMethods',
+                '-H:FallbackThreshold=0',
+                '-H:+ReportExceptionStackTraces',
+                '-H:-AddAllCharsets',
+                '-H:EnableURLProtocols=http',
+                '-H:NativeLinkerOption=-no-pie',
+                '-H:-UseServiceLoaderFeature',
+                '-H:+StackTrace'] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
+
+class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+    """Tika benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "tika-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["odt", "pdf"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
+
+
+class TikaWrk2BenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
+    """Tika benchmark suite that measures latency using Wrk2."""
+
+    def name(self):
+        return "tika-wrk2"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["odt", "pdf"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(TikaWrk2BenchmarkSuite())
+
+
+class BaseShopCartBenchmarkSuite(object):
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def version(self):
+        return "0.3.1"
+
+    def validateReturnCode(self, retcode):
+        return retcode == 143
 
     def applicationDist(self):
         shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
@@ -195,14 +433,114 @@ class ShopCartBenchmarkSuite(mx_benchmark.JMeterBenchmarkSuite):
     def applicationPath(self):
         return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
 
-    def workloadPath(self, benchmark):
+    def serviceEndpoint(self):
+        return 'clients'
+
+    def applicationStartupRule(self, benchSuiteName, benchmark):
+        # Example of Micronaut startup log:
+        # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
+        return [
+            mx_benchmark.StdOutRule(
+                r"^\[main\] INFO io.micronaut.runtime.Micronaut - Startup completed in (?P<startup>\d+)ms.",
+                {
+                    "benchmark": benchmark,
+                    "bench-suite": benchSuiteName,
+                    "metric.name": "app-startup",
+                    "metric.value": ("<startup>", float),
+                    "metric.unit": "ms",
+                    "metric.better": "lower",
+                }
+            )
+        ]
+
+    def skip_agent_assertions(self, benchmark, args):
+        # This method overrides NativeImageMixin.skip_agent_assertions
+        user_args = super(BaseShopCartBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def stages(self, args):
+        # This method overrides NativeImageMixin.stages
+        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else ['instrument-image', 'instrument-run', 'image', 'run']
+
+
+class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
+    """ShopCart benchmark suite that measures throughput using JMeter."""
+
+    def name(self):
+        return "shopcart-jmeter"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny", "small", "large"]
+
+    def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
 
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
-mx_benchmark.add_bm_suite(ShopCartBenchmarkSuite())
+
+mx_benchmark.add_bm_suite(ShopCartJMeterBenchmarkSuite())
 
 
-class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+    """ShopCart benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "shopcart-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
+
+
+class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
+    """ShopCart benchmark suite that measures latency using Wrk2."""
+
+    def name(self):
+        return "shopcart-wrk2"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["read", "write"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+    def loadConfiguration(self, benchmarkName):
+        def postRequest(url, data):
+            req = mx_sdk_benchmark.urllib().Request(url)
+            req.add_header('Content-Type', 'application/json')
+            mx.log(mx_sdk_benchmark.urllib().urlopen(req, str.encode(json.dumps(data))).read())
+        config = super(ShopCartWrk2BenchmarkSuite, self).loadConfiguration(benchmarkName)
+        for request in config["setup"]:
+            postRequest(config["target-url"] + request["path"], request["msg"])
+        return config
+
+
+mx_benchmark.add_bm_suite(ShopCartWrk2BenchmarkSuite())
+
+
+class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Base benchmark suite for DaCapo-based benchmarks.
 
     This suite can only run a single benchmark in one VM invocation.
@@ -772,7 +1110,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
             # No benchmark specified in the command line, so run everything.
-            benchmarks = [b for b in self.benchmarkList(bmSuiteArgs)]
+            benchmarks = self.benchmarkList(bmSuiteArgs)
 
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
@@ -1277,7 +1615,7 @@ _renaissanceConfig = {
 }
 
 
-class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1391,7 +1729,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
 
 
-class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Legacy renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1494,7 +1832,7 @@ class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchm
 mx_benchmark.add_bm_suite(RenaissanceLegacyBenchmarkSuite())
 
 
-class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Benchmark suite for the spark-sql-perf benchmarks.
     """
     def name(self):

@@ -460,6 +460,53 @@ public class ITLInspectDebugTest {
         tester.finish();
     }
 
+    @Test
+    public void testSuspendALot() throws Exception {
+        int numSuspend = 100_000; // Must be more than 65535, see GR-29742
+        String code = "ROOT(LOOP(" + numSuspend + ", STATEMENT))";
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, code, "TestFile").build();
+        String sourceURI = InspectorTester.getStringURI(source.getURI());
+        int codeLength = code.length();
+        tester = InspectorTester.start(false);
+        tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
+        tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
+        tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setAsyncCallStackDepth\",\"params\":{\"maxDepth\":1}}");
+        tester.sendMessage("{\"id\":4,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":1}\n" +
+                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"result\":{},\"id\":4}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":0,\"url\":\"" + sourceURI + "\",\"condition\":\"\"}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":5}\n"));
+        tester.eval(source);
+        long id = tester.getContextId();
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"0\",\"endColumn\":" + codeLength + ",\"startColumn\":0,\"startLine\":0,\"length\":" + codeLength + ",\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"f4399823ddd23020f4b5ba05ffffffffffffffff\"}}\n"));
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.breakpointResolved\",\"params\":{\"breakpointId\":\"1\",\"location\":{\"scriptId\":\"0\",\"columnNumber\":" + (codeLength - 11) + ",\"lineNumber\":0}}}\n"));
+        int objectId = 1;
+        for (int i = 0; i < numSuspend; i++) {
+            assertTrue(tester.compareReceivedMessages(
+                            "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[\"1\"]," +
+                                    "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"\"," +
+                                                     "\"scopeChain\":[{\"name\":\"\",\"type\":\"local\",\"object\":{\"description\":\"\",\"type\":\"object\",\"objectId\":\"" + objectId + "\"}}]," +
+                                                     "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"" + (objectId + 1) + "\"}," +
+                                                     "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
+                                                     "\"location\":{\"scriptId\":\"0\",\"columnNumber\":" + (codeLength - 11) + ",\"lineNumber\":0}," +
+                                                     "\"url\":\"" + sourceURI + "\"}]" +
+                                    "}}\n"));
+            objectId += 2;
+            tester.sendMessage("{\"id\":10,\"method\":\"Debugger.resume\"}");
+            assertTrue(tester.compareReceivedMessages(
+                            "{\"result\":{},\"id\":10}\n" +
+                            "{\"method\":\"Debugger.resumed\"}\n"));
+        }
+        tester.finish();
+    }
+
     // @formatter:on
     // CheckStyle: resume line length check
 }

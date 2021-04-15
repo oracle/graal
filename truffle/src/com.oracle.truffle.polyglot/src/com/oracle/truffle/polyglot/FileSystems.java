@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -114,6 +114,10 @@ final class FileSystems {
 
     static boolean hasAllAccess(FileSystem fileSystem) {
         return fileSystem instanceof InternalFileSystem && ((InternalFileSystem) fileSystem).hasAllAccess();
+    }
+
+    static boolean hasNoAccess(FileSystem fileSystem) {
+        return fileSystem instanceof InternalFileSystem && ((InternalFileSystem) fileSystem).hasNoAccess();
     }
 
     static boolean isInternal(FileSystem fileSystem) {
@@ -236,12 +240,19 @@ final class FileSystems {
         }
 
         void onPreInitializeContextEnd() {
+            if (factory == null) {
+                throw new IllegalStateException("Context pre-initialization already finished.");
+            }
             ((ImageBuildTimeFactory) factory).onPreInitializeContextEnd();
+            factory = null;
             delegate = INVALID_FILESYSTEM;
         }
 
         void onLoadPreinitializedContext(FileSystem newDelegate) {
             Objects.requireNonNull(newDelegate, "NewDelegate must be non null.");
+            if (factory != null) {
+                throw new IllegalStateException("Pre-initialized context already loaded.");
+            }
             this.delegate = newDelegate;
             this.factory = new ImageExecutionTimeFactory();
         }
@@ -275,6 +286,11 @@ final class FileSystems {
         @Override
         public boolean hasAllAccess() {
             return delegate instanceof InternalFileSystem && ((InternalFileSystem) delegate).hasAllAccess();
+        }
+
+        @Override
+        public boolean hasNoAccess() {
+            return delegate instanceof InternalFileSystem && ((InternalFileSystem) delegate).hasNoAccess();
         }
 
         @Override
@@ -722,6 +738,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean hasNoAccess() {
+            return false;
+        }
+
+        @Override
         public Path parsePath(URI uri) {
             try {
                 return hostfs.getPath(uri);
@@ -947,6 +968,11 @@ final class FileSystems {
         @Override
         public boolean hasAllAccess() {
             return false;
+        }
+
+        @Override
+        public boolean hasNoAccess() {
+            return true;
         }
 
         @Override
@@ -1189,6 +1215,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean hasNoAccess() {
+            return true;
+        }
+
+        @Override
         public Path parsePath(URI uri) {
             throw new UnsupportedOperationException("ParsePath not supported on InvalidFileSystem");
         }
@@ -1306,6 +1337,8 @@ final class FileSystems {
 
     private interface InternalFileSystem extends FileSystem {
         boolean hasAllAccess();
+
+        boolean hasNoAccess();
     }
 
     private static SecurityException forbidden(final Path path) {

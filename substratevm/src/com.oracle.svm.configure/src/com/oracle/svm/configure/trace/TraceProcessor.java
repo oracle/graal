@@ -46,7 +46,7 @@ public class TraceProcessor extends AbstractProcessor {
         advisor = accessAdvisor;
         jniProcessor = new JniProcessor(this.advisor, jniConfiguration, reflectionConfiguration);
         reflectionProcessor = new ReflectionProcessor(this.advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
-        serializationProcessor = new SerializationProcessor(serializationConfiguration);
+        serializationProcessor = new SerializationProcessor(this.advisor, serializationConfiguration);
     }
 
     public TypeConfiguration getJniConfiguration() {
@@ -113,7 +113,9 @@ public class TraceProcessor extends AbstractProcessor {
                     break;
             }
         } catch (Exception e) {
-            logWarning("Error processing trace entry: " + e.toString() + ": " + entry.toString());
+            StackTraceElement stackTraceElement = e.getStackTrace()[0];
+            logWarning("Error processing trace entry: " + e.toString() +
+                            " (at " + stackTraceElement.getClassName() + ":" + stackTraceElement.getLineNumber() + ") : " + entry.toString());
         }
     }
 

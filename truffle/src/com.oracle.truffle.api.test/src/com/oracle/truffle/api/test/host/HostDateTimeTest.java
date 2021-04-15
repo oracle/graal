@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,6 +147,94 @@ public final class HostDateTimeTest extends AbstractPolyglotTest {
     @Test
     public void testHostDate() {
         Date ov = Date.from(Instant.now());
+        Value v = context.asValue(ov);
+        ZoneId utc = ZoneId.of("UTC");
+
+        assertTrue(v.isDate());
+        assertEquals(v.asDate(), ov.toInstant().atZone(utc).toLocalDate());
+
+        assertTrue(v.isTime());
+        assertEquals(v.asTime(), ov.toInstant().atZone(utc).toLocalTime());
+
+        assertTrue(v.isTimeZone());
+        assertEquals(v.asTimeZone(), utc);
+
+        assertEquals(v.asInstant(), ov.toInstant());
+
+        assertTrue(v.isHostObject());
+        assertSame(ov, v.asHostObject());
+    }
+
+    @Test
+    public void testSQLDate() {
+        java.sql.Date ov = new java.sql.Date(0);
+        Value v = context.asValue(ov);
+
+        assertTrue(v.isDate());
+        assertEquals(v.asDate(), ov.toLocalDate());
+
+        assertFalse(v.isTime());
+        assertFails(() -> v.asTime(), ClassCastException.class);
+
+        assertFalse(v.isTimeZone());
+        assertFails(() -> v.asTimeZone(), ClassCastException.class);
+
+        assertFails(() -> v.asInstant(), ClassCastException.class);
+
+        assertTrue(v.isHostObject());
+        assertSame(ov, v.asHostObject());
+    }
+
+    @Test
+    public void testSQLTime() {
+        java.sql.Time ov = new java.sql.Time(0);
+        Value v = context.asValue(ov);
+
+        assertFalse(v.isDate());
+        assertFails(() -> v.asDate(), ClassCastException.class);
+
+        assertTrue(v.isTime());
+        assertEquals(v.asTime(), ov.toLocalTime());
+
+        assertFalse(v.isTimeZone());
+        assertFails(() -> v.asTimeZone(), ClassCastException.class);
+
+        assertFails(() -> v.asInstant(), ClassCastException.class);
+
+        assertTrue(v.isHostObject());
+        assertSame(ov, v.asHostObject());
+    }
+
+    @Test
+    public void testSQLTimestamp() {
+        java.sql.Timestamp ov = new java.sql.Timestamp(0);
+        Value v = context.asValue(ov);
+        ZoneId utc = ZoneId.of("UTC");
+
+        assertTrue(v.isDate());
+        assertEquals(v.asDate(), ov.toInstant().atZone(utc).toLocalDate());
+
+        assertTrue(v.isTime());
+        assertEquals(v.asTime(), ov.toInstant().atZone(utc).toLocalTime());
+
+        assertTrue(v.isTimeZone());
+        assertEquals(v.asTimeZone(), utc);
+
+        assertEquals(v.asInstant(), ov.toInstant());
+
+        assertTrue(v.isHostObject());
+        assertSame(ov, v.asHostObject());
+    }
+
+    @Test
+    @SuppressWarnings("serial")
+    public void testCustomDateSubclass() {
+        java.util.Date ov = new java.util.Date(0) {
+            @Override
+            public Instant toInstant() {
+                return super.toInstant();
+            }
+        };
         Value v = context.asValue(ov);
         ZoneId utc = ZoneId.of("UTC");
 

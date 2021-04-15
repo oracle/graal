@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
@@ -129,7 +130,9 @@ public class CatalogIterable implements ComponentIterable {
         }
 
         private List<String> expandId(String pattern, Version.Match vm) {
-            PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // NOI18N
+            // need to lowercase before passing to glob pattern: on UNIX, glob is case-sensitive, on
+            // Windows it is not. Lowercase will unify.
+            PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:" + pattern.toLowerCase(Locale.ENGLISH)); // NOI18N
             Set<String> ids = new HashSet<>(getRegistry().getComponentIDs());
             Map<ComponentInfo, String> abbreviatedIds = new HashMap<>();
             for (String id : ids) {
@@ -146,7 +149,7 @@ public class CatalogIterable implements ComponentIterable {
                 return Collections.singletonList(pattern);
             }
             for (Iterator<String> it = ids.iterator(); it.hasNext();) {
-                String s = it.next();
+                String s = it.next().toLowerCase(Locale.ENGLISH);
                 if (!pm.matches(SystemUtils.fromUserString(s))) {
                     it.remove();
                 }
@@ -156,6 +159,9 @@ public class CatalogIterable implements ComponentIterable {
             ids.forEach(s -> infos.add(getRegistry().findComponent(s, vm)));
             List<String> sorted = new ArrayList<>();
             for (ComponentInfo ci : infos) {
+                if (ci == null) {
+                    continue;
+                }
                 String ab = abbreviatedIds.get(ci);
                 if (pm.matches(SystemUtils.fromUserString(ab))) {
                     sorted.add(ab);

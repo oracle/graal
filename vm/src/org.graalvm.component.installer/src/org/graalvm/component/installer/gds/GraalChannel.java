@@ -523,7 +523,7 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
         String editionString = jo.getString(KEY_RELEASE_EDITION);
         String licenseLabel = jo.has(KEY_RELEASE_LICENSE_LABEL) ? jo.getString(KEY_RELEASE_LICENSE_LABEL) : null;
 
-        Version v = Version.fromUserString(versionString).onlyVersion();
+        Version v = Version.fromString(versionString);
         String jv;
         if (javaString.startsWith("jdk")) { // NOI18N
             jv = "" + SystemUtils.interpretJavaMajorVersion(javaString.substring(3)); // NOI18N

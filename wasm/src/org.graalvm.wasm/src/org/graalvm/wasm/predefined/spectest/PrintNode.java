@@ -48,6 +48,8 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
+import java.io.PrintStream;
+
 public class PrintNode extends WasmBuiltinRootNode {
 
     public PrintNode(WasmLanguage language, WasmInstance module) {
@@ -64,11 +66,13 @@ public class PrintNode extends WasmBuiltinRootNode {
 
     @CompilerDirectives.TruffleBoundary
     private static void print(Object string) {
-        System.out.println(string);
+        final PrintStream out = new PrintStream(System.out);
+        out.println(string);
     }
 
     @Override
     public String builtinNodeName() {
         return "print";
     }
+
 }

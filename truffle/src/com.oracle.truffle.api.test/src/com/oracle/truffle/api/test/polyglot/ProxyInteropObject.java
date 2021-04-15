@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -638,6 +638,26 @@ public abstract class ProxyInteropObject implements TruffleObject {
         @Override
         protected Object toDisplayString(boolean allowSideEffects) {
             return INTEROP.toDisplayString(delegate, allowSideEffects);
+        }
+
+        @Override
+        protected boolean hasMetaObject() {
+            return INTEROP.hasMetaObject(delegate);
+        }
+
+        @Override
+        protected Object getMetaObject() throws UnsupportedMessageException {
+            return INTEROP.getMetaObject(delegate);
+        }
+
+        @Override
+        protected String getMetaQualifiedName() throws UnsupportedMessageException {
+            return INTEROP.asString(INTEROP.getMetaQualifiedName(delegate));
+        }
+
+        @Override
+        protected String getMetaSimpleName() throws UnsupportedMessageException {
+            return INTEROP.asString(INTEROP.getMetaSimpleName(delegate));
         }
 
     }

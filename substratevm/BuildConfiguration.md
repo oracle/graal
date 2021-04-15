@@ -363,22 +363,6 @@ export JAVA_TOOL_OPTIONS="java -agentlib:native-image-agent=config-output-dir=/p
 
 The `{pid}` placeholder is replaced with the process identifier, while `{datetime}` is replaced with the system date and time in UTC, formatted according to ISO 8601. For the above example, the resulting path could be: `/path/to/config-output-dir-31415-20181231T235950Z/`.
 
-### The Configuration Tool
-
-When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files. The `native-image-configure` tool can be used to merge these configuration files. This tool must first be built with:
-```shell
-native-image --tool:native-image-configure
-```
-
-Then, the tool can be used to merge sets of configuration files as follows:
-```shell
-native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
-```
-
-This command reads one set of configuration files from `/path/to/config-dir-0/` and another from `/path/to/config-dir-1/` and then writes a set of configuration files that contains both of their information to `/path/to/merged-config-dir/`.
-
-An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure help` for all options.
-
 ### Trace Files
 
 In the examples above, `native-image-agent` has been used to both keep track of the dynamic accesses in a Java VM and then to generate a set of configuration files from them. However, for a better understanding of the execution, the agent can also write a _trace file_ in JSON format that contains each individual access:
@@ -397,3 +381,21 @@ Although the agent is distributed with GraalVM, it uses the JVM Tool Interface (
 ```shell
 /path/to/some/java -agentpath:/path/to/graalvm/jre/lib/amd64/libnative-image-agent.so=<options> ...
 ```
+
+### The Native Image Configure Tool
+
+When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files. The `native-image-configure-launcher` tool can be used to merge these configuration files. This tool must first be built with:
+```shell
+native-image --macro:native-image-configure-launcher
+```
+
+> Note: The Native Image Configure Tool is only available if [`native-image` is built via `mx`](https://github.com/oracle/graal/blob/master/substratevm/SubstrateVM.md). This configuration tool is not part of any GraalVM distribution by default.
+
+Then, the tool can be used to merge sets of configuration files as follows:
+```shell
+native-image-configure-launcher generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
+```
+
+This command reads one set of configuration files from `/path/to/config-dir-0/` and another from `/path/to/config-dir-1/` and then writes a set of configuration files that contains both of their information to `/path/to/merged-config-dir/`.
+
+An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure-launcher help` for all options.

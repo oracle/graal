@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-//Checkstyle: stop
-
 import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,9 +42,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.SubstrateUtil.DiagnosticThunk;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -52,13 +52,14 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
@@ -77,10 +78,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-//Checkstyle: resume
 
-/** An implementation of a card remembered set generational heap. */
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
     private static final VMMutex REF_MUTEX = new VMMutex();
@@ -95,15 +93,13 @@ public final class HeapImpl extends Heap {
     private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
     private final HeapPolicy heapPolicy;
     private final ImageHeapInfo imageHeapInfo = new ImageHeapInfo();
-    private HeapVerifier heapVerifier;
-    private final StackVerifier stackVerifier;
 
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
     private Reference<?> refPendingList;
     /** Total number of times when a new pending reference list became available. */
-    private long refListOfferCounter;
+    private volatile long refListOfferCounter;
     /** Total number of times when threads waiting for a pending reference list were interrupted. */
-    private long refListWaiterWakeUpCounter;
+    private volatile long refListWaiterWakeUpCounter;
 
     /** Head of the linked list of object pins. */
     private final AtomicReference<PinnedObjectImpl> pinHead = new AtomicReference<>();
@@ -116,19 +112,7 @@ public final class HeapImpl extends Heap {
         this.gcImpl = new GCImpl(access);
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.heapPolicy = new HeapPolicy();
-        if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC() || getVerifyDirtyCardBeforeGC() || getVerifyDirtyCardAfterGC()) {
-            this.heapVerifier = new HeapVerifier();
-            this.stackVerifier = new StackVerifier();
-        } else {
-            this.heapVerifier = null;
-            this.stackVerifier = null;
-        }
-        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(log -> {
-            logImageHeapPartitionBoundaries(log).newline();
-            zapValuesToLog(log).newline();
-            report(log, true).newline();
-            log.newline();
-        });
+        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(new HeapDiagnosticsPrinter());
     }
 
     @Fold
@@ -161,16 +145,6 @@ public final class HeapImpl extends Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer pointer) {
         return imageHeapInfo.isInImageHeap(pointer) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(pointer));
-    }
-
-    boolean isInImageHeapSlow(Object obj) {
-        return isInImageHeapSlow(Word.objectToUntrackedPointer(obj));
-    }
-
-    /** Slow, verification-only version of {@link #isInImageHeap}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean isInImageHeapSlow(Pointer p) {
-        return imageHeapInfo.isInImageHeapSlow(p) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObjectSlow(p));
     }
 
     @Override
@@ -259,34 +233,17 @@ public final class HeapImpl extends Heap {
         return result;
     }
 
-    @AlwaysInline("GC performance")
-    void dirtyCardIfNecessary(Object holderObject, Object object) {
-        if (HeapPolicy.getMaxSurvivorSpaces() == 0 || holderObject == null || object == null || GCImpl.getGCImpl().isCompleteCollection() || !youngGeneration.contains(object)) {
-            return;
-        }
-
-        UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
-        if (ObjectHeaderImpl.hasRememberedSet(objectHeader)) {
-            if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
-                AlignedHeapChunk.dirtyCardForObject(holderObject, false);
-            } else {
-                assert ObjectHeaderImpl.isUnalignedObject(holderObject) : "sanity";
-                UnalignedHeapChunk.dirtyCardForObject(holderObject, false);
-            }
-        }
-    }
-
     HeapPolicy getHeapPolicy() {
         return heapPolicy;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    YoungGeneration getYoungGeneration() {
+    public YoungGeneration getYoungGeneration() {
         return youngGeneration;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    OldGeneration getOldGeneration() {
+    public OldGeneration getOldGeneration() {
         return oldGeneration;
     }
 
@@ -402,96 +359,6 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    /*
-     * Verification.
-     */
-
-    HeapVerifier getHeapVerifier() {
-        return heapVerifier;
-    }
-
-    void setHeapVerifier(HeapVerifier value) {
-        this.heapVerifier = value;
-    }
-
-    @Fold
-    static boolean getVerifyHeapBeforeGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapBeforeCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyHeapAfterGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapAfterCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyStackBeforeGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackBeforeCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyStackAfterGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyDirtyCardBeforeGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsBeforeCollection.getValue());
-    }
-
-    @Fold
-    static boolean getVerifyDirtyCardAfterGC() {
-        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsAfterCollection.getValue());
-    }
-
-    @NeverInline("Starting a stack walk in the caller frame")
-    void verifyBeforeGC(String cause, UnsignedWord epoch) {
-        Log trace = Log.noopLog().string("[HeapImpl.verifyBeforeGC:");
-        trace.string("  getVerifyHeapBeforeGC(): ").bool(getVerifyHeapBeforeGC()).string("  heapVerifier: ").object(heapVerifier);
-        trace.string("  getVerifyStackBeforeGC(): ").bool(getVerifyStackBeforeGC()).string("  stackVerifier: ").object(stackVerifier);
-        if (getVerifyHeapBeforeGC()) {
-            assert heapVerifier != null : "No heap verifier!";
-            if (!heapVerifier.verifyOperation("before collection", HeapVerifier.Occasion.BEFORE_COLLECTION)) {
-                Log.log().string("[HeapImpl.verifyBeforeGC:").string("  cause: ").string(cause).string("  heap fails to verify before epoch: ").unsigned(epoch).string("]").newline();
-                assert false;
-            }
-        }
-        if (getVerifyStackBeforeGC()) {
-            assert stackVerifier != null : "No stack verifier!";
-            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), "before collection")) {
-                Log.log().string("[HeapImpl.verifyBeforeGC:").string("  cause: ").string(cause).string("  stack fails to verify epoch: ").unsigned(epoch).string("]").newline();
-                assert false;
-            }
-        }
-        if (getVerifyDirtyCardBeforeGC()) {
-            assert heapVerifier != null : "No heap verifier!";
-            HeapVerifier.verifyDirtyCard(false);
-        }
-        trace.string("]").newline();
-    }
-
-    @NeverInline("Starting a stack walk in the caller frame")
-    void verifyAfterGC(String cause, UnsignedWord epoch) {
-        if (getVerifyHeapAfterGC()) {
-            assert heapVerifier != null : "No heap verifier!";
-            if (!heapVerifier.verifyOperation("after collection", HeapVerifier.Occasion.AFTER_COLLECTION)) {
-                Log.log().string("[HeapImpl.verifyAfterGC:").string("  cause: ").string(cause).string("  heap fails to verify after epoch: ").unsigned(epoch).string("]").newline();
-                assert false;
-            }
-        }
-        if (getVerifyStackAfterGC()) {
-            assert stackVerifier != null : "No stack verifier!";
-            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), "after collection")) {
-                Log.log().string("[HeapImpl.verifyAfterGC:").string("  cause: ").string(cause).string("  stack fails to verify after epoch: ").unsigned(epoch).string("]").newline();
-                assert false;
-            }
-        }
-        if (getVerifyDirtyCardAfterGC()) {
-            assert heapVerifier != null : "No heap verifier!";
-            HeapVerifier.verifyDirtyCard(true);
-        }
-    }
-
     @Override
     public void prepareForSafepoint() {
         // nothing to do
@@ -522,7 +389,7 @@ public final class HeapImpl extends Heap {
     @Fold
     public static boolean usesImageHeapCardMarking() {
         Boolean enabled = HeapOptions.ImageHeapCardMarking.getValue();
-        if (enabled == Boolean.FALSE) {
+        if (enabled == Boolean.FALSE || enabled == null && !SubstrateOptions.useRememberedSet()) {
             return false;
         } else if (enabled == null) {
             return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
@@ -570,16 +437,17 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public CardTableBarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
-        ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
-        return new SubstrateCardTableBarrierSet(objectArrayType);
+    public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
+        return RememberedSet.get().createBarrierSet(metaAccess);
     }
 
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "Only the GC increments the volatile field 'refListOfferCounter'.")
     void addToReferencePendingList(Reference<?> list) {
         VMOperation.guaranteeGCInProgress("Must only be called during a GC.");
         if (list == null) {
             return;
         }
+
         REF_MUTEX.lock();
         try {
             if (refPendingList != null) { // append
@@ -606,51 +474,53 @@ public final class HeapImpl extends Heap {
     public boolean hasReferencePendingList() {
         REF_MUTEX.lockNoTransition();
         try {
-            return (refPendingList != null);
+            return refPendingList != null;
         } finally {
             REF_MUTEX.unlock();
         }
     }
 
     @Override
-    @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
     public void waitForReferencePendingList() throws InterruptedException {
-        long initialOffers;
-        long initialWakeUps;
-        REF_MUTEX.lockNoTransition();
-        try {
-            if (refPendingList != null) {
-                return;
-            }
-            /*
-             * Remember current counter values to detect changes when waiting in native. We need to
-             * do this right after the above check while holding the lock to prevent lost updates.
-             */
-            initialOffers = refListOfferCounter;
-            initialWakeUps = refListWaiterWakeUpCounter;
-        } finally {
-            REF_MUTEX.unlock();
+        /*
+         * This method is only execute by the reference handler thread. So, it does not cause any
+         * harm if it wakes up too frequently. However, we must guarantee that it does not miss any
+         * updates. As awaitPendingRefsInNative() can't directly use object references, we use the
+         * offer count and the wakeup count to detect if this thread was interrupted or if a new
+         * pending reference list was set in the meanwhile. To prevent transient issues, the
+         * execution order is crucial:
+         *
+         * - Another thread could set a new reference pending list at any safepoint. As
+         * awaitPendingRefsInNative() can only access the offer count, it is necessary to ensure
+         * that the offer count is reasonably accurate. So, we read the offer count *before*
+         * checking if there is already a pending reference list. If there is no pending reference
+         * list, then the read offer count is accurate (there is no other thread that could clear
+         * the pending reference list in the meanwhile).
+         *
+         * - Another thread could interrupt this thread at any time. Interrupting will first set the
+         * interrupted flag and then increment the wakeup count. So, it is crucial that we do
+         * everything in the reverse order here: we read the wakeup count *before* the call to
+         * Thread.interrupted().
+         */
+        assert Thread.currentThread() == ImageSingletons.lookup(ReferenceHandlerThreadSupport.class).getThread();
+        long initialOffers = refListOfferCounter;
+        long initialWakeUps = refListWaiterWakeUpCounter;
+        if (hasReferencePendingList()) {
+            return;
         }
-        transitionToParkedInNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
+
+        // Throw an InterruptedException if the thread is interrupted before or after waiting.
+        if (Thread.interrupted() || (!waitForPendingReferenceList(initialOffers, initialWakeUps) && Thread.interrupted())) {
+            throw new InterruptedException();
+        }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
-    private static void transitionToParkedInNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) throws InterruptedException {
-        doTransitionToParkedInNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
-    }
-
-    private static void doTransitionToParkedInNativeThenAwaitPendingRefs(long initialOffers, long initialWakeUps) throws InterruptedException {
+    private static boolean waitForPendingReferenceList(long initialOffers, long initialWakeUps) {
         Thread currentThread = Thread.currentThread();
         int oldThreadStatus = JavaThreads.getThreadStatus(currentThread);
         JavaThreads.setThreadStatus(currentThread, ThreadStatus.PARKED);
         try {
-            boolean offered;
-            do {
-                if (Thread.interrupted()) {
-                    throw new InterruptedException();
-                }
-                offered = transitionToNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
-            } while (!offered);
+            return transitionToNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
         } finally {
             JavaThreads.setThreadStatus(currentThread, oldThreadStatus);
         }
@@ -678,13 +548,10 @@ public final class HeapImpl extends Heap {
          */
         REF_MUTEX.lockNoTransition();
         try {
-            while (getHeapImpl().refListOfferCounter == initialOffers) {
+            while (getHeapImpl().refListOfferCounter == initialOffers && getHeapImpl().refListWaiterWakeUpCounter == initialWakeUps) {
                 REF_CONDITION.blockNoTransition();
-                if (getHeapImpl().refListWaiterWakeUpCounter != initialWakeUps) {
-                    return false;
-                }
             }
-            return true;
+            return getHeapImpl().refListWaiterWakeUpCounter == initialWakeUps;
         } finally {
             REF_MUTEX.unlock();
         }
@@ -692,6 +559,7 @@ public final class HeapImpl extends Heap {
 
     @Override
     @Uninterruptible(reason = "Safepoint while holding the lock could lead to a deadlock in GC.")
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "We use a lock when incrementing the volatile field 'refListWaiterWakeUpCounter'.")
     public void wakeUpReferencePendingListWaiters() {
         REF_MUTEX.lockNoTransition();
         try {
@@ -708,15 +576,41 @@ public final class HeapImpl extends Heap {
         REF_MUTEX.lockNoTransition();
         try {
             Reference<?> list = refPendingList;
-            refPendingList = null;
+            if (list != null) {
+                refPendingList = null;
+            }
             return list;
         } finally {
             REF_MUTEX.unlock();
         }
     }
+
+    private static class HeapDiagnosticsPrinter implements DiagnosticThunk {
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void invokeWithoutAllocation(Log log) {
+            HeapImpl heap = HeapImpl.getHeapImpl();
+            GCImpl gc = GCImpl.getGCImpl();
+
+            log.string("[Heap settings and statistics: ").indent(true);
+            log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
+            log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
+
+            GCAccounting accounting = gc.getAccounting();
+            log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();
+            log.string("Complete collections: ").unsigned(accounting.getCompleteCollectionCount());
+            log.redent(false).string("]").newline();
+            log.newline();
+
+            heap.logImageHeapPartitionBoundaries(log).newline();
+            zapValuesToLog(log).newline();
+            heap.report(log, true).newline();
+            log.newline();
+        }
+    }
 }
 
-@TargetClass(value = java.lang.Runtime.class, onlyWith = UseCardRememberedSetHeap.class)
+@TargetClass(value = java.lang.Runtime.class, onlyWith = UseSerialGC.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_Runtime {
     @Substitute

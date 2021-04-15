@@ -13,6 +13,9 @@ It is optimized for low memory footprint and small Java heap sizes.
 * The **G1 GC** (only available with GraalVM Enterprise Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
 To enable G1, specify the option `--gc=G1` at image build time.
 Currently, G1 can only be used in native images that are built on Linux for AMD64.
+* The **Epsilon GC** (available with GraalVM 21.2 or later) is a no-op garbage collector that does not do any garbage collection and therefore never frees any allocated memory.
+The primary use case for this GC are very short running applications that only allocate a small amount of memory.
+To enable the Epsilon GC, specify the option `--gc=epsilon` at image build time.
 
 ## Performance Considerations
 

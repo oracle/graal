@@ -29,12 +29,14 @@ package com.oracle.svm.reflect.hosted;
 import static com.oracle.svm.reflect.hosted.ReflectionSubstitution.getStableProxyName;
 
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import com.oracle.svm.core.invoke.MethodHandleUtils;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -45,6 +47,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -88,9 +91,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Represents the {@link java.lang.reflect.Member} of a type.
- * 
+ *
  * A {@link java.lang.reflect.Member} is one of the following reflection classes:
- * 
+ *
  * <ul>
  * <li>{@link java.lang.reflect.Constructor}</li>
  * <li>{@link java.lang.reflect.Method}</li>
@@ -109,7 +112,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
     /**
      * Build a substitution for a reflective call.
-     * 
+     *
      * @param original The {@link ResolvedJavaType} of the {@linkplain Member} class (i.e. a
      *            {@link ResolvedJavaType} representing {@link Field}, {@link Constructor} or
      *            {@link Method}).
@@ -213,14 +216,16 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             case "equals":
                 addSubstitutionMethod(method, new EqualsMethod(method));
                 break;
+            case "proxyClassLookup":
+                addSubstitutionMethod(method, new ProxyClassLookupMethod(method, member));
+                break;
             default:
                 throw VMError.shouldNotReachHere("unexpected method: " + method.getName());
         }
     }
 
     private static ReflectionSubstitutionMethod createWriteMethod(ResolvedJavaMethod method, Field field, JavaKind kind) {
-        ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
-        if (Modifier.isFinal(field.getModifiers()) && !reflectionDataBuilder.inspectFinalFieldWritableForAnalysis(field)) {
+        if (Modifier.isFinal(field.getModifiers()) && !ImageSingletons.lookup(RuntimeReflectionSupport.class).inspectFinalFieldWritableForAnalysis(field)) {
             return new ThrowingMethod(method, IllegalAccessException.class, "Cannot set final field: " + field.getDeclaringClass().getName() +
                             "." + field.getName() + ". " + "Enable by specifying \"allowWrite\" for this field in the reflection configuration.");
         }
@@ -262,7 +267,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             condition = graphKit.append(InstanceOfNode.createAllowNull(typeRef, value, null, null));
         }
 
-        graphKit.startIf(condition, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        graphKit.startIf(condition, BranchProbabilityNode.FAST_PATH_PROFILE);
         graphKit.thenPart();
 
         PiNode ret = graphKit.createPiNode(value, StampFactory.object(typeRef, nonNull));
@@ -283,7 +288,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
          * time too.
          */
         LogicNode argsNullCondition = graphKit.append(IsNullNode.create(argumentArray));
-        graphKit.startIf(argsNullCondition, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+        graphKit.startIf(argsNullCondition, BranchProbabilityNode.SLOW_PATH_PROFILE);
         graphKit.thenPart();
         if (argTypes.length == 0) {
             /* No arguments, so null is an allowed value. */
@@ -295,7 +300,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
         ValueNode argsLength = graphKit.append(ArrayLengthNode.create(argumentArrayNonNull, graphKit.getConstantReflection()));
         LogicNode argsLengthCondition = graphKit.append(IntegerEqualsNode.create(argsLength, ConstantNode.forInt(argTypes.length), NodeView.DEFAULT));
-        graphKit.startIf(argsLengthCondition, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        graphKit.startIf(argsLengthCondition, BranchProbabilityNode.FAST_PATH_PROFILE);
         graphKit.thenPart();
 
         for (int i = 0; i < argTypes.length; i++) {
@@ -514,7 +519,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
                                 TypeReference typeRef = TypeReference.createTrusted(graphKit.getAssumptions(), type);
                                 LogicNode condition = graphKit.append(InstanceOfNode.create(typeRef, value));
 
-                                graphKit.startIf(condition, 0.5);
+                                graphKit.startIf(condition, BranchProbabilityData.unknown());
 
                                 graphKit.thenPart();
                                 PiNode boxed = graphKit.createPiNode(value, StampFactory.object(typeRef, true));
@@ -572,20 +577,27 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
         public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod m, HostedProviders providers, Purpose purpose) {
             HostedGraphKit graphKit = new HostedGraphKit(ctx, providers, m);
 
-            ResolvedJavaMethod targetMethod = providers.getMetaAccess().lookupJavaMethod(method);
-            Class<?>[] argTypes = method.getParameterTypes();
-
-            int receiverOffset = targetMethod.isStatic() ? 0 : 1;
-            ValueNode[] args = new ValueNode[argTypes.length + receiverOffset];
-            if (targetMethod.isStatic()) {
-                graphKit.emitEnsureInitializedCall(targetMethod.getDeclaringClass());
+            ResolvedJavaMethod targetMethod;
+            ValueNode[] args;
+            if (!specialInvoke && method.getDeclaringClass() == MethodHandle.class && (method.getName().equals("invoke") || method.getName().equals("invokeExact"))) {
+                targetMethod = MethodHandleUtils.getThrowUnsupportedOperationException(providers.getMetaAccess());
+                args = new ValueNode[0];
             } else {
-                ValueNode receiver = graphKit.loadLocal(1, JavaKind.Object);
-                args[0] = createCheckcast(graphKit, receiver, targetMethod.getDeclaringClass(), true);
-            }
+                targetMethod = providers.getMetaAccess().lookupJavaMethod(method);
+                Class<?>[] argTypes = method.getParameterTypes();
 
-            ValueNode argumentArray = graphKit.loadLocal(2, JavaKind.Object);
-            fillArgsArray(graphKit, argumentArray, receiverOffset, args, argTypes);
+                int receiverOffset = targetMethod.isStatic() ? 0 : 1;
+                args = new ValueNode[argTypes.length + receiverOffset];
+                if (targetMethod.isStatic()) {
+                    graphKit.emitEnsureInitializedCall(targetMethod.getDeclaringClass());
+                } else {
+                    ValueNode receiver = graphKit.loadLocal(1, JavaKind.Object);
+                    args[0] = createCheckcast(graphKit, receiver, targetMethod.getDeclaringClass(), true);
+                }
+
+                ValueNode argumentArray = graphKit.loadLocal(2, JavaKind.Object);
+                fillArgsArray(graphKit, argumentArray, receiverOffset, args, argTypes);
+            }
 
             InvokeKind invokeKind;
             if (specialInvoke) {
@@ -730,7 +742,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
             LogicNode otherIsNull = graphKit.append(IsNullNode.create(other));
 
-            graphKit.startIf(otherIsNull, BranchProbabilityNode.NOT_LIKELY_PROBABILITY);
+            graphKit.startIf(otherIsNull, BranchProbabilityNode.NOT_LIKELY_PROFILE);
 
             graphKit.thenPart();
 
@@ -745,7 +757,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
 
             LogicNode equals = graphKit.unique(PointerEqualsNode.create(selfHub, otherHub, NodeView.DEFAULT));
 
-            graphKit.startIf(equals, BranchProbabilityNode.NOT_LIKELY_PROBABILITY);
+            graphKit.startIf(equals, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             graphKit.thenPart();
 
             graphKit.createReturn(trueValue, JavaKind.Boolean);
@@ -793,6 +805,23 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             graphKit.append(new UnwindNode(instance));
 
             return graphKit.finalizeGraph();
+        }
+    }
+
+    private static final class ProxyClassLookupMethod extends ReflectionSubstitutionMethod {
+
+        @SuppressWarnings("unused")//
+        private final Member member;
+
+        ProxyClassLookupMethod(ResolvedJavaMethod original, Member member) {
+            super(original);
+            this.member = member;
+        }
+
+        @Override
+        public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+            // GR-28942: handle new proxyClassLookup method added to Proxy in JDK 16
+            throw VMError.unimplemented();
         }
     }
 

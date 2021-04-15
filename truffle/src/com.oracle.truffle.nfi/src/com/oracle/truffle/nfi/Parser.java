@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.Lexer.Token;
 import com.oracle.truffle.nfi.NativeSource.Content;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
@@ -56,8 +55,9 @@ import com.oracle.truffle.nfi.SignatureRootNodeFactory.GetSignatureTypeNodeGen;
 import com.oracle.truffle.nfi.SignatureRootNodeFactory.GetSimpleTypeNodeGen;
 import com.oracle.truffle.nfi.SignatureRootNodeFactory.MakeVarargsNodeGen;
 import com.oracle.truffle.nfi.SignatureRootNodeFactory.SetRetTypeNodeGen;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.spi.types.TypeFactory;
+import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.backend.spi.types.TypeFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;

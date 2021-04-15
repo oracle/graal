@@ -1,28 +1,32 @@
 # JCA Security Services in Native Image
 
-This section refers to the use of the services provided by the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html) framework.
-The JCA framework relies on reflection to achieve algorithm independence and extensibility, therefore it requires a custom configuration in Native Image.
-Additionally, seed generators that use system files like `/dev/random` or `/dev/urandom` need to be reinitialized at run time.
+This section refers to the use of the services provided by the Java Cryptography Architecture (JCA) framework.
+For more details see the following guides: [JDK8](https://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html), [JDK11](https://docs.oracle.com/en/java/javase/11/security/java-cryptography-architecture-jca-reference-guide.html).
 
-By default a native image is built with support for the `SecureRandom` and `MessageDigest` engines from the `SUN` provider.
+The JCA framework uses a provider architecture to access security services such as digital signatures, message digests, certificates and certificate validation, encryption (symmetric/asymmetric block/stream ciphers), key generation and management, and secure random number generation, etc.
+To achieve algorithm independence and extensibility it relies on reflection, therefore it requires a custom configuration in Native Image.
+The Native Image builder uses static analysis to discover which of these services are used.
+
+Each provider registers concrete implementation classes for the algorithms it supports.
+Each of the service classes (`Signature`, `Cipher`, `Mac`, `KeyPair`, `KeyGenerator`, `KeyFactory`, `KeyStore`, etc.,) declares a series of `getInstance(<algorithm>, <provider>)` factory methods which provide a concrete service implementation.
+When a specific algorithm is requested the framework searches the registered providers for the corresponding implementation classes and it dynamically allocates objects for concrete service implementations.
+The Native Image builder uses static analysis to discover which of these services are used.
+It does so by registering reachability handlers for each of the `getInstance()` factory methods.
+When it determines that a `getInstance()` method is reachable at run time it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
+This mechanism is implemented in the `com.oracle.svm.hosted.SecurityServicesFeature` class.
+
+The simplest images contain support for the `SecureRandom` and `MessageDigest` engines from the `SUN` provider.
 These are core security services needed by the VM itself.
-All the other Java security services (`Signature`, `Cipher`, `Mac`, `KeyPair`, `KeyGenerator`, `KeyFactory`, `KeyStore`, etc.,) must be enabled by adding the `--enable-all-security-services` option to the `native-image` command.
-The reason behind enabling only core security services by default is that you can start with a basic image and add more security services as you need them.
-This helps keep the overall image size small.
 
-Note: the `--enable-all-security-services` option is enabled by default when `https` support is enabled.
-See the [URL Protocols in Native Image](URLProtocols.md) guide for more details.
+Note: The `--enable-all-security-services` option is now deprecated and it will be removed in a future release.
 
 ## Provider Registration
 The native image builder captures the list of providers and their preference order from the underlying JVM.
 The provider order is specified in the `java.security` file under `<java-home>/lib/security/java.security`.
 New security providers cannot be registered at run time; all providers must be statically configured during a native image building.
 
-### Alternative to `--enable-all-security-services`
-Registering *all* security services does not come for free.
-The additional code increases the native image size.
-If your application only requires a subset of the security services, you can manually register the corresponding classes for reflection and push the initialization of some seed generators to run time.
-However this requires deep knowledge of the JCA architecture.
-We are investigating the possibility of providing a finer-grain declarative configuration of security services for future releases.
-If you want to take on this task yourself, you can start by reading the `com.oracle.svm.hosted.SecurityServicesFeature` class.
-This is where most of the code behind the `--enable-all-security-services` option is implemented.
+## SecureRandom
+
+The SecureRandom implementations open the `/dev/random` and `/dev/urandom` files which are used as sources for entropy.
+These files are usually opened in class initializers.
+To avoid capturing state from the machine that runs the Native Image builder these classes need to be initialized at run time.

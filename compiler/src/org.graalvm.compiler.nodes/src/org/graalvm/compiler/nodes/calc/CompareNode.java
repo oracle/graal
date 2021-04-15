@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.VolatileReadNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Constant;
@@ -430,6 +431,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         }
         if (v1.isConstant() && v2.isConstant()) {
             return v1.asConstant().equals(v2.asConstant());
+        }
+        if (GraphUtil.skipPi(v1) == GraphUtil.skipPi(v2)) {
+            return true;
         }
         return false;
     }

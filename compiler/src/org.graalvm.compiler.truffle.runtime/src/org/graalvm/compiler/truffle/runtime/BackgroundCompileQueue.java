@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,7 @@ public class BackgroundCompileQueue {
     protected final GraalTruffleRuntime runtime;
     private final AtomicLong idCounter;
     private volatile ThreadPoolExecutor compilationExecutorService;
-    private volatile IdlingPriorityBlockingQueue<Runnable> compilationQueue;
+    private volatile BlockingQueue<Runnable> compilationQueue;
     private boolean shutdown = false;
     private long delayMillis;
 
@@ -129,7 +129,7 @@ public class BackgroundCompileQueue {
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
-            this.compilationQueue = new IdlingPriorityBlockingQueue<>();
+            initQueue(callTarget);
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
                             compilationQueue, factory) {
@@ -148,6 +148,14 @@ public class BackgroundCompileQueue {
             }
 
             return compilationExecutorService = threadPoolExecutor;
+        }
+    }
+
+    private void initQueue(OptimizedCallTarget callTarget) {
+        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraversingCompilationQueue)) {
+            this.compilationQueue = new TraversingBlockingQueue();
+        } else {
+            this.compilationQueue = new IdlingPriorityBlockingQueue<>();
         }
     }
 
@@ -199,7 +207,7 @@ public class BackgroundCompileQueue {
      * compiled.
      */
     public Collection<OptimizedCallTarget> getQueuedTargets(EngineData engine) {
-        IdlingPriorityBlockingQueue<Runnable> queue = this.compilationQueue;
+        BlockingQueue<Runnable> queue = this.compilationQueue;
         if (queue == null) {
             // queue not initialized
             return Collections.emptyList();

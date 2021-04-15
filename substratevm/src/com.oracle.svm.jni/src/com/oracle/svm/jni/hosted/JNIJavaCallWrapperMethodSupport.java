@@ -44,42 +44,22 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class JNIJavaCallWrapperMethodSupport {
     /**
-     * Creates the nodes for a JNI {@code NewObject} call.
-     * 
-     * <ul>
-     * <li>An allocation for the receiver</li>
-     * <li>An invocation of the constructor method, with the newly created receiver</li>
-     * <li>Exception handling of any possible constructor exceptions</li>
-     * <li>Synthetic replacement of the return value as the newly allocated object</li>
-     * </ul>
-     * 
-     * @param kit Graph building kit
-     * @param invokeMethod Constructor method to invoke after allocation
-     * @param state Framestate builder
-     * @param args Arguments passed to the constructor, starting at position 1. The argument at
-     *            position 0 (the receiver position) can have any value. The arguments should
-     *            already have been type-checked dynamically.
-     * 
-     * @return A node for the newly allocated object or for the exception thrown by the constructor.
+     * Builds the object allocation for a JNI {@code NewObject} call, returning a node that contains
+     * the created object or for {@code null} when an exception occurred (in which case the
+     * exception becomes a JNI pending exception).
      */
     public ValueNode createNewObjectCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, FrameStateBuilder state, ValueNode... args) {
         assert invokeMethod.isConstructor() : "Cannot create a NewObject call to the non-constructor method " + invokeMethod;
 
-        /* Receiver allocation */
         ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
         AbstractNewObjectNode createdReceiver = createNewInstance(kit, receiverClass, true);
 
-        /*
-         * Constructor invocation, with exception handling. We can ignore the value of the invoke
-         * node as String constructors have return type void.
-         */
         int bci = kit.bci();
         args[0] = createdReceiver;
-        startInvokeWithException(kit, invokeMethod, InvokeKind.Special, state, bci, args);
+        startInvokeWithRetainedException(kit, invokeMethod, InvokeKind.Special, state, bci, args);
         AbstractMergeNode merge = kit.endInvokeWithException();
         merge.setStateAfter(state.create(bci, merge));
 
-        /* Synthetic replacement of return value */
         Stamp objectStamp = StampFactory.forDeclaredType(null, receiverClass, true).getTrustedStamp();
         ValueNode exceptionValue = kit.unique(ConstantNode.defaultForKind(JavaKind.Object));
         return kit.getGraph().addWithoutUnique(new ValuePhiNode(objectStamp, merge, new ValueNode[]{createdReceiver, exceptionValue}));
@@ -90,23 +70,13 @@ public class JNIJavaCallWrapperMethodSupport {
     }
 
     /**
-     * Creates the nodes for a JNI {@code Call<Type>Method} call.
-     *
-     * @param kit Graph building kit
-     * @param invokeMethod Method to invoke
-     * @param invokeKind Type of invocation
-     * @param state Framestate builder
-     * @param args Arguments passed to the method. If the method takes a receiver, the receiver
-     *            should be included in these arguments. The arguments (and receiver) should already
-     *            have been type-checked dynamically.
-     *
-     * @return A node representing the return value of the invoke. For constructors, this node is
-     *         the receiver; for other methods with a return type of {@link JavaKind#Void void},
-     *         this method returns {@code null}.
+     * Builds a JNI {@code Call<Type>Method} call, returning a node that contains the return value
+     * or null/zero/false when an exception occurred (in which case the exception becomes a JNI
+     * pending exception).
      */
-    public ValueNode createCallTypeMethodCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind invokeKind, FrameStateBuilder state, ValueNode... args) {
+    public ValueNode createMethodCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind invokeKind, FrameStateBuilder state, ValueNode... args) {
         int bci = kit.bci();
-        InvokeWithExceptionNode invoke = startInvokeWithException(kit, invokeMethod, invokeKind, state, bci, args);
+        InvokeWithExceptionNode invoke = startInvokeWithRetainedException(kit, invokeMethod, invokeKind, state, bci, args);
         AbstractMergeNode invokeMerge = kit.endInvokeWithException();
 
         if (invoke.getStackKind() == JavaKind.Void && !invokeMethod.isConstructor()) {
@@ -114,7 +84,6 @@ public class JNIJavaCallWrapperMethodSupport {
             return null;
         }
 
-        /* Place return value in merge FrameState */
         ValueNode successValue = invokeMethod.isConstructor() ? args[0] : invoke;
         ValueNode exceptionValue = kit.unique(ConstantNode.defaultForKind(successValue.getStackKind()));
         ValueNode[] inputs = {successValue, exceptionValue};
@@ -126,8 +95,9 @@ public class JNIJavaCallWrapperMethodSupport {
         return returnValue;
     }
 
-    protected InvokeWithExceptionNode startInvokeWithException(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci,
-                    ValueNode... args) {
+    protected InvokeWithExceptionNode startInvokeWithRetainedException(JNIGraphKit kit, ResolvedJavaMethod invokeMethod,
+                    InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
+
         ValueNode formerPendingException = kit.getAndClearPendingException();
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, args);
 

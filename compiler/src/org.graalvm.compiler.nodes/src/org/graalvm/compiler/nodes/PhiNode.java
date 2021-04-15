@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -244,6 +244,20 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
 
     public boolean isLoopPhi() {
         return merge() instanceof LoopBeginNode;
+    }
+
+    /**
+     * @return {@code true} if this node's only usages are the node itself (only possible for
+     *         loops).
+     */
+    public boolean isDegenerated() {
+        for (Node use : usages()) {
+            if (use != this) {
+                return false;
+            }
+        }
+        assert isLoopPhi();
+        return true;
     }
 
     /**

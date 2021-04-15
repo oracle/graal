@@ -43,6 +43,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -80,14 +81,60 @@ public final class LLVMFunctionCode {
     @CompilationFinal private Assumption assumption;
     private final LLVMFunction llvmFunction;
 
+    private volatile CallTarget cachedNativeWrapperFactory;
+
     public LLVMFunctionCode(LLVMFunction llvmFunction) {
         this.llvmFunction = llvmFunction;
         this.functionFinal = this.functionDynamic = llvmFunction.getFunction();
         this.assumption = Truffle.getRuntime().createAssumption();
     }
 
-    private static long tagSulongFunctionPointer(int id) {
-        return id | SULONG_FUNCTION_POINTER_TAG;
+    private static final class TagSulongFunctionPointerNode extends RootNode {
+
+        private final LLVMFunctionCode functionCode;
+
+        TagSulongFunctionPointerNode(LLVMFunctionCode functionCode) {
+            super(LLVMLanguage.getLanguage());
+            this.functionCode = functionCode;
+        }
+
+        private static long tagSulongFunctionPointer(int id) {
+            return id | SULONG_FUNCTION_POINTER_TAG;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            int id = functionCode.getLLVMFunction().getSymbolIndex(false);
+            return LLVMNativePointer.create(tagSulongFunctionPointer(id));
+        }
+    }
+
+    private CallTarget createNativeWrapperFactory(NativeContextExtension nativeExt) {
+        CallTarget ret = null;
+        if (nativeExt != null) {
+            ret = nativeExt.createNativeWrapperFactory(this);
+        }
+        if (ret == null) {
+            // either no native access, or signature is unsupported
+            // fall back to tagged id
+            ret = Truffle.getRuntime().createCallTarget(new TagSulongFunctionPointerNode(this));
+        }
+        return ret;
+    }
+
+    private synchronized void initNativeWrapperFactory(NativeContextExtension nativeExt) {
+        if (cachedNativeWrapperFactory == null) {
+            cachedNativeWrapperFactory = createNativeWrapperFactory(nativeExt);
+        }
+    }
+
+    CallTarget getNativeWrapperFactory(NativeContextExtension nativeExt) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (cachedNativeWrapperFactory == null) {
+            initNativeWrapperFactory(nativeExt);
+        }
+        assert cachedNativeWrapperFactory != null;
+        return cachedNativeWrapperFactory;
     }
 
     public static final class Intrinsic {
@@ -201,21 +248,12 @@ public final class LLVMFunctionCode {
             Object wrapper = null;
             LLVMNativePointer pointer = null;
             NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
-            if (nativeContextExtension != null) {
-                wrapper = nativeContextExtension.createNativeWrapper(descriptor.getLLVMFunction(), descriptor.getFunctionCode());
-                if (wrapper != null) {
-                    try {
-                        pointer = LLVMNativePointer.create(InteropLibrary.getFactory().getUncached().asPointer(wrapper));
-                    } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new AssertionError(e);
-                    }
-                }
-            }
-
-            if (wrapper == null) {
-                pointer = LLVMNativePointer.create(tagSulongFunctionPointer(descriptor.getLLVMFunction().getSymbolIndex(false)));
-                wrapper = pointer;
+            CallTarget nativeWrapperFactory = descriptor.getFunctionCode().getNativeWrapperFactory(nativeContextExtension);
+            wrapper = nativeWrapperFactory.call();
+            try {
+                pointer = LLVMNativePointer.create(InteropLibrary.getFactory().getUncached().asPointer(wrapper));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.shouldNotReachHere(e);
             }
 
             context.registerFunctionPointer(pointer, descriptor);

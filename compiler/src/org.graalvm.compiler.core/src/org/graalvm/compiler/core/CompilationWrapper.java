@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -334,24 +334,24 @@ public abstract class CompilationWrapper<T> {
             try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
                 T res = performCompilation(retryDebug);
                 ps.println("There was no exception during retry.");
-                maybeExitVM(action);
-                return res;
+                return postRetry(action, retryLogFile, logBaos, ps, res);
             } catch (Throwable e) {
                 ps.println("Exception during retry:");
                 e.printStackTrace(ps);
-                // Failures during retry are silent
-                T res = handleException(cause);
-                maybeExitVM(action);
-                return res;
-            } finally {
-                ps.close();
-                try (FileOutputStream fos = new FileOutputStream(retryLogFile, true)) {
-                    fos.write(logBaos.toByteArray());
-                } catch (Throwable e) {
-                    TTY.printf("Error writing to %s: %s%n", retryLogFile, e);
-                }
+                return postRetry(action, retryLogFile, logBaos, ps, handleException(cause));
             }
         }
+    }
+
+    private T postRetry(ExceptionAction action, File retryLogFile, ByteArrayOutputStream logBaos, PrintStream ps, T res) {
+        ps.close();
+        try (FileOutputStream fos = new FileOutputStream(retryLogFile, true)) {
+            fos.write(logBaos.toByteArray());
+        } catch (Throwable e) {
+            TTY.printf("Error writing to %s: %s%n", retryLogFile, e);
+        }
+        maybeExitVM(action);
+        return res;
     }
 
     /**

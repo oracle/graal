@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class MainArgsTest extends BaseSulongOnlyHarness {
 
-    private static final Path OTHER_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "..", "tests", "other");
+    private static final String TEST_DIR = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "mainArgs").toString();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;
@@ -62,7 +62,7 @@ public final class MainArgsTest extends BaseSulongOnlyHarness {
         configs.add(new RunConfiguration(96, null, new String[]{"hello", "world!"}));
         configs.add(new RunConfiguration(154, null, new String[]{"1", "2", "3"}));
         configs.add(new RunConfiguration(193, null, new String[]{"a", "b", "cd", "efg"}));
-        return configs.stream().map(c -> new Object[]{new File(OTHER_DIR + "/main-args.c.dir/O1.bc").toPath(), c, String.valueOf(configs.indexOf(c))}).collect(Collectors.toList());
+        return configs.stream().map(c -> new Object[]{new File(TEST_DIR + "/main-args.c.dir/O1.bc").toPath(), c, String.join(", ", c.getArgs())}).collect(Collectors.toList());
     }
 
     @Override

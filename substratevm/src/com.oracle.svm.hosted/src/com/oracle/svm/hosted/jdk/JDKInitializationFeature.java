@@ -132,5 +132,7 @@ public class JDKInitializationFeature implements Feature {
         // values properly. Otherwise the numbers generated will be fixed for each generated image.
         classInitSupport.rerunInitialization("java.lang.Math$RandomNumberGeneratorHolder", "Must not be initialized at build time in the final image.");
         classInitSupport.rerunInitialization("java.lang.StrictMath$RandomNumberGeneratorHolder", "Must not be initialized at build time in the final image.");
+
+        classInitSupport.rerunInitialization("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
     }
 }

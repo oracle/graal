@@ -30,12 +30,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -114,28 +112,33 @@ public class IntrinsificationPluginRegistry {
     public final Set<AnalysisMethod> methodsWithIntrinsification = ConcurrentHashMap.newKeySet();
     public final ThreadLocal<ConcurrentHashMap<CallSiteDescriptor, Object>> threadLocalRegistry = new ThreadLocal<>();
 
-    public AutoCloseable startThreadLocalReflectionRegistry() {
+    public static AutoCloseable startThreadLocalRegistry(IntrinsificationPluginRegistry registry) {
         return new AutoCloseable() {
             {
-                ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).threadLocalRegistry.set(new ConcurrentHashMap<>());
+                assert registry.threadLocalRegistry.get() == null;
+                registry.threadLocalRegistry.set(new ConcurrentHashMap<>());
             }
 
             @Override
             public void close() {
-                ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).threadLocalRegistry.remove();
+                registry.threadLocalRegistry.set(null);
             }
         };
     }
 
-    public AutoCloseable startThreadLocalIntrinsificationRegistry() {
+    public static AutoCloseable pauseThreadLocalRegistry(IntrinsificationPluginRegistry registry) {
         return new AutoCloseable() {
+            final ConcurrentHashMap<CallSiteDescriptor, Object> threadLocalRegistryBackup;
             {
-                ImageSingletons.lookup(IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry.class).threadLocalRegistry.set(new ConcurrentHashMap<>());
+                /* Cache and remove the threadLocalRegistry temporarily. */
+                threadLocalRegistryBackup = registry.threadLocalRegistry.get();
+                registry.threadLocalRegistry.set(null);
             }
 
             @Override
             public void close() {
-                ImageSingletons.lookup(IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry.class).threadLocalRegistry.remove();
+                /* Restore threadLocalRegistry. */
+                registry.threadLocalRegistry.set(threadLocalRegistryBackup);
             }
         };
     }

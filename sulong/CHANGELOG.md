@@ -1,3 +1,17 @@
+# Version 21.1.0
+
+New features:
+
+* Added a sanity check to verify that loaded bitcode files have been compiled correctly.
+  If not, a _mismatching target triple_ error is reported. To make this error non-fatal,
+  set `--llvm.verifyBitcode=false`. To silence the message, set `--log.llvm.BitcodeVerifier.level=OFF`.
+
+* Allow accessing foreign buffers from LLVM bitcode via the interop buffers API.
+
+* Added intrinsic functions for pthread_setname_np and pthread_getname_np.
+
+* Added intrinsic functions for dlopen and dlsym.
+
 # Version 21.0.0
 
 Fixes:

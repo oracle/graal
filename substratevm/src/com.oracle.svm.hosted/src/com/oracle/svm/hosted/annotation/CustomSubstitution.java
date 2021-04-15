@@ -88,7 +88,7 @@ public class CustomSubstitution<T extends CustomSubstitutionType<?, ?>> extends 
         List<Pair<String, ResolvedJavaType>> attributes = new ArrayList<>();
         for (ResolvedJavaMethod method : annotationType.getDeclaredMethods()) {
             String methodName = canonicalMethodName(method);
-            if (methodName.equals("equals") || methodName.equals("hashCode") || methodName.equals("toString") || methodName.equals("annotationType")) {
+            if (methodName.equals("equals") || methodName.equals("hashCode") || methodName.equals("toString") || methodName.equals("annotationType") || methodName.equals("proxyClassLookup")) {
                 /* Ignore non-accessor methods. */
             } else {
                 ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(null);

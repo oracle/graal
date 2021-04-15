@@ -84,7 +84,7 @@ public class DeoptimizationRuntime {
         }
     }
 
-    private static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp, CodePointer ip) {
+    public static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp, CodePointer ip) {
         Log log = Log.log().string("[Deoptimization initiated").newline();
 
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);

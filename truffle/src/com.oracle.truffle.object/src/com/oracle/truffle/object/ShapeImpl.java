@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.object.LocationImpl.neverValidAssumption;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -53,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
@@ -67,12 +69,12 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.object.Transition.ObjectFlagsTransition;
@@ -139,8 +141,8 @@ public abstract class ShapeImpl extends Shape {
      * Shape transition map; lazily initialized. One of:
      * <ol>
      * <li>{@code null}: empty map
-     * <li>{@link Map.Entry}: immutable single entry map
-     * <li>{@link Map}: mutable multiple entry map
+     * <li>{@link StrongKeyWeakValueEntry}: immutable single entry map
+     * <li>{@link TransitionMap}: mutable multiple entry map
      * </ol>
      *
      * @see #queryTransition(Transition)
@@ -247,7 +249,7 @@ public abstract class ShapeImpl extends Shape {
                 return parent.propertyCount + 1;
             }
         } else if (thisSize < parentSize && transitionFromParent instanceof RemovePropertyTransition) {
-            if (!((RemovePropertyTransition) transitionFromParent).getProperty().isHidden()) {
+            if (!(((RemovePropertyTransition) transitionFromParent).getPropertyKey() instanceof HiddenKey)) {
                 return parent.propertyCount - 1;
             }
         }
@@ -388,16 +390,16 @@ public abstract class ShapeImpl extends Shape {
                 invalidateLeafAssumption();
                 next = newSingleEntry(transition, successor);
             } else if (isSingleEntry(prev)) {
-                StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(prev);
-                Transition exTra = entry.getKey();
+                StrongKeyWeakValueEntry<Object, ShapeImpl> entry = asSingleEntry(prev);
+                Transition exTra;
                 ShapeImpl exSucc = entry.getValue();
-                if (exSucc != null) {
+                if (exSucc != null && (exTra = unwrapKey(entry.getKey())) != null) {
                     next = newTransitionMap(exTra, exSucc, transition, successor);
                 } else {
                     next = newSingleEntry(transition, successor);
                 }
             } else {
-                next = addToTransitionMap(transition, successor, prev);
+                next = addToTransitionMap(transition, successor, asTransitionMap(prev));
             }
             if (prev == next) {
                 break;
@@ -406,34 +408,48 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static Object newTransitionMap(Transition firstTransition, ShapeImpl firstShape, Transition secondTransition, ShapeImpl secondShape) {
-        Map<Transition, ShapeImpl> map = newTransitionMap();
-        map.put(firstTransition, firstShape);
-        map.put(secondTransition, secondShape);
+        TransitionMap<Transition, ShapeImpl> map = newTransitionMap();
+        addToTransitionMap(firstTransition, firstShape, map);
+        addToTransitionMap(secondTransition, secondShape, map);
         return map;
     }
 
-    private static Object addToTransitionMap(Transition transition, ShapeImpl successor, Object prevMap) {
-        assert isTransitionMap(prevMap);
-        Map<Transition, ShapeImpl> map = asTransitionMap(prevMap);
-        map.put(transition, successor);
+    private static Object addToTransitionMap(Transition transition, ShapeImpl successor, TransitionMap<Transition, ShapeImpl> map) {
+        if (transition.hasConstantLocation()) {
+            map.putWeakKey(transition, successor);
+        } else {
+            map.put(transition, successor);
+        }
         return map;
     }
 
-    private static Map<Transition, ShapeImpl> newTransitionMap() {
+    private static TransitionMap<Transition, ShapeImpl> newTransitionMap() {
         return new TransitionMap<>();
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<Transition, ShapeImpl> asTransitionMap(Object map) {
-        return (Map<Transition, ShapeImpl>) map;
+    private static Transition unwrapKey(Object key) {
+        if (key instanceof WeakKey<?>) {
+            return ((WeakKey<Transition>) key).get();
+        }
+        return (Transition) key;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static TransitionMap<Transition, ShapeImpl> asTransitionMap(Object map) {
+        return (TransitionMap<Transition, ShapeImpl>) map;
     }
 
     private static boolean isTransitionMap(Object trans) {
-        return trans instanceof Map<?, ?>;
+        return trans instanceof TransitionMap<?, ?>;
     }
 
     private static Object newSingleEntry(Transition transition, ShapeImpl successor) {
-        return new StrongKeyWeakValueEntry<>(transition, successor);
+        Object key = transition;
+        if (transition.hasConstantLocation()) {
+            key = new WeakKey<>(transition);
+        }
+        return new StrongKeyWeakValueEntry<>(key, successor);
     }
 
     private static boolean isSingleEntry(Object trans) {
@@ -441,8 +457,8 @@ public abstract class ShapeImpl extends Shape {
     }
 
     @SuppressWarnings("unchecked")
-    private static StrongKeyWeakValueEntry<Transition, ShapeImpl> asSingleEntry(Object trans) {
-        return (StrongKeyWeakValueEntry<Transition, ShapeImpl>) trans;
+    private static StrongKeyWeakValueEntry<Object, ShapeImpl> asSingleEntry(Object trans) {
+        return (StrongKeyWeakValueEntry<Object, ShapeImpl>) trans;
     }
 
     /**
@@ -466,15 +482,17 @@ public abstract class ShapeImpl extends Shape {
         if (trans == null) {
             return;
         } else if (isSingleEntry(trans)) {
-            StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(trans);
+            StrongKeyWeakValueEntry<Object, ShapeImpl> entry = asSingleEntry(trans);
             ShapeImpl shape = entry.getValue();
             if (shape != null) {
-                Transition key = entry.getKey();
-                consumer.accept(key, shape);
+                Transition key = unwrapKey(entry.getKey());
+                if (key != null) {
+                    consumer.accept(key, shape);
+                }
             }
         } else {
             assert isTransitionMap(trans);
-            Map<Transition, ShapeImpl> map = asTransitionMap(trans);
+            TransitionMap<Transition, ShapeImpl> map = asTransitionMap(trans);
             map.forEach(consumer);
         }
     }
@@ -484,16 +502,18 @@ public abstract class ShapeImpl extends Shape {
         if (trans == null) {
             return null;
         } else if (isSingleEntry(trans)) {
-            StrongKeyWeakValueEntry<Transition, ShapeImpl> entry = asSingleEntry(trans);
-            Transition key = entry.getKey();
-            if (key.equals(transition)) {
-                return entry.getValue();
-            } else {
-                return null;
+            StrongKeyWeakValueEntry<Object, ShapeImpl> entry = asSingleEntry(trans);
+            ShapeImpl shape = entry.getValue();
+            if (shape != null) {
+                Transition key = unwrapKey(entry.getKey());
+                if (key != null && transition.equals(key)) {
+                    return shape;
+                }
             }
+            return null;
         } else {
             assert isTransitionMap(trans);
-            Map<Transition, ShapeImpl> map = asTransitionMap(trans);
+            TransitionMap<Transition, ShapeImpl> map = asTransitionMap(trans);
             return map.get(transition);
         }
     }
@@ -510,6 +530,27 @@ public abstract class ShapeImpl extends Shape {
         return null;
     }
 
+    public final <R> R iterateTransitions(BiFunction<Transition, ShapeImpl, R> consumer) {
+        Object trans = transitionMap;
+        if (trans == null) {
+            return null;
+        } else if (isSingleEntry(trans)) {
+            StrongKeyWeakValueEntry<Object, ShapeImpl> entry = asSingleEntry(trans);
+            ShapeImpl shape = entry.getValue();
+            if (shape != null) {
+                Transition key = unwrapKey(entry.getKey());
+                if (key != null) {
+                    return consumer.apply(key, shape);
+                }
+            }
+            return null;
+        } else {
+            assert isTransitionMap(trans);
+            TransitionMap<Transition, ShapeImpl> map = asTransitionMap(trans);
+            return map.iterateEntries(consumer);
+        }
+    }
+
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
      *
@@ -521,7 +562,6 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public ShapeImpl addProperty(Property property) {
         assert isValid();
-        onPropertyTransition(property);
 
         return layout.getStrategy().addProperty(this, property);
     }
@@ -529,14 +569,18 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @TruffleBoundary
     protected void onPropertyTransition(Property property) {
+        onPropertyTransitionWithKey(property.getKey());
+    }
+
+    final void onPropertyTransitionWithKey(Object propertyKey) {
         if (allowPropertyAssumptions()) {
             PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
             if (propertyAssumptions != null) {
-                propertyAssumptions.invalidatePropertyAssumption(property.getKey());
+                propertyAssumptions.invalidatePropertyAssumption(propertyKey);
             }
         }
         if (sharedData instanceof com.oracle.truffle.api.object.ShapeListener) {
-            ((com.oracle.truffle.api.object.ShapeListener) sharedData).onPropertyTransition(property.getKey());
+            ((com.oracle.truffle.api.object.ShapeListener) sharedData).onPropertyTransition(propertyKey);
         }
     }
 
@@ -544,7 +588,7 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int propertyFlags) {
-        return defineProperty(key, value, propertyFlags, layout.getStrategy().getDefaultLocationFactory());
+        return layout.getStrategy().defineProperty(this, key, value, propertyFlags, null);
     }
 
     /** @since 0.17 or earlier */
@@ -781,7 +825,7 @@ public abstract class ShapeImpl extends Shape {
                     return prev;
                 } else {
                     boolean isLeafShape = transitionMap == null;
-                    next = isLeafShape ? createLeafAssumption() : NeverValidAssumption.INSTANCE;
+                    next = isLeafShape ? createLeafAssumption() : neverValidAssumption();
                 }
             } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
             return next;
@@ -797,13 +841,13 @@ public abstract class ShapeImpl extends Shape {
         Assumption prev;
         do {
             prev = LEAF_ASSUMPTION_UPDATER.get(this);
-            if (prev == NeverValidAssumption.INSTANCE) {
+            if (prev == neverValidAssumption()) {
                 break;
             }
             if (prev != null) {
                 prev.invalidate();
             }
-        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, NeverValidAssumption.INSTANCE));
+        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, neverValidAssumption()));
     }
 
     /** @since 0.17 or earlier */
@@ -1053,7 +1097,7 @@ public abstract class ShapeImpl extends Shape {
     public final boolean hasTransitionWithKey(Object key) {
         for (Transition transition : getTransitionMapForRead().keySet()) {
             if (transition instanceof PropertyTransition) {
-                if (((PropertyTransition) transition).getProperty().getKey().equals(key)) {
+                if (((PropertyTransition) transition).getPropertyKey().equals(key)) {
                     return true;
                 }
             }
@@ -1215,7 +1259,7 @@ public abstract class ShapeImpl extends Shape {
                 return propertyAssumption;
             }
         }
-        return NeverValidAssumption.INSTANCE;
+        return neverValidAssumption();
     }
 
     protected boolean testPropertyFlags(IntPredicate predicate) {
@@ -1486,9 +1530,9 @@ public abstract class ShapeImpl extends Shape {
             CompilerAsserts.neverPartOfCompilation();
             EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
             Assumption assumption = map.get(propertyName);
-            if (assumption != null && assumption != NeverValidAssumption.INSTANCE) {
+            if (assumption != null && assumption != neverValidAssumption()) {
                 assumption.invalidate("invalidatePropertyAssumption");
-                map.put(propertyName, NeverValidAssumption.INSTANCE);
+                map.put(propertyName, neverValidAssumption());
                 propertyAssumptionsRemoved.inc();
             }
         }
@@ -1511,6 +1555,7 @@ public abstract class ShapeImpl extends Shape {
     private static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
     static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
+    static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
     static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
 

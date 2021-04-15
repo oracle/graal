@@ -70,6 +70,7 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
@@ -82,8 +83,9 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase.AnalysisBytecodePa
 import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingPlugin.CallSite;
 import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingPlugin.InvocationResult;
 import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingPlugin.InvocationResultInline;
+import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry;
 import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase.SharedBytecodeParser;
-import com.oracle.svm.hosted.snippets.ReflectionPlugins;
+import com.oracle.svm.hosted.snippets.ReflectionPlugins.ReflectionPluginRegistry;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -154,11 +156,11 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
 
     }
 
-    private final boolean analysis;
+    private final ParsingReason reason;
     private final HostedProviders providers;
 
-    public ExperimentalNativeImageInlineDuringParsingPlugin(boolean analysis, HostedProviders providers) {
-        this.analysis = analysis;
+    public ExperimentalNativeImageInlineDuringParsingPlugin(ParsingReason reason, HostedProviders providers) {
+        this.reason = reason;
         this.providers = providers;
     }
 
@@ -172,11 +174,11 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
 
         InvocationResult inline = null;
         CallSite callSite = new CallSite(b.getCallingContext(), toAnalysisMethod(callee));
-        if (analysis) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             DebugContext debug = b.getDebug();
             try (DebugContext.Scope ignored = debug.scope("TrivialMethodDetectorAnalysis", this);
-                            AutoCloseable ignored1 = ReflectionPlugins.ReflectionPluginRegistry.startThreadLocalRegistry();
-                            AutoCloseable ignored2 = IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry.startThreadLocalnRegistry()) {
+                            AutoCloseable ignored1 = ReflectionPluginRegistry.startThreadLocalRegistry();
+                            AutoCloseable ignored2 = IntrinsificationRegistry.startThreadLocalnRegistry()) {
                 TrivialMethodDetector detector = new TrivialMethodDetector(providers, ((SharedBytecodeParser) b).getGraphBuilderConfig(), b.getOptions(), b.getDebug());
                 InvocationResult newResult = detector.analyzeMethod(callSite, (AnalysisMethod) callee, args);
                 ExperimentalNativeImageInlineDuringParsingPlugin.support().add(callSite, newResult);
@@ -195,7 +197,7 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
             InvocationResultInline inlineData = (InvocationResultInline) inline;
             VMError.guarantee(inlineData.callee.equals(toAnalysisMethod(callee)));
 
-            if (analysis) {
+            if (reason == ParsingReason.PointsToAnalysis) {
                 AnalysisMethod aMethod = (AnalysisMethod) callee;
                 aMethod.registerAsImplementationInvoked(null);
 

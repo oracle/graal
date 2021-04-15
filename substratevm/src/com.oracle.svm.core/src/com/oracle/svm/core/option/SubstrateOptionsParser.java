@@ -27,22 +27,18 @@ package com.oracle.svm.core.option;
 // Checkstyle: allow reflection
 
 import java.io.PrintStream;
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.CompilationWrapper;
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -166,8 +162,8 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static OptionParseResult parseOption(SortedMap<String, OptionDescriptor> options, String option, EconomicMap<OptionKey<?>, Object> valuesMap, String optionPrefix,
-                    BooleanOptionFormat booleanOptionFormat) {
+    static OptionParseResult parseOption(EconomicMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
+                    String optionPrefix, BooleanOptionFormat booleanOptionFormat) {
         if (option.length() == 0) {
             return OptionParseResult.error("Option name must be specified");
         }
@@ -184,7 +180,7 @@ public class SubstrateOptionsParser {
             }
             optionName = option.substring(1);
             if (booleanOptionFormat == BooleanOptionFormat.NAME_VALUE) {
-                return OptionParseResult.error("Option '" + optionName + "' must use <name>=<value> format, not +/- prefix");
+                return OptionParseResult.error("Option " + LocatableOption.from(optionName) + " must use <name>=<value> format, not +/- prefix");
             }
             value = (first == '+');
         } else {
@@ -197,18 +193,22 @@ public class SubstrateOptionsParser {
             }
         }
 
-        OptionDescriptor desc = options.get(optionName);
+        LocatableOption current = LocatableOption.from(optionName);
+        OptionDescriptor desc = options.get(current.name);
         if (desc == null && value != null) {
             if (eqIndex != -1) {
                 optionName = option.substring(1, eqIndex);
-                desc = options.get(optionName);
+                current = LocatableOption.from(optionName);
+                desc = options.get(current.name);
             }
         }
 
+        optionName = current.name;
+
         if (desc == null) {
             List<OptionDescriptor> matches = new ArrayList<>();
-            OptionsParser.collectFuzzyMatches(options.values(), optionName, matches);
-            StringBuilder msg = new StringBuilder("Could not find option '").append(optionName).append('\'');
+            OptionsParser.collectFuzzyMatches(options.getValues(), optionName, matches);
+            StringBuilder msg = new StringBuilder("Could not find option ").append(current);
             if (!matches.isEmpty()) {
                 msg.append(". Did you mean one of these:");
                 for (OptionDescriptor match : matches) {
@@ -219,49 +219,33 @@ public class SubstrateOptionsParser {
             return OptionParseResult.error(msg.toString());
         }
 
-        Class<?> optionType = desc.getOptionValueType();
+        OptionKey<?> optionKey = desc.getOptionKey();
+        boolean hostedOption = isHosted.test(optionKey);
+        Class<?> optionValueType = getMultiOptionValueElementType(optionKey);
+        Class<?> optionType = hostedOption && optionValueType != null ? optionValueType : desc.getOptionValueType();
 
         if (value == null) {
             if (optionType == Boolean.class && booleanOptionFormat == BooleanOptionFormat.PLUS_MINUS) {
-                return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
+                return OptionParseResult.error("Boolean option " + current + " must have +/- prefix");
             }
             if (valueString == null) {
-                return OptionParseResult.error("Missing value for option '" + optionName + "'");
+                return OptionParseResult.error("Missing value for option " + current);
             }
             try {
-                if (optionType.isArray()) {
-                    OptionKey<?> optionKey = desc.getOptionKey();
-                    Object addValue = parseValue(optionType.getComponentType(), optionName, valueString);
-                    if (addValue instanceof OptionParseResult) {
-                        return (OptionParseResult) addValue;
-                    }
-
-                    Object previous = valuesMap.get(optionKey);
-                    if (previous == null) {
-                        value = Array.newInstance(optionType.getComponentType(), 1);
-                        ((Object[]) value)[0] = addValue;
-                    } else {
-                        Object[] previousValues = (Object[]) previous;
-                        value = Arrays.copyOf(previousValues, previousValues.length + 1);
-                        ((Object[]) value)[previousValues.length] = addValue;
-                    }
-                } else {
-                    value = parseValue(optionType, optionName, valueString);
-                    if (value instanceof OptionParseResult) {
-                        return (OptionParseResult) value;
-                    }
+                value = parseValue(optionType, current, valueString);
+                if (value instanceof OptionParseResult) {
+                    return (OptionParseResult) value;
                 }
             } catch (NumberFormatException ex) {
-                return OptionParseResult.error("Invalid value for option '" + optionName + "': '" + valueString + "' is not a valid number");
+                return OptionParseResult.error("Invalid value for option " + current + ": '" + valueString + "' is not a valid number");
             }
-
         } else {
             if (optionType != Boolean.class) {
-                return OptionParseResult.error("Non-boolean option '" + optionName + "' can not use +/- prefix. Use '" + optionName + "=<value>' format");
+                return OptionParseResult.error("Non-boolean option " + current + " can not use +/- prefix. Use '" + current.name + "=<value>' format");
             }
         }
 
-        desc.getOptionKey().update(valuesMap, value);
+        optionKey.update(valuesMap, hostedOption ? LocatableOption.value(value, current.origin) : value);
 
         if (SubstrateOptions.PrintFlags.getName().equals(optionName)) {
             String optionValue = (String) value;
@@ -290,7 +274,7 @@ public class SubstrateOptionsParser {
                         sb.append(ot.name());
                     }
                     String possibleValues = sb.toString();
-                    return OptionParseResult.error("Invalid value for option '" + optionName + ". " + enumString + "' is not one of: " + possibleValues);
+                    return OptionParseResult.error("Invalid value for option " + current + ". '" + enumString + "' is not one of: " + possibleValues);
                 }
             }
             return OptionParseResult.printFlags(selectedOptionTypes);
@@ -305,12 +289,21 @@ public class SubstrateOptionsParser {
         return OptionParseResult.correct();
     }
 
-    static Object parseValue(Class<?> optionType, String optionName, String valueString) throws NumberFormatException {
+    private static Class<?> getMultiOptionValueElementType(OptionKey<?> optionKey) {
+        Object defaultValue = optionKey.getDefaultValue();
+        if (defaultValue instanceof MultiOptionValue) {
+            return ((MultiOptionValue<?>) defaultValue).getValueType();
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    static Object parseValue(Class<?> optionType, LocatableOption option, String valueString) throws NumberFormatException {
         Object value;
         if (optionType == Integer.class) {
             long longValue = parseLong(valueString);
             if ((int) longValue != longValue) {
-                return OptionParseResult.error("Wrong value for option '" + optionName + "': '" + valueString + "' is not a valid number");
+                return OptionParseResult.error("Wrong value for option " + option + ": '" + valueString + "' is not a valid number");
             }
             value = (int) longValue;
         } else if (optionType == Long.class) {
@@ -325,14 +318,12 @@ public class SubstrateOptionsParser {
             } else if (valueString.equals("false")) {
                 value = false;
             } else {
-                return OptionParseResult.error("Boolean option '" + optionName + "' must have value 'true' or 'false'");
+                return OptionParseResult.error("Boolean option " + option + " must have value 'true' or 'false'");
             }
-        } else if (optionType == CompilationWrapper.ExceptionAction.class) {
-            value = CompilationWrapper.ExceptionAction.valueOf(valueString);
-        } else if (optionType == DebugOptions.PrintGraphTarget.class) {
-            value = DebugOptions.PrintGraphTarget.valueOf(valueString);
+        } else if (optionType.isEnum()) {
+            value = Enum.valueOf(optionType.asSubclass(Enum.class), valueString);
         } else {
-            throw VMError.shouldNotReachHere("Unsupported option value class: " + optionType.getSimpleName());
+            throw VMError.shouldNotReachHere(option + " uses unsupported option value class: " + optionType.getSimpleName());
         }
         return value;
     }
@@ -349,16 +340,18 @@ public class SubstrateOptionsParser {
      * @param arg the argument currently processed
      * @return true if {@code arg.startsWith(optionPrefix)}
      */
-    public static boolean parseHostedOption(String optionPrefix, SortedMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap, BooleanOptionFormat booleanOptionFormat,
-                    Set<String> errors, String arg, PrintStream out) {
+    public static boolean parseHostedOption(String optionPrefix, EconomicMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
+                    BooleanOptionFormat booleanOptionFormat, Set<String> errors, String arg, PrintStream out) {
         if (!arg.startsWith(optionPrefix)) {
             return false;
         }
 
-        OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
+        Predicate<OptionKey<?>> isHosted = optionKey -> optionKey instanceof HostedOptionKey;
+        OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), valuesMap,
+                        optionPrefix, booleanOptionFormat);
         if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(optionParseResult::matchesFlagsHosted, options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
-            throw new InterruptImageBuilding();
+            throw new InterruptImageBuilding("");
         }
         if (!optionParseResult.isValid()) {
             errors.add(optionParseResult.getError());
@@ -408,12 +401,31 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static void printFlags(Predicate<OptionDescriptor> filter, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out, boolean verbose) {
-        for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-            OptionDescriptor descriptor = entry.getValue();
-            if (!filter.test(descriptor)) {
-                continue;
+    /**
+     * This method sorts the options before printing them.
+     * <p>
+     * Sorting the values of an {@link EconomicMap}, i.e., an {@link Iterable}, is not efficient
+     * since all elements need to first be copied to a list. A stream could be used or the options
+     * could be stored already sorted, however:
+     * <ul>
+     * <li>using a stream would make a lot of types reachable for even the simplest images</li>
+     * <li>storing the options as sorted at run time, i.e., in a {@link java.util.TreeMap}, would be
+     * less space efficient; since this method is shared between the hosted and run time worlds
+     * options are stored in an {@link EconomicMap}</li>
+     * </ul>
+     * Since this method is not performance critical and it is only rarely called the tradeoff
+     * between space and execution efficiency is acceptable.
+     */
+    static void printFlags(Predicate<OptionDescriptor> filter, EconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
+        List<OptionDescriptor> sortedDescriptors = new ArrayList<>();
+        for (OptionDescriptor option : options.getValues()) {
+            if (filter.test(option)) {
+                sortedDescriptors.add(option);
             }
+        }
+        sortedDescriptors.sort(Comparator.comparing(OptionDescriptor::getName));
+
+        for (OptionDescriptor descriptor : sortedDescriptors) {
             String helpMsg = verbose && !descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getHelp();
             int helpLen = helpMsg.length();
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
@@ -427,7 +439,7 @@ public class SubstrateOptionsParser {
                     defaultValue = defaultValues[0];
                 } else {
                     List<String> stringList = new ArrayList<>();
-                    String optionPrefix = prefix + entry.getKey() + "=";
+                    String optionPrefix = prefix + descriptor.getName() + "=";
                     for (Object rawValue : defaultValues) {
                         String value;
                         if (rawValue instanceof String) {
@@ -468,7 +480,7 @@ public class SubstrateOptionsParser {
                         helpMsg += "Default: - (disabled).";
                     }
                 }
-                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg + verboseHelp, wrapWidth);
+                printOption(out, prefix + "\u00b1" + descriptor.getName(), helpMsg + verboseHelp, wrapWidth);
             } else {
                 if (defaultValue == null) {
                     if (helpLen != 0) {
@@ -478,12 +490,12 @@ public class SubstrateOptionsParser {
                 }
                 helpMsg += verboseHelp;
                 if (stringifiedArrayValue || defaultValue == null) {
-                    printOption(out, prefix + entry.getKey() + "=...", helpMsg, wrapWidth);
+                    printOption(out, prefix + descriptor.getName() + "=...", helpMsg, wrapWidth);
                 } else {
                     if (defaultValue instanceof String) {
                         defaultValue = '"' + String.valueOf(defaultValue) + '"';
                     }
-                    printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg, wrapWidth);
+                    printOption(out, prefix + descriptor.getName() + "=" + defaultValue, helpMsg, wrapWidth);
                 }
             }
         }

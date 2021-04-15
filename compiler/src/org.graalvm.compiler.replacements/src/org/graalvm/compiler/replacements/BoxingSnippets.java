@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,12 +159,15 @@ public class BoxingSnippets implements Snippets {
         private final SnippetCounter valueOfCounter;
         private final SnippetCounter valueCounter;
 
+        @SuppressWarnings("hiding")
         public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection,
                         TargetDescription target) {
             super(options, factories, providers, snippetReflection, target);
+
             for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
                 LocationIdentity accessedLocation = null;
                 LocationIdentity cacheLocation = null;
+                boolean mustHaveCacheField = false;
                 switch (kind) {
                     case Byte:
                     case Short:
@@ -173,6 +176,7 @@ public class BoxingSnippets implements Snippets {
                     case Long:
                         accessedLocation = new FieldLocationIdentity(AbstractBoxingNode.getValueField(providers.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass())));
                         cacheLocation = getCacheLocation(providers, kind);
+                        mustHaveCacheField = true;
                         break;
                     case Boolean:
                     case Float:
@@ -198,6 +202,7 @@ public class BoxingSnippets implements Snippets {
                     // does no allocation
                     boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", trueField, falseField));
                 } else {
+                    GraalError.guarantee(!mustHaveCacheField || cacheLocation != null, "Must have a cache location for kind %s", kind);
                     if (cacheLocation != null) {
                         boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", LocationIdentity.INIT_LOCATION, accessedLocation, cacheLocation,
                                         NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
@@ -214,47 +219,23 @@ public class BoxingSnippets implements Snippets {
         }
 
         private static LocationIdentity getCacheLocation(CoreProviders providers, JavaKind kind) {
-            LocationIdentity cacheLocation = null;
             Class<?>[] innerClasses = null;
             try {
-                switch (kind) {
-                    case Byte:
-                        innerClasses = Byte.class.getDeclaredClasses();
-                        break;
-                    case Short:
-                        innerClasses = Short.class.getDeclaredClasses();
-                        break;
-                    case Char:
-                        innerClasses = Character.class.getDeclaredClasses();
-                        break;
-                    case Int:
-                        innerClasses = Integer.class.getDeclaredClasses();
-                        break;
-                    case Long:
-                        innerClasses = Long.class.getDeclaredClasses();
-                        break;
-                    default:
-                        break;
+                innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+                if (innerClasses == null || innerClasses.length == 0) {
+                    throw GraalError.shouldNotReachHere("Inner classes must exist");
                 }
-            } catch (SecurityException e) {
+                return new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClasses[0].getDeclaredField("cache")));
+            } catch (Throwable e) {
                 throw GraalError.shouldNotReachHere(e);
             }
-            if (innerClasses != null && innerClasses.length > 0) {
-                try {
-                    cacheLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClasses[0].getDeclaredField("cache")));
-                } catch (NoSuchFieldException | SecurityException e) {
-                    throw GraalError.shouldNotReachHere(e);
-                }
-            }
-
-            return cacheLocation;
         }
 
         public void lower(BoxNode box, LoweringTool tool) {
-            Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = null;
+            args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("value", box.getValue());
             args.addConst("valueOfCounter", valueOfCounter);
-
             SnippetTemplate template = template(box, args);
             box.getDebug().log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
             template.instantiate(providers.getMetaAccess(), box, DEFAULT_REPLACER, args);

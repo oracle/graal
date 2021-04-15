@@ -262,6 +262,15 @@ public final class Support {
         return false;
     }
 
+    public static JNIObjectHandle handleException(JNIEnvironment localEnv) {
+        if (jniFunctions().getExceptionCheck().invoke(localEnv)) {
+            JNIObjectHandle exception = jniFunctions().getExceptionOccurred().invoke(localEnv);
+            jniFunctions().getExceptionClear().invoke(localEnv);
+            return exception;
+        }
+        return nullHandle();
+    }
+
     /*
      * We use the Call*A functions that take a jvalue* for the Java arguments because that doesn't
      * require that calling conventions for a varargs call are the same as those for a regular call

@@ -15,6 +15,5 @@ sdkGate : ${sdkCommon} {
 builds += [
   ${linux-amd64}     ${oraclejdk8}     ${sdkGate} ${eclipse} ${jdt} { name: "gate-sdk-linux-8"   },
   ${linux-amd64}     ${oraclejdk11}    ${sdkGate} ${eclipse}        { name: "gate-sdk-linux-oraclejdk-11"  },
-  ${solaris-sparcv9} ${oraclejdk8Only} ${sdkGate}                   { name: "gate-sdk-solaris-8" },
   ${darwin-amd64}    ${oraclejdk8}     ${sdkGate}                   { name: "gate-sdk-darwin-8"  },
 ]

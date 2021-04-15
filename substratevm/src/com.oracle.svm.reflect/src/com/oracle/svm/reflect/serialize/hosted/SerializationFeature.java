@@ -27,24 +27,17 @@ package com.oracle.svm.reflect.serialize.hosted;
 
 // Checkstyle: allow reflection
 
-import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
-
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
-import java.io.ObjectStreamField;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -55,8 +48,8 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import com.oracle.svm.core.configure.SerializationConfigurationParser.SerializationParserFunction;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JSONParserException;
@@ -65,9 +58,9 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.SerializationChecksumCalculator;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -76,12 +69,17 @@ public class SerializationFeature implements Feature {
     private int loadedConfigurations;
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess a) {
-        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(ReflectionFeature.class);
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess a) {
+        FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         SerializationBuilder serializationBuilder = new SerializationBuilder(access);
 
         Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
-        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser((strTargetSerializationClass, strCustomTargetConstructorClass, checksums) -> {
+        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser((strTargetSerializationClass, strCustomTargetConstructorClass) -> {
             Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
             if (serializationTargetClass != null) {
                 deniedClasses.put(serializationTargetClass, true);
@@ -92,7 +90,7 @@ public class SerializationFeature implements Feature {
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
                         ConfigurationFiles.SERIALIZATION_DENY_NAME);
 
-        SerializationParserFunction serializationAdapter = (strTargetSerializationClass, strCustomTargetConstructorClass, checksums) -> {
+        SerializationParserFunction serializationAdapter = (strTargetSerializationClass, strCustomTargetConstructorClass) -> {
             Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
             UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
                             " Please make sure it is in the classpath", strTargetSerializationClass);
@@ -114,7 +112,7 @@ public class SerializationFeature implements Feature {
                                                         " %s that was specified in the serialization configuration is not a subclass of the serialization target class %s.",
                                         strCustomTargetConstructorClass, strTargetSerializationClass);
                     }
-                    Class<?> targetConstructor = serializationBuilder.addConstructorAccessor(serializationTargetClass, customTargetConstructorClass, checksums);
+                    Class<?> targetConstructor = serializationBuilder.addConstructorAccessor(serializationTargetClass, customTargetConstructorClass);
                     addReflections(serializationTargetClass, targetConstructor);
                 }
             }
@@ -135,6 +133,18 @@ public class SerializationFeature implements Feature {
             RuntimeReflection.register(ReflectionUtil.lookupConstructor(serializationTargetClass, (Class<?>[]) null));
         }
 
+        RecordSupport recordSupport = RecordSupport.singleton();
+        if (recordSupport.isRecord(serializationTargetClass)) {
+            /* Serialization for records uses the canonical record constructor directly. */
+            RuntimeReflection.register(recordSupport.getCanonicalRecordConstructor(serializationTargetClass));
+            /*
+             * Serialization for records invokes Class.getRecordComponents(). Registering all record
+             * component accessor methods for reflection ensures that the record components are
+             * available at run time.
+             */
+            RuntimeReflection.register(recordSupport.getRecordComponentAccessorMethods(serializationTargetClass));
+        }
+
         RuntimeReflection.register(serializationTargetClass);
         /*
          * ObjectStreamClass.computeDefaultSUID is always called at runtime to verify serialization
@@ -153,29 +163,12 @@ public class SerializationFeature implements Feature {
     }
 
     private static void registerFields(Class<?> serializationTargetClass) {
-        int staticFinalMask = Modifier.STATIC | Modifier.FINAL;
-        int privateStaticFinalMask = Modifier.PRIVATE | staticFinalMask;
-
-        Set<String> serialPersistentFieldNames = new HashSet<>();
-        try {
-            /* FIXME serialPersistentFieldNames is write-only. What is the point of this code? */
-            Field f = ReflectionUtil.lookupField(serializationTargetClass, "serialPersistentFields");
-            if ((f.getModifiers() & privateStaticFinalMask) == privateStaticFinalMask) {
-                ObjectStreamField[] serialPersistentFields = (ObjectStreamField[]) f.get(null);
-                for (ObjectStreamField serialPersistentField : serialPersistentFields) {
-                    serialPersistentFieldNames.add(serialPersistentField.getName());
-                }
-            }
-        } catch (ReflectionUtil.ReflectionUtilError | IllegalAccessException e) {
-            // No serialPersistentFields field or failed to get the field value, continue
-        }
-
         for (Field f : serializationTargetClass.getDeclaredFields()) {
             int modifiers = f.getModifiers();
             boolean allowWrite = false;
             boolean allowUnsafeAccess = false;
+            int staticFinalMask = Modifier.STATIC | Modifier.FINAL;
             if ((modifiers & staticFinalMask) != staticFinalMask) {
-                allowWrite = Modifier.isFinal(f.getModifiers());
                 allowUnsafeAccess = !Modifier.isStatic(f.getModifiers());
             }
             RuntimeReflection.register(allowWrite, allowUnsafeAccess, f);
@@ -224,52 +217,6 @@ public class SerializationFeature implements Feature {
 
 final class SerializationBuilder {
 
-    /**
-     * Using a separated classloader for serialization checksum computation to avoid initializing
-     * Classes that should be initialized at run time.
-     */
-    private static final class SerializationChecksumClassLoader extends URLClassLoader {
-        private SerializationChecksumClassLoader(URL[] urls, ClassLoader parent) {
-            super(urls, parent);
-        }
-    }
-
-    private static final class ChecksumCalculator extends SerializationChecksumCalculator.JavaCalculator {
-        private final Method computeDefaultSUID;
-
-        private ChecksumCalculator() {
-            computeDefaultSUID = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "computeDefaultSUID", Class.class);
-        }
-
-        @Override
-        protected String getClassName(Class<?> clazz) {
-            return clazz.getName();
-        }
-
-        @Override
-        protected Class<?> getSuperClass(Class<?> clazz) {
-            return clazz.getSuperclass();
-        }
-
-        @Override
-        protected Long calculateFromComputeDefaultSUID(Class<?> clazz) {
-            try {
-                return (Long) computeDefaultSUID.invoke(null, clazz);
-            } catch (ReflectiveOperationException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
-
-        @Override
-        protected boolean isClassAbstract(Class<?> clazz) {
-            return Modifier.isAbstract(clazz.getModifiers());
-        }
-    }
-
-    private final SerializationChecksumClassLoader serializationChecksumClassLoader;
-    private final ChecksumCalculator checksumCalculator;
-
-    private final FeatureImpl.BeforeAnalysisAccessImpl access;
     private final Object reflectionFactory;
     private final Method newConstructorForSerializationMethod1;
     private final Method newConstructorForSerializationMethod2;
@@ -279,7 +226,7 @@ final class SerializationBuilder {
 
     private final SerializationSupport serializationSupport;
 
-    SerializationBuilder(FeatureImpl.BeforeAnalysisAccessImpl access) {
+    SerializationBuilder(FeatureImpl.DuringSetupAccessImpl access) {
         try {
             Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
             Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
@@ -292,11 +239,6 @@ final class SerializationBuilder {
             throw VMError.shouldNotReachHere(e);
         }
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
-        this.access = access;
-
-        URLClassLoader cl = (URLClassLoader) access.getImageClassLoader().getClassLoader();
-        serializationChecksumClassLoader = new SerializationChecksumClassLoader(cl.getURLs(), cl.getParent());
-        checksumCalculator = new ChecksumCalculator();
 
         serializationSupport = new SerializationSupport();
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
@@ -330,7 +272,7 @@ final class SerializationBuilder {
         }
     }
 
-    Class<?> addConstructorAccessor(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass, List<String> configuredChecksums) {
+    Class<?> addConstructorAccessor(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         if (serializationTargetClass.isArray() || Enum.class.isAssignableFrom(serializationTargetClass)) {
             return null;
         }
@@ -367,44 +309,8 @@ final class SerializationBuilder {
             }
             targetConstructor = newConstructorForSerialization(serializationTargetClass, customConstructorToCall);
             targetConstructorClass = targetConstructor.getDeclaringClass();
-            verifyBuildTimeChecksum(serializationTargetClass, targetConstructorClass, configuredChecksums);
         }
         serializationSupport.addConstructorAccessor(serializationTargetClass, targetConstructorClass, getConstructorAccessor(targetConstructor));
         return targetConstructorClass;
-    }
-
-    private void verifyBuildTimeChecksum(Class<?> serializationTargetClass, Class<?> targetConstructorClass, List<String> configuredChecksums) {
-        if (configuredChecksums.isEmpty()) {
-            return;
-        }
-        try {
-            String targetClassName = serializationTargetClass.getName();
-            // Checkstyle: stop
-            Class<?> checksumCalculationTargetClass = Class.forName(targetClassName, false, serializationChecksumClassLoader);
-            // Checkstyle: resume
-            String buildTimeChecksum = checksumCalculator.calculateChecksum(targetConstructorClass.getName(), targetClassName, checksumCalculationTargetClass);
-            /* If we have checksums, one of them has to match the buildTimeChecksum */
-            if (!configuredChecksums.contains(buildTimeChecksum)) {
-                String msg = "\nBuild time serialization class checksum verify failure." +
-                                " The classes' hierarchy may have been changed from configuration collecting time to image build time:\n" +
-                                targetClassName + ": configured checksums: " + String.join(", ", configuredChecksums) + "\n" +
-                                targetClassName + ": build time checksum: " + buildTimeChecksum;
-                reportChecksumError(msg);
-            }
-        } catch (NoSuchAlgorithmException | ClassNotFoundException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private void reportChecksumError(String exceptionsMsg) {
-        String option = SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+");
-        if (!NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-            access.getBigBang().getUnsupportedFeatures()
-                            .addMessage("CHECKSUM_VERIFY_FAIL", null,
-                                            exceptionsMsg + "\n" + "To allow continuing compilation with above unsupported features, set " + option);
-        } else {
-            println(exceptionsMsg);
-            println("Compilation will continue because " + option + " was set. But the program may behave unexpectedly at runtime.");
-        }
     }
 }

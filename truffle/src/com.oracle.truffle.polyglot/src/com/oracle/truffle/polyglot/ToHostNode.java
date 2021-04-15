@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -407,6 +408,10 @@ abstract class ToHostNode extends Node {
                 return asJavaObject(value, Map.class, null, false, languageContext);
             } else if (interop.hasArrayElements(value)) {
                 return asJavaObject(value, List.class, null, false, languageContext);
+            } else if (interop.hasIterator(value)) {
+                return asJavaObject(value, Iterable.class, null, false, languageContext);
+            } else if (interop.isIterator(value)) {
+                return asJavaObject(value, Iterator.class, null, false, languageContext);
             } else if (interop.isExecutable(value) || interop.isInstantiable(value)) {
                 return asJavaObject(value, Function.class, null, false, languageContext);
             }
@@ -456,18 +461,28 @@ abstract class ToHostNode extends Node {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Map.class) {
-            Class<?> keyClazz = getGenericParameterType(genericType, 0).clazz;
+            TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
             TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
-            if (!isSupportedMapKeyType(keyClazz)) {
-                throw newInvalidKeyTypeException(keyClazz);
+            boolean hasHashEntries = interop.hasHashEntries(value);
+            if (!hasHashEntries && !isSupportedMapKeyType(keyType.clazz)) {
+                throw newInvalidKeyTypeException(keyType.clazz);
             }
-            boolean hasSize = (Number.class.isAssignableFrom(keyClazz)) && interop.hasArrayElements(value);
-            boolean hasKeys = (keyClazz == Object.class || keyClazz == String.class) && interop.hasMembers(value);
-            if (hasKeys || hasSize) {
+            boolean hasSize = (Number.class.isAssignableFrom(keyType.clazz)) && interop.hasArrayElements(value);
+            boolean hasKeys = (keyType.clazz == Object.class || keyType.clazz == String.class) && interop.hasMembers(value);
+            if (hasKeys || hasSize || hasHashEntries) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
-                obj = PolyglotMap.create(languageContext, value, implementsFunction, keyClazz, valueType.clazz, valueType.type);
+                obj = PolyglotMap.create(languageContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members or array elements.");
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members, array elements or hash entries.");
+            }
+        } else if (targetType == Map.Entry.class) {
+            if (interop.hasArrayElements(value)) {
+                TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
+                TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
+                boolean implementsFunction = shouldImplementFunction(value, interop);
+                obj = PolyglotMapEntry.create(languageContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Function.class) {
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
@@ -575,6 +590,26 @@ abstract class ToHostNode extends Node {
                 obj = asPolyglotException(value, interop, languageContext);
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an exception.");
+            }
+        } else if (targetType == Iterable.class) {
+            if (interop.hasIterator(value)) {
+                boolean implementsFunction = shouldImplementFunction(value, interop);
+                TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
+                obj = PolyglotIterable.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
+            } else if (allowsImplementation && interop.hasMembers(value)) {
+                obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have an iterator.");
+            }
+        } else if (targetType == Iterator.class) {
+            if (interop.isIterator(value)) {
+                boolean implementsFunction = shouldImplementFunction(value, interop);
+                TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
+                obj = PolyglotIterator.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
+            } else if (allowsImplementation && interop.hasMembers(value)) {
+                obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an iterator.");
             }
         } else if (allowsImplementation && HostInteropReflect.isAbstractType(targetType)) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {

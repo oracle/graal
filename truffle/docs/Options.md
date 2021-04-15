@@ -47,7 +47,6 @@ They are useful to users and language and tool implementers.
 Expert engine options:
   --engine.BackgroundCompilation=<Boolean>     Enable asynchronous truffle compilation in background threads
   --engine.Compilation=<Boolean>               Enable or disable Truffle compilation.
-  --engine.CompilationThreshold=<Integer>      Minimum number of invocations or loop iterations needed to compile a guest language root.
   --engine.CompilerIdleDelay=<Long>            Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. New compiler
                                                threads will be started once new compilation tasks are submitted. Select '0' to never terminate the Truffle compiler
                                                thread. The option is not supported by all Truffle runtimes. On the runtime which does not support it the option has no
@@ -59,16 +58,19 @@ Expert engine options:
                                                only supported on the HotSpot (non-libgraal) Truffle runtime.On runtimes which does not support it the option has no
                                                effect.
   --engine.FirstTierCompilationThreshold=<Integer>
-                                               Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root in first tier.
   --engine.FirstTierMinInvokeThreshold=<Integer>
-                                               Minimum number of calls before a call target is compiled in the first tier.
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root in last tier.
+  --engine.LastTierCompilationThreshold=<Integer>      
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.
+  --engine.SingleTierCompilationThreshold=<Integer>      
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.
   --engine.Inlining=<Boolean>                  Enable automatic inlining of guest language call targets.
   --engine.InliningExpansionBudget=<Integer>   The base expansion budget for language-agnostic inlining.
   --engine.InliningInliningBudget=<Integer>    The base inlining budget for language-agnostic inlining
   --engine.InliningNodeBudget=<Integer>        Maximum number of inlined non-trivial AST nodes per compilation unit.
   --engine.InliningPolicy=<String>             Explicitly pick a inlining policy by name. Highest priority chosen by default.
   --engine.InliningRecursionDepth=<Integer>    Maximum depth for recursive inlining.
-  --engine.LanguageAgnosticInlining=<Boolean>  Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).
   --engine.MinInvokeThreshold=<Integer>        Minimum number of calls before a call target is compiled
   --engine.Mode=<EngineMode>                   Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances
                                                between the two.
