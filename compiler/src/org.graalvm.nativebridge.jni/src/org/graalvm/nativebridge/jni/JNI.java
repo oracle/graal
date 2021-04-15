@@ -255,6 +255,33 @@ public final class JNI {
         @CField("CallObjectMethodA")
         CallObjectMethodA getCallObjectMethodA();
 
+        @CField("CallVoidMethodA")
+        CallVoidMethodA getCallVoidMethodA();
+
+        @CField("CallBooleanMethodA")
+        CallBooleanMethodA getCallBooleanMethodA();
+
+        @CField("CallShortMethodA")
+        CallShortMethodA getCallShortMethodA();
+
+        @CField("CallIntMethodA")
+        CallIntMethodA getCallIntMethodA();
+
+        @CField("CallLongMethodA")
+        CallLongMethodA getCallLongMethodA();
+
+        @CField("CallDoubleMethodA")
+        CallDoubleMethodA getCallDoubleMethodA();
+
+        @CField("CallFloatMethodA")
+        CallFloatMethodA getCallFloatMethodA();
+
+        @CField("CallByteMethodA")
+        CallByteMethodA getCallByteMethodA();
+
+        @CField("CallCharMethodA")
+        CallCharMethodA getCallCharMethodA();
+
         @CField("GetStaticBooleanField")
         GetStaticBooleanField getGetStaticBooleanField();
 
@@ -281,6 +308,9 @@ public final class JNI {
 
         @CField("GetDirectBufferAddress")
         GetDirectBufferAddress getGetDirectBufferAddress();
+
+        @CField("IsInstanceOf")
+        IsInstanceOf getIsInstanceOf();
     }
 
     public interface CallStaticIntMethodA extends CFunctionPointer {
@@ -311,6 +341,51 @@ public final class JNI {
     public interface CallObjectMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JObject object, JMethodID methodID, JValue args);
+    }
+
+    public interface CallVoidMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallBooleanMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallShortMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        short call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallIntMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallLongMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        long call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallDoubleMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        double call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallFloatMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        float call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallByteMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        byte call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallCharMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        char call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
     }
 
     public interface DeleteGlobalRef extends CFunctionPointer {
@@ -496,6 +571,11 @@ public final class JNI {
     public interface GetDirectBufferAddress extends CFunctionPointer {
         @InvokeCFunctionPointer
         VoidPointer call(JNIEnv env, JObject buf);
+    }
+
+    public interface IsInstanceOf extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean call(JNIEnv env, JObject o, JClass c);
     }
 
     public interface GetStaticFieldID extends CFunctionPointer {

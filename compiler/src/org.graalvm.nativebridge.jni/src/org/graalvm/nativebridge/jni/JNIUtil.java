@@ -224,6 +224,11 @@ public final class JNIUtil {
         return env.getFunctions().getGetDirectBufferAddress().call(env, buf);
     }
 
+    public static boolean IsInstanceOf(JNIEnv env, JObject obj, JClass clazz) {
+        traceJNI("IsInstanceOf");
+        return env.getFunctions().getIsInstanceOf().call(env, obj, clazz);
+    }
+
     // Checkstyle: resume
 
     private static void traceJNI(String function) {

@@ -80,6 +80,75 @@ public final class HotSpotCalls {
         return (R) res;
     }
 
+    @HotSpotCall
+    public static <R extends JObject> R callNewObject(JNI.JNIEnv env, JClass clazz, JMethodID id, JNI.JValue args) {
+        JNI.JObject res = env.getFunctions().getNewObjectA().call(clazz, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return (R) res;
+    }
+
+    @HotSpotCall
+    public static void callVoid(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        env.getFunctions().getCallVoidMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+    }
+
+    @HotSpotCall
+    public static boolean callBoolean(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        boolean res = env.getFunctions().getCallBooleanMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return res;
+    }
+
+    @HotSpotCall
+    public static short callShort(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        short res = env.getFunctions().getCallShortMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return res;
+    }
+
+    @HotSpotCall
+    public static int callInt(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        int res = env.getFunctions().getCallIntMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return res;
+    }
+
+    @HotSpotCall
+    public static long callLong(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        long res = env.getFunctions().getCallLongMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return res;
+    }
+
+    @HotSpotCall
+    public static double callDouble(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        double res = env.getFunctions().getCallDoubleMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return res;
+    }
+
+    @HotSpotCall
+    public static float callFloat(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        float res = env.getFunctions().getCallFloatMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return res;
+    }
+
+    @HotSpotCall
+    public static byte callByte(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        byte res = env.getFunctions().getCallByteMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return res;
+    }
+
+    @HotSpotCall
+    public static char callChar(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        char res = env.getFunctions().getCallCharMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return res;
+    }
+
     /**
      * Determines if {@code frame} is for a method denoting a call into HotSpot.
      */
