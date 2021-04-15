@@ -40,7 +40,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
@@ -79,7 +79,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         // way...
         int stackTraceBytes = SizeOf.get(JfrStackTrace.class);
         JfrStackTrace stackTrace = StackValue.get(stackTraceBytes);
-        MemoryUtil.fillToMemoryAtomic((Pointer) stackTrace, WordFactory.unsigned(stackTraceBytes), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) stackTrace, WordFactory.unsigned(stackTraceBytes), (byte) 0);
 
         int maxFrames = this.maxFrameCount;
         JfrStackFrames frames = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrStackFrame.class).multiply(maxFrames));
@@ -216,14 +216,14 @@ public class JfrStackTraceRepository implements JfrRepository {
             UnsignedWord sizeOfStackTrace = SizeOf.unsigned(JfrStackTrace.class);
             JfrStackTrace stackTraceOnHeap = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(sizeOfStackTrace);
             if (stackTraceOnHeap.isNonNull()) {
-                MemoryUtil.copyConjointMemoryAtomic((Pointer) stackTraceOnStack, (Pointer) stackTraceOnHeap, sizeOfStackTrace);
+                UnmanagedMemoryUtil.copy((Pointer) stackTraceOnStack, (Pointer) stackTraceOnHeap, sizeOfStackTrace);
 
                 // Copy the stack frames as well.
                 UnsignedWord sizeOfFrames = SizeOf.unsigned(JfrStackFrame.class).multiply(stackTraceOnStack.getFrameCount());
                 JfrStackFrames toFrames = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(sizeOfFrames);
                 if (toFrames.isNonNull()) {
                     JfrStackFrames fromFrames = stackTraceOnStack.getStackFrames();
-                    MemoryUtil.copyConjointMemoryAtomic((Pointer) fromFrames, (Pointer) toFrames, sizeOfFrames);
+                    UnmanagedMemoryUtil.copy((Pointer) fromFrames, (Pointer) toFrames, sizeOfFrames);
                     stackTraceOnHeap.setStackFrames(toFrames);
                     return stackTraceOnHeap;
                 }

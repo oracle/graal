@@ -32,8 +32,8 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
@@ -215,7 +215,7 @@ public class JfrThreadLocal implements ThreadListener {
             JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
             if (globalMemory.write(threadLocalBuffer, unflushedSize)) {
                 // Copy all uncommitted memory to the start of the thread local buffer.
-                MemoryUtil.copyConjointMemoryAtomic(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
+                UnmanagedMemoryUtil.copy(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
                 JfrBufferAccess.reinitialize(threadLocalBuffer);
             } else {
                 JfrBufferAccess.reinitialize(threadLocalBuffer);

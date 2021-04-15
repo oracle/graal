@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
@@ -92,7 +92,7 @@ public class JfrGlobalMemory {
         // Copy all committed but not yet flushed memory to the promotion buffer.
         JfrRecorderThread recorderThread = SubstrateJVM.getRecorderThread();
         assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
-        MemoryUtil.copyConjointMemoryAtomic(JfrBufferAccess.getDataStart(threadLocalBuffer), promotionBuffer.getPos(), unflushedSize);
+        UnmanagedMemoryUtil.copy(JfrBufferAccess.getDataStart(threadLocalBuffer), promotionBuffer.getPos(), unflushedSize);
         JfrBufferAccess.increasePos(promotionBuffer, unflushedSize);
         boolean shouldSignal = recorderThread.shouldSignal(promotionBuffer);
         releasePromotionBuffer(promotionBuffer);

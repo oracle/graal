@@ -40,7 +40,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
@@ -193,7 +193,7 @@ public class JfrSymbolRepository implements JfrRepository {
             UnsignedWord size = SizeOf.unsigned(JfrSymbol.class);
             JfrSymbol symbolOnHeap = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
             if (symbolOnHeap.isNonNull()) {
-                MemoryUtil.copyConjointMemoryAtomic((Pointer) symbolOnStack, (Pointer) symbolOnHeap, size);
+                UnmanagedMemoryUtil.copy((Pointer) symbolOnStack, (Pointer) symbolOnHeap, size);
                 return symbolOnHeap;
             }
             return WordFactory.nullPointer();
