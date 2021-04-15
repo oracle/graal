@@ -37,6 +37,11 @@ public final class StaticShapeBuilder {
         if (extendedProperties.containsKey(name)) {
             throw new IllegalArgumentException("This builder already contains a property named '" + name + "'");
         }
+        for (ExtendedProperty extendedProperty : extendedProperties.values()) {
+            if (extendedProperty.property.equals(property)) {
+                throw new IllegalArgumentException("This builder already contains this property");
+            }
+        }
         extendedProperties.put(name, new ExtendedProperty(property, name, isFinal));
         return this;
     }
