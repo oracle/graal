@@ -91,14 +91,15 @@ public final class CEntryPointActions {
     public static native int enterIsolate(Isolate isolate);
 
     /**
-     * Enters an existing context for the current thread that has already been created in the given
-     * isolate, during the prologue of a segfault handler. Execution is not expected to resume
-     * normally from the thread.
+     * May only be used during the prologue of a segfault handler. If the thread is already
+     * attached, it enters the existing context of that thread. If the thread is unattached, it
+     * creates a context that is sufficient for executing the segfault handler. After executing the
+     * segfault handler, execution must not resume normally.
      *
      * @param isolate isolate in which a context for the current thread exists.
      * @return 0 on success, otherwise non-zero.
      */
-    public static native int enterIsolateFromCrashHandler(Isolate isolate);
+    public static native int enterAttachThreadFromCrashHandler(Isolate isolate);
 
     /**
      * In the prologue, stop execution and return to the entry point method's caller with the given

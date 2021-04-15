@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
+import com.oracle.svm.core.SubstrateSegfaultHandler;
 
 // Checkstyle: stop
 
@@ -100,36 +101,81 @@ public class Signal {
         long read(int index);
     }
 
+    /**
+     * Used in {@link SubstrateSegfaultHandler}. So, this must not be a {@link CEnum} as this would
+     * result in machine code that needs a proper a heap base.
+     */
     @Platforms({Platform.LINUX_AMD64.class})
-    @CEnum
     @CContext(PosixDirectives.class)
-    public enum GregEnum {
-        REG_R8,
-        REG_R9,
-        REG_R10,
-        REG_R11,
-        REG_R12,
-        REG_R13,
-        REG_R14,
-        REG_R15,
-        REG_RDI,
-        REG_RSI,
-        REG_RBP,
-        REG_RBX,
-        REG_RDX,
-        REG_RAX,
-        REG_RCX,
-        REG_RSP,
-        REG_RIP,
-        REG_EFL,
-        REG_CSGSFS,
-        REG_ERR,
-        REG_TRAPNO,
-        REG_OLDMASK,
-        REG_CR2;
+    public static final class GregEnum {
+        @CConstant
+        public static native int REG_R8();
 
-        @CEnumValue
-        public native int getCValue();
+        @CConstant
+        public static native int REG_R9();
+
+        @CConstant
+        public static native int REG_R10();
+
+        @CConstant
+        public static native int REG_R11();
+
+        @CConstant
+        public static native int REG_R12();
+
+        @CConstant
+        public static native int REG_R13();
+
+        @CConstant
+        public static native int REG_R14();
+
+        @CConstant
+        public static native int REG_R15();
+
+        @CConstant
+        public static native int REG_RDI();
+
+        @CConstant
+        public static native int REG_RSI();
+
+        @CConstant
+        public static native int REG_RBP();
+
+        @CConstant
+        public static native int REG_RBX();
+
+        @CConstant
+        public static native int REG_RDX();
+
+        @CConstant
+        public static native int REG_RAX();
+
+        @CConstant
+        public static native int REG_RCX();
+
+        @CConstant
+        public static native int REG_RSP();
+
+        @CConstant
+        public static native int REG_RIP();
+
+        @CConstant
+        public static native int REG_EFL();
+
+        @CConstant
+        public static native int REG_CSGSFS();
+
+        @CConstant
+        public static native int REG_ERR();
+
+        @CConstant
+        public static native int REG_TRAPNO();
+
+        @CConstant
+        public static native int REG_OLDMASK();
+
+        @CConstant
+        public static native int REG_CR2();
     }
 
     @CStruct
