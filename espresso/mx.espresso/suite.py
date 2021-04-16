@@ -288,7 +288,7 @@ suite = {
             },
         },
 
-        "ESPRESSO_TESTS": {
+        "ESPRESSO_STATICOBJECT_TESTS": {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso.staticobject.test",
