@@ -94,7 +94,7 @@ public class NFITest {
         @Child InteropLibrary symInterop = InteropLibrary.getFactory().createDispatched(5);
 
         private LookupAndBindNode() {
-            super(null);
+            super(runWithPolyglot.getTestLanguage());
         }
 
         @Override

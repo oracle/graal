@@ -76,6 +76,12 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     native long getNativeEnv();
 
     @Alias
+    native boolean attachThread();
+
+    @Alias
+    native void detachThread();
+
+    @Alias
     native Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer createClosureNativePointer(long nativeClosure, long codePointer, CallTarget callTarget,
                     Target_com_oracle_truffle_nfi_backend_libffi_LibFFISignature signature, Object receiver);
 
