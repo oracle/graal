@@ -182,8 +182,8 @@ public class StandardGraphBuilderPlugins {
         registerStringPlugins(plugins, replacements, snippetReflection, arrayEqualsSubstitution);
         registerCharacterPlugins(plugins);
         registerShortPlugins(plugins);
-        registerIntegerLongPlugins(plugins, JavaKind.Int, allowDeoptimization);
-        registerIntegerLongPlugins(plugins, JavaKind.Long, allowDeoptimization);
+        registerIntegerLongPlugins(plugins, JavaKind.Int);
+        registerIntegerLongPlugins(plugins, JavaKind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
         if (arrayEqualsSubstitution) {
@@ -511,7 +511,7 @@ public class StandardGraphBuilderPlugins {
         r.register1("fullFence", Receiver.class, new UnsafeFencePlugin(LOAD_LOAD | STORE_STORE | LOAD_STORE | STORE_LOAD));
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, boolean allowDeoptimization) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);
@@ -525,7 +525,7 @@ public class StandardGraphBuilderPlugins {
         r.register2("divideUnsigned", type, type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode dividend, ValueNode divisor) {
-                GuardingNode zeroCheck = maybeEmitDivisionByZeroCheck(b, divisor, allowDeoptimization);
+                GuardingNode zeroCheck = b.maybeEmitExplicitDivisionByZeroCheck(divisor);
                 b.push(kind, b.append(UnsignedDivNode.create(dividend, divisor, zeroCheck, NodeView.DEFAULT)));
                 return true;
             }
@@ -533,20 +533,11 @@ public class StandardGraphBuilderPlugins {
         r.register2("remainderUnsigned", type, type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode dividend, ValueNode divisor) {
-                GuardingNode zeroCheck = maybeEmitDivisionByZeroCheck(b, divisor, allowDeoptimization);
+                GuardingNode zeroCheck = b.maybeEmitExplicitDivisionByZeroCheck(divisor);
                 b.push(kind, b.append(UnsignedRemNode.create(dividend, divisor, zeroCheck, NodeView.DEFAULT)));
                 return true;
             }
         });
-    }
-
-    private static GuardingNode maybeEmitDivisionByZeroCheck(GraphBuilderContext b, ValueNode divisor, boolean allowDeoptimization) {
-        if (allowDeoptimization || !((IntegerStamp) divisor.stamp(NodeView.DEFAULT)).contains(0)) {
-            return null;
-        }
-        ConstantNode zero = b.add(ConstantNode.defaultForKind(divisor.getStackKind()));
-        LogicNode condition = b.add(IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, divisor, zero, NodeView.DEFAULT));
-        return b.emitBytecodeExceptionCheck(condition, false, BytecodeExceptionKind.DIVISION_BY_ZERO);
     }
 
     private static void registerCharacterPlugins(InvocationPlugins plugins) {
