@@ -37,6 +37,7 @@
     // AWFY peak perf. benchmarks
     common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*',    extra_args=['--vm.Xmx1g', '--vm.Xms1g'])                                        + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk8-linux-amd64'},
     common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*', guest_jvm_config='no-shape-checks', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])    + {name: 'weekly-bench-espresso-jvm-ce-awfy-no-shape-checks-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*', guest_jvm_config='field-based', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])        + {name: 'weekly-bench-espresso-jvm-ce-awfy-field-based-jdk8-linux-amd64'},
     common.jdk8_weekly_bench_linux              + common.espresso_benchmark('native-ce', 'awfy:*', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])                                     + {name: 'weekly-bench-espresso-native-ce-awfy-jdk8-linux-amd64'},
     common.jdk8_weekly_bench_linux              + common.espresso_benchmark('native-ce', 'awfy:*', guest_jvm_config='no-shape-checks', extra_args=['--vm.Xmx1g', '--vm.Xms1g']) + {name: 'weekly-bench-espresso-native-ce-awfy-no-shape-checks-jdk8-linux-amd64'},
 

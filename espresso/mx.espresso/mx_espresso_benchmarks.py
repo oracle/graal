@@ -134,6 +134,7 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-o
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-shape-checks', ['--vm.Dcom.oracle.truffle.espresso.staticobject.DisableShapeChecks=true']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('field-based', ['--vm.Dcom.oracle.truffle.espresso.staticobject.FieldBasedStorage=true']), _suite)
 
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)
