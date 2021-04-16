@@ -78,9 +78,6 @@ public class PropertyAccessTest {
 
         for (StaticPropertyKind kind : StaticPropertyKind.values()) {
             int i = kind.ordinal();
-            PropertyGetter getter;
-            PropertySetter setter;
-
             switch (kind) {
                 case Boolean:
                     descriptors[i] = new TestDescriptor(

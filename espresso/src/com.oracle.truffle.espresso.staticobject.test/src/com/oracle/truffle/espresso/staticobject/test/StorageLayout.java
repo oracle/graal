@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.staticobject.test;
 
-import java.lang.reflect.Field;
-
 class StorageLayout {
     static final boolean ARRAY_BASED = true;
 }
