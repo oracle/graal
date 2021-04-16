@@ -28,6 +28,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativebridge.jni.JNI.JArray;
 import org.graalvm.nativebridge.jni.JNI.JByteArray;
 import org.graalvm.nativebridge.jni.JNI.JClass;
+import org.graalvm.nativebridge.jni.JNI.JFieldID;
 import org.graalvm.nativebridge.jni.JNI.JLongArray;
 import org.graalvm.nativebridge.jni.JNI.JMethodID;
 import org.graalvm.nativebridge.jni.JNI.JNIEnv;
@@ -113,9 +114,24 @@ public final class JNIUtil {
         return env.getFunctions().getGetMethodID().call(env, clazz, name, sig);
     }
 
-    public static JNI.JFieldID GetStaticFieldID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
+    public static JFieldID GetStaticFieldID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
         traceJNI("GetStaticFieldID");
         return env.getFunctions().getGetStaticFieldID().call(env, clazz, name, sig);
+    }
+
+    public static JFieldID GetFieldID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer signature) {
+        traceJNI("GetFieldID");
+        return env.getFunctions().getGetFieldID().call(env, clazz, name, signature);
+    }
+
+    public static JObject GetStaticObjectField(JNIEnv env, JClass clazz, JFieldID fieldID) {
+        traceJNI("GetFieldID");
+        return env.getFunctions().getGetStaticObjectField().call(env, clazz, fieldID);
+    }
+
+    public static int GetIntField(JNIEnv env, JObject object, JFieldID fieldID) {
+        traceJNI("GetIntField");
+        return env.getFunctions().getGetIntField().call(env, object, fieldID);
     }
 
     public static JObjectArray NewObjectArray(JNIEnv env, int len, JClass componentClass, JObject initialElement) {
@@ -351,15 +367,15 @@ public final class JNIUtil {
      * @param env the {@code JNIEnv}
      * @param binaryName the class binary name
      */
-    public static JNI.JClass findClass(JNI.JNIEnv env, JNI.JObject classLoader, String binaryName) {
+    public static JClass findClass(JNIEnv env, JObject classLoader, String binaryName) {
         if (classLoader.isNull()) {
             throw new IllegalArgumentException("ClassLoader must be non null.");
         }
         trace(1, "LIBGRAAL->HS: findClass");
-        JNI.JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS[0], METHOD_LOAD_CLASS[1]);
-        JNI.JValue params = StackValue.get(1, JNI.JValue.class);
+        JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS[0], METHOD_LOAD_CLASS[1]);
+        JValue params = StackValue.get(1, JValue.class);
         params.addressOf(0).setJObject(JNIUtil.createHSString(env, binaryName.replace('/', '.')));
-        return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
+        return (JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
     }
 
     /**
@@ -373,7 +389,7 @@ public final class JNIUtil {
      *            not found. If {@code false} the {@code NULL pointer} is returned when the class is
      *            not found.
      */
-    public static JNI.JClass findClass(JNI.JNIEnv env, JNI.JObject classLoader, String binaryName, boolean required) {
+    public static JClass findClass(JNIEnv env, JObject classLoader, String binaryName, boolean required) {
         Class<? extends Throwable> allowedException = null;
         try {
             if (classLoader.isNonNull()) {
@@ -395,29 +411,29 @@ public final class JNIUtil {
     /**
      * Returns a ClassLoader used to load the compiler classes.
      */
-    public static JNI.JObject getJVMCIClassLoader(JNI.JNIEnv env) {
+    public static JObject getJVMCIClassLoader(JNIEnv env) {
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            JNI.JClass clazz;
+            JClass clazz;
             try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(CLASS_SERVICES)) {
                 clazz = JNIUtil.FindClass(env, className.get());
             }
             if (clazz.isNull()) {
                 throw new InternalError("No such class " + CLASS_SERVICES);
             }
-            JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_JVMCI_CLASS_LOADER[0], METHOD_GET_JVMCI_CLASS_LOADER[1]);
+            JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_JVMCI_CLASS_LOADER[0], METHOD_GET_JVMCI_CLASS_LOADER[1]);
             if (getClassLoaderId.isNull()) {
                 throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_JVMCI_CLASS_LOADER[0], CLASS_SERVICES));
             }
             return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
         } else {
-            JNI.JClass clazz;
+            JClass clazz;
             try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(JNIUtil.getBinaryName(ClassLoader.class.getName()))) {
                 clazz = JNIUtil.FindClass(env, className.get());
             }
             if (clazz.isNull()) {
                 throw new InternalError("No such class " + ClassLoader.class.getName());
             }
-            JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER[0], METHOD_GET_PLATFORM_CLASS_LOADER[1]);
+            JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER[0], METHOD_GET_PLATFORM_CLASS_LOADER[1]);
             if (getClassLoaderId.isNull()) {
                 throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_PLATFORM_CLASS_LOADER[0], ClassLoader.class.getName()));
             }
@@ -425,13 +441,13 @@ public final class JNIUtil {
         }
     }
 
-    public static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, String methodName, String methodSignature) {
+    public static JMethodID findMethod(JNIEnv env, JClass clazz, boolean staticMethod, String methodName, String methodSignature) {
         return findMethod(env, clazz, staticMethod, false, methodName, methodSignature);
     }
 
-    private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, boolean optional,
+    private static JMethodID findMethod(JNIEnv env, JClass clazz, boolean staticMethod, boolean optional,
                     String methodName, String methodSignature) {
-        JNI.JMethodID result;
+        JMethodID result;
         try (CTypeConversion.CCharPointerHolder name = toCString(methodName); CTypeConversion.CCharPointerHolder sig = toCString(methodSignature)) {
             result = staticMethod ? GetStaticMethodID(env, clazz, name.get(), sig.get()) : GetMethodID(env, clazz, name.get(), sig.get());
             if (optional) {
@@ -439,6 +455,15 @@ public final class JNIUtil {
             } else {
                 JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             }
+            return result;
+        }
+    }
+
+    public static JFieldID findField(JNIEnv env, JClass clazz, boolean staticField, String fieldName, String fieldSignature) {
+        JFieldID result;
+        try (CTypeConversion.CCharPointerHolder name = toCString(fieldName); CTypeConversion.CCharPointerHolder sig = toCString(fieldSignature)) {
+            result = staticField ? GetStaticFieldID(env, clazz, name.get(), sig.get()) : GetFieldID(env, clazz, name.get(), sig.get());
+            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             return result;
         }
     }

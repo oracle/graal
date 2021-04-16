@@ -237,6 +237,9 @@ public final class JNI {
         @CField("GetStaticFieldID")
         GetStaticFieldID getGetStaticFieldID();
 
+        @CField("GetFieldID")
+        GetFieldID getGetFieldID();
+
         @CField("CallStaticBooleanMethodA")
         CallStaticBooleanMethodA getCallStaticBooleanMethodA();
 
@@ -281,6 +284,12 @@ public final class JNI {
 
         @CField("CallCharMethodA")
         CallCharMethodA getCallCharMethodA();
+
+        @CField("GetStaticObjectField")
+        GetStaticObjectField getGetStaticObjectField();
+
+        @CField("GetIntField")
+        GetIntField getGetIntField();
 
         @CField("GetStaticBooleanField")
         GetStaticBooleanField getGetStaticBooleanField();
@@ -581,6 +590,21 @@ public final class JNI {
     public interface GetStaticFieldID extends CFunctionPointer {
         @InvokeCFunctionPointer
         JFieldID call(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
+    }
+
+    public interface GetFieldID extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JFieldID call(JNIEnv env, JClass c, CCharPointer name, CCharPointer sig);
+    }
+
+    public interface GetStaticObjectField extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JObject call(JNIEnv env, JClass clazz, JFieldID fieldID);
+    }
+
+    public interface GetIntField extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIEnv env, JObject o, JFieldID fieldId);
     }
 
     public interface GetStaticBooleanField extends CFunctionPointer {

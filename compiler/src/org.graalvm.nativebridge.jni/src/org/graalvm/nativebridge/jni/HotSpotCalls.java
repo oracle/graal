@@ -81,6 +81,7 @@ public final class HotSpotCalls {
     }
 
     @HotSpotCall
+    @SuppressWarnings("unchecked")
     public static <R extends JObject> R callNewObject(JNI.JNIEnv env, JClass clazz, JMethodID id, JNI.JValue args) {
         JNI.JObject res = env.getFunctions().getNewObjectA().call(clazz, id, args);
         wrapAndThrowPendingJNIException(env);
@@ -91,6 +92,14 @@ public final class HotSpotCalls {
     public static void callVoid(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
         env.getFunctions().getCallVoidMethodA().call(env, object, id, args);
         wrapAndThrowPendingJNIException(env);
+    }
+
+    @HotSpotCall
+    @SuppressWarnings("unchecked")
+    public static <R extends JObject> R callJObject(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
+        JNI.JObject res = env.getFunctions().getCallObjectMethodA().call(env, object, id, args);
+        wrapAndThrowPendingJNIException(env);
+        return (R) res;
     }
 
     @HotSpotCall
