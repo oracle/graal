@@ -53,7 +53,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Regression test for GR-30689. Tries to trigger race condition between a read of the field storied
+ * Regression test for GR-30689. Tries to trigger race condition between a read of the field storing
  * the CachedLibrary in the generated "execute" method and write of that field in the generated
  * "executeAndSpecialize" method. Note that the race was reproducible only on JDK8.
  */
