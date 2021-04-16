@@ -633,24 +633,22 @@ public final class ClassRedefinition {
     }
 
     @TruffleBoundary
-    public static Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass) {
-        try {
-            lock();
-            Method replacementMethod = resolutionSeed.getDeclaringKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
-            Meta meta = resolutionSeed.getMeta();
-            if (replacementMethod == null) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()) +
-                                                " was removed by class redefinition");
-            } else if (resolutionSeed.isStatic() != replacementMethod.isStatic()) {
-                String message = resolutionSeed.isStatic() ? "expected static method: " : "expected non-static method:" + replacementMethod.getName();
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, message);
-            } else {
-                // Update to the latest version of the replacement method
-                return replacementMethod;
-            }
-        } finally {
-            unlock();
+    public static Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass, StaticObject receiver) {
+        // wait for potential ongoing redefinition to complete
+        check();
+        Klass lookupKlass = receiver != null ? receiver.getKlass() : resolutionSeed.getDeclaringKlass();
+        Method replacementMethod = lookupKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
+        Meta meta = resolutionSeed.getMeta();
+        if (replacementMethod == null) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
+                            meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()) +
+                                            " was removed by class redefinition");
+        } else if (resolutionSeed.isStatic() != replacementMethod.isStatic()) {
+            String message = resolutionSeed.isStatic() ? "expected static method: " : "expected non-static method:" + replacementMethod.getName();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, message);
+        } else {
+            // Update to the latest version of the replacement method
+            return replacementMethod;
         }
     }
 }
