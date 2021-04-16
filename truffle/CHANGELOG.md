@@ -6,6 +6,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
 * Added `CompilerDirectives.blackhole(value)` which can be helpful for benchmarking.
 * Added `TruffleLanguage#Env.registerOnDispose(Closeable)` registering `Closeable`s for automatic close on context dispose.
+* Added `engine.UsePreInitializedContext` option which can be used to disable usage of pre-initialized context.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
