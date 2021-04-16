@@ -1282,8 +1282,8 @@ public abstract class AArch64Assembler extends Assembler {
     /**
      * Insert ldp/stp at the specified position.
      */
-    protected void insertLdpStp(int position, int size, Instruction instr, Register rt, Register rt2, AArch64Address address) {
-        int instructionEncoding = generateLoadStorePairInstructionEncoding(instr, rt, rt2, address, false, getLog2TransferSize(size));
+    protected void insertLdpStp(int position, int size, Instruction instr, boolean isFP, Register rt, Register rt2, AArch64Address address) {
+        int instructionEncoding = generateLoadStorePairInstructionEncoding(instr, rt, rt2, address, isFP, getLog2TransferSize(size));
         emitInt(instructionEncoding, position);
     }
 

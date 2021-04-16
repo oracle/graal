@@ -100,14 +100,16 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         private AArch64Address address;
         private Register result;
         private int sizeInBytes;
-        private int position;
         private boolean isStore;
+        private boolean isFP;
+        private int position;
 
-        AArch64MemoryEncoding(int sizeInBytes, Register result, AArch64Address address, boolean isStore, int position) {
+        AArch64MemoryEncoding(int sizeInBytes, Register result, AArch64Address address, boolean isStore, boolean isFP, int position) {
             this.sizeInBytes = sizeInBytes;
             this.result = result;
             this.address = address;
             this.isStore = isStore;
+            this.isFP = isFP;
             this.position = position;
             AArch64Address.AddressingMode addressingMode = address.getAddressingMode();
             assert addressingMode == IMMEDIATE_UNSIGNED_SCALED || addressingMode == IMMEDIATE_SIGNED_UNSCALED : "Invalid address mode" +
@@ -246,7 +248,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         loadAddress(dst, address, 8);
     }
 
-    private boolean tryMerge(int sizeInBytes, Register rt, AArch64Address address, boolean isStore) {
+    private boolean tryMerge(int sizeInBytes, Register rt, AArch64Address address, boolean isStore, boolean isFP) {
         isImmLoadStoreMerged = false;
         if (lastImmLoadStoreEncoding == null) {
             return false;
@@ -265,12 +267,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             return false;
         }
 
-        if (isStore != lastImmLoadStoreEncoding.isStore) {
+        if (isStore != lastImmLoadStoreEncoding.isStore || isFP != lastImmLoadStoreEncoding.isFP) {
             return false;
         }
 
-        // Only merge ldr/str with the same size of 32bits or 64bits.
-        if (sizeInBytes != lastImmLoadStoreEncoding.sizeInBytes || (sizeInBytes != 4 && sizeInBytes != 8)) {
+        // Only merge ldr/str with the same size of 32, 64, or 128 (for FP) bits
+        if (sizeInBytes != lastImmLoadStoreEncoding.sizeInBytes || (sizeInBytes != 4 && sizeInBytes != 8 && (!isFP || sizeInBytes != 16))) {
             return false;
         }
 
@@ -299,8 +301,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             return false;
         }
 
-        // Offset must be in ldp/stp instruction's range.
-        int offset = curOffset > preOffset ? preOffset : curOffset;
+        /*
+         * Offset must be in ldp/stp instruction's range. Remember that ldp/stp has 7 bits reserved
+         * for the offset and hence can represent the values [-64, 63].
+         */
+        int offset = Math.min(curOffset, preOffset);
         int minOffset = -64 * sizeInBytes;
         int maxOffset = 63 * sizeInBytes;
         if (offset < minOffset || offset > maxOffset) {
@@ -328,9 +333,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         // Merge two ldrs/strs to ldp/stp.
-        Register rt1 = preRt;
-        Register rt2 = curRt;
-        if (curOffset < preOffset) {
+        Register rt1;
+        Register rt2;
+        if (preOffset < curOffset) {
+            rt1 = preRt;
+            rt2 = curRt;
+        } else {
             rt1 = curRt;
             rt2 = preRt;
         }
@@ -338,7 +346,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         int size = sizeInBytes * Byte.SIZE;
         AArch64Address pairAddress = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, curBase, offset);
         Instruction instruction = isStore ? STP : LDP;
-        insertLdpStp(lastPosition, size, instruction, rt1, rt2, pairAddress);
+        insertLdpStp(lastPosition, size, instruction, isFP, rt1, rt2, pairAddress);
         lastImmLoadStoreEncoding = null;
         isImmLoadStoreMerged = true;
         return true;
@@ -348,9 +356,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * Try to merge two continuous ldr/str to one ldp/stp. If this current ldr/str is not merged,
      * save it as the last ldr/str.
      */
-    private boolean tryMergeLoadStore(int srcSize, Register rt, AArch64Address address, boolean isStore) {
+    private boolean tryMergeLoadStore(int srcSize, Register rt, AArch64Address address, boolean isStore, boolean isFP) {
         int sizeInBytes = srcSize / Byte.SIZE;
-        if (tryMerge(sizeInBytes, rt, address, isStore)) {
+        if (tryMerge(sizeInBytes, rt, address, isStore, isFP)) {
             return true;
         }
 
@@ -364,7 +372,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                     return false;
                 }
             }
-            lastImmLoadStoreEncoding = new AArch64MemoryEncoding(sizeInBytes, rt, address, isStore, position());
+            lastImmLoadStoreEncoding = new AArch64MemoryEncoding(sizeInBytes, rt, address, isStore, isFP, position());
         }
         return false;
     }
@@ -723,7 +731,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * In addition, if requested, tries to merge two adjacent loads into one ldp.
      */
     private void ldr(int srcSize, Register rt, AArch64Address address, boolean tryMerge) {
-        if (!(tryMerge && tryMergeLoadStore(srcSize, rt, address, false))) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.ldr(srcSize, rt, address);
+        } else if (!tryMergeLoadStore(srcSize, rt, address, false, false)) {
             super.ldr(srcSize, rt, address);
         }
     }
@@ -738,8 +751,39 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void str(int destSize, Register rt, AArch64Address address) {
         // Try to merge two adjacent stores into one stp.
-        if (!tryMergeLoadStore(destSize, rt, address, true)) {
+        if (!tryMergeLoadStore(destSize, rt, address, true, false)) {
             super.str(destSize, rt, address);
+        }
+    }
+
+    /* Load-Store Single FP register (5.7.1.1) */
+    /**
+     * Floating point load.
+     *
+     * @param size number of bits read from memory into rt. Must be 8, 16, 32, 64 or 128.
+     * @param rt floating point register. May not be null.
+     * @param address all addressing modes allowed. May not be null.
+     */
+    @Override
+    public void fldr(int size, Register rt, AArch64Address address) {
+        // Try to merge two adjacent loads into one fldp.
+        if (!(tryMergeLoadStore(size, rt, address, false, true))) {
+            super.fldr(size, rt, address);
+        }
+    }
+
+    /**
+     * Floating point store.
+     *
+     * @param size number of bits read from memory into rt. Must be 32 or 64.
+     * @param rt floating point register. May not be null.
+     * @param address all addressing modes allowed. May not be null.
+     */
+    @Override
+    public void fstr(int size, Register rt, AArch64Address address) {
+        // Try to merge two adjacent stores into one fstp.
+        if (!(tryMergeLoadStore(size, rt, address, true, true))) {
+            super.fstr(size, rt, address);
         }
     }
 
