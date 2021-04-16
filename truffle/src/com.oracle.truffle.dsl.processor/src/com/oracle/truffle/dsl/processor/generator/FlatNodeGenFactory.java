@@ -181,7 +181,8 @@ public class FlatNodeGenFactory {
     private final boolean boxingEliminationEnabled;
     private int boxingSplitIndex = 0;
 
-    private final MultiStateBitSet multiState;
+    private final MultiStateBitSet multiState; // only active node
+    private final MultiStateBitSet allMultiState; // all nodes
     private final ExcludeBitSet exclude;
 
     private final ExecutableTypeData executeAndSpecializeType;
@@ -278,6 +279,7 @@ public class FlatNodeGenFactory {
             activeStateEndIndex = stateObjects.size();
         }
         this.multiState = createMultiStateBitset(stateObjects, activeStateStartIndex, activeStateEndIndex, volatileState);
+        this.allMultiState = new MultiStateBitSet(this.multiState.all, this.multiState.all);
         this.exclude = new ExcludeBitSet(excludeObjects.toArray(new SpecializationData[0]), volatileState);
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
         this.needsSpecializeLocking = exclude.getCapacity() != 0 || reachableSpecializations.stream().anyMatch((s) -> !s.getCaches().isEmpty());
@@ -744,7 +746,7 @@ public class FlatNodeGenFactory {
         Set<TypeGuard> implicitCasts = new LinkedHashSet<>();
 
         for (SpecializationData specialization : filteredSpecializations) {
-            for (StateBitSet set : multiState.getSets()) {
+            for (StateBitSet set : allMultiState.getSets()) {
                 if (set.contains(AOT_PREPARED)) {
                     // make sure we have an entry for a state bitset
                     // without any specialization but only with the AOT bit set
@@ -2023,7 +2025,7 @@ public class FlatNodeGenFactory {
 
         if (needsAOTReset()) {
             builder.startIf();
-            builder.tree(multiState.createContains(frameState, new Object[]{AOT_PREPARED}));
+            builder.tree(allMultiState.createContains(frameState, new Object[]{AOT_PREPARED}));
             builder.end().startBlock();
             builder.startStatement().startCall("this.resetAOT_").end().end();
             builder.end();
@@ -2404,7 +2406,7 @@ public class FlatNodeGenFactory {
             builder.startIf();
             builder.startStaticCall(ElementUtils.findMethod(types.CompilerDirectives, "inInterpreter")).end();
             builder.string(" && ");
-            builder.tree(multiState.createContains(frameState, new Object[]{AOT_PREPARED}));
+            builder.tree(allMultiState.createContains(frameState, new Object[]{AOT_PREPARED}));
             builder.end().startBlock();
             builder.tree(createCallExecuteAndSpecialize(currentType, originalFrameState));
             builder.end();
