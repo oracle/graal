@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import static com.oracle.truffle.api.CompilerDirectives.castExact;
-import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
-
 import java.lang.reflect.Array;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -40,14 +37,12 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 /**
  * Implementation of the Espresso object model.
