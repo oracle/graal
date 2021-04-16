@@ -12,10 +12,10 @@
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.11+9-jvmci-21.1-b05", "platformspecific": true },
 
     "oraclejdk16":        {"name": "oraclejdk", "version": "16.0.1+4", "platformspecific": true },
-    "labsjdk-ce-16":      {"name": "labsjdk",   "version": "ce-16+36-jvmci-21.1-b04", "platformspecific": true },
-    "labsjdk-ce-16Debug": {"name": "labsjdk",   "version": "ce-16+36-jvmci-21.1-b04-debug", "platformspecific": true },
-    "labsjdk-ee-16":      {"name": "labsjdk",   "version": "ee-16+36-jvmci-21.1-b04", "platformspecific": true },
-    "labsjdk-ee-16Debug": {"name": "labsjdk",   "version": "ee-16+36-jvmci-21.1-b04-debug", "platformspecific": true }
+    "labsjdk-ce-16":      {"name": "labsjdk",   "version": "ce-16.0.1+9-jvmci-21.1-b05", "platformspecific": true },
+    "labsjdk-ce-16Debug": {"name": "labsjdk",   "version": "ce-16.0.1+9-jvmci-21.1-b05-debug", "platformspecific": true },
+    "labsjdk-ee-16":      {"name": "labsjdk",   "version": "ee-16.0.1+9-jvmci-21.1-b05", "platformspecific": true },
+    "labsjdk-ee-16Debug": {"name": "labsjdk",   "version": "ee-16.0.1+9-jvmci-21.1-b05-debug", "platformspecific": true }
   },
 
   "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
