@@ -230,17 +230,18 @@ public class FlatNodeGenFactory {
         int activeStateStartIndex = -1;
         int activeStateEndIndex = -1;
         boolean volatileState = false;
+        boolean aotStateAdded = false;
         for (NodeData stateNode : stateSharingNodes) {
             boolean primary = stateNode == node;
             if (primary && activeStateStartIndex == -1) {
                 activeStateStartIndex = stateObjects.size();
-
-                if (needsAOTReset()) {
-                    stateObjects.add(AOT_PREPARED);
-                }
             }
             if (!primary && activeStateStartIndex != -1 && activeStateEndIndex == -1) {
                 activeStateEndIndex = stateObjects.size();
+            }
+            if (!aotStateAdded && needsAOTReset()) {
+                stateObjects.add(AOT_PREPARED);
+                aotStateAdded = true;
             }
 
             boolean needsRewrites = stateNode.needsRewrites(context);
@@ -344,7 +345,15 @@ public class FlatNodeGenFactory {
     }
 
     private boolean needsAOTReset() {
-        return node.isGenerateAOT() && needsRewrites();
+        if (!node.isGenerateAOT()) {
+            return false;
+        }
+        for (NodeData currentNode : sharingNodes) {
+            if (currentNode.needsRewrites(context)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean hasMultipleNodes() {
@@ -373,9 +382,8 @@ public class FlatNodeGenFactory {
         } else {
             String prefix = "";
             if (hasMultipleNodes()) {
-                prefix = firstLetterLowerCase(getNodePrefix(specialization)) + "_";
-            }
-            if (reachableSpecializations.size() > 1) {
+                prefix = firstLetterLowerCase(getNodePrefix(specialization)) + "_" + firstLetterLowerCase(specialization.getId()) + "_";
+            } else if (reachableSpecializations.size() > 1) {
                 prefix = prefix + firstLetterLowerCase(specialization.getId()) + "_";
             }
             return prefix + cacheParameter.getLocalName() + "_";
@@ -708,6 +716,8 @@ public class FlatNodeGenFactory {
         return clazz;
     }
 
+    private static final String AOT_STATE = "$aot";
+
     private void generateAOT(CodeTypeElement clazz) {
         TypeMirror aotProviderType = new GeneratedTypeMirror(ElementUtils.getPackageName(types.GenerateAOT_Provider), "GenerateAOT.Provider");
         clazz.getImplements().add(aotProviderType);
@@ -718,13 +728,17 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = prepare.createBuilder();
 
         List<SpecializationData> filteredSpecializations = new ArrayList<>();
-        for (SpecializationData s : reachableSpecializations) {
-            if (s.getMethod() == null || !s.isPrepareForAOT()) {
-                continue;
+        for (NodeData currentNode : sharingNodes) {
+            for (SpecializationData s : calculateReachableSpecializations(currentNode)) {
+                if (s.getMethod() == null || !s.isPrepareForAOT()) {
+                    continue;
+                }
+                filteredSpecializations.add(s);
             }
-            filteredSpecializations.add(s);
         }
+
         FrameState frameState = FrameState.load(this, NodeExecutionMode.SLOW_PATH, prepare);
+        frameState.setBoolean(AOT_STATE, true);
 
         Map<StateBitSet, List<SpecializationData>> stateGroup = new LinkedHashMap<>();
         Set<TypeGuard> implicitCasts = new LinkedHashSet<>();
@@ -888,13 +902,29 @@ public class FlatNodeGenFactory {
                 if (cache.isAlwaysInitialized()) {
                     continue;
                 }
-                if (NodeCodeGenerator.isSpecializedNode(cache.getParameter().getType())) {
+
+                /*
+                 * Libraries might not be AOT preparable. E.g. if a cached library was created from
+                 * a final field of the current language. In such a case we should just not call
+                 * prepareForAOT.
+                 *
+                 * Specializable nodes are always known to be preparable if they reach the code
+                 * generator.
+                 */
+                boolean cachedLibrary = cache.isCachedLibrary();
+                if (cachedLibrary) {
+                    builder.startIf().tree(createCacheReference(frameState, specialization, cache)).instanceOf(aotProviderType).end().startBlock();
+                }
+                if (NodeCodeGenerator.isSpecializedNode(cache.getParameter().getType()) || cachedLibrary) {
                     builder.startStatement();
                     builder.string("(");
                     builder.cast(aotProviderType);
                     builder.tree(createCacheReference(frameState, specialization, cache));
                     builder.string(")");
                     builder.string(".prepareForAOT(language, root)");
+                    builder.end();
+                }
+                if (cachedLibrary) {
                     builder.end();
                 }
             }
@@ -945,6 +975,7 @@ public class FlatNodeGenFactory {
                     resetCaches.add(cache);
                 }
             }
+
             if (resetCaches.size() > 0) {
                 builder.tree(multiState.createLoad(frameState, specialization));
                 builder.startIf().tree(multiState.createContains(frameState, new Object[]{specialization})).end();
@@ -964,6 +995,33 @@ public class FlatNodeGenFactory {
         }
         if (requiresExclude()) {
             builder.tree(exclude.createSetZero(frameState, true));
+        }
+
+        /*
+         * It is important that we reset the state first before we clear the caches for initialized
+         * libraries. Otherwise we might observe an enabled specialization without initialized cache
+         * on the fast-path.
+         */
+        for (SpecializationData specialization : filteredSpecializations) {
+            boolean resetSpecializationClass = false;
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.isCachedLibraryManuallyDispatched()) {
+                    if (useSpecializationClass(specialization)) {
+                        resetSpecializationClass = true;
+                        break;
+                    }
+                    builder.startStatement();
+                    builder.tree(createCacheReference(frameState, specialization, cache)).string(" = null");
+                    builder.end();
+                }
+            }
+
+            if (resetSpecializationClass) {
+                builder.startStatement();
+                builder.string("this.", createSpecializationFieldName(specialization));
+                builder.string(" = null");
+                builder.end();
+            }
         }
     }
 
@@ -1317,7 +1375,7 @@ public class FlatNodeGenFactory {
     }
 
     private boolean isGenerateAOT() {
-        return generatorMode == GeneratorMode.DEFAULT && primaryNode && node.isGenerateAOT();
+        return primaryNode && node.isGenerateAOT();
     }
 
     private boolean isGenerateStatistics() {
@@ -4832,6 +4890,8 @@ public class FlatNodeGenFactory {
             // already initialized
             return null;
         }
+        boolean aot = frameState.getBoolean(AOT_STATE, false);
+
         CodeTree tree;
         if (cache.isMergedLibrary()) {
             if (frameState.getMode().isUncached()) {
@@ -4863,10 +4923,15 @@ public class FlatNodeGenFactory {
                 expression = cache.getUncachedExpression();
             } else {
                 expression = cache.getDefaultExpression();
+                if (aot) {
+                    if (!specialization.isOnlyLanguageReferencesBound(expression)) {
+                        expression = substituteManualToAutoDispatch(expression);
+                    }
+                }
                 if (specialization.needsTruffleBoundary() &&
                                 (specialization.isAnyLibraryBoundInGuard() || specialization.needsVirtualFrame())) {
                     /*
-                     * Library.getUncached() should be used instead of Library.getUnached(receiver)
+                     * Library.getUncached() should be used instead of Library.getUncached(receiver)
                      * in order to avoid non TruffleBoundary virtual dispatches on the compiled code
                      * path.
                      */
@@ -4876,6 +4941,36 @@ public class FlatNodeGenFactory {
             tree = writeExpression(frameState, specialization, expression);
         }
         return tree;
+    }
+
+    private DSLExpression substituteManualToAutoDispatch(DSLExpression expression) {
+        return expression.reduce(new DSLExpressionReducer() {
+            public DSLExpression visitVariable(Variable binary) {
+                return binary;
+            }
+
+            public DSLExpression visitNegate(Negate negate) {
+                return negate;
+            }
+
+            public DSLExpression visitCall(Call call) {
+                if (call.getName().equals("create") && ElementUtils.typeEquals(call.getResolvedMethod().getEnclosingElement().asType(), types.LibraryFactory)) {
+                    // we can actually use any limit other then 0 as this would go directly to
+                    // uncached. We use 2 to avoid single entry optimizations that might trigger in
+                    // the future.
+                    Call newCall = new Call(call.getReceiver(), call.getName(), Arrays.asList(new DSLExpression.IntLiteral("2")));
+                    newCall.setResolvedMethod(ElementUtils.findExecutableElement(types.LibraryFactory,
+                                    "createDispatched", 1));
+                    newCall.setResolvedTargetType(call.getResolvedTargetType());
+                    return newCall;
+                }
+                return call;
+            }
+
+            public DSLExpression visitBinary(Binary binary) {
+                return binary;
+            }
+        });
     }
 
     private DSLExpression substituteToDispatchedUncached(DSLExpression expression) {

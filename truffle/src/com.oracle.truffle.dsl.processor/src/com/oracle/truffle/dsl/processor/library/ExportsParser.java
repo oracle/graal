@@ -617,6 +617,61 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 continue;
             }
 
+            lib.setUseForAOT(ElementUtils.getAnnotationValue(Boolean.class, annotationMirror, "useForAOT"));
+
+            if (libraryData.isGenerateAOT()) {
+                AnnotationValue useForAOT = getAnnotationValue(annotationMirror, "useForAOT", false);
+
+                if (useForAOT == null) {
+                    lib.addError(annotationMirror, useForAOT,
+                                    "The useForAOT property needs to be declared for exports of libraries annotated with @%s. " + //
+                                                    "Declare the useForAOT property to resolve this problem.",
+                                    getSimpleName(types.GenerateAOT));
+                }
+
+                Integer useForAOTPriority = getAnnotationValue(Integer.class, annotationMirror, "useForAOTPriority", false);
+
+                if (useForAOTPriority == null && lib.isUseForAOT()) {
+                    lib.addError("The useForAOTPriority property must also be set for libraries used for AOT. "//
+                                    + "See @%s(useForAOTPriority=...) for details.",
+                                    getSimpleName(types.ExportLibrary));
+                    continue;
+                } else if (useForAOTPriority != null) {
+                    lib.setUseForAOTPriority(useForAOTPriority);
+                }
+
+            }
+
+            if (lib.isUseForAOT() && !lib.isFinalReceiver()) {
+                AnnotationValue useForAOT = getAnnotationValue(annotationMirror, "useForAOT", false);
+
+                lib.addError(annotationMirror, useForAOT,
+                                "If useForAOT is set to true the receiver type must be a final. " + //
+                                                "The compiled code would otherwise cause performance warnings. " + //
+                                                "Add the final modifier to the receiver class or set useForAOT to false to resolve this.");
+            } else if (lib.isUseForAOT() && lib.isDynamicDispatchTarget()) {
+                AnnotationMirror dynamicDispatchExportMirror = lib.getReceiverDynamicDispatchExport();
+                if (dynamicDispatchExportMirror == null) {
+                    throw new AssertionError("Should not reach here. isDynamicDispatchTarget should not return true");
+                }
+
+                if (!ElementUtils.getAnnotationValue(Boolean.class, dynamicDispatchExportMirror, "useForAOT")) {
+                    AnnotationValue useForAOT = getAnnotationValue(annotationMirror, "useForAOT", false);
+                    lib.addError(annotationMirror, useForAOT,
+                                    "The dynamic dispatch target must set useForAOT to true also for the DynamicDispatch export of the receiver type %s. ",
+                                    getSimpleName(lib.getReceiverType()));
+                }
+            }
+
+            if (lib.isUseForAOT() && !libraryData.isGenerateAOT() && !libraryData.isDynamicDispatch()) {
+                AnnotationValue useForAOT = getAnnotationValue(annotationMirror, "useForAOT", false);
+
+                lib.addError(annotationMirror, useForAOT,
+                                "The exported library does not support AOT. Add the @%s annotation to the library class %s to resolve this.",
+                                getSimpleName(types.GenerateAOT),
+                                getQualifiedName(libraryData.getTemplateType()));
+            }
+
             if (explicitReceiver) {
                 TypeMirror receiverTypeErasure = context.getEnvironment().getTypeUtils().erasure(libraryData.getSignatureReceiverType());
                 if (!isSubtype(receiverClass, receiverTypeErasure)) {
@@ -1161,6 +1216,9 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         clonedType.getAnnotationMirrors().clear();
         clonedType.getAnnotationMirrors().add(newImports);
+        if (exportedMessage.getExportsLibrary().isUseForAOT()) {
+            clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT));
+        }
         if (generateUncached != null) {
             clonedType.getAnnotationMirrors().add(generateUncached);
         } else {
