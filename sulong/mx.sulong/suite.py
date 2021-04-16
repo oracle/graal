@@ -927,20 +927,17 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.bitcode.other.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
+      "class" : "SulongCMakeTestSuite",
       "bundledLLVMOnly" : True,
-      "variants" : ["O0"],
+      "variants" : ["bitcode-O0"],
       "fileExts" : [".ll"],
       "buildRef" : False,
-      "buildEnv" : {
-        "OS" : "<os>",
-        "CFLAGS" : "-O0",
+      "cmakeConfig" : {
+        "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
       },
-      "dependencies" : [
-        "SULONG_TEST",
-      ],
       "buildDependencies" : [
         "LINUX_AMD64_SUPPORT",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
       "testProject" : True,
       "defaultBuild" : False,
