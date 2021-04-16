@@ -298,7 +298,7 @@ public class ServiceLoaderFeature implements Feature {
                 implementationClass.getDeclaredConstructor();
             } catch (ReflectiveOperationException | NoClassDefFoundError ex) {
                 if (trace) {
-                    System.out.println("  cannot nullary constructor for " + implementationClassName + ": " + ex.getMessage());
+                    System.out.println("  cannot resolve a nullary constructor for " + implementationClassName + ": " + ex.getMessage());
                 }
                 continue;
             }
