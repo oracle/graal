@@ -26,11 +26,17 @@
  */
 package org.graalvm.compiler.jtt.except;
 
+import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.junit.Test;
 
-import org.graalvm.compiler.jtt.JTTTest;
-
 public class BC_getfield1 extends JTTTest {
+
+    @Override
+    protected OptimisticOptimizations getOptimisticOptimizations() {
+        // Disable profile based optimizations
+        return OptimisticOptimizations.NONE;
+    }
 
     private static class TestClass {
         private int field = 13;
@@ -49,7 +55,7 @@ public class BC_getfield1 extends JTTTest {
     @Test
     public void run1() throws Throwable {
         // tests that the null check isn't removed along with the read
-        runTest(getInitialOptions(), EMPTY, true, true, "test", (Object) null);
+        runTest(EMPTY, "test", (Object) null);
     }
 
     @Test
