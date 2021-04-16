@@ -523,10 +523,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Double> DynamicThresholdsMinScale = new OptionKey<>(0.1);
 
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> DynamicThresholdsNormalLoad = new OptionKey<>(50);
+    public static final OptionKey<Integer> DynamicThresholdsNormalLoad = new OptionKey<>(100);
 
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Double> DynamicThresholdPlateauWidth = new OptionKey<>(0.8);
+    public static final OptionKey<Double> DynamicThresholdPlateauWidth = new OptionKey<>(0.9);
 
     // Language agnostic inlining
 
