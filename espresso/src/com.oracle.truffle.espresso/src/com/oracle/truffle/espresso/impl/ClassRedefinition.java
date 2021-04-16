@@ -86,21 +86,6 @@ public final class ClassRedefinition {
         INVALID;
     }
 
-    public static void lock() {
-        synchronized (redefineLock) {
-            check();
-            locked = true;
-        }
-    }
-
-    public static void unlock() {
-        synchronized (redefineLock) {
-            check();
-            locked = false;
-            redefineLock.notifyAll();
-        }
-    }
-
     public static void begin() {
         synchronized (redefineLock) {
             while (locked) {
