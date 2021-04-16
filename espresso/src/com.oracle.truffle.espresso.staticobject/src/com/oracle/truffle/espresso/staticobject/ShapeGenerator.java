@@ -42,6 +42,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
 
 abstract class ShapeGenerator<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
+    private static final boolean FIELD_BASED_STORAGE = Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.FieldBasedStorage");
     private static final String DELIMITER = "$$";
     private static final AtomicInteger counter = new AtomicInteger();
     private static final int JAVA_SPEC_VERSION;
@@ -67,11 +68,17 @@ abstract class ShapeGenerator<T> {
     abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<ExtendedProperty> extendedProperties);
 
     static <T> ShapeGenerator<T> getShapeGenerator(StaticShape<T> parentShape) {
-        return getShapeGenerator(parentShape.getStorageClass().getSuperclass(), parentShape.getFactoryInterface());
+        Class<?> parentStorageClass = parentShape.getStorageClass();
+        Class<?> storageSuperclass = FIELD_BASED_STORAGE ? parentStorageClass : parentStorageClass.getSuperclass();
+        return getShapeGenerator(storageSuperclass, parentShape.getFactoryInterface());
     }
 
     static <T> ShapeGenerator<T> getShapeGenerator(Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
-        return ArrayBasedShapeGenerator.getShapeGenerator(storageSuperClass, storageFactoryInterface);
+        if (FIELD_BASED_STORAGE) {
+            return FieldBasedShapeGenerator.getShapeGenerator(storageSuperClass, storageFactoryInterface);
+        } else {
+            return ArrayBasedShapeGenerator.getShapeGenerator(storageSuperClass, storageFactoryInterface);
+        }
     }
 
     static String generateStorageName() {

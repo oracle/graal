@@ -22,7 +22,12 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
+
 public abstract class StaticShape<T> {
+    protected static final Unsafe UNSAFE = getUnsafe();
     protected final Class<?> storageClass;
     protected T factory;
 
@@ -60,5 +65,19 @@ public abstract class StaticShape<T> {
         // Builder.validate() makes sure that the factory class implements a single interface
         assert factory.getClass().getInterfaces().length == 1;
         return (Class<T>) factory.getClass().getInterfaces()[0];
+    }
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
     }
 }
