@@ -67,6 +67,8 @@ class SubstrateAArch64Feature implements Feature {
         ImageSingletons.add(ReservedRegisters.class, new AArch64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
+            AArch64CalleeSavedRegisters.createAndRegister();
+
             ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
                 @Override
                 public SubstrateBackend newBackend(Providers newProviders) {
