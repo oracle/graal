@@ -291,11 +291,10 @@ public final class DebugScope {
                 return null;
             }
             String name = INTEROP.asString(NODE.getReceiverMember(node, frame));
-            if (!INTEROP.isMemberReadable(scope, name)) {
+            if (!INTEROP.isMemberReadable(scope, name) || !isDeclaredInScope(name)) {
                 return null;
             }
-            Object receiver = INTEROP.readMember(scope, name);
-            receiverValue = new DebugValue.HeapValue(session, getLanguage(), name, receiver);
+            receiverValue = new DebugValue.ObjectMemberValue(session, getLanguage(), this, scope, name);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -400,6 +399,21 @@ public final class DebugScope {
             throw DebugException.create(session, ex, language);
         }
         return variables;
+    }
+
+    private boolean isDeclaredInScope(String name) {
+        Object scopeParent = null;
+        if (INTEROP.hasScopeParent(scope)) {
+            try {
+                scopeParent = INTEROP.getScopeParent(scope);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        if (scopeParent == null) {
+            return true;
+        }
+        return new SubtractedVariables(scope, scopeParent).isMemberReadable(name);
     }
 
     /**
