@@ -269,7 +269,6 @@ public class AnalysisUniverse implements Universe {
         try {
             JavaKind storageKind = getStorageKind(type, originalMetaAccess);
             AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass);
-            hostVM.registerType(newValue);
 
             synchronized (this) {
                 /*
@@ -291,6 +290,14 @@ public class AnalysisUniverse implements Universe {
                     objectClass = newValue;
                 }
             }
+
+            /*
+             * Registering the type can throw an exception. Doing it after the synchronized block
+             * ensures that typesById doesn't contain any null values. This could happen since the
+             * AnalysisType constructor increments the nextTypeId counter.
+             */
+            hostVM.registerType(newValue);
+
             /*
              * Now that our type is correctly registered in the id-to-type array, make it accessible
              * by other threads.
