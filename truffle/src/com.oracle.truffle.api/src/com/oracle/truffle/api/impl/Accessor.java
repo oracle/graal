@@ -180,6 +180,8 @@ public abstract class Accessor {
         public abstract ExecutionSignature prepareForAOT(RootNode rootNode);
 
         public abstract void setPolyglotEngine(RootNode rootNode, Object engine);
+
+        public abstract boolean countsTowardsStackTraceLimit(RootNode rootNode);
     }
 
     public abstract static class SourceSupport extends Support {
