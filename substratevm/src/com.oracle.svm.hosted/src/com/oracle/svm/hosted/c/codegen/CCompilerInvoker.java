@@ -147,7 +147,12 @@ public abstract class CCompilerInvoker {
                     scanner.next();
                     targetArch = scanner.next();
                 }
-                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null) {
+                /*
+                 * Some cl.exe print "... Microsoft (R) C/C++ ... ##.##.#####" while others print
+                 * "...C/C++ ... Microsoft (R) ... ##.##.#####".
+                 */
+                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null &&
+                                scanner.findInLine("C/C\\+\\+.*Microsoft.*\\(R\\)") == null) {
                     return null;
                 }
                 scanner.useDelimiter("\\D");
