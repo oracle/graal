@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,20 +25,14 @@
 package org.graalvm.compiler.graph.spi;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
 
 /**
- * @see Simplifiable
+ * A marker interface for {@link Node} classes that can be efficiently queried via
+ * {@link NodeClass#isCommutative()}.
+ *
+ * Since the "graph" infrastructure is general and not limited to compiler graphs, this interface
+ * does not define any meaning for "commutative".
  */
-public interface SimplifierTool extends CanonicalizerTool {
-
-    void deleteBranch(Node branch);
-
-    /**
-     * Adds a node to the worklist independent of whether it has already been on the worklist.
-     */
-    void addToWorkList(Node node);
-
-    void addToWorkList(Iterable<? extends Node> nodes);
-
-    void removeIfUnused(Node node);
+public interface BinaryCommutativeMarker {
 }

@@ -33,13 +33,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -61,6 +59,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
@@ -145,9 +146,9 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
     }
 
     /* Usage of lambdas is not allowed in Graal nodes, so need explicit inner class. */
-    final Supplier<JavaConstant> fieldInitializationStatusArrayOrNullSupplier = new Supplier<JavaConstant>() {
+    final Function<CoreProviders, JavaConstant> fieldInitializationStatusArrayOrNullSupplier = new Function<CoreProviders, JavaConstant>() {
         @Override
-        public JavaConstant get() {
+        public JavaConstant apply(CoreProviders providers) {
             if (fieldInitializationStatus == null) {
                 return null;
             }
@@ -349,9 +350,9 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
         }
 
         /* Usage of lambdas is not allowed in Graal nodes, so need explicit inner class. */
-        Supplier<JavaConstant> fieldCheckIndexOrNullSupplier = new Supplier<JavaConstant>() {
+        Function<CoreProviders, JavaConstant> fieldCheckIndexOrNullSupplier = new Function<CoreProviders, JavaConstant>() {
             @Override
-            public JavaConstant get() {
+            public JavaConstant apply(CoreProviders providers) {
                 if (feature.fieldCheckIndexMap == null) {
                     return null;
                 }
@@ -364,8 +365,8 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
          * field, or the uninitialized value. The initialization status array and the index into
          * that array are not known yet during bytecode parsing, so a "lazy constant" is used.
          */
-        ValueNode initStatusArrayNode = b.add(LazyConstantNode.create(StampFactory.objectNonNull(), feature.fieldInitializationStatusArrayOrNullSupplier, b.getMetaAccess()));
-        ValueNode fieldCheckIndexNode = b.add(LazyConstantNode.create(StampFactory.forInteger(JavaKind.Int, 0, Integer.MAX_VALUE), fieldCheckIndexOrNullSupplier, b.getMetaAccess()));
+        ValueNode initStatusArrayNode = b.add(LazyConstantNode.create(StampFactory.objectNonNull(), feature.fieldInitializationStatusArrayOrNullSupplier, b));
+        ValueNode fieldCheckIndexNode = b.add(LazyConstantNode.create(StampFactory.forInteger(JavaKind.Int, 0, Integer.MAX_VALUE), fieldCheckIndexOrNullSupplier, b));
         ValueNode fieldCheckStatusNode = b.add(LoadIndexedNode.create(b.getAssumptions(), initStatusArrayNode, fieldCheckIndexNode,
                         null, JavaKind.Boolean, b.getMetaAccess(), b.getConstantReflection()));
         LogicNode isUninitializedNode = b.add(IntegerEqualsNode.create(fieldCheckStatusNode, ConstantNode.forBoolean(false), NodeView.DEFAULT));
