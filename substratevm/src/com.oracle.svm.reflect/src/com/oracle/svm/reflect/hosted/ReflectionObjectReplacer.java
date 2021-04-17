@@ -31,27 +31,51 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.function.Function;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.util.GuardedAnnotationAccess;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+
 import sun.reflect.generics.repository.ClassRepository;
 import sun.reflect.generics.repository.ConstructorRepository;
 import sun.reflect.generics.repository.FieldRepository;
 import sun.reflect.generics.repository.GenericDeclRepository;
 import sun.reflect.generics.repository.MethodRepository;
 
-/** Pre-load reflection metadata. */
-@AutomaticFeature
-public class ReflectionMetadataFeature implements Feature {
+public class ReflectionObjectReplacer implements Function<Object, Object> {
+    private final AnalysisMetaAccess metaAccess;
 
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(ReflectionMetadataFeature::replacer);
+    public ReflectionObjectReplacer(AnalysisMetaAccess metaAccess) {
+        this.metaAccess = metaAccess;
     }
 
-    private static Object replacer(Object original) {
+    @Override
+    public Object apply(Object original) {
+
+        /*
+         * Reflection accessors use Unsafe, so ensure that all reflectively accessible fields are
+         * registered as unsafe-accessible, whether they have been explicitly registered or their
+         * Field object is reachable in the image heap.
+         */
+
+        if (original instanceof Field) {
+            ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).inspectAccessibleField((Field) original);
+
+            // The declaring class might not yet be reachable
+            AnalysisType declaring = metaAccess.lookupJavaType(((Field) original).getDeclaringClass());
+            declaring.registerAsReachable();
+
+            AnalysisField analysisField = metaAccess.lookupJavaField((Field) original);
+            if (!analysisField.isUnsafeAccessed()) {
+                analysisField.registerAsAccessed();
+                analysisField.registerAsUnsafeAccessed((AnalysisUniverse) metaAccess.getUniverse());
+            }
+        }
 
         /*
          * Ensure that the generic info and annotations data structures are initialized. By calling
