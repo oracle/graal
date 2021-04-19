@@ -544,30 +544,47 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
       ],
-      "javaProperties" : {
-        "llirtestgen.prelude": "prelude.ll",
-      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "license" : "BSD-new",
       "testProject" : True,
-      "defaultBuild" : False,
       "jacoco" : "exclude",
     },
     "com.oracle.truffle.llvm.tests.llirtestgen.generated" : {
-      "class": "GeneratedTestSuite",
       "subDir" : "tests",
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
+      "bundledLLVMOnly" : True,
+      "results" : ["gen"],
       "buildDependencies" : [
         "LLIR_TEST_GEN",
         "SULONG_HOME",
+        "sdk:LLVM_TOOLCHAIN",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+        "LINUX_AMD64_SUPPORT",
       ],
-      "buildEnv" : {
-        "LDFLAGS": "-lm",
+      "buildEnv": {
         "LLIRTESTGEN_CMD" : "<get_jvm_cmd_line:LLIR_TEST_GEN>",
-        "OS" : "<os>",
+      },
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.llirtestgen.native" : {
+      "class": "ExternalCMakeTestSuite",
+      "subDir" : "tests",
+      "testSourceDir" : "<path:LLIR_TEST_GEN_SOURCES>",
+      "native" : True,
+      "vpath" : True,
+      "bundledLLVMOnly" : True,
+      "variants" : ["bitcode-O0"],
+      "fileExts" : [".ll"],
+      "buildDependencies" : [
+        "LLIR_TEST_GEN_SOURCES",
+        "LINUX_AMD64_SUPPORT",
+      ],
+      "cmakeConfig": {
+        "CMAKE_C_LINK_FLAGS" : "-lm",
       },
       "license" : "BSD-new",
       "testProject" : True,
@@ -1595,9 +1612,22 @@ suite = {
       ],
       "license" : "BSD-new",
       "testDistribution" : True,
-      "defaultBuild" : False,
     },
 
+    "LLIR_TEST_GEN_SOURCES" : {
+      "description" : "Distribution for the generated ll source files.",
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:com.oracle.truffle.llvm.tests.llirtestgen.generated/*",
+        ],
+      },
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
     "SULONG_STANDALONE_TEST_SUITES" : {
       "description" : "Tests with a reference executable that is used to verify the result.",
       "native" : True,
@@ -1605,7 +1635,7 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./" : [
-          "dependency:com.oracle.truffle.llvm.tests.llirtestgen.generated/*",
+          "dependency:com.oracle.truffle.llvm.tests.llirtestgen.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulong.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongavx.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongcpp.native/*",

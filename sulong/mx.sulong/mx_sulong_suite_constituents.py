@@ -243,52 +243,6 @@ class SulongTestSuite(SulongTestSuiteMixin, mx.NativeProject):  # pylint: disabl
         return env
 
 
-def llirtestgen(args=None, out=None):
-    return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
-
-
-class GeneratedTestSuite(SulongTestSuiteBaseMixin, mx.NativeProject):  # pylint: disable=too-many-ancestors
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
-                 buildSharedObject=False, **args):
-        d = os.path.join(suite.dir, subDir, name)
-        super(GeneratedTestSuite, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
-        self.vpath = True
-        self.buildRef = buildRef
-        self.buildSharedObject = buildSharedObject
-        self._is_needs_rebuild_call = False
-
-    def getTests(self):
-        if not hasattr(self, '_tests'):
-            self._tests = []
-
-            def enlist(line):
-                line = line.strip()
-                if not line.endswith(".ignore"):
-                    self._tests += [line + ".dir"]
-
-            llirtestgen(["gen", "--print-filenames"], out=enlist)
-        return self._tests
-
-    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
-        env = super(GeneratedTestSuite, self).getBuildEnv(replaceVar=replaceVar)
-        env['VPATH'] = self.dir
-        env['PROJECT'] = self.name
-        env['TESTS'] = ' '.join(self.getTests())
-        env['VARIANTS'] = ' '.join(self.getVariants())
-        env['BUILD_REF'] = '1' if self.buildRef else '0'
-        env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
-        env['SO_EXT'] = mx.add_lib_suffix("")
-        env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
-        env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
-        env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
-        env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
-        env['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
-        env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
-        env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
-        env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
-        return env
-
-
 def collectExcludes(path):
     def _collect(path, skip=None):
         for root, _, files in os.walk(path):
