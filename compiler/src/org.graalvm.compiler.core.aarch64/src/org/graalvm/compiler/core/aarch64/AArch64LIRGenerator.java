@@ -651,7 +651,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
-        // only need a barrier post sync is required on AArch64
+        // only need a post sync barrier on AArch64
         if (!isPreSync) {
             append(new AArch64CacheWritebackPostSyncOp());
         }

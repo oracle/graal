@@ -259,7 +259,6 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 cycles = superNodeClass != null ? superNodeClass.cycles : NodeCycles.CYCLES_UNSET;
             } else {
                 cycles = c;
-                assert c != NodeCycles.CYCLES_UNKNOWN || !info.cyclesRationale().isEmpty() : "rationale required for " + NodeSize.SIZE_UNKNOWN.name();
             }
             assert cycles != null;
             NodeSize s = info.size();
@@ -267,7 +266,6 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 size = superNodeClass != null ? superNodeClass.size : NodeSize.SIZE_UNSET;
             } else {
                 size = s;
-                assert s != NodeSize.SIZE_UNKNOWN || !info.sizeRationale().isEmpty() : "rationale required for " + NodeSize.SIZE_UNKNOWN.name();
             }
             assert size != null;
             debug.log("Node cost for node of type __| %s |_, cycles:%s,size:%s", clazz, cycles, size);

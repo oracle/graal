@@ -734,7 +734,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
-        // only need a barrier post sync is required on AMD64
+        // only need a post sync barrier on AMD64
         if (!isPreSync) {
             append(new AMD64CacheWritebackPostSyncOp());
         }

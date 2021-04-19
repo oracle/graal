@@ -26,15 +26,15 @@ package org.graalvm.compiler.nodeinfo;
 
 /**
  * Constants representing the abstract number of CPU instructions needed to represent a node. This
- * ignore byte sizes of instructions (i.e., 32/64/variable-length).
+ * ignores byte sizes of instructions (i.e., 32/64/variable-length).
  *
- * Note that the sizes specified are only estimations and should only be used guide transformations
- * for performance. They should not be used to change any semantics of nodes.
+ * Note that the sizes specified are only estimations and should only be used to enhance performance
+ * of generated code. They should not be used to change any semantics of nodes.
  *
  * If a specific node has vastly different sizes based on different CPUs or how it might be
  * potentially lowered (e.g., 1 versus 100 instructions), it should override
- * {@code Node.estimatedNodeSize()} to adjust for other CPUs. Otherwise, just use the average of the
- * different values (e.g., if AMD64 size is 5 and AArch64 is 1, use 3).
+ * {@code Node.estimatedNodeSize()}. Otherwise, just use the average of the different values (e.g.,
+ * if AMD64 size is 5 and AArch64 is 1, use 3).
  *
  * In general, the current sizes for nodes are based on domain knowledge and experience, including
  * machine-learning based tweaking. When adding a new node, it's best to look at the cost model for
