@@ -407,23 +407,32 @@ static int getWinTimeZone(char *winZoneName, char *winMapID)
 }
 
 /*
- * An implementation of fgets on a buffer as opposed to a file object.
+ * Reads a line from the buffer in the same way as fgets would do from a file.
  *
+ * Returns the number of characters read or -1 in case of an error.
  */
-static int SVM_readBufferUntilNewLine(char *dst, int num, int offset, char *source, int source_len) {
-    int read = 0;
-    while(read < num - 1) {
-        if (offset + read == source_len) {
-            break;
-        }
-        dst[read] = source[offset + read];
-        if (dst[read] == '\n') {
-            read++;
-            break;
-        }
-        read++;
+static int SVM_readBufferUntilNewLine(char *dst, int num, const char *source, int source_len) {
+    int read;
+
+    if (dst == NULL || num < 0 ||
+        source == NULL || source_len < 0) {
+        return -1;
     }
-    dst[read+1] = '\0';
+
+    if (num == 0) {
+        return 0;
+    }
+
+    read = 0;
+    num = min(num, source_len + 1);
+    while(--num) {
+        dst[read] = source[read];
+        if (dst[read++] == '\n') {
+            break;
+        }
+    }
+    dst[read] = '\0';
+
     return read;
 }
 
@@ -455,10 +464,8 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
 {
     int line;
     int IDmatched = 0;
-    FILE *fp;
     char *javaTZName = NULL;
     char *items[TZ_NITEMS];
-    char *mapFileName;
     char lineBuffer[MAX_ZONE_CHAR * 4];
     int noMapID = *mapID == '\0';       /* no mapID on Vista and later */
     int offset = 0;
@@ -470,7 +477,9 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
     currLocation = 0;
     readChars = 0;
     // Reads from buffer and not from file
-    while((readChars = SVM_readBufferUntilNewLine(lineBuffer, sizeof(lineBuffer), currLocation, tzmappings, tzmappingsLen)) != 0) {
+    while((readChars = SVM_readBufferUntilNewLine(lineBuffer, sizeof(lineBuffer),
+                                                  tzmappings + currLocation,
+                                                  tzmappingsLen - currLocation)) > 0) {
         char *start, *idx, *endp;
         int itemIndex = 0;
 
@@ -535,6 +544,11 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
         }
     }
 
+    if (readChars == -1) {
+        errorMessage = "failed to read line";
+        goto illegal_format;
+    }
+
     return javaTZName;
 
  illegal_format:
@@ -582,13 +596,13 @@ extern char* findJavaTZ_md(const char *);
 
 char *SVM_FindJavaTZmd(const char *tzmappings, int length) {
 
-    /* 
-     * For POSIX operating systems the original function 
+    /*
+     * For POSIX operating systems the original function
      * does not need the JAVA_HOME nor tzmappings. Except
      * for AIX (which is currently not supported in native image)
      *
      * We can safely call the original JDK function with java home set to
-     * NULL. Note the JNI wrapper of the below function, checks JAVA_HOME 
+     * NULL. Note the JNI wrapper of the below function, checks JAVA_HOME
      * is not NULL and returns NULL if it is, stoppings us from directly
      * calling this function from java without some type of substitution.
      */
