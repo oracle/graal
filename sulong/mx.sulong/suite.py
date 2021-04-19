@@ -809,13 +809,10 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.irdebug.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O0"],
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O0"],
+      "fileExts" : [".ll"],
       "buildRef" : False,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
-        "SUITE_CFLAGS" : "-Wno-unused-variable",
-      },
       "dependencies" : [
         "SULONG_TEST",
       ],
