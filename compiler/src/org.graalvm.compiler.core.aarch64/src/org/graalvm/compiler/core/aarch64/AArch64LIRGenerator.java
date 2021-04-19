@@ -56,7 +56,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
-import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackSyncOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Compare;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
@@ -651,7 +651,10 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
-        append(new AArch64CacheWritebackSyncOp(isPreSync));
+        // only need a barrier post sync is required on AArch64
+        if (!isPreSync) {
+            append(new AArch64CacheWritebackPostSyncOp());
+        }
     }
 
     public abstract void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args);

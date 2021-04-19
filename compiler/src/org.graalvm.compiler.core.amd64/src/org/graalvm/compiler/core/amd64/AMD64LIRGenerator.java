@@ -77,7 +77,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackOp;
-import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackSyncOp;
+import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.amd64.AMD64Call;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -734,7 +734,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
-        append(new AMD64CacheWritebackSyncOp(isPreSync));
+        // only need a barrier post sync is required on AMD64
+        if (!isPreSync) {
+            append(new AMD64CacheWritebackPostSyncOp());
+        }
     }
 
     @Override

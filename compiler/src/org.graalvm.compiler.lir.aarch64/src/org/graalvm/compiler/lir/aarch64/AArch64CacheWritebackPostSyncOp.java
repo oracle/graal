@@ -23,36 +23,24 @@
  * questions.
  */
 
-package org.graalvm.compiler.lir.amd64;
+package org.graalvm.compiler.lir.aarch64;
 
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 /**
- * Implements {@code jdk.internal.misc.Unsafe.writebackPreSync0(long)} and
- * {@code jdk.internal.misc.Unsafe.writebackPostSync0(long)}.
+ * Implements {@code jdk.internal.misc.Unsafe.writebackPostSync0(long)}.
  */
-public final class AMD64CacheWritebackSyncOp extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<AMD64CacheWritebackSyncOp> TYPE = LIRInstructionClass.create(AMD64CacheWritebackSyncOp.class);
+public final class AArch64CacheWritebackPostSyncOp extends AArch64LIRInstruction {
+    public static final LIRInstructionClass<AArch64CacheWritebackPostSyncOp> TYPE = LIRInstructionClass.create(AArch64CacheWritebackPostSyncOp.class);
 
-    private final boolean isPreSync;
-
-    public AMD64CacheWritebackSyncOp(boolean isPreSync) {
+    public AArch64CacheWritebackPostSyncOp() {
         super(TYPE);
-        this.isPreSync = isPreSync;
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        boolean optimized = masm.supportsCPUFeature("FLUSHOPT");
-        boolean noEvict = masm.supportsCPUFeature("CLWB");
-
-        // pick the correct implementation
-        if (!isPreSync && (optimized || noEvict)) {
-            // need an sfence for post flush when using clflushopt or clwb
-            // otherwise no no need for any synchroniaztion
-            masm.sfence();
-        }
+    public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        masm.dmb(AArch64MacroAssembler.BarrierKind.ANY_ANY);
     }
 }
