@@ -272,9 +272,18 @@ public interface EspressoProperties {
             bootClasspath = new ArrayList<>(options.get(EspressoOptions.BootClasspath));
         }
 
+        // Inject hotswap.jar.
+        Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
+        Path hotswapJar = espressoHome.resolve("lib").resolve("hotswap.jar");
+        if (Files.isReadable(hotswapJar)) {
+            TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding HotSwap API to the boot classpath: " + hotswapJar);
+            bootClasspath.add(hotswapJar);
+        } else {
+            TruffleLogger.getLogger(EspressoLanguage.ID).warning("hotswap.jar (HotSwap API) not found at " + espressoHome.resolve("lib"));
+        }
+
         // Inject polyglot.jar.
         if (options.get(EspressoOptions.Polyglot)) {
-            Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
             Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
             if (Files.isReadable(polyglotJar)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);

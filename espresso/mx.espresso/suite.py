@@ -81,6 +81,17 @@ suite = {
             "license": "UPL",
         },
 
+        "com.oracle.truffle.espresso.hotswap": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso.hotswap",
+            "checkstyleVersion": "8.8",
+            "license": "UPL",
+        },
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -314,6 +325,7 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
                     "dependency:espresso:POLYGLOT/*",
+                    "dependency:espresso:HOTSWAP/*",
                 ],
             },
         },
@@ -335,6 +347,16 @@ suite = {
                 "com.oracle.truffle.espresso.polyglot"
             ],
             "description": "Espresso polyglot API",
+            "license": "UPL",
+            "javadocType": "api",
+        },
+
+        "HOTSWAP": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.hotswap"
+            ],
+            "description": "Espresso HotSwap API",
             "license": "UPL",
             "javadocType": "api",
         },
