@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1024;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -45,13 +44,14 @@ import org.graalvm.compiler.nodes.calc.FloatDivNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.SqrtNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}", cycles = CYCLES_UNKNOWN, size = SIZE_1)
+@NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}", cycles = CYCLES_1024, cyclesRationale = "stub based math intrinsics all have roughly the same high cycle count", size = SIZE_1)
 public final class BinaryMathIntrinsicNode extends BinaryNode implements ArithmeticLIRLowerable, Lowerable {
 
     public static final NodeClass<BinaryMathIntrinsicNode> TYPE = NodeClass.create(BinaryMathIntrinsicNode.class);

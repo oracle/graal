@@ -47,7 +47,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_64)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "may be replaced with non-throwing counterpart", size = SIZE_64)
 public class ArrayCopyWithExceptionNode extends WithExceptionNode implements ArrayCopy {
 
     public static final NodeClass<ArrayCopyWithExceptionNode> TYPE = NodeClass.create(ArrayCopyWithExceptionNode.class);

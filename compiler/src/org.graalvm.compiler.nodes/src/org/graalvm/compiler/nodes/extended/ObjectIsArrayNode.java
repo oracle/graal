@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.TriState;
  * because {@link ObjectIsArrayNode} improves the stamp of its input value during conditional
  * elimination phases.
  */
-@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
+@NodeInfo(cycles = CYCLES_4, size = SIZE_4)
 public final class ObjectIsArrayNode extends UnaryOpLogicNode implements Lowerable {
     public static final NodeClass<ObjectIsArrayNode> TYPE = NodeClass.create(ObjectIsArrayNode.class);
 
