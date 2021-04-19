@@ -849,23 +849,6 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
-    "com.oracle.truffle.llvm.tests.other.native" : {
-      "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O0_MEM2REG"],
-      "buildRef" : False,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
-      },
-      "dependencies" : [
-        "SULONG_TEST",
-      ],
-      "buildDependencies" : [
-        "SULONG_HOME",
-      ],
-      "testProject" : True,
-      "defaultBuild" : False,
-    },
     "com.oracle.truffle.llvm.tests.sulong.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -1655,7 +1638,6 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.embedded.custom.native/*",
-          "dependency:com.oracle.truffle.llvm.tests.other.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
           "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",
