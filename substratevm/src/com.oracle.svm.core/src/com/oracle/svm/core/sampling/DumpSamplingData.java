@@ -99,12 +99,10 @@ public class DumpSamplingData {
             return frames;
         } else if (mode == DumpMode.JavaStackWithoutBciView) {
             List<CallFrameInfo> frames = new ArrayList<>();
-            int frameInfoMethodId = frameInfo.getMethodID();
-            frames.add(new CallFrameBciInfo(frameInfoMethodId, frameInfo.getBci(), frameMethodData.methodFor(frameInfoMethodId)));
-            while (frameInfo.getCaller() != null) {
-                frameInfo = frameInfo.getCaller();
-                frameInfoMethodId = frameInfo.getMethodID();
+            while (frameInfo != null) {
+                int frameInfoMethodId = frameInfo.getMethodID();
                 frames.add(new CallFrameNoBciInfo(frameInfoMethodId, frameMethodData.methodFor(frameInfoMethodId)));
+                frameInfo = frameInfo.getCaller();
             }
             return frames;
         } else {
