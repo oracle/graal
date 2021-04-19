@@ -29,9 +29,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
@@ -59,23 +57,22 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
     @Alive({REG}) protected Value arrayPtrValue;
     @Alive({REG}) protected Value arrayLengthValue;
     @Alive({REG}) protected Value fromIndexValue;
-    @Alive({REG, STACK, CONST}) protected Value searchValue;
+    @Alive({REG}) protected Value searchValue;
     @Temp({REG}) protected Value temp1;
     @Temp({REG}) protected Value temp2;
     @Temp({REG}) protected Value temp3;
     @Temp({REG}) protected Value temp4;
 
-    public AArch64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, LIRGeneratorTool tool, Value result, Value arrayPtr, Value arrayLength, Value fromIndex, Value... searchValues) {
+    public AArch64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, LIRGeneratorTool tool, Value result, Value arrayPtr, Value arrayLength, Value fromIndex, Value searchValue) {
         super(TYPE);
         assert byteMode(valueKind) || charMode(valueKind);
-        assert searchValues.length == 1;
         this.arrayBaseOffset = arrayBaseOffset;
         this.isUTF16 = charMode(valueKind);
         resultValue = result;
         arrayPtrValue = arrayPtr;
         arrayLengthValue = arrayLength;
         fromIndexValue = fromIndex;
-        searchValue = searchValues[0];
+        this.searchValue = searchValue;
         LIRKind archWordKind = LIRKind.value(tool.target().arch.getWordKind());
         temp1 = tool.newVariable(archWordKind);
         temp2 = tool.newVariable(archWordKind);
@@ -97,10 +94,10 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         Register arrayLength = asRegister(arrayLengthValue);
         Register fromIndex = asRegister(fromIndexValue);
         Register searchChar = asRegister(searchValue);
-        Register curCharsOrTmp1 = asRegister(temp1);
-        Register refPosIndex = asRegister(temp2);
-        Register refPosAddress = asRegister(temp3);
-        Register refCharCountOrNeg = asRegister(temp4);
+        Register curChar = asRegister(temp1);
+        Register endIndex = asRegister(temp2);
+        Register baseAddress = asRegister(temp3);
+        Register curIndex = asRegister(temp4);
 
         Label match = new Label();
         Label chunkedReadLoop = new Label();
@@ -110,11 +107,18 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         Label end = new Label();
 
         final int chunkSize = 8;
-        int charSize = 1;
-        int shiftSize = 0;
-        long bitMask01 = 0x0101010101010101L;
-        long bitMask7f = 0x7f7f7f7f7f7f7f7fL;
-        if (isUTF16) {
+        int charSize;
+        int shiftSize;
+        long bitMask01;
+        long bitMask7f;
+        if (!isUTF16) {
+            // 1-byte characters
+            charSize = 1;
+            shiftSize = 0;
+            bitMask01 = 0x0101010101010101L;
+            bitMask7f = 0x7f7f7f7f7f7f7f7fL;
+        } else {
+            // 2-byte characters
             charSize = 2;
             shiftSize = 1;
             bitMask01 = 0x0001000100010001L;
@@ -125,28 +129,38 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         masm.mov(result, -1);
         masm.cbz(64, arrayLength, end);
 
-        // Set reference position at the beginning of the string
-        masm.loadAddress(refPosAddress, AArch64Address.createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, asRegister(arrayPtrValue), arrayBaseOffset));
+        // Load address of first array element
+        masm.loadAddress(baseAddress, AArch64Address.createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, asRegister(arrayPtrValue), arrayBaseOffset));
 
-        // Search char-by-char for small strings (with size less than 64 bits,
-        // i.e., 4 UTF-16 or 8 Latin1 chars) else search chunk-by-chunk
-        masm.cmp(64, arrayLength, chunkSize / charSize);
+        /*
+         * Search char-by-char for small strings (with search space size of less than 64 bits, i.e.,
+         * 4 UTF-16 or 8 Latin1 chars) else search chunk-by-chunk.
+         */
+        masm.sub(64, curIndex, arrayLength, fromIndex);
+        masm.cmp(64, curIndex, chunkSize / charSize);
         masm.branchConditionally(ConditionFlag.GE, searchByChunk);
 
-        // Search sequentially for small strings
-        masm.sub(64, refCharCountOrNeg, arrayLength, fromIndex);
-        masm.mov(64, refPosIndex, arrayLength);
-        // Set address of the reference position - at the end of the string, after the last char
-        masm.adds(64, refPosAddress, refPosAddress, arrayLength, ShiftType.LSL, shiftSize);
-        masm.subs(64, refCharCountOrNeg, zr, refCharCountOrNeg, ShiftType.LSL, shiftSize);
+        /*
+         * Search sequentially for small strings. Note that all indexing is done via a negative
+         * offset from the first position beyond the end of the array.
+         */
+        masm.mov(64, endIndex, arrayLength);
+        // Set the base address to be at the end of the string, after the last char
+        masm.add(64, baseAddress, baseAddress, arrayLength, ShiftType.LSL, shiftSize);
+        // Initial index is (fromIndex - arrayLength) << shift size
+        masm.sub(64, curIndex, zr, curIndex, ShiftType.LSL, shiftSize);
         // Loop doing char-by-char search
         masm.bind(searchByCharLoop);
-        masm.ldr(charSize * Byte.SIZE, curCharsOrTmp1, AArch64Address.createRegisterOffsetAddress(refPosAddress, refCharCountOrNeg, false));
-        masm.cmp(32, curCharsOrTmp1, searchChar);
+        masm.ldr(charSize * Byte.SIZE, curChar, AArch64Address.createRegisterOffsetAddress(baseAddress, curIndex, false));
+        masm.cmp(32, curChar, searchChar);
         masm.branchConditionally(ConditionFlag.EQ, match);
 
-        masm.adds(64, refCharCountOrNeg, refCharCountOrNeg, charSize);
-        masm.branchConditionally(ConditionFlag.LT, searchByCharLoop);
+        /*
+         * Add charSize to the curIndex, and retry if the end of the array has not yet been reached
+         * (i.e. the curIndex is still < 0).
+         */
+        masm.adds(64, curIndex, curIndex, charSize);
+        masm.branchConditionally(ConditionFlag.MI, searchByCharLoop);
         masm.jmp(end);
 
         // Search chunk-by-chunk for long strings
@@ -156,10 +170,9 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         *  Chunk-based reading uses the following approach (with example for UTF-16):
         *  1. Fill 8 byte chunk with search character ('searchChar'): 0x000000000000char -> 0xcharcharcharchar
         *  2. Read and compare string chunk-by-chunk.
-        *   2.1 Store reference position at the beginning of the last chunk ('refPosIndex'). This ensures that we don't
+        *   2.1 Store end index at the beginning of the last chunk ('endIndex'). This ensures that we don't
         *   read beyond string boundary.
-        *   2.2 Count number of bytes to read ('refCharCount') between 'fromIndex' to 'refPosIndex'.
-        *   2.3 Use negative count (-refCharCount/refCharCountNeg) and add chunk-size (8 bytes) after each read until the count is positive.
+        *   2.2 Use non-positive index ('curIndex') and add chunk-size (8 bytes) after each read until the count is positive.
         *  3. Check each read chunk to see if 'searchChar' is found.
         *   3.1 XOR read chunk with 0xcharcharcharchar. (e.g., 0x----char-------- XOR 0xcharcharcharchar -> 0x----0000--------)
         *   Any matching bytes are now 0 and can be detected by using the steps from 3.2 to 3.5 (based on [1]). Here, we set
@@ -168,32 +181,37 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         *   3.3 Except MSB, mask all bits of UTF-16 char in 3.1 (T2). (0x----0000-------- OR 0x7FFF7FFF7FFF7FFF -> 0x----7FFF--------)
         *   3.4 Calculate T3 = T1 & ~(T2)  (0x----FFFF-------- AND (NOT 0x----7FFF--------) -> 0x0000800000000000, sets Z flag to 0).
         *   3.5 Check if Z flag is zero using NE condition flag.
-        *  4. Repeat the above steps until 'refCharCountNeg' is positive. Then reset the positive 'refCharCountNeg' to zero so that
+        *  4. Repeat the above steps until 'curIndex' is positive. Then reset the positive 'curIndex' to zero so that
         *   the next read operation would read the last chunk. This avoids reading beyond the string's boundary.
         *  5. If character is found in a chunk then find its position. Calculate number zero chars after the matching
-        *     char so that we get the position relative to reference position 'refPosIndex'.
+        *     char so that we get the position relative to reference position 'endIndex'.
         *   5.1 Reverse the bitstream in T3 (0x0000800000000000 -> 0x0000000000010000)
         *   5.2 Calculate leading zeros in 4.1 and get number of bytes from the end of the chunk
         *       (by dividing the count by 8).
-        *   5.3 Retrieve the position of 'searchChar' by combining offset within chunk, chunk offset and string length.
+        *   5.3 Retrieve the position of 'searchChar' by adding offset within chunk to the current index.
         *
         *  [1] https://graphics.stanford.edu/~seander/bithacks.html#ZeroInWord
         * @formatter:on
         * */
 
-        // 1. Repeat the searchChar
+        // 1. Duplicate the searchChar to 64-bits
         if (!isUTF16) {
             masm.or(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE);
         }
         masm.or(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE * 2);
         masm.or(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE * 4);
 
-        // 2.1 Set address of the reference position - at the starting position of the last chunk
-        masm.sub(64, refPosIndex, arrayLength, chunkSize / charSize);
-        masm.shl(64, refCharCountOrNeg, refPosIndex, shiftSize);
-        masm.adds(64, refPosAddress, refPosAddress, refCharCountOrNeg);
-        masm.sub(64, refCharCountOrNeg, refCharCountOrNeg, fromIndex, ShiftType.LSL, shiftSize);
-        masm.subs(64, refCharCountOrNeg, zr, refCharCountOrNeg);
+        // 2.1 Set end index at the starting position of the last chunk
+        masm.sub(64, endIndex, arrayLength, chunkSize / charSize);
+        masm.add(64, baseAddress, baseAddress, endIndex, ShiftType.LSL, shiftSize);
+        /*
+         * Set the current index (will be <= 0). Note that curIndex is not aligned to the chunk
+         * size.
+         */
+        masm.sub(64, curIndex, fromIndex, endIndex);
+        if (isUTF16) {
+            masm.shl(64, curIndex, curIndex, 1);
+        }
 
         try (ScratchRegister scratchReg1 = masm.getScratchRegister(); ScratchRegister scratchReg2 = masm.getScratchRegister()) {
             Register bitMask01Reg = scratchReg1.getRegister();
@@ -202,35 +220,47 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
             // 3. Find searchChar in the 8-byte chunk
             masm.bind(chunkedReadLoop);
-            masm.ldr(64, curCharsOrTmp1, AArch64Address.createRegisterOffsetAddress(refPosAddress, refCharCountOrNeg, false));
-            masm.eor(64, curCharsOrTmp1, searchChar, curCharsOrTmp1);
-            masm.or(64, tmp2, curCharsOrTmp1, bitMask7f);
-            masm.sub(64, curCharsOrTmp1, curCharsOrTmp1, bitMask01Reg);
-            masm.bics(64, curCharsOrTmp1, curCharsOrTmp1, tmp2);
+            masm.ldr(64, curChar, AArch64Address.createRegisterOffsetAddress(baseAddress, curIndex, false));
+            masm.eor(64, curChar, searchChar, curChar);
+            masm.or(64, tmp2, curChar, bitMask7f);
+            masm.sub(64, curChar, curChar, bitMask01Reg);
+            masm.bics(64, curChar, curChar, tmp2);
             masm.branchConditionally(ConditionFlag.NE, charInChunk);
-            masm.adds(64, refCharCountOrNeg, refCharCountOrNeg, chunkSize);
-            masm.branchConditionally(ConditionFlag.LT, chunkedReadLoop);
+            // move on to next chunk if no match found and new curIndex is < 0
+            masm.adds(64, curIndex, curIndex, chunkSize);
+            masm.branchConditionally(ConditionFlag.MI, chunkedReadLoop);
 
-            // 4. Reset the ref chars count to zero to read the last chunk
-            masm.cmp(32, refCharCountOrNeg, chunkSize);
-            masm.mov(refCharCountOrNeg, 0);
-            masm.branchConditionally(ConditionFlag.LT, chunkedReadLoop);
-            masm.jmp(end);
+            /*
+             * 4. Reset the ref chars count to zero to read the last chunk, only if the chunk was
+             * not already read (i.e. the curIndex is not the chunk size). Because curIndex is not
+             * aligned to the chunk size, it likely that some indexes searched again; however, this
+             * is not a correctness problem and will not result in more than one iteration of
+             * chunkedReadLoop being executed.
+             */
+            masm.cmp(32, curIndex, chunkSize);
+            masm.branchConditionally(ConditionFlag.EQ, end);
+            masm.mov(curIndex, 0);
+            masm.jmp(chunkedReadLoop);
 
-            // 5. The searchChar found in chunk so retrieve its position relative to ref
+            /*
+             * 5. The searchChar found in chunk so retrieve its position relative to the current
+             * index.
+             */
             masm.bind(charInChunk);
-            masm.rev(64, curCharsOrTmp1, curCharsOrTmp1);
-            masm.clz(64, curCharsOrTmp1, curCharsOrTmp1);
-            // 5.2 Convert number of leading zeros to number zero bytes
-            masm.add(64, refCharCountOrNeg, refCharCountOrNeg, curCharsOrTmp1, ShiftType.LSR, 3);
+            masm.rev(64, curChar, curChar);
+            masm.clz(64, curChar, curChar);
+            /*
+             * 5.3 Convert number of leading zeros to number of zero bytes and add to current index.
+             */
+            masm.add(64, curIndex, curIndex, curChar, ShiftType.LSR, 3);
         }
 
         masm.bind(match);
         if (isUTF16) {
             // Convert byte offset of searchChar to its char index in UTF-16 string
-            masm.ashr(64, refCharCountOrNeg, refCharCountOrNeg, 1);
+            masm.ashr(64, curIndex, curIndex, 1);
         }
-        masm.add(64, result, refPosIndex, refCharCountOrNeg);
+        masm.add(64, result, endIndex, curIndex);
         masm.bind(end);
     }
 }
