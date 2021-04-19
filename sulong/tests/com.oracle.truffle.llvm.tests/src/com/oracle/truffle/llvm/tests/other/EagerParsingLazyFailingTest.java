@@ -37,11 +37,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -52,6 +55,16 @@ import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 public class EagerParsingLazyFailingTest {
+
+    @Before
+    public void bundledLLVMOnly() {
+        TestOptions.assumeBundledLLVM();
+    }
+
+    @Before
+    public void checkLinuxAMD64() {
+        Assume.assumeTrue("Skipping linux/amd64 only test", Platform.isLinux() && Platform.isAMD64());
+    }
 
     private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
     private static final String FILENAME = "O0.bc";
