@@ -40,7 +40,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
     public static final Symbol<Name> NAME = Name.LineNumberTable;
 
     // Use an empty char array rather than null to throw IooB exceptions, rather than NPE.
-    public static final LineNumberTableAttribute EMPTY = new LineNumberTableAttribute(NAME, new char[0], 0);
+    public static final LineNumberTableAttribute EMPTY = new LineNumberTableAttribute(NAME, new char[0]);
 
     private final char[] bciToLineEntries;
 
@@ -48,7 +48,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
     private int firstLine = -1;
 
-    public LineNumberTableAttribute(Symbol<Name> name, char[] entries, int entryCount) {
+    public LineNumberTableAttribute(Symbol<Name> name, char[] entries) {
         super(name, null);
         assert entries.length % 2 == 0;
         this.bciToLineEntries = entries;

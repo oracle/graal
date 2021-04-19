@@ -1017,7 +1017,7 @@ public final class ClassfileParser {
             entries[idx] = bci;
             entries[idx + 1] = lineNumber;
         }
-        return new LineNumberTableAttribute(name, entries, entryCount);
+        return new LineNumberTableAttribute(name, entries);
     }
 
     private LocalVariableTable parseLocalVariableAttribute(Symbol<Name> name) {
