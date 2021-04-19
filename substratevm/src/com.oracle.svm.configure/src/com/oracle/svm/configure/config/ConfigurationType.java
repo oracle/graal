@@ -64,7 +64,7 @@ public class ConfigurationType implements JsonPrintable {
             if ((memberKind.includes(ConfigurationMemberKind.DECLARED) && haveAllDeclaredFields()) || (memberKind.includes(ConfigurationMemberKind.PUBLIC) && haveAllPublicFields())) {
                 fields = maybeRemove(fields, map -> {
                     FieldInfo fieldInfo = map.get(name);
-                    if (!fieldInfo.isFinalButWritable()) {
+                    if (fieldInfo != null && !fieldInfo.isFinalButWritable()) {
                         map.remove(name);
                     }
                 });
