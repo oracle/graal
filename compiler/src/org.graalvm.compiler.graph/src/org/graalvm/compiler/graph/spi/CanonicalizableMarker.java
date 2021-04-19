@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.stackvalue;
+package org.graalvm.compiler.graph.spi;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.Phase;
-
-import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotHolder;
-
-public class StackValuePhase extends Phase {
-
-    @Override
-    protected void run(StructuredGraph graph) {
-        Map<Object, StackSlotHolder> slots = new HashMap<>();
-
-        for (StackValueNode node : graph.getNodes(StackValueNode.TYPE)) {
-            StackSlotHolder slotHolder = slots.get(node.slotIdentity);
-            if (slotHolder == null) {
-                slotHolder = new StackSlotHolder(node.size);
-                slots.put(node.slotIdentity, slotHolder);
-            }
-
-            assert node.stackSlotHolder == null;
-            node.stackSlotHolder = slotHolder;
-        }
-    }
+/**
+ * A marker interface for {@link Node} classes that can be efficiently queried via
+ * {@link NodeClass#isCanonicalizable()}.
+ *
+ * Since the "graph" infrastructure is general and not limited to compiler graphs, this interface
+ * does not define any meaning for "canonicalizeable".
+ */
+public interface CanonicalizableMarker {
 }

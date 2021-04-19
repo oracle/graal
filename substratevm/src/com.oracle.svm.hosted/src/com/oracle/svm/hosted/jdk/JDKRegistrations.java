@@ -24,17 +24,11 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicReferenceArray;
-
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticFeature
 class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
@@ -68,15 +62,6 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
              */
             rerunClassInit(a, "sun.nio.ch.UnixDomainSockets");
         }
-
-        /*
-         * CopyOnWriteArrayList.resetLock uses reflection to write the final field `lock`. The
-         * reflection lookup itself is constant folded because the class and field name are
-         * literals, but we manually need to allow writing the final field.
-         */
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).preregisterAsWritableForAnalysis(ReflectionUtil.lookupField(CopyOnWriteArrayList.class, "lock"));
-        /* AtomicReferenceArray.readObject uses reflection to write the final field `array`. */
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).preregisterAsWritableForAnalysis(ReflectionUtil.lookupField(AtomicReferenceArray.class, "array"));
 
         /*
          * Re-initialize the registered shutdown hooks, because any hooks registered during native

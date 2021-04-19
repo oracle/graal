@@ -260,7 +260,7 @@ public class AArch64Move {
             if (state != null) {
                 int implicitExceptionPosition = prePosition;
                 // Adjust implicit exception position if this ldr/str has been merged to ldp/stp.
-                if (kind.isInteger() && prePosition == masm.position() && masm.isImmLoadStoreMerged()) {
+                if (prePosition == masm.position() && masm.isImmLoadStoreMerged()) {
                     implicitExceptionPosition = prePosition - 4;
                     if (crb.isImplicitExceptionExist(implicitExceptionPosition)) {
                         return;

@@ -26,7 +26,7 @@ package com.oracle.svm.reflect.hosted;
 
 // Checkstyle: allow reflection
 
-import java.lang.reflect.Member;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Proxy;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
@@ -41,18 +41,18 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.misc.Unsafe;
 
 /**
- * Computes new values for the accessor fields of {@link Member} subclasses, to be used instead of
- * the value from the host VM. The new values are the ones that will be in the Native Image heap.
+ * Computes new values for the accessor fields of {@link Executable} subclasses, to be used instead
+ * of the value from the host VM. The new values are the ones that will be in the Native Image heap.
  *
  * @see RecomputeFieldValue
  */
-public final class AccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+public final class ExecutableAccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        Member member = (Member) receiver;
+        Executable member = (Executable) receiver;
         ReflectionSubstitution subst = ImageSingletons.lookup(ReflectionSubstitution.class);
         Class<?> proxyClass = subst.getProxyClass(member);
         if (proxyClass == null) {

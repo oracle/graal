@@ -519,7 +519,13 @@ public abstract class AArch64ASIMDAssembler {
 
     public enum ASIMDInstruction {
 
-        /* Advanced SIMD extract. (C4-356). */
+        /* Cryptographic AES (C4-341). */
+        AESE(0b00100 << 12),
+        AESD(0b00101 << 12),
+        AESMC(0b00110 << 12),
+        AESIMC(0b00111 << 12),
+
+        /* Advanced SIMD extract (C4-356). */
         EXT(0b00 << 22),
 
         /* Advanced SIMD copy (C4-356). */
@@ -556,7 +562,7 @@ public abstract class AArch64ASIMDAssembler {
         ADDV(0b11011 << 12),
         UADDLV(UBit | 0b00011 << 12),
 
-        /* Advanced SIMD three different (C4-365) */
+        /* Advanced SIMD three different (C4-365). */
         SMLAL(0b1000 << 12),
         SMLSL(0b1010 << 12),
         UMLAL(UBit | 0b1000 << 12),
@@ -676,6 +682,11 @@ public abstract class AArch64ASIMDAssembler {
      */
     private static int qBit(ASIMDSize size) {
         return (size == ASIMDSize.FullReg ? 1 : 0) << 30;
+    }
+
+    private void cryptographicAES(ASIMDInstruction instr, Register dst, Register src) {
+        int baseEncoding = 0b01001110_00_10100_00000_10_00000_00000;
+        emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rn(src));
     }
 
     private void scalarThreeSameEncoding(ASIMDInstruction instr, int eSizeEncoding, Register dst, Register src1, Register src2) {
@@ -807,6 +818,58 @@ public abstract class AArch64ASIMDAssembler {
         assert elementSize != ElementSize.DoubleWord : "Invalid lane width for addv";
 
         acrossLanesEncoding(ASIMDInstruction.ADDV, size, elemSizeXX(elementSize), dst, src);
+    }
+
+    /**
+     * C7.2.7 AES single round decryption.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void aesd(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicAES(ASIMDInstruction.AESD, dst, src);
+    }
+
+    /**
+     * C7.2.8 AES single round encryption.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void aese(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicAES(ASIMDInstruction.AESE, dst, src);
+    }
+
+    /**
+     * C7.2.9 AES inverse mix columns.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void aesimc(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicAES(ASIMDInstruction.AESIMC, dst, src);
+    }
+
+    /**
+     * C7.2.10 AES mix columns.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void aesmc(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicAES(ASIMDInstruction.AESMC, dst, src);
     }
 
     /**

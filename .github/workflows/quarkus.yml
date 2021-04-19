@@ -41,7 +41,7 @@ jobs:
         path: ${{ env.MX_PATH }}
     - name: Get latest quarkus release
       run: |
-        export QUARKUS_VERSION=$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+        export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
         echo Getting Quarkus $QUARKUS_VERSION
         curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
         mkdir ${QUARKUS_PATH}
@@ -116,7 +116,7 @@ jobs:
         run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})
       - name: Get latest quarkus release
         run: |
-          export QUARKUS_VERSION=$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+          export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
           echo Getting Quarkus $QUARKUS_VERSION
           curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
           mkdir ${QUARKUS_PATH}

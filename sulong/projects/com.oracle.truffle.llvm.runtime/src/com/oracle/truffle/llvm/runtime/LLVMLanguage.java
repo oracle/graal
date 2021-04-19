@@ -75,7 +75,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
-                byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
+                byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
+                                LLVMLanguage.LLVM_MS_DOS_MIME_TYPE}, //
                 fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
@@ -88,6 +89,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     static final String LLVM_ELF_LINUX_EXTENSION = "so";
 
     static final String LLVM_MACHO_MIME_TYPE = "application/x-mach-binary";
+    static final String LLVM_MS_DOS_MIME_TYPE = "application/x-dosexec";
 
     static final String MAIN_ARGS_KEY = "Sulong Main Args";
     static final String PARSE_ONLY_KEY = "Parse only";

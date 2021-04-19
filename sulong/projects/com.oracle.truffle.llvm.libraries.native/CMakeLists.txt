@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -27,30 +27,25 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-QUIETLY$(MX_VERBOSE) = @
+cmake_minimum_required(VERSION 3.10)
+project(com.oracle.truffle.llvm.libraries.native LANGUAGES C)
 
-.PHONY: default
-default: bin/${SONAME}
+set(TRUFFLE_NFI_NATIVE_INCLUDE)
 
-CLANG?=clang
+if(NOT TRUFFLE_NFI_NATIVE_INCLUDE)
+   message(FATAL_ERROR "TRUFFLE_NFI_NATIVE_INCLUDE needs to be set")
+endif()
 
-CFLAGS+=-gdwarf-5 -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.graalvm.llvm
+set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
+add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
+add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME})
 
-ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun
-LDFLAGS=-dynamiclib -gdwarf-5 ${EXTRA_LDFLAGS}
-LDFLAGS+=-Wl,-install_name,@rpath/$(notdir $@)
-else
-CLANG_PREFIX=
-LDFLAGS=-shared -gdwarf-5 -Wl,-soname,$(notdir $@) ${EXTRA_LDFLAGS}
-endif
-
-LDFLAGS+= ${EXTRA_LDFLAGS}
-CFLAGS=-gdwarf-5 -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
-
-bin/${SONAME}: bin/common.o bin/handles.o bin/polyglot.o bin/toolchain-api.o bin/truffle-compat.o
-	$(QUIETLY) $(CLANG) ${LDFLAGS} -o $@ $+
-
-bin/%.o: src/%.c
-	@mkdir -p bin
-	$(QUIETLY) $(CLANG) ${CPPFLAGS} ${CFLAGS} -c $< -o $@
+add_library(sulong-native SHARED
+    src/stat.c
+    src/misc.c
+    src/posix.c
+    src/fp80.c
+    src/globals.c
+)
+target_include_directories(sulong-native PRIVATE ${TRUFFLE_NFI_NATIVE_INCLUDE})
+install(TARGETS sulong-native DESTINATION bin)

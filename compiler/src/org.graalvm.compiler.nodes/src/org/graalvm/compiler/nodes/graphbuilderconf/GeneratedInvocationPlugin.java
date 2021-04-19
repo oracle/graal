@@ -62,11 +62,11 @@ public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
     public abstract boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args);
 
     @Override
-    public StackTraceElement getApplySourceLocation(MetaAccessProvider metaAccess) {
+    public String getSourceLocation() {
         Class<?> c = getClass();
         for (Method m : c.getDeclaredMethods()) {
             if (m.getName().equals("execute")) {
-                return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
+                return String.format("%s.%s()", m.getClass().getName(), m.getName());
             }
         }
         throw new GraalError("could not find method named \"execute\" in " + c.getName());

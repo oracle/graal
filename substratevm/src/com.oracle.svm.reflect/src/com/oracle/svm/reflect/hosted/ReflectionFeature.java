@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.reflect.hosted;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -73,6 +74,8 @@ public final class ReflectionFeature implements GraalFeature {
         reflectionData = new ReflectionDataBuilder(access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
 
+        access.registerObjectReplacer(new ReflectionObjectReplacer(access.getMetaAccess()));
+
         if (!ImageSingletons.contains(ReflectionSubstitutionType.Factory.class)) {
             ImageSingletons.add(ReflectionSubstitutionType.Factory.class, new ReflectionSubstitutionType.Factory());
         }
@@ -108,8 +111,8 @@ public final class ReflectionFeature implements GraalFeature {
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        ReflectionPlugins.registerInvocationPlugins(loader, providers.getSnippetReflection(), annotationSubstitutions, plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(),
-                        aUniverse, reason);
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions,
+                        plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason);
     }
 }

@@ -39,11 +39,11 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.223.0",
+  "mxversion" : "5.292.5",
 
   "name" : "regex",
 
-  "version" : "21.1.0",
+  "version" : "21.2.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -119,7 +119,9 @@ suite = {
 
   "distributions" : {
     "TREGEX" : {
-      "moduleName" : "com.oracle.truffle.regex",
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.regex",
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],
       "distDependencies" : [

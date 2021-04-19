@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,36 +90,29 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Field... fields) {
-        register(false, fields);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(false, fields);
     }
 
     /**
-     * Makes the provided fields available for reflection at run time. The fields will be returned
-     * by {@link Class#getField}, {@link Class#getFields},and all the other methods on {@link Class}
-     * that return a single or a list of fields.
-     *
-     * @param finalIsWritable for all of the passed fields which are marked {@code final}, indicates
-     *            whether it should be possible to change their value using reflection.
-     *
+     * @deprecated Use {@link #register(Field...)} instead. Parameter {@code finalIsWritable} no
+     *             longer serves a purpose.
      * @since 19.0
      */
+    @SuppressWarnings("unused")
+    @Deprecated
     public static void register(boolean finalIsWritable, Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(finalIsWritable, false, fields);
+        register(fields);
     }
 
     /**
-     * Makes the provided fields available for reflection at run time. The fields will be returned
-     * by {@link Class#getField}, {@link Class#getFields},and all the other methods on {@link Class}
-     * that return a single or a list of fields.
-     *
-     * @param finalIsWritable for all of the passed fields which are marked {@code final}, indicates
-     *            whether it should be possible to change their value using reflection.
-     * @param allowUnsafeAccess for all of the passed fields, indicates whether it should be
-     *            possible to access by unsafe operations.
+     * @deprecated Use {@link #register(Field...)} instead. Parameters {@code finalIsWritable} and
+     *             {@code allowUnsafeAccess} no longer serve a purpose.
      * @since 21.0
      */
+    @SuppressWarnings("unused")
+    @Deprecated
     public static void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(finalIsWritable, allowUnsafeAccess, fields);
+        register(fields);
     }
 
     /**

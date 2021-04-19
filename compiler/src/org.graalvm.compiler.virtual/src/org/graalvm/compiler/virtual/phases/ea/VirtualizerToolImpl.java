@@ -30,7 +30,7 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;

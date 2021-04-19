@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.graph.spi;
+package com.oracle.svm.core.code;
 
-/**
- * This interface allows nodes to perform more complicated simplifications, in contrast to
- * {@link Canonicalizable}, which supports only replacing the current node.
- *
- * Implementors of this interface need to be aware that they need to call
- * {@link SimplifierTool#addToWorkList(org.graalvm.compiler.graph.Node)} for each node that might be
- * influenced (in terms of simplification and canonicalization) by the actions performed in
- * simplify.
- */
-public interface Simplifiable {
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
+import org.graalvm.word.PointerBase;
 
-    void simplify(SimplifierTool tool);
+@RawPointerTo(value = CodeInfo.class)
+public interface CodeInfoPointer extends PointerBase {
+    CodeInfoPointer addressOf(long index);
+
+    void write(CodeInfo value);
+
+    CodeInfo read();
 }

@@ -23,7 +23,7 @@ gateCoverage : {
     EXTRA_VM_ARGS : ""
   }
   run : [
-    ${gateCmd} ["build,coverage", --jacocout, html]
+    ${gateCmd} ["build,coverage", --jacoco-omit-excluded, --jacocout, html]
     [mx, coverage-upload]
     # GR-18258 [mx, sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."${jvm-config.default}, "-Dsonar.projectName=GraalVM - Compiler ("${jvm-config.default}")", --exclude-generated, --skip-coverage]
   ]
@@ -82,7 +82,7 @@ gateTestCTWWeekly : {
   run : [
     # At least one gate build should run without strict
     # compliance as that's how Travis runs on JDK9
-    ["mx"] ${gateCmdSuffix} ["build,ctw", "--jacocout", "html"]
+    ["mx"] ${gateCmdSuffix} ["build,ctw", "--jacoco-omit-excluded", "--jacocout", "html"]
     ["mx", "coverage-upload"]
   ]
   timelimit : "1:30:00"

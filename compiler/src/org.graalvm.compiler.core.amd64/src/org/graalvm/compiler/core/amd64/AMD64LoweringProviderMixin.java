@@ -66,7 +66,7 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
         if (n instanceof AMD64ArrayIndexOfDispatchNode) {
             AMD64ArrayIndexOfDispatchNode dispatchNode = (AMD64ArrayIndexOfDispatchNode) n;
             StructuredGraph graph = dispatchNode.graph();
-            ForeignCallNode call = graph.add(new ForeignCallNode(tool.getProviders().getForeignCalls(), dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
+            ForeignCallNode call = graph.add(new ForeignCallNode(tool.getForeignCalls(), dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
             graph.replaceFixed(dispatchNode, call);
             return true;
         }

@@ -194,25 +194,6 @@
 
   llvmBundled:: {},
 
-  llvm4_darwin_fix:: {
-    # FIXME: We prune `null` entries to produce the original result.
-    # Eventually, we should canonicalize this.
-    environment: std.prune(super.environment + {
-      CPPFLAGS: "-g",
-      CFLAGS: null,
-      CLANG_LLVM_OBJCOPY: null,
-    }),
-    timelimit: "0:45:00",
-  },
-
-  llvmBundled_darwin_fix: {
-    # nothing to do
-    environment+: {
-      LD_LIBRARY_PATH: "$BUILD_DIR/main/sulong/mxbuild/darwin-amd64/SULONG_LLVM_ORG/lib:$LD_LIBRARY_PATH",
-    },
-    timelimit: "0:45:00",
-  },
-
   requireGCC:: {
     packages+: {
       gcc: "==6.1.0",

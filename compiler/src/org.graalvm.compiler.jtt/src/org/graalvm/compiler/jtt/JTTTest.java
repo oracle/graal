@@ -91,29 +91,21 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(OptionValues options, String name, Object... args) {
-        runTest(options, EMPTY, true, false, name, args);
+        runTest(options, EMPTY, name, args);
     }
 
     protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
-        runTest(getInitialOptions(), shouldNotDeopt, true, false, name, args);
+        runTest(getInitialOptions(), shouldNotDeopt, name, args);
     }
 
-    protected void runTest(OptionValues options, Set<DeoptimizationReason> shouldNotDeopt, boolean bind, boolean noProfile, String name, Object... args) {
+    protected void runTest(OptionValues options, Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
         ResolvedJavaMethod method = getResolvedJavaMethod(name);
         Object receiver = method.isStatic() ? null : this;
 
         Result expect = executeExpected(method, receiver, args);
 
-        if (noProfile) {
-            method.reprofile();
-        }
-
         testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
-        if (args.length > 0 && bind) {
-            if (noProfile) {
-                method.reprofile();
-            }
-
+        if (args.length > 0) {
             this.argsToBind = args;
             testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
             this.argsToBind = null;

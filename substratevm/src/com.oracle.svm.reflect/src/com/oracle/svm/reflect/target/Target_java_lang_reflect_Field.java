@@ -38,9 +38,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.hosted.AccessorComputer;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
+import com.oracle.svm.reflect.hosted.ReflectionObjectReplacer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -51,16 +50,16 @@ public final class Target_java_lang_reflect_Field {
 
     @Alias FieldRepository genericInfo;
 
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+    /** Field accessor objects are created on demand at image runtime. */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     Target_jdk_internal_reflect_FieldAccessor fieldAccessor;
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     Target_jdk_internal_reflect_FieldAccessor overrideFieldAccessor;
 
     /**
      * The declaredAnnotations field doesn't need a value recomputation. Its value is pre-loaded in
-     * the {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     * the {@link ReflectionObjectReplacer}.
      */
     @Alias //
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
@@ -76,14 +75,6 @@ public final class Target_java_lang_reflect_Field {
 
     @Alias
     native Target_java_lang_reflect_Field copy();
-
-    @Substitute
-    public Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor(@SuppressWarnings("unused") boolean overrideFinalCheck) {
-        if (fieldAccessor == null) {
-            throw VMError.unsupportedFeature("Runtime reflection is not supported.");
-        }
-        return fieldAccessor;
-    }
 
     @Substitute
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {

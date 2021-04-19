@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -27,28 +27,34 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-QUIETLY$(MX_VERBOSE) = @
+cmake_minimum_required(VERSION 3.10)
+project(com.oracle.truffle.llvm.libraries.graalvm.llvm.libs LANGUAGES C)
 
-.PHONY: default
-default: bin/${LIBSULONG}
+set(GRAALVM_LLVM_INCLUDE_DIR)
 
-CLANG?=clang
+if(NOT GRAALVM_LLVM_INCLUDE_DIR)
+   message(FATAL_ERROR "GRAALVM_LLVM_INCLUDE_DIR needs to be set")
+endif()
 
-ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun
-LDFLAGS=-dynamiclib -g
-bin/${LIBSULONG}: LDFLAGS+=-install_name ${LIBSULONG}
-else
-CLANG_PREFIX=
-LDFLAGS=-shared -g
-endif
+set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
+add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
+add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME})
 
-LDFLAGS+= ${EXTRA_LDFLAGS}
-CFLAGS=-g -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
+if (APPLE)
+    set(CMAKE_INSTALL_RPATH "@loader_path")
+else()
+    set(CMAKE_INSTALL_RPATH "\$ORIGIN")
+endif()
 
-bin/${LIBSULONG}: bin/misc.o bin/posix.o bin/fp80.o bin/globals.o
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) ${LDFLAGS} -lm -o $@ $+
 
-bin/%.o: src/%.c
-	@mkdir -p bin
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) ${CPPFLAGS} ${CFLAGS} -c $< -o $@
+# using glob patterns is not recommended: https://cmake.org/cmake/help/latest/command/file.html#glob
+add_library(graalvm-llvm SHARED
+    src/common.c
+    src/handles.c
+    src/polyglot.c
+    src/toolchain-api.c
+    src/truffle-compat.c
+)
+target_include_directories(graalvm-llvm PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
+set_target_properties(graalvm-llvm PROPERTIES VERSION 1)
+install(TARGETS graalvm-llvm DESTINATION bin)

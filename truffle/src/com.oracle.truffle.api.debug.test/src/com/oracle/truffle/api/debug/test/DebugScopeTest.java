@@ -53,6 +53,7 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class DebugScopeTest extends AbstractDebugTest {
 
@@ -125,6 +126,67 @@ public class DebugScopeTest extends AbstractDebugTest {
                 assertEquals(42, receiver.asInt());
                 assertNull("Receiver is not a declared value", frame.getScope().getDeclaredValue("THIS"));
                 checkStack(frame);
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testMultipleReceivers1() {
+        ProxyLanguage.setDelegate(new TestReceiverLanguage());
+        Source source = Source.create(ProxyLanguage.ID, "thisReceiver\n" +
+                        "a 1 b 2\n" +
+                        "c 3 thisReceiver 4\n" +
+                        "d 5 e 6");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugScope scope = frame.getScope();
+                DebugValue receiver = scope.getReceiver();
+                assertNull(receiver);
+
+                scope = scope.getParent();
+                receiver = scope.getReceiver();
+                assertEquals("thisReceiver", receiver.getName());
+                assertEquals("4", receiver.toDisplayString());
+
+                scope = scope.getParent();
+                receiver = scope.getReceiver();
+                assertNull(receiver);
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testMultipleReceivers2() {
+        ProxyLanguage.setDelegate(new TestReceiverLanguage());
+        Source source = Source.create(ProxyLanguage.ID, "thisReceiver\n" +
+                        "thisReceiver 1\n" +
+                        "a 2 b 3\n" +
+                        "c 4 thisReceiver 5");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugScope scope = frame.getScope();
+                DebugValue receiver = scope.getReceiver();
+                assertEquals("thisReceiver", receiver.getName());
+                assertEquals("1", receiver.toDisplayString());
+
+                scope = scope.getParent();
+                receiver = scope.getReceiver();
+                assertNull(receiver);
+
+                scope = scope.getParent();
+                receiver = scope.getReceiver();
+                assertEquals("thisReceiver", receiver.getName());
+                assertEquals("5", receiver.toDisplayString());
             });
             expectDone();
         }

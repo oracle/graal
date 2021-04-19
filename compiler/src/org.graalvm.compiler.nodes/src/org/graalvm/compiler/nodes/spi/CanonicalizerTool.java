@@ -22,28 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.graph.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
-public interface CanonicalizerTool {
+public interface CanonicalizerTool extends CoreProviders {
 
     Assumptions getAssumptions();
-
-    MetaAccessProvider getMetaAccess();
-
-    ConstantReflectionProvider getConstantReflection();
-
-    ConstantFieldProvider getConstantFieldProvider();
-
-    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
 
     boolean canonicalizeReads();
 

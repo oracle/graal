@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -97,7 +97,7 @@ public abstract class LLVMPointerLoadNode extends LLVMLoadNode {
 
     @Specialization(limit = "3")
     protected LLVMPointer doIndirectedForeign(LLVMManagedPointer addr,
-                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
-        return nativeRead.readPointer(addr.getObject(), addr.getOffset());
+                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary read) {
+        return read.readPointer(addr.getObject(), addr.getOffset());
     }
 }

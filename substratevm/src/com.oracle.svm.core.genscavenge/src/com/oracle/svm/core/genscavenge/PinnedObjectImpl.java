@@ -79,6 +79,8 @@ final class PinnedObjectImpl implements PinnedObject {
     }
 
     static void pushPinnedObject(PinnedObjectImpl newHead) {
+        // To avoid ABA problems, the application may only push data. All other operations may only
+        // be executed by the GC.
         HeapImpl heap = HeapImpl.getHeapImpl();
         UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = heap.getPinHead();
         PinnedObjectImpl sampleHead;

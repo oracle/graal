@@ -65,9 +65,11 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -134,10 +136,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, int vmThreadSize);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, boolean inCrashHandler, int vmThreadSize);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, boolean inCrashHandler);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, IsolateThread thread);
@@ -174,10 +176,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    public interface IsolateCreationWatcher {
-        void registerIsolate(Isolate isolate);
-    }
-
     @Snippet
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters, @ConstantParameter int vmThreadSize) {
         if (MultiThreaded.getValue()) {
@@ -209,9 +207,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
 
-        if (ImageSingletons.contains(IsolateCreationWatcher.class)) {
-            ImageSingletons.lookup(IsolateCreationWatcher.class).registerIsolate(isolate.read());
-        }
+        IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
 
         CodeInfoTable.prepareImageCodeInfo();
         if (MultiThreaded.getValue()) {
@@ -219,7 +215,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
-        error = attachThread(isolate.read(), vmThreadSize);
+        error = attachThread(isolate.read(), false, vmThreadSize);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
@@ -299,17 +295,17 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @Snippet
-    public static int attachThreadSnippet(Isolate isolate, boolean ensureJavaThread, @ConstantParameter int vmThreadSize) {
+    public static int attachThreadSnippet(Isolate isolate, boolean ensureJavaThread, boolean inCrashHandler, @ConstantParameter int vmThreadSize) {
         if (MultiThreaded.getValue()) {
             writeCurrentVMThread(WordFactory.nullPointer());
         }
 
-        int error = runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
+        int error = runtimeCall(ATTACH_THREAD, isolate, inCrashHandler, vmThreadSize);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
 
-        if (MultiThreaded.getValue()) {
+        if (MultiThreaded.getValue() && !inCrashHandler) {
             Safepoint.transitionNativeToJava();
         }
         if (ensureJavaThread) {
@@ -320,7 +316,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int attachThread(Isolate isolate, int vmThreadSize) {
+    private static int attachThread(Isolate isolate, boolean inCrashHandler, int vmThreadSize) {
         int sanityError = Isolates.checkSanity(isolate);
         if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
@@ -332,27 +328,43 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             if (!VMThreads.isInitialized()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
-            IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(false);
+            IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler);
             if (thread.isNull()) { // not attached
-                thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
-                if (thread.isNull()) {
-                    return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
-                }
-                StackOverflowCheck.singleton().initialize(thread);
-                writeCurrentVMThread(thread);
-                int error = VMThreads.singleton().attachThread(thread);
+                int error = attachUnattachedThread(isolate, inCrashHandler, vmThreadSize);
                 if (error != CEntryPointErrors.NO_ERROR) {
-                    VMThreads.singleton().freeIsolateThread(thread);
                     return error;
                 }
-                // Store thread and isolate in thread-local variables.
-                VMThreads.IsolateTL.set(thread, isolate);
             } else {
                 writeCurrentVMThread(thread);
             }
         } else {
             StackOverflowCheck.singleton().initialize(WordFactory.nullPointer());
         }
+        return CEntryPointErrors.NO_ERROR;
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    private static int attachUnattachedThread(Isolate isolate, boolean inCrashHandler, int vmThreadSize) {
+        IsolateThread thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
+        if (thread.isNull()) {
+            return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
+        }
+        StackOverflowCheck.singleton().initialize(thread);
+        writeCurrentVMThread(thread);
+
+        if (inCrashHandler) {
+            // If we are in the crash handler then we only want to make sure that this thread can
+            // print diagnostics. A full attach operation would be too dangerous.
+            SubstrateDiagnostics.setOnlyAttachedForCrashHandler(thread);
+        } else {
+            int error = VMThreads.singleton().attachThread(thread);
+            if (error != CEntryPointErrors.NO_ERROR) {
+                VMThreads.singleton().freeIsolateThread(thread);
+                return error;
+            }
+        }
+
+        VMThreads.IsolateTL.set(thread, isolate);
         return CEntryPointErrors.NO_ERROR;
     }
 
@@ -413,13 +425,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @Snippet
-    public static int enterIsolateSnippet(Isolate isolate, boolean inCrashHandler) {
+    public static int enterIsolateSnippet(Isolate isolate) {
         int result;
         if (MultiThreaded.getValue()) {
             writeCurrentVMThread(WordFactory.nullPointer());
-            result = runtimeCall(ENTER_ISOLATE_MT, isolate, inCrashHandler);
+            result = runtimeCall(ENTER_ISOLATE_MT, isolate);
             if (result == CEntryPointErrors.NO_ERROR) {
-                if (!inCrashHandler || VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {
+                if (VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {
                     Safepoint.transitionNativeToJava();
                 }
             }
@@ -434,7 +446,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not set up yet")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int enterIsolateMT(Isolate isolate, boolean inCrashHandler) {
+    private static int enterIsolateMT(Isolate isolate) {
         int sanityError = Isolates.checkSanity(isolate);
         if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
@@ -445,7 +457,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!VMThreads.isInitialized()) {
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
-        IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler);
+        IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(false);
         if (thread.isNull()) {
             return CEntryPointErrors.UNATTACHED_THREAD;
         }
@@ -619,12 +631,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                     args = new Arguments(attachThread, node.graph().getGuardsStage(), tool.getLoweringStage());
                     args.add("isolate", node.getParameter());
                     args.add("ensureJavaThread", node.getEnsureJavaThread());
+                    args.add("inCrashHandler", node.isCrashHandler());
                     args.addConst("vmThreadSize", vmThreadSize);
                     break;
                 case EnterIsolate:
                     args = new Arguments(enterThreadFromTL, node.graph().getGuardsStage(), tool.getLoweringStage());
                     args.add("isolate", node.getParameter());
-                    args.add("inCrashHandler", node.isCrashHandler());
                     break;
                 case Enter:
                     args = new Arguments(enter, node.graph().getGuardsStage(), tool.getLoweringStage());
@@ -699,5 +711,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
+    }
+
+    // IsolateCreationWatcher will be removed, see GR-30740. Use
+    // IsolateListener and IsolateListenerSupport instead.
+    public interface IsolateCreationWatcher {
+        @Uninterruptible(reason = "Thread state not yet set up.")
+        void registerIsolate(Isolate isolate);
     }
 }

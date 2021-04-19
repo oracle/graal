@@ -413,4 +413,19 @@ public final class GraalDirectives {
      */
     public static void ensureVirtualizedHere(@SuppressWarnings("unused") Object object) {
     }
+
+    /**
+     * Raise a SIGTRAP that can be used as a breakpoint for a native debugger such as gdb.
+     */
+    public static void breakpoint() {
+    }
+
+    /**
+     * Returns a boolean indicating whether or not a given value is seen as constant in optimized
+     * code.
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(Object value) {
+        return false;
+    }
 }

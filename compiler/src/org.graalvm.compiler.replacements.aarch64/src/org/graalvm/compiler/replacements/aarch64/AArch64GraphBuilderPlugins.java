@@ -255,16 +255,19 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode other) {
-            ValueNode valueLength = b.add(new ArrayLengthNode(value));
-            ValueNode otherLength = b.add(new ArrayLengthNode(other));
+            ValueNode nonNullValue = b.nullCheckedValue(value);
+            ValueNode nonNullOther = b.nullCheckedValue(other);
+
+            ValueNode valueLength = b.add(new ArrayLengthNode(nonNullValue));
+            ValueNode otherLength = b.add(new ArrayLengthNode(nonNullOther));
             if (swapped) {
                 /*
                  * Swapping array arguments because intrinsic expects order to be byte[]/char[] but
                  * kind arguments stay in original order.
                  */
-                b.addPush(JavaKind.Int, new ArrayCompareToNode(other, value, otherLength, valueLength, valueKind, otherKind));
+                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullOther, nonNullValue, otherLength, valueLength, valueKind, otherKind));
             } else {
-                b.addPush(JavaKind.Int, new ArrayCompareToNode(value, other, valueLength, otherLength, valueKind, otherKind));
+                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullValue, nonNullOther, valueLength, otherLength, valueKind, otherKind));
             }
             return true;
         }

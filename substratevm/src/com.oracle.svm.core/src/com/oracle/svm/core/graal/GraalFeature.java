@@ -30,7 +30,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
@@ -61,10 +60,10 @@ public interface GraalFeature extends Feature {
      *
      * @param providers Providers that the lowering can use.
      * @param snippetReflection Snippet reflection providers.
-     * @param invocationPlugins The invocation plugins to add to.
+     * @param plugins Contains the invocation plugins to add to.
      * @param reason The parsing phase that the plugins are registered for
      */
-    default void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, ParsingReason reason) {
+    default void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
     }
 
     /**

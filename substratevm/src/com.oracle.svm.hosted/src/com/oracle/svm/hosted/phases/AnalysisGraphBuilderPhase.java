@@ -35,8 +35,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
-    public AnalysisGraphBuilderPhase(Providers providers,
+    public AnalysisGraphBuilderPhase(CoreProviders providers,
                     GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
     }

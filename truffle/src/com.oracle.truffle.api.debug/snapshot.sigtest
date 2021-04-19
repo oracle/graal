@@ -27,8 +27,8 @@ meth public void setCondition(java.lang.String)
 meth public void setEnabled(boolean)
 meth public void setIgnoreCount(int)
 supr java.lang.Object
-hfds BUILDER_INSTANCE,NO_SOURCE,RESOLVED_LOCATION_ACCUMULATOR,breakpointBinding,breakpointBindingAttaching,breakpointBindingReady,condition,conditionExistsUnchanged,conditionUnchanged,debugger,disposed,enabled,exceptionFilter,global,hitCount,ignoreCount,locationKey,oneShot,resolveListener,resolved,resolvedSourceInAttach,roWrapper,rootInstanceRef,sessions,sessionsUnchanged,sourceBinding,sourcePredicate,suspendAnchor
-hcls AbstractBreakpointNode,BreakpointAfterNode,BreakpointAfterNodeException,BreakpointBeforeNode,BreakpointConditionFailure,BreakpointNodeFactory,ConditionalBreakNode,GlobalBreakpoint,ResolvedLocationOperator,SessionList
+hfds BUILDER_INSTANCE,SOURCE_BINDING_RESOLVED,breakpointBinding,breakpointBindingAttaching,breakpointBindingReady,condition,conditionExistsUnchanged,conditionUnchanged,debugger,disposed,enabled,exceptionFilter,global,hitCount,ignoreCount,locationKey,oneShot,resolveListener,roWrapper,rootInstanceRef,sessions,sessionsUnchanged,sourceBinding,sourcePredicate,suspendAnchor
+hcls AbstractBreakpointNode,BreakpointAfterNode,BreakpointAfterNodeException,BreakpointBeforeNode,BreakpointConditionFailure,BreakpointNodeFactory,ConditionalBreakNode,GlobalBreakpoint,SessionList
 
 CLSS public final com.oracle.truffle.api.debug.Breakpoint$Builder
  outer com.oracle.truffle.api.debug.Breakpoint
@@ -136,7 +136,7 @@ meth public int hashCode()
 meth public java.lang.StackTraceElement getHostTraceElement()
 meth public java.lang.String getName()
 supr java.lang.Object
-hfds currentFrame,depth,event,hostTraceElement
+hfds currentFrame,depth,event,hostTraceElement,name,nameEx
 
 CLSS public final com.oracle.truffle.api.debug.DebugStackTraceElement
 meth public boolean isHost()

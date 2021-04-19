@@ -35,7 +35,7 @@ import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.WordBase;
@@ -44,8 +44,24 @@ import com.oracle.svm.core.FrameAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
 
+/**
+ * This node is used to reserve memory on the stack. We need to make sure that the stack block is
+ * reserved only once, even when compiler optimizations such as loop unrolling duplicate the actual
+ * {@link StackValueNode}. While the node itself is cloned, the {@link #slotIdentity} is not cloned
+ * (it is a shallow object copy).
+ * <p>
+ * We don't track the lifetime of {@link StackValueNode}s. So, stack slots are not reused very
+ * efficiently at the moment. However, we at least ensure that stack slots are reused if a method is
+ * inlined multiple times into the same compilation unit. In this context, we must be careful though
+ * as recursively inlined methods must not share their stack slots. So, we compute the inlined
+ * recursion depth in the {@link StackValueRecursionDepthPhase}.
+ * <p>
+ * The actual assignment of the {@link #stackSlotHolder} is done by the
+ * {@link StackValueSlotAssignmentPhase} in a way that all nodes with the same identity and
+ * recursion depth share a stack slot.
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public final class StackValueNode extends FixedWithNextNode implements LIRLowerable, IterableNodeType {
+public final class StackValueNode extends AbstractStateSplit implements LIRLowerable, IterableNodeType {
     public static final NodeClass<StackValueNode> TYPE = NodeClass.create(StackValueNode.class);
 
     /*
@@ -55,23 +71,21 @@ public final class StackValueNode extends FixedWithNextNode implements LIRLowera
     private static final int MAX_SIZE = 10 * 1024 * 1024;
 
     protected final int size;
-
-    /** All nodes with the same identity get the same stack slot assigned. */
     protected final StackSlotIdentity slotIdentity;
-
-    /**
-     * We need to make sure that the stack block is reserved only once, even when compiler
-     * optimizations such as loop unrolling duplicate the actual {@link StackValueNode}. While the
-     * node itself is cloned, this holder object is not cloned (it is a shallow object copy). The
-     * holders are created by the {@link StackValuePhase}.
-     */
+    private int recursionDepth;
     protected StackSlotHolder stackSlotHolder;
 
     public static class StackSlotIdentity {
+        /**
+         * Determines if the same stack slot should be used for all methods in the current
+         * compilation unit (this also ignores the recursion depth).
+         */
+        protected final boolean shared;
         protected final String name;
 
-        public StackSlotIdentity(String name) {
+        public StackSlotIdentity(String name, boolean shared) {
             this.name = name;
+            this.shared = shared;
         }
 
         @Override
@@ -102,6 +116,16 @@ public final class StackValueNode extends FixedWithNextNode implements LIRLowera
         }
         this.size = (int) (numElements * elementSize);
         this.slotIdentity = slotIdentity;
+        this.recursionDepth = slotIdentity.shared ? 0 : -1;
+    }
+
+    int getRecursionDepth() {
+        assert recursionDepth >= 0;
+        return recursionDepth;
+    }
+
+    void setRecursionDepth(int value) {
+        this.recursionDepth = value;
     }
 
     @Override

@@ -60,7 +60,7 @@ public final class LLVMPThreadThreadIntrinsics {
         protected int doIntrinsic(LLVMPointer thread, LLVMPointer startRoutine, LLVMPointer arg,
                         @Cached LLVMI64StoreNode store,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(startRoutine, arg, context, true);
+            LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(startRoutine, arg, context);
             final Thread t = context.getpThreadContext().createThread(init);
             if (t == null) {
                 return LLVMAMD64Error.EAGAIN;

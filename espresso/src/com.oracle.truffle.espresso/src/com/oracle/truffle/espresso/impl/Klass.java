@@ -79,6 +79,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -423,6 +425,28 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // endregion ### Identity/hashCode
 
+    public Class<?> getDispatch() {
+        Class<?> result = dispatch;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (getMeta().getContext().metaInitialized()) {
+                result = getMeta().resolveDispatch(this);
+                dispatch = result;
+            } else {
+                /*
+                 * Meta is not fully initialized: return the generic interop, without updating the
+                 * dispatch cache. This is fine, as we are not expecting any meaningful interop
+                 * until context is fully initialized.
+                 */
+                if (isPrimitive()) {
+                    return BaseInterop.class;
+                }
+                return EspressoInterop.class;
+            }
+        }
+        return result;
+    }
+
     // endregion Interop
 
     // Threshold for using binary search instead of linear search for interface lookup.
@@ -457,6 +481,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal //
     private volatile StaticObject mirrorCache;
+
+    @CompilationFinal //
+    private Class<?> dispatch;
 
     @CompilationFinal private int hierarchyDepth = -1;
 

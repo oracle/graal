@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.279.1",
+  "mxversion" : "5.292.5",
   "name" : "truffle",
-  "version" : "21.1.0",
+  "version" : "21.2.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -673,13 +673,14 @@ suite = {
         "solaris" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
-            "ldflags" : ["-m64"],
+            "ldflags" : ["-m64", "-pthread"],
             "ldlibs" : ["-lm"],
           },
         },
         "<others>" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror"],
+            "ldflags" : ["-pthread"],
             "ldlibs" : ["-lm"],
           },
         },
@@ -819,7 +820,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.api* to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+          "com.oracle.truffle.api* to com.oracle.truffle.regex, jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
           "com.oracle.truffle.api.impl to org.graalvm.locator",
           "com.oracle.truffle.api to org.graalvm.locator, com.oracle.truffle.truffle_nfi, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",

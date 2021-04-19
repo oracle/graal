@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -74,7 +75,7 @@ final class HostClassDesc {
     }
 
     private final Class<?> type;
-    private final HostClassCache cache;
+    private final Reference<HostClassCache> cache;
     private volatile Members members;
     private volatile JNIMembers jniMembers;
     private volatile MethodsBySignature methodsBySignature;
@@ -82,10 +83,10 @@ final class HostClassDesc {
     private final boolean allowsImplementation;
     private final boolean allowedTargetType;
 
-    HostClassDesc(HostClassCache cache, Class<?> type) {
+    HostClassDesc(Reference<HostClassCache> cacheRef, Class<?> type) {
         this.type = type;
-        this.cache = cache;
-        this.allowsImplementation = HostInteropReflect.isExtensibleType(type) && cache.allowsImplementation(type);
+        this.cache = cacheRef;
+        this.allowsImplementation = HostInteropReflect.isExtensibleType(type) && getCache().allowsImplementation(type);
         this.allowedTargetType = allowsImplementation && HostInteropReflect.isAbstractType(type) && hasDefaultConstructor(type);
     }
 
@@ -442,11 +443,18 @@ final class HostClassDesc {
             synchronized (this) {
                 m = members;
                 if (m == null) {
-                    members = m = new Members(cache, type);
+                    HostClassCache localCache = getCache();
+                    members = m = new Members(localCache, type);
                 }
             }
         }
         return m;
+    }
+
+    private HostClassCache getCache() {
+        HostClassCache localCache = this.cache.get();
+        assert localCache != null : "cache was collected but should no longer be accessible";
+        return localCache;
     }
 
     private JNIMembers getJNIMembers() {
@@ -580,7 +588,7 @@ final class HostClassDesc {
         synchronized (this) {
             AdapterResult result = adapter;
             if (result == null) {
-                adapter = result = HostAdapterFactory.makeAdapterClassFor(cache, type, hostContext.getClassloader());
+                adapter = result = HostAdapterFactory.makeAdapterClassFor(getCache(), type, hostContext.getClassloader());
             }
             return result;
         }
