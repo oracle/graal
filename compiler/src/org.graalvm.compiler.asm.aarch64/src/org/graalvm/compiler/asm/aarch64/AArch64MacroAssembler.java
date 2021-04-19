@@ -824,7 +824,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Conditional move. dst = src1 if condition else src2.
+     * Conditional select. dst = src1 if condition else src2.
      *
      * @param size register size. Has to be 32 or 64.
      * @param result general purpose register. May not be null or the stackpointer.
@@ -832,7 +832,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param falseValue general purpose register. May not be null or the stackpointer.
      * @param cond any condition flag. May not be null.
      */
-    public void cmov(int size, Register result, Register trueValue, Register falseValue, ConditionFlag cond) {
+    @Override
+    public void csel(int size, Register result, Register trueValue, Register falseValue, ConditionFlag cond) {
         super.csel(size, result, trueValue, falseValue, cond);
     }
 
@@ -1633,6 +1634,18 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * dst = src1 & ~(src2) and sets condition flags.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param src2 general purpose register. May not be null or stackpointer.
+     */
+    public void bics(int size, Register dst, Register src1, Register src2) {
+        super.bics(size, dst, src1, src2, ShiftType.LSL, 0);
+    }
+
+    /**
      * dst = src1 ^ ~(shiftType(src2, imm)).
      *
      * @param size register size. Has to be 32 or 64.
@@ -1763,7 +1776,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Conditional move. dst = src1 if condition else src2.
+     * Conditional select. dst = src1 if condition else src2.
      *
      * @param size register size.
      * @param result floating point register. May not be null.
@@ -1771,7 +1784,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param falseValue floating point register. May not be null.
      * @param condition every condition allowed. May not be null.
      */
-    public void fcmov(int size, Register result, Register trueValue, Register falseValue, ConditionFlag condition) {
+    @Override
+    public void fcsel(int size, Register result, Register trueValue, Register falseValue, ConditionFlag condition) {
         super.fcsel(size, result, trueValue, falseValue, condition);
     }
 
@@ -1853,7 +1867,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                     mov(64, dst, temp1);
                     mov(temp1, 0x80000000);
                     // Develop 0 (EQ), or 0x80000000 (NE)
-                    cmov(32, temp1, temp1, zr, ConditionFlag.NE);
+                    csel(32, temp1, temp1, zr, ConditionFlag.NE);
                     cmp(32, temp1, 1);
                     // 0x80000000 - 1 => VS
                     break;
@@ -1867,7 +1881,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                     // NE => overflow
                     mov(temp1, 0x80000000);
                     // Develop 0 (EQ), or 0x80000000 (NE)
-                    cmov(32, temp1, temp1, zr, ConditionFlag.NE);
+                    csel(32, temp1, temp1, zr, ConditionFlag.NE);
                     cmp(32, temp1, 1);
                     // 0x80000000 - 1 => VS
                     break;

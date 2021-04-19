@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -46,9 +47,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
-public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
+public class ArrayIndexOfNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
 
-    public static final NodeClass<AMD64ArrayIndexOfNode> TYPE = NodeClass.create(AMD64ArrayIndexOfNode.class);
+    public static final NodeClass<ArrayIndexOfNode> TYPE = NodeClass.create(ArrayIndexOfNode.class);
 
     protected final JavaKind arrayKind;
     protected final JavaKind valueKind;
@@ -59,16 +60,11 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
     @Input protected ValueNode fromIndex;
     @Input protected NodeInputList<ValueNode> searchValues;
 
-    @OptionalInput(InputType.Memory) private MemoryKill lastLocationAccess;
+    @OptionalInput(InputType.Memory) protected MemoryKill lastLocationAccess;
 
-    public AMD64ArrayIndexOfNode(@ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind, @ConstantNodeParameter boolean findTwoConsecutive,
-                    ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, arrayKind, valueKind, findTwoConsecutive, arrayPointer, arrayLength, fromIndex, searchValues);
-    }
-
-    protected AMD64ArrayIndexOfNode(NodeClass<? extends AMD64ArrayIndexOfNode> c, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
+    public ArrayIndexOfNode(NodeClass<? extends ArrayIndexOfNode> type, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive, ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        super(c, StampFactory.forKind(JavaKind.Int));
+        super(type, StampFactory.forKind(JavaKind.Int));
         this.arrayKind = arrayKind;
         this.valueKind = valueKind;
         this.findTwoConsecutive = findTwoConsecutive;
@@ -76,6 +72,11 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         this.arrayLength = arrayLength;
         this.fromIndex = fromIndex;
         this.searchValues = new NodeInputList<>(this, searchValues);
+    }
+
+    public ArrayIndexOfNode(@ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind, @ConstantNodeParameter boolean findTwoConsecutive,
+                    ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
+        this(TYPE, arrayKind, valueKind, findTwoConsecutive, arrayPointer, arrayLength, fromIndex, searchValues);
     }
 
     @Override
@@ -89,9 +90,9 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         for (int i = 0; i < searchValues.size(); i++) {
             searchValueOperands[i] = gen.operand(searchValues.get(i));
         }
-        int arrayBaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(arrayKind);
-        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayBaseOffset, valueKind, findTwoConsecutive,
-                        gen.operand(arrayPointer), gen.operand(arrayLength), gen.operand(fromIndex), searchValueOperands);
+        int arrayBaseOffset = getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), arrayPointer, arrayKind);
+        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayBaseOffset, valueKind, findTwoConsecutive, gen.operand(arrayPointer), gen.operand(arrayLength), gen.operand(fromIndex),
+                        searchValueOperands);
         gen.setResult(this, result);
     }
 
@@ -106,12 +107,23 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         lastLocationAccess = lla;
     }
 
+    protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array, JavaKind kind) {
+        return metaAccessProvider.getArrayBaseOffset(kind);
+    }
+
     @NodeIntrinsic
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, byte v1);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    Object array, int arrayLength, int fromIndex, char v1);
 
     @NodeIntrinsic
     public static native int optimizedArrayIndexOf(
@@ -133,13 +145,6 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4);
-
-    @NodeIntrinsic
-    public static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter JavaKind arrayKind,
-                    @ConstantNodeParameter JavaKind valueKind,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    Object array, int arrayLength, int fromIndex, char v1);
 
     @NodeIntrinsic
     public static native int optimizedArrayIndexOf(
