@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.redefinition.plugins.api;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 public interface RedefineObject {
-    boolean notNull();
-
     KlassRef getKlass();
 
     RedefineObject fromType(String className);
@@ -38,5 +36,4 @@ public interface RedefineObject {
     RedefineObject getInstanceField(String fieldName) throws NoSuchFieldException;
 
     Object getRawValue();
-
 }

@@ -54,9 +54,18 @@ public final class CachedRedefineObject extends RedefineObjectImpl {
     @Override
     @TruffleBoundary
     public Object invoke(String name, RedefineObject... args) throws NoSuchMethodException {
+        StaticObject theInstance = (StaticObject) getRawValue();
+        if (theInstance == null) {
+            throw new IllegalStateException("cannot invoke method on garbage collection instance");
+        }
+
         StringBuilder stringBuffer = new StringBuilder(name);
         for (RedefineObject arg : args) {
-            stringBuffer.append(((RedefineObjectImpl) arg).instance.get().getKlass().getNameAsString());
+            StaticObject rawArg = (StaticObject) arg.getRawValue();
+            if (rawArg == null) {
+                throw new IllegalStateException("cannot invoke method on garbage collection instance");
+            }
+            stringBuffer.append(rawArg.getKlass().getNameAsString());
         }
         String mapKey = stringBuffer.toString();
         Method method = methodsCache.get(mapKey);
@@ -67,10 +76,7 @@ public final class CachedRedefineObject extends RedefineObjectImpl {
             }
         }
         if (method != null) {
-            StaticObject theInstance = instance.get();
-            if (theInstance == null) {
-                throw new IllegalStateException("cannot invoke method on garbage collection instance");
-            }
+
             RedefineObjectImpl[] internalArgs = new RedefineObjectImpl[args.length];
             for (int i = 0; i < args.length; i++) {
                 internalArgs[i] = (RedefineObjectImpl) args[i];
@@ -82,11 +88,14 @@ public final class CachedRedefineObject extends RedefineObjectImpl {
 
     @Override
     public RedefineObject invokePrecise(String className, String methodName, RedefineObject... args) throws NoSuchMethodException, IllegalStateException {
-        // fetch the known declaring class of the method
-        StaticObject theInstance = instance.get();
         if (instance == null) {
             throw new IllegalStateException();
         }
+        StaticObject theInstance = instance.get();
+        if (theInstance == null) {
+            throw new IllegalStateException();
+        }
+        // fetch the known declaring class of the method
         Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(className);
         Klass klassRef = context.getRegistries().findLoadedClass(type, klass.getDefiningClassLoader());
         if (klassRef != null) {

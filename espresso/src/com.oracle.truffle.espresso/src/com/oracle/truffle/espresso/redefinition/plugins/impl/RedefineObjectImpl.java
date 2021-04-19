@@ -172,14 +172,14 @@ public abstract class RedefineObjectImpl implements RedefineObject {
         return result;
     }
 
-    public boolean notNull() {
-        return instance != null && instance.get() != StaticObject.NULL;
-    }
-
     public RedefineObject fromType(String className) {
-        EspressoContext context = instance.get().getKlass().getContext();
+        StaticObject theInstance = (StaticObject) getRawValue();
+        if (theInstance == null || theInstance.getKlass() == null) {
+            return null;
+        }
+        EspressoContext context = theInstance.getKlass().getContext();
         Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(className);
-        Klass loadedClass = context.getRegistries().findLoadedClass(type, instance.get().getKlass().getDefiningClassLoader());
+        Klass loadedClass = context.getRegistries().findLoadedClass(type, theInstance.getKlass().getDefiningClassLoader());
         if (loadedClass != null) {
             return new CachedRedefineObject(loadedClass.mirror());
         }
