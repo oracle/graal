@@ -93,6 +93,26 @@ public class ArrayIndexOfDispatchNode extends FixedWithNextNode implements Canon
 
     }
 
+    public boolean isFindTwoConsecutive() {
+        return findTwoConsecutive;
+    }
+
+    public ValueNode getArrayPointer() {
+        return arrayPointer;
+    }
+
+    public ValueNode getArrayLength() {
+        return arrayLength;
+    }
+
+    public ValueNode getFromIndex() {
+        return fromIndex;
+    }
+
+    public NodeInputList<ValueNode> getSearchValues() {
+        return searchValues;
+    }
+
     @Override
     public boolean canDeoptimize() {
         return true;
@@ -113,34 +133,6 @@ public class ArrayIndexOfDispatchNode extends FixedWithNextNode implements Canon
         return stubCallDescriptor;
     }
 
-    public ValueNode[] getStubCallArgs() {
-        ValueNode[] ret = new ValueNode[searchValues.size() + 3];
-        ret[0] = arrayPointer;
-        ret[1] = arrayLength;
-        ret[2] = fromIndex;
-        for (int i = 0; i < searchValues.size(); i++) {
-            ret[3 + i] = searchValues.get(i);
-        }
-        return ret;
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return NamedLocationIdentity.getArrayLocation(arrayKind);
-    }
-
-    public ValueNode getArrayPointer() {
-        return arrayPointer;
-    }
-
-    public ValueNode getFromIndex() {
-        return fromIndex;
-    }
-
-    public NodeInputList<ValueNode> getSearchValues() {
-        return searchValues;
-    }
-
     public int getNumberOfValues() {
         return searchValues.size();
     }
@@ -155,6 +147,22 @@ public class ArrayIndexOfDispatchNode extends FixedWithNextNode implements Canon
 
     public JavaKind getComparisonKind() {
         return findTwoConsecutive ? (valueKind == JavaKind.Byte ? JavaKind.Char : JavaKind.Int) : valueKind;
+    }
+
+    public ValueNode[] getStubCallArgs() {
+        ValueNode[] ret = new ValueNode[searchValues.size() + 3];
+        ret[0] = arrayPointer;
+        ret[1] = arrayLength;
+        ret[2] = fromIndex;
+        for (int i = 0; i < searchValues.size(); i++) {
+            ret[3 + i] = searchValues.get(i);
+        }
+        return ret;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return NamedLocationIdentity.getArrayLocation(arrayKind);
     }
 
     @Override
