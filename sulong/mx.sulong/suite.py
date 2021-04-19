@@ -930,15 +930,13 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.bitcode.amd64.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
+      "class" : "SulongCMakeTestSuite",
       "bundledLLVMOnly" : True,
-      "variants" : ["O0"],
+      "variants" : ["bitcode-O0"],
       "fileExts" : [".ll"],
       "buildRef" : True,
-      "buildEnv" : {
-        "OS" : "<os>",
-        "CFLAGS" : "-O0",
-        "SUITE_LDFLAGS" : "-lm",
+      "cmakeConfig" : {
+        "CMAKE_C_LINK_FLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",
