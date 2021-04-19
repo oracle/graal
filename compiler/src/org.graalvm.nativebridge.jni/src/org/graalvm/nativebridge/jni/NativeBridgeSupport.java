@@ -26,7 +26,7 @@ package org.graalvm.nativebridge.jni;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-public interface TraceHandler {
+public interface NativeBridgeSupport {
 
     boolean isTracingEnabled(int level);
 
@@ -34,7 +34,7 @@ public interface TraceHandler {
 
     void trace(int level, Throwable throwable);
 
-    static TraceHandler getInstance() {
-        return ImageSingletons.lookup(TraceHandler.class);
+    static NativeBridgeSupport getInstance() {
+        return ImageSingletons.lookup(NativeBridgeSupport.class);
     }
 }

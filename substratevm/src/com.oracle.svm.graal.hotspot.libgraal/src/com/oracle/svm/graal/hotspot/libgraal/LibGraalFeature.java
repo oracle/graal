@@ -101,10 +101,10 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
 import org.graalvm.libgraal.jni.JNILibGraalScope;
-import org.graalvm.libgraal.jni.LibGraalTraceHandler;
+import org.graalvm.libgraal.jni.LibGraalNativeBridgeSupport;
 import org.graalvm.nativebridge.jni.JNI;
 import org.graalvm.nativebridge.jni.JNIUtil;
-import org.graalvm.nativebridge.jni.TraceHandler;
+import org.graalvm.nativebridge.jni.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
@@ -201,7 +201,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(TraceHandler.class, new LibGraalTraceHandler());
+        ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
     }
 
     @Override

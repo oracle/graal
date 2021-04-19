@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -102,7 +103,7 @@ public final class JNI {
      * } jvalue;
      * </pre>
      */
-    @CContext(LibGraalJNIHeaderDirectives.class)
+    @CContext(JNIHeaderDirectives.class)
     @CStruct("jvalue")
     public interface JValue extends PointerBase {
         // @formatter:off
@@ -133,14 +134,14 @@ public final class JNI {
         JValue addressOf(int index);
     }
 
-    @CContext(LibGraalJNIHeaderDirectives.class)
+    @CContext(JNIHeaderDirectives.class)
     @CStruct(value = "JNIEnv_", addStructKeyword = true)
     public interface JNIEnv extends PointerBase {
         @CField("functions")
         JNINativeInterface getFunctions();
     }
 
-    @CContext(LibGraalJNIHeaderDirectives.class)
+    @CContext(JNIHeaderDirectives.class)
     @CStruct(value = "JNINativeInterface_", addStructKeyword = true)
     public interface JNINativeInterface extends PointerBase {
 
@@ -617,12 +618,12 @@ public final class JNI {
         void call(JNIEnv env, JClass clazz, JFieldID fieldID, boolean value);
     }
 
-    static class LibGraalJNIHeaderDirectives implements CContext.Directives {
+    static class JNIHeaderDirectives implements CContext.Directives {
         private static final String[] INCLUDES = {"jni.h", "jni_md.h"};
 
         @Override
         public boolean isInConfiguration() {
-            return jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+            return ImageSingletons.contains(NativeBridgeSupport.class);
         }
 
         @Override

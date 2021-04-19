@@ -27,9 +27,9 @@ package org.graalvm.libgraal.jni;
 import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.nativebridge.jni.TraceHandler;
+import org.graalvm.nativebridge.jni.NativeBridgeSupport;
 
-public class LibGraalTraceHandler implements TraceHandler {
+public class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
 
     private static final String JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
 

@@ -471,7 +471,7 @@ public final class JNIUtil {
     /*----------------- TRACING ------------------*/
 
     public static boolean tracingAt(int level) {
-        return TraceHandler.getInstance().isTracingEnabled(level);
+        return NativeBridgeSupport.getInstance().isTracingEnabled(level);
     }
 
     /**
@@ -479,10 +479,10 @@ public final class JNIUtil {
      * or greater than {@code level}.
      */
     public static void trace(int level, String format, Object... args) {
-        TraceHandler.getInstance().trace(level, format, args);
+        NativeBridgeSupport.getInstance().trace(level, format, args);
     }
 
     public static void trace(int level, Throwable throwable) {
-        TraceHandler.getInstance().trace(level, throwable);
+        NativeBridgeSupport.getInstance().trace(level, throwable);
     }
 }
