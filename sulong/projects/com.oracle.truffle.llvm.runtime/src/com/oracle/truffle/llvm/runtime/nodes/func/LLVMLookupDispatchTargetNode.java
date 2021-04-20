@@ -36,6 +36,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -60,12 +61,10 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
 
     protected static final int INLINE_CACHE_SIZE = 5;
 
-    @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
-
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"isSameObject(pointer.getObject(), cachedDescriptor)", "cachedDescriptor != null",
-                    "pointer.getOffset() == 0"}, assumptions = "singleContextAssumption()")
+            "pointer.getOffset() == 0"}, assumptions = "singleContextAssumption()")
     protected static LLVMFunctionDescriptor doDirectCached(@SuppressWarnings("unused") LLVMManagedPointer pointer,
-                    @Cached("asFunctionDescriptor(pointer.getObject())") LLVMFunctionDescriptor cachedDescriptor) {
+                                                           @Cached("asFunctionDescriptor(pointer.getObject())") LLVMFunctionDescriptor cachedDescriptor) {
         return cachedDescriptor;
     }
 
@@ -76,25 +75,27 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
 
     @Specialization(guards = {"foreigns.isForeign(pointer.getObject())", "pointer.getOffset() == 0"})
     protected Object doForeign(LLVMManagedPointer pointer,
-                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+                               @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
         return pointer.getObject();
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)",
-                    "cachedDescriptor != null"}, assumptions = "singleContextAssumption()")
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress, languageRef)",
+            "cachedDescriptor != null"}, assumptions = "singleContextAssumption()")
     protected static LLVMFunctionDescriptor doHandleCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
-                    @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @CachedContext(LLVMLanguage.class) @SuppressWarnings("unused") ContextReference<LLVMContext> ctxRef,
-                    @Cached("lookupFunction(ctxRef, pointer)") LLVMFunctionDescriptor cachedDescriptor) {
+                                                           @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
+                                                           @CachedContext(LLVMLanguage.class) @SuppressWarnings("unused") ContextReference<LLVMContext> ctxRef,
+                                                           @CachedLanguage @SuppressWarnings("unused") LanguageReference<LLVMLanguage> languageRef,
+                                                           @Cached("lookupFunction(ctxRef, pointer)") LLVMFunctionDescriptor cachedDescriptor) {
         return cachedDescriptor;
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)",
-                    "cachedDescriptor == null"}, assumptions = "singleContextAssumption()")
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress, languageRef)",
+            "cachedDescriptor == null"}, assumptions = "singleContextAssumption()")
     protected static LLVMNativePointer doNativeFunctionCached(LLVMNativePointer pointer,
-                    @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @CachedContext(LLVMLanguage.class) @SuppressWarnings("unused") ContextReference<LLVMContext> ctxRef,
-                    @Cached("lookupFunction(ctxRef, pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {
+                                                              @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
+                                                              @CachedContext(LLVMLanguage.class) @SuppressWarnings("unused") ContextReference<LLVMContext> ctxRef,
+                                                              @CachedLanguage @SuppressWarnings("unused") LanguageReference<LLVMLanguage> languageRef,
+                                                              @Cached("lookupFunction(ctxRef, pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {
         return pointer;
     }
 
@@ -102,9 +103,10 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
      * Try to cache the target symbol if it's always the same one, the reverse lookup is much faster
      * and doesn't need a TruffleBoundary.
      */
-    @Specialization(guards = {"!isAutoDerefHandle(pointer.asNative())", "cachedSymbol != null"}, replaces = {"doHandleCached",
-                    "doNativeFunctionCached"}, rewriteOn = LLVMIllegalSymbolIndexException.class)
+    @Specialization(guards = {"!isAutoDerefHandle(pointer.asNative(), languageRef)", "cachedSymbol != null"}, replaces = {"doHandleCached",
+            "doNativeFunctionCached"}, rewriteOn = LLVMIllegalSymbolIndexException.class)
     protected Object doLookupNativeFunctionCachedSymbol(VirtualFrame frame, LLVMNativePointer pointer,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<LLVMLanguage> languageRef,
                     @Cached("lookupFunctionSymbol(pointer)") LLVMAccessSymbolNode cachedSymbol) {
         /*
          * The cache will be invalidated if the symbol cannot be found in the symbol table. In which
@@ -128,9 +130,10 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         throw new LLVMIllegalSymbolIndexException("mismatching function");
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(pointer.asNative())", replaces = {"doLookupNativeFunctionCachedSymbol", "doHandleCached", "doNativeFunctionCached"})
+    @Specialization(guards = "!isAutoDerefHandle(pointer.asNative(), languageRef)", replaces = {"doLookupNativeFunctionCachedSymbol", "doHandleCached", "doNativeFunctionCached"})
     protected Object doLookup(LLVMNativePointer pointer,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
+                              @CachedLanguage @SuppressWarnings("unused") LanguageReference<LLVMLanguage> languageRef,
+                              @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
         LLVMFunctionDescriptor descriptor = lookupFunction(ctxRef, pointer);
         if (descriptor != null) {
             return descriptor;
@@ -139,9 +142,10 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         }
     }
 
-    @Specialization(guards = "isAutoDerefHandle(pointer.asNative())")
+    @Specialization(guards = "isAutoDerefHandle(pointer.asNative(), languageRef)")
     protected Object doDerefHandle(LLVMNativePointer pointer,
-                    @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
+                                   @CachedLanguage @SuppressWarnings("unused") LanguageReference<LLVMLanguage> languageRef,
+                                   @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
         LLVMManagedPointer foreignFunction = getReceiver.execute(pointer);
         return foreignFunction.getObject();
     }
@@ -157,11 +161,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         return descriptor == null || descriptor.getLLVMFunction() == null ? null : LLVMAccessSymbolNodeGen.create(descriptor.getLLVMFunction());
     }
 
-    protected boolean isAutoDerefHandle(long addr) {
-        if (languageRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            languageRef = lookupLanguageReference(LLVMLanguage.class);
-        }
+    protected boolean isAutoDerefHandle(long addr, LanguageReference<LLVMLanguage> languageRef) {
         // checking the bit is cheaper than getting the assumption in interpreted mode
         if (CompilerDirectives.inCompiledCode() && languageRef.get().getNoDerefHandleAssumption().isValid()) {
             return false;

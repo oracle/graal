@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -55,8 +54,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
 
     protected final LLVMSymbol symbol;
-
-    @CompilationFinal private LLVMStackAccess stackAccess;
 
     LLVMAccessSymbolNode(LLVMSymbol symbol) {
         this.symbol = LLVMAlias.resolveAlias(symbol);
@@ -92,12 +89,12 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
         return checkNull(context.getSymbol(symbol));
     }
 
+    protected LLVMStack.LLVMStackAccessHolder createStackAccessHolder() {
+        return new LLVMStack.LLVMStackAccessHolder(((LLVMRootNode) getRootNode()).getStackAccess());
+    }
+
     @Specialization
-    public LLVMPointer accessMultiContext(VirtualFrame frame) throws LLVMIllegalSymbolIndexException {
-        if (stackAccess == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
-        }
-        return checkNull(stackAccess.executeGetStack(frame).getContext().getSymbol(symbol));
+    public LLVMPointer accessMultiContext(VirtualFrame frame, @Cached("createStackAccessHolder()") LLVMStack.LLVMStackAccessHolder stackAccessHolder) throws LLVMIllegalSymbolIndexException {
+        return checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol));
     }
 }

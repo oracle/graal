@@ -33,13 +33,16 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -126,14 +129,17 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         return getShortString("blockId", "nullableBefore", "nullableAfter");
     }
 
-    private static final class InitializedBlockNode extends LLVMBasicBlockNode {
+    private static final class InitializedBlockNode extends LLVMBasicBlockNode implements GenerateAOT.Provider {
 
         private final BranchProfile controlFlowExceptionProfile = BranchProfile.create();
 
-        @CompilationFinal(dimensions = 1) private final long[] successorExecutionCount;
+        @CompilationFinal(dimensions = 1) private long[] successorExecutionCount;
 
         @Children private final LLVMStatementNode[] statements;
         @Child public LLVMControlFlowNode termInstruction;
+
+        @CompilationFinal private boolean aot;
+        @CompilationFinal private double aotBranchProbability;
 
         InitializedBlockNode(LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
             super(blockId, blockName);
@@ -145,6 +151,12 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         @Override
         public void initialize() {
             // this block is already initialized
+        }
+
+        @Override
+        public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+            aot = true;
+            aotBranchProbability = successorExecutionCount != null ? (1d / successorExecutionCount.length) : 1d;
         }
 
         @Override
@@ -174,6 +186,10 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         @Override
         @ExplodeLoop
         public double getBranchProbability(int successorIndex) {
+            if (aot) {
+                return aotBranchProbability;
+            }
+
             if (successorExecutionCount == null) {
                 // only one successor
                 return 1;
@@ -208,6 +224,10 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
         @Override
         public void enterSuccessor(int successorIndex) {
+            if (aot) {
+                return;
+            }
+
             if (CompilerDirectives.inCompiledCode() && successorExecutionCount != null) {
                 if (successorExecutionCount[successorIndex] == 0) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
