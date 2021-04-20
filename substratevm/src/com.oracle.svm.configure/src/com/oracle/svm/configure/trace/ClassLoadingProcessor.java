@@ -25,20 +25,20 @@
  */
 package com.oracle.svm.configure.trace;
 
-import com.oracle.svm.configure.config.DynamicClassesConfiguration;
-
 import java.util.List;
 import java.util.Map;
 
-public class DynamicClassesProcessor extends AbstractProcessor {
-    private final DynamicClassesConfiguration dynamicClassesConfiguration;
+import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 
-    public DynamicClassesProcessor(DynamicClassesConfiguration dynamicClassesConfiguration) {
-        this.dynamicClassesConfiguration = dynamicClassesConfiguration;
+public class ClassLoadingProcessor extends AbstractProcessor {
+    private final PredefinedClassesConfiguration configuration;
+
+    public ClassLoadingProcessor(PredefinedClassesConfiguration configuration) {
+        this.configuration = configuration;
     }
 
-    public DynamicClassesConfiguration getDynamicClassesConfiguration() {
-        return dynamicClassesConfiguration;
+    public PredefinedClassesConfiguration getPredefinedClassesConfiguration() {
+        return configuration;
     }
 
     @Override
@@ -48,10 +48,13 @@ public class DynamicClassesProcessor extends AbstractProcessor {
             return;
         }
 
-        if ("onClassFileLoadHook".equals(entry.get("function"))) {
-            List<?> args = (List<?>) entry.get("args");
-            expectSize(args, 3);
-            dynamicClassesConfiguration.add((String) args.get(0), (byte[]) args.get(2), (String) args.get(1));
+        String function = (String) entry.get("function");
+        List<?> args = (List<?>) entry.get("args");
+        if ("onClassFileLoadHook".equals(function)) {
+            expectSize(args, 2);
+            String nameInfo = (String) args.get(0);
+            byte[] classData = asBinary(args.get(1));
+            configuration.add(nameInfo, classData);
         }
     }
 }

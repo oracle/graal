@@ -27,7 +27,6 @@ package com.oracle.svm.agent;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.callObjectMethod;
-import static com.oracle.svm.jvmtiagentbase.Support.callObjectMethodL;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -49,14 +48,13 @@ import static com.oracle.svm.jvmtiagentbase.Support.newObjectL;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
+import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_FILE_LOAD_HOOK;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
-import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_FILE_LOAD_HOOK;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -66,7 +64,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.svm.core.util.JavaClassUtil;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -159,6 +156,9 @@ final class BreakpointInterceptor {
     private static final ReentrantLock nativeBreakpointsInitLock = new ReentrantLock();
 
     private static final ThreadLocal<Boolean> recursive = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    /* Classes from these class loaders are assumed to not be dynamically loaded. */
+    private static JNIObjectHandle[] builtinClassLoaders;
 
     private static void traceBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result, Object... args) {
         if (traceWriter != null) {
@@ -1091,56 +1091,21 @@ final class BreakpointInterceptor {
 
     @CEntryPoint
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
-    private static void onClassFileLoadHook(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
-                    @SuppressWarnings("unused") JNIObjectHandle classBeingRedefined, JNIObjectHandle loader, CCharPointer name, @SuppressWarnings("unused") JNIObjectHandle protectionDomain,
-                    int classDataLen,
-                    CCharPointer classData, @SuppressWarnings("unused") CIntPointer newClassDataLen, @SuppressWarnings("unused") CCharPointerPointer newClassData) {
-        boolean nameIsNull = name.isNull();
-        if (isDynamicallyGenerated(jni, loader, nameIsNull, nameIsNull ? "" : fromCString(name))) {
-            byte[] contents = new byte[classDataLen];
-            CTypeConversion.asByteBuffer(classData, classDataLen).get(contents);
-            String definedClassName = nameIsNull ? JavaClassUtil.getClassName(contents) : fromCString(name);
-            if (definedClassName != null) {
-                String hashCode;
-                try {
-                    hashCode = JavaClassUtil.getSHAWithoutSourceFileInfo(contents);
-                } catch (NoSuchAlgorithmException e) {
-                    hashCode = null;
-                }
-                traceWriter.traceCall("classDefiner", "onClassFileLoadHook", null, null, null, true, definedClassName.replace('/', '.'), hashCode, contents);
-            }
-        }
-    }
+    private static void onClassFileLoadHook(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni, @SuppressWarnings("unused") JNIObjectHandle classBeingRedefined,
+                    JNIObjectHandle loader, CCharPointer name, @SuppressWarnings("unused") JNIObjectHandle protectionDomain, int classDataLen, CCharPointer classData,
+                    @SuppressWarnings("unused") CIntPointer newClassDataLen, @SuppressWarnings("unused") CCharPointerPointer newClassData) {
 
-    private static boolean isDynamicallyGenerated(JNIEnvironment jni, JNIObjectHandle classLoader, boolean inputNameIsNull, String definedClassName) {
-        boolean isDynamicallyGenerated;
-        // 1. Classloader is null, it's a system class.
-        // The class is not dynamically generated.
-        if (classLoader.equal(nullHandle())) {
-            isDynamicallyGenerated = false;
-        } else {
-            // 2. Don't have a name for class before defining.
-            // The class is dynamically generated.
-            if (inputNameIsNull) {
-                isDynamicallyGenerated = true;
-            } else {
-                // 3. A dynamically defined class always return null
-                // when call java.lang.ClassLoader.getResource(classname)
-                // This is the accurate but slow way.
-                String asResourceName = definedClassName.replace('.', '/') + ".class";
-                try (CCharPointerHolder resourceNameHolder = toCString(asResourceName);) {
-                    JNIObjectHandle resourceNameJString = jniFunctions().getNewStringUTF().invoke(jni, resourceNameHolder.get());
-                    if (agent.handles() == null) {
-                        // agent's handles is created at onVMStart.
-                        isDynamicallyGenerated = false;
-                    } else {
-                        JNIObjectHandle returnValue = callObjectMethodL(jni, classLoader, agent.handles().javaLangClassLoaderGetResource, resourceNameJString);
-                        isDynamicallyGenerated = returnValue.equal(nullHandle());
-                    }
-                }
+        if (loader.equal(nullHandle())) { // boot class loader
+            return;
+        }
+        for (JNIObjectHandle builtinLoader : builtinClassLoaders) {
+            if (jniFunctions().getIsSameObject().invoke(jni, loader, builtinLoader)) {
+                return;
             }
         }
-        return isDynamicallyGenerated;
+        byte[] data = new byte[classDataLen];
+        CTypeConversion.asByteBuffer(classData, classDataLen).get(data);
+        traceWriter.traceCall("classloading", "onClassFileLoadHook", null, null, null, null, fromCString(name), data);
     }
 
     private static final CEntryPointLiteral<CFunctionPointer> onBreakpointLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onBreakpoint",
@@ -1182,15 +1147,13 @@ final class BreakpointInterceptor {
 
         callbacks.setBreakpoint(onBreakpointLiteral.getFunctionPointer());
         callbacks.setNativeMethodBind(onNativeMethodBindLiteral.getFunctionPointer());
+        callbacks.setClassFileLoadHook(onClassFileLoadHookLiteral.getFunctionPointer());
         if (exptlClassLoaderSupport) {
             callbacks.setClassPrepare(onClassPrepareLiteral.getFunctionPointer());
         }
 
         BreakpointInterceptor.boundNativeMethods = new HashMap<>();
-        Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_NATIVE_METHOD_BIND, nullHandle()));
-
-        callbacks.setClassFileLoadHook(onClassFileLoadHookLiteral.getFunctionPointer());
-        Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullHandle()));
+        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_NATIVE_METHOD_BIND, nullHandle()));
     }
 
     public static void onVMInit(JvmtiEnv jvmti, JNIEnvironment jni) {
@@ -1256,10 +1219,45 @@ final class BreakpointInterceptor {
             nativeBreakpointsInitLock.unlock();
         }
 
-        Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullHandle()));
+        setupClassLoadEvent(jvmti, jni);
+
+        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullHandle()));
         if (experimentalClassLoaderSupport) {
-            Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullHandle()));
+            check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullHandle()));
         }
+    }
+
+    private static void setupClassLoadEvent(JvmtiEnv jvmti, JNIEnvironment jni) {
+        JNIObjectHandle classLoader = agent.handles().javaLangClassLoader;
+
+        JNIMethodId getSystemClassLoader = agent.handles().getMethodId(jni, classLoader, "getSystemClassLoader", "()Ljava/lang/ClassLoader;", true);
+        JNIObjectHandle systemLoader = Support.callStaticObjectMethod(jni, classLoader, getSystemClassLoader);
+        checkNoException(jni);
+        guarantee(systemLoader.notEqual(nullHandle()));
+
+        JNIMethodId getPlatformLoader = agent.handles().getMethodIdOptional(jni, classLoader, "getPlatformClassLoader", "()Ljava/lang/ClassLoader;", true);
+        JNIMethodId getAppLoader = agent.handles().getMethodIdOptional(jni, classLoader, "getBuiltinAppClassLoader", "()Ljava/lang/ClassLoader;", true);
+        if (getPlatformLoader.isNonNull() && getAppLoader.isNonNull()) { // only on JDK 9 and later
+            JNIObjectHandle platformLoader = callObjectMethod(jni, classLoader, getPlatformLoader);
+            checkNoException(jni);
+            JNIObjectHandle appLoader = callObjectMethod(jni, classLoader, getAppLoader);
+            checkNoException(jni);
+            guarantee(platformLoader.notEqual(nullHandle()) && appLoader.notEqual(nullHandle()));
+
+            if (!jniFunctions().getIsSameObject().invoke(jni, systemLoader, appLoader)) {
+                builtinClassLoaders = new JNIObjectHandle[3];
+                builtinClassLoaders[2] = agent.handles().newTrackedGlobalRef(jni, appLoader);
+            } else {
+                builtinClassLoaders = new JNIObjectHandle[2];
+            }
+            builtinClassLoaders[1] = agent.handles().newTrackedGlobalRef(jni, platformLoader);
+        } else {
+            guarantee(getPlatformLoader.isNull() && getAppLoader.isNull());
+            builtinClassLoaders = new JNIObjectHandle[1];
+        }
+        builtinClassLoaders[0] = agent.handles().newTrackedGlobalRef(jni, systemLoader);
+
+        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullHandle()));
     }
 
     private static Breakpoint installBreakpoint(JNIEnvironment jni, BreakpointSpecification br, Map<Long, Breakpoint> map, JNIObjectHandle knownClass) {
@@ -1336,6 +1334,7 @@ final class BreakpointInterceptor {
     }
 
     public static void onUnload() {
+        builtinClassLoaders = null;
         installedBreakpoints = null;
         nativeBreakpoints = null;
         observedExplicitLoadClassCallSites = null;

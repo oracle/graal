@@ -23,26 +23,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect;
+package com.oracle.svm.configure.config;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.hosted.NativeImageOptions;
+import java.io.IOException;
 
-public class MultiClassLoaderReporter {
-    public static final String MULTIPLE_CHECKSUMS = "MULTIPLE_CHECKSUM";
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
 
-    public static void reportError(BigBang bb, String msgKey, String exceptionsMsg) {
-        // Checkstyle: stop
-        String option = SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+");
-        if (!NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-            bb.getUnsupportedFeatures().addMessage(msgKey, null,
-                            exceptionsMsg + "\n" + "To allow continuing compilation with above unsupported features, set " + option);
-        } else {
-            System.out.println(exceptionsMsg);
-            System.out.println("Compilation will continue because " + option +
-                            " was set. But the program may behave unexpectedly at runtime.");
+public final class ConfigurationPredefinedClass implements JsonPrintable {
+
+    private final String nameInfo;
+    private final String hash;
+
+    public ConfigurationPredefinedClass(String nameInfo, String hash) {
+        this.nameInfo = nameInfo;
+        this.hash = hash;
+    }
+
+    @Override
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.append("{ ");
+        if (nameInfo != null) {
+            writer.quote("nameInfo").append(':').quote(nameInfo).append(", ");
         }
-        // Checkstyle: resume
+        writer.quote("hash").append(':').quote(hash);
+        writer.append(" }");
     }
 }

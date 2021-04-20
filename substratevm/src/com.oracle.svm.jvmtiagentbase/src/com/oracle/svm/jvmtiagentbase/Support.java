@@ -127,6 +127,9 @@ public final class Support {
     }
 
     public static String fromCString(CCharPointer s) {
+        if (s.isNull()) {
+            return null;
+        }
         return CTypeConversion.toJavaString(s, SubstrateUtil.strlen(s), StandardCharsets.UTF_8);
     }
 
@@ -310,6 +313,11 @@ public final class Support {
         args.addressOf(2).setObject(l2);
         args.addressOf(3).setObject(l3);
         return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethod(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method) {
+        JNIValue args = StackValue.get(0, JNIValue.class);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
     }
 
     public static JNIObjectHandle callStaticObjectMethodL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0) {

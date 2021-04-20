@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -64,7 +65,7 @@ class TraceFileWriter extends TraceWriter {
                     if (mapEntry.getValue() instanceof Object[]) {
                         printArray(json, (Object[]) mapEntry.getValue());
                     } else {
-                        json.quote(mapEntry.getValue());
+                        printValue(json, mapEntry.getValue());
                     }
                     first = false;
                 }
@@ -86,10 +87,20 @@ class TraceFileWriter extends TraceWriter {
             if (obj instanceof Object[]) {
                 printArray(json, (Object[]) obj);
             } else {
-                json.quote(array[i]);
+                printValue(json, array[i]);
             }
         }
         json.append(']');
+    }
+
+    private void printValue(JsonWriter json, Object value) throws IOException {
+        String s;
+        if (value instanceof byte[]) {
+            s = Base64.getEncoder().encodeToString((byte[]) value);
+        } else {
+            s = value.toString();
+        }
+        json.quote(s);
     }
 
     private void traceEntry(String s) throws IOException {

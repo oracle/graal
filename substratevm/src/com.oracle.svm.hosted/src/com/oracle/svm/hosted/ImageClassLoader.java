@@ -420,6 +420,10 @@ public final class ImageClassLoader {
     public Optional<Object> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
     }
+
+    public Class<?> predefineClass(String name, byte[] b, int offset, int length) {
+        return NativeImageSystemClassLoader.singleton().predefineClass(name, b, offset, length);
+    }
 }
 
 class ClassLoaderQueryImpl implements ClassLoaderQuery {

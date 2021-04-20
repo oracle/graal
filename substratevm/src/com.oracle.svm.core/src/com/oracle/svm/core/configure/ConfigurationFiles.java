@@ -57,9 +57,9 @@ public final class ConfigurationFiles {
     public static final String REFLECTION_NAME = "reflect" + SUFFIX;
     public static final String SERIALIZATION_NAME = "serialization" + SUFFIX;
     public static final String SERIALIZATION_DENY_NAME = "serialization-deny" + SUFFIX;
-    public static final String DYNAMIC_CLASSES_NAME = "dynamicClasses" + SUFFIX;
-    public static final String DUMP_CLASSES_DIR = "dynClasses";
-    public static final String MANGLE_SLASH = "_2F_"; // "/" is \u002F
+    public static final String PREDEFINED_CLASSES_NAME = "predefined-classes" + SUFFIX;
+    public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR = "agent-extracted-predefined-classes";
+    public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX = ".classdata";
 
     public static final class Options {
         @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User)//
@@ -98,10 +98,10 @@ public final class ConfigurationFiles {
         @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
-        @Option(help = "Files describing dynamically generated classes during program runtime", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicClassesConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
-        @Option(help = "Resources describing dynamically generated classes during program runtime.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicClassesConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        @Option(help = "Files describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        @Option(help = "Resources describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
         @Option(help = "Comma-separated list of file names with declarative substitutions", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SubstitutionFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());

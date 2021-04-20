@@ -31,16 +31,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.security.NoSuchAlgorithmException;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Enumeration;
-import java.util.Collections;
-import java.util.Vector;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -51,7 +50,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.util.JavaClassUtil;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -418,9 +417,8 @@ final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     Class<?> defineClass(String name, byte[] b, int off, int len) throws ClassFormatError {
-        String definedClassName = name == null ? JavaClassUtil.getClassName(b) : name;
-        ClassLoaderHelper.verifyClassUnchanged(definedClassName, b);
-        return ClassLoaderHelper.doDefineClass(definedClassName);
+        // TODO: this likely isn't the only relevant method
+        return ClassLoaderHelper.doDefineClass(name, b, off, len);
     }
 
     @Substitute
@@ -532,38 +530,7 @@ class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTra
 }
 
 final class ClassLoaderHelper {
-    public static Class<?> doDefineClass(String className) {
-        try {
-            return ClassForNameSupport.forName(className, false);
-        } catch (ClassNotFoundException e) {
-            ClassFormatError error = new ClassFormatError("Class " + className + " has not been prepared.");
-            error.initCause(e);
-            throw error;
-        }
-    }
-
-    /**
-     * Verify the runtime defined class' SHA value is the same as the configured.
-     *
-     * @param className Dynamically generated class' full qualified name
-     * @param classContents The definition of the class
-     */
-    public static void verifyClassUnchanged(String className, byte[] classContents) {
-        try {
-            String configedChecksum = ClassForNameSupport.getDynamicClassChecksum(className);
-            String runtimeSHA = JavaClassUtil.getSHAWithoutSourceFileInfo(classContents);
-            if (!configedChecksum.equals(runtimeSHA)) {
-                throw new ClassFormatError(
-                                "Previously prepared class " + className + " has different contents from the dynamically generated one in runtime. The runtime checksum is " + runtimeSHA);
-            }
-        } catch (ClassNotFoundException e) {
-            ClassFormatError error = new ClassFormatError("Class " + className + " has not been prepared.");
-            error.initCause(e);
-            throw error;
-        } catch (NoSuchAlgorithmException e) {
-            ClassFormatError error = new ClassFormatError("Cannot calculate SHA-256 value from class " + className);
-            error.initCause(e);
-            throw error;
-        }
+    public static Class<?> doDefineClass(String expectedName, byte[] b, int off, int len) {
+        return PredefinedClassesSupport.getPredefinedClass(expectedName, b, off, len);
     }
 }

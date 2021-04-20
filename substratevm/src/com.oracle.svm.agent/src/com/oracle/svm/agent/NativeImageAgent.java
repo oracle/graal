@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.agent;
 
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -46,7 +44,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -218,7 +215,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
                 TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                 mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
-                                mergeConfigs.loadDynamicClassesConfig(handler));
+                                mergeConfigs.loadPredefinedClassesConfig(configOutputDirPath.resolve(ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR), handler));
                 traceWriter = new TraceProcessorWriterAdapter(processor);
             } catch (Throwable t) {
                 return error(2, t.toString());
@@ -298,8 +295,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
     private static boolean parseFilterFiles(RuleNode filter, List<String> filterFiles) {
         for (String path : filterFiles) {
-            try (Reader reader = new FileReader(path)) {
-                new FilterConfigurationParser(filter).parseAndRegister(reader);
+            try {
+                new FilterConfigurationParser(filter).parseAndRegister(Paths.get(path));
             } catch (Exception e) {
                 return error(false, "cannot parse filter file " + path + ": " + e);
             }
@@ -421,13 +418,13 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                             : Files.createTempDirectory("tempConfig-");
             TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
 
-            Map<String, JsonPrintable> allConfigFiles = new HashMap<>(4);
+            Map<String, JsonPrintable> allConfigFiles = new HashMap<>();
             allConfigFiles.put(ConfigurationFiles.REFLECTION_NAME, p.getReflectionConfiguration());
             allConfigFiles.put(ConfigurationFiles.JNI_NAME, p.getJniConfiguration());
             allConfigFiles.put(ConfigurationFiles.DYNAMIC_PROXY_NAME, p.getProxyConfiguration());
             allConfigFiles.put(ConfigurationFiles.RESOURCES_NAME, p.getResourceConfiguration());
             allConfigFiles.put(ConfigurationFiles.SERIALIZATION_NAME, p.getSerializationConfiguration());
-            allConfigFiles.put(ConfigurationFiles.DYNAMIC_CLASSES_NAME, p.getDynamicClassesConfiguration());
+            allConfigFiles.put(ConfigurationFiles.PREDEFINED_CLASSES_NAME, p.getPredefinedClassesConfiguration());
 
             for (Map.Entry<String, JsonPrintable> configFile : allConfigFiles.entrySet()) {
                 Path tempPath = tempDirectory.resolve(configFile.getKey());
@@ -442,17 +439,11 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 tryAtomicMove(source, target);
             }
 
-            Path dumpedClassSrc = tempDirectory.resolve(ConfigurationFiles.DUMP_CLASSES_DIR);
-            Path dumpedClassTarget = configOutputDirPath.resolve(ConfigurationFiles.DUMP_CLASSES_DIR);
-            // Move the entire directory if the target directory does not exist
-            if (Files.notExists(dumpedClassTarget)) {
-                tryAtomicMove(dumpedClassSrc, dumpedClassTarget);
-            } else {
-                // Move each file inside the source directory if the target directory exists
-                for (Path filePath : Files.list(dumpedClassSrc).collect(Collectors.toList())) {
-                    tryAtomicMove(filePath, dumpedClassTarget.resolve(filePath.getFileName()));
-                }
-            }
+            /*
+             * Note that sidecar files may be written directly to the final output directory, such
+             * as the class files from predefined class tracking. However, such files generally
+             * don't change once they have been written.
+             */
 
             compulsoryDelete(tempDirectory);
         } catch (IOException e) {
