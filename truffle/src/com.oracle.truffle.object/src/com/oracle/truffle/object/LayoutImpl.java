@@ -171,16 +171,12 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         protected Support() {
         }
 
-        public final void growAndSetShape(DynamicObject object, Shape oldShape, Shape newShape) {
-            DynamicObjectSupport.growAndSetShape(object, oldShape, newShape);
+        public final void grow(DynamicObject object, Shape thisShape, Shape otherShape) {
+            DynamicObjectSupport.grow(object, thisShape, otherShape);
         }
 
         public final void resize(DynamicObject object, Shape thisShape, Shape otherShape) {
             DynamicObjectSupport.resize(object, thisShape, otherShape);
-        }
-
-        public final void resizeAndSetShape(DynamicObject object, Shape thisShape, Shape otherShape) {
-            DynamicObjectSupport.resizeAndSetShape(object, thisShape, otherShape);
         }
 
         public final void invalidateAllPropertyAssumptions(Shape shape) {
