@@ -130,6 +130,9 @@ class NativeImageBenchmarkMixin(object):
         else:
             return None
 
+    def skip_build_assertions(self, _):
+        return False
+
 
 def timeToFirstResponse(cmd, bmSuite):
     def timeToFirstResponseThread(startTime):
@@ -168,8 +171,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     def __init__(self):
         super(BaseMicroserviceBenchmarkSuite, self).__init__()
-        self.testerOutput = None
-        self.timeToFirstResponseOutput = None
+        self.testerOutput = ''
+        self.timeToFirstResponseOutput = ''
         self.bmSuiteArgs = None
         self.workloadPath = None
         self.parser = argparse.ArgumentParser()
@@ -253,6 +256,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         try:
             import psutil
         except ImportError:
+            # Note: abort fails to find the process (not registered yet in mx) if we are too fast failing here.
+            time.sleep(5)
             mx.abort("Failed to import {0} dependency module: psutil".format(BaseMicroserviceBenchmarkSuite.__name__))
         for _ in range(timeout + 1):
             for proc in psutil.process_iter():
@@ -293,6 +298,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         else:
             # For run stages, we need to run the server and the loader
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self]).start()
+            if 'agent' in stage:
+                timeToFirstResponse(server_command, self)
             return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
     def rules(self, output, benchmarks, bmSuiteArgs):
