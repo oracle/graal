@@ -1317,14 +1317,14 @@ final class JDWP {
                 LineNumberTableRef table = method.getLineNumberTable();
 
                 if (table != null) {
-                    LineNumberTableRef.EntryRef[] entries = table.getEntries();
+                    List<? extends LineNumberTableRef.EntryRef> entries = table.getEntries();
                     long start = method.isMethodNative() ? -1 : 0;
                     long end = method.isMethodNative() ? -1 : method.getLastBCI();
-                    int lines = entries.length;
+                    int lines = entries.size();
                     Line[] allLines = new Line[lines];
 
-                    for (int i = 0; i < entries.length; i++) {
-                        LineNumberTableRef.EntryRef entry = entries[i];
+                    for (int i = 0; i < entries.size(); i++) {
+                        LineNumberTableRef.EntryRef entry = entries.get(i);
                         int bci = entry.getBCI();
                         int line = entry.getLineNumber();
                         allLines[i] = new Line(bci, line);
