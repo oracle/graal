@@ -127,7 +127,7 @@ class SulongTestSuiteBuildTask(mx.NativeBuildTask):
             self.subject._is_needs_rebuild_call = False
 
 
-class SulongTestSuiteBaseMixin(mx._with_metaclass(abc.ABCMeta, object)):
+class SulongTestSuiteMixin(mx._with_metaclass(abc.ABCMeta, object)):
 
     def getVariants(self):
         if not hasattr(self, '_variants'):
@@ -139,13 +139,6 @@ class SulongTestSuiteBaseMixin(mx._with_metaclass(abc.ABCMeta, object)):
                 self._variants.append(v)
         return self._variants
 
-    @abc.abstractmethod
-    def getTests(self):
-        """Returns a list of tests."""
-
-    def getTestDirExt(self):
-        return ""
-
     def getResults(self, replaceVar=mx_subst.results_substitutions):
         if not self.results:
             self.results = []
@@ -156,10 +149,7 @@ class SulongTestSuiteBaseMixin(mx._with_metaclass(abc.ABCMeta, object)):
                 for v in self.getVariants():
                     result_file = v + '.so' if self.buildSharedObject else v + '.bc'
                     self.results.append(os.path.join(t, result_file))
-        return super(SulongTestSuiteBaseMixin, self).getResults(replaceVar=replaceVar)
-
-
-class SulongTestSuiteMixin(SulongTestSuiteBaseMixin):
+        return super(SulongTestSuiteMixin, self).getResults(replaceVar=replaceVar)
 
     def getTestDirExt(self):
         return ".dir"
