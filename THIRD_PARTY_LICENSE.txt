@@ -447,7 +447,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-ANTLR 4.7.2
+ANTLR 4.9.2
 
 Include the following verbatim in the documentation:
 
@@ -598,7 +598,6 @@ Copyright (c) 2008, Yahoo! Inc. All rights reserved.
 Code licensed under the BSD License:
 http://www.antlr.org/license.html
 
-[The BSD License]
 Copyright (c) 2012 Terence Parr and Sam Harwell
 All rights reserved.
 
@@ -615,7 +614,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 org.antlr » ST4 4.1
 COPYRIGHT and LICENSE:
 
-[The "BSD license"]
 Copyright (c) 2011-2013 Terence Parr
 All rights reserved.
 
