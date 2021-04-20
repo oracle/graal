@@ -125,5 +125,4 @@ public class JsonWriter implements AutoCloseable {
     public Path getPath() {
         return path;
     }
-
 }

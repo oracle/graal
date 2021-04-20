@@ -56,6 +56,7 @@ import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -129,7 +130,7 @@ final class BreakpointInterceptor {
     private static NativeImageAgent agent;
 
     private static Map<Long, Breakpoint> installedBreakpoints;
-    private static List<String> unsupportedExceptions = new ArrayList<>();
+
     /**
      * A map from {@link JNIMethodId} to entry point addresses for bound Java {@code native}
      * methods, NOT considering our intercepting functions, i.e., these are the original entry
@@ -1099,7 +1100,15 @@ final class BreakpointInterceptor {
             byte[] contents = new byte[classDataLen];
             CTypeConversion.asByteBuffer(classData, classDataLen).get(contents);
             String definedClassName = nameIsNull ? JavaClassUtil.getClassName(contents) : fromCString(name);
-            ClassLoaderDefineClassSupport.trace(traceWriter, contents, definedClassName, true);
+            if (definedClassName != null) {
+                String hashCode;
+                try {
+                    hashCode = JavaClassUtil.getSHAWithoutSourceFileInfo(contents);
+                } catch (NoSuchAlgorithmException e) {
+                    hashCode = null;
+                }
+                traceWriter.traceCall("classDefiner", "onClassFileLoadHook", null, null, null, true, definedClassName.replace('/', '.'), hashCode, contents);
+            }
         }
     }
 
@@ -1323,19 +1332,6 @@ final class BreakpointInterceptor {
             } finally {
                 recursive.set(false);
             }
-        }
-    }
-
-    public static void reportExceptions() {
-        if (!unsupportedExceptions.isEmpty()) {
-            System.err.println(unsupportedExceptions.size() + " unsupported features are detected ");
-            StringBuilder errorMsg = new StringBuilder();
-            for (int i = 0; i < unsupportedExceptions.size(); i++) {
-                errorMsg.append(unsupportedExceptions.get(i)).append("\n");
-            }
-            throw new UnsupportedOperationException(errorMsg.toString());
-        } else {
-            unsupportedExceptions = null;
         }
     }
 

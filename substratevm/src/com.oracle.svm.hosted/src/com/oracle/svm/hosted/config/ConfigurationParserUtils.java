@@ -77,7 +77,8 @@ public final class ConfigurationParserUtils {
 
         int parsedCount = 0;
 
-        Stream<Path> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream().map(Paths::get), ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
+        Stream<Path> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream().map(Paths::get),
+                        ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
         parsedCount += files.map(Path::toAbsolutePath).mapToInt(path -> {
             if (!Files.exists(path)) {
                 throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);

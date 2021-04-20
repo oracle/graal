@@ -416,24 +416,23 @@ final class Target_java_lang_ClassLoader {
     private static native void registerNatives();
 
     @Substitute
-    @SuppressWarnings("unused")
-    Class<?> defineClass(String name, byte[] b, int off, int len)
-                    throws ClassFormatError {
+    @SuppressWarnings({"unused", "static-method"})
+    Class<?> defineClass(String name, byte[] b, int off, int len) throws ClassFormatError {
         String definedClassName = name == null ? JavaClassUtil.getClassName(b) : name;
         ClassLoaderHelper.verifyClassUnchanged(definedClassName, b);
         return ClassLoaderHelper.doDefineClass(definedClassName);
     }
 
     @Substitute
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
-        throw VMError.unsupportedFeature("Define class with protection domain is not supported");
+        throw VMError.unsupportedFeature("Defining classes with protection domain.");
     }
 
     @Substitute
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
-        throw VMError.unsupportedFeature("Define class with protection domain is not supported");
+        throw VMError.unsupportedFeature("Define class with protection domain.");
     }
 
     @Delete

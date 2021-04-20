@@ -524,7 +524,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
          * (unless another JVM is launched in this process).
          */
         // cleanupOnUnload(vm);
-        BreakpointInterceptor.reportExceptions();
+
         /*
          * The epilogue of this method does not tear down our VM: we don't seem to observe all
          * threads that end and therefore can't detach them, so we would wait forever for them.

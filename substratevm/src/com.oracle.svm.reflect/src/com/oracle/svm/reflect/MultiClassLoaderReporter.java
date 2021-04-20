@@ -31,7 +31,6 @@ import com.oracle.svm.hosted.NativeImageOptions;
 
 public class MultiClassLoaderReporter {
     public static final String MULTIPLE_CHECKSUMS = "MULTIPLE_CHECKSUM";
-    public static final String CHECKSUM_VERIFY_FAIL = "CHECKSUM_VERIFY_FAIL";
 
     public static void reportError(BigBang bb, String msgKey, String exceptionsMsg) {
         // Checkstyle: stop

@@ -64,8 +64,8 @@ public class ConfigurationSet {
     }
 
     public boolean isEmpty() {
-        return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() && resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() &&
-                        dynamicClassesConfigPaths.isEmpty();
+        return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() &&
+                        resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() && dynamicClassesConfigPaths.isEmpty();
     }
 
     public Set<URI> getJniConfigPaths() {

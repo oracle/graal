@@ -59,10 +59,6 @@ public final class ConfigurationDynamicClass implements JsonPrintable {
         this.classFilePath = classFilePath;
     }
 
-    public boolean contains(String definedClassName, String checksum2Match) {
-        return definedClassName != null && definedClassName.equals(qualifiedJavaName) && checksum2Match.equals(this.checksum);
-    }
-
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         // Mangle class' qualified name into a system independent format
