@@ -508,7 +508,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> PriorityQueue = new OptionKey<>(true);
 
     @Option(help = "Use a traversing compilation queue.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraversingCompilationQueue = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TraversingCompilationQueue = new OptionKey<>(true);
 
     @Option(help = "Traversing queue uses rate as priority for both tier.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraversingQueueWeightingBothTiers = new OptionKey<>(true);
@@ -517,7 +517,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
 
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> DynamicThresholds = new OptionKey<>(false);
+    public static final OptionKey<Boolean> DynamicThresholds = new OptionKey<>(true);
 
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
     public static final OptionKey<Double> DynamicThresholdsMinScale = new OptionKey<>(0.1);
