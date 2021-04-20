@@ -227,12 +227,16 @@ deploy_vm_linux: ${vm_linux} {
   targets: [deploy, post-merge]
 }
 
+deploy_vm_linux_aarch64: ${vm_linux_aarch64} {
+  targets: [deploy, post-merge]
+}
+
 deploy_daily_vm_linux: ${vm_linux} {
   targets: [deploy, daily]
 }
 
-deploy_vm_linux_aarch64: ${vm_linux_aarch64} {
-  targets: [deploy, post-merge]
+deploy_daily_vm_linux_aarch64: ${vm_linux_aarch64} {
+  targets: [deploy, daily]
 }
 
 deploy_daily_vm_darwin: ${vm_darwin} {
@@ -452,8 +456,8 @@ builds += [
   ${vm_java_16} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java16}]] ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java16-linux-amd64}
 
   # Linux/AARCH64
-  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64}]]        ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java11-linux-aarch64}
-  ${vm_java_16} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64_java16}]] ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java16-linux-aarch64}
+  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64}]]        ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java11-linux-aarch64}
+  ${vm_java_16} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64_java16}]] ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java16-linux-aarch64}
 
   # Darwin/AMD64
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {                                                                                                                 name: deploy-vm-base-java11-darwin-amd64}
