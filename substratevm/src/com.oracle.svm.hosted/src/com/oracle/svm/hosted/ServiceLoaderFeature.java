@@ -288,7 +288,10 @@ public class ServiceLoaderFeature implements Feature {
 
             Class<?> implementationClass = access.findClassByName(implementationClassName);
             if (implementationClass == null) {
-                throw UserError.abort("Could not find registered service implementation class `%s` for service `%s`", implementationClassName, serviceClassName);
+                if (trace) {
+                    System.out.println("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+                }
+                continue;
             }
             try {
                 access.getMetaAccess().lookupJavaType(implementationClass);
@@ -314,7 +317,10 @@ public class ServiceLoaderFeature implements Feature {
                  * such a service would lead to a ServiceConfigurationError.
                  */
                 implementationClass.getDeclaredConstructor();
-            } catch (NoSuchMethodException ex) {
+            } catch (ReflectiveOperationException | NoClassDefFoundError ex) {
+                if (trace) {
+                    System.out.println("  cannot resolve a nullary constructor for " + implementationClassName + ": " + ex.getMessage());
+                }
                 continue;
             }
 
