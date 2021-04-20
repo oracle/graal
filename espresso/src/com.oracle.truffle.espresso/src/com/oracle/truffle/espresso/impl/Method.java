@@ -1044,6 +1044,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     break;
                 }
             }
+            if (removeIndex == -1) {
+                throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
+            }
             MethodHook[] temp = new MethodHook[hooks.length - 1];
             for (int i = 0; i < temp.length; i++) {
                 temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
