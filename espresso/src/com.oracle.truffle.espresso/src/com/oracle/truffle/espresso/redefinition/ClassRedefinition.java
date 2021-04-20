@@ -298,7 +298,8 @@ public final class ClassRedefinition {
 
     // detect all types of class changes, but return early when a change that require arbitrary
     // changes
-    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass) throws RedefintionNotSupportedException {
+    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass)
+                    throws RedefintionNotSupportedException {
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;

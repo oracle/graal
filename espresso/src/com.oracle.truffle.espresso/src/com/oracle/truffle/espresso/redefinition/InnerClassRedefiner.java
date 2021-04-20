@@ -22,18 +22,6 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
-import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.instrument.IllegalClassFormatException;
@@ -48,6 +36,18 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class InnerClassRedefiner {
 
@@ -218,7 +218,8 @@ public final class InnerClassRedefiner {
         return context.getNames().getOrCreate(strName.substring(0, strName.lastIndexOf('$')));
     }
 
-    private void matchClassInfo(HotSwapClassInfo hotSwapInfo, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<Symbol<Symbol.Name>, Symbol<Symbol.Name>>> renamingRules) throws RedefintionNotSupportedException {
+    private void matchClassInfo(HotSwapClassInfo hotSwapInfo, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<Symbol<Symbol.Name>, Symbol<Symbol.Name>>> renamingRules)
+                    throws RedefintionNotSupportedException {
         Klass klass = hotSwapInfo.getKlass();
         // try to fetch all direct inner classes
         // based on the constant pool in the class bytes

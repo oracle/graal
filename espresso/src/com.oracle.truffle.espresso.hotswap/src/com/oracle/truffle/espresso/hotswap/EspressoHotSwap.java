@@ -53,7 +53,7 @@ public final class EspressoHotSwap {
         if (handler != null) {
             handler.addPlugin(plugin);
         } else {
-            // TODO - should we log that plugin registration is only available on supported Espresso VM?
+            // should we log that plugin registration is only available on supported Espresso VM?
         }
     }
 
