@@ -85,7 +85,7 @@ public final class RedefinitionPluginHandler implements RedefineListener, ClassL
         while (pluginIterator.hasNext()) {
             InternalRedefinitionPlugin plugin = pluginIterator.next();
             for (TriggerClass triggerClass : plugin.getTriggerClasses()) {
-                Symbol<Symbol.Type> triggerType = espressoContext.getTypes().fromClassGetName(triggerClass.getClassName());
+                Symbol<Symbol.Type> triggerType = triggerClass.getTriggerType();
                 Set<TriggerClass> triggerClasses = triggers.get(triggerType);
                 if (triggerClasses == null) {
                     triggerClasses = new HashSet<>(1);

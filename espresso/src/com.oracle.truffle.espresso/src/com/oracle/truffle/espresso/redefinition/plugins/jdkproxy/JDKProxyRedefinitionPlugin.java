@@ -31,6 +31,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
@@ -41,12 +42,10 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.MethodLocator;
 import com.oracle.truffle.espresso.redefinition.plugins.api.TriggerClass;
 
 public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
+    private static final Symbol<Symbol.Type> PROXY_GENERATOR_CLASS = Symbol.Type.sun_misc_ProxyGenerator;
+    private static final Symbol<Symbol.Name> GENERATOR_METHOD = Symbol.Name.generateProxyClass;
 
-    private static final String PROXY_GENERATOR_CLASS = "sun.misc.ProxyGenerator";
-    private static final String GENERATOR_METHOD = "generateProxyClass";
-    private static final String GENERATOR_METHOD_SIG = "(Ljava/lang/String;[Ljava/lang/Class;I)[B";
-
-    private static final String PROXY_SUPER_CLASS = "java.lang.reflect.Proxy";
+    private static final Symbol<Symbol.Type> PROXY_SUPER_CLASS = Symbol.Type.java_lang_reflect_Proxy;
 
     private final Map<KlassRef, List<ProxyCache>> cache = Collections.synchronizedMap(new HashMap<>());
 
@@ -66,7 +65,7 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
         // trigger on proxy generator class and add generator method hooks
         triggerClasses[0] = new TriggerClass(PROXY_GENERATOR_CLASS, this, klass -> {
             // hook into the proxy generator method to obtain proxy generation arguments
-            hookMethodEntry(klass, new MethodLocator(GENERATOR_METHOD, GENERATOR_METHOD_SIG), MethodHook.Kind.INDEFINITE, (method, variables) -> {
+            hookMethodEntry(klass, new MethodLocator(GENERATOR_METHOD, Symbol.Signature._byte_array_String_Class_array_int), MethodHook.Kind.INDEFINITE, (method, variables) -> {
                 if (generationInProgress.get()) {
                     // don't hook when we're re-generating proxy bytes
                     return;

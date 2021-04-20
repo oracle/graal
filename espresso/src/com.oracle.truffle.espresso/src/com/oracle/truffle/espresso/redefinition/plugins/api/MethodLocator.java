@@ -22,20 +22,22 @@
  */
 package com.oracle.truffle.espresso.redefinition.plugins.api;
 
-public final class MethodLocator {
-    private final String name;
-    private final String signature;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 
-    public MethodLocator(String name, String signature) {
+public final class MethodLocator {
+    private final Symbol<Symbol.Name> name;
+    private final Symbol<Symbol.Signature> signature;
+
+    public MethodLocator(Symbol<Symbol.Name> name, Symbol<Symbol.Signature> signature) {
         this.name = name;
         this.signature = signature;
     }
 
-    public String getName() {
+    public Symbol<Symbol.Name> getName() {
         return name;
     }
 
-    public String getSignature() {
+    public Symbol<Symbol.Signature> getSignature() {
         return signature;
     }
 }

@@ -26,10 +26,11 @@ import java.util.Collection;
 import java.util.List;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.CachedRedefineObject;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
@@ -41,8 +42,6 @@ import com.oracle.truffle.espresso.substitutions.Host;
 public abstract class InternalRedefinitionPlugin {
 
     protected static final InteropLibrary INTEROP = InteropLibrary.getUncached();
-
-    private static final String constructorName = "<init>";
 
     private EspressoContext context;
     private RedefinitionPluginHandler redefinitionPluginHandler;
@@ -97,8 +96,8 @@ public abstract class InternalRedefinitionPlugin {
     }
 
     protected void hookMethodExit(KlassRef klass, MethodLocator hookSpec, MethodHook.Kind kind, MethodExitHook onExitHook) {
-        for (MethodRef method : klass.getDeclaredMethodRefs()) {
-            if (method.getNameAsString().equals(hookSpec.getName()) && method.getSignatureAsString().equals(hookSpec.getSignature())) {
+        for (Method method : ((Klass) klass).getDeclaredMethods()) {
+            if (method.getName().equals(hookSpec.getName()) && method.getRawSignature().equals(hookSpec.getSignature())) {
                 method.addMethodHook(new RedefintionHook(onExitHook, kind));
                 break;
             }
@@ -106,8 +105,8 @@ public abstract class InternalRedefinitionPlugin {
     }
 
     protected void hookMethodEntry(KlassRef klass, MethodLocator hookSpec, MethodHook.Kind kind, MethodEntryHook onEntryHook) {
-        for (MethodRef method : klass.getDeclaredMethodRefs()) {
-            if (method.getNameAsString().equals(hookSpec.getName()) && method.getSignatureAsString().equals(hookSpec.getSignature())) {
+        for (Method method : ((Klass) klass).getDeclaredMethods()) {
+            if (method.getName().equals(hookSpec.getName()) && method.getRawSignature().equals(hookSpec.getSignature())) {
                 method.addMethodHook(new RedefintionHook(onEntryHook, kind));
                 break;
             }
@@ -115,8 +114,8 @@ public abstract class InternalRedefinitionPlugin {
     }
 
     protected void hookConstructor(KlassRef klass, MethodHook.Kind kind, MethodEntryHook onEntryHook) {
-        for (MethodRef method : klass.getDeclaredMethodRefs()) {
-            if (method.getNameAsString().equals(constructorName)) {
+        for (Method method : ((Klass) klass).getDeclaredMethods()) {
+            if (method.getName().equals(Symbol.Name._init_)) {
                 method.addMethodHook(new RedefintionHook(onEntryHook, kind));
             }
         }

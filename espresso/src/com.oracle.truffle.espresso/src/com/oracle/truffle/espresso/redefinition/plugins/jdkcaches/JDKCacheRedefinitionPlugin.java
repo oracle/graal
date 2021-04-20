@@ -23,6 +23,11 @@
 
 package com.oracle.truffle.espresso.redefinition.plugins.jdkcaches;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
@@ -31,18 +36,13 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.MethodLocator;
 import com.oracle.truffle.espresso.redefinition.plugins.api.RedefineObject;
 import com.oracle.truffle.espresso.redefinition.plugins.api.TriggerClass;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 public final class JDKCacheRedefinitionPlugin extends InternalRedefinitionPlugin {
 
-    public static final String INTROSPECTOR_CLASS = "java.beans.Introspector";
-    public static final String FLUSH_CACHES_METHOD = "flushFromCaches";
-    public static final String FLUSH_CACHES_SIG = "(Ljava/lang/Class;)V";
+    public static final Symbol<Symbol.Type> INTROSPECTOR_CLASS = Symbol.Type.java_beans_Introspector;
+    public static final Symbol<Symbol.Name> FLUSH_CACHES_METHOD = Symbol.Name.flushFromCaches;
     private MethodRef flushFromCachesMethod;
 
-    public static final String THREAD_GROUP_CONTEXT = "java.beans.ThreadGroupContext";
+    public static final Symbol<Symbol.Type> THREAD_GROUP_CONTEXT = Symbol.Type.java_beans_ThreadGroupContext;
     public static final String REMOVE_BEAN_INFO = "removeBeanInfo";
     private List<RedefineObject> threadGroupContext = Collections.synchronizedList(new ArrayList<>(1));
 
@@ -55,7 +55,7 @@ public final class JDKCacheRedefinitionPlugin extends InternalRedefinitionPlugin
     public TriggerClass[] getTriggerClasses() {
         TriggerClass[] triggerClasses = new TriggerClass[2];
         triggerClasses[0] = new TriggerClass(INTROSPECTOR_CLASS, this, klass -> {
-            hookMethodEntry(klass, new MethodLocator(FLUSH_CACHES_METHOD, FLUSH_CACHES_SIG), MethodHook.Kind.ONE_TIME,
+            hookMethodEntry(klass, new MethodLocator(FLUSH_CACHES_METHOD, Symbol.Signature._void_Class), MethodHook.Kind.ONE_TIME,
                             ((method, variables) -> flushFromCachesMethod = method));
         });
         triggerClasses[1] = new TriggerClass(THREAD_GROUP_CONTEXT, this, klass -> {

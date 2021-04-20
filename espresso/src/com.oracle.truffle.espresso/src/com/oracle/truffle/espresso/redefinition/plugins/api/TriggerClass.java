@@ -22,22 +22,23 @@
  */
 package com.oracle.truffle.espresso.redefinition.plugins.api;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 public final class TriggerClass {
 
-    private String className;
+    private Symbol<Symbol.Type> triggerType;
     private final InternalRedefinitionPlugin plugin;
     private final TriggerClassHook hook;
 
-    public TriggerClass(String className, InternalRedefinitionPlugin plugin, TriggerClassHook hook) {
-        this.className = className;
+    public TriggerClass(Symbol<Symbol.Type> triggerType, InternalRedefinitionPlugin plugin, TriggerClassHook hook) {
+        this.triggerType = triggerType;
         this.plugin = plugin;
         this.hook = hook;
     }
 
-    public String getClassName() {
-        return className;
+    public Symbol<Symbol.Type> getTriggerType() {
+        return triggerType;
     }
 
     public InternalRedefinitionPlugin getPlugin() {
