@@ -55,6 +55,8 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
+import java.util.Objects;
+
 /**
  * Wraps an exception thrown by a org.graalvm.nativebridge.jni.JNI call into HotSpot. If the
  * exception propagates up to an native image entry point, the exception is re-thrown in HotSpot.
@@ -131,24 +133,37 @@ public final class JNIExceptionWrapper extends RuntimeException {
      */
     @SafeVarargs
     public static void wrapAndThrowPendingJNIException(JNIEnv env, Class<? extends Throwable>... allowedExceptions) {
+        ExceptionHandler handler = allowedExceptions.length == 0 ?
+                ExceptionHandler.DEFAULT :
+                new ExceptionHandler() {
+                    @Override
+                    public void handleException(ExceptionHandlerContext context) {
+                        JThrowable throwable = context.getThrowable();
+                        JNI.JClass throwableClass = GetObjectClass(env, throwable);
+                        boolean allowed = false;
+                        for (Class<? extends Throwable> allowedException : allowedExceptions) {
+                            JNI.JClass allowedExceptionClass = findClass(env, getBinaryName(allowedException.getName()));
+                            if (allowedExceptionClass.isNonNull() && IsSameObject(env, throwableClass, allowedExceptionClass)) {
+                                allowed = true;
+                                break;
+                            }
+                        }
+                        if (!allowed) {
+                            context.throwJNIExceptionWrapper();
+                        }
+                    }
+                };
+    }
+
+    public static void wrapAndThrowPendingJNIException(JNIEnv env, ExceptionHandler exceptionHandler) {
+        Objects.requireNonNull(exceptionHandler, "ExceptionHandler must be non null.");
         if (ExceptionCheck(env)) {
             JThrowable exception = ExceptionOccurred(env);
             if (JNIUtil.tracingAt(1) && exception.isNonNull()) {
                 ExceptionDescribe(env);
             }
             ExceptionClear(env);
-            JNI.JClass exceptionClass = GetObjectClass(env, exception);
-            boolean allowed = false;
-            for (Class<? extends Throwable> allowedException : allowedExceptions) {
-                JNI.JClass allowedExceptionClass = findClass(env, getBinaryName(allowedException.getName()));
-                if (allowedExceptionClass.isNonNull() && IsSameObject(env, exceptionClass, allowedExceptionClass)) {
-                    allowed = true;
-                    break;
-                }
-            }
-            if (!allowed) {
-                throw new JNIExceptionWrapper(env, exception);
-            }
+            exceptionHandler.handleException(new ExceptionHandlerContext(env, exception));
         }
     }
 
@@ -190,6 +205,41 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 original.printStackTrace();
             }
         }
+    }
+
+    public static final class ExceptionHandlerContext {
+
+        private final JNIEnv env;
+        private final JThrowable throwable;
+
+        ExceptionHandlerContext(JNIEnv env, JThrowable throwable) {
+            this.env = env;
+            this.throwable = throwable;
+        }
+
+        public JNIEnv getEnv() {
+            return env;
+        }
+
+        public JThrowable getThrowable() {
+            return throwable;
+        }
+
+        public void throwJNIExceptionWrapper() {
+            throw new JNIExceptionWrapper(env, throwable);
+        }
+    }
+
+    public interface ExceptionHandler {
+
+        public static final ExceptionHandler DEFAULT = new ExceptionHandler() {
+            @Override
+            public void handleException(ExceptionHandlerContext context) {
+                context.throwJNIExceptionWrapper();
+            }
+        };
+
+        void handleException(ExceptionHandlerContext context);
     }
 
     /**
@@ -344,62 +394,62 @@ public final class JNIExceptionWrapper extends RuntimeException {
     static <T extends JObject> T callCreateException(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
     }
 
     static <T extends JObject> T callUpdateStackTrace(JNIEnv env, JObject p0, JObject p1) {
         JNI.JValue args = StackValue.get(2, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         args.addressOf(1).setJObject(p1);
-        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), UpdateStackTrace.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), UpdateStackTrace.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetThrowableMessage(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetThrowableMessage.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetThrowableMessage.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetClassName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetClassName.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetClassName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetStackTrace(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTrace.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTrace.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetStackTraceElementClassName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementClassName.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementClassName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetStackTraceElementMethodName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementMethodName.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementMethodName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetStackTraceElementFileName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementFileName.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementFileName.resolve(env), args);
     }
 
     static int callGetStackTraceElementLineNumber(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.callStaticInt(env, getHotSpotEntryPoints(env), GetStackTraceElementLineNumber.resolve(env), args);
+        return HotSpotCalls.getDefault().callStaticInt(env, getHotSpotEntryPoints(env), GetStackTraceElementLineNumber.resolve(env), args);
     }
 
     private static final class MethodResolver {

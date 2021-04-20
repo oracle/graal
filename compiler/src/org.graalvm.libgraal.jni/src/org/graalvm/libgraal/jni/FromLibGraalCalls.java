@@ -64,10 +64,12 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     private static final Map<String, JNIClass> classes = new ConcurrentHashMap<>();
 
     private final EnumMap<T, JNIMethod<T>> methods;
+    private final HotSpotCalls hotSpotCalls;
     private volatile JClass peer;
 
     protected FromLibGraalCalls(Class<T> idType) {
         methods = new EnumMap<>(idType);
+        hotSpotCalls = HotSpotCalls.getDefault();
     }
 
     /**
@@ -110,32 +112,32 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     public final void callVoid(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, void.class);
         traceCall(id);
-        HotSpotCalls.callStaticVoid(env, peer(env), method.jniId, args);
+        hotSpotCalls.callStaticVoid(env, peer(env), method.jniId, args);
     }
 
     public final boolean callBoolean(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, boolean.class);
         traceCall(id);
-        return HotSpotCalls.callStaticBoolean(env, peer(env), method.jniId, args);
+        return hotSpotCalls.callStaticBoolean(env, peer(env), method.jniId, args);
     }
 
     public final long callLong(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, long.class);
         traceCall(id);
-        return HotSpotCalls.callStaticLong(env, peer(env), method.jniId, args);
+        return hotSpotCalls.callStaticLong(env, peer(env), method.jniId, args);
     }
 
     public final int callInt(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, int.class);
         traceCall(id);
-        return HotSpotCalls.callStaticInt(env, peer(env), method.jniId, args);
+        return hotSpotCalls.callStaticInt(env, peer(env), method.jniId, args);
     }
 
     @SuppressWarnings("unchecked")
     public final <R extends JObject> R callJObject(JNIEnv env, T id, JValue args) {
         JNIMethod<T> method = getJNIMethod(env, id, Object.class);
         traceCall(id);
-        return HotSpotCalls.callStaticJObject(env, peer(env), method.jniId, args);
+        return hotSpotCalls.callStaticJObject(env, peer(env), method.jniId, args);
     }
 
     public static JClass getJNIClass(JNIEnv env, Class<?> clazz) {
