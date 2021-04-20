@@ -146,9 +146,9 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
 
     @Override
     public boolean reRunClinit(KlassRef klass, boolean changed) {
-        // changed Dynamic Proxy classes has cached Method references
-        // in static fields, so re-run the static initializer
-        return changed && proxySuperKlass.isAssignable(klass);
+        // changed Dynamic Proxy classes have cached Method references
+        // in static fields, so always re-run the static initializer
+        return proxySuperKlass.isAssignable(klass);
     }
 
     private final class ProxyCache {
