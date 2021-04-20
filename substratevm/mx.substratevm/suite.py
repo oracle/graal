@@ -1037,6 +1037,9 @@ suite = {
                     "java.desktop",
                     "java.security.sasl",
                     "java.smartcardio",
+                    "java.net.http",
+                    "jdk.sctp",
+                    "jdk.scripting.nashorn",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",

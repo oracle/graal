@@ -79,8 +79,12 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
-        buildcp = Collections.unmodifiableList(Arrays.stream(System.getProperty("java.class.path")
-                        .split(File.pathSeparator))
+        String builderClassPathString = System.getProperty("java.class.path");
+        if (".".equals(builderClassPathString)) {
+            VMError.shouldNotReachHere("Only ever run " + NativeImageGeneratorRunner.class.getName() + " with explicit --module-path and --module argument.");
+        }
+        String[] builderClassPathEntries = builderClassPathString.isEmpty() ? new String[0] : builderClassPathString.split(File.pathSeparator);
+        buildcp = Collections.unmodifiableList(Arrays.stream(builderClassPathEntries)
                         .map(Paths::get).map(Path::toAbsolutePath)
                         .collect(Collectors.toList()));
     }
