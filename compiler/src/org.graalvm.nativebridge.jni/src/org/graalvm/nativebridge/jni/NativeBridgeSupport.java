@@ -28,6 +28,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 public interface NativeBridgeSupport {
 
+    String getFeatureName();
+
     boolean isTracingEnabled(int level);
 
     void trace(int level, String message, Object... args);

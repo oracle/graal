@@ -248,7 +248,7 @@ public final class JNIUtil {
     // Checkstyle: resume
 
     private static void traceJNI(String function) {
-        trace(2, "LIBGRAAL->org.graalvm.nativebridge.jni.JNI: %s", function);
+        trace(2, "%s->JNI: %s", getFeatureName(), function);
     }
 
     private JNIUtil() {
@@ -371,7 +371,7 @@ public final class JNIUtil {
         if (classLoader.isNull()) {
             throw new IllegalArgumentException("ClassLoader must be non null.");
         }
-        trace(1, "LIBGRAAL->HS: findClass");
+        trace(1, "%s->HS: findClass", getFeatureName());
         JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS[0], METHOD_LOAD_CLASS[1]);
         JValue params = StackValue.get(1, JValue.class);
         params.addressOf(0).setJObject(JNIUtil.createHSString(env, binaryName.replace('/', '.')));
@@ -484,5 +484,9 @@ public final class JNIUtil {
 
     public static void trace(int level, Throwable throwable) {
         NativeBridgeSupport.getInstance().trace(level, throwable);
+    }
+
+    static String getFeatureName() {
+        return NativeBridgeSupport.getInstance().getFeatureName();
     }
 }

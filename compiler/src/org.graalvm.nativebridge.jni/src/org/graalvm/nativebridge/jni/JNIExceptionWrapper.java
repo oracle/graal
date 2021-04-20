@@ -66,7 +66,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     private static final String HS_ENTRYPOINTS_CLASS = "org.graalvm.nativebridge.jni.JNIExceptionWrapperEntryPoints";
     private static final long serialVersionUID = 1L;
 
-    private static final MethodResolver CreateException = MethodResolver.create("createException", Throwable.class, String.class);
+    private static final MethodResolver CreateException = MethodResolver.create("createException", Throwable.class, String.class, String.class);
     private static final MethodResolver GetClassName = MethodResolver.create("getClassName", String.class, Class.class);
     private static final MethodResolver GetStackTraceElementClassName = MethodResolver.create("getStackTraceElementClassName", String.class, StackTraceElement.class);
     private static final MethodResolver GetStackTraceElementFileName = MethodResolver.create("getStackTraceElementFileName", String.class, StackTraceElement.class);
@@ -187,9 +187,9 @@ public final class JNIExceptionWrapper extends RuntimeException {
             if (original.getClass() == JNIExceptionWrapper.class) {
                 ((JNIExceptionWrapper) original).throwInHotSpot(env);
             } else {
-                String message = formatExceptionMessage(original.getClass().getName(), original.getMessage());
-                JString hsMessage = createHSString(env, message);
-                JThrowable hsThrowable = callCreateException(env, hsMessage);
+                JString hsClassName = createHSString(env, original.getClass().getTypeName());
+                JString hsMessage = createHSString(env, original.getMessage());
+                JThrowable hsThrowable = callCreateException(env, hsClassName, hsMessage);
                 StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
                 StackTraceElement[] libGraalStack = original.getStackTrace();
                 String[] merged = encode(mergeStackTraces(hsStack, libGraalStack, 1, 0, false));
@@ -391,9 +391,10 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     // JNI calls
-    static <T extends JObject> T callCreateException(JNIEnv env, JObject p0) {
-        JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+    static <T extends JObject> T callCreateException(JNIEnv env, JObject p0, JObject p1) {
+        JNI.JValue args = StackValue.get(2, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
+        args.addressOf(1).setJObject(p1);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
     }
 

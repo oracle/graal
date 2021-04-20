@@ -33,16 +33,8 @@ import static org.graalvm.nativebridge.jni.JNIUtil.getBinaryName;
 import static org.graalvm.nativebridge.jni.JNIUtil.trace;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.lang.reflect.Method;
-import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 

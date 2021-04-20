@@ -38,6 +38,11 @@ public class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
     private Integer traceLevel;
 
     @Override
+    public String getFeatureName() {
+        return "LIBGRAAL";
+    }
+
+    @Override
     public boolean isTracingEnabled(int level) {
         return traceLevel() >= level;
     }
