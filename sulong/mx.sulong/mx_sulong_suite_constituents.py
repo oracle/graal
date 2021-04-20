@@ -183,66 +183,6 @@ class SulongTestSuiteMixin(SulongTestSuiteBaseMixin):
         """Return the source directory."""
 
 
-class SulongTestSuite(SulongTestSuiteMixin, mx.NativeProject):  # pylint: disable=too-many-ancestors
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
-                 buildSharedObject=False, bundledLLVMOnly=False, **args):
-        projectDir = args.pop('dir', None)
-        if projectDir:
-            d_rel = projectDir
-        elif subDir is None:
-            d_rel = name
-        else:
-            d_rel = os.path.join(subDir, name)
-        d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
-        super(SulongTestSuite, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
-        if bundledLLVMOnly and mx.get_env('CLANG_CC', None):
-            self.ignore = "Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'"
-        self.vpath = True
-        self.buildRef = buildRef
-        self.buildSharedObject = buildSharedObject
-        self._is_needs_rebuild_call = False
-        if not hasattr(self, 'testClasses'):
-            self.testClasses = self.defaultTestClasses()
-
-    def getBuildTask(self, args):
-        return SulongTestSuiteBuildTask(args, self)
-
-    def defaultTestClasses(self):
-        return ["SulongSuite"]
-
-    def _get_vpath(self):
-        env = super(SulongTestSuite, self).getBuildEnv()
-        return env.get('VPATH', self.dir)
-
-    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
-        env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
-        env['PROJECT'] = self.name
-        env['TESTS'] = ' '.join([t + self.getTestDirExt() for t in self.getTests()])
-        env['VARIANTS'] = ' '.join(self.getVariants())
-        env['BUILD_REF'] = '1' if self.buildRef else '0'
-        env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
-        env['SO_EXT'] = mx.add_lib_suffix("")
-        env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
-        env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
-        env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
-        env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
-        env['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
-        env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
-        env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
-        env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
-        if 'OS' not in env:
-            env['OS'] = mx_subst.path_substitutions.substitute("<os>")
-        if DragonEggSupport.haveDragonegg():
-            env['DRAGONEGG'] = DragonEggSupport.pluginPath()
-            env['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)
-            env['DRAGONEGG_LLVMAS'] = DragonEggSupport.findLLVMProgram("llvm-as")
-            env['DRAGONEGG_FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
-            env['FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
-        elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
-            mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
-        return env
-
-
 def collectExcludes(path):
     def _collect(path, skip=None):
         for root, _, files in os.walk(path):
@@ -330,7 +270,61 @@ class ExternalTestSuiteMixin(object):  # pylint: disable=too-many-ancestors
         return self._tests
 
 
-class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuite):  # pylint: disable=too-many-ancestors
+class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuiteMixin, mx.NativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
+                 buildSharedObject=False, bundledLLVMOnly=False, **args):
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d_rel = projectDir
+        elif subDir is None:
+            d_rel = name
+        else:
+            d_rel = os.path.join(subDir, name)
+        d = os.path.join(suite.dir, d_rel.replace('/', os.sep))
+        super(ExternalTestSuite, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
+        if bundledLLVMOnly and mx.get_env('CLANG_CC', None):
+            self.ignore = "Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'"
+        self.vpath = True
+        self.buildRef = buildRef
+        self.buildSharedObject = buildSharedObject
+        self._is_needs_rebuild_call = False
+
+    def getBuildTask(self, args):
+        return SulongTestSuiteBuildTask(args, self)
+
+    def _get_vpath(self):
+        env = super(ExternalTestSuite, self).getBuildEnv()
+        return env.get('VPATH', self.dir)
+
+    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
+        env = super(ExternalTestSuite, self).getBuildEnv(replaceVar=replaceVar)
+        roots = [d.get_path(resolve=True) for d in self.buildDependencies if d.isPackedResourceLibrary()]
+        env['PROJECT'] = self.name
+        env['VPATH'] = ':'.join(roots)
+        env['TESTFILE'] = self.getTestFile()
+        env['VARIANTS'] = ' '.join(self.getVariants())
+        env['BUILD_REF'] = '1' if self.buildRef else '0'
+        env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
+        env['SO_EXT'] = mx.add_lib_suffix("")
+        env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
+        env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
+        env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
+        env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        env['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
+        env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
+        env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
+        env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
+        if 'OS' not in env:
+            env['OS'] = mx_subst.path_substitutions.substitute("<os>")
+        if DragonEggSupport.haveDragonegg():
+            env['DRAGONEGG'] = DragonEggSupport.pluginPath()
+            env['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)
+            env['DRAGONEGG_LLVMAS'] = DragonEggSupport.findLLVMProgram("llvm-as")
+            env['DRAGONEGG_FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
+            env['FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
+        elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
+            mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
+        return env
 
     def getTestFile(self):
         if not hasattr(self, '_testfile'):
@@ -341,18 +335,6 @@ class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuite):  # pylint: dis
                 _ = self.getResults()
                 f.write("\n".join(("default: " + r for r in self.results)))
         return self._testfile
-
-    def defaultTestClasses(self):
-        return ["com.oracle.truffle.llvm.tests.GCCSuite"]
-
-    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
-        env = super(ExternalTestSuite, self).getBuildEnv(replaceVar=replaceVar)
-        roots = [d.get_path(resolve=True) for d in self.buildDependencies if d.isPackedResourceLibrary()]
-        # we pass tests via TESTFILE to avoid "argument list too long" issue
-        env['TESTS'] = ''
-        env['VPATH'] = ':'.join(roots)
-        env['TESTFILE'] = self.getTestFile()
-        return env
 
 
 class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many-ancestors
