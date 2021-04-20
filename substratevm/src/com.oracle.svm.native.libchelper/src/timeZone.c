@@ -29,6 +29,10 @@
  * The following functions are an identical copy of the functions in file TimeZone_md.c found at
  * https://github.com/graalvm/labs-openjdk-11/blob/67ddc3bcadd985ea26997457aec6696f21caf154/src/java.base/windows/native/libjava/TimeZone_md.c
  * With the exceptions of the commented functions this file has not been modified from its original.
+ *
+ * Support for the new tzmappings format, introduced in JDK 12, has been added by backporting
+ * JDK-8209167. So, depending on the value of the JDK_VER macro, the resulting code will support
+ * either the old format or the new format, but not both.
  */
 #include <windows.h>
 #include <stdio.h>
@@ -41,6 +45,7 @@
 
 #define MAX_ZONE_CHAR           256
 #define MAX_MAPID_LENGTH        32
+#define MAX_REGION_LENGTH       4
 
 #define NT_TZ_KEY               "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones"
 #define WIN_TZ_KEY              "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones"
@@ -149,6 +154,8 @@ static void customZoneName(LONG bias, char *buffer) {
 
 /*
  * Gets the current time zone entry in the "Time Zones" registry.
+ *
+ * Note that the winMapID parameter is only used if JDK_VER <= 11.
  */
 static int getWinTimeZone(char *winZoneName, char *winMapID)
 {
@@ -377,6 +384,7 @@ static int getWinTimeZone(char *winZoneName, char *winMapID)
             (void) RegCloseKey(hSubKey);
         }
 
+#if JDK_VER <= 11
         /*
          * Get the "MapID" value of the registry to be able to eliminate
          * duplicated key names later.
@@ -395,6 +403,9 @@ static int getWinTimeZone(char *winZoneName, char *winMapID)
                 return VALUE_UNKNOWN;
             }
         }
+#else
+        (void) RegCloseKey(hKey);
+#endif
     }
 
     return VALUE_KEY;
@@ -439,12 +450,20 @@ static int SVM_readBufferUntilNewLine(char *dst, int num, const char *source, in
 /*
  * Index values for the mapping table.
  */
+#if JDK_VER <= 11
 #define TZ_WIN_NAME     0
 #define TZ_MAPID        1
 #define TZ_REGION       2
 #define TZ_JAVA_NAME    3
 
 #define TZ_NITEMS       4       /* number of items (fields) */
+#else
+#define TZ_WIN_NAME     0
+#define TZ_REGION       1
+#define TZ_JAVA_NAME    2
+
+#define TZ_NITEMS       3       /* number of items (fields) */
+#endif
 
 /*
  * Looks up the mapping table (tzmappings) and returns a Java time
@@ -457,21 +476,40 @@ static int SVM_readBufferUntilNewLine(char *dst, int num, const char *source, in
  *      required for the old Windows, such as NT 4.0 SP3).
  *
  * The following function differs from the original by accepting a buffer and reading
- * tzmappings data from it. The original function opens and reads  such data from a file.
+ * tzmappings data from it. The original function opens and reads such data from a file.
+ *
+ * Note that the mapID parameter is only used if JDK_VER <= 11.
  */
 static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzName,
-                         char *mapID, int tzmappingsLen)
+                             char *mapID, int tzmappingsLen)
 {
     int line;
-    int IDmatched = 0;
     char *javaTZName = NULL;
     char *items[TZ_NITEMS];
     char lineBuffer[MAX_ZONE_CHAR * 4];
-    int noMapID = *mapID == '\0';       /* no mapID on Vista and later */
     int offset = 0;
     const char* errorMessage = "unknown error";
     int currLocation;
     int readChars;
+#if JDK_VER <= 11
+    int IDmatched = 0;
+    int noMapID = *mapID == '\0';       /* no mapID on Vista and later */
+#else
+    char region[MAX_REGION_LENGTH];
+
+    // Get the user's location
+    if (GetGeoInfo(GetUserGeoID(GEOCLASS_NATION),
+            GEO_ISO2, region, MAX_REGION_LENGTH, 0) == 0) {
+        // If GetGeoInfo fails, fallback to LCID's country
+        LCID lcid = GetUserDefaultLCID();
+        if (GetLocaleInfo(lcid,
+                          LOCALE_SISO3166CTRYNAME, region, MAX_REGION_LENGTH) == 0 &&
+            GetLocaleInfo(lcid,
+                          LOCALE_SISO3166CTRYNAME2, region, MAX_REGION_LENGTH) == 0) {
+            region[0] = '\0';
+        }
+    }
+#endif
 
     line = 0;
     currLocation = 0;
@@ -519,6 +557,7 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
             goto illegal_format;
         }
 
+#if JDK_VER <= 11
         if (noMapID || strcmp(mapID, items[TZ_MAPID]) == 0) {
             /*
              * When there's no mapID, we need to scan items until the
@@ -542,6 +581,23 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
                 break;
             }
         }
+#else
+        /*
+         * We need to scan items until the
+         * exact match is found or the end of data is detected.
+         */
+        if (strcmp(items[TZ_WIN_NAME], tzName) == 0) {
+            /*
+             * Found the time zone in the mapping table.
+             * Check the region code and select the appropriate entry
+             */
+            if (strcmp(items[TZ_REGION], region) == 0 ||
+                strcmp(items[TZ_REGION], "001") == 0) {
+                javaTZName = _strdup(items[TZ_JAVA_NAME]);
+                break;
+            }
+        }
+#endif
     }
 
     if (readChars == -1) {
