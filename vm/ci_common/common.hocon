@@ -420,6 +420,19 @@ deploy_graalvm_installables_windows_amd64: {
   timelimit: "1:30:00"
 }
 
+deploy_graalvm_plus_ruby: {
+  run: ${collect_profiles} [
+    [set-export, VM_ENV, "${VM_ENV}-ruby"]
+    ${mx_vm_common} ${vm_profiles} [graalvm-show]
+    ${mx_vm_common} ${vm_profiles} [build]
+    ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
+    ${notify-nexus-deploy}
+    [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
+  ]
+  logs: ${common_vm.logs}
+  timelimit: "1:45:00"
+}
+
 builds += [
   #
   # Gates
@@ -475,36 +488,11 @@ builds += [
   ${vm_java_16} ${deploy_daily_vm_windows-jdk16} ${svm-common-windows-jdk16} ${js_windows_jdk16} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows_java16}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java16-windows-amd64}
 
   #
-  # Deploy Ruby images
+  # Deploy GraalVM+Ruby images
   #
 
-  # Linux/AMD64
-  ${vm_java_11} ${ruby_vm_build_linux} ${linux-deploy} ${deploy_daily_vm_linux} {
-    run: ${collect_profiles} [
-      [set-export, VM_ENV, "${VM_ENV}-ruby"]
-      ${mx_vm_common} ${vm_profiles} [graalvm-show]
-      ${mx_vm_common} ${vm_profiles} [build]
-      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
-      [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
-    ]
-    logs: ${common_vm.logs}
-    timelimit: "1:30:00"
-    name: deploy-vm-ruby-java11-linux-amd64
-  }
-
-  # Darwin/AMD64
-  ${vm_java_11} ${ruby_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
-    run: ${collect_profiles} [
-      [set-export, VM_ENV, "${VM_ENV}-ruby"]
-      ${mx_vm_common} ${vm_profiles} [graalvm-show]
-      ${mx_vm_common} ${vm_profiles} [build]
-      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
-    ]
-    timelimit: "1:45:00"
-    name: deploy-vm-ruby-java11-darwin-amd64
-  }
+  ${vm_java_11} ${ruby_vm_build_linux} ${linux-deploy} ${deploy_daily_vm_linux} ${deploy_graalvm_plus_ruby} {name: deploy-vm-ruby-java11-linux-amd64}
+  ${vm_java_11} ${ruby_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_plus_ruby} {name: deploy-vm-ruby-java11-darwin-amd64}
 
   #
   # Deploy GraalVM Complete (no FastR)
