@@ -119,4 +119,42 @@ final class TruffleJDKServices {
     static boolean isNonTruffleClass(Class<?> clazz) {
         throw shouldNotReachHere();
     }
+
+    /**
+     * Ensures that loads and stores before the fence will not be reordered with loads and stores
+     * after the fence.
+     */
+    static void fullFence() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that loads before the fence will not be reordered with loads and stores after the
+     * fence.
+     */
+    static void acquireFence() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that loads and stores before the fence will not be reordered with stores after the
+     * fence.
+     */
+    static void releaseFence() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that loads before the fence will not be reordered with loads after the fence.
+     */
+    static void loadLoadFence() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that stores before the fence will not be reordered with stores after the fence.
+     */
+    static void storeStoreFence() {
+        throw shouldNotReachHere();
+    }
 }
