@@ -45,6 +45,7 @@ import static org.graalvm.nativebridge.jni.JNIUtil.findClass;
 import static org.graalvm.nativebridge.jni.JNIUtil.getJVMCIClassLoader;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
+import org.graalvm.nativebridge.jni.HotSpotCalls.JNIMethod;
 import org.graalvm.nativebridge.jni.JNI.JClass;
 import org.graalvm.nativebridge.jni.JNI.JNIEnv;
 import org.graalvm.nativebridge.jni.JNI.JObject;
@@ -66,15 +67,15 @@ public final class JNIExceptionWrapper extends RuntimeException {
     private static final String HS_ENTRYPOINTS_CLASS = "org.graalvm.nativebridge.jni.JNIExceptionWrapperEntryPoints";
     private static final long serialVersionUID = 1L;
 
-    private static final MethodResolver CreateException = MethodResolver.create("createException", Throwable.class, String.class, String.class);
-    private static final MethodResolver GetClassName = MethodResolver.create("getClassName", String.class, Class.class);
-    private static final MethodResolver GetStackTraceElementClassName = MethodResolver.create("getStackTraceElementClassName", String.class, StackTraceElement.class);
-    private static final MethodResolver GetStackTraceElementFileName = MethodResolver.create("getStackTraceElementFileName", String.class, StackTraceElement.class);
-    private static final MethodResolver GetStackTraceElementLineNumber = MethodResolver.create("getStackTraceElementLineNumber", int.class, StackTraceElement.class);
-    private static final MethodResolver GetStackTraceElementMethodName = MethodResolver.create("getStackTraceElementMethodName", String.class, StackTraceElement.class);
-    private static final MethodResolver GetStackTrace = MethodResolver.create("getStackTrace", StackTraceElement[].class, Throwable.class);
-    private static final MethodResolver GetThrowableMessage = MethodResolver.create("getThrowableMessage", String.class, Throwable.class);
-    private static final MethodResolver UpdateStackTrace = MethodResolver.create("updateStackTrace", Throwable.class, Throwable.class, String[].class);
+    private static final JNIMethodResolver CreateException = JNIMethodResolver.create("createException", Throwable.class, String.class, String.class);
+    private static final JNIMethodResolver GetClassName = JNIMethodResolver.create("getClassName", String.class, Class.class);
+    private static final JNIMethodResolver GetStackTraceElementClassName = JNIMethodResolver.create("getStackTraceElementClassName", String.class, StackTraceElement.class);
+    private static final JNIMethodResolver GetStackTraceElementFileName = JNIMethodResolver.create("getStackTraceElementFileName", String.class, StackTraceElement.class);
+    private static final JNIMethodResolver GetStackTraceElementLineNumber = JNIMethodResolver.create("getStackTraceElementLineNumber", int.class, StackTraceElement.class);
+    private static final JNIMethodResolver GetStackTraceElementMethodName = JNIMethodResolver.create("getStackTraceElementMethodName", String.class, StackTraceElement.class);
+    private static final JNIMethodResolver GetStackTrace = JNIMethodResolver.create("getStackTrace", StackTraceElement[].class, Throwable.class);
+    private static final JNIMethodResolver GetThrowableMessage = JNIMethodResolver.create("getThrowableMessage", String.class, Throwable.class);
+    private static final JNIMethodResolver UpdateStackTrace = JNIMethodResolver.create("updateStackTrace", Throwable.class, Throwable.class, String[].class);
 
     private static volatile JNI.JClass fromLibGraalEntryPoints;
 
@@ -406,7 +407,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     @SuppressWarnings("unchecked")
-    static <T extends JObject> T callGetThrowableMessage(JNIEnv env, JObject p0) {
+    private static <T extends JObject> T callGetThrowableMessage(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetThrowableMessage.resolve(env), args);
@@ -420,51 +421,51 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     @SuppressWarnings("unchecked")
-    static <T extends JObject> T callGetStackTrace(JNIEnv env, JObject p0) {
+    private static <T extends JObject> T callGetStackTrace(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTrace.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
-    static <T extends JObject> T callGetStackTraceElementClassName(JNIEnv env, JObject p0) {
+    private static <T extends JObject> T callGetStackTraceElementClassName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementClassName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
-    static <T extends JObject> T callGetStackTraceElementMethodName(JNIEnv env, JObject p0) {
+    private static <T extends JObject> T callGetStackTraceElementMethodName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementMethodName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
-    static <T extends JObject> T callGetStackTraceElementFileName(JNIEnv env, JObject p0) {
+    private static <T extends JObject> T callGetStackTraceElementFileName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTraceElementFileName.resolve(env), args);
     }
 
-    static int callGetStackTraceElementLineNumber(JNIEnv env, JObject p0) {
+    private static int callGetStackTraceElementLineNumber(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticInt(env, getHotSpotEntryPoints(env), GetStackTraceElementLineNumber.resolve(env), args);
     }
 
-    private static final class MethodResolver {
+    private static final class JNIMethodResolver implements JNIMethod {
 
         private final String methodName;
         private final String methodSignature;
         private volatile JNI.JMethodID methodId;
 
-        private MethodResolver(String methodName, String methodSignature) {
+        private JNIMethodResolver(String methodName, String methodSignature) {
             this.methodName = methodName;
             this.methodSignature = methodSignature;
         }
 
-        public JNI.JMethodID resolve(JNIEnv jniEnv) {
+        JNIMethodResolver resolve(JNIEnv jniEnv) {
             JNI.JMethodID res = methodId;
             if (res.isNull()) {
                 JNI.JClass entryPointClass = getHotSpotEntryPoints(jniEnv);
@@ -476,11 +477,21 @@ public final class JNIExceptionWrapper extends RuntimeException {
                     methodId = res;
                 }
             }
-            return res;
+            return this;
         }
 
-        static MethodResolver create(String methodName, Class<?> returnType, Class<?>... parameterTypes) {
-            return new MethodResolver(methodName, encodeMethodSignature(returnType, parameterTypes));
+        @Override
+        public JNI.JMethodID getJMethodID() {
+            return methodId;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return methodName;
+        }
+
+        static JNIMethodResolver create(String methodName, Class<?> returnType, Class<?>... parameterTypes) {
+            return new JNIMethodResolver(methodName, encodeMethodSignature(returnType, parameterTypes));
         }
     }
 

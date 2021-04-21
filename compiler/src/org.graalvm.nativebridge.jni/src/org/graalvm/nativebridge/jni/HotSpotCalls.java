@@ -25,10 +25,13 @@
 package org.graalvm.nativebridge.jni;
 
 import static org.graalvm.nativebridge.jni.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
+import static org.graalvm.nativebridge.jni.JNIUtil.createString;
+import static org.graalvm.nativebridge.jni.JNIUtil.trace;
 
 import org.graalvm.nativebridge.jni.JNI.JClass;
 import org.graalvm.nativebridge.jni.JNI.JObject;
 import org.graalvm.nativebridge.jni.JNI.JMethodID;
+import org.graalvm.nativebridge.jni.JNI.JNIEnv;
 import org.graalvm.nativebridge.jni.JNIExceptionWrapper.ExceptionHandler;
 
 import java.lang.annotation.ElementType;
@@ -46,6 +49,8 @@ public final class HotSpotCalls {
 
     private static final HotSpotCalls INSTANCE = new HotSpotCalls(ExceptionHandler.DEFAULT);
 
+    private static final ThreadLocal<Boolean> inTrace = ThreadLocal.withInitial(()->false);
+
     private final ExceptionHandler exceptionHandler;
 
     private HotSpotCalls(ExceptionHandler exceptionHandler) {
@@ -62,116 +67,179 @@ public final class HotSpotCalls {
     }
 
     @HotSpotCall
-    public void callStaticVoid(JNI.JNIEnv env, JClass clazz, JMethodID id, JNI.JValue args) {
-        env.getFunctions().getCallStaticVoidMethodA().call(env, clazz, id, args);
+    public void callStaticVoid(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
+        traceCall(env, clazz, method);
+        env.getFunctions().getCallStaticVoidMethodA().call(env, clazz, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
     }
 
     @HotSpotCall
-    public boolean callStaticBoolean(JNI.JNIEnv env, JClass clazz, JMethodID id, JNI.JValue args) {
-        boolean res = env.getFunctions().getCallStaticBooleanMethodA().call(env, clazz, id, args);
-        wrapAndThrowPendingJNIException(env, exceptionHandler);
-        return res;
-    }
-
-    @HotSpotCall
-    public long callStaticLong(JNI.JNIEnv env, JClass clazz, JMethodID id, JNI.JValue args) {
-        long res = env.getFunctions().getCallStaticLongMethodA().call(env, clazz, id, args);
+    public boolean callStaticBoolean(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
+        traceCall(env, clazz, method);
+        boolean res = env.getFunctions().getCallStaticBooleanMethodA().call(env, clazz, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @HotSpotCall
-    public int callStaticInt(JNI.JNIEnv env, JClass clazz, JMethodID id, JNI.JValue args) {
-        int res = env.getFunctions().getCallStaticIntMethodA().call(env, clazz, id, args);
+    public long callStaticLong(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
+        traceCall(env, clazz, method);
+        long res = env.getFunctions().getCallStaticLongMethodA().call(env, clazz, method.getJMethodID(), args);
+        wrapAndThrowPendingJNIException(env, exceptionHandler);
+        return res;
+    }
+
+    @HotSpotCall
+    public int callStaticInt(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
+        traceCall(env, clazz, method);
+        int res = env.getFunctions().getCallStaticIntMethodA().call(env, clazz, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @SuppressWarnings("unchecked")
     @HotSpotCall
-    public <R extends JObject> R callStaticJObject(JNI.JNIEnv env, JClass clazz, JMethodID id, JNI.JValue args) {
-        JNI.JObject res = env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, id, args);
+    public <R extends JObject> R callStaticJObject(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
+        traceCall(env, clazz, method);
+        JNI.JObject res = env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return (R) res;
     }
 
     @HotSpotCall
     @SuppressWarnings("unchecked")
-    public <R extends JObject> R callNewObject(JNI.JNIEnv env, JClass clazz, JMethodID id, JNI.JValue args) {
-        JNI.JObject res = env.getFunctions().getNewObjectA().call(clazz, id, args);
+    public <R extends JObject> R callNewObject(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
+        traceCall(env, clazz, method);
+        JNI.JObject res = env.getFunctions().getNewObjectA().call(clazz, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return (R) res;
     }
 
     @HotSpotCall
-    public void callVoid(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        env.getFunctions().getCallVoidMethodA().call(env, object, id, args);
+    public void callVoid(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        env.getFunctions().getCallVoidMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
     }
 
     @HotSpotCall
     @SuppressWarnings("unchecked")
-    public <R extends JObject> R callJObject(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        JNI.JObject res = env.getFunctions().getCallObjectMethodA().call(env, object, id, args);
+    public <R extends JObject> R callJObject(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        JNI.JObject res = env.getFunctions().getCallObjectMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return (R) res;
     }
 
     @HotSpotCall
-    public boolean callBoolean(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        boolean res = env.getFunctions().getCallBooleanMethodA().call(env, object, id, args);
+    public boolean callBoolean(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        boolean res = env.getFunctions().getCallBooleanMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @HotSpotCall
-    public short callShort(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        short res = env.getFunctions().getCallShortMethodA().call(env, object, id, args);
+    public short callShort(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        short res = env.getFunctions().getCallShortMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @HotSpotCall
-    public int callInt(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        int res = env.getFunctions().getCallIntMethodA().call(env, object, id, args);
+    public int callInt(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        int res = env.getFunctions().getCallIntMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @HotSpotCall
-    public long callLong(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        long res = env.getFunctions().getCallLongMethodA().call(env, object, id, args);
+    public long callLong(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        long res = env.getFunctions().getCallLongMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @HotSpotCall
-    public double callDouble(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        double res = env.getFunctions().getCallDoubleMethodA().call(env, object, id, args);
+    public double callDouble(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        double res = env.getFunctions().getCallDoubleMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @HotSpotCall
-    public float callFloat(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        float res = env.getFunctions().getCallFloatMethodA().call(env, object, id, args);
+    public float callFloat(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        float res = env.getFunctions().getCallFloatMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @HotSpotCall
-    public byte callByte(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        byte res = env.getFunctions().getCallByteMethodA().call(env, object, id, args);
+    public byte callByte(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        byte res = env.getFunctions().getCallByteMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
     }
 
     @HotSpotCall
-    public char callChar(JNI.JNIEnv env, JObject object, JMethodID id, JNI.JValue args) {
-        char res = env.getFunctions().getCallCharMethodA().call(env, object, id, args);
+    public char callChar(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
+        traceCall(env, object, method);
+        char res = env.getFunctions().getCallCharMethodA().call(env, object, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return res;
+    }
+
+    private void traceCall(JNIEnv env, JClass clazz, JNIMethod method) {
+        // Do not trace tracing.
+        if (!inTrace.get()) {
+            inTrace.set(true);
+            try {
+                trace(1, "%s->HS: %s::%s",
+                        JNIUtil.getFeatureName(),
+                        toSimpleName(createString(env, JNIExceptionWrapper.callGetClassName(env, clazz))),
+                        method.getDisplayName());
+            } finally {
+                inTrace.remove();
+            }
+        }
+    }
+
+    private void traceCall(JNIEnv env, JObject receiver, JNIMethod method) {
+        // Intentionally does not use JNIUtil. The tracing JNI usage should not be traced.
+        traceCall(env, env.getFunctions().getGetObjectClass().call(env, receiver), method);
+    }
+
+    private static String toSimpleName(String fqn) {
+        int separatorIndex = fqn.lastIndexOf('.');
+        return separatorIndex < 0 || separatorIndex + 1 == fqn.length() ?  fqn : fqn.substring(separatorIndex+1);
+    }
+
+    public interface JNIMethod {
+
+        JMethodID getJMethodID();
+
+        String getDisplayName();
+
+        static JNIMethod findMethod(JNIEnv env, JClass clazz, boolean staticMethod, String methodName, String methodSignature) {
+            JMethodID methodID = JNIUtil.findMethod(env, clazz, staticMethod, methodName, methodSignature);
+            return new JNIMethod() {
+                @Override
+                public JMethodID getJMethodID() {
+                    return methodID;
+                }
+
+                @Override
+                public String getDisplayName() {
+                    return methodName;
+                }
+            };
+        }
     }
 
     /**

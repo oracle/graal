@@ -55,7 +55,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
 
     private static final Map<String, JNIClass> classes = new ConcurrentHashMap<>();
 
-    private final EnumMap<T, JNIMethod<T>> methods;
+    private final EnumMap<T, JNIMethodImpl<T>> methods;
     private final HotSpotCalls hotSpotCalls;
     private volatile JClass peer;
 
@@ -86,13 +86,23 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     /**
      * Describes a method in {@link #peer(JNI.JNIEnv) HotSpot peer class}.
      */
-    static final class JNIMethod<T extends Enum<T> & FromLibGraalId> {
+    static final class JNIMethodImpl<T extends Enum<T> & FromLibGraalId> implements HotSpotCalls.JNIMethod {
         final T hcId;
         final JMethodID jniId;
 
-        JNIMethod(T hcId, JMethodID jniId) {
+        JNIMethodImpl(T hcId, JMethodID jniId) {
             this.hcId = hcId;
             this.jniId = jniId;
+        }
+
+        @Override
+        public JMethodID getJMethodID() {
+            return jniId;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return hcId.toString();
         }
 
         @Override
@@ -102,34 +112,29 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     }
 
     public final void callVoid(JNIEnv env, T id, JValue args) {
-        JNIMethod<T> method = getJNIMethod(env, id, void.class);
-        traceCall(id);
-        hotSpotCalls.callStaticVoid(env, peer(env), method.jniId, args);
+        JNIMethodImpl<T> method = getJNIMethod(env, id, void.class);
+        hotSpotCalls.callStaticVoid(env, peer(env), method, args);
     }
 
     public final boolean callBoolean(JNIEnv env, T id, JValue args) {
-        JNIMethod<T> method = getJNIMethod(env, id, boolean.class);
-        traceCall(id);
-        return hotSpotCalls.callStaticBoolean(env, peer(env), method.jniId, args);
+        JNIMethodImpl<T> method = getJNIMethod(env, id, boolean.class);
+        return hotSpotCalls.callStaticBoolean(env, peer(env), method, args);
     }
 
     public final long callLong(JNIEnv env, T id, JValue args) {
-        JNIMethod<T> method = getJNIMethod(env, id, long.class);
-        traceCall(id);
-        return hotSpotCalls.callStaticLong(env, peer(env), method.jniId, args);
+        JNIMethodImpl<T> method = getJNIMethod(env, id, long.class);
+        return hotSpotCalls.callStaticLong(env, peer(env), method, args);
     }
 
     public final int callInt(JNIEnv env, T id, JValue args) {
-        JNIMethod<T> method = getJNIMethod(env, id, int.class);
-        traceCall(id);
-        return hotSpotCalls.callStaticInt(env, peer(env), method.jniId, args);
+        JNIMethodImpl<T> method = getJNIMethod(env, id, int.class);
+        return hotSpotCalls.callStaticInt(env, peer(env), method, args);
     }
 
     @SuppressWarnings("unchecked")
     public final <R extends JObject> R callJObject(JNIEnv env, T id, JValue args) {
-        JNIMethod<T> method = getJNIMethod(env, id, Object.class);
-        traceCall(id);
-        return hotSpotCalls.callStaticJObject(env, peer(env), method.jniId, args);
+        JNIMethodImpl<T> method = getJNIMethod(env, id, Object.class);
+        return hotSpotCalls.callStaticJObject(env, peer(env), method, args);
     }
 
     public static JClass getJNIClass(JNIEnv env, Class<?> clazz) {
@@ -141,10 +146,6 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
 
     public static JClass getJNIClass(JNIEnv env, String className) {
         return getJNIClassImpl(env, className).jclass;
-    }
-
-    private void traceCall(T id) {
-        trace(1, "LIBGRAAL->HS: %s", id);
     }
 
     private static JNIClass getJNIClassImpl(JNIEnv env, String className) {
@@ -170,12 +171,12 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
         }
     }
 
-    private JNIMethod<T> getJNIMethod(JNIEnv env, T hcId, Class<?> expectedReturnType) {
+    private JNIMethodImpl<T> getJNIMethod(JNIEnv env, T hcId, Class<?> expectedReturnType) {
         assert hcId.getReturnType() == expectedReturnType || expectedReturnType.isAssignableFrom(hcId.getReturnType());
         try {
-            return methods.computeIfAbsent(hcId, new Function<T, JNIMethod<T>>() {
+            return methods.computeIfAbsent(hcId, new Function<T, JNIMethodImpl<T>>() {
                 @Override
-                public JNIMethod<T> apply(T id) {
+                public JNIMethodImpl<T> apply(T id) {
                     JClass c = peer(env);
                     String methodName = id.getMethodName();
                     try (CCharPointerHolder name = toCString(methodName); CCharPointerHolder sig = toCString(id.getSignature())) {
@@ -183,7 +184,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
                         if (jniId.isNull()) {
                             throw new InternalError("No such method: " + methodName);
                         }
-                        return new JNIMethod<>(id, jniId);
+                        return new JNIMethodImpl<>(id, jniId);
                     }
                 }
             });
