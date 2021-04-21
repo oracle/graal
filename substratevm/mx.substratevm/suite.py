@@ -1039,7 +1039,7 @@ suite = {
                     "java.smartcardio",
                     "java.net.http",
                     "jdk.sctp",
-                    "jdk.scripting.nashorn",
+                    "jdk.scripting.nashorn@11..14",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
