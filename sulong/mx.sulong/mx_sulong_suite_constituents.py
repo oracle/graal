@@ -557,12 +557,16 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
 
 
 class CMakeMixin(object):
+    @staticmethod
+    def config_entry(key, value):
+        return '-D{}={}'.format(key, mx_subst.path_substitutions.substitute(value))
+
     def __init__(self, *args, **kwargs):
         super(CMakeMixin, self).__init__(*args, **kwargs)
         self._cmake_config_raw = kwargs.pop('cmakeConfig', {})
 
     def cmake_config(self):
-        return ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(self._cmake_config_raw.items())]
+        return [CMakeMixin.config_entry(k, v.replace('{{}}', '$')) for k, v in sorted(self._cmake_config_raw.items())]
 
 
 class CMakeProject(CMakeMixin, AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
@@ -642,7 +646,7 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
         # explicitly set ninja executable if not on path
         cmake_make_program = 'CMAKE_MAKE_PROGRAM'
         if cmake_make_program not in cmake_config and mx_native.Ninja.binary != 'ninja':
-            cmake_config.append('-D{}={}'.format(cmake_make_program, mx_native.Ninja.binary))
+            cmake_config.append(CMakeMixin.config_entry(cmake_make_program, mx_native.Ninja.binary))
 
         # cmake will always create build.ninja - there is nothing we can do about it ATM
         cmdline = ["-G", "Ninja", source_dir] + cmake_config
@@ -852,11 +856,11 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, CMakeNinjaProject):  # pylint: 
         if not self.current_variant:
             self.abort("current_variant not set")
         _extra_cmake_config = extra_cmake_config or []
-        _extra_cmake_config.append("-DSULONG_CURRENT_VARIANT={}".format(self.current_variant))
+        _extra_cmake_config.append(CMakeMixin.config_entry("SULONG_CURRENT_VARIANT", self.current_variant))
         try:
             # get either current_variant or <other>
             variant_specific_config = next(self.cmake_config_variant[x] for x in (self.current_variant, '<others>') if x in self.cmake_config_variant)
-            _extra_cmake_config.extend(('-D{}={}'.format(k, v) for k, v in variant_specific_config.items()))
+            _extra_cmake_config.extend((CMakeMixin.config_entry(k, v) for k, v in variant_specific_config.items()))
         except StopIteration:
             # no variant specific config
             pass
