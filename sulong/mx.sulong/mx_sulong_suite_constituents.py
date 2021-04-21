@@ -559,7 +559,11 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
 class CMakeMixin(object):
     @staticmethod
     def config_entry(key, value):
-        return '-D{}={}'.format(key, mx_subst.path_substitutions.substitute(value))
+        value_substitute = mx_subst.path_substitutions.substitute(value)
+        if mx.is_windows():
+            # cmake does not like backslashes
+            value_substitute = value_substitute.replace("\\", "/")
+        return '-D{}={}'.format(key, value_substitute)
 
     def __init__(self, *args, **kwargs):
         super(CMakeMixin, self).__init__(*args, **kwargs)
