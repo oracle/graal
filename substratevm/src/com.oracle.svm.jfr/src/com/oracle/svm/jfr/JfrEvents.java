@@ -31,6 +31,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  */
 public enum JfrEvents {
     // TODO: we need to abstract the JDK version in some way.
+    // Event IDs should be fetched similar to how we do it in JfrTypes.
     MetadataEvent(0),
     CheckpointEvent(1),
     ThreadStartEvent(255),

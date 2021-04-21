@@ -77,10 +77,10 @@ class SubstrateJVM {
 
         stringRepo = new JfrStringRepository();
         symbolRepo = new JfrSymbolRepository();
-        typeRepo = new JfrTypeRepository(symbolRepo);
+        typeRepo = new JfrTypeRepository();
         methodRepo = new JfrMethodRepository(typeRepo, symbolRepo);
         stackTraceRepo = new JfrStackTraceRepository(methodRepo);
-        repositories = new JfrRepository[]{stringRepo, symbolRepo, typeRepo, methodRepo, stackTraceRepo};
+        repositories = new JfrRepository[]{stringRepo, typeRepo, symbolRepo, methodRepo, stackTraceRepo};
 
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
@@ -115,6 +115,11 @@ class SubstrateJVM {
     @Fold
     public static JfrTypeRepository getTypeRepository() {
         return get().typeRepo;
+    }
+
+    @Fold
+    public static JfrSymbolRepository getSymbolRepository() {
+        return get().symbolRepo;
     }
 
     @Fold

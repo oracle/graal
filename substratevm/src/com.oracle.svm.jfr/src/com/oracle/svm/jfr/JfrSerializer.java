@@ -30,6 +30,5 @@ import java.io.IOException;
  * Used to write static data at a JFR checkpoint.
  */
 public interface JfrSerializer {
-    void write(JfrChunkWriter writer) throws IOException;
-    boolean hasItems();
+    int write(JfrChunkWriter writer) throws IOException;
 }

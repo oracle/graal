@@ -64,7 +64,7 @@ public class JfrTraceId {
     public static void tag(Class<?> clazz, long bits) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(clazz);
-        map.setId(clazz, (id & ~0xff) | (bits & 0xff));
+        map.setId(clazz, id | (bits & 0xff));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

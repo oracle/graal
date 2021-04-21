@@ -55,18 +55,16 @@ public class JfrStringRepository implements JfrRepository {
     }
 
     @Override
-    public void write(JfrChunkWriter writer) throws IOException {
+    public int write(JfrChunkWriter writer) throws IOException {
         assert VMOperation.isInProgressAtSafepoint();
-        writer.writeCompressedLong(JfrTypes.String.getId());
-        writer.writeCompressedLong(0);
+
+        return 0;
+
+        // writer.writeCompressedLong(JfrTypes.String.getId());
+        // writer.writeCompressedLong(0);
 
         // TODO: write encoding (null and empty String have special values as well)
         // TODO: write string data in the correct encoding
-    }
-
-    @Override
-    public boolean hasItems() {
-        // TODO: Implement this
-        return false;
+        // return 1;
     }
 }

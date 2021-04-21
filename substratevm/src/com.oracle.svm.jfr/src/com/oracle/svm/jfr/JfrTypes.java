@@ -24,22 +24,42 @@
  */
 package com.oracle.svm.jfr;
 
+import jdk.jfr.internal.Type;
+import jdk.jfr.internal.TypeLibrary;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import java.util.List;
+
 public enum JfrTypes {
-    // TODO: see JfrEvents, same TODOs apply here as well.
-    Class(20),
-    String(21),
-    StackTrace(23),
-    Method(38),
-    Symbol(39),
-    Frametype(58);
+    Class("java.lang.Class"),
+    String("java.lang.String"),
+    StackTrace("jdk.types.StackTrace"),
+    ClassLoader("jdk.types.ClassLoader"),
+    Method("jdk.types.Method"),
+    Symbol("jdk.types.Symbol"),
+    Module("jdk.types.Module"),
+    Package("jdk.types.Package"),
+    FrameType("jdk.types.FrameType");
 
-    private final int id;
+    private final long id;
 
-    JfrTypes(int id) {
-        this.id = id;
+    JfrTypes(String name) {
+        this.id = getTypeId(name);
     }
 
-    public int getId() {
+    public long getId() {
         return id;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static long getTypeId(String typeName) {
+        List<Type> types = TypeLibrary.getInstance().getTypes();
+        for (Type type : types) {
+            if (typeName.equals(type.getName())) {
+                return type.getId();
+            }
+        }
+        return 0;
     }
 }

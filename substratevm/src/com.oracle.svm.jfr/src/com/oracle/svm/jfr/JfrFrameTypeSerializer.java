@@ -35,8 +35,8 @@ public class JfrFrameTypeSerializer implements JfrSerializer {
     }
 
     @Override
-    public void write(JfrChunkWriter writer) throws IOException {
-        writer.writeCompressedLong(JfrTypes.Frametype.getId());
+    public int write(JfrChunkWriter writer) throws IOException {
+        writer.writeCompressedLong(JfrTypes.FrameType.getId());
 
         JfrFrameType[] values = JfrFrameType.values();
         writer.writeCompressedLong(values.length);
@@ -44,10 +44,6 @@ public class JfrFrameTypeSerializer implements JfrSerializer {
             writer.writeCompressedInt(i);
             writer.writeString(values[i].getText());
         }
-    }
-
-    @Override
-    public boolean hasItems() {
-        return JfrFrameType.values().length > 0;
+        return 1;
     }
 }

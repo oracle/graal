@@ -39,7 +39,5 @@ public interface JfrRepository {
      * Persists the data of the previous epoch. May only be called at a safepoint, after the epoch
      * changed.
      */
-    void write(JfrChunkWriter writer) throws IOException;
-
-    boolean hasItems();
+    int write(JfrChunkWriter writer) throws IOException;
 }

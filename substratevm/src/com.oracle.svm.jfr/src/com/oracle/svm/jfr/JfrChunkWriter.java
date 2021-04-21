@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -194,41 +195,35 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         writeCompressedLong(0); // duration
         writeCompressedLong(0); // deltaToNext
         file.writeBoolean(true); // flush
-        int count = 0;
-        // TODO: This should be simplified, serializers and repositories can probably go under the same
-        // structure.
-        for (JfrSerializer serializer : serializers) {
-            if (serializer.hasItems()) {
-                count++;
-            }
-        }
-        for (JfrRepository repository : repositories) {
-            if (repository.hasItems()) {
-                count++;
-            }
-        }
-        writeCompressedInt(count); // pools size
-        writeSerializers(serializers);
-        writeRepositories(repositories);
+        long poolCountPos = file.getFilePointer();
+        file.writeInt(0); // We'll fix this later.
+        // TODO: This should be simplified, serializers and repositories can probably go under the same structure.
+        int poolCount = writeSerializers(serializers);
+        poolCount += writeRepositories(repositories);
+        long currentPos = file.getFilePointer();
+        file.seek(poolCountPos);
+        file.writeInt(makePaddedInt(poolCount));
+        file.seek(currentPos);
         endEvent(start);
 
         return start;
     }
 
-    private void writeSerializers(JfrSerializer[] serializers) throws IOException {
+    private int writeSerializers(JfrSerializer[] serializers) throws IOException {
+        int count = 0;
         for (JfrSerializer serializer : serializers) {
-            if (serializer.hasItems()) {
-                serializer.write(this);
-            }
+            count += serializer.write(this);
         }
+        return count;
     }
 
-    private void writeRepositories(JfrRepository[] constantPools) throws IOException {
+    private int writeRepositories(JfrRepository[] constantPools) throws IOException {
+        int count = 0;
         for (JfrRepository constantPool : constantPools) {
-            if (constantPool.hasItems()) {
-                constantPool.write(this);
-            }
+            int poolCount = constantPool.write(this);
+            count += poolCount;
         }
+        return count;
     }
 
     private long writeMetadataEvent(byte[] metadataDescriptor) throws IOException {
@@ -408,6 +403,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             // - Flush all thread-local buffers (native & Java) to global JFR memory.
             // - Set all Java EventWriter.notified values
             // - Change the epoch.
+            JfrTraceIdEpoch.getInstance().changeEpoch();
         }
     }
 }
