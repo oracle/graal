@@ -48,6 +48,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
+import com.oracle.truffle.llvm.runtime.IDGenerater.*;
 
 /**
  * Our implementation assumes that there is a 1:1:1 relationship between callable functions (
@@ -100,9 +101,11 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
         int otherIndex = o.llvmFunction.getSymbolIndex(true);
-        int otherID = o.llvmFunction.getBitcodeID(true);
+        BitcodeID otherBitcode = o.llvmFunction.getBitcodeID(true);
+        int otherID = otherBitcode.getId();
         int index = llvmFunction.getSymbolIndex(true);
-        int id = llvmFunction.getBitcodeID(true);
+        BitcodeID bitcodeID = llvmFunction.getBitcodeID(true);
+        int id = bitcodeID.getId();
 
         if (id == otherID) {
             return Long.compare(index, otherIndex);

@@ -64,11 +64,13 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
+import com.oracle.truffle.llvm.runtime.IDGenerater.*;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -96,8 +98,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    private final AtomicInteger nextID = new AtomicInteger(0);
-
     public final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Only a single context is active");
 
     @CompilationFinal private Configuration activeConfiguration = null;
@@ -136,10 +136,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
-    private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
+    private final EconomicMap<String, WeakReference<CallTarget>> libraryCache = EconomicMap.create();
     private final Object libraryCacheLock = new Object();
     private final EconomicMap<String, Source> librarySources = EconomicMap.create();
 
+    private final IDGenerater idGenerater = new IDGenerater();
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
@@ -165,7 +166,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     public abstract static class Loader implements LLVMCapability {
-        public abstract CallTarget load(LLVMContext context, Source source, AtomicInteger id);
+        public abstract CallTarget load(LLVMContext context, Source source, BitcodeID id);
     }
 
     @Override
@@ -472,10 +473,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return defaultTargetTriple;
     }
 
-    public AtomicInteger getRawRunnerID() {
-        return nextID;
-    }
-
     @CompilerDirectives.TruffleBoundary
     public LLVMInteropType getInteropType(LLVMSourceType sourceType) {
         return interopTypeRegistry.get(sourceType);
@@ -505,19 +502,22 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             String path = source.getPath();
             CallTarget callTarget;
             if (source.isCached()) {
-                callTarget = libraryCache.get(path);
+                callTarget = libraryCache.get(path).get();
                 if (callTarget == null) {
-                    callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
-                    CallTarget prev = libraryCache.putIfAbsent(path, callTarget);
+                    callTarget = getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
+                    CallTarget prev = libraryCache.putIfAbsent(path, new WeakReference<>(callTarget)).get();
                     // To ensure the call target in the cache is always returned in case of
                     // concurrency.
                     if (prev != null) {
                         callTarget = prev;
                     }
                 }
+                // add the calltarget into the context, along with the id.
+
                 return callTarget;
             }
-            return getCapability(Loader.class).load(getContext(), source, nextID);
+            // just get the id here and give it to the parserDriver
+            return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
         }
     }
 
@@ -529,7 +529,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public CallTarget getCachedLibrary(String path) {
         synchronized (libraryCacheLock) {
-            return libraryCache.get(path);
+            return libraryCache.get(path).get();
         }
     }
 
