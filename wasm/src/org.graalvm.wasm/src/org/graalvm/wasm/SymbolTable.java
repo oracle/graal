@@ -577,7 +577,7 @@ public abstract class SymbolTable {
         return typeCount;
     }
 
-    FunctionType typeAt(int index) {
+    public FunctionType typeAt(int index) {
         return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
     }
 

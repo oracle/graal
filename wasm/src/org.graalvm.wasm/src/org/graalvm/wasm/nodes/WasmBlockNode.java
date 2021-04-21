@@ -651,9 +651,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         // Validate that the function type matches the expected type.
                         if (function != null && expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
-                            throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
-                                            "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
-                                            function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
+                            // The function could still be coming from a different context,
+                            // if the table was borrowed from a different context.
+                            // Therefore, do a slower check.
+                            if (!function.type().equals(symtab.typeAt(expectedFunctionTypeIndex))) {
+                                throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
+                                                "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
+                                                function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
+                            }
                         }
 
                         // Invoke the resolved function.
