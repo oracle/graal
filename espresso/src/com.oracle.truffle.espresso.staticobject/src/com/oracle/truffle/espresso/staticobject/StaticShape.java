@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -29,6 +30,7 @@ import java.lang.reflect.Field;
 public abstract class StaticShape<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
     protected final Class<?> storageClass;
+    @CompilationFinal //
     protected T factory;
 
     StaticShape(Class<?> storageClass) {
