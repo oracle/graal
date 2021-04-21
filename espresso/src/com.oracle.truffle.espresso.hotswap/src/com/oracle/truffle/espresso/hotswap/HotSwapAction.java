@@ -40,6 +40,17 @@
  */
 package com.oracle.truffle.espresso.hotswap;
 
+/**
+ * Represents all HotSwap actions that have been registered. See {@link EspressoHotSwap}.
+ *
+ * @since 21.2
+ */
 public interface HotSwapAction {
+
+    /**
+     * Callback method for registered HotSwap actions.
+     *
+     * @since 21.2
+     */
     void fire();
 }

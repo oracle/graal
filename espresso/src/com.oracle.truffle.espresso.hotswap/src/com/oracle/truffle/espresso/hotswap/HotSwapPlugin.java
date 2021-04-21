@@ -40,8 +40,28 @@
  */
 package com.oracle.truffle.espresso.hotswap;
 
+/**
+ * Represents a generic plugin that can be registered by
+ * {@link EspressoHotSwap#registerPlugin(HotSwapPlugin)}.
+ *
+ * @since 21.2
+ */
 public interface HotSwapPlugin {
+
+    /**
+     * The name of the plugin.
+     *
+     * @return the plugin name
+     * @since 21.2
+     */
     String getName();
 
+    /**
+     * Callback method called after HotSwapping completed all class redefinitions. Allows a plugin
+     * implementation to run custom code depending on the changed classes.
+     *
+     * @param changedClasses all classes that changed during HotSwap
+     * @since 21.2
+     */
     void postHotSwap(Class<?>[] changedClasses);
 }
