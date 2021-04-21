@@ -75,6 +75,8 @@ public class WasmType implements TruffleObject {
                 return "f32";
             case F64_TYPE:
                 return "f64";
+            case VOID_TYPE:
+                return "void";
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }

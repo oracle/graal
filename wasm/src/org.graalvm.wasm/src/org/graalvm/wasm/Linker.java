@@ -156,20 +156,14 @@ public class Linker {
     }
 
     private static void assignTypeEquivalenceClasses() {
-        final Map<String, WasmInstance> instances = WasmContext.getCurrent().moduleInstances();
-        final Map<FunctionType, Integer> equivalenceClasses = new HashMap<>();
-        int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
+        final WasmContext context = WasmContext.getCurrent();
+        final Map<String, WasmInstance> instances = context.moduleInstances();
         for (WasmInstance instance : instances.values()) {
             if (instance.isLinkInProgress() && !instance.module().isParsed()) {
                 final SymbolTable symtab = instance.symbolTable();
                 for (int index = 0; index < symtab.typeCount(); index++) {
                     FunctionType type = symtab.typeAt(index);
-                    Integer equivalenceClass = equivalenceClasses.get(type);
-                    if (equivalenceClass == null) {
-                        equivalenceClass = nextEquivalenceClass;
-                        equivalenceClasses.put(type, equivalenceClass);
-                        nextEquivalenceClass++;
-                    }
+                    Integer equivalenceClass = context.equivalenceClassFor(type);
                     symtab.setEquivalenceClass(index, equivalenceClass);
                 }
                 for (int index = 0; index < symtab.numFunctions(); index++) {

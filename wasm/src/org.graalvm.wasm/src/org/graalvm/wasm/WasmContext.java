@@ -46,12 +46,15 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class WasmContext {
     private final Env env;
     private final WasmLanguage language;
+    private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
+    private int nextEquivalenceClass;
     private final MemoryRegistry memoryRegistry;
     private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
@@ -67,13 +70,15 @@ public final class WasmContext {
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
+        this.equivalenceClasses = new HashMap<>();
+        this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
         this.globals = new GlobalRegistry();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.moduleNameCount = 0;
-        filesManager = new FdManager(env);
+        this.filesManager = new FdManager(env);
         instantiateBuiltinInstances();
     }
 
@@ -99,6 +104,15 @@ public final class WasmContext {
 
     public Linker linker() {
         return linker;
+    }
+
+    public Integer equivalenceClassFor(SymbolTable.FunctionType type) {
+        Integer equivalenceClass = equivalenceClasses.get(type);
+        if (equivalenceClass == null) {
+            equivalenceClass = nextEquivalenceClass++;
+            equivalenceClasses.put(type, equivalenceClass);
+        }
+        return equivalenceClass;
     }
 
     @SuppressWarnings("unused")
