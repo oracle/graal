@@ -85,7 +85,7 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
         if ((1 - plateauWidth) * normalLoad <= x && x <= (1 + plateauWidth) * normalLoad) {
             return 1;
         }
-        double slope = (1 - minScale) / ((1-plateauWidth) * normalLoad);
+        double slope = (1 - minScale) / ((1 - plateauWidth) * normalLoad);
         if (x < (1 - plateauWidth) * normalLoad) {
             return slope * x + minScale;
         }
