@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 
 /**
  * Implementation of the Espresso object model.
@@ -259,6 +260,7 @@ public class StaticObject implements TruffleObject, Cloneable {
      * monitor methods ({@link Object#wait() wait}, {@link Object#notify notify}, and
      * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
      */
+    @SuppressFBWarnings(value = "DC", justification = "Implementations of EspressoLock have only final and volatile fields")
     public EspressoLock getLock() {
         checkNotForeign();
         if (isNull(this)) {
