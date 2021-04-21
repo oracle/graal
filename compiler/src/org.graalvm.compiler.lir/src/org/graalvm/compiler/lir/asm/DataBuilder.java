@@ -38,6 +38,7 @@ public abstract class DataBuilder {
     public abstract Data createDataItem(Constant c);
 
     public Data createSerializableData(SerializableConstant constant, int alignment) {
+        assert canForceAlignmentOf(alignment);
         return new DataSection.SerializableData(constant, alignment);
     }
 
@@ -46,6 +47,7 @@ public abstract class DataBuilder {
     }
 
     public Data createZeroData(int alignment, int size) {
+        assert canForceAlignmentOf(alignment);
         switch (size) {
             case 1:
                 return new ZeroData(alignment, size) {
@@ -85,6 +87,7 @@ public abstract class DataBuilder {
     }
 
     public Data createPackedDataItem(int alignment, int size, Data[] nested) {
+        assert canForceAlignmentOf(alignment);
         return new DataSection.PackedData(alignment, size, nested);
     }
 
@@ -113,12 +116,41 @@ public abstract class DataBuilder {
     }
 
     /**
-     * Determines whether a move of a constant to a vector of the target size has to be aligned.
+     * Gets the alignment supported by the runtime for {@code requestedAlignment}. The returned
+     * value will always be equal to or less than {@code requestedAlignment}.
      *
-     * @param sizeInBytes The size of the data in bytes that is moved to the vector
-     * @return {@code} true if an aligned instruction has to be used; {@code false} otherwise
+     * @param requestedAlignment The requested data alignment (in bytes)
+     * @return an alignment that is supported by the runtime
      */
-    public boolean areConstantsAlignedForVectorMove(int sizeInBytes) {
-        return false;
+    public int ensureValidDataAlignment(int requestedAlignment) {
+        return Math.min(requestedAlignment, getMaxSupportedAlignment());
+    }
+
+    /**
+     * Updates the alignment of the given data element and ensures that it is actually supported by
+     * the runtime.
+     *
+     * @param data The data
+     * @param newAlignment The new alignment
+     */
+    public void updateAlignment(Data data, int newAlignment) {
+        assert canForceAlignmentOf(newAlignment);
+        data.updateAlignment(newAlignment);
+    }
+
+    /**
+     * @return the maximum alignment that is supported by the runtime
+     */
+    public int getMaxSupportedAlignment() {
+        return Integer.MAX_VALUE;
+    }
+
+    /**
+     * Determines whether a data constant can be forced to be aligned by {@code sizeInBytes}.
+     *
+     * @param sizeInBytes The requested alignment
+     */
+    public boolean canForceAlignmentOf(int sizeInBytes) {
+        return sizeInBytes <= getMaxSupportedAlignment();
     }
 }

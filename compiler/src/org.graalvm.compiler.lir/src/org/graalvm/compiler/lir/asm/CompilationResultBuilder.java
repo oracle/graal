@@ -383,13 +383,13 @@ public class CompilationResultBuilder {
         assert constant != null;
         debug.log("Constant reference in code: pos = %d, data = %s", asm.position(), constant);
         Data data = createDataItem(constant);
-        data.updateAlignment(alignment);
+        dataBuilder.updateAlignment(data, alignment);
         return recordDataSectionReference(data);
     }
 
     public AbstractAddress recordDataReferenceInCode(Data data, int alignment) {
         assert data != null;
-        data.updateAlignment(alignment);
+        dataBuilder.updateAlignment(data, alignment);
         return recordDataSectionReference(data);
     }
 

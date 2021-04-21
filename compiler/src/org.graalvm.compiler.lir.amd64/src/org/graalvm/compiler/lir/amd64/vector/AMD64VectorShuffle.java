@@ -167,7 +167,8 @@ public class AMD64VectorShuffle {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
-            AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(selector, selector.length);
+            int alignment = crb.dataBuilder.ensureValidDataAlignment(selector.length);
+            AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(selector, alignment);
             VPSHUFB.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(source), address);
         }
     }

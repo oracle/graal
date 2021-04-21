@@ -180,7 +180,8 @@ public class AMD64VectorMove {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
             assert kind.isXMM() : "Can only move array to XMM register";
-            VMOVDQU32.emit(masm, AVXKind.getRegisterSize(result), asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input));
+            int alignment = crb.dataBuilder.ensureValidDataAlignment(input.getAlignment());
+            VMOVDQU32.emit(masm, AVXKind.getRegisterSize(result), asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, alignment));
         }
 
         @Override

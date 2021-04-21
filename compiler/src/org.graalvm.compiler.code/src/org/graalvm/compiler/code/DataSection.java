@@ -55,31 +55,26 @@ public final class DataSection implements Iterable<Data> {
         private DataSectionReference ref;
 
         protected Data(int alignment, int size) {
-            this.alignment = getAdjustedDataAlignment(alignment);
+            this.alignment = alignment;
             this.size = size;
 
             // initialized in DataSection.insertData(Data)
             ref = null;
         }
 
-        /**
-         * Calculates the data alignment (in bytes) that is possible for the given required
-         * alignment.
-         *
-         * @param requiredAlignment The required alignment of the current data (in bytes)
-         * @return the alignment that is possible for the required value
-         */
-        protected int getAdjustedDataAlignment(int requiredAlignment) {
-            return requiredAlignment;
-        }
-
         protected abstract void emit(ByteBuffer buffer, Patches patches);
 
+        /**
+         * Updates the alignment of the current data segment. This does not guarantee that the
+         * underlying runtime actually supports this alignment.
+         *
+         * @param newAlignment The new alignment
+         */
         public void updateAlignment(int newAlignment) {
             if (newAlignment == alignment) {
                 return;
             }
-            alignment = lcm(alignment, getAdjustedDataAlignment(newAlignment));
+            alignment = lcm(alignment, newAlignment);
         }
 
         public int getAlignment() {
@@ -117,7 +112,7 @@ public final class DataSection implements Iterable<Data> {
         }
     }
 
-    public static class RawData extends Data {
+    public static final class RawData extends Data {
 
         private final byte[] data;
 
@@ -132,7 +127,7 @@ public final class DataSection implements Iterable<Data> {
         }
     }
 
-    public static class SerializableData extends Data {
+    public static final class SerializableData extends Data {
 
         private final SerializableConstant constant;
 
@@ -183,7 +178,7 @@ public final class DataSection implements Iterable<Data> {
         }
     }
 
-    public static class PackedData extends Data {
+    public static final class PackedData extends Data {
 
         private final Data[] nested;
 

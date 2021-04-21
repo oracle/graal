@@ -28,12 +28,8 @@ import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
 
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.code.DataSection.PackedData;
 import org.graalvm.compiler.code.DataSection.Patches;
-import org.graalvm.compiler.code.DataSection.SerializableData;
-import org.graalvm.compiler.code.DataSection.ZeroData;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 
@@ -58,21 +54,6 @@ public class HotSpotDataBuilder extends DataBuilder {
         this.target = target;
     }
 
-    private static int correctAlignment(int requiredAlignment) {
-        return Math.min(requiredAlignment, MAX_DATA_ALIGNMENT);
-    }
-
-    private static class HotSpotZeroData extends ZeroData {
-        HotSpotZeroData(int alignment, int size) {
-            super(alignment, size);
-        }
-
-        @Override
-        protected int getAdjustedDataAlignment(int requiredAlignment) {
-            return correctAlignment(requiredAlignment);
-        }
-    }
-
     @Override
     public Data createDataItem(Constant constant) {
         if (JavaConstant.isNull(constant)) {
@@ -87,6 +68,7 @@ public class HotSpotDataBuilder extends DataBuilder {
 
             HotSpotConstant c = (HotSpotConstant) vmConstant;
             int size = c.isCompressed() ? 4 : target.wordSize;
+            assert canForceAlignmentOf(size);
             return new Data(size, size) {
                 @Override
                 protected void emit(ByteBuffer buffer, Patches patches) {
@@ -98,11 +80,6 @@ public class HotSpotDataBuilder extends DataBuilder {
                     }
                     patches.registerPatch(position, vmConstant);
                 }
-
-                @Override
-                protected int getAdjustedDataAlignment(int requiredAlignment) {
-                    return correctAlignment(requiredAlignment);
-                }
             };
         } else if (constant instanceof SerializableConstant) {
             SerializableConstant s = (SerializableConstant) constant;
@@ -113,71 +90,7 @@ public class HotSpotDataBuilder extends DataBuilder {
     }
 
     @Override
-    public Data createZeroData(int alignment, int size) {
-        switch (size) {
-            case 1:
-                return new HotSpotZeroData(alignment, size) {
-                    @Override
-                    protected void emit(ByteBuffer buffer, DataSection.Patches patches) {
-                        buffer.put((byte) 0);
-                    }
-                };
-
-            case 2:
-                return new HotSpotZeroData(alignment, size) {
-                    @Override
-                    protected void emit(ByteBuffer buffer, DataSection.Patches patches) {
-                        buffer.putShort((short) 0);
-                    }
-                };
-
-            case 4:
-                return new HotSpotZeroData(alignment, size) {
-                    @Override
-                    protected void emit(ByteBuffer buffer, DataSection.Patches patches) {
-                        buffer.putInt(0);
-                    }
-                };
-
-            case 8:
-                return new HotSpotZeroData(alignment, size) {
-                    @Override
-                    protected void emit(ByteBuffer buffer, DataSection.Patches patches) {
-                        buffer.putLong(0);
-                    }
-                };
-
-            default:
-                return new HotSpotZeroData(alignment, size);
-        }
-    }
-
-    @Override
-    public Data createSerializableData(SerializableConstant constant, int alignment) {
-        return new SerializableData(constant, alignment) {
-            @Override
-            protected int getAdjustedDataAlignment(int requiredAlignment) {
-                return correctAlignment(requiredAlignment);
-            }
-        };
-    }
-
-    @Override
-    public Data createPackedDataItem(int alignment, int size, Data[] nested) {
-        return new PackedData(alignment, size, nested) {
-            @Override
-            protected int getAdjustedDataAlignment(int requiredAlignment) {
-                return correctAlignment(requiredAlignment);
-            }
-        };
-    }
-
-    @Override
-    public boolean areConstantsAlignedForVectorMove(int sizeInBytes) {
-        /*
-         * 64 byte data alignment is not supported by HotSpot as of yet, so we have to make sure to
-         * allow unaligned access when 512-bit registers are involved.
-         */
-        return sizeInBytes <= MAX_DATA_ALIGNMENT;
+    public int getMaxSupportedAlignment() {
+        return MAX_DATA_ALIGNMENT;
     }
 }

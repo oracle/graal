@@ -139,7 +139,7 @@ public class AMD64VectorUnary {
             if (isRegister(input)) {
                 opcode.emit(masm, size, asRegister(result), asRegister(input));
             } else if (isConstantValue(input)) {
-                int align = input.getPlatformKind().getSizeInBytes();
+                int align = crb.dataBuilder.ensureValidDataAlignment(input.getPlatformKind().getSizeInBytes());
                 AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(asConstant(input), align);
                 opcode.emit(masm, size, asRegister(result), address, getOpmaskRegister(), z, b);
             } else {
