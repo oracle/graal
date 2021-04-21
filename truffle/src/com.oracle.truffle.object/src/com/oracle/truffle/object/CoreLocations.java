@@ -113,7 +113,7 @@ abstract class CoreLocations {
         default void setInt(DynamicObject store, int value, Shape oldShape, Shape newShape) {
             ACCESS.grow(store, oldShape, newShape);
             setInt(store, value, false);
-            ACCESS.setShape(store, newShape);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -149,7 +149,7 @@ abstract class CoreLocations {
         default void setLong(DynamicObject store, long value, Shape oldShape, Shape newShape) {
             ACCESS.grow(store, oldShape, newShape);
             setLong(store, value, false);
-            ACCESS.setShape(store, newShape);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -185,7 +185,7 @@ abstract class CoreLocations {
         default void setDouble(DynamicObject store, double value, Shape oldShape, Shape newShape) {
             ACCESS.grow(store, oldShape, newShape);
             setDouble(store, value, false);
-            ACCESS.setShape(store, newShape);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -219,7 +219,7 @@ abstract class CoreLocations {
         default void setBoolean(DynamicObject store, boolean value, Shape oldShape, Shape newShape) {
             ACCESS.grow(store, oldShape, newShape);
             setBoolean(store, value, false);
-            ACCESS.setShape(store, newShape);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
