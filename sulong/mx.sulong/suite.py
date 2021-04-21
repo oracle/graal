@@ -189,20 +189,12 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.native" : {
       "subDir" : "tests",
-      "native" : True,
-      "vpath" : True,
-      "results" : [
-        "bin/<lib:sulongtest>",
-      ],
+      "native" : "shared_lib",
+      "deliverable" : "sulongtest",
+      "use_jdk_headers" : False,
       "buildDependencies" : [
-        "sdk:LLVM_TOOLCHAIN",
         "NATIVE_MODE_SUPPORT",
       ],
-      "buildEnv" : {
-        "LIBSULONGTEST" : "<lib:sulongtest>",
-        "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
-        "OS" : "<os>",
-      },
       "license" : "BSD-new",
       "testProject" : True,
     },
@@ -1578,7 +1570,7 @@ suite = {
       "layout" : {
           "./": [
             "dependency:com.oracle.truffle.llvm.tests.pipe.native",
-            "dependency:com.oracle.truffle.llvm.tests.native/bin/*",
+            "dependency:com.oracle.truffle.llvm.tests.native",
           ],
       },
       "license" : "BSD-new",
