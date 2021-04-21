@@ -186,20 +186,20 @@ public class WasmLateLinkingSuite {
     public void lazyLinkEquivalenceClasses() throws IOException, InterruptedException {
         // Exports table with a function
         final byte[] exportBytes = compileWat("exportTable", "(module" +
-                "(func $f0 (result i32) i32.const 42)" +
-                "(table 1 1 funcref)" +
-                "(export \"table\" (table 0))" +
-                "(elem (i32.const 0) $f0)" +
-                ")");
+                        "(func $f0 (result i32) i32.const 42)" +
+                        "(table 1 1 funcref)" +
+                        "(export \"table\" (table 0))" +
+                        "(elem (i32.const 0) $f0)" +
+                        ")");
 
         // Imports table and exports function that invokes functions from the table
         final byte[] importBytes = compileWat("importTable", "(module" +
-                "(type (func (param i32) (result i32)))" +
-                "(type (func (result i32)))" +
-                "(import \"main\" \"table\" (table 1 1 funcref))" +
-                "(func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))" +
-                "(export \"testFunc\" (func 0))" +
-                ")");
+                        "(type (func (param i32) (result i32)))" +
+                        "(type (func (result i32)))" +
+                        "(import \"main\" \"table\" (table 1 1 funcref))" +
+                        "(func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))" +
+                        "(export \"testFunc\" (func 0))" +
+                        ")");
 
         final Context context = Context.newBuilder("wasm").build();
         final ByteSequence exportByteSeq = ByteSequence.create(exportBytes);
