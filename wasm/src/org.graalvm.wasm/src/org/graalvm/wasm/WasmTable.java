@@ -157,7 +157,6 @@ public final class WasmTable {
      * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
      */
     public void set(int index, Object element) {
-        ensureSizeAtLeast(index + 1);
         elements[index] = element;
     }
 

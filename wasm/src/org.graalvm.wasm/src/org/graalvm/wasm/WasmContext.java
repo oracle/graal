@@ -51,6 +51,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class WasmContext {
+    private final Uid uid;
     private final Env env;
     private final WasmLanguage language;
     private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
@@ -68,6 +69,7 @@ public final class WasmContext {
     }
 
     public WasmContext(Env env, WasmLanguage language) {
+        this.uid = new Uid();
         this.env = env;
         this.language = language;
         this.equivalenceClasses = new HashMap<>();
@@ -80,6 +82,10 @@ public final class WasmContext {
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
         instantiateBuiltinInstances();
+    }
+
+    public Uid uid() {
+        return uid;
     }
 
     public Env environment() {
@@ -175,7 +181,7 @@ public final class WasmContext {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
-        final WasmInstance instance = new WasmInstance(module);
+        final WasmInstance instance = new WasmInstance(this, module);
         final BinaryParser reader = new BinaryParser(language, module);
         reader.readInstance(this, instance);
         this.register(instance);
@@ -196,5 +202,8 @@ public final class WasmContext {
                 instance.target(startFunction.index()).call();
             }
         }
+    }
+
+    public class Uid {
     }
 }

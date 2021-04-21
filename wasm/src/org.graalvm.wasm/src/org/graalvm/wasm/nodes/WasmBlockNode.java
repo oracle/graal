@@ -627,10 +627,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         }
                         final WasmFunction function;
                         final CallTarget target;
+                        final WasmContext.Uid functionInstanceContextUid;
                         if (element instanceof WasmFunctionInstance) {
                             final WasmFunctionInstance functionInstance = (WasmFunctionInstance) element;
                             function = functionInstance.function();
                             target = functionInstance.target();
+                            functionInstanceContextUid = functionInstance.contextUid();
                         } else {
                             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
                         }
@@ -650,14 +652,18 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += 1;
 
                         // Validate that the function type matches the expected type.
-                        if (function != null && expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
-                            // The function could still be coming from a different context,
-                            // if the table was borrowed from a different context.
-                            // Therefore, do a slower check.
-                            if (!function.type().equals(symtab.typeAt(expectedFunctionTypeIndex))) {
-                                throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
-                                                "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
-                                                function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
+                        if (functionInstanceContextUid == context.uid()) {
+                            // We can do a quick equivalence-class check.
+                            if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
+                                failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                            }
+                        } else {
+                            // The table is coming from a different context, so do a slow check.
+                            // If the Wasm function is set to null, then the check must be performed
+                            // in the body of the function. This is done when the function is
+                            // provided externally (e.g. comes from a different language).
+                            if (function != null && !function.type().equals(symtab.typeAt(expectedFunctionTypeIndex))) {
+                                failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                             }
                         }
 
@@ -1381,6 +1387,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             }
         }
         return -1;
+    }
+
+    private void failFunctionTypeCheck(WasmFunction function, int expectedFunctionTypeIndex) {
+        throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
+                        "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
+                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
     }
 
     @SuppressWarnings("unused")

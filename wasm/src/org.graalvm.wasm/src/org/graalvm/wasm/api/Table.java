@@ -155,7 +155,7 @@ public class Table extends Dictionary {
     }
 
     public Object set(int index, Object element) {
-        final WasmFunctionInstance functionInstance = new WasmFunctionInstance(null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
+        final WasmFunctionInstance functionInstance = new WasmFunctionInstance(null, null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (InteropLibrary.getUncached().isExecutable(element)) {
