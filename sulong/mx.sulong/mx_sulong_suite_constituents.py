@@ -154,7 +154,7 @@ class SulongTestSuiteBaseMixin(mx._with_metaclass(abc.ABCMeta, object)):
                 if self.buildRef:
                     self.results.append(os.path.join(t, 'ref.out'))
                 for v in self.getVariants():
-                    result_file = mx.add_lib_suffix(v) if self.buildSharedObject else v + '.bc'
+                    result_file = v + '.so' if self.buildSharedObject else v + '.bc'
                     self.results.append(os.path.join(t, result_file))
         return super(SulongTestSuiteBaseMixin, self).getResults(replaceVar=replaceVar)
 
