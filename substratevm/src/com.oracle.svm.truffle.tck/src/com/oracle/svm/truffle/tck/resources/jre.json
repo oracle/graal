@@ -233,5 +233,16 @@
             "com.oracle.svm.core.thread.NativeVMOperationData"
         ]}
     ]
+  },
+  {
+    "name": "sun.util.logging.PlatformLogger.getLogger",
+    "method" : [
+       {
+         "name" : "getLogger",
+         "parameterTypes" : [
+           "java.lang.String"
+         ]
+       }
+    ]
   }
 ]
