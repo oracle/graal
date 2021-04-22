@@ -117,16 +117,6 @@ class DragonEggSupport:
         mx.abort("Cannot find GCC program for dragonegg: {}\nDRAGONEGG_GCC environment variable not set".format(gccProgram))
 
 
-class SulongTestSuiteBuildTask(mx.NativeBuildTask):
-    """Track whether we are checking if a build is required or actually building."""
-    def needsBuild(self, newestInput):
-        try:
-            self.subject._is_needs_rebuild_call = True
-            return super(SulongTestSuiteBuildTask, self).needsBuild(newestInput)
-        finally:
-            self.subject._is_needs_rebuild_call = False
-
-
 class SulongTestSuiteMixin(mx._with_metaclass(abc.ABCMeta, object)):
 
     def getVariants(self):
