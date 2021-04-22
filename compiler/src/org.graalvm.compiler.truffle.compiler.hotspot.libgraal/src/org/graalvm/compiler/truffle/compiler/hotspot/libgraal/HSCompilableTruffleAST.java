@@ -93,22 +93,22 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     private Long cachedFailedSpeculationsAddress;
 
     /**
-     * Creates a new {@link HSCompilableTruffleAST} holding the org.graalvm.nativebridge.jni.JNI
-     * {@code JObject} by a global reference.
+     * Creates a new {@link HSCompilableTruffleAST} holding the JNI {@code JObject} by a global
+     * reference.
      *
      * @param env the JNIEnv
-     * @param handle the org.graalvm.nativebridge.jni.JNI object reference
+     * @param handle the JNI object reference
      */
     HSCompilableTruffleAST(JNIEnv env, JObject handle) {
         super(env, handle);
     }
 
     /**
-     * Creates a new {@link HSCompilableTruffleAST} holding the org.graalvm.nativebridge.jni.JNI
-     * {@code JObject} by a local reference.
+     * Creates a new {@link HSCompilableTruffleAST} holding the JNI {@code JObject} by a local
+     * reference.
      *
      * @param scope the owning scope
-     * @param handle the org.graalvm.nativebridge.jni.JNI object reference
+     * @param handle the JNI object reference
      */
     HSCompilableTruffleAST(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
         super(scope, handle);

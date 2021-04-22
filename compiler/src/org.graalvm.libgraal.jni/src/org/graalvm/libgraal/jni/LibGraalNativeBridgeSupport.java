@@ -50,15 +50,12 @@ public class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
     @Override
     public void trace(int level, String format, Object... args) {
         if (traceLevel() >= level) {
-            // Prevents nested tracing of org.graalvm.nativebridge.jni.JNI calls originated from
-            // this method.
+            // Prevents nested tracing of JNI calls originated from this method.
             // The TruffleCompilerImpl redirects the TTY using a TTY.Filter to the
             // TruffleCompilerRuntime#log(). In libgraal the HSTruffleCompilerRuntime#log() uses a
-            // FromLibGraalCalls#callVoid() to do the org.graalvm.nativebridge.jni.JNI call to the
-            // GraalTruffleRuntime#log(). The
-            // FromLibGraalCalls#callVoid() also traces the org.graalvm.nativebridge.jni.JNI call by
-            // calling trace(). The nested
-            // trace call should be ignored.
+            // FromLibGraalCalls#callVoid() to do the JNI call to the GraalTruffleRuntime#log().
+            // The FromLibGraalCalls#callVoid() also traces the JNI call by calling trace().
+            // The nested trace call should be ignored.
             if (!inTrace.get()) {
                 inTrace.set(true);
                 try {

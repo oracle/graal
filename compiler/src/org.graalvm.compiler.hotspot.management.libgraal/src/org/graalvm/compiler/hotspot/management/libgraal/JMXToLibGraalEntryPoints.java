@@ -290,8 +290,7 @@ final class JMXToLibGraalEntryPoints {
     }
 
     /**
-     * Converts properties encoded as org.graalvm.nativebridge.jni.JNI byte array into {@link Map}
-     * using {@link OptionsEncoder}.
+     * Converts properties encoded as JNI byte array into {@link Map} using {@link OptionsEncoder}.
      */
     private static Map<String, Object> rawToMap(JNI.JNIEnv env, JNI.JByteArray raw) {
         int len = JNIUtil.GetArrayLength(env, raw);
@@ -306,8 +305,7 @@ final class JMXToLibGraalEntryPoints {
     }
 
     /**
-     * Encodes a {@link Map} of properties into org.graalvm.nativebridge.jni.JNI byte array using
-     * {@link OptionsEncoder}.
+     * Encodes a {@link Map} of properties into JNI byte array using {@link OptionsEncoder}.
      */
     private static JNI.JByteArray mapToRaw(JNI.JNIEnv env, Map<String, Object> map) {
         byte[] serialized = OptionsEncoder.encode(map);
@@ -322,8 +320,7 @@ final class JMXToLibGraalEntryPoints {
     }
 
     /**
-     * Encodes an {@link AttributeList} into org.graalvm.nativebridge.jni.JNI byte array using
-     * {@link OptionsEncoder}.
+     * Encodes an {@link AttributeList} into JNI byte array using {@link OptionsEncoder}.
      */
     private static JNI.JByteArray attributeListToRaw(JNI.JNIEnv env, AttributeList attributesList) {
         Map<String, Object> values = new LinkedHashMap<>();

@@ -30,7 +30,6 @@ import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 import static org.graalvm.nativebridge.jni.JNIUtil.GetStaticMethodID;
 import static org.graalvm.nativebridge.jni.JNIUtil.NewGlobalRef;
 import static org.graalvm.nativebridge.jni.JNIUtil.getBinaryName;
-import static org.graalvm.nativebridge.jni.JNIUtil.trace;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 import java.util.EnumMap;
@@ -49,7 +48,7 @@ import org.graalvm.nativebridge.jni.JNIUtil;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 /**
- * Helpers for calling methods in HotSpot heap via org.graalvm.nativebridge.jni.JNI.
+ * Helpers for calling methods in HotSpot heap via JNI.
  */
 public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
 
@@ -70,8 +69,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     protected abstract JClass resolvePeer(JNIEnv env);
 
     /**
-     * Describes a class and holds a reference to its {@linkplain #jclass
-     * org.graalvm.nativebridge.jni.JNI value}.
+     * Describes a class and holds a reference to its {@linkplain #jclass JNI value}.
      */
     static final class JNIClass {
         final String className;

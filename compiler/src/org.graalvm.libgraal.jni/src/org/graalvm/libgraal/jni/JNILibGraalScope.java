@@ -38,7 +38,7 @@ import org.graalvm.nativebridge.jni.JNIUtil;
  * If the libgraal call returns a non-primitive value, the return value must be
  * {@linkplain #setObjectResult(JObject) set} within the try-with-resources statement and then
  * {@linkplain #getObjectResult() retrieved} and returned outside the try-with-resources statement.
- * This is necessary to support use of org.graalvm.nativebridge.jni.JNI local frames.
+ * This is necessary to support use of JNI local frames.
  */
 public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
 
@@ -119,16 +119,15 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
         JNILibGraalScope<?> top = topScope.get();
         this.env = env;
         if (top == null) {
-            // Only push a org.graalvm.nativebridge.jni.JNI frame for the top level libgraal call.
-            // HotSpot's org.graalvm.nativebridge.jni.JNI implementation currently ignores the
-            // `capacity` argument
+            // Only push a JNI frame for the top level libgraal call.
+            // HotSpot's JNI implementation currently ignores the `capacity` argument
             PushLocalFrame(env, 64);
             top = this;
             parent = null;
             topScope.set(this);
         } else {
             if (top.env != this.env) {
-                throw new IllegalStateException("Cannot mix org.graalvm.nativebridge.jni.JNI scopes: " + this + " and " + top);
+                throw new IllegalStateException("Cannot mix JNI scopes: " + this + " and " + top);
             }
             parent = top.leaf;
         }
@@ -141,8 +140,7 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
     }
 
     /**
-     * Used to copy the handle to an object return value out of the org.graalvm.nativebridge.jni.JNI
-     * local frame.
+     * Used to copy the handle to an object return value out of the JNI local frame.
      */
     private JObject objResult;
 
@@ -161,7 +159,7 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
         HSObject.invalidate(locals);
         if (parent == null) {
             if (topScope.get() != this) {
-                throw new IllegalStateException("Unexpected org.graalvm.nativebridge.jni.JNI scope: " + topScope.get());
+                throw new IllegalStateException("Unexpected JNI scope: " + topScope.get());
             }
             topScope.set(null);
             objResult = PopLocalFrame(env, objResult);

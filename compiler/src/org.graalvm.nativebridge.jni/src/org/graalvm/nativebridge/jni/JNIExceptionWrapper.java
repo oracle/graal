@@ -59,15 +59,15 @@ import org.graalvm.word.WordFactory;
 import java.util.Objects;
 
 /**
- * Wraps an exception thrown by a org.graalvm.nativebridge.jni.JNI call into HotSpot. If the
- * exception propagates up to an native image entry point, the exception is re-thrown in HotSpot.
+ * Wraps an exception thrown by a JNI call into HotSpot. If the exception propagates up to an native
+ * image entry point, the exception is re-thrown in HotSpot.
  */
 public final class JNIExceptionWrapper extends RuntimeException {
 
     private static final String HS_ENTRYPOINTS_CLASS = "org.graalvm.nativebridge.jni.JNIExceptionWrapperEntryPoints";
     private static final long serialVersionUID = 1L;
 
-    private static final JNIMethodResolver CreateException = JNIMethodResolver.create("createException", Throwable.class, String.class, String.class);
+    private static final JNIMethodResolver CreateException = JNIMethodResolver.create("createException", Throwable.class, String.class);
     private static final JNIMethodResolver GetClassName = JNIMethodResolver.create("getClassName", String.class, Class.class);
     private static final JNIMethodResolver GetStackTraceElementClassName = JNIMethodResolver.create("getStackTraceElementClassName", String.class, StackTraceElement.class);
     private static final JNIMethodResolver GetStackTraceElementFileName = JNIMethodResolver.create("getStackTraceElementFileName", String.class, StackTraceElement.class);
@@ -89,9 +89,9 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * Re-throws this org.graalvm.nativebridge.jni.JNI exception in HotSpot after updating the stack
-     * trace to include the native image frames between the native image entry point and the call
-     * back to HotSpot that threw the original org.graalvm.nativebridge.jni.JNI exception.
+     * Re-throws this JNI exception in HotSpot after updating the stack trace to include the native
+     * image frames between the native image entry point and the call back to HotSpot that threw the
+     * original JNI exception.
      */
     private void throwInHotSpot(JNIEnv env) {
         JThrowable toThrow;
@@ -126,36 +126,25 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * If there is a pending org.graalvm.nativebridge.jni.JNI exception, this method wraps it in a
-     * {@link JNIExceptionWrapper}, clears the pending exception and throws the
-     * {@link JNIExceptionWrapper} wrapper. The {@link JNIExceptionWrapper} message is composed of
-     * the org.graalvm.nativebridge.jni.JNI exception class name and the
-     * org.graalvm.nativebridge.jni.JNI exception message
+     * If there is a pending JNI exception, this method wraps it in a {@link JNIExceptionWrapper},
+     * clears the pending exception and throws the {@link JNIExceptionWrapper} wrapper. The
+     * {@link JNIExceptionWrapper} message is composed of the JNI exception class name and the JNI
+     * exception message. For exception filtering or custom handling of JNI exceptions see
+     * {@link #wrapAndThrowPendingJNIException(JNIEnv, ExceptionHandler)}.
      */
-    @SafeVarargs
-    public static void wrapAndThrowPendingJNIException(JNIEnv env, Class<? extends Throwable>... allowedExceptions) {
-        ExceptionHandler handler = allowedExceptions.length == 0 ?
-                ExceptionHandler.DEFAULT :
-                new ExceptionHandler() {
-                    @Override
-                    public void handleException(ExceptionHandlerContext context) {
-                        JThrowable throwable = context.getThrowable();
-                        JNI.JClass throwableClass = GetObjectClass(env, throwable);
-                        boolean allowed = false;
-                        for (Class<? extends Throwable> allowedException : allowedExceptions) {
-                            JNI.JClass allowedExceptionClass = findClass(env, getBinaryName(allowedException.getName()));
-                            if (allowedExceptionClass.isNonNull() && IsSameObject(env, throwableClass, allowedExceptionClass)) {
-                                allowed = true;
-                                break;
-                            }
-                        }
-                        if (!allowed) {
-                            context.throwJNIExceptionWrapper();
-                        }
-                    }
-                };
+    public static void wrapAndThrowPendingJNIException(JNIEnv env) {
+        wrapAndThrowPendingJNIException(env, ExceptionHandler.DEFAULT);
     }
 
+    /**
+     * If there is a pending JNI exception, this method wraps it in a {@link JNIExceptionWrapper},
+     * clears the pending exception and throws the {@link JNIExceptionWrapper} wrapper. The
+     * {@link JNIExceptionWrapper} message is composed of the JNI exception class name and the JNI
+     * exception message.
+     *
+     * @see ExceptionHandler
+     *
+     */
     public static void wrapAndThrowPendingJNIException(JNIEnv env, ExceptionHandler exceptionHandler) {
         Objects.requireNonNull(exceptionHandler, "ExceptionHandler must be non null.");
         if (ExceptionCheck(env)) {
@@ -171,8 +160,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     /**
      * Throws an exception into HotSpot.
      *
-     * If {@code original} is a {@link JNIExceptionWrapper} the wrapped
-     * org.graalvm.nativebridge.jni.JNI exception is thrown.
+     * If {@code original} is a {@link JNIExceptionWrapper} the wrapped JNI exception is thrown.
      *
      * Otherwise a new {@link RuntimeException} is thrown. The {@link RuntimeException} message is
      * composed of {@code original.getClass().getName()} and {@code original.getMessage()}. The
@@ -188,13 +176,26 @@ public final class JNIExceptionWrapper extends RuntimeException {
             if (original.getClass() == JNIExceptionWrapper.class) {
                 ((JNIExceptionWrapper) original).throwInHotSpot(env);
             } else {
-                JString hsClassName = createHSString(env, original.getClass().getTypeName());
-                JString hsMessage = createHSString(env, original.getMessage());
-                JThrowable hsThrowable = callCreateException(env, hsClassName, hsMessage);
-                StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
+                JThrowable hsThrowable = createExceptionOfSameType(env, original);
+                boolean hasSameExceptionType = hsThrowable.isNonNull();
+                if (!hasSameExceptionType) {
+                    String message = formatExceptionMessage(original.getClass().getName(), original.getMessage());
+                    JString hsMessage = createHSString(env, message);
+                    hsThrowable = callCreateException(env, hsMessage);
+                }
                 StackTraceElement[] libGraalStack = original.getStackTrace();
-                String[] merged = encode(mergeStackTraces(hsStack, libGraalStack, 1, 0, false));
-                Throw(env, updateStackTrace(env, hsThrowable, merged));
+                if (libGraalStack.length != 0) {
+                    // Update stack trace only for exceptions which have stack trace.
+                    // For exceptions which override fillInStackTrace merging stack traces only adds
+                    // useless JNI calls.
+                    StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
+                    String[] merged = encode(mergeStackTraces(hsStack, libGraalStack,
+                                    hasSameExceptionType ? 0 : 1, // exception with same exception
+                                                                  // type has no factory method
+                                    0, false));
+                    hsThrowable = updateStackTrace(env, hsThrowable, merged);
+                }
+                Throw(env, hsThrowable);
             }
         } catch (Throwable t) {
             // If something goes wrong when re-throwing the exception into HotSpot
@@ -208,6 +209,9 @@ public final class JNIExceptionWrapper extends RuntimeException {
         }
     }
 
+    /**
+     * Context for {@link ExceptionHandler}.
+     */
     public static final class ExceptionHandlerContext {
 
         private final JNIEnv env;
@@ -218,14 +222,23 @@ public final class JNIExceptionWrapper extends RuntimeException {
             this.throwable = throwable;
         }
 
+        /**
+         * Returns current thread JNIEnv.
+         */
         public JNIEnv getEnv() {
             return env;
         }
 
+        /**
+         * Returns pending JNI exception.
+         */
         public JThrowable getThrowable() {
             return throwable;
         }
 
+        /**
+         * Throws {@link JNIExceptionWrapper} for the pending JNI exception.
+         */
         public void throwJNIExceptionWrapper() {
             throw new JNIExceptionWrapper(env, throwable);
         }
@@ -233,13 +246,46 @@ public final class JNIExceptionWrapper extends RuntimeException {
 
     public interface ExceptionHandler {
 
-        public static final ExceptionHandler DEFAULT = new ExceptionHandler() {
+        /**
+         * Default handler throwing {@link JNIExceptionWrapper} for the pending JNI exception.
+         */
+        ExceptionHandler DEFAULT = new ExceptionHandler() {
             @Override
             public void handleException(ExceptionHandlerContext context) {
                 context.throwJNIExceptionWrapper();
             }
         };
 
+        /**
+         * Creates an exception handler suppressing {@code allowedExceptions}. Other JNI exceptions
+         * are rethrown as {@link JNIExceptionWrapper}.
+         */
+        @SafeVarargs
+        static ExceptionHandler allowExceptions(Class<? extends Throwable>... allowedExceptions) {
+            return new ExceptionHandler() {
+                @Override
+                public void handleException(ExceptionHandlerContext context) {
+                    JThrowable throwable = context.getThrowable();
+                    JNIEnv env = context.getEnv();
+                    JClass throwableClass = GetObjectClass(env, throwable);
+                    boolean allowed = false;
+                    for (Class<? extends Throwable> allowedException : allowedExceptions) {
+                        JClass allowedExceptionClass = findClass(env, getBinaryName(allowedException.getName()));
+                        if (allowedExceptionClass.isNonNull() && IsSameObject(env, throwableClass, allowedExceptionClass)) {
+                            allowed = true;
+                            break;
+                        }
+                    }
+                    if (!allowed) {
+                        context.throwJNIExceptionWrapper();
+                    }
+                }
+            };
+        }
+
+        /**
+         * Handles the JNI pending exception.
+         */
         void handleException(ExceptionHandlerContext context);
     }
 
@@ -308,11 +354,10 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * Gets the stack trace from a org.graalvm.nativebridge.jni.JNI exception.
+     * Gets the stack trace from a JNI exception.
      *
      * @param env the {@link JNIEnv}
-     * @param throwableHandle the org.graalvm.nativebridge.jni.JNI exception to get the stack trace
-     *            from
+     * @param throwableHandle the JNI exception to get the stack trace from
      * @return the stack trace
      */
     private static StackTraceElement[] getJNIExceptionStackTrace(JNIEnv env, JObject throwableHandle) {
@@ -373,15 +418,18 @@ public final class JNIExceptionWrapper extends RuntimeException {
 
     /**
      * Gets the index of the first frame denoting the caller of
-     * {@link #wrapAndThrowPendingJNIException(JNI.JNIEnv, java.lang.Class...)} in
-     * {@code stackTrace}.
+     * {@link #wrapAndThrowPendingJNIException(JNI.JNIEnv)} or
+     * {@link #wrapAndThrowPendingJNIException(JNI.JNIEnv, ExceptionHandler)} in {@code stackTrace}.
      *
      * @returns {@code 0} if no caller found
      */
     private static int getIndexOfPropagateJNIExceptionFrame(StackTraceElement[] stackTrace) {
+        int state = 0;
         for (int i = 0; i < stackTrace.length; i++) {
             if (isStackFrame(stackTrace[i], JNIExceptionWrapper.class, "wrapAndThrowPendingJNIException")) {
-                return i + 1;
+                state = 1;
+            } else if (state == 1) {
+                return i;
             }
         }
         return 0;
@@ -391,15 +439,35 @@ public final class JNIExceptionWrapper extends RuntimeException {
         return clazz.getName().equals(stackTraceElement.getClassName()) && methodName.equals(stackTraceElement.getMethodName());
     }
 
+    private static <T extends JObject> T createExceptionOfSameType(JNIEnv env, Throwable original) {
+        WordFactory.nullPointer();
+        String className = original.getClass().getTypeName();
+        JClass exceptionClass = JNIUtil.findClass(env, WordFactory.nullPointer(), getBinaryName(className), false);
+        if (exceptionClass.isNonNull()) {
+            JNIMethod constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class, String.class));
+            if (constructor != null) {
+                JNI.JValue args = StackValue.get(1, JNI.JValue.class);
+                args.addressOf(0).setJObject(createHSString(env, original.getMessage()));
+                T res = HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, args);
+                return res;
+            }
+            constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class));
+            if (constructor != null) {
+                T res = HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, WordFactory.nullPointer());
+                return res;
+            }
+        }
+        return WordFactory.nullPointer();
+    }
+
     // JNI calls
-    static <T extends JObject> T callCreateException(JNIEnv env, JObject p0, JObject p1) {
-        JNI.JValue args = StackValue.get(2, JNI.JValue.class);
+    private static <T extends JObject> T callCreateException(JNIEnv env, JObject p0) {
+        JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        args.addressOf(1).setJObject(p1);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
     }
 
-    static <T extends JObject> T callUpdateStackTrace(JNIEnv env, JObject p0, JObject p1) {
+    private static <T extends JObject> T callUpdateStackTrace(JNIEnv env, JObject p0, JObject p1) {
         JNI.JValue args = StackValue.get(2, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         args.addressOf(1).setJObject(p1);

@@ -59,7 +59,7 @@ public class LibGraalUtil {
                     check(ep != null, "Method annotated by %s must also be annotated by %s: %s", annotationClass, CEntryPoint.class, libGraalMethod);
                     String name = ep.name();
                     String prefix = "Java_" + toLibGraalCallsClass.getName().replace('.', '_') + '_';
-                    check(name.startsWith(prefix), "Method must be a org.graalvm.nativebridge.jni.JNI entry point for a method in %s: %s", toLibGraalCallsClass, libGraalMethod);
+                    check(name.startsWith(prefix), "Method must be a JNI entry point for a method in %s: %s", toLibGraalCallsClass, libGraalMethod);
                     name = name.substring(prefix.length());
                     Method hsMethod = findHSMethod(toLibGraalCallsClass, name, annotationClass);
                     Class<?>[] libGraalParameters = libGraalMethod.getParameterTypes();

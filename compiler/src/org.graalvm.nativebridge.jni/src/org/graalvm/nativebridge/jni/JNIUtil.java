@@ -37,6 +37,7 @@ import org.graalvm.nativebridge.jni.JNI.JObjectArray;
 import org.graalvm.nativebridge.jni.JNI.JString;
 import org.graalvm.nativebridge.jni.JNI.JThrowable;
 import org.graalvm.nativebridge.jni.JNI.JValue;
+import org.graalvm.nativebridge.jni.JNIExceptionWrapper.ExceptionHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -49,7 +50,7 @@ import org.graalvm.word.WordFactory;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 /**
- * Helpers for calling org.graalvm.nativebridge.jni.JNI functions.
+ * Helpers for calling JNI functions.
  */
 
 public final class JNIUtil {
@@ -213,9 +214,9 @@ public final class JNIUtil {
      * Creates a new global reference.
      *
      * @param env the JNIEnv
-     * @param ref JObject to create org.graalvm.nativebridge.jni.JNI global reference for
+     * @param ref JObject to create JNI global reference for
      * @param type type of the object, used only for tracing to distinguish global references
-     * @return org.graalvm.nativebridge.jni.JNI global reference for given {@link JObject}
+     * @return JNI global reference for given {@link JObject}
      */
     @SuppressWarnings("unchecked")
     public static <T extends JObject> T NewGlobalRef(JNIEnv env, T ref, String type) {
@@ -379,7 +380,7 @@ public final class JNIUtil {
     }
 
     /**
-     * Finds a class in HotSpot heap using org.graalvm.nativebridge.jni.JNI.
+     * Finds a class in HotSpot heap using JNI.
      *
      * @param env the {@code JNIEnv}
      * @param classLoader the class loader to find class in or {@link WordFactory#nullPointer() NULL
@@ -400,11 +401,7 @@ public final class JNIUtil {
                 return findClass(env, binaryName);
             }
         } finally {
-            if (allowedException != null) {
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, allowedException);
-            } else {
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
-            }
+            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, allowedException == null ? ExceptionHandler.DEFAULT : ExceptionHandler.allowExceptions(allowedException));
         }
     }
 
@@ -445,16 +442,12 @@ public final class JNIUtil {
         return findMethod(env, clazz, staticMethod, false, methodName, methodSignature);
     }
 
-    private static JMethodID findMethod(JNIEnv env, JClass clazz, boolean staticMethod, boolean optional,
+    static JMethodID findMethod(JNIEnv env, JClass clazz, boolean staticMethod, boolean required,
                     String methodName, String methodSignature) {
         JMethodID result;
         try (CTypeConversion.CCharPointerHolder name = toCString(methodName); CTypeConversion.CCharPointerHolder sig = toCString(methodSignature)) {
             result = staticMethod ? GetStaticMethodID(env, clazz, name.get(), sig.get()) : GetMethodID(env, clazz, name.get(), sig.get());
-            if (optional) {
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, NoSuchMethodError.class);
-            } else {
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
-            }
+            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, required ? ExceptionHandler.DEFAULT : ExceptionHandler.allowExceptions(NoSuchMethodError.class));
             return result;
         }
     }

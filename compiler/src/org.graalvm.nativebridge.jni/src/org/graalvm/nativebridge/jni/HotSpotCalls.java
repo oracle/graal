@@ -49,7 +49,7 @@ public final class HotSpotCalls {
 
     private static final HotSpotCalls INSTANCE = new HotSpotCalls(ExceptionHandler.DEFAULT);
 
-    private static final ThreadLocal<Boolean> inTrace = ThreadLocal.withInitial(()->false);
+    private static final ThreadLocal<Boolean> inTrace = ThreadLocal.withInitial(() -> false);
 
     private final ExceptionHandler exceptionHandler;
 
@@ -110,7 +110,7 @@ public final class HotSpotCalls {
     @SuppressWarnings("unchecked")
     public <R extends JObject> R callNewObject(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
         traceCall(env, clazz, method);
-        JNI.JObject res = env.getFunctions().getNewObjectA().call(clazz, method.getJMethodID(), args);
+        JNI.JObject res = env.getFunctions().getNewObjectA().call(env, clazz, method.getJMethodID(), args);
         wrapAndThrowPendingJNIException(env, exceptionHandler);
         return (R) res;
     }
@@ -201,9 +201,9 @@ public final class HotSpotCalls {
             inTrace.set(true);
             try {
                 trace(1, "%s->HS: %s::%s",
-                        JNIUtil.getFeatureName(),
-                        toSimpleName(createString(env, JNIExceptionWrapper.callGetClassName(env, clazz))),
-                        method.getDisplayName());
+                                JNIUtil.getFeatureName(),
+                                toSimpleName(createString(env, JNIExceptionWrapper.callGetClassName(env, clazz))),
+                                method.getDisplayName());
             } finally {
                 inTrace.remove();
             }
@@ -217,7 +217,7 @@ public final class HotSpotCalls {
 
     private static String toSimpleName(String fqn) {
         int separatorIndex = fqn.lastIndexOf('.');
-        return separatorIndex < 0 || separatorIndex + 1 == fqn.length() ?  fqn : fqn.substring(separatorIndex+1);
+        return separatorIndex < 0 || separatorIndex + 1 == fqn.length() ? fqn : fqn.substring(separatorIndex + 1);
     }
 
     public interface JNIMethod {
@@ -227,8 +227,12 @@ public final class HotSpotCalls {
         String getDisplayName();
 
         static JNIMethod findMethod(JNIEnv env, JClass clazz, boolean staticMethod, String methodName, String methodSignature) {
-            JMethodID methodID = JNIUtil.findMethod(env, clazz, staticMethod, methodName, methodSignature);
-            return new JNIMethod() {
+            return findMethod(env, clazz, staticMethod, true, methodName, methodSignature);
+        }
+
+        static JNIMethod findMethod(JNIEnv env, JClass clazz, boolean staticMethod, boolean required, String methodName, String methodSignature) {
+            JMethodID methodID = JNIUtil.findMethod(env, clazz, staticMethod, required, methodName, methodSignature);
+            return methodID.isNull() ? null : new JNIMethod() {
                 @Override
                 public JMethodID getJMethodID() {
                     return methodID;
@@ -237,6 +241,11 @@ public final class HotSpotCalls {
                 @Override
                 public String getDisplayName() {
                     return methodName;
+                }
+
+                @Override
+                public String toString() {
+                    return methodName + methodSignature + "[0x" + Long.toHexString(methodID.rawValue()) + ']';
                 }
             };
         }
@@ -273,7 +282,7 @@ public final class HotSpotCalls {
                 Method existing = entryPoints.put(m.getName(), m);
                 if (existing != null) {
                     throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
-                            " must have unique name: " + m + " and " + existing);
+                                    " must have unique name: " + m + " and " + existing);
                 }
             } else {
                 others.put(m.getName(), m);
@@ -283,7 +292,7 @@ public final class HotSpotCalls {
             Method existing = others.get(e.getKey());
             if (existing != null) {
                 throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
-                        " must have unique name: " + e.getValue() + " and " + existing);
+                                " must have unique name: " + e.getValue() + " and " + existing);
             }
         }
         HotSpotCallNames = Collections.unmodifiableSet(entryPoints.keySet());

@@ -40,15 +40,14 @@ import org.graalvm.nativebridge.jni.JNIUtil;
 import org.graalvm.word.WordFactory;
 
 /**
- * Encapsulates a org.graalvm.nativebridge.jni.JNI handle to an object in the HotSpot heap.
- * Depending on which constructor is used, the handle is either local to a {@link JNILibGraalScope}
- * and thus invalid once the scope exits or a global org.graalvm.nativebridge.jni.JNI handle that is
- * only released sometime after the {@link HSObject} dies.
+ * Encapsulates a JNI handle to an object in the HotSpot heap. Depending on which constructor is
+ * used, the handle is either local to a {@link JNILibGraalScope} and thus invalid once the scope
+ * exits or a global JNI handle that is only released sometime after the {@link HSObject} dies.
  */
 public abstract class HSObject {
 
     /**
-     * org.graalvm.nativebridge.jni.JNI handle to the HotSpot object.
+     * JNI handle to the HotSpot object.
      */
     private final JObject handle;
 
@@ -118,7 +117,7 @@ public abstract class HSObject {
 
     public JObject getHandle() {
         if (next == this) {
-            throw new IllegalArgumentException("Reclaimed org.graalvm.nativebridge.jni.JNI reference: " + this);
+            throw new IllegalArgumentException("Reclaimed JNI reference: " + this);
         }
         return handle;
     }
@@ -150,7 +149,7 @@ public abstract class HSObject {
         for (Cleaner cleaner : CLEANERS) {
             synchronized (cleaner) {
                 if (cleaner.handle.isNonNull() && JNIUtil.IsSameObject(env, handle, cleaner.handle)) {
-                    throw new IllegalArgumentException("Global org.graalvm.nativebridge.jni.JNI handle already exists for object referenced by " + handle.rawValue());
+                    throw new IllegalArgumentException("Global JNI handle already exists for object referenced by " + handle.rawValue());
                 }
             }
         }

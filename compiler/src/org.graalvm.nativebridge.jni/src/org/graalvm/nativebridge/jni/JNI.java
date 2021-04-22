@@ -87,7 +87,7 @@ public final class JNI {
     }
 
     /**
-     * Access to the {@code jvalue} org.graalvm.nativebridge.jni.JNI union.
+     * Access to the {@code jvalue} JNI union.
      *
      * <pre>
      * typedef union jvalue {
@@ -530,7 +530,7 @@ public final class JNI {
 
     public interface NewObjectA extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JObject call(JClass clazz, JMethodID methodID, JValue args);
+        JObject call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
     public interface NewObjectArray extends CFunctionPointer {

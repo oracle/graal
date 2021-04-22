@@ -27,8 +27,6 @@ package org.graalvm.nativebridge.jni;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.lang.reflect.Constructor;
-
 /**
  * Entry points in HotSpot for exception handling from libgraal.
  */
@@ -61,30 +59,11 @@ final class JNIExceptionWrapperEntryPoints {
     /**
      * Creates an exception used to throw native exception into Java code.
      *
-     * @param className
      * @param message the exception message
      * @return exception
      */
-    static Throwable createException(String className, String message) {
-        try {
-            Class<?> clazz = Class.forName(className);
-            if (Throwable.class.isAssignableFrom(clazz)) {
-                try {
-                    Constructor<?> constructor = clazz.getConstructor(String.class);
-                    return Throwable.class.cast(constructor.newInstance(message));
-                } catch (ReflectiveOperationException notFound) {
-                    Constructor<?> constructor = clazz.getConstructor();
-                    return Throwable.class.cast(constructor.newInstance());
-                }
-            }
-        } catch (ReflectiveOperationException roe) {
-            // pass
-        }
-        StringBuilder builder = new StringBuilder(className);
-        if (message != null) {
-            builder.append(": ").append(message);
-        }
-        return new RuntimeException(builder.toString());
+    static Throwable createException(String message) {
+        return new RuntimeException(message);
     }
 
     static StackTraceElement[] getStackTrace(Throwable throwable) {
