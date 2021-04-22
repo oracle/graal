@@ -260,6 +260,16 @@ class ExternalTestSuiteMixin(object):  # pylint: disable=too-many-ancestors
         return self._tests
 
 
+class ExternalTestSuiteBuildTask(mx.NativeBuildTask):
+    """Track whether we are checking if a build is required or actually building."""
+    def needsBuild(self, newestInput):
+        try:
+            self.subject._is_needs_rebuild_call = True
+            return super(ExternalTestSuiteBuildTask, self).needsBuild(newestInput)
+        finally:
+            self.subject._is_needs_rebuild_call = False
+
+
 class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuiteMixin, mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, bundledLLVMOnly=False, **args):
@@ -280,7 +290,7 @@ class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuiteMixin, mx.NativeP
         self._is_needs_rebuild_call = False
 
     def getBuildTask(self, args):
-        return SulongTestSuiteBuildTask(args, self)
+        return ExternalTestSuiteBuildTask(args, self)
 
     def _get_vpath(self):
         env = super(ExternalTestSuite, self).getBuildEnv()
