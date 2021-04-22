@@ -314,9 +314,9 @@ def collectExcludes(path):
             pass
 
 
-class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
+class ExternalTestSuiteMixin(object):  # pylint: disable=too-many-ancestors
     def __init__(self, *args, **kwargs):
-        super(ExternalTestSuite, self).__init__(*args, **kwargs)
+        super(ExternalTestSuiteMixin, self).__init__(*args, **kwargs)
         if hasattr(self, 'testDir'):
             self.testDir = self.testDir.replace('/', os.sep)
         else:
@@ -327,20 +327,6 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
             self.fileExts = ['.c', '.cpp', '.C']
         if not hasattr(self, 'configDir'):
             self.configDir = 'configs'
-
-
-    def defaultTestClasses(self):
-        return ["com.oracle.truffle.llvm.tests.GCCSuite"]
-
-    def getTestFile(self):
-        if not hasattr(self, '_testfile'):
-            self._testfile = os.path.join(self.getOutput(), 'test.include')
-            with open(self._testfile, 'w') as f:
-                mx.logv("Writing test file: " + self._testfile)
-                # call getResults() ensure self.results is populated
-                _ = self.getResults()
-                f.write("\n".join(("default: " + r for r in self.results)))
-        return self._testfile
 
     def _get_test_intern(self):
         ### Excludes
@@ -381,13 +367,29 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
 
     def get_test_source(self, resolve=False):
         roots = [d.get_path(resolve=resolve) for d in self.buildDependencies if d.isPackedResourceLibrary()]
-        assert len(roots) == 1
+        assert len(roots) == 1, "Roots: {}".format(", ".join(roots))
         return roots[0]
 
     def getTests(self):
         if not hasattr(self, '_tests'):
             self._tests = self._get_test_intern()
         return self._tests
+
+
+class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuite):  # pylint: disable=too-many-ancestors
+
+    def getTestFile(self):
+        if not hasattr(self, '_testfile'):
+            self._testfile = os.path.join(self.getOutput(), 'test.include')
+            with open(self._testfile, 'w') as f:
+                mx.logv("Writing test file: " + self._testfile)
+                # call getResults() ensure self.results is populated
+                _ = self.getResults()
+                f.write("\n".join(("default: " + r for r in self.results)))
+        return self._testfile
+
+    def defaultTestClasses(self):
+        return ["com.oracle.truffle.llvm.tests.GCCSuite"]
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(ExternalTestSuite, self).getBuildEnv(replaceVar=replaceVar)
@@ -631,8 +633,10 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
 class CMakeMixin(object):
     def __init__(self, *args, **kwargs):
         super(CMakeMixin, self).__init__(*args, **kwargs)
-        cmake_config = kwargs.pop('cmakeConfig', {})
-        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
+        self._cmake_config_raw = kwargs.pop('cmakeConfig', {})
+
+    def cmake_config(self):
+        return ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(self._cmake_config_raw.items())]
 
 
 class CMakeProject(CMakeMixin, AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
@@ -678,7 +682,8 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
             targets created by CMake are often executed unconditionally, which would cause the project to be always
             rebuilt.
     """
-    def __init__(self, suite, name, deps, workingSets, subDir, ninja_targets=None, ninja_install_targets=None, results=None, output=None, **args):
+    def __init__(self, suite, name, deps, workingSets, subDir, ninja_targets=None, ninja_install_targets=None,
+                 cmake_show_warnings=True, results=None, output=None, **args):
         projectDir = args.pop('dir', None)
         if projectDir:
             d_rel = projectDir
@@ -695,8 +700,9 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
         self._ninja_targets = [mx_subst.path_substitutions.substitute(x) for x in ninja_targets or []]
         super(CMakeNinjaProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, d, results=results, output=output, **args)
         # self.dir = self.getOutput()
+        self.silent = not cmake_show_warnings
 
-    def generate_manifest(self, path):
+    def generate_manifest(self, path, extra_cmake_config=None):
         source_dir = self.source_dirs()[0]
         out_dir = os.path.dirname(path)
         cmakefile = os.path.join(out_dir, 'CMakeCache.txt')
@@ -704,6 +710,8 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
             # remove cache file if it exist
             os.remove(cmakefile)
         cmake_config = self.cmake_config()
+        if extra_cmake_config:
+            cmake_config.extend(extra_cmake_config)
 
         # explicitly set ninja executable if not on path
         cmake_make_program = 'CMAKE_MAKE_PROGRAM'
@@ -713,7 +721,7 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
         # cmake will always create build.ninja - there is nothing we can do about it ATM
         cmdline = ["-G", "Ninja", source_dir] + cmake_config
         CMakeSupport.check_cmake()
-        CMakeSupport.run_cmake(cmdline, silent=True, cwd=out_dir, log_error=True)
+        CMakeSupport.run_cmake(cmdline, silent=self.silent, cwd=out_dir, log_error=True)
         # move the build.ninja to the temporary path (just move it back later ... *sigh*)
         shutil.copyfile(os.path.join(out_dir, mx_native.Ninja.default_manifest), path)
         return True
@@ -733,6 +741,241 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
         out_dir_arch = mx.join(self.out_dir, target_arch)
         for _result in self.getResults():
             yield result(out_dir_arch, _result)
+
+
+class VariantCMakeNinjaBuildTask(CMakeNinjaBuildTask):
+    def __init__(self, args, project, target_arch=mx.get_arch(), ninja_targets=None, variant=None):
+        self.variant = variant
+        # abuse target_arch to inject variant
+        super(VariantCMakeNinjaBuildTask, self).__init__(args, project, target_arch=os.path.join("build", variant), ninja_targets=ninja_targets)
+        # set correct target_arch
+        self.target_arch = target_arch
+
+    @property
+    def name(self):
+        return '{} ({})'.format(self.subject.name, self.variant)
+
+    def build(self):
+        try:
+            self.subject.current_variant = self.variant
+            super(VariantCMakeNinjaBuildTask, self).build()
+        finally:
+            self.subject.current_variant = None
+
+
+class SulongCMakeTestSuite(SulongTestSuiteMixin, CMakeNinjaProject):  # pylint: disable=too-many-ancestors
+    """Sulong test suite compiled with CMake/Ninja.
+
+    This project automatically collects test sources (C, C++, Fortran, LL) and compiles them
+    into specified variants.
+
+    Usage (suite.py):
+    ```
+        "com.oracle.truffle.llvm.tests.mytest.native" : {
+          "subDir" : "tests",
+          "class" : "SulongCMakeTestSuite",
+          "variants" : ["bitcode-O1"],
+          "cmakeConfig" : {
+            "CMAKE_C_FLAGS" : "-Wall",
+          },
+          "testProject" : True,
+        },
+    ```
+
+    Attributes
+        variants:
+            Specifies a list of variants the test sources should be compiled to. The "variant" determines how the test
+            source is compiled and the resulting file type. A "variant" has the form "<compile-mode>-<opt-level>".
+            Valid optimization levels are O0, O1, O2, and O3. The following compile modes are supported:
+            - "bitcode"
+                The source file is compiled to bitcode using clang or another frontend.
+                This mode supports appending a "-<post-opt>" specifier to the variant string,
+                to post-process the result using the `opt` tool from LLVM. The following post-opt specifiers are
+                supported:
+                    - MISC_OPTS: run a selection of common optimizations
+                    - MEM2REG: run the -mem2reg optimization
+                See tests/com.oracle.truffle.llvm.tests.cmake/SulongTestSuiteVariantBitcode.cmake for more details.
+            - "executable"
+                The source file is compiled to an executable with an embedded bitcode section.
+            - "toolchain"
+                The toolchain wrappers are used to compile the test source into an executable with embedded bitcode.
+            - "gcc"
+                The source is compiled to bitcode using gcc and the DRAGONEGG plugin.
+        buildRef:
+            If True (the default), build a reference executable. Setting this to False is useful for embedded tests with
+            dedicated JUnit test classes.
+        buildSharedObject:
+            If True, build a shared object instead of executables (for variants where this is applicable).
+            Useful if the test does not contain a `main` functions. Use in combination with `buildRef: False`.
+            False by default.
+        bundledLLVMOnly:
+            If True, the project is ignored if an alternative LLVM version is used. This is the case if the environment
+            variable `CLANG_CC` is set.
+        cmakeConfig:
+            Customize the compilation process. See tests/com.oracle.truffle.llvm.tests.cmake/SulongTestSuite.cmake for
+            more information.
+        cmakeConfigVariant:
+            CMake configuration for a specific variant only. The keys of the dictionary are the "variants", e.g.,
+            "ref.out", "bitcode-O0", etc. The key "<others>" can be used as an "else" branch.
+
+    Remark:
+        Every variant has its own ninja.build files and will be built using its own BuildTask. The result of each
+        individual variant build is then "installed" into a common directory.
+    """
+    def __init__(self, suite, name, deps, workingSets, subDir, buildRef=True,
+                 buildSharedObject=False, bundledLLVMOnly=False, ninja_install_targets=None, max_jobs=8,
+                 cmakeConfigVariant=None, **args):
+
+        if bundledLLVMOnly and mx.get_env('CLANG_CC', None):
+            self.ignore = "Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'"
+        if 'buildDependencies' not in args:
+            args['buildDependencies'] = []
+        if 'sdk:LLVM_TOOLCHAIN' not in args['buildDependencies']:
+            args['buildDependencies'].append('sdk:LLVM_TOOLCHAIN')
+        self.buildRef = buildRef
+        self.buildSharedObject = buildSharedObject
+        self.current_variant = None
+        self.cmake_config_variant = cmakeConfigVariant or {}
+        super(SulongCMakeTestSuite, self).__init__(suite, name, deps, workingSets, subDir,
+                                                   ninja_install_targets=ninja_install_targets or ["install"], max_jobs=max_jobs, **args)
+        self._install_dir = mx.join(self.out_dir, "result")
+        # self._ninja_targets = self.getResults()
+        _config = self._cmake_config_raw
+        _module_path = mx.Suite._pop_list(_config, 'CMAKE_MODULE_PATH', self)
+        _module_path.append('<path:com.oracle.truffle.llvm.tests.cmake>')
+        _config['CMAKE_MODULE_PATH'] = ';'.join(_module_path)
+        _config['SULONG_MODULE_PATH'] = '<path:com.oracle.truffle.llvm.tests.cmake>'
+        self._init_cmake = False
+
+    def getTestFile(self):
+        if not hasattr(self, '_testfile'):
+            self._testfile = os.path.join(self.out_dir, 'tests.cache')
+            with mx.SafeFileCreation(self._testfile) as sfc, open(sfc.tmpPath, "w") as f:
+                mx.logv("Writing test file: " + self._testfile)
+                f.write('set(SULONG_TESTS {} CACHE FILEPATH "test files")'.format(';'.join(self.getTests())))
+        return self._testfile
+
+    def _default_cmake_vars(self):
+        _config = dict()
+        _config['CMAKE_INSTALL_PREFIX'] = self._install_dir
+        _config['SULONG_PROJECT_NAME'] = self.name
+        _config['SULONG_ENABLED_LANGUAGES'] = ';'.join(self._get_languages())
+        # _config['SULONG_VARIANTS'] = ';'.join(self.getVariants())
+        # _config['SULONG_BUILD_REF'] = 'YES' if self.buildRef else 'NO'
+        _config['SULONG_BUILD_SHARED_OBJECT'] = 'YES' if self.buildSharedObject else 'NO'
+        # _config['SO_EXT'] = mx.add_lib_suffix("")
+        _config['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
+        _config['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
+        _config['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
+        _config['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        # _config['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
+        _config['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
+        _config['LLVM_CONFIG'] = mx_sulong.findBundledLLVMProgram('llvm-config')
+        _config['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
+        # _config['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
+        # if 'OS' not in _config:
+        #     _config['OS'] = mx_subst.path_substitutions.substitute("<os>")
+        if DragonEggSupport.haveDragonegg():
+            _config['DRAGONEGG'] = DragonEggSupport.pluginPath()
+            _config['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)
+            _config['DRAGONEGG_LLVM_LINK'] = DragonEggSupport.findLLVMProgram("llvm-link")
+            _config['DRAGONEGG_LLVMAS'] = DragonEggSupport.findLLVMProgram("llvm-as")
+            _config['DRAGONEGG_FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
+            _config['FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
+        # elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
+        #     mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
+        return _config
+
+    def cmake_config(self):
+        if not self._init_cmake:
+            self._init_cmake = True
+            self._cmake_config_raw.update({k: v for k, v in self._default_cmake_vars().items()
+                                           if k not in self._cmake_config_raw})
+        return ['-C', self.getTestFile()] + super(SulongCMakeTestSuite, self).cmake_config()
+
+    def _get_languages(self):
+        lang_ext_map = {
+            'C': ['.c', '.cint', '.gcc'],
+            'CXX': ['.cpp', '.C', '.cc', '.gpp'],
+            'Fortran': ['.f', '.f90', '.f03'],
+            'LL': ['.ll'],
+        }
+
+        def _get_language(test):
+            for lang, exts in lang_ext_map.items():
+                if any(test.endswith(ext) for ext in exts):
+                    return lang
+            self.abort('Cannot determine language of file ' + test)
+
+        return set(_get_language(test) for test in self.getTests())
+
+    def getBuildTask(self, args):
+        def _variant():
+            if self.buildRef:
+                yield 'ref.out'
+            for variant in self.getVariants():
+                yield variant
+
+        class MultiVariantBuildTask(mx.Buildable, mx.TaskSequence):
+            subtasks = [VariantCMakeNinjaBuildTask(args, self, target_arch=mx.get_arch(), ninja_targets=self._ninja_targets, variant=variant) for variant in _variant()]
+
+            def execute(self):
+                super(MultiVariantBuildTask, self).execute()
+                self.built = any(t.built for t in self.subtasks)
+
+            def newestOutput(self):
+                return mx.TimeStampFile.newest(t.newestOutput().path for t in self.subtasks)
+
+        return MultiVariantBuildTask(self, args)
+
+    def _build_task(self, target_arch, args):
+        mx.nyi("_build_task", self)
+
+    def generate_manifest(self, path, extra_cmake_config=None):
+        if not self.current_variant:
+            self.abort("current_variant not set")
+        _extra_cmake_config = extra_cmake_config or []
+        _extra_cmake_config.append("-DSULONG_CURRENT_VARIANT={}".format(self.current_variant))
+        try:
+            # get either current_variant or <other>
+            variant_specific_config = next(self.cmake_config_variant[x] for x in (self.current_variant, '<others>') if x in self.cmake_config_variant)
+            _extra_cmake_config.extend(('-D{}={}'.format(k, v) for k, v in variant_specific_config.items()))
+        except StopIteration:
+            # no variant specific config
+            pass
+        super(SulongCMakeTestSuite, self).generate_manifest(path, extra_cmake_config=_extra_cmake_config)
+
+    def _get_vpath(self):
+        return self.source_dirs()[0]
+
+    def _archivable_results(self, target_arch, use_relpath, single):
+        def result(base_dir, file_path):
+            assert not mx.isabs(file_path)
+            archive_path = file_path if use_relpath else mx.basename(file_path)
+            return mx.join(base_dir, file_path), archive_path
+
+        out_dir_arch = self._install_dir
+        for _result in self.getResults():
+            yield result(out_dir_arch, _result)
+
+
+class ExternalCMakeTestSuite(ExternalTestSuiteMixin, SulongCMakeTestSuite):  # pylint: disable=too-many-ancestors
+
+    def _default_cmake_vars(self):
+        cmake_vars = super(ExternalCMakeTestSuite, self)._default_cmake_vars()
+        cmake_vars['SULONG_TEST_SOURCE_DIR'] = self.get_test_source(resolve=True)
+        return cmake_vars
+
+    def get_test_source(self, resolve=False):
+        if hasattr(self, 'testSourceDir'):
+            return mx_subst.path_substitutions.substitute(self.testSourceDir)
+        roots = [d.get_path(resolve=resolve) for d in self.buildDependencies if d.isPackedResourceLibrary()
+                 # mx might insert dependencies on NINJA and NINJA_SYNTAX
+                 # to play safe, we are ignoring all resources from mx since they are very likely
+                 # not external benchmark suites
+                 and d.suite is not mx._mx_suite]
+        assert len(roots) == 1, "Roots: {}".format(", ".join(roots))
+        return roots[0]
 
 
 class DocumentationBuildTask(mx.AbstractNativeBuildTask):
