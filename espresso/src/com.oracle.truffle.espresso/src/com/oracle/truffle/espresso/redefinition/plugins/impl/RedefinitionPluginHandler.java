@@ -133,7 +133,12 @@ public final class RedefinitionPluginHandler implements RedefineListener, ClassL
     public void postRedefition(ObjectKlass[] changedKlasses) {
         // internal plugins
         for (InternalRedefinitionPlugin plugin : internalPlugins) {
-            plugin.postClassRedefinition(changedKlasses);
+            try {
+                plugin.postClassRedefinition(changedKlasses);
+            } catch (Throwable t) {
+                // don't let individual plugin errors cause failure
+                // to run other post redefinition plugins
+            }
         }
         // external plugins
         if (externalPluginHandler != null) {

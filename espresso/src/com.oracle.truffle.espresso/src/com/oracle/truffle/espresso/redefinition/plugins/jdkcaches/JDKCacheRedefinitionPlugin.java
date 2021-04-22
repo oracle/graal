@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
@@ -54,12 +55,14 @@ public final class JDKCacheRedefinitionPlugin extends InternalRedefinitionPlugin
             if (flushFromCachesMethod != null) {
                 flushFromCachesMethod.invokeDirect(null, changedKlass.mirror());
             }
-            for (WeakReference<StaticObject> context : threadGroupContexts) {
+            for (WeakReference<StaticObject> ref : threadGroupContexts) {
+                StaticObject context = ref.get();
                 removeBeanInfoMethod.invokeDirect(context, changedKlass.mirror());
             }
         }
     }
 
+    @TruffleBoundary
     public synchronized void registerThreadGroupContext(StaticObject context) {
         threadGroupContexts.add(new WeakReference<>(context));
     }
