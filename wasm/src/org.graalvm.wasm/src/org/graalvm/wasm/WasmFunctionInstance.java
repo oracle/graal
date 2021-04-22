@@ -51,16 +51,18 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmFunctionInstance implements TruffleObject {
+    private final WasmContext.Uid contextUid;
     private final WasmFunction function;
     private final CallTarget target;
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
      *
-     * If the function is imported, then function is set to {@code null}.
+     * If the function is imported, then context UID and the function are set to {@code null}.
      */
-    public WasmFunctionInstance(WasmFunction function, CallTarget target) {
+    public WasmFunctionInstance(WasmContext.Uid contextUid, WasmFunction function, CallTarget target) {
         Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
+        this.contextUid = contextUid;
         this.function = function;
         this.target = target;
     }
@@ -68,6 +70,10 @@ public class WasmFunctionInstance implements TruffleObject {
     @Override
     public String toString() {
         return name();
+    }
+
+    public WasmContext.Uid contextUid() {
+        return contextUid;
     }
 
     public String name() {
