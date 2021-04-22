@@ -346,10 +346,6 @@ public abstract class NativeImageViaCC extends NativeImage {
                 break;
         }
 
-        if (SubstrateOptions.AdditionalLinkerOptions.hasBeenSet()) {
-            inv.additionalPreOptions.add(SubstrateOptions.AdditionalLinkerOptions.getValue());
-        }
-
         Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);

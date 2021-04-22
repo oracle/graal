@@ -152,9 +152,6 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
-    @Option(help = "String which would be appended to the linker call")//
-    public static final HostedOptionKey<String> AdditionalLinkerOptions = new HostedOptionKey<>("");
-
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
