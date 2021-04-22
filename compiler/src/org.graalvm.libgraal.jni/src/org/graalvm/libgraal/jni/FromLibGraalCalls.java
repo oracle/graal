@@ -100,7 +100,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
 
         @Override
         public String getDisplayName() {
-            return hcId.toString();
+            return hcId.getName();
         }
 
         @Override

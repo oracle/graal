@@ -357,6 +357,7 @@ public final class JNIUtil {
      * Returns a {@link JClass} for given binary name.
      */
     public static JClass findClass(JNIEnv env, String binaryName) {
+        trace(1, "%s->HS: findClass %s", getFeatureName(), binaryName);
         try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(binaryName)) {
             return JNIUtil.FindClass(env, name.get());
         }
@@ -372,7 +373,7 @@ public final class JNIUtil {
         if (classLoader.isNull()) {
             throw new IllegalArgumentException("ClassLoader must be non null.");
         }
-        trace(1, "%s->HS: findClass", getFeatureName());
+        trace(1, "%s->HS: findClass %s", getFeatureName(), binaryName);
         JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS[0], METHOD_LOAD_CLASS[1]);
         JValue params = StackValue.get(1, JValue.class);
         params.addressOf(0).setJObject(JNIUtil.createHSString(env, binaryName.replace('/', '.')));

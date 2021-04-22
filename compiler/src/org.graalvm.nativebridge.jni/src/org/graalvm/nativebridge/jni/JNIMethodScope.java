@@ -22,31 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.libgraal.jni;
+package org.graalvm.nativebridge.jni;
 
 import static org.graalvm.nativebridge.jni.JNIUtil.PopLocalFrame;
 import static org.graalvm.nativebridge.jni.JNIUtil.PushLocalFrame;
+import static org.graalvm.nativebridge.jni.JNIUtil.getFeatureName;
 
 import org.graalvm.nativebridge.jni.JNI.JNIEnv;
 import org.graalvm.nativebridge.jni.JNI.JObject;
-import org.graalvm.nativebridge.jni.JNIUtil;
+
+import java.util.Objects;
 
 /**
- * Scope of a call from HotSpot to libgraal. This also provides access to the {@link JNIEnv} value
- * for the current thread within the libgraal call.
+ * Scope of a call from HotSpot to native method. This also provides access to the {@link JNIEnv}
+ * value for the current thread within the native method call.
  *
- * If the libgraal call returns a non-primitive value, the return value must be
+ * If the native method call call returns a non-primitive value, the return value must be
  * {@linkplain #setObjectResult(JObject) set} within the try-with-resources statement and then
  * {@linkplain #getObjectResult() retrieved} and returned outside the try-with-resources statement.
  * This is necessary to support use of JNI local frames.
  */
-public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
+public class JNIMethodScope implements AutoCloseable {
 
-    private static final ThreadLocal<JNILibGraalScope<?>> topScope = new ThreadLocal<>();
+    private static final ThreadLocal<JNIMethodScope> topScope = new ThreadLocal<>();
 
     private final JNIEnv env;
-    private final JNILibGraalScope<?> parent;
-    private JNILibGraalScope<?> leaf;
+    private final JNIMethodScope parent;
+    private JNIMethodScope leaf;
 
     /**
      * List of scope local {@link HSObject}s that created within this scope. These are
@@ -55,9 +57,9 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
     HSObject locals;
 
     /**
-     * The libgraal call for this scope.
+     * The native method method id for this scope.
      */
-    private final Enum<T> id;
+    private final ScopeId scopeId;
 
     /**
      * Gets the {@link JNIEnv} value for the current thread.
@@ -71,10 +73,10 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
     }
 
     /**
-     * Gets the inner most {@link JNILibGraalScope} value for the current thread.
+     * Gets the inner most {@link JNIMethodScope} value for the current thread.
      */
-    public static JNILibGraalScope<?> scopeOrNull() {
-        JNILibGraalScope<?> scope = topScope.get();
+    public static JNIMethodScope scopeOrNull() {
+        JNIMethodScope scope = topScope.get();
         if (scope == null) {
             return null;
         }
@@ -82,44 +84,27 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
     }
 
     /**
-     * Gets the inner most {@link JNILibGraalScope} value for the current thread.
+     * Gets the inner most {@link JNIMethodScope} value for the current thread.
      */
-    public static JNILibGraalScope<?> scope() {
-        JNILibGraalScope<?> scope = topScope.get();
+    public static JNIMethodScope scope() {
+        JNIMethodScope scope = topScope.get();
         if (scope == null) {
-            throw new IllegalStateException("Not in the scope of an libgraal call");
+            throw new IllegalStateException("Not in the scope of an JNI method call");
         }
         return scope.leaf;
     }
 
     /**
-     * Casts this {@link JNILibGraalScope} to scope of given scope id type.
-     *
-     * @param scopeIdType the requested scope id type
-     * @throws ClassCastException if this {@link JNILibGraalScope}'s id is not an instance of given
-     *             {@code scopeIdType}
+     * Enters the scope of an native method call.
      */
     @SuppressWarnings("unchecked")
-    public <P extends Enum<P>> JNILibGraalScope<P> narrow(Class<P> scopeIdType) {
-        if (id == null) {
-            throw new ClassCastException("Expected ToLibGraalScope type is " + scopeIdType + " but the type is null.");
-        }
-        if (id.getClass() != scopeIdType) {
-            throw new ClassCastException("Expected ToLibGraalScope type is " + scopeIdType + " but actual type is " + id.getClass());
-        }
-        return (JNILibGraalScope<P>) this;
-    }
-
-    /**
-     * Enters the scope of an libgraal call.
-     */
-    @SuppressWarnings("unchecked")
-    public JNILibGraalScope(Enum<T> id, JNIEnv env) {
-        this.id = id;
-        JNILibGraalScope<?> top = topScope.get();
+    public JNIMethodScope(ScopeId scopeId, JNIEnv env) {
+        Objects.requireNonNull(scopeId, "Id must be non null.");
+        this.scopeId = scopeId;
+        JNIMethodScope top = topScope.get();
         this.env = env;
         if (top == null) {
-            // Only push a JNI frame for the top level libgraal call.
+            // Only push a JNI frame for the top level native method call.
             // HotSpot's JNI implementation currently ignores the `capacity` argument
             PushLocalFrame(env, 64);
             top = this;
@@ -132,11 +117,7 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
             parent = top.leaf;
         }
         top.leaf = this;
-        JNIUtil.trace(1, "HS->LIBGRAAL[enter]: %s", idString(id));
-    }
-
-    private String idString(Enum<T> v) {
-        return v != null ? v.toString() : "<called from VM>";
+        JNIUtil.trace(1, "HS->%s[enter]: %s", JNIUtil.getFeatureName(), scopeId.getDisplayName());
     }
 
     /**
@@ -155,7 +136,7 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
 
     @Override
     public void close() {
-        JNIUtil.trace(1, "HS->LIBGRAAL[ exit]: %s", idString(id));
+        JNIUtil.trace(1, "HS->%s[ exit]: %s", getFeatureName(), scopeId.getDisplayName());
         HSObject.invalidate(locals);
         if (parent == null) {
             if (topScope.get() != this) {
@@ -164,7 +145,7 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
             topScope.set(null);
             objResult = PopLocalFrame(env, objResult);
         } else {
-            JNILibGraalScope<?> top = parent;
+            JNIMethodScope top = parent;
             while (top.parent != null) {
                 top = top.parent;
             }
@@ -172,9 +153,9 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
         }
     }
 
-    int depth() {
+    public int depth() {
         int depth = 0;
-        JNILibGraalScope<?> ancestor = parent;
+        JNIMethodScope ancestor = parent;
         while (ancestor != null) {
             depth++;
             ancestor = ancestor.parent;
@@ -184,6 +165,10 @@ public class JNILibGraalScope<T extends Enum<T>> implements AutoCloseable {
 
     @Override
     public String toString() {
-        return "JNILibGraalScope[" + depth() + "]@" + Long.toHexString(env.rawValue());
+        return "JNIMethodScope[" + depth() + "]@" + Long.toHexString(env.rawValue());
+    }
+
+    public interface ScopeId {
+        String getDisplayName();
     }
 }

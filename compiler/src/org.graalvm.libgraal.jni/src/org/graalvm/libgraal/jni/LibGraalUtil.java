@@ -25,6 +25,8 @@
 package org.graalvm.libgraal.jni;
 
 import org.graalvm.nativebridge.jni.JNI;
+import org.graalvm.nativebridge.jni.JNI.JNIEnv;
+import org.graalvm.nativebridge.jni.JNIMethodScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -34,9 +36,36 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Set;
 
-public class LibGraalUtil {
+public final class LibGraalUtil {
+
+    private LibGraalUtil() {
+    }
+
+    public static JNIMethodScope openScope(Class<?> entryPointClass, Enum<?> id, JNIEnv env) {
+        Objects.requireNonNull(id, "EntryPointClass must be non null.");
+        Objects.requireNonNull(id, "Id must be non null.");
+        return new JNIMethodScope(new LibGraalJNIMethodScopeId(entryPointClass, id), env);
+    }
+
+    private static final class LibGraalJNIMethodScopeId implements JNIMethodScope.ScopeId {
+
+        private final Class<?> entryPointClass;
+        private final Enum<?> methodId;
+
+        LibGraalJNIMethodScopeId(Class<?> entryPointClass, Enum<?> methodId) {
+            this.entryPointClass = entryPointClass;
+            this.methodId = methodId;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return entryPointClass.getSimpleName() + "::" + methodId;
+        }
+    }
+
     /*----------------- CHECKING ------------------*/
 
     /**

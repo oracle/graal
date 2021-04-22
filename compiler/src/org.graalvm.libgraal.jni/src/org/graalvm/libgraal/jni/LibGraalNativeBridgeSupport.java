@@ -27,6 +27,7 @@ package org.graalvm.libgraal.jni;
 import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import org.graalvm.nativebridge.jni.JNIMethodScope;
 import org.graalvm.nativebridge.jni.NativeBridgeSupport;
 
 public class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
@@ -59,7 +60,7 @@ public class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
             if (!inTrace.get()) {
                 inTrace.set(true);
                 try {
-                    JNILibGraalScope<?> scope = JNILibGraalScope.scopeOrNull();
+                    JNIMethodScope scope = JNIMethodScope.scopeOrNull();
                     String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
                     String prefix = "[" + IsolateUtil.getIsolateID() + ":" + Thread.currentThread().getName() + "]";
                     TTY.printf(prefix + indent + format + "%n", args);
