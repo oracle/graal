@@ -111,6 +111,9 @@ public interface StackOverflowCheck {
      */
     void makeYellowZoneAvailable();
 
+    /** Check if the yellow zone of the stack available for usage. */
+    boolean isYellowZoneAvailable();
+
     /**
      * The inverse operation of {@link #makeYellowZoneAvailable}.
      */
