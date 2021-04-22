@@ -80,10 +80,12 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
         imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
         String builderClassPathString = System.getProperty("java.class.path");
-        if (".".equals(builderClassPathString)) {
-            VMError.shouldNotReachHere("Only ever run " + NativeImageGeneratorRunner.class.getName() + " with explicit --module-path and --module argument.");
-        }
         String[] builderClassPathEntries = builderClassPathString.isEmpty() ? new String[0] : builderClassPathString.split(File.pathSeparator);
+        if (Arrays.asList(builderClassPathEntries).contains(".")) {
+            VMError.shouldNotReachHere("The classpath of " + NativeImageGeneratorRunner.class.getName() +
+                            " must not contain \".\". This can happen implicitly if the builder runs exclusively on the --module-path" +
+                            " but specifies the " + NativeImageGeneratorRunner.class.getName() + " main class without --module.");
+        }
         buildcp = Collections.unmodifiableList(Arrays.stream(builderClassPathEntries)
                         .map(Paths::get).map(Path::toAbsolutePath)
                         .collect(Collectors.toList()));
