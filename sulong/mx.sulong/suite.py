@@ -748,6 +748,13 @@ suite = {
       "clangFormat" : False,
     },
 
+    "com.oracle.truffle.llvm.tests.cmake" : {
+      "description" : "Common CMake files",
+      "class" : "HeaderProject",
+      "subDir" : "tests",
+      "native" : True,
+    },
+
     "com.oracle.truffle.llvm.tests.debug.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
