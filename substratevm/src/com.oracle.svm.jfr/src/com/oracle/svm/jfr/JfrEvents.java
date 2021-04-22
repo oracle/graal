@@ -25,33 +25,57 @@
 package com.oracle.svm.jfr;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.util.VMError;
+import jdk.jfr.internal.PlatformEventType;
+import jdk.jfr.internal.Type;
+import jdk.jfr.internal.TypeLibrary;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
  */
 public enum JfrEvents {
-    // TODO: we need to abstract the JDK version in some way.
-    // Event IDs should be fetched similar to how we do it in JfrTypes.
-    MetadataEvent(0),
-    CheckpointEvent(1),
-    ThreadStartEvent(255),
-    ThreadEndEvent(256),
-    DataLossEvent(335);
+    ThreadStartEvent("jdk.ThreadStart"),
+    ThreadEndEvent("jdk.ThreadEnd"),
+    DataLossEvent("jdk.DataLoss");
 
-    private final int id;
+    private final long id;
 
-    JfrEvents(int id) {
-        this.id = id;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    JfrEvents(String name) {
+        this.id = getEventTypeId(name);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static long getEventTypeId(String name) {
+        try {
+            for (Type type : TypeLibrary.getInstance().getTypes()) {
+                if (type instanceof PlatformEventType && name.equals(type.getName())) {
+                    return type.getId();
+                }
+            }
+            return 0;
+        } catch (Exception ex) {
+            VMError.shouldNotReachHere(ex);
+            return 0;
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getId() {
+    public long getId() {
         return id;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static int getEventCount() {
-        // TODO: needs to return the count of all native events that are defined in the metadata.xml
-        // file. The highest id must match "eventCount - 1".
-        return 400;
+        long maxEventId = 0;
+        for (Type type : TypeLibrary.getInstance().getTypes()) {
+            if (type instanceof PlatformEventType) {
+                maxEventId = Math.max(maxEventId, type.getId());
+            }
+        }
+        return NumUtil.safeToInt(maxEventId + 1);
     }
 }

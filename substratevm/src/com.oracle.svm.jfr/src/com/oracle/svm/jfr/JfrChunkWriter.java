@@ -62,6 +62,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private static final int JFR_VERSION_MINOR = 0;
     private static final int CHUNK_SIZE_OFFSET = 8;
 
+    private static final long METADATA_TYPE_ID = 0;
+    private static final long CONSTANT_POOL_TYPE_ID = 1;
+
     private final ReentrantLock lock;
     private final boolean compressedInts;
     private long notificationThreshold;
@@ -190,7 +193,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         // finished before the safepoint).
 
         long start = beginEvent();
-        writeCompressedLong(JfrEvents.CheckpointEvent.getId());
+        writeCompressedLong(CONSTANT_POOL_TYPE_ID);
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(0); // deltaToNext
@@ -228,7 +231,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     private long writeMetadataEvent(byte[] metadataDescriptor) throws IOException {
         long start = beginEvent();
-        writeCompressedLong(JfrEvents.MetadataEvent.getId());
+        writeCompressedLong(METADATA_TYPE_ID);
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(0); // metadata id
