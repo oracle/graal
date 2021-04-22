@@ -248,7 +248,8 @@ def lli(args=None, out=None):
     debug_args = mx.java_debug_args()
     if debug_args and not mx.is_debug_disabled():
         args = [_java_to_graalvm_arg(d) for d in debug_args] + args
-    mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'lli')] + args, out=out)
+    # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
+    mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))] + args, out=out)
 
 
 @mx.command(_suite.name, "extract-bitcode")
