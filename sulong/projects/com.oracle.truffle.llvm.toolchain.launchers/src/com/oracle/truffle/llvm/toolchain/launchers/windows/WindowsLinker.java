@@ -27,24 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.toolchain.launchers;
+package com.oracle.truffle.llvm.toolchain.launchers.windows;
 
-import static com.oracle.truffle.llvm.toolchain.launchers.common.Driver.OS;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinLinker;
-import com.oracle.truffle.llvm.toolchain.launchers.linux.LinuxLinker;
-import com.oracle.truffle.llvm.toolchain.launchers.windows.WindowsLinker;
+import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
+import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
 
-public final class Linker {
+public final class WindowsLinker extends Driver {
 
-    public static void main(String[] args) {
-        OS os = OS.getCurrent();
-        if (os == OS.DARWIN) {
-            DarwinLinker.link(args);
-        } else if (os == OS.WINDOWS) {
-            WindowsLinker.link(args);
-        } else {
-            LinuxLinker.link(args);
-        }
+    public static final String LLD_LINK = "lld-link.exe";
+
+    private WindowsLinker() {
+        super(LLD_LINK);
     }
+
+    public static List<String> getLinkerFlags() {
+        return Arrays.asList("-mllvm:-lto-embed-bitcode", "-opt:lldlto=0", "-debug:dwarf");
+    }
+
+    public static void link(String[] args) {
+        new WindowsLinker().doLink(args);
+    }
+
+    private void doLink(String[] args) {
+        List<String> sulongArgs = new ArrayList<>();
+        sulongArgs.add(exe);
+        sulongArgs.add("-libpath:" + getSulongHome().resolve(ClangLike.NATIVE_PLATFORM).resolve("lib"));
+        sulongArgs.addAll(WindowsLinker.getLinkerFlags());
+        List<String> userArgs = Arrays.asList(args);
+        boolean verbose = userArgs.contains("-verbose");
+        runDriver(sulongArgs, userArgs, verbose, false, false);
+    }
+
 }
