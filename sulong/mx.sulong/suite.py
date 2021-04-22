@@ -901,7 +901,7 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.bitcode.uncommon.native" : {
       "subDir" : "tests",
-      "class" : "SulongTestSuite",
+      "class" : "SulongCMakeTestSuite",
       "bundledLLVMOnly" : True,
       # This should be the O1 variant (and the CFLAGS buildEnv entry
       # below should be changed to -O1) but it currently breaks the
@@ -910,15 +910,8 @@ suite = {
       # that we should fix it once we have a solution for the general
       # issue in exeuction mistmatches. Until then the Sulong behavior
       # is the more accurate one.
-      "variants" : ["O0"],
+      "variants" : ["bitcode-O0"],
       "fileExts" : [".ll"],
-      "buildEnv" : {
-        "OS" : "<os>",
-        "CFLAGS" : "-O0",
-      },
-      "dependencies" : [
-        "SULONG_TEST",
-      ],
       "buildDependencies" : [
         "LINUX_AMD64_SUPPORT",
       ],
@@ -932,12 +925,8 @@ suite = {
       "variants" : ["bitcode-O0"],
       "fileExts" : [".ll"],
       "buildRef" : False,
-      "cmakeConfig" : {
-        "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
-      },
       "buildDependencies" : [
         "LINUX_AMD64_SUPPORT",
-        "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
       "testProject" : True,
       "defaultBuild" : False,
