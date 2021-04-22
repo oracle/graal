@@ -22,26 +22,14 @@
  */
 package com.oracle.truffle.espresso.redefinition.plugins.api;
 
-import java.util.Collection;
 import java.util.List;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodHook;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.redefinition.plugins.impl.CachedRedefineObject;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
-import com.oracle.truffle.espresso.redefinition.plugins.impl.UncachedRedefineObject;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
 
 public abstract class InternalRedefinitionPlugin {
-
-    protected static final InteropLibrary INTEROP = InteropLibrary.getUncached();
 
     private EspressoContext context;
     private RedefinitionPluginHandler redefinitionPluginHandler;
@@ -55,11 +43,7 @@ public abstract class InternalRedefinitionPlugin {
         this.redefinitionPluginHandler = handler;
     }
 
-    public abstract String getName();
-
-    public abstract TriggerClass[] getTriggerClasses();
-
-    public boolean reRunClinit(@SuppressWarnings("unused") KlassRef klass, @SuppressWarnings("unused") boolean changed) {
+    public boolean reRunClinit(@SuppressWarnings("unused") ObjectKlass klass, @SuppressWarnings("unused") boolean changed) {
         return false;
     }
 
@@ -67,64 +51,11 @@ public abstract class InternalRedefinitionPlugin {
         // default does nothing
     }
 
-    public void postClassRedefinition(@SuppressWarnings("unused") KlassRef[] changedKlasses) {
+    public void postClassRedefinition(@SuppressWarnings("unused") ObjectKlass[] changedKlasses) {
         // default does nothing
-    }
-
-    public static RedefineObject createUncached(Object instance) {
-        return new UncachedRedefineObject((StaticObject) instance);
-    }
-
-    public static RedefineObject createCached(Object instance) {
-        return new CachedRedefineObject((StaticObject) instance);
-    }
-
-    public static RedefineObject createCached(KlassRef klass) {
-        return new CachedRedefineObject(klass);
-    }
-
-    protected KlassRef getreflectedKlassType(Object classObject) {
-        return context.getJdwpContext().getReflectedType(classObject);
-    }
-
-    protected Object getGuestClassInstance(KlassRef klass) {
-        return ((Klass) klass).mirror();
     }
 
     protected void registerClassLoadAction(String className, ClassLoadAction action) {
         redefinitionPluginHandler.registerClassLoadAction(className, action);
-    }
-
-    protected void hookMethodExit(KlassRef klass, MethodLocator hookSpec, MethodHook.Kind kind, MethodExitHook onExitHook) {
-        for (Method method : ((Klass) klass).getDeclaredMethods()) {
-            if (method.getName().equals(hookSpec.getName()) && method.getRawSignature().equals(hookSpec.getSignature())) {
-                method.addMethodHook(new RedefintionHook(onExitHook, kind));
-                break;
-            }
-        }
-    }
-
-    protected void hookMethodEntry(KlassRef klass, MethodLocator hookSpec, MethodHook.Kind kind, MethodEntryHook onEntryHook) {
-        for (Method method : ((Klass) klass).getDeclaredMethods()) {
-            if (method.getName().equals(hookSpec.getName()) && method.getRawSignature().equals(hookSpec.getSignature())) {
-                method.addMethodHook(new RedefintionHook(onEntryHook, kind));
-                break;
-            }
-        }
-    }
-
-    protected void hookConstructor(KlassRef klass, MethodHook.Kind kind, MethodEntryHook onEntryHook) {
-        for (Method method : ((Klass) klass).getDeclaredMethods()) {
-            if (method.getName().equals(Symbol.Name._init_)) {
-                method.addMethodHook(new RedefintionHook(onEntryHook, kind));
-            }
-        }
-    }
-
-    protected void clearCollection(@Host(Collection.class) RedefineObject object, String fieldName) throws NoSuchFieldException, NoSuchMethodException {
-        RedefineObject collectionField = object.getInstanceField(fieldName);
-        if (collectionField != null) {
-            collectionField.invoke("clear");
-        }
     }
 }

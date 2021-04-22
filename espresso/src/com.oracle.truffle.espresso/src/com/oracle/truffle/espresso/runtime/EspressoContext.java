@@ -31,6 +31,8 @@ import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.espresso.FinalizationFeature;
+import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -51,6 +54,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -148,6 +152,8 @@ public final class EspressoContext {
     private JDWPContextImpl jdwpContext;
     private VMListener eventListener;
     // endregion JDWP
+
+    private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
 
     // region Options
     // Checkstyle: stop field name check
@@ -718,6 +724,20 @@ public final class EspressoContext {
         if (jdwpContext != null) {
             jdwpContext.finalizeContext();
         }
+    }
+
+    public void registerRedefinitionPlugin(InternalRedefinitionPlugin plugin) {
+        // lazy initialization
+        if (redefinitionPlugins == null) {
+            redefinitionPlugins = Collections.synchronizedMap(new HashMap<>(2));
+        }
+        redefinitionPlugins.put(plugin.getClass(), plugin);
+    }
+
+    @SuppressWarnings("unchecked")
+    @TruffleBoundary
+    public <T> T lookup(Class<? extends InternalRedefinitionPlugin> pluginType) {
+        return (T) redefinitionPlugins.get(pluginType);
     }
 
     // region Agents

@@ -23,63 +23,44 @@
 
 package com.oracle.truffle.espresso.redefinition.plugins.jdkcaches;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodHook;
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
-import com.oracle.truffle.espresso.redefinition.plugins.api.MethodLocator;
-import com.oracle.truffle.espresso.redefinition.plugins.api.RedefineObject;
-import com.oracle.truffle.espresso.redefinition.plugins.api.TriggerClass;
+import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class JDKCacheRedefinitionPlugin extends InternalRedefinitionPlugin {
 
-    public static final Symbol<Symbol.Type> INTROSPECTOR_CLASS = Symbol.Type.java_beans_Introspector;
-    public static final Symbol<Symbol.Name> FLUSH_CACHES_METHOD = Symbol.Name.flushFromCaches;
-    private MethodRef flushFromCachesMethod;
-
-    public static final Symbol<Symbol.Type> THREAD_GROUP_CONTEXT = Symbol.Type.java_beans_ThreadGroupContext;
-    public static final String REMOVE_BEAN_INFO = "removeBeanInfo";
-    private List<RedefineObject> threadGroupContext = Collections.synchronizedList(new ArrayList<>(1));
+    private List<WeakReference<StaticObject>> threadGroupContexts = Collections.synchronizedList(new ArrayList<>(4));
+    private Method flushFromCachesMethod;
+    private Method removeBeanInfoMethod;
 
     @Override
-    public String getName() {
-        return "JDK Cache Flushing Plugin";
+    public void activate(EspressoContext espressoContext, RedefinitionPluginHandler handler) {
+        super.activate(espressoContext, handler);
+        flushFromCachesMethod = espressoContext.getMeta().java_beans_Introspector_flushFromCaches;
+        removeBeanInfoMethod = espressoContext.getMeta().java_beans_ThreadGroupContext_removeBeanInfo;
     }
 
     @Override
-    public TriggerClass[] getTriggerClasses() {
-        TriggerClass[] triggerClasses = new TriggerClass[2];
-        triggerClasses[0] = new TriggerClass(INTROSPECTOR_CLASS, this, klass -> {
-            hookMethodEntry(klass, new MethodLocator(FLUSH_CACHES_METHOD, Symbol.Signature._void_Class), MethodHook.Kind.ONE_TIME,
-                            ((method, variables) -> flushFromCachesMethod = method));
-        });
-        triggerClasses[1] = new TriggerClass(THREAD_GROUP_CONTEXT, this, klass -> {
-            hookConstructor(klass, MethodHook.Kind.INDEFINITE, ((method, variables) -> {
-                threadGroupContext.add(InternalRedefinitionPlugin.createCached(variables[0].getValue()));
-            }));
-        });
-        return triggerClasses;
-    }
-
-    @Override
-    public void postClassRedefinition(KlassRef[] changedKlasses) {
-        for (KlassRef changedKlass : changedKlasses) {
-            Object guestKlass = getGuestClassInstance(changedKlass);
+    public void postClassRedefinition(ObjectKlass[] changedKlasses) {
+        for (ObjectKlass changedKlass : changedKlasses) {
             if (flushFromCachesMethod != null) {
-                flushFromCachesMethod.invokeMethod(null, new Object[]{guestKlass});
+                flushFromCachesMethod.invokeDirect(null, changedKlass.mirror());
             }
-            for (RedefineObject context : threadGroupContext) {
-                try {
-                    context.invoke(REMOVE_BEAN_INFO, InternalRedefinitionPlugin.createUncached(guestKlass));
-                } catch (NoSuchMethodException e) {
-                    // TODO - add logging
-                }
+            for (WeakReference<StaticObject> context : threadGroupContexts) {
+                removeBeanInfoMethod.invokeDirect(context, changedKlass.mirror());
             }
         }
+    }
+
+    public synchronized void registerThreadGroupContext(StaticObject context) {
+        threadGroupContexts.add(new WeakReference<>(context));
     }
 }
