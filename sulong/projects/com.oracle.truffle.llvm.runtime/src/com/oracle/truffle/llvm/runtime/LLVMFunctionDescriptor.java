@@ -46,9 +46,9 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
-import com.oracle.truffle.llvm.runtime.IDGenerater.*;
 
 /**
  * Our implementation assumes that there is a 1:1:1 relationship between callable functions (

@@ -39,9 +39,9 @@ public final class IDGenerater {
     private final ReferenceQueue<BitcodeID> refQueue = new ReferenceQueue<>();
     private final IDReference first = new IDReference();
 
-    public final static BitcodeID INVALID_ID = new BitcodeID(-1);
+    public static final BitcodeID INVALID_ID = new BitcodeID(-1);
 
-    public static class BitcodeID {
+    public static final class BitcodeID {
         private final int id;
 
         private BitcodeID(int id) {
@@ -53,7 +53,7 @@ public final class IDGenerater {
         }
     }
 
-    private class IDReference extends PhantomReference<BitcodeID> {
+    private final class IDReference extends PhantomReference<BitcodeID> {
 
         private IDReference prev;
         private IDReference next;

@@ -75,7 +75,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import com.oracle.truffle.llvm.runtime.IDGenerater.*;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 
 public final class LLVMContext {
 
