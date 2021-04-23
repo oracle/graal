@@ -649,11 +649,14 @@ public final class Meta implements ContextAccess {
 
         // used for class redefinition
         java_lang_reflect_Proxy = knownKlass(Type.java_lang_reflect_Proxy);
-        java_beans_ThreadGroupContext = knownKlass(Type.java_beans_ThreadGroupContext);
-        java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void);
-        java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class);
-        java_beans_Introspector = knownKlass(Type.java_beans_Introspector);
-        java_beans_Introspector_flushFromCaches = java_beans_Introspector.requireDeclaredMethod(Name.flushFromCaches, Signature._void_Class);
+
+        // java.beans package only available if java.desktop module is present on JDK9+
+        java_beans_ThreadGroupContext = loadKlassWithBootClassLoader(Type.java_beans_ThreadGroupContext);
+        java_beans_Introspector = loadKlassWithBootClassLoader(Type.java_beans_Introspector);
+
+        java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void) : null;
+        java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class) : null;
+        java_beans_Introspector_flushFromCaches = java_beans_Introspector != null ? java_beans_Introspector.requireDeclaredMethod(Name.flushFromCaches, Signature._void_Class) : null;
 
         // sun.misc.Proxygenerator -> java.lang.reflect.Proxygenerator in JDK 9
         if (getJavaVersion().java8OrEarlier()) {
