@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.annotate.Delete;
 
 import sun.reflect.generics.repository.ClassRepository;
 import sun.reflect.generics.repository.ConstructorRepository;
@@ -64,16 +65,19 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
          */
 
         if (original instanceof Field) {
-            ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).inspectAccessibleField((Field) original);
-
-            // The declaring class might not yet be reachable
             AnalysisType declaring = metaAccess.lookupJavaType(((Field) original).getDeclaringClass());
-            declaring.registerAsReachable();
+            if (!GuardedAnnotationAccess.isAnnotationPresent(declaring, Delete.class)) {
+                // The declaring class must be reachable for the field lookup
+                declaring.registerAsReachable();
+                AnalysisField analysisField = metaAccess.lookupJavaField((Field) original);
+                if (!GuardedAnnotationAccess.isAnnotationPresent(analysisField, Delete.class)) {
+                    ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).inspectAccessibleField((Field) original);
 
-            AnalysisField analysisField = metaAccess.lookupJavaField((Field) original);
-            if (!analysisField.isUnsafeAccessed()) {
-                analysisField.registerAsAccessed();
-                analysisField.registerAsUnsafeAccessed((AnalysisUniverse) metaAccess.getUniverse());
+                    if (!analysisField.isUnsafeAccessed()) {
+                        analysisField.registerAsAccessed();
+                        analysisField.registerAsUnsafeAccessed((AnalysisUniverse) metaAccess.getUniverse());
+                    }
+                }
             }
         }
 
