@@ -134,15 +134,14 @@ public class PosixRawFileOperationSupport extends RawFileOperationSupport {
     }
 
     private static int parseMode(FileAccessMode mode) {
-        switch (mode) {
-            case READ:
-                return Fcntl.O_RDONLY();
-            case READ_WRITE:
-                return Fcntl.O_RDWR() | Fcntl.O_CREAT();
-            case WRITE:
-                return Fcntl.O_WRONLY() | Fcntl.O_CREAT();
-            default:
-                throw new IllegalArgumentException("Illegal file access mode '" + mode + "'.");
+        if (mode == FileAccessMode.READ) {
+            return Fcntl.O_RDONLY();
+        } else if (mode == FileAccessMode.READ_WRITE) {
+            return Fcntl.O_RDWR() | Fcntl.O_CREAT();
+        } else if (mode == FileAccessMode.WRITE) {
+            return Fcntl.O_WRONLY() | Fcntl.O_CREAT();
+        } else {
+            throw new IllegalArgumentException("Illegal file access mode '" + mode + "'.");
         }
     }
 }
