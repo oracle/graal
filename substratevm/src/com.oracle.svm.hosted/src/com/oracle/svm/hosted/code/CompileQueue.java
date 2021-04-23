@@ -131,6 +131,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
+import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
@@ -397,6 +398,7 @@ public class CompileQueue {
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
+        phaseSuite.appendPhase(new OptimizeExceptionPathsPhase());
         return phaseSuite;
     }
 
