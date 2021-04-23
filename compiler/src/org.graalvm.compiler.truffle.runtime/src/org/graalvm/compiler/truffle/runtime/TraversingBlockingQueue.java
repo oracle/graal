@@ -142,6 +142,10 @@ public class TraversingBlockingQueue implements BlockingQueue<Runnable> {
 
     @Override
     public Runnable take() throws InterruptedException {
+        Runnable max = takeMax();
+        if (max != null) {
+            return max;
+        }
         return entries.take();
     }
 
