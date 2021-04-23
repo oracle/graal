@@ -24,6 +24,7 @@
  */
 package org.graalvm.nativebridge.jni;
 
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativebridge.jni.JNI.JArray;
 import org.graalvm.nativebridge.jni.JNI.JByteArray;
@@ -47,6 +48,10 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.WordFactory;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import static org.graalvm.word.WordFactory.nullPointer;
 
 /**
@@ -473,11 +478,25 @@ public final class JNIUtil {
      * or greater than {@code level}.
      */
     public static void trace(int level, String format, Object... args) {
-        NativeBridgeSupport.getInstance().trace(level, format, args);
+        if (tracingAt(level)) {
+            StringBuilder sb = new StringBuilder();
+            sb.append('[').append(IsolateUtil.getIsolateID()).append(':').append(Thread.currentThread().getName()).append(']');
+            JNIMethodScope scope = JNIMethodScope.scopeOrNull();
+            if (scope != null) {
+                sb.append(new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' '));
+            }
+            NativeBridgeSupport.getInstance().trace(sb.append(String.format(format, args)).toString());
+        }
     }
 
     public static void trace(int level, Throwable throwable) {
-        NativeBridgeSupport.getInstance().trace(level, throwable);
+        if (tracingAt(level)) {
+            StringWriter stringWriter = new StringWriter();
+            try (PrintWriter out = new PrintWriter(stringWriter)) {
+                throwable.printStackTrace(out);
+            }
+            trace(level, stringWriter.toString());
+        }
     }
 
     static String getFeatureName() {

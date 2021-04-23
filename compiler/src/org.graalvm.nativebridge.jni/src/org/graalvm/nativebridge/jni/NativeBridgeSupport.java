@@ -32,9 +32,7 @@ public interface NativeBridgeSupport {
 
     boolean isTracingEnabled(int level);
 
-    void trace(int level, String message, Object... args);
-
-    void trace(int level, Throwable throwable);
+    void trace(String message);
 
     static NativeBridgeSupport getInstance() {
         return ImageSingletons.lookup(NativeBridgeSupport.class);

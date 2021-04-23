@@ -153,7 +153,7 @@ public class JNIMethodScope implements AutoCloseable {
         }
     }
 
-    public int depth() {
+    int depth() {
         int depth = 0;
         JNIMethodScope ancestor = parent;
         while (ancestor != null) {
