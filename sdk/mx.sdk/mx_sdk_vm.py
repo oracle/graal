@@ -84,7 +84,9 @@ _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
     ('jvm-no-truffle-compilation', [], ['--jvm', '--experimental-options', '--engine.Compilation=false'], 29),
     ('native', [], ['--native'], 100),
-    ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
+    ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39),
+    ('jvm-3-compiler-threads', [], ['--jvm', '--engine.CompilerThreads=3'], 50),
+    ('native-3-compiler-threads', [], ['--native', '--engine.CompilerThreads=3'], 100)
 ]
 _known_vms = set()
 _base_jdk = None
