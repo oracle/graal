@@ -50,6 +50,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.WIG;
 import static org.graalvm.compiler.core.common.NumUtil.isByte;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
@@ -265,6 +266,27 @@ public abstract class AMD64BaseAssembler extends Assembler {
 
     public final boolean supports(CPUFeature feature) {
         return ((AMD64) target.arch).getFeatures().contains(feature);
+    }
+
+    /**
+     * Mitigates exception throwing by recording unknown CPU feature names.
+     */
+    private final EconomicSet<String> unknownFeatures = EconomicSet.create();
+
+    /**
+     * Determines if the CPU feature denoted by {@code name} is supported. This name based look up
+     * is for features only available in later JVMCI releases.
+     */
+    public final boolean supportsCPUFeature(String name) {
+        if (unknownFeatures.contains(name)) {
+            return false;
+        }
+        try {
+            return supports(CPUFeature.valueOf(name));
+        } catch (IllegalArgumentException e) {
+            unknownFeatures.add(name);
+            return false;
+        }
     }
 
     protected static boolean inRC(RegisterCategory rc, Register r) {

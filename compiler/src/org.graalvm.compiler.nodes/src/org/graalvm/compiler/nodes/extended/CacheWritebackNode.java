@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.debug;
+package org.graalvm.compiler.nodes.extended;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
@@ -35,23 +35,29 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
+import jdk.vm.ci.meta.Value;
 
-    public static final NodeClass<BlackholeNode> TYPE = NodeClass.create(BlackholeNode.class);
-    @Input ValueNode value;
+/**
+ * Implements {@code jdk.internal.misc.Unsafe.writeback0(long)}.
+ */
+@NodeInfo(cycles = CYCLES_1, size = SIZE_1)
+public class CacheWritebackNode extends FixedWithNextNode implements LIRLowerable {
 
-    public BlackholeNode(ValueNode value) {
+    public static final NodeClass<CacheWritebackNode> TYPE = NodeClass.create(CacheWritebackNode.class);
+    @Input protected ValueNode address;
+
+    public CacheWritebackNode(ValueNode address) {
         super(TYPE, StampFactory.forVoid());
-        this.value = value;
+        this.address = address;
     }
 
-    public ValueNode getValue() {
-        return value;
+    public ValueNode getAddress() {
+        return address;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitBlackhole(gen.operand(value));
+        Value operand = gen.operand(address);
+        gen.getLIRGeneratorTool().emitCacheWriteback(operand);
     }
 }

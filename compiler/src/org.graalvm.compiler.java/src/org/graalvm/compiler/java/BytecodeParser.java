@@ -4029,7 +4029,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             JavaConstant constant = (JavaConstant) con;
             frameState.push(constant.getJavaKind(), appendConstant(constant));
         } else {
-            throw new Error("lookupConstant returned an object of incorrect type");
+            throw new Error("lookupConstant returned an object of incorrect type: " + con);
         }
     }
 

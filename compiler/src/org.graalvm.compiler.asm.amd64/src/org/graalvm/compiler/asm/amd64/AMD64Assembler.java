@@ -3823,13 +3823,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
         int op = getByte(branch);
+        // @formatter:off
         assert op == 0xE8 // call
                         || op == 0x00 // jump table entry
                         || op == 0xE9 // jmp
                         || op == 0xEB // short jmp
                         || (op & 0xF0) == 0x70 // short jcc
                         || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
-        : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
+                        : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
+        // @formatter:on
 
         if (op == 0x00) {
             int offsetToJumpTableBase = getShort(branch + 1);
@@ -4075,6 +4077,38 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x0f);
         emitByte(0xae);
         emitByte(0xe8);
+    }
+
+    public void sfence() {
+        assert supports(CPUFeature.SSE2);
+        emitByte(0x0f);
+        emitByte(0xae);
+        emitByte(0xf8);
+    }
+
+    public void clflush(AMD64Address adr) {
+        prefix(adr);
+        // opcode family is 0x0F 0xAE
+        emitByte(0x0f);
+        emitByte(0xae);
+        // extended opcode byte is 7
+        emitOperandHelper(7, adr, 0);
+    }
+
+    public void clflushopt(AMD64Address adr) {
+        assert supportsCPUFeature("FLUSHOPT");
+        // adr should be base reg only with no index or offset
+        assert adr.getIndex().equals(Register.None) : adr;
+        assert adr.getScale().equals(Scale.Times1) : adr;
+        assert adr.getDisplacement() == 0 : adr;
+        // instruction prefix is 0x66
+        emitByte(0x66);
+        prefix(adr);
+        // opcode family is 0x0F 0xAE
+        emitByte(0x0f);
+        emitByte(0xae);
+        // extended opcode byte is 7
+        emitOperandHelper(7, adr, 0);
     }
 
     public final void vptest(Register dst, Register src) {

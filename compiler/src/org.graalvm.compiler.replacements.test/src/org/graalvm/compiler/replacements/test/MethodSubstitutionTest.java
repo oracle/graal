@@ -69,6 +69,16 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         return testGraph(getResolvedJavaMethod(snippet), name, assertInvoke);
     }
 
+    /**
+     * Tests properties of the graph produced by parsing {@code method}. The properties tested are:
+     * <ul>
+     * <li>the graph does not contain any {@link MacroNode}s</li>
+     * <li>if {@code name != null} the graph does (if {@code assertInvoke == true}) or does not (if
+     * {@code assertInvoke == false}) contain a call to a method with this name</li>
+     * <li>if {@code name == null} the graph does (if {@code assertInvoke == true}) or does not (if
+     * {@code assertInvoke == false}) contain an {@link Invoke} node</li>
+     * </ul>
+     */
     @SuppressWarnings("try")
     protected StructuredGraph testGraph(final ResolvedJavaMethod method, String name, boolean assertInvoke) {
         DebugContext debug = getDebugContext();
@@ -120,7 +130,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
     protected static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {
         for (Node node : graph.getNodes()) {
             if (clazz.isInstance(node)) {
-                fail(node.toString());
+                fail(String.format("found unexpected instance of %s in %s: %s", clazz, graph, node.toString()));
             }
         }
         return graph;

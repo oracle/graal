@@ -47,7 +47,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_8)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "may be replaced with non-throwing counterpart", size = SIZE_8)
 public class ObjectCloneWithExceptionNode extends WithExceptionNode implements ObjectClone, SingleMemoryKill, Lowerable {
 
     public static final NodeClass<ObjectCloneWithExceptionNode> TYPE = NodeClass.create(ObjectCloneWithExceptionNode.class);

@@ -116,23 +116,33 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
     },
 
-    "ASM5" : {
-      "sha1" : "0da08b8cce7bbf903602a25a3a163ae252435795",
+    "ASM_9.1" : {
+      "sha1" : "a99500cf6eea30535eeac6be73899d048f8d12a8",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm",
-        "version" : "5.0.4",
+        "version" : "9.1",
       },
     },
 
-    "ASM_TREE5" : {
-      "sha1" : "396ce0c07ba2b481f25a70195c7c94922f0d1b0b",
+    "ASM_TREE_9.1" : {
+      "sha1" : "c333f2a855069cb8eb17a40a3eb8b1b67755d0eb",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-tree",
-        "version" : "5.0.4",
+        "version" : "9.1",
       },
-      "dependencies" : ["ASM5"],
+      "dependencies" : ["ASM_9.1"],
+    },
+
+    "ASM_UTIL_9.1" : {
+      "sha1" : "36464a45d871779f3383a8a9aba2b26562a86729",
+      "maven" : {
+        "groupId" : "org.ow2.asm",
+        "artifactId" : "asm-util",
+        "version" : "9.1",
+      },
+      "dependencies" : ["ASM_9.1"],
     },
 
     "HSDIS" : {
@@ -767,6 +777,9 @@ suite = {
         "org.graalvm.compiler.replacements.test",
       ],
       "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
         ],
@@ -1492,7 +1505,8 @@ suite = {
         "org.graalvm.compiler.graph.test",
         "org.graalvm.compiler.printer",
         "JAVA_ALLOCATION_INSTRUMENTER",
-        "ASM_TREE5",
+        "ASM_TREE_9.1",
+        "ASM_UTIL_9.1",
       ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",

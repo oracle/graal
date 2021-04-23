@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+package org.graalvm.compiler.lir.aarch64;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "see rationale in MacroNode", size = SIZE_8)
-public abstract class BasicObjectCloneNode extends MacroStateSplitNode implements ObjectClone {
+/**
+ * Implements {@code jdk.internal.misc.Unsafe.writebackPostSync0(long)}.
+ */
+public final class AArch64CacheWritebackPostSyncOp extends AArch64LIRInstruction {
+    public static final LIRInstructionClass<AArch64CacheWritebackPostSyncOp> TYPE = LIRInstructionClass.create(AArch64CacheWritebackPostSyncOp.class);
 
-    public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
-
-    public BasicObjectCloneNode(NodeClass<? extends MacroNode> c, MacroParams p) {
-        super(c, p);
-        updateStamp(computeStamp(getObject()));
+    public AArch64CacheWritebackPostSyncOp() {
+        super(TYPE);
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(stamp.improveWith(computeStamp(getObject())));
-    }
-
-    @Override
-    public ValueNode getObject() {
-        return arguments.get(0);
+    public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        masm.dmb(AArch64MacroAssembler.BarrierKind.ANY_ANY);
     }
 }

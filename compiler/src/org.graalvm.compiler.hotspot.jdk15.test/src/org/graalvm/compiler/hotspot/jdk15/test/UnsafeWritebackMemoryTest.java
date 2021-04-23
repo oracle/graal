@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.nodes;
+package org.graalvm.compiler.hotspot.jdk15.test;
 
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
+import org.graalvm.compiler.test.AddExports;
+import org.junit.Assume;
+import org.junit.Test;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "see rationale in MacroNode", size = SIZE_8)
-public abstract class BasicObjectCloneNode extends MacroStateSplitNode implements ObjectClone {
+/**
+ * Tests intrinsics for CPU cache management methods added to Unsafe by JEP 352.
+ */
+@AddExports("java.base/jdk.internal.misc")
+public class UnsafeWritebackMemoryTest extends MethodSubstitutionTest {
 
-    public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
-
-    public BasicObjectCloneNode(NodeClass<? extends MacroNode> c, MacroParams p) {
-        super(c, p);
-        updateStamp(computeStamp(getObject()));
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(stamp.improveWith(computeStamp(getObject())));
-    }
-
-    @Override
-    public ValueNode getObject() {
-        return arguments.get(0);
+    @Test
+    public void test() {
+        Assume.assumeTrue(Unsafe.isWritebackEnabled());
+        Unsafe unsafe = Unsafe.getUnsafe();
+        ResolvedJavaMethod method = getResolvedJavaMethod(Unsafe.class, "writebackMemory");
+        final long size = 8 * 1024;
+        final long address = unsafe.allocateMemory(size);
+        try {
+            test(method, unsafe, address, size);
+        } finally {
+            unsafe.freeMemory(address);
+        }
     }
 }

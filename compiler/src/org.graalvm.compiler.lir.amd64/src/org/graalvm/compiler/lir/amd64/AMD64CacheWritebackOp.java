@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+package org.graalvm.compiler.lir.amd64;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "see rationale in MacroNode", size = SIZE_8)
-public abstract class BasicObjectCloneNode extends MacroStateSplitNode implements ObjectClone {
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-    public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
+/**
+ * Implements {@code jdk.internal.misc.Unsafe.writeback0(long)}.
+ */
+public final class AMD64CacheWritebackOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64CacheWritebackOp> TYPE = LIRInstructionClass.create(AMD64CacheWritebackOp.class);
 
-    public BasicObjectCloneNode(NodeClass<? extends MacroNode> c, MacroParams p) {
-        super(c, p);
-        updateStamp(computeStamp(getObject()));
+    @Alive({COMPOSITE}) protected AMD64AddressValue address;
+
+    public AMD64CacheWritebackOp(AMD64AddressValue address) {
+        super(TYPE);
+        this.address = address;
     }
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(stamp.improveWith(computeStamp(getObject())));
-    }
-
-    @Override
-    public ValueNode getObject() {
-        return arguments.get(0);
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        masm.clflush(address.toAddress());
     }
 }
