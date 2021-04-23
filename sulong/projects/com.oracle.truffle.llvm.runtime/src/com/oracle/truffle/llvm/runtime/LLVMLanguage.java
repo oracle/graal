@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMLanguageFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
@@ -64,7 +65,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
-import com.oracle.truffle.llvm.runtime.IDGenerater.*;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
@@ -73,7 +73,6 @@ import org.graalvm.options.OptionValues;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
@@ -501,19 +500,20 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             Source source = request.getSource();
             String path = source.getPath();
             CallTarget callTarget;
+            WeakReference<CallTarget> ref;
             if (source.isCached()) {
-                callTarget = libraryCache.get(path).get();
-                if (callTarget == null) {
+                ref = libraryCache.get(path);
+                if (ref == null) {
                     callTarget = getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
-                    CallTarget prev = libraryCache.putIfAbsent(path, new WeakReference<>(callTarget)).get();
+                    WeakReference<CallTarget> prev = libraryCache.putIfAbsent(path, new WeakReference<>(callTarget));
                     // To ensure the call target in the cache is always returned in case of
                     // concurrency.
                     if (prev != null) {
-                        callTarget = prev;
+                        callTarget = prev.get();
                     }
+                } else {
+                    callTarget = ref.get();
                 }
-                // add the calltarget into the context, along with the id.
-
                 return callTarget;
             }
             // just get the id here and give it to the parserDriver
@@ -521,14 +521,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    public boolean isLibraryCached(String path) {
-        synchronized (libraryCacheLock) {
-            return libraryCache.get(path) != null;
-        }
-    }
-
     public CallTarget getCachedLibrary(String path) {
         synchronized (libraryCacheLock) {
+            if (libraryCache.get(path) == null) {
+                return null;
+            }
             return libraryCache.get(path).get();
         }
     }

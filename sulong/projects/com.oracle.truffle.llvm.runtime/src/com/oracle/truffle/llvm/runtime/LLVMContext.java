@@ -134,7 +134,8 @@ public final class LLVMContext {
     @CompilationFinal(dimensions = 2) private Assumption[][] symbolAssumptions;
 
     private boolean[] libraryLoaded;
-    private CallTarget[] libraryLoadedCache;
+    // Source cache (for reusing bitcode IDs).
+    protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -216,7 +217,6 @@ public final class LLVMContext {
         // These two fields contain the same value, but have different CompilationFinal annotations:
         symbolFinalStorage = symbolDynamicStorage = new LLVMPointer[10][];
         libraryLoaded = new boolean[10];
-        libraryLoadedCache = new CallTarget[10];
     }
 
     boolean patchContext(Env newEnv) {
@@ -636,14 +636,10 @@ public final class LLVMContext {
         libraryLoaded[id] = true;
     }
 
-    public void markLibraryLoadedCached(int id, CallTarget callTarget) {
-        if (id >= libraryLoadedCache.length) {
-            int newLength = (id + 1) + ((id + 1) / 2);
-            CallTarget[] temp = new CallTarget[newLength];
-            System.arraycopy(libraryLoadedCache, 0, temp, 0, libraryLoadedCache.length);
-            libraryLoadedCache = temp;
+    public void addSourceForCache(BitcodeID bitcodeID, Source source) {
+        if (!sourceCache.containsKey(bitcodeID)) {
+            sourceCache.put(bitcodeID, source);
         }
-        libraryLoadedCache[id] = callTarget;
     }
 
     public LLVMLanguage getLanguage() {

@@ -64,7 +64,7 @@ public final class LLVMGlobal extends LLVMSymbol {
     }
 
     public static LLVMGlobal createUnavailable(String name) {
-        return new LLVMGlobal(name + " (unavailable)", PointerType.VOID, null, true, LLVMSymbol.INVALID_INDEX, IDGenerater.INVALID_ID,false, false);
+        return new LLVMGlobal(name + " (unavailable)", PointerType.VOID, null, true, LLVMSymbol.INVALID_INDEX, IDGenerater.INVALID_ID, false, false);
     }
 
     private LLVMGlobal(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int globalIndex, BitcodeID id, boolean exported, boolean externalWeak) {
