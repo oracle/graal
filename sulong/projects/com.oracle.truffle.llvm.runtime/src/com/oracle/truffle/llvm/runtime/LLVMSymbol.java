@@ -99,7 +99,7 @@ public abstract class LLVMSymbol {
             return bitcodeID;
         }
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMIllegalSymbolIndexException("Invalid function ID: " + bitcodeID.toString());
+        throw new LLVMIllegalSymbolIndexException("Invalid function ID: " + bitcodeID);
     }
 
     public final boolean hasValidIndexAndID() {
