@@ -32,13 +32,13 @@ public class Target_java_lang_reflect_ProxyGenerator {
 
     @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
     public static @Host(byte[].class) StaticObject generateProxyClass(
-            @Host(String.class) StaticObject proxyName,
-            @Host(Class[].class) StaticObject interfaces,
-            int classModifier,
-            // Checkstyle: stop
-            @GuestCall(target = "java_lang_reflect_ProxyGenerator_generateProxyClass", original = true) DirectCallNode original,
-            // Checkstyle: resume
-            @InjectMeta Meta meta) {
+                    @Host(String.class) StaticObject proxyName,
+                    @Host(Class[].class) StaticObject interfaces,
+                    int classModifier,
+                    // Checkstyle: stop
+                    @GuestCall(target = "java_lang_reflect_ProxyGenerator_generateProxyClass", original = true) DirectCallNode original,
+                    // Checkstyle: resume
+                    @InjectMeta Meta meta) {
 
         // for class redefinition we need to collect details about generated JDK Dynamic proxies
         JDKProxyRedefinitionPlugin plugin = meta.getContext().lookup(JDKProxyRedefinitionPlugin.class);
@@ -49,4 +49,3 @@ public class Target_java_lang_reflect_ProxyGenerator {
         return (StaticObject) original.call(proxyName, interfaces, classModifier);
     }
 }
-

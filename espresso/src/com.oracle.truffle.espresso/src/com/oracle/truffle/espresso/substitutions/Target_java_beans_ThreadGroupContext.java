@@ -32,11 +32,11 @@ public class Target_java_beans_ThreadGroupContext {
 
     @Substitution(hasReceiver = true, methodName = "<init>")
     public static void init(
-            @Host(Class.class) StaticObject context,
-            // Checkstyle: stop
-            @GuestCall(target = "java_beans_ThreadGroupContext_init", original = true) DirectCallNode original,
-            // Checkstyle: resume
-            @InjectMeta Meta meta) {
+                    @Host(Class.class) StaticObject context,
+                    // Checkstyle: stop
+                    @GuestCall(target = "java_beans_ThreadGroupContext_init", original = true) DirectCallNode original,
+                    // Checkstyle: resume
+                    @InjectMeta Meta meta) {
 
         // for class redefinition we need to collect details about beans
         JDKCacheRedefinitionPlugin plugin = meta.getContext().lookup(JDKCacheRedefinitionPlugin.class);
