@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,17 +28,19 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-.PHONY: default
+enable_language(C)
 
-ifndef LLIRTESTGEN_CMD
-  $(error LLIRTESTGEN_CMD not set)
-endif
-OUTPUT_DIR=gen
-TIMESTAMP=timestamp
+if (NOT CMAKE_LL_COMPILER)
+    if(LLVM_LINK)
+        set(CMAKE_LL_COMPILER ${LLVM_LINK})
+    else()
+        set(CMAKE_LL_COMPILER "llvm-link")
+    endif()
+endif()
 
-default: $(TIMESTAMP)
-
-$(TIMESTAMP): $(LLIR_TEST_GEN_JAR)
-	@mkdir -p $(OUTPUT_DIR)
-	$(QUIETLY) touch $@
-	$(QUIETLY) $(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
+# configure variables set in this file for fast reload later on
+configure_file(${SULONG_MODULE_PATH}/CMakeLLCompiler.cmake.in
+  ${CMAKE_PLATFORM_INFO_DIR}/CMakeLLCompiler.cmake
+  @ONLY
+  )
+set(CMAKE_LL_COMPILER_ENV_VAR "LLVM_AS")

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,17 +28,40 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-.PHONY: default
+include_guard(GLOBAL)
+include(SulongCommon)
 
-ifndef LLIRTESTGEN_CMD
-  $(error LLIRTESTGEN_CMD not set)
-endif
-OUTPUT_DIR=gen
-TIMESTAMP=timestamp
+macro(setupCompiler)
+    requireVariable(TOOLCHAIN_CLANG)
+    requireVariable(TOOLCHAIN_CLANGXX)
+    setCompilerConfig(CMAKE_C_COMPILER ${TOOLCHAIN_CLANG})
+    setCompilerConfig(CMAKE_CXX_COMPILER ${TOOLCHAIN_CLANGXX})
+    noFortranSupport()
+endmacro()
 
-default: $(TIMESTAMP)
+macro(setupOptions)
+    # this must be called after compiler checks
 
-$(TIMESTAMP): $(LLIR_TEST_GEN_JAR)
-	@mkdir -p $(OUTPUT_DIR)
-	$(QUIETLY) touch $@
-	$(QUIETLY) $(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
+    if(SULONG_BUILD_SHARED_OBJECT)
+        set(OUTPUT "${SULONG_CURRENT_VARIANT}")
+    else()
+        set(OUTPUT "${SULONG_CURRENT_VARIANT}.bc")
+    endif()
+
+    # set optimization levels
+    set(OPT_LEVELS "O0;O1;O2;O3")
+
+    if(SULONG_CURRENT_OPT_LEVEL IN_LIST OPT_LEVELS)
+        string(APPEND CMAKE_C_FLAGS " -${SULONG_CURRENT_OPT_LEVEL}")
+        string(APPEND CMAKE_CXX_FLAGS " -${SULONG_CURRENT_OPT_LEVEL}")
+    elseif(SULONG_CURRENT_OPT_LEVEL STREQUAL "plain")
+        # do nothing
+    elseif(SULONG_CURRENT_OPT_LEVEL)
+        # non-empty but not in the known list
+        message(FATAL_ERROR "Unknonw opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
+    endif()
+
+    if(SULONG_CURRENT_POST_OPT)
+        message(WARNING "post-opt is only meaningful for compile-mode 'bitcode', current mode: ${SULONG_CURRENT_COMPILE_MODE}")
+    endif()
+endmacro()

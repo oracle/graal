@@ -71,7 +71,7 @@ public final class LLVMDebugExprParserTest {
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "debugexpr");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "testExpr");
 
-    private static final String CONFIGURATION = "O1.bc";
+    private static final String CONFIGURATION = "bitcode-O1.bc";
 
     public LLVMDebugExprParserTest(Path testPath, String testName, String excludeReason) {
         this.testPath = testPath;

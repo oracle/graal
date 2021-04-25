@@ -48,9 +48,9 @@ import mx_sulong_gate
 import mx_sulong_llvm_config
 
 # re-export custom mx project classes so they can be used from suite.py
-from mx_sulong_suite_constituents import SulongTestSuite #pylint: disable=unused-import
-from mx_sulong_suite_constituents import GeneratedTestSuite #pylint: disable=unused-import
+from mx_sulong_suite_constituents import SulongCMakeTestSuite #pylint: disable=unused-import
 from mx_sulong_suite_constituents import ExternalTestSuite #pylint: disable=unused-import
+from mx_sulong_suite_constituents import ExternalCMakeTestSuite #pylint: disable=unused-import
 from mx_sulong_suite_constituents import BootstrapToolchainLauncherProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import CMakeProject #pylint: disable=unused-import

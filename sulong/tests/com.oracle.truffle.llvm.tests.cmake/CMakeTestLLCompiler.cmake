@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,17 +28,4 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-.PHONY: default
-
-ifndef LLIRTESTGEN_CMD
-  $(error LLIRTESTGEN_CMD not set)
-endif
-OUTPUT_DIR=gen
-TIMESTAMP=timestamp
-
-default: $(TIMESTAMP)
-
-$(TIMESTAMP): $(LLIR_TEST_GEN_JAR)
-	@mkdir -p $(OUTPUT_DIR)
-	$(QUIETLY) touch $@
-	$(QUIETLY) $(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
+SET(CMAKE_LL_COMPILER_WORKS 1 CACHE INTERNAL "")

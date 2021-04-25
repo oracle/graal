@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,17 +28,28 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-.PHONY: default
+set(CMAKE_LL_OUTPUT_EXTENSION .o)
 
-ifndef LLIRTESTGEN_CMD
-  $(error LLIRTESTGEN_CMD not set)
-endif
-OUTPUT_DIR=gen
-TIMESTAMP=timestamp
+# https://github.com/Kitware/CMake/blob/master/Modules/CMakeAddNewLanguage.txt
 
-default: $(TIMESTAMP)
+# compile an LL file into an object file
+if(NOT CMAKE_LL_COMPILE_OBJECT)
+  set(CMAKE_LL_COMPILE_OBJECT
+    "<CMAKE_LL_COMPILER> <FLAGS> -o <OBJECT> <SOURCE>")
+endif()
 
-$(TIMESTAMP): $(LLIR_TEST_GEN_JAR)
-	@mkdir -p $(OUTPUT_DIR)
-	$(QUIETLY) touch $@
-	$(QUIETLY) $(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
+# create an LL shared library (just llvm-link)
+if(NOT CMAKE_LL_CREATE_SHARED_LIBRARY)
+  set(CMAKE_LL_CREATE_SHARED_LIBRARY
+    "<CMAKE_LL_COMPILER> ${LLVM_LINK_OPTIONS} <OBJECTS> -o <TARGET>")
+endif()
+
+# create an LL shared module just copy the shared library rule
+if(NOT CMAKE_LL_CREATE_SHARED_MODULE)
+  set(CMAKE_LL_CREATE_SHARED_MODULE ${CMAKE_LL_CREATE_SHARED_LIBRARY})
+endif()
+
+# create an LL executable just copy the shared library rule
+if(NOT CMAKE_LL_LINK_EXECUTABLE)
+  set(CMAKE_LL_LINK_EXECUTABLE ${CMAKE_LL_CREATE_SHARED_LIBRARY})
+endif()
