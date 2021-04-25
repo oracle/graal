@@ -153,7 +153,8 @@ public abstract class Log implements AutoCloseable {
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public final Log string(byte[] value) {
-        return string(value, 0, value.length);
+        string(value, 0, value.length);
+        return this;
     }
 
     /**
@@ -319,7 +320,8 @@ public abstract class Log implements AutoCloseable {
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public final Log indent(boolean addOrRemove) {
-        return redent(addOrRemove).newline();
+        redent(addOrRemove).newline();
+        return this;
     }
 
     /**
@@ -351,7 +353,8 @@ public abstract class Log implements AutoCloseable {
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public Log exception(Throwable t) {
-        return exception(t, Integer.MAX_VALUE);
+        exception(t, Integer.MAX_VALUE);
+        return this;
     }
 
     /**
@@ -369,7 +372,6 @@ public abstract class Log implements AutoCloseable {
     /** An implementation of AutoCloseable.close(). */
     @Override
     public void close() {
-        return;
     }
 
     /**
@@ -553,7 +555,7 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log hexdump(PointerBase from, int wordSize, int numWords) {
-            return null;
+            return this;
         }
 
         @Override

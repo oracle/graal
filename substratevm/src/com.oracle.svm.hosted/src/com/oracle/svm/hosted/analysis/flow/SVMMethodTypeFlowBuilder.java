@@ -192,7 +192,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                     /* Use a type state which consists of the entire node's type hierarchy. */
                     AnalysisType type = (AnalysisType) (objStamp.type() == null ? bb.getObjectType() : objStamp.type());
                     result = TypeFlowBuilder.create(bb, node, ProxyTypeFlow.class, () -> {
-                        ProxyTypeFlow proxy = new ProxyTypeFlow(node, type.getTypeFlow(bb, false));
+                        ProxyTypeFlow proxy = new ProxyTypeFlow(node, type.getTypeFlow(bb, true));
                         methodFlow.addMiscEntry(proxy);
                         return proxy;
                     });

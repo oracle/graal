@@ -131,6 +131,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
+import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
@@ -397,6 +398,7 @@ public class CompileQueue {
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
+        phaseSuite.appendPhase(new OptimizeExceptionPathsPhase());
         return phaseSuite;
     }
 
@@ -415,8 +417,8 @@ public class CompileQueue {
         long totalNumDeoptEntryPoints = 0;
         long totalNumDuringCallEntryPoints = 0;
 
-        System.out.format("Code Size; Nodes Before; Nodes After; Is Trivial;" +
-                        " Deopt Target; Code Size; Nodes Before; Nodes After; Deopt Entries; Deopt During Call;" +
+        System.out.format("Code Size; Nodes Parsing; Nodes Before; Nodes After; Is Trivial;" +
+                        " Deopt Target; Code Size; Nodes Parsing; Nodes Before; Nodes After; Deopt Entries; Deopt During Call;" +
                         " Entry Points; Direct Calls; Virtual Calls; Method\n");
 
         List<CompileTask> tasks = new ArrayList<>(compilations.values());
@@ -430,7 +432,8 @@ public class CompileQueue {
             if (!ci.isDeoptTarget()) {
                 numberOfMethods += 1;
                 sizeAllMethods += result.getTargetCodeSize();
-                System.out.format("%8d; %5d; %5d; %s;", result.getTargetCodeSize(), ci.numNodesBeforeCompilation, ci.numNodesAfterCompilation, ci.isTrivialMethod ? "T" : " ");
+                System.out.format("%8d; %5d; %5d; %5d; %s;", result.getTargetCodeSize(), ci.numNodesAfterParsing, ci.numNodesBeforeCompilation, ci.numNodesAfterCompilation,
+                                ci.isTrivialMethod ? "T" : " ");
 
                 int deoptMethodSize = 0;
                 if (ci.deoptTarget != null) {
@@ -443,7 +446,8 @@ public class CompileQueue {
                     totalNumDeoptEntryPoints += dci.numDeoptEntryPoints;
                     totalNumDuringCallEntryPoints += dci.numDuringCallEntryPoints;
 
-                    System.out.format(" D; %6d; %5d; %5d; %4d; %4d;", deoptMethodSize, dci.numNodesBeforeCompilation, dci.numNodesAfterCompilation, dci.numDeoptEntryPoints,
+                    System.out.format(" D; %6d; %5d; %5d; %5d; %4d; %4d;", deoptMethodSize, dci.numNodesAfterParsing, dci.numNodesBeforeCompilation, dci.numNodesAfterCompilation,
+                                    dci.numDeoptEntryPoints,
                                     dci.numDuringCallEntryPoints);
 
                 } else {
@@ -751,6 +755,8 @@ public class CompileQueue {
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
                 afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
                 assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
+
+                method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
 
                 for (Invoke invoke : graph.getInvokes()) {
                     if (!canBeUsedForInlining(invoke)) {
