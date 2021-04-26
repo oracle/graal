@@ -91,7 +91,6 @@ public class TraversingBlockingQueue implements BlockingQueue<Runnable> {
             CompilationTask task = task(entry);
             // updateWeight returns a negative number only if the task's target does not exist
             if (task.isCancelled() || task.updateWeight(time) < 0) {
-                it.remove();
                 continue;
             }
             if (max == null || task.isHigherPriorityThan(task(max))) {
