@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
 
 public class ReferenceHandlerThreadSupport {
     private final Thread thread;
@@ -40,7 +39,6 @@ public class ReferenceHandlerThreadSupport {
         thread = new Thread(new ReferenceHandlerRunnable(), "Reference Handler");
         thread.setPriority(Thread.MAX_PRIORITY);
         thread.setDaemon(true);
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(thread::start);
     }
 
     public Thread getThread() {
