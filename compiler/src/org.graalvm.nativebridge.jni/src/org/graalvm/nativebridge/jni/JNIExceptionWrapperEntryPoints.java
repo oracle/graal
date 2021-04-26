@@ -28,13 +28,13 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Entry points in HotSpot for exception handling from libgraal.
+ * Entry points in HotSpot for exception handling from a JNI native method.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 final class JNIExceptionWrapperEntryPoints {
 
     /**
-     * Updates an exception stack trace by decoding a stack trace from libgraal.
+     * Updates an exception stack trace by decoding a stack trace from a JNI native method.
      *
      * @param target the {@link Throwable} to update
      * @param rawElements the stringified stack trace elements. Each element has a form

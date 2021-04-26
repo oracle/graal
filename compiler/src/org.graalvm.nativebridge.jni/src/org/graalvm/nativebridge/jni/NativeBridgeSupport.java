@@ -26,14 +26,32 @@ package org.graalvm.nativebridge.jni;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+/**
+ * Services used by the {@code org.graalvm.nativebridge.jni} module. To enable the
+ * {@code org.graalvm.nativebridge.jni} module a {@code NativeBridgeSupport} instance must be
+ * registered in the {@link ImageSingletons}.
+ */
 public interface NativeBridgeSupport {
 
+    /**
+     * Returns the name of a feature using {@code org.graalvm.nativebridge.jni} module. The feature
+     * name is used in the logging output.
+     */
     String getFeatureName();
 
+    /**
+     * Checks if logging at given level is enabled.
+     */
     boolean isTracingEnabled(int level);
 
+    /**
+     * Logs the message.
+     */
     void trace(String message);
 
+    /**
+     * Returns a {@code NativeBridgeSupport} instance registered in the {@link ImageSingletons}.
+     */
     static NativeBridgeSupport getInstance() {
         return ImageSingletons.lookup(NativeBridgeSupport.class);
     }

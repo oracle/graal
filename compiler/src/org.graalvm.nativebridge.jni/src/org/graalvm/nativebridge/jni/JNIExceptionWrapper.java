@@ -77,7 +77,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     private static final JNIMethodResolver GetThrowableMessage = JNIMethodResolver.create("getThrowableMessage", String.class, Throwable.class);
     private static final JNIMethodResolver UpdateStackTrace = JNIMethodResolver.create("updateStackTrace", Throwable.class, Throwable.class, String[].class);
 
-    private static volatile JNI.JClass fromLibGraalEntryPoints;
+    private static volatile JNI.JClass entryPointsClass;
 
     private final JThrowable throwableHandle;
     private final boolean throwableRequiresStackTraceUpdate;
@@ -117,8 +117,8 @@ public final class JNIExceptionWrapper extends RuntimeException {
             mergedStack = hsStack;
             res = false;
         } else {
-            StackTraceElement[] libGraalStack = getStackTrace();
-            mergedStack = mergeStackTraces(hsStack, libGraalStack, 0, getIndexOfPropagateJNIExceptionFrame(libGraalStack), true);
+            StackTraceElement[] nativeStack = getStackTrace();
+            mergedStack = mergeStackTraces(hsStack, nativeStack, 0, getIndexOfPropagateJNIExceptionFrame(nativeStack), true);
             res = true;
         }
         setStackTrace(mergedStack);
@@ -183,13 +183,13 @@ public final class JNIExceptionWrapper extends RuntimeException {
                     JString hsMessage = createHSString(env, message);
                     hsThrowable = callCreateException(env, hsMessage);
                 }
-                StackTraceElement[] libGraalStack = original.getStackTrace();
-                if (libGraalStack.length != 0) {
+                StackTraceElement[] nativeStack = original.getStackTrace();
+                if (nativeStack.length != 0) {
                     // Update stack trace only for exceptions which have stack trace.
                     // For exceptions which override fillInStackTrace merging stack traces only adds
                     // useless JNI calls.
                     StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
-                    String[] merged = encode(mergeStackTraces(hsStack, libGraalStack,
+                    String[] merged = encode(mergeStackTraces(hsStack, nativeStack,
                                     hasSameExceptionType ? 0 : 1, // exception with same exception
                                                                   // type has no factory method
                                     0, false));
@@ -290,28 +290,28 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * Merges {@code hotSpotStackTrace} with {@code libGraalStackTrace}.
+     * Merges {@code hotSpotStackTrace} with {@code nativeStackTrace}.
      *
      * @param hotSpotStackTrace
-     * @param libGraalStackTrace
+     * @param nativeStackTrace
      * @param hotSpotStackStartIndex
-     * @param libGraalStackStartIndex
+     * @param nativeStackStartIndex
      * @param originatedInHotSpot
      */
     private static StackTraceElement[] mergeStackTraces(
                     StackTraceElement[] hotSpotStackTrace,
-                    StackTraceElement[] libGraalStackTrace,
+                    StackTraceElement[] nativeStackTrace,
                     int hotSpotStackStartIndex,
-                    int libGraalStackStartIndex,
+                    int nativeStackStartIndex,
                     boolean originatedInHotSpot) {
         int targetIndex = 0;
-        StackTraceElement[] merged = new StackTraceElement[hotSpotStackTrace.length - hotSpotStackStartIndex + libGraalStackTrace.length - libGraalStackStartIndex];
+        StackTraceElement[] merged = new StackTraceElement[hotSpotStackTrace.length - hotSpotStackStartIndex + nativeStackTrace.length - nativeStackStartIndex];
         boolean startingHotSpotFrame = true;
-        boolean startingLibGraalFrame = true;
+        boolean startingnativeFrame = true;
         boolean useHotSpotStack = originatedInHotSpot;
         int hotSpotStackIndex = hotSpotStackStartIndex;
-        int libGraalStackIndex = libGraalStackStartIndex;
-        while (hotSpotStackIndex < hotSpotStackTrace.length || libGraalStackIndex < libGraalStackTrace.length) {
+        int nativeStackIndex = nativeStackStartIndex;
+        while (hotSpotStackIndex < hotSpotStackTrace.length || nativeStackIndex < nativeStackTrace.length) {
             if (useHotSpotStack) {
                 while (hotSpotStackIndex < hotSpotStackTrace.length && (startingHotSpotFrame || !hotSpotStackTrace[hotSpotStackIndex].isNativeMethod())) {
                     startingHotSpotFrame = false;
@@ -321,11 +321,11 @@ public final class JNIExceptionWrapper extends RuntimeException {
             } else {
                 useHotSpotStack = true;
             }
-            while (libGraalStackIndex < libGraalStackTrace.length && (startingLibGraalFrame || !HotSpotCalls.isHotSpotCall(libGraalStackTrace[libGraalStackIndex]))) {
-                startingLibGraalFrame = false;
-                merged[targetIndex++] = libGraalStackTrace[libGraalStackIndex++];
+            while (nativeStackIndex < nativeStackTrace.length && (startingnativeFrame || !HotSpotCalls.isHotSpotCall(nativeStackTrace[nativeStackIndex]))) {
+                startingnativeFrame = false;
+                merged[targetIndex++] = nativeStackTrace[nativeStackIndex++];
             }
-            startingLibGraalFrame = true;
+            startingnativeFrame = true;
         }
         return merged;
     }
@@ -564,7 +564,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     private static JNI.JClass getHotSpotEntryPoints(JNIEnv env) {
-        if (fromLibGraalEntryPoints.isNull()) {
+        if (entryPointsClass.isNull()) {
             String binaryName = getBinaryName(HS_ENTRYPOINTS_CLASS);
             JNI.JObject classLoader = getJVMCIClassLoader(env);
             JNI.JClass entryPoints;
@@ -579,8 +579,8 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 ExceptionClear(env);
                 throw new InternalError("Failed to load " + HS_ENTRYPOINTS_CLASS);
             }
-            fromLibGraalEntryPoints = NewGlobalRef(env, entryPoints, "Class<" + HS_ENTRYPOINTS_CLASS + ">");
+            JNIExceptionWrapper.entryPointsClass = NewGlobalRef(env, entryPoints, "Class<" + HS_ENTRYPOINTS_CLASS + ">");
         }
-        return fromLibGraalEntryPoints;
+        return entryPointsClass;
     }
 }

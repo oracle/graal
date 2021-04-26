@@ -155,7 +155,7 @@ public abstract class HSObject {
 
     private static boolean assertionsEnabled() {
         boolean res = false;
-        assert res = true;
+        assert (res = true) == true;
         return res;
     }
 
