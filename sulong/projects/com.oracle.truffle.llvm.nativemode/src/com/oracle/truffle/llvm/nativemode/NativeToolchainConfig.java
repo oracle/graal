@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nativemode;
 
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.ToolchainConfig;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 final class NativeToolchainConfig implements ToolchainConfig {
 
@@ -61,5 +62,10 @@ final class NativeToolchainConfig implements ToolchainConfig {
     @Override
     public boolean enableCXX() {
         return true;
+    }
+
+    @Override
+    public Object bind(Object signature, Object function) {
+        return SignatureLibrary.getUncached().bind(signature, function);
     }
 }

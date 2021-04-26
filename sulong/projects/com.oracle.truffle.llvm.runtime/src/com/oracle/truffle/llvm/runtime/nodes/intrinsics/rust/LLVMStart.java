@@ -220,7 +220,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
         @TruffleBoundary
         protected LLVMDispatchNode getDispatchNode(LLVMFunctionDescriptor fd) {
-            return LLVMDispatchNodeGen.create(fd.getLLVMFunction().getType());
+            return LLVMDispatchNodeGen.create(fd.getLLVMFunction().getType(), fd.getLLVMFunction());
         }
     }
 }

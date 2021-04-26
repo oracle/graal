@@ -126,7 +126,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
         protected ForeignDecoratedRoot(TruffleLanguage<?> language, FunctionType type, Object func, LLVMFunctionDescriptor wrapper) {
             super(language);
-            this.funcCallNode = LLVMDispatchNodeGen.create(type);
+            this.funcCallNode = LLVMDispatchNodeGen.create(type, wrapper.getLLVMFunction());
             this.func = func;
             this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getFunctionCode().getLLVMIRFunctionSlowPath());
             this.wrapperCallNode.cloneCallTarget();
