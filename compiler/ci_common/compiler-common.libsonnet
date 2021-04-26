@@ -64,7 +64,7 @@
 
   many_forks_benchmarking:: common.build_base + {
     // building block used to generate fork builds
-    local benchmarking_config_repo = ci_resources.infra.benchmarking_config_repo,
+    local benchmarking_config_repo = self.ci_resources.infra.benchmarking_config_repo,
     environment+: {
       BENCHMARKING_CONFIG_REPO: "$BUILD_DIR/benchmarking-config",
       FORK_COUNTS_DIRECTORY: "$BENCHMARKING_CONFIG_REPO/fork-counts",

@@ -7,14 +7,11 @@
   local jdk8 = c.oraclejdk8,
   local jdk11 = c.labsjdk11,
 
-  local hotspot_main_builds = std.flattenArrays([
-    [
-    cc.weekly    + hw.x52 + jdk + cc.c1 + suite,
+  local hotspot_main_builds = [
     cc.on_demand + hw.x52 + jdk + cc.c2 + suite
-    ]
   for jdk in [jdk8, jdk11]
   for suite in bench.groups.all_suites
-  ]),
+  ],
 
 
   local hotspot_profiling_builds = std.flattenArrays([
