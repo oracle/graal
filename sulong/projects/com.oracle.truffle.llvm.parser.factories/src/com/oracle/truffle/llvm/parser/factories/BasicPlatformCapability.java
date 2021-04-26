@@ -79,8 +79,8 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     }
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
-    public static final String LIBSULONG_FILENAME = "libsulong." + NativeContextExtension.getNativeLibrarySuffix();
-    public static final String LIBSULONGXX_FILENAME = "libsulong++." + NativeContextExtension.getNativeLibrarySuffix();
+    public static final String LIBSULONG_FILENAME = NativeContextExtension.getNativeLibrary("sulong");
+    public static final String LIBSULONGXX_FILENAME = NativeContextExtension.getNativeLibrary("sulong++");
 
     protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
         super(cls, loadCxxLibraries);
@@ -88,7 +88,7 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
 
     @Override
     public String getBuiltinsLibrary() {
-        return "libgraalvm-llvm." + NativeContextExtension.getNativeLibrarySuffixVersioned(1);
+        return NativeContextExtension.getNativeLibraryVersioned("graalvm-llvm", 1);
     }
 
     @Override
