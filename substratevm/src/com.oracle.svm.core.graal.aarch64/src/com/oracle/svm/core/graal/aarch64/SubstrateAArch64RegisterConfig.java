@@ -105,7 +105,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final MetaAccessProvider metaAccess;
     private final RegisterArray javaGeneralParameterRegisters;
     private final boolean preserveFramePointer;
-    public static final Register fp = AArch64.r29;
+    public static final Register fp = r29;
 
     public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
         this.target = target;
@@ -121,14 +121,23 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         nativeParamsStackOffset = 0;
 
         ArrayList<Register> regs = new ArrayList<>(allRegisters.asList());
-        regs.remove(ReservedRegisters.singleton().getFrameRegister());
+        regs.remove(ReservedRegisters.singleton().getFrameRegister()); // sp
         regs.remove(zr);
+        // Scratch registers.
         regs.remove(r8);
         regs.remove(r9);
         if (preserveFramePointer) {
-            regs.remove(r29);
+            regs.remove(fp); // r29
         }
+        /*
+         * R31 is not a "real" register - depending on the instruction, this encoding is either zr
+         * or sp.
+         */
         regs.remove(r31);
+        /*
+         * If enabled, the heapBaseRegister and threadRegister are r27 and r28, respectively. See
+         * AArch64ReservedRegisters and ReservedRegisters for more information.
+         */
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
         allocatableRegs = new RegisterArray(regs);
