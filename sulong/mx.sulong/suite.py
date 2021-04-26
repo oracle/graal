@@ -715,13 +715,28 @@ suite = {
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
         "sdk:LLVM_TOOLCHAIN",
-        "NATIVE_MODE_SUPPORT",
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
-        "CMAKE_SHARED_LINKER_FLAGS" : "-lm",
-        "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/clang",
+        "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang>",
         "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
+        "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS" : "YES",
+      },
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "CMAKE_SHARED_LINKER_FLAGS" : "",
+            },
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "CMAKE_SHARED_LINKER_FLAGS" : "-lm",
+            },
+          },
+        },
       },
       "license" : "BSD-new",
     },
