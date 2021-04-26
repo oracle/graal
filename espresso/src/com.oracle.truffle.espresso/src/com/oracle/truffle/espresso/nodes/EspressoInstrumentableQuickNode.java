@@ -42,4 +42,10 @@ public abstract class EspressoInstrumentableQuickNode extends Node implements In
         return new EspressoInstrumentableQuickNodeWrapper(this, probeNode);
     }
 
+    public abstract boolean producedForeignObject(Object[] refs);
+
+    public boolean removedByRedefintion() {
+        return false;
+    }
+
 }
