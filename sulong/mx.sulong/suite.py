@@ -626,27 +626,43 @@ suite = {
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "vpath" : True,
-      "ninja_targets" : [
-        "<lib:sulong>",
-        "<lib:sulong++>",
-      ],
+      "os_arch" : {
+        "<others>" : {
+          "<others>" : {
+            "ninja_targets" : [
+              "<lib:sulong>",
+              "<lib:sulong++>",
+            ],
+            "results" : [
+              "bin/<lib:sulong>",
+              "bin/<lib:sulong++>",
+            ],
+          },
+        },
+        "windows" : {
+          "<others>" : {
+            "ninja_targets" : [
+              "<lib:sulong>",
+            ],
+            "results" : [
+              "bin/<lib:sulong>",
+            ],
+          },
+        },
+      },
       "ninja_install_targets" : ["install"],
-      "results" : [
-        "bin/<lib:sulong>",
-        "bin/<lib:sulong++>",
-      ],
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN",
         "sdk:LLVM_ORG_SRC",
         "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
-        "NATIVE_MODE_SUPPORT",
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
-        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
-        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang++",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
         "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
+        "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
         "MX_OS" : "<os>",
         "MX_ARCH" : "<arch>",
       },
@@ -690,12 +706,12 @@ suite = {
       "buildDependencies" : [
         "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "com.oracle.truffle.llvm.libraries.graalvm.llvm",
-        "NATIVE_MODE_SUPPORT",
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.11",
-        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
+        "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
       },
       "license" : "BSD-new",
     },

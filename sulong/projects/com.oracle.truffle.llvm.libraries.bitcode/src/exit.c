@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#if defined(_WIN32)
+#include <io.h>
+#elif defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include "exit.h"
