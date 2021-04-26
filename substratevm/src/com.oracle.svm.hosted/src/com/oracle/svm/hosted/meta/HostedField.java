@@ -146,7 +146,7 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
         } else {
             wrappedReceiver = receiver;
         }
-        return universe.lookup(universe.getConstantReflectionProvider().readFieldValue(wrapped, wrappedReceiver));
+        return universe.lookup(universe.getConstantReflectionProvider().readValue(metaAccess, wrapped, wrappedReceiver));
     }
 
     public JavaConstant readStorageValue(JavaConstant receiver) {

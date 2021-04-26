@@ -890,7 +890,8 @@ public class NativeImageGenerator {
                                 classInitializationSupport, Collections.singletonList(harnessSubstitutions), buildExecutor);
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
-                AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, originalProviders.getConstantReflection(), classInitializationSupport);
+                AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(
+                                aUniverse, aMetaAccess, originalProviders.getConstantReflection(), classInitializationSupport);
                 WordTypes aWordTypes = new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind());
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(aWordTypes);
 
