@@ -64,8 +64,8 @@ import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
@@ -709,7 +709,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public synchronized int redefineClasses(RedefineInfo[] redefineInfos) {
         try {
-            JDWPLogger.log("Redefining %d classes", JDWPLogger.LogLevel.REDEFINE, redefineInfos.length);
+            JDWP.LOGGER.fine(() -> "Redefining " + redefineInfos.length + " classes");
             // list of sub classes that needs to refresh things like vtable
             List<ObjectKlass> refreshSubClasses = new ArrayList<>();
 
@@ -727,7 +727,7 @@ public final class JDWPContextImpl implements JDWPContext {
             // begin redefine transaction
             ClassRedefinition.begin();
             for (ChangePacket packet : changePackets) {
-                JDWPLogger.log("Redefining class %s", JDWPLogger.LogLevel.REDEFINE, packet.info.getNewName());
+                JDWP.LOGGER.fine(() -> "Redefining class " + packet.info.getNewName());
                 int result = ClassRedefinition.redefineClass(packet, getIds(), context, refreshSubClasses);
                 if (result != 0) {
                     return result;
@@ -736,7 +736,7 @@ public final class JDWPContextImpl implements JDWPContext {
             // refresh subclasses when needed
             Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
             for (ObjectKlass subKlass : refreshSubClasses) {
-                JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getName());
+                JDWP.LOGGER.fine(() -> "Updating sub class " + subKlass.getName() + " for redefined super class");
                 subKlass.onSuperKlassUpdate();
             }
 

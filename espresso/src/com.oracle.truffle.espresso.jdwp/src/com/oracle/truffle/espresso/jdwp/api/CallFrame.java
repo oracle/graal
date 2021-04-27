@@ -33,7 +33,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 
 public final class CallFrame {
 
@@ -112,7 +112,7 @@ public final class CallFrame {
         try {
             return theScope != null ? INTEROP.readMember(theScope, "this") : null;
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            JDWPLogger.log("Unable to read 'this' value from method: %s", JDWPLogger.LogLevel.ALL, getMethod());
+            JDWP.LOGGER.warning(() -> "Unable to read 'this' value from method: " + getMethod());
             return INVALID_VALUE;
         }
     }
@@ -130,7 +130,7 @@ public final class CallFrame {
         try {
             INTEROP.writeMember(theScope, identifier, value);
         } catch (Exception e) {
-            JDWPLogger.log("Unable to write member %s from variables", JDWPLogger.LogLevel.ALL, identifier);
+            JDWP.LOGGER.warning(() -> "Unable to write member " + identifier + " from variables");
         }
     }
 
@@ -145,12 +145,12 @@ public final class CallFrame {
         Node instrumentableNode = context.getInstrumentableNode(rootNode);
 
         if (instrumentableNode == null) {
-            JDWPLogger.log("Unable to get instrumentable node for root %s", JDWPLogger.LogLevel.ALL, rootNode);
+            JDWP.LOGGER.warning(() -> "Unable to get instrumentable node for root " + rootNode);
         } else {
             try {
                 scope = NodeLibrary.getUncached().getScope(instrumentableNode, frame, true);
             } catch (UnsupportedMessageException e) {
-                JDWPLogger.log("Unable to get scope for %s", JDWPLogger.LogLevel.ALL, instrumentableNode.getClass());
+                JDWP.LOGGER.warning(() -> "Unable to get scope for " + instrumentableNode.getClass());
             }
         }
         return scope;

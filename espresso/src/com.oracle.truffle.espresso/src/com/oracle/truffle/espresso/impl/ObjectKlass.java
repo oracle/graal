@@ -64,7 +64,7 @@ import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -1133,7 +1133,7 @@ public final class ObjectKlass extends Klass {
             Method method = entry.getKey();
             ParserMethod newMethod = entry.getValue();
             Method.SharedRedefinitionContent redefineContent = method.redefine(newMethod, packet.parserKlass, ids);
-            JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getName(), method.getName());
+            JDWP.LOGGER.fine(() -> "Redefining method " + method.getDeclaringKlass().getName() + "." + method.getName());
 
             // look in tables for copied methods that also needs to be invalidated
             if (!method.isStatic() && !method.isPrivate() && !Name._init_.equals(method.getName())) {
@@ -1159,7 +1159,7 @@ public final class ObjectKlass extends Klass {
             updateOverrideMethods(ids, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature());
             removedMethod.removedByRedefinition();
             removedMethod.getMethodVersion().getAssumption().invalidate();
-            JDWPLogger.log("Removed method %s.%s", JDWPLogger.LogLevel.REDEFINE, removedMethod.getDeclaringKlass().getName(), removedMethod.getName());
+            JDWP.LOGGER.fine(() -> "Removed method " + removedMethod.getDeclaringKlass().getName() + "." + removedMethod.getName());
         }
 
         for (ParserMethod addedMethod : addedMethods) {
@@ -1168,7 +1168,7 @@ public final class ObjectKlass extends Klass {
             declaredMethods.addLast(added);
             virtualMethodsModified |= isVirtual(addedMethod);
             updateOverrideMethods(ids, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature());
-            JDWPLogger.log("Added method %s.%s", JDWPLogger.LogLevel.REDEFINE, added.getDeclaringKlass().getName(), added.getName());
+            JDWP.LOGGER.fine(() -> "Added method " + added.getDeclaringKlass().getName() + "." + added.getName());
         }
 
         Method[] newDeclaredMethods = declaredMethods.toArray(new Method[declaredMethods.size()]);
