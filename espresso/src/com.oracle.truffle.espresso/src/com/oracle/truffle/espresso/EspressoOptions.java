@@ -273,7 +273,6 @@ public final class EspressoOptions {
                             String transport = null;
                             String host = null;
                             String port = null;
-                            String logLevel = null;
                             boolean server = false;
                             boolean suspend = true;
 
