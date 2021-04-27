@@ -197,6 +197,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
      * corrupt a queue data structure.
      */
     boolean isHigherPriorityThan(CompilationTask other) {
+        if (action != compilationAction) {
+            // Any non-compilation action (e.g. compiler init) is higher priority.
+            return true;
+        }
         int tier = tier();
         if (engineData.traversingFirstTierPriority && tier != other.tier()) {
             return tier < other.tier();

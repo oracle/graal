@@ -84,10 +84,6 @@ public class TraversingBlockingQueue implements BlockingQueue<Runnable> {
         Runnable max = null;
         while (it.hasNext()) {
             Runnable entry = it.next();
-            if (!(entry instanceof CompilationTask.ExecutorServiceWrapper)) {
-                // Any non-compilation task (e.g. init tasks) has priority
-                return removeAndReturn(entry);
-            }
             CompilationTask task = task(entry);
             // updateWeight returns a negative number only if the task's target does not exist
             if (task.isCancelled() || task.updateWeight(time) < 0) {
