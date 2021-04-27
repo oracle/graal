@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -94,6 +95,7 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
+    @GenerateAOT.Exclude // to prevent a recursive AOT preparation
     protected void doVarArgCompoundValue(LLVMNativePointer address, LLVMVarArgCompoundValue value,
                     @Cached("createRecursive()") LLVMStructStoreNode recursionNode) {
         recursionNode.executeWithTarget(address, value.getAddr());

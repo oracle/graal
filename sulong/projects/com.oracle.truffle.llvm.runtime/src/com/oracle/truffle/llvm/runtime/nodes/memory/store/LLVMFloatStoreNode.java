@@ -69,7 +69,6 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        @GenerateAOT.Exclude
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, float value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -77,10 +76,9 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization(limit = "3")
-        @GenerateAOT.Exclude
+        @Specialization
         protected static void doOpManaged(LLVMManagedPointer address, long offset, float value,
-                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeFloat(address.getObject(), address.getOffset() + offset, value);
         }
     }
@@ -100,10 +98,9 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
         doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization
     protected static void doOpManaged(LLVMManagedPointer address, float value,
-                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeFloat(address.getObject(), address.getOffset(), value);
     }
 

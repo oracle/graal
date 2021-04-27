@@ -75,10 +75,9 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
             store.executeWithTarget(getReceiver.execute(addr), offset, value);
         }
 
-        @Specialization(limit = "3")
-        @GenerateAOT.Exclude
+        @Specialization
         protected static void doOpManaged(LLVMManagedPointer address, long offset, LLVMIVarBit value,
-                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             byte[] bytes = value.getBytes();
             long curOffset = address.getOffset() + offset;
             for (int i = bytes.length - 1; i >= 0; i--) {
@@ -102,10 +101,9 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
         store.executeWithTarget(getReceiver.execute(addr), value);
     }
 
-    @Specialization(limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization
     protected static void doOpManaged(LLVMManagedPointer address, LLVMIVarBit value,
-                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         byte[] bytes = value.getBytes();
         long curOffset = address.getOffset();
         for (int i = bytes.length - 1; i >= 0; i--) {

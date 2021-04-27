@@ -69,7 +69,6 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        @GenerateAOT.Exclude
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, int value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -77,10 +76,9 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNode {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization(limit = "3")
-        @GenerateAOT.Exclude
+        @Specialization
         protected static void doOpManaged(LLVMManagedPointer address, long offset, int value,
-                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeI32(address.getObject(), address.getOffset() + offset, value);
         }
     }
@@ -92,7 +90,6 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    @GenerateAOT.Exclude
     protected static void doOpDerefHandle(LLVMNativePointer addr, int value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -100,10 +97,9 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNode {
         doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization
     protected static void doOpManaged(LLVMManagedPointer address, int value,
-                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI32(address.getObject(), address.getOffset(), value);
     }
 

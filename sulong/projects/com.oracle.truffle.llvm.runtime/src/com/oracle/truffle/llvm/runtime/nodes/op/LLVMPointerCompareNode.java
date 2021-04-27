@@ -66,19 +66,17 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         return op.compare(a.asNative(), b.asNative());
     }
 
-    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3", rewriteOn = UnsupportedMessageException.class)
-    @GenerateAOT.Exclude
+    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, rewriteOn = UnsupportedMessageException.class)
     protected boolean doPointerPointer(Object a, Object b,
-                    @CachedLibrary("a") LLVMNativeLibrary libA,
-                    @CachedLibrary("b") LLVMNativeLibrary libB) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "3") LLVMNativeLibrary libA,
+                    @CachedLibrary(limit = "3") LLVMNativeLibrary libB) throws UnsupportedMessageException {
         return op.compare(libA.asPointer(a), libB.asPointer(b));
     }
 
-    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"})
     protected boolean doPointerPointerException(Object a, Object b,
-                    @CachedLibrary("a") LLVMNativeLibrary libA,
-                    @CachedLibrary("b") LLVMNativeLibrary libB,
+                    @CachedLibrary(limit = "3") LLVMNativeLibrary libA,
+                    @CachedLibrary(limit = "3") LLVMNativeLibrary libB,
                     @Cached LLVMManagedCompareNode managedCompare) {
         try {
             return doPointerPointer(a, b, libA, libB);
@@ -89,11 +87,10 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         }
     }
 
-    @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)", limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)")
     protected boolean doOther(Object a, Object b,
-                    @CachedLibrary("a") LLVMNativeLibrary libA,
-                    @CachedLibrary("b") LLVMNativeLibrary libB,
+                    @CachedLibrary(limit = "3") LLVMNativeLibrary libA,
+                    @CachedLibrary(limit = "3") LLVMNativeLibrary libB,
                     @Cached LLVMManagedCompareNode managedCompare) {
         return managedCompare.execute(a, libA, b, libB, op);
     }

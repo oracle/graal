@@ -68,7 +68,6 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        @GenerateAOT.Exclude
         protected boolean doI1DerefHandle(LLVMNativePointer addr, long offset,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
@@ -76,10 +75,9 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
             return doI1Managed(getReceiver.execute(addr), offset, nativeRead);
         }
 
-        @Specialization(limit = "3")
-        @GenerateAOT.Exclude
+        @Specialization
         protected boolean doI1Managed(LLVMManagedPointer addr, long offset,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             return nativeRead.readI8(addr.getObject(), addr.getOffset() + offset) != 0;
         }
     }
@@ -91,7 +89,6 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    @GenerateAOT.Exclude
     protected boolean doI1DerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
@@ -99,10 +96,9 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
         return doI1Managed(getReceiver.execute(addr), nativeRead);
     }
 
-    @Specialization(limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization
     protected boolean doI1Managed(LLVMManagedPointer addr,
-                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return nativeRead.readI8(addr.getObject(), addr.getOffset()) != 0;
     }
 }

@@ -70,7 +70,6 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        @GenerateAOT.Exclude
         protected static void doOpDerefHandleI64(LLVMNativePointer addr, long offset, long value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -79,7 +78,6 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doOpDerefHandleI64")
-        @GenerateAOT.Exclude
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, Object value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -100,17 +98,15 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
             language.getLLVMMemory().putI64(this, addr.asNative() + offset, toAddress.executeWithTarget(value).asNative());
         }
 
-        @Specialization(limit = "3")
-        @GenerateAOT.Exclude
+        @Specialization
         protected static void doOpManagedI64(LLVMManagedPointer address, long offset, long value,
-                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeI64(address.getObject(), address.getOffset() + offset, value);
         }
 
-        @Specialization(limit = "3", replaces = "doOpManagedI64")
-        @GenerateAOT.Exclude
+        @Specialization(replaces = "doOpManagedI64")
         protected static void doOpManaged(LLVMManagedPointer address, long offset, Object value,
-                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeGenericI64(address.getObject(), address.getOffset() + offset, value);
         }
     }
@@ -122,7 +118,6 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    @GenerateAOT.Exclude
     protected static void doOpDerefHandleI64(LLVMNativePointer addr, long value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -131,7 +126,6 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doOpDerefHandleI64")
-    @GenerateAOT.Exclude
     protected static void doOpDerefHandle(LLVMNativePointer addr, Object value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -152,17 +146,15 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
         language.getLLVMMemory().putI64(this, addr, toAddress.executeWithTarget(value).asNative());
     }
 
-    @Specialization(limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization
     protected static void doOpManagedI64(LLVMManagedPointer address, long value,
-                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI64(address.getObject(), address.getOffset(), value);
     }
 
-    @Specialization(limit = "3", replaces = "doOpManagedI64")
-    @GenerateAOT.Exclude
+    @Specialization(replaces = "doOpManagedI64")
     protected static void doOpManaged(LLVMManagedPointer address, Object value,
-                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeGenericI64(address.getObject(), address.getOffset(), value);
     }
 

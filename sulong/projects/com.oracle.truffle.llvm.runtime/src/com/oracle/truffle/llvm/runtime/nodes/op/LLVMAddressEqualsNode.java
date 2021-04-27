@@ -97,28 +97,17 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
         public abstract boolean execute(Object a, Object b);
 
-        @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "8", rewriteOn = UnsupportedMessageException.class)
-        @GenerateAOT.Exclude
-        boolean doPointerPointer(Object a, Object b,
-                        @CachedLibrary("a") LLVMNativeLibrary libA,
-                        @CachedLibrary("b") LLVMNativeLibrary libB) throws UnsupportedMessageException {
-            return libA.asPointer(a) == libB.asPointer(b);
-        }
-
-        static final Object LLVMNativePointerDispatch = null;
-
         @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, rewriteOn = UnsupportedMessageException.class)
-        boolean doPointerPointerAOT(LLVMNativePointer a, LLVMNativePointer b,
-                        @CachedLibrary("LLVMNativePointerDispatch") LLVMNativeLibrary libA,
-                        @CachedLibrary("LLVMNativePointerDispatch") LLVMNativeLibrary libB) throws UnsupportedMessageException {
+        boolean doPointerPointer(Object a, Object b,
+                        @CachedLibrary(limit = "8") LLVMNativeLibrary libA,
+                        @CachedLibrary(limit = "8") LLVMNativeLibrary libB) throws UnsupportedMessageException {
             return libA.asPointer(a) == libB.asPointer(b);
         }
 
-        @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, replaces = {"doPointerPointer", "doPointerPointerAOT"}, limit = "8")
-        @GenerateAOT.Exclude
+        @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, replaces = "doPointerPointer")
         boolean doPointerPointerException(Object a, Object b,
-                        @CachedLibrary("a") LLVMNativeLibrary libA,
-                        @CachedLibrary("b") LLVMNativeLibrary libB,
+                        @CachedLibrary(limit = "8") LLVMNativeLibrary libA,
+                        @CachedLibrary(limit = "8") LLVMNativeLibrary libB,
                         @Cached LLVMManagedEqualsNode managedEquals) {
             try {
                 return doPointerPointer(a, b, libA, libB);
@@ -131,11 +120,10 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
             }
         }
 
-        @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)", limit = "8")
-        @GenerateAOT.Exclude
+        @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)")
         boolean doOther(Object a, Object b,
-                        @SuppressWarnings("unused") @CachedLibrary("a") LLVMNativeLibrary libA,
-                        @SuppressWarnings("unused") @CachedLibrary("b") LLVMNativeLibrary libB,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "8") LLVMNativeLibrary libA,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "8") LLVMNativeLibrary libB,
                         @Cached LLVMManagedEqualsNode managedEquals) {
             return managedEquals.execute(a, b);
         }

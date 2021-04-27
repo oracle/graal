@@ -48,17 +48,15 @@ public abstract class ToComparableValue extends LLVMNode {
 
     public abstract long executeWithTarget(Object obj);
 
-    @Specialization(guards = "lib.isPointer(obj)", limit = "3", rewriteOn = UnsupportedMessageException.class)
-    @GenerateAOT.Exclude
+    @Specialization(guards = "lib.isPointer(obj)", rewriteOn = UnsupportedMessageException.class)
     protected long doPointer(Object obj,
-                    @CachedLibrary("obj") LLVMNativeLibrary lib) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "3") LLVMNativeLibrary lib) throws UnsupportedMessageException {
         return lib.asPointer(obj);
     }
 
-    @Specialization(guards = "lib.isPointer(obj)", limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization(guards = "lib.isPointer(obj)")
     protected long doPointerException(Object obj,
-                    @CachedLibrary("obj") LLVMNativeLibrary lib,
+                    @CachedLibrary(limit = "3") LLVMNativeLibrary lib,
                     @Cached("createUseOffset()") ManagedToComparableValue toComparable) {
         try {
             return lib.asPointer(obj);
@@ -67,10 +65,9 @@ public abstract class ToComparableValue extends LLVMNode {
         }
     }
 
-    @Specialization(guards = "!lib.isPointer(obj)", limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization(guards = "!lib.isPointer(obj)")
     protected long doManaged(Object obj,
-                    @CachedLibrary("obj") @SuppressWarnings("unused") LLVMNativeLibrary lib,
+                    @CachedLibrary(limit = "3") @SuppressWarnings("unused") LLVMNativeLibrary lib,
                     @Cached("createUseOffset()") ManagedToComparableValue toComparable) {
         return toComparable.executeWithTarget(obj);
     }

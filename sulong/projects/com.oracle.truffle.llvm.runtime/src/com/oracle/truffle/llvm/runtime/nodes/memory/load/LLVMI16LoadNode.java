@@ -68,7 +68,6 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        @GenerateAOT.Exclude
         protected short doShortDerefHandle(LLVMNativePointer addr, long offset,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
@@ -76,10 +75,9 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
             return doShortManaged(getReceiver.execute(addr), offset, nativeRead);
         }
 
-        @Specialization(limit = "3")
-        @GenerateAOT.Exclude
+        @Specialization
         protected short doShortManaged(LLVMManagedPointer addr, long offset,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             return nativeRead.readI16(addr.getObject(), addr.getOffset() + offset);
         }
     }
@@ -91,7 +89,6 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    @GenerateAOT.Exclude
     protected short doShortDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
@@ -99,10 +96,9 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
         return doShortManaged(getReceiver.execute(addr), nativeRead);
     }
 
-    @Specialization(limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization
     protected short doShortManaged(LLVMManagedPointer addr,
-                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return nativeRead.readI16(addr.getObject(), addr.getOffset());
     }
 }

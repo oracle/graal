@@ -102,11 +102,10 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         @ExplodeLoop
-        @GenerateAOT.Exclude
         protected LLVMI1Vector doForeign(LLVMManagedPointer addr,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             boolean[] vector = new boolean[getVectorLength()];
             long curOffset = addr.getOffset();
             for (int i = 0; i < vector.length; i++) {
@@ -147,11 +146,10 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         @ExplodeLoop
-        @GenerateAOT.Exclude
         protected LLVMI8Vector doForeign(LLVMManagedPointer addr,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             byte[] vector = new byte[getVectorLength()];
             long curOffset = addr.getOffset();
             for (int i = 0; i < vector.length; i++) {
@@ -192,11 +190,10 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         @ExplodeLoop
-        @GenerateAOT.Exclude
         protected LLVMI16Vector doForeign(LLVMManagedPointer addr,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             short[] vector = new short[getVectorLength()];
             long curOffset = addr.getOffset();
             for (int i = 0; i < vector.length; i++) {
@@ -237,11 +234,10 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         @ExplodeLoop
-        @GenerateAOT.Exclude
         protected LLVMI32Vector doForeign(LLVMManagedPointer addr,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             int[] vector = new int[getVectorLength()];
             long curOffset = addr.getOffset();
             for (int i = 0; i < vector.length; i++) {
@@ -358,11 +354,10 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         @ExplodeLoop
-        @GenerateAOT.Exclude
         protected LLVMPointerVector doForeignPointers(LLVMManagedPointer addr,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             LLVMPointer[] vector = new LLVMPointer[getVectorLength()];
             long curOffset = addr.getOffset();
             for (int i = 0; i < vector.length; i++) {
@@ -403,11 +398,10 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         @ExplodeLoop
-        @GenerateAOT.Exclude
         protected LLVMFloatVector doForeign(LLVMManagedPointer addr,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             float[] vector = new float[getVectorLength()];
             long curOffset = addr.getOffset();
             for (int i = 0; i < vector.length; i++) {
@@ -448,11 +442,10 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         @ExplodeLoop
-        @GenerateAOT.Exclude
         protected LLVMDoubleVector doForeign(LLVMManagedPointer addr,
-                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             double[] vector = new double[getVectorLength()];
             long curOffset = addr.getOffset();
             for (int i = 0; i < vector.length; i++) {

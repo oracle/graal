@@ -69,7 +69,6 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
-        @GenerateAOT.Exclude
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, boolean value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -77,10 +76,9 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization(limit = "3")
-        @GenerateAOT.Exclude
+        @Specialization
         protected static void doOpManaged(LLVMManagedPointer address, long offset, boolean value,
-                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeI8(address.getObject(), address.getOffset() + offset, value ? (byte) 1 : (byte) 0);
         }
     }
@@ -92,7 +90,6 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    @GenerateAOT.Exclude
     protected static void doOpDerefHandle(LLVMNativePointer addr, boolean value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
@@ -100,10 +97,9 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
         doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(limit = "3")
-    @GenerateAOT.Exclude
+    @Specialization
     protected static void doOpManaged(LLVMManagedPointer address, boolean value,
-                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI8(address.getObject(), address.getOffset(), value ? (byte) 1 : (byte) 0);
     }
 
