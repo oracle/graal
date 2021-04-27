@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
@@ -70,6 +71,9 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
         }
         if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
             return new DarwinAMD64PlatformCapability(loadCxxLibraries);
+        }
+        if (LLVMInfo.SYSNAME.toLowerCase(Locale.ROOT).startsWith("windows") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
+            return new WindowsAMD64PlatformCapability(loadCxxLibraries);
         }
         return new UnknownBasicPlatformCapability(loadCxxLibraries);
     }
