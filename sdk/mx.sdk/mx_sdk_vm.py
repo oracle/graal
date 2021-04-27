@@ -292,16 +292,17 @@ class GraalVmComponent(object):
                 raise mx.abort("{}: Cannot use `stability` attribute in combination with deprecated `supported` and `early_adopter` attributes".format(name))
             mx.warn("{}: `supported` and `early_adopter` attributes are deprecated, please use `stability`".format(name))
 
-        if supported:
-            if early_adopter:
-                stability = "earlyadopter"
+        if stability is None:
+            if supported:
+                if early_adopter:
+                    stability = "earlyadopter"
+                else:
+                    stability = "supported"
             else:
-                stability = "supported"
-        else:
-            if early_adopter:
-                stability = "experimental-earlyadopter"
-            else:
-                stability = "experimental"
+                if early_adopter:
+                    stability = "experimental-earlyadopter"
+                else:
+                    stability = "experimental"
         self.stability = stability
 
         self.jlink = jlink

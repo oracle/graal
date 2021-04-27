@@ -2054,10 +2054,13 @@ def _gen_gu_manifest(components, formatter, bundled=False):
                                               and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
 
     if main_component.stability is not None:
-        manifest["x-GraalVM-Stability-Level"] = main_component.stability
-        if main_component.stability in ("experimental", "earlyadopter", "supported"):
+        stability = main_component.stability
+        if _src_jdk_version > 11:
+            stability = "experimental"
+        manifest["x-GraalVM-Stability-Level"] = stability
+        if stability in ("experimental", "earlyadopter", "supported"):
             # set x-GraalVM-Stability for backward compatibility when possible
-            manifest["x-GraalVM-Stability"] = main_component.stability
+            manifest["x-GraalVM-Stability"] = stability
 
     dependencies = set()
     for comp in components:
