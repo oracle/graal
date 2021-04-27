@@ -132,7 +132,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
      * Gets a pointer to this function that can be stored in native memory.
      */
     @ExportMessage
-    LLVMFunctionDescriptor toNative() {
+    public LLVMFunctionDescriptor toNative() {
         if (nativeWrapper == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             nativeWrapper = functionCode.getFunction().createNativeWrapper(this);

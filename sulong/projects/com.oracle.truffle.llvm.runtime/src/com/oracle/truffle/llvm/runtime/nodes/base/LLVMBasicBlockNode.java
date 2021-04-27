@@ -61,7 +61,7 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
     public static final int RETURN_FROM_FUNCTION = -1;
 
     public static LLVMBasicBlockNode createBasicBlockNode(OptionValues options, LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
-        if (options.get(SulongEngineOption.LAZY_PARSING)) {
+        if (options.get(SulongEngineOption.LAZY_PARSING) && !options.get(SulongEngineOption.AOTCacheStore)) {
             return new LazyBlockNode(statements, termInstruction, blockId, blockName);
         } else {
             return new InitializedBlockNode(statements, termInstruction, blockId, blockName);

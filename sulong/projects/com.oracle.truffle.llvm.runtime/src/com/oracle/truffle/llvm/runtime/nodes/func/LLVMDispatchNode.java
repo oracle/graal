@@ -37,11 +37,16 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -266,7 +271,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     protected Object doNative(LLVMFunctionDescriptor descriptor, Object[] arguments,
                               @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                               @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
-                              @CachedLanguage LLVMLanguage language,
+                              @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
                               @Cached("createNativeSymbolExecutorNode(language)") NativeSymbolExecutorNode nativeSymbolExecutorNode,
                               @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                               @Cached @SuppressWarnings("unused") ResolveFunctionNode resolve,
@@ -468,5 +473,4 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             return interop.execute(receiver, args);
         }
     }
-
 }

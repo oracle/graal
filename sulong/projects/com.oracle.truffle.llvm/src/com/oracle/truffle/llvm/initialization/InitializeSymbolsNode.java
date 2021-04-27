@@ -345,6 +345,12 @@ public final class InitializeSymbolsNode extends LLVMNode {
         @Override
         LLVMPointer allocate(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = createAndResolve(context);
+            if (context.isAOTCacheLoad() || context.isAOTCacheStore()) {
+                // Initialize the native state in the descriptor to prevent deopts/unstable ifs. The
+                // function in the descriptor should already be resolved after the auxiliary engine
+                // cache was loaded.
+                functionDescriptor.toNative();
+            }
             return LLVMManagedPointer.create(functionDescriptor);
         }
     }
