@@ -868,10 +868,6 @@ suite = {
       "cmakeConfig" : {
         "CMAKE_EXE_LINKER_FLAGS" : "-lm",
       },
-      "buildEnv" : {
-        "SUITE_LDFLAGS" : "-lm",
-        "OS" : "<os>",
-      },
       "dependencies" : [
         "SULONG_TEST",
       ],

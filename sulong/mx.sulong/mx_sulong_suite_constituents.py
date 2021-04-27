@@ -786,21 +786,14 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, CMakeNinjaProject):  # pylint: 
         _config['CMAKE_INSTALL_PREFIX'] = self._install_dir
         _config['SULONG_PROJECT_NAME'] = self.name
         _config['SULONG_ENABLED_LANGUAGES'] = ';'.join(self._get_languages())
-        # _config['SULONG_VARIANTS'] = ';'.join(self.getVariants())
-        # _config['SULONG_BUILD_REF'] = 'YES' if self.buildRef else 'NO'
         _config['SULONG_BUILD_SHARED_OBJECT'] = 'YES' if self.buildSharedObject else 'NO'
-        # _config['SO_EXT'] = mx.add_lib_suffix("")
         _config['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
         _config['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
         _config['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
         _config['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
-        # _config['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
         _config['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
         _config['LLVM_CONFIG'] = mx_sulong.findBundledLLVMProgram('llvm-config')
         _config['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
-        # _config['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
-        # if 'OS' not in _config:
-        #     _config['OS'] = mx_subst.path_substitutions.substitute("<os>")
         if DragonEggSupport.haveDragonegg():
             _config['DRAGONEGG'] = DragonEggSupport.pluginPath()
             _config['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)
@@ -808,8 +801,6 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, CMakeNinjaProject):  # pylint: 
             _config['DRAGONEGG_LLVMAS'] = DragonEggSupport.findLLVMProgram("llvm-as")
             _config['DRAGONEGG_FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
             _config['FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
-        # elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
-        #     mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
         return _config
 
     def cmake_config(self):
