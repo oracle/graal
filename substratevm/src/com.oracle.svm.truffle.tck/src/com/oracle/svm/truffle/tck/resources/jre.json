@@ -235,8 +235,8 @@
     ]
   },
   {
-    "name": "sun.util.logging.PlatformLogger.getLogger",
-    "method" : [
+    "name": "sun.util.logging.PlatformLogger",
+    "methods" : [
        {
          "name" : "getLogger",
          "parameterTypes" : [
