@@ -141,7 +141,7 @@ public class MethodTypeFlowBuilder {
     private NodeBitMap processedNodes;
     private Map<PhiNode, TypeFlowBuilder<?>> loopPhiFlows;
 
-    private final TypeFlowGraphBuilder typeFlowGraphBuilder;
+    protected final TypeFlowGraphBuilder typeFlowGraphBuilder;
 
     public MethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodFlow) {
         this.bb = bb;
