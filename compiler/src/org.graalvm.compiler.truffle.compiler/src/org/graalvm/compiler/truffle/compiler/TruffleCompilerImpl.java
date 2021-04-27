@@ -483,7 +483,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      * @param compilable representation of the AST to be compiled
      * @param inliningPlan
      * @param compilationId identifier to be used for the compilation
-     * @param task an object that holds information about the compilation process itself (e.g. which tier, was the compilation canceled)
+     * @param task an object that holds information about the compilation process itself (e.g. which
+     *            tier, was the compilation canceled)
      * @param listener
      */
     @SuppressWarnings("try")

@@ -135,17 +135,18 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
-                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, new TruffleInlining(), compilationId, new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
-                    @Override
-                    public boolean isCancelled() {
-                        return false;
-                    }
+                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, new TruffleInlining(), compilationId,
+                                new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
+                                    @Override
+                                    public boolean isCancelled() {
+                                        return false;
+                                    }
 
-                    @Override
-                    public boolean isLastTier() {
-                        return true;
-                    }
-                }), null);
+                                    @Override
+                                    public boolean isLastTier() {
+                                        return true;
+                                    }
+                                }), null);
                 assertTrue(compilable.isValid());
             }
         } catch (AssertionError e) {

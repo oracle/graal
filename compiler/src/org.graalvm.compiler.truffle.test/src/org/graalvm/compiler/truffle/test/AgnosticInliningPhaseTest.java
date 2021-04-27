@@ -63,17 +63,17 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
                         new TruffleInlining(),
                         compilationIdentifier, getSpeculationLog(),
-                new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
-                    @Override
-                    public boolean isCancelled() {
-                        return false;
-                    }
+                        new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
+                            @Override
+                            public boolean isCancelled() {
+                                return false;
+                            }
 
-                    @Override
-                    public boolean isLastTier() {
-                        return true;
-                    }
-                }));
+                            @Override
+                            public boolean isLastTier() {
+                                return true;
+                            }
+                        }));
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);
         agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
         return request.graph;
