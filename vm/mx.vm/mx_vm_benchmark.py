@@ -154,9 +154,11 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
             if vm.is_llvm:
                 self.base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
+            if vm.gc:
+                self.base_image_build_args += ['--gc=' + vm.gc, '-H:+SpawnIsolates']
             self.base_image_build_args += self.extra_image_build_arguments
 
-    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, pgo_inline_explored, hotspot_pgo, is_gate, is_llvm=False, pgo_context_sensitive=True):
+    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, pgo_inline_explored, hotspot_pgo, is_gate, is_llvm=False, pgo_context_sensitive=True, gc=None):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.pgo_instrumented_iterations = pgo_instrumented_iterations
         self.pgo_context_sensitive = pgo_context_sensitive
@@ -164,6 +166,7 @@ class NativeImageVM(GraalVm):
         self.hotspot_pgo = hotspot_pgo
         self.is_gate = is_gate
         self.is_llvm = is_llvm
+        self.gc = gc
 
     @staticmethod
     def supported_vm_arg_prefixes():
