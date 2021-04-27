@@ -186,7 +186,7 @@ public class JfrTypeRepository implements JfrRepository {
             return 0;
         }
         writer.writeCompressedLong(JfrTypes.Class.getId());
-        writer.writeCompressedInt(JfrTraceIdLoadBarrier.classCount(JfrTraceIdEpoch.getInstance().previousEpoch()));
+        writer.writeCompressedInt(typeInfo.getClasses().size());
 
         for (Class<?> clazz : typeInfo.getClasses()) {
             writeClass(writer, typeInfo, clazz);
