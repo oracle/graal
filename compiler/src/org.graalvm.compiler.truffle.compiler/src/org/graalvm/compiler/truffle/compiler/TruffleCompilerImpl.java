@@ -925,10 +925,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      * Wrapper around a {@link TruffleCompilationTask} which also implements {@link Cancellable} to
      * allow co-operative canceling of truffle compilations.
      */
-    static final class CancellableTruffleCompilationTask implements TruffleCompilationTask, Cancellable {
+    public static final class CancellableTruffleCompilationTask implements TruffleCompilationTask, Cancellable {
         private final TruffleCompilationTask delegate;
 
-        CancellableTruffleCompilationTask(TruffleCompilationTask delegate) {
+        public CancellableTruffleCompilationTask(TruffleCompilationTask delegate) {
             this.delegate = delegate;
         }
 
