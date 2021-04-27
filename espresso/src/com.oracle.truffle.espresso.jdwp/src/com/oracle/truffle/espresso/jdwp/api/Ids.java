@@ -131,7 +131,7 @@ public final class Ids<T> {
             JDWP.LOGGER.finest(() -> "object with ID: " + id + " was garbage collected");
             return null;
         } else {
-            JDWP.LOGGER.finest(() -> "returning object: " + objects + " for ID: " + id);
+            JDWP.LOGGER.finest(() -> "returning object: " + o + " for ID: " + id);
             return o;
         }
     }
