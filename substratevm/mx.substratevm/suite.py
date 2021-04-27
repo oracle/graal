@@ -449,7 +449,7 @@ suite = {
                 },
                 "<others>": {
                     "<others>": {
-                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
             },
@@ -485,7 +485,7 @@ suite = {
                 },
                 "linux": {
                     "<others>" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
                 "<others>": {
