@@ -112,7 +112,7 @@ public final class DebuggerConnection implements Commands {
                 try {
                     command.wait();
                 } catch (InterruptedException e) {
-                    JDWP.LOGGER.warning(() -> "could not submit debugger command due to " +  e.getMessage());
+                    JDWP.LOGGER.warning(() -> "could not submit debugger command due to " + e.getMessage());
                 }
             }
         }
