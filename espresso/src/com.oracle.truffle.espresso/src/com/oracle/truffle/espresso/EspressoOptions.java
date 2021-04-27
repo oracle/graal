@@ -321,14 +321,11 @@ public final class EspressoOptions {
                                     case "suspend":
                                         suspend = yesOrNo(key, value);
                                         break;
-                                    case "logLevel":
-                                        logLevel = value;
-                                        break;
                                     default:
                                         throw new IllegalArgumentException("Invalid JDWP option: " + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
                                 }
                             }
-                            return new JDWPOptions(transport, host, port, server, suspend, logLevel);
+                            return new JDWPOptions(transport, host, port, server, suspend);
                         }
                     });
 

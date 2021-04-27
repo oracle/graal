@@ -26,7 +26,7 @@ import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -287,7 +287,7 @@ public final class InnerClassRedefiner implements DefineKlassListener {
             classLoaderRules = new HashMap<>(4);
             renamingRules.put(classLoader, classLoaderRules);
         }
-        JDWPLogger.log("Renaming inner class: %s to: %s", JDWPLogger.LogLevel.REDEFINE, originalName, newName);
+        JDWP.LOGGER.fine(() -> "Renaming inner class: " + originalName + " to: " + newName);
         // add simple class names
         classLoaderRules.put(originalName, newName);
         // add type names
