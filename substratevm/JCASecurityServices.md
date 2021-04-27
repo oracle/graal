@@ -8,6 +8,8 @@ To achieve algorithm independence and extensibility it relies on reflection, the
 By default the Native Image builder uses static analysis to discover which of these services are used (see next section for details).
 The automatic registration of security services can be disabled with `-H:-EnableSecurityServicesFeature`.
 Then a custom reflection configuraion file or feature can be used to register the security services required by a specific application.
+Note that when automatic registration of security providers is disabled, all providers are, by default, filtered from special JDK caches that are necessary for security functionality.
+In this case, you must manually mark used providers with `-H:AdditionalSecurityProviders`.
 
 # Security services automatic registration
 The mechanism, implemented in the `com.oracle.svm.hosted.SecurityServicesFeature` class, uses reachability of specific API methods in the JCA framework to determine which security services are used.
@@ -29,8 +31,24 @@ The native image builder captures the list of providers and their preference ord
 The provider order is specified in the `java.security` file under `<java-home>/lib/security/java.security`.
 New security providers cannot be registered at run time; all providers must be statically configured during a native image building.
 
+## Provider Reordering At Runtime
+It is possible to reorder security providers at runtime, however only existing provider instances can be used.
+For example, if the BouncyCastle provider was registered at build time and we wish to insert it at position 1 at runtime:
+```java
+Provider bcProvider = Security.getProvider("BC");
+Security.removeProvider("BC");
+Security.insertProviderAt(bcProvider, 1);
+```
+
 ## SecureRandom
 
 The SecureRandom implementations open the `/dev/random` and `/dev/urandom` files which are used as sources for entropy.
 These files are usually opened in class initializers.
 To avoid capturing state from the machine that runs the Native Image builder these classes need to be initialized at run time.
+
+## Custom Service Types
+
+By default, only services specified in the JCA are automatically registered. To automatically register custom service types, you can use `-H:AdditionalSecurityServiceTypes`.
+Note that for automatic registration to work, the service interface must have a `getInstance` method and have the same simple name as the service type.
+If relying on third party code that doesn't comply to the above requirements, manual configuration will be required. In that case, providers for such services must explicitly be registered using `-H:AdditionalSecurityProviders`.
+Note that these options are only required in very specific cases and should not normally be needed.
