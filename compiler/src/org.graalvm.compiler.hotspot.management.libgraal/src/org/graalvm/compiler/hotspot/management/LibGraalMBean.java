@@ -713,7 +713,6 @@ public class LibGraalMBean implements DynamicMBean {
          * Returns a {@link MBeanServer} if it already exists.
          */
         private MBeanServer findMBeanServer() {
-            assert Thread.holdsLock(this);
             if (platformMBeanServer == null) {
                 ArrayList<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
                 if (!servers.isEmpty()) {
