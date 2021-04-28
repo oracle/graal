@@ -51,6 +51,7 @@ import argparse
 import mx
 import mx_benchmark
 import datetime
+import re
 
 def parse_prefixed_args(prefix, args):
     ret = []
@@ -92,8 +93,15 @@ class NativeImageBenchmarkMixin(object):
             raise NotImplementedError()
         return self.benchmark_name
 
-    def run_stage(self, stage, command, out, err, cwd, nonZeroIsFatal):
-        return mx.run(command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+    def run_stage(self, vm, stage, command, out, err, cwd, nonZeroIsFatal):
+        final_command = command
+        if stage == 'run':
+           final_command = apply_command_mapper_hooks(cmd, vm)
+
+        return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+
+    def apply_command_mapper_hooks(self, cmd, vm):
+       return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
 
     def extra_image_build_argument(self, _, args):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
@@ -134,31 +142,28 @@ class NativeImageBenchmarkMixin(object):
         return False
 
 
-def timeToFirstResponse(cmd, bmSuite):
-    def timeToFirstResponseThread(startTime):
-        protocolHost = bmSuite.serviceHost()
-        servicePath = bmSuite.serviceEndpoint()
-        if not (protocolHost.startswith('http') or protocolHost.startswith('https')):
-            protocolHost = "http://" + protocolHost
-        if not (servicePath.startswith('/') or protocolHost.endswith('/')):
-            servicePath = '/' + servicePath
-        url = "{}:{}{}".format(protocolHost, bmSuite.servicePort(), servicePath)
-        for _ in range(60*100):
-            try:
-                req = urllib().urlopen(url)
-                if req.getcode() == 200:
-                    finishTime = datetime.datetime.now()
-                    msToFirstResponse = (finishTime - startTime).total_seconds() * 1000
-                    bmSuite.timeToFirstResponseOutput = "First response received in {} ms".format(msToFirstResponse)
-                    mx.log(bmSuite.timeToFirstResponseOutput)
-                    return
-            except IOError:
-                time.sleep(.01)
-        mx.abort("Failed measure time to first response. Service not reachable at " + url)
-    name = bmSuite.benchMicroserviceName()
-    if name in ''.join(cmd):
-        threading.Thread(target=timeToFirstResponseThread, args=[datetime.datetime.now()]).start()
-    return cmd
+def measureTimeToFirstResponse(bmSuite):
+    protocolHost = bmSuite.serviceHost()
+    servicePath = bmSuite.serviceEndpoint()
+    if not (protocolHost.startswith('http') or protocolHost.startswith('https')):
+        protocolHost = "http://" + protocolHost
+    if not (servicePath.startswith('/') or protocolHost.endswith('/')):
+        servicePath = '/' + servicePath
+    url = "{}:{}{}".format(protocolHost, bmSuite.servicePort(), servicePath)
+    lib = urllib()
+    for _ in range(60*10000):
+        try:
+            req = lib.urlopen(url)
+            if req.getcode() == 200:
+                startTime = mx.runStartTime
+                finishTime = datetime.datetime.now()
+                msToFirstResponse = (finishTime - startTime).total_seconds() * 1000
+                bmSuite.timeToFirstResponseOutput = "First response received in {} ms".format(msToFirstResponse)
+                mx.log(bmSuite.timeToFirstResponseOutput)
+                return
+        except IOError:
+            time.sleep(.0001)
+    mx.abort("Failed measure time to first response. Service not reachable at " + url)
 
 
 class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImageBenchmarkMixin):
@@ -171,14 +176,14 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     def __init__(self):
         super(BaseMicroserviceBenchmarkSuite, self).__init__()
-        self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
         self.timeToFirstResponseOutput = ''
+        self.startupOutput = ''
+        self.peakOutput = ''
         self.bmSuiteArgs = None
         self.workloadPath = None
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
             "--workload-configuration", type=str, default=None, help="Path to workload configuration.")
-        self.register_command_mapper_hook("TimeToFirstResponse", timeToFirstResponse)
 
     def benchSuiteName(self):
         return self.name()
@@ -272,7 +277,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
         ret_code, applicationOutput, dims = super(BaseMicroserviceBenchmarkSuite, self).runAndReturnStdOut(benchmarks, bmSuiteArgs)
-        return ret_code, self.testerOutput.underlying.data + self.timeToFirstResponseOutput + applicationOutput, dims
+        return ret_code, self.timeToFirstResponseOutput + '\n' + self.startupOutput + '\n' + self.peakOutput + '\n' + applicationOutput, dims
 
     @staticmethod
     def terminateApplication(port):
@@ -284,33 +289,57 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             return False
 
     @staticmethod
-    def runTesterInBackground(benchmarkSuite):
+    def testStartupPerformanceInBackground(benchmarkSuite):
+        measureTimeToFirstResponse(benchmarkSuite)
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
-        benchmarkSuite.runTester()
+        benchmarkSuite.testStartupPerformance()
         if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
-    def run_stage(self, stage, server_command, out, err, cwd, nonZeroIsFatal):
+    @staticmethod
+    def testPeakPerformanceInBackground(benchmarkSuite):
+        if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
+            mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
+        benchmarkSuite.testPeakPerformance()
+        if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
+            mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
+
+    def run_stage(self, vm, stage, server_command, out, err, cwd, nonZeroIsFatal):
         if 'image' in stage:
             # For image stages, we just run the given command
             return super(BaseMicroserviceBenchmarkSuite, self).run_stage(stage, server_command, out, err, cwd, nonZeroIsFatal)
         else:
-            # For run stages, we need to run the server and the loader
-            threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self]).start()
-            if 'agent' in stage:
-                timeToFirstResponse(server_command, self)
-            return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+            if stage == 'run':
+                # Do all benchmarking (startup, peak, latency) on a single image that is started and shut down multiple times.
+                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
+                returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                if not self.validateReturnCode(returnCode):
+                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+
+                serverCommandAfterHooks = self.apply_command_mapper_hooks(server_command, vm)
+                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
+                returnCode = mx.run(serverCommandAfterHooks, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                if not self.validateReturnCode(returnCode):
+                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                
+                return returnCode
+            elif stage == 'agent' or stage == 'instrument_run':
+                # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
+                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
+                return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+            else:
+                mx.abort("Unexpected stage: " + stage)
 
     def rules(self, output, benchmarks, bmSuiteArgs):
         return [
             mx_benchmark.StdOutRule(
-                r"^First response received in (?P<startup>\d*[.,]?\d*) ms",
+                r"^First response received in (?P<firstResponse>\d*[.,]?\d*) ms",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
-                    "metric.name": "startup",
-                    "metric.value": ("<startup>", float),
+                    "metric.name": "time-to-first-response",
+                    "metric.value": ("<firstResponse>", float),
                     "metric.unit": "ms",
                     "metric.better": "lower",
                 }
@@ -325,11 +354,19 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.benchmark_name = benchmarks[0]
         args, remainder = self.parser.parse_known_args(self.bmSuiteArgs)
         self.workloadPath = args.workload_configuration
-        if not self.inNativeMode():
-            threading.Thread(target=BaseMicroserviceBenchmarkSuite.runTesterInBackground, args=[self]).start()
-        results = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-        return results
 
+        if not self.inNativeMode():
+            mx.use_command_mapper_hooks = False
+            threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
+            datapoints = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+            mx.use_command_mapper_hooks = True
+
+            threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
+            datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+
+            return datapoints
+        else:
+            return super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
 class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
     """Base class for JMeter based benchmark suites."""
@@ -356,13 +393,17 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
             )
         ] + super(BaseJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
-    def runTester(self):
+    def testStartupPerformance(self):
+        self.startupOutput = ''
+
+    def testPeakPerformance(self):
         jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
         jmeterPath = os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
         jmeterCmd = [mx.get_jdk().java, "-jar", jmeterPath, "-n", "-t", self.workloadConfigurationPath(), "-j", "/dev/stdout"] # pylint: disable=line-too-long
         mx.log("Running JMeter: {0}".format(jmeterCmd))
-        self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
-        mx.run(jmeterCmd, out=self.testerOutput, err=self.testerOutput)
+        output = mx.TeeOutputCapture(mx.OutputCapture())
+        mx.run(jmeterCmd, out=output, err=output)
+        self.peakOutput = output.underlying.data
 
     def tailDatapointsToSkip(self, results):
         return int(len(results) * .10)
@@ -385,12 +426,12 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
           "threads" : <number of threads to use>,
           "duration" : <duration of the test, for example "30s">,
           "warmup-duration" : <duration of the warmup run, for example "30s">,
-          "rate" : <work rate (requests per second)>,
+          "warmup-requests-per-second": <requests per second during the warmup run>,
           "target-url" : <URL to target, for example "http://localhost:8080">,
           "target-path" : <path to append to the target URL>
         }
 
-        All json fields are optional except the rate and the target-url.
+        All json fields except the target-path are required.
 
         :return: Configuration json.
         :rtype: json
@@ -403,121 +444,192 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def getScriptPath(self, config):
         pass
 
-    def getLibraryDirectory(self):
-        """Returns the wrk library directory.
-
-        :return: Path to extracted wrk package.
-        :rtype: str
-        """
-        raise NotImplementedError()
-
-    def setupWrkCmd(self, config, cmd=[]): # pylint: disable=dangerous-default-value
-        for optional in ["connections", "threads"]:
-            if optional in config:
-                cmd += ["--" + optional, str(config[optional])]
-
-        if "script" in config:
-            cmd += ["--script", str(self.getScriptPath(config))]
-
-        if "target-url" in config:
-            if "target-path" in config:
-                cmd.append(str(config["target-url"] + config["target-path"]))
-            else:
-                cmd.append(str(config["target-url"]))
-        else:
-            mx.abort("target-url not specified in Wrk configuration.")
-        return cmd
-
-    def runTester(self):
+    def testStartupPerformance(self):
         config = self.loadConfiguration(self.benchmarkName())
-        wrkDirectory = self.getLibraryDirectory()
-        if mx.get_os() == "linux":
-            distro = "linux"
-        elif mx.get_os() == "darwin":
-            distro = "macos"
-        else:
-            mx.abort("{0} not supported in {1}.".format(BaseWrkBenchmarkSuite.__name__, mx.get_os()))
 
-        wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
-        wrkFlags = self.setupWrkCmd(config)
+        # Measure throughput for 15 seconds without warmup.
+        wrkFlags = self.getStartupFlags(config)
+        output = self.runWrk1(wrkFlags);
+        self.startupOutput = self.extractOutput('startup-throughput', 'startup-latency-co', output)
 
-        warmupDuration = None
-        if self.inNativeMode():
-            warmupDuration = config.get("warmup-duration-native-image", None)
-        elif "warmup-duration" in config:
-            warmupDuration = config["warmup-duration"]
-        if warmupDuration:
-            warmupWrkCmd = [wrkPath] + ["--duration", str(warmupDuration)] + wrkFlags
-            mx.log("Warming up with Wrk: {0}".format(warmupWrkCmd))
-            warmupOutput = mx.TeeOutputCapture(mx.OutputCapture())
-            mx.run(warmupWrkCmd, out=warmupOutput, err=warmupOutput)
+    def testPeakPerformance(self):
+        config = self.loadConfiguration(self.benchmarkName())
 
-        if "duration" in config:
-            wrkFlags = ["--duration", str(config["duration"])] + wrkFlags
+        # Warmup with a fixed number of requests.
+        wrkFlags = self.getWarmupFlags(config)
+        warmupOutput = self.runWrk2(wrkFlags);
+        self.verifyWarmupOutput(warmupOutput, config)
 
-        runWrkCmd = [wrkPath] + wrkFlags
-        mx.log("Running Wrk: {0}".format(runWrkCmd))
-        mx.run(runWrkCmd, out=self.testerOutput, err=self.testerOutput)
+        # Measure peak performance.
+        wrkFlags = self.getThroughputFlags(config)
+        peakOutput = self.runWrk1(wrkFlags);
 
+        self.peakOutput = self.extractOutput('peak-throughput', 'peak-latency-co', peakOutput)
 
-class BaseWrk1BenchmarkSuite(BaseWrkBenchmarkSuite):
-    """
-    Base class for Wrk based benchmark suites. Wrk (https://github.com/wg/wrk) is a tool that can be used to measure
-    the throughput of applications offering HTTP services.
-    """
+    def extractOutput(self, throughputPrefix, latencyPrefix, output):
+        result = []
+        matches = re.findall(r"^Requests/sec:\s*\d*[.,]?\d*$", output, re.MULTILINE)
+        if len(matches) != 1:
+            mx.abort("Expected exactly one throughput result in the output: " + str(matches))
+
+        result.append(throughputPrefix + " " + matches[0])
+
+        matches = re.findall(r"^\s*\d*[.,]?\d*%\s+\d*[.,]?\d*[mnu]?s$", output, re.MULTILINE)
+        if len(matches) <= 0:
+            mx.abort("No latency results found in output")
+
+        for match in matches:
+            result.append(latencyPrefix + " " + match)
+
+        return '\n'.join(result)
+
+    def verifyWarmupOutput(self, output, config):
+      matches = re.findall(r"^Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$", output, re.MULTILINE)
+      if len(matches) != 1:
+            mx.abort("Expected exactly one throughput result in the output: " + str(matches))
+
+      actualThroughput = float(matches[0])
+      expectedThroughput = float(config['warmup-requests-per-second'])
+      if actualThroughput < expectedThroughput * 0.97 or actualThroughput > expectedThroughput * 1.03:
+            mx.abort("Warmup failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         # Example of wrk output:
         # "Requests/sec:   5453.61"
         return [
             mx_benchmark.StdOutRule(
-                r"^Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$",
+                r"^startup-throughput Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
-                    "metric.name": "throughput",
+                    "metric.name": "warmup-throughput",
                     "metric.value": ("<throughput>", float),
-                    "metric.unit": "op/s",
+                    "metric.unit": "requests/s",
                     "metric.better": "higher",
                 }
-            )
-        ] + super(BaseWrk1BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getLibraryDirectory(self):
-        return mx.library("WRK", True).get_path(True)
-
-
-class BaseWrk2BenchmarkSuite(BaseWrkBenchmarkSuite):
-    """
-    Base class for Wrk2 based benchmark suites. Wrk2 (https://github.com/giltene/wrk2) is a tool that can be used to
-    measure the latency of applications offering HTTP services.
-    """
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        # Example of wrk2 output:
-        # " 50.000%  3.24ms"
-        return [
+            ),
             mx_benchmark.StdOutRule(
-                r"^\s*(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)ms$",
+                r"^peak-throughput Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
-                    "metric.name": "sample-time",
+                    "metric.name": "peak-throughput",
+                    "metric.value": ("<throughput>", float),
+                    "metric.unit": "requests/s",
+                    "metric.better": "higher",
+                }
+            ),
+            mx_benchmark.StdOutRule(
+                r"^startup-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>[mnu]?s)$",
+                {
+                    "benchmark": benchmarks[0],
+                    "bench-suite": self.benchSuiteName(),
+                    "metric.name": "startup-latency-co",
                     "metric.value": ("<latency>", float),
-                    "metric.unit": "ms",
+                    "metric.unit": ("<unit>", str),
+                    "metric.better": "lower",
+                    "metric.percentile": ("<percentile>", float),
+                }
+            ),
+            mx_benchmark.StdOutRule(
+                r"^peak-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>[mnu]?s)$",
+                {
+                    "benchmark": benchmarks[0],
+                    "bench-suite": self.benchSuiteName(),
+                    "metric.name": "peak-latency-co",
+                    "metric.value": ("<latency>", float),
+                    "metric.unit": ("<unit>", str),
                     "metric.better": "lower",
                     "metric.percentile": ("<percentile>", float),
                 }
             )
-        ] + super(BaseWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+        ] + super(BaseWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
-    def getLibraryDirectory(self):
-        return mx.library("WRK2", True).get_path(True)
+    def runWrk1(self, wrkFlags):
+        distro = self.getOS();
+        wrkDirectory = mx.library('WRK', True).get_path(True)
+        wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
 
-    def setupWrkCmd(self, config):
-        cmd = ["--latency"]
-        if "rate" in config:
-            cmd += ["--rate", str(config["rate"])]
+        runWrkCmd = [wrkPath] + wrkFlags
+        mx.log("Running Wrk: {0}".format(runWrkCmd))
+        output = mx.TeeOutputCapture(mx.OutputCapture())
+        mx.run(runWrkCmd, out=output, err=output)
+        return output.underlying.data
+
+    def runWrk2(self, wrkFlags):
+        distro = self.getOS();
+        wrkDirectory = mx.library('WRK2', True).get_path(True)
+        wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
+
+        runWrkCmd = [wrkPath] + wrkFlags
+        mx.log("Running Wrk2: {0}".format(runWrkCmd))
+        output = mx.TeeOutputCapture(mx.OutputCapture())
+        mx.run(runWrkCmd, out=output, err=output)
+        return output.underlying.data
+
+    def getStartupFlags(self, config):
+        wrkFlags = ['--duration', '15']
+        wrkFlags += self.getWrkFlags(config);
+        return wrkFlags
+
+    def getWarmupFlags(self, config):
+        wrkFlags = []
+        if 'warmup-duration':
+            wrkFlags += ['--duration', str(config['warmup-duration'])]
         else:
-            mx.abort("rate not specified in Wrk2 configuration.")
-        return super(BaseWrk2BenchmarkSuite, self).setupWrkCmd(config, cmd)
+            mx.abort("warmup-duration not specified in Wrk configuration.")
+
+        if 'warmup-requests-per-second':
+            wrkFlags += ['--rate', str(config['warmup-requests-per-second'])]
+        else:
+            mx.abort("warmup-requests-per-second not specified in Wrk configuration.")
+
+        wrkFlags += self.getWrkFlags(config);
+        return wrkFlags
+
+    def getThroughputFlags(self, config):
+        wrkFlags = []
+        if 'duration' in config:
+            wrkFlags += ['--duration', str(config['duration'])]
+        else:
+            mx.abort("duration not specified in Wrk configuration.")
+
+        wrkFlags += self.getWrkFlags(config);
+        return wrkFlags
+
+    def getLatencyFlags(self, config, throughput):
+        wrkFlags = self.getThroughputFlags(config)
+        wrkFlags += ['--rate', str(int(throughput * 0.85))]
+        return wrkFlags
+
+    def getWrkFlags(self, config):
+        args = ['--latency']
+
+        for key in ['connections', 'threads']:
+            if key in config:
+				args += ["--" + key, str(config[key])]
+            else:
+                mx.abort(key + " not specified in Wrk configuration.")
+
+        if 'script' in config:
+            args += ['--script', str(self.getScriptPath(config))]
+        else:
+            mx.abort("script not specified in Wrk configuration.")
+
+        if 'target-url' in config:
+            if 'target-path' in config:
+                args.append(str(config['target-url'] + config['target-path']))
+            else:
+                args.append(str(config['target-url']))
+        else:
+            mx.abort("target-url not specified in Wrk configuration.")
+
+        return args
+
+    def getOS(self):
+        if mx.get_os() == 'linux':
+            return 'linux'
+        elif mx.get_os() == 'darwin':
+            return 'macos'
+        else:
+            mx.abort("{0} not supported in {1}.".format(BaseWrkBenchmarkSuite.__name__, mx.get_os()))
