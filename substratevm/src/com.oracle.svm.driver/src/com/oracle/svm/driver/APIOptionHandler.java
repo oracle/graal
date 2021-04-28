@@ -115,8 +115,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         HostedOptionParser.collectOptions(optionsClasses, hostedOptions, runtimeOptions);
         SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
         Map<String, List<String>> groupDefaults = new HashMap<>();
-        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupDefaults));
-        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupDefaults));
+        Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances = new HashMap<>();
+        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupDefaults, groupInstances));
+        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupDefaults, groupInstances));
         groupDefaults.forEach((groupName, defaults) -> {
             if (defaults.size() > 1) {
                 VMError.shouldNotReachHere(String.format("APIOptionGroup %s must only have a single default (but has: %s)",
@@ -126,8 +127,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return apiOptions;
     }
 
-    private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor,
-                    SortedMap<String, OptionInfo> apiOptions, Map<String, List<String>> groupDefaults) {
+    private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor, SortedMap<String, OptionInfo> apiOptions,
+                    Map<String, List<String>> groupDefaults, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances) {
         try {
             Field optionField = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
             APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
@@ -152,7 +153,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                         try {
                             Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
-                            group = ReflectionUtil.newInstance(groupClass);
+                            group = groupInstances.computeIfAbsent(groupClass, ReflectionUtil::newInstance);
                             String groupName = APIOption.Utils.groupName(group);
                             if (group.helpText() == null || group.helpText().isEmpty()) {
                                 VMError.shouldNotReachHere(String.format("APIOptionGroup %s(%s) needs to provide help text", groupClass.getName(), group.name()));
