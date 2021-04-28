@@ -30,7 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assume;
 import org.junit.Test;
@@ -40,6 +39,7 @@ import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
+import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -240,20 +240,30 @@ public class DynamicConstantTest extends CustomizedBytecodePatternTest {
     @SuppressWarnings("try")
     @Test
     public void test() throws Throwable {
+        boolean jvmciCompatibilityChecked = false;
         for (TestGenerator e : generators.values()) {
             Class<?> testClass = getClass(e.className);
             ResolvedJavaMethod run = getResolvedJavaMethod(testClass, "run");
-            try {
-                Result actual = executeActual(run, null);
-                if (VERBOSE) {
-                    System.out.println(run.format("%H.%n(%p)") + " -> " + actual);
-                }
-            } catch (BytecodeParserError err) {
-                Throwable cause = err.getCause();
-                Assume.assumeFalse("running on JVMCI that does not support CONSTANT_Dynamic", String.valueOf(cause).contains("Unknown JvmConstant tag 17"));
-                throw err;
+            if (!jvmciCompatibilityChecked) {
+                checkJVMCICompatibility(run);
+                jvmciCompatibilityChecked = true;
+            }
+            Result actual = executeActual(run, null);
+            if (VERBOSE) {
+                System.out.println(run.format("%H.%n(%p)") + " -> " + actual);
             }
             test(run, null);
+        }
+    }
+
+    private static void checkJVMCICompatibility(ResolvedJavaMethod run) {
+        ConstantPool cp = run.getConstantPool();
+        for (int i = 0; i < cp.length(); i++) {
+            try {
+                cp.lookupConstant(i);
+            } catch (Throwable t) {
+                Assume.assumeFalse("running on JVMCI that does not support CONSTANT_Dynamic", String.valueOf(t).contains("Unknown JvmConstant tag 17"));
+            }
         }
     }
 }
