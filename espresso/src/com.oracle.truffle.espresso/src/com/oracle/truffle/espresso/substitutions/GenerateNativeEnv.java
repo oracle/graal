@@ -35,7 +35,7 @@ import java.lang.annotation.Target;
  * @see com.oracle.truffle.espresso.vm.VM
  * @see com.oracle.truffle.espresso.jni.JniEnv
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
 public @interface GenerateNativeEnv {
     /**

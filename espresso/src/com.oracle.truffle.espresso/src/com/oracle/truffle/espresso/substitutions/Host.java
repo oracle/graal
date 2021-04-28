@@ -34,7 +34,7 @@ import java.lang.annotation.Target;
  *
  * <br>
  * Used to derive correct signatures for substitutions and the JNI and VM implementations. Can be
- * used as a hint for guest parameter/return types, just for readability.
+ * used as a hint (better readability) for guest parameter/return types.
  *
  * <pre>
  * {@code @Host(byte[].class) StaticObject data}
@@ -43,7 +43,7 @@ import java.lang.annotation.Target;
  * {@code @Host(typeName = "Ljava/lang/Thread$State;") StaticObject threadState}
  * </pre>
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @Target(value = {TYPE_USE})
 public @interface Host {
     /**

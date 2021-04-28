@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.processor;
 
-public class ProcessorUtils {
+public final class ProcessorUtils {
     /** Appends and prepends a quotation mark around the given string. */
     public static String stringify(String str) {
         return '\"' + str + '\"';

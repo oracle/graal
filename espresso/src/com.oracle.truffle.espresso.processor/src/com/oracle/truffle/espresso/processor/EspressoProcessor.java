@@ -268,6 +268,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     private static final String FACTORY_IS_NULL = "InteropLibrary.getFactory().getUncached().isNull";
     private static final String PRIVATE_STATIC_FINAL = "private static final";
     private static final String PRIVATE_FINAL = "private final";
+    private static final String PRIVATE = "private";
     static final String PUBLIC_STATIC_FINAL = "public static final";
     static final String PUBLIC_STATIC_FINAL_CLASS = "public static final class ";
     static final String PUBLIC_FINAL_CLASS = "public final class ";
@@ -358,6 +359,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         }
         injectMeta = processingEnv.getElementUtils().getTypeElement(INJECT_META);
         injectProfile = processingEnv.getElementUtils().getTypeElement(INJECT_PROFILE);
+
         processImpl(roundEnv);
         // We are done, push the collector.
         commitFiles();
@@ -578,7 +580,12 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     @SuppressWarnings("unused")
     private static String generateGeneratedBy(String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
-        str.append("/**\n * ").append(GENERATED_BY).append("{").append(AT_LINK).append(className).append("#").append(targetMethodName).append("(");
+        if (helper.node != null) {
+            str.append("/**\n * ").append(GENERATED_BY).append("{").append(AT_LINK).append(helper.node.getQualifiedName()).append("}\n */");
+            return str.toString();
+        } else {
+            str.append("/**\n * ").append(GENERATED_BY).append("{").append(AT_LINK).append(className).append("#").append(targetMethodName).append("(");
+        }
         boolean first = true;
         for (String param : parameterTypes) {
             first = checkFirst(str, first);
@@ -672,7 +679,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * during substitution invocation.
      */
     static private String generateInstanceFields(SubstitutionHelper helper) {
-        if (helper.guestCalls.isEmpty() && !helper.hasMetaInjection && !helper.hasProfileInjection) {
+        if (helper.node == null && helper.guestCalls.isEmpty() && !helper.hasMetaInjection && !helper.hasProfileInjection) {
             return "";
         }
         StringBuilder str = new StringBuilder();
@@ -681,6 +688,9 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         }
         if (helper.hasMetaInjection || helper.hasProfileInjection) {
             str.append(TAB_1).append(PRIVATE_FINAL).append(" ").append(META_ARG).append(";\n");
+        }
+        if (helper.node != null) {
+            str.append(TAB_1).append(PRIVATE).append(" @Child ").append(helper.node.getSimpleName()).append(" ").append("node").append(";\n");
         }
         str.append('\n');
         return str.toString();
@@ -757,6 +767,10 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         str.append(generateGuestCalls(helper.guestCalls)).append("\n");
         if (helper.hasMetaInjection || helper.hasProfileInjection) {
             str.append(TAB_2).append(SET_META).append("\n");
+        }
+        if (helper.node != null) {
+            TypeElement enclosing = (TypeElement) helper.node.getEnclosingElement();
+            str.append(TAB_2).append("this.node = " + enclosing.getQualifiedName() + "Factory." + helper.node.getSimpleName() + "NodeGen" + ".create();").append("\n");
         }
         str.append(TAB_1).append("}\n");
         return str.toString();

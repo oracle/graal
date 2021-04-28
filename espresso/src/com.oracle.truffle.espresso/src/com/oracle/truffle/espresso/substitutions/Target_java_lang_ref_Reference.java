@@ -25,9 +25,15 @@ package com.oracle.truffle.espresso.substitutions;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.FinalizationSupport;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -113,27 +119,30 @@ public final class Target_java_lang_ref_Reference {
 
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
-    public static boolean enqueue(@Host(java.lang.ref.Reference.class) StaticObject self,
-                    // Checkstyle: stop
-                    @GuestCall(target = "java_lang_ref_Reference_enqueue", original = true) DirectCallNode enqueue,
-                    // Checkstyle: resume
-                    @InjectMeta Meta meta) {
-        if (meta.getJavaVersion().java9OrLater()) {
-            /*
-             * In java 9 or later, the referent field is cleared. We must replicate this behavior on
-             * our own implementation.
-             */
-            if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
-                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
-                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
-                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
-                EspressoReference ref = (EspressoReference) meta.HIDDEN_HOST_REFERENCE.getHiddenObject(self);
-                if (ref != null) {
-                    ref.clear();
+    static abstract class Enqueue extends Node {
+        abstract boolean execute(@Host(java.lang.ref.Reference.class) StaticObject self);
+
+        @Specialization
+        boolean doCached(@Host(java.lang.ref.Reference.class) StaticObject self,
+                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                         @Cached("create(context.getMeta().java_lang_ref_Reference_enqueue.getCallTargetNoSubstitution())") DirectCallNode originalEnqueue) {
+            if (context.getJavaVersion().java9OrLater()) {
+                /*
+                 * In java 9 or later, the referent field is cleared. We must replicate this behavior on
+                 * our own implementation.
+                 */
+                Meta meta = context.getMeta();
+                if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
+                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
+                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
+                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
+                    EspressoReference ref = (EspressoReference) meta.HIDDEN_HOST_REFERENCE.getHiddenObject(self);
+                    if (ref != null) {
+                        ref.clear();
+                    }
                 }
             }
+            return (boolean) originalEnqueue.call(self);
         }
-
-        return (boolean) enqueue.call(self);
     }
 }

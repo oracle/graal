@@ -32,6 +32,10 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
@@ -59,34 +63,38 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
-    @Substitution
-    public static @Host(Class.class) StaticObject getPrimitiveClass(
-                    @Host(String.class) StaticObject name,
-                    @InjectMeta Meta meta) {
 
-        String hostName = meta.toHostString(name);
+    @Substitution(methodName = "getPrimitiveClass")
+    static abstract class GetPrimitiveClass extends Node {
+        abstract @Host(Class.class) StaticObject execute(@Host(String.class) StaticObject name);
 
-        switch (hostName) {
-            case "boolean":
-                return meta._boolean.mirror();
-            case "byte":
-                return meta._byte.mirror();
-            case "char":
-                return meta._char.mirror();
-            case "short":
-                return meta._short.mirror();
-            case "int":
-                return meta._int.mirror();
-            case "float":
-                return meta._float.mirror();
-            case "double":
-                return meta._double.mirror();
-            case "long":
-                return meta._long.mirror();
-            case "void":
-                return meta._void.mirror();
-            default:
-                throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+        @Specialization
+        @Host(Class.class) StaticObject withContext(@Host(String.class) StaticObject name,
+                                            @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            Meta meta = context.getMeta();
+            String hostName = meta.toHostString(name);
+            switch (hostName) {
+                case "boolean":
+                    return meta._boolean.mirror();
+                case "byte":
+                    return meta._byte.mirror();
+                case "char":
+                    return meta._char.mirror();
+                case "short":
+                    return meta._short.mirror();
+                case "int":
+                    return meta._int.mirror();
+                case "float":
+                    return meta._float.mirror();
+                case "double":
+                    return meta._double.mirror();
+                case "long":
+                    return meta._long.mirror();
+                case "void":
+                    return meta._void.mirror();
+                default:
+                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+            }
         }
     }
 

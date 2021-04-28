@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
-public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
+public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @Substitution
     public static boolean isForeignObject(@Host(Object.class) StaticObject object) {
         return object.isForeignObject();

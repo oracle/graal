@@ -24,6 +24,9 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -33,9 +36,14 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -51,9 +59,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      *
      * @see InteropLibrary#isNull(Object)
      */
-    @Substitution
-    public static boolean isNull(@Host(Object.class) StaticObject receiver) {
-        return UNCACHED.isNull(unwrap(receiver));
+    @Substitution(methodName = "isNull")
+    static abstract class IsNull extends Node {
+        static final int LIMIT = 4;
+        abstract boolean execute(@Host(Object.class) StaticObject receiver);
+        @Specialization
+        boolean cached(@Host(Object.class) StaticObject receiver,
+                       @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return interop.isNull(unwrap(receiver));
+        }
     }
 
     // region Boolean Messages
@@ -64,9 +78,16 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      *
      * @see InteropLibrary#isBoolean(Object)
      */
-    @Substitution
-    public static boolean isBoolean(@Host(Object.class) StaticObject receiver) {
-        return UNCACHED.isBoolean(unwrap(receiver));
+    @Substitution(methodName = "isBoolean")
+    static abstract class IsBoolean extends Node {
+        static final int LIMIT = 4;
+        abstract boolean execute(@Host(Object.class) StaticObject receiver);
+
+        @Specialization
+        boolean doCached(@Host(Object.class) StaticObject receiver,
+                       @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return interop.isBoolean(unwrap(receiver));
+        }
     }
 
     /**
@@ -75,13 +96,23 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      *
      * @see InteropLibrary#asBoolean(Object)
      */
-    @Substitution
+    @Substitution(methodName = "asBoolean")
     @Throws(UnsupportedMessageException.class)
-    public static boolean asBoolean(@Host(Object.class) StaticObject receiver, @InjectMeta Meta meta) {
-        try {
-            return UNCACHED.asBoolean(unwrap(receiver));
-        } catch (InteropException e) {
-            throw throwInteropException(e, meta);
+    static abstract class AsBoolean extends Node {
+        static final int LIMIT = 4;
+        abstract boolean execute(@Host(Object.class) StaticObject receiver);
+
+        @Specialization
+        boolean doCached(@Host(Object.class) StaticObject receiver,
+                          @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                          @CachedContext(EspressoLanguage.class) EspressoContext context,
+                          @Cached BranchProfile error) {
+            try {
+                return interop.asBoolean(unwrap(receiver));
+            } catch (InteropException e) {
+                error.enter();
+                throw throwInteropException(e, context.getMeta());
+            }
         }
     }
 

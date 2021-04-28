@@ -23,9 +23,16 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -42,21 +49,24 @@ public final class Target_java_lang_Object {
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    public static void init(@Host(Object.class) StaticObject self,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
-        assert self.getKlass() instanceof ObjectKlass;
-        if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
-            profiler.profile(0);
-            // TODO: inject guest call.
-            /*
-             * Injecting the guest call is difficult here, as this method is called upon spawning
-             * the VM. Creation of the substitutor triggers the creation of the calltarget, which
-             * triggers initialization of j.l.ref.Finalizer too early in the boot process.
-             * 
-             * One simple solution is to lazily initialize the call node, which would be best.
-             */
-            meta.java_lang_ref_Finalizer_register.invokeDirect(null, self);
+    static abstract class Init extends Node {
+
+        abstract void execute(@Host(Object.class) StaticObject self);
+
+        static boolean hasFinalizer(StaticObject self) {
+            return ((ObjectKlass) self.getKlass()).hasFinalizer();
+        }
+
+        @Specialization(guards = "hasFinalizer(self)")
+        void registerFinalizer(@Host(Object.class) StaticObject self,
+                        @SuppressWarnings("unused") @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().java_lang_ref_Finalizer_register.getCallTarget())") DirectCallNode register) {
+            register.call(self);
+        }
+
+        @Fallback
+        void noFinalizer(@SuppressWarnings("unused") @Host(Object.class) StaticObject self) {
+            // nop
         }
     }
 

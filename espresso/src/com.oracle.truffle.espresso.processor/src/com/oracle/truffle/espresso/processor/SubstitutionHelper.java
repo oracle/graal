@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.espresso.processor;
 
+import java.util.Collections;
 import java.util.List;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 
 /**
  * passed around during espresso annotation processing. It is meant to be subclassed to serve as
@@ -37,11 +40,19 @@ public class SubstitutionHelper {
     List<GuestCall> guestCalls;
     boolean hasMetaInjection;
     boolean hasProfileInjection;
+    TypeElement node;
 
     public SubstitutionHelper(EspressoProcessor processor, ExecutableElement method) {
-        guestCalls = processor.getGuestCalls(method);
-        hasMetaInjection = processor.hasMetaInjection(method);
-        hasProfileInjection = processor.hasProfileInjection(method);
+        this.guestCalls = processor.getGuestCalls(method);
+        this.hasMetaInjection = processor.hasMetaInjection(method);
+        this.hasProfileInjection = processor.hasProfileInjection(method);
+    }
+
+    public SubstitutionHelper(EspressoProcessor processor, TypeElement node) {
+        this.guestCalls = Collections.emptyList();
+        this.hasMetaInjection = false;
+        this.hasProfileInjection = false;
+        this.node = node;
     }
 
     public static final class GuestCall {
