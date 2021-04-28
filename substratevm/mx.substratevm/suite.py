@@ -399,6 +399,7 @@ suite = {
             "requires" : ["java.instrument"],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
+                "java.base" : ["jdk.internal.module"],
             },
             "javaCompliance": "11+",
             "checkstyle" : "com.oracle.svm.hosted",
@@ -1145,6 +1146,8 @@ suite = {
               "name" : "org.graalvm.nativeimage.objectfile",
               "exports" : [
                 "com.oracle.objectfile",
+                "com.oracle.objectfile.io",
+                "com.oracle.objectfile.debuginfo",
               ],
               "requiresConcealed" : {
                 "java.base" : [
@@ -1216,8 +1219,10 @@ suite = {
                 "org.graalvm.compiler.options.OptionDescriptors",
               ],
               "requires" : [
+                "org.graalvm.nativeimage.builder",
                 "java.management",
                 "jdk.management",
+                "jdk.unsupported", # NativeImageServer.AbortBuildSignalHandler uses sun.misc.SignalHandler
                 # Already defined static/optional in LIBRARY_SUPPORT. Apparently that is not enough.
                 "static com.oracle.mxtool.junit",
                 "static junit",
