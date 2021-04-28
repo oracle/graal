@@ -506,7 +506,7 @@ public class NativeImageGenerator {
                                     writer.println("# particular native image (including its name)");
                                     writer.println("# and therefore cannot be used with others.");
                                 }
-                                paths.stream().map(buildDir::relativize).forEach(writer::println);
+                                paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
                                 writer.println();
                             }));
         } catch (InterruptedException | CancellationException e) {
