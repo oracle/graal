@@ -170,7 +170,6 @@ public final class Factory extends Thread {
      * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
      */
     private boolean poll() {
-        assert Thread.holdsLock(this);
         MBeanServer mBeanServer = findMBeanServer();
         if (mBeanServer != null) {
             initializeNatives();
