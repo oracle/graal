@@ -109,7 +109,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     abstract List<Path> applicationModulePath();
 
-    abstract Optional<Object> findModule(String moduleName);
+    abstract Optional<? extends Object> findModule(String moduleName);
 
     abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 
