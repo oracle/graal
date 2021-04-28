@@ -138,7 +138,7 @@ class NativeImageVM(GraalVm):
             self.executable, self.classpath_arguments, self.system_properties, self.image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.executable_name = (os.path.splitext(os.path.basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
-            self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-bench-' + self.executable_name + '-' + vm.config_name())
+            self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
             self.profile_path_no_extension = os.path.join(self.output_dir, self.executable_name)
             self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
             self.config_dir = os.path.join(self.output_dir, 'config')
