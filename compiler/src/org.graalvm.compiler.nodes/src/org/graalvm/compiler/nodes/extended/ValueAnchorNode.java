@@ -88,6 +88,11 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
                 // nothing anchored on the next anchor -> coalesce
                 nextAnchor.replaceAtUsages(this);
                 GraphUtil.removeFixedWithUnusedInputs(nextAnchor);
+                /*
+                 * Combining two anchors can allow the combining of two PiNode that are now anchored
+                 * at the same place.
+                 */
+                tool.addToWorkList(usages());
             } else {
                 break;
             }
