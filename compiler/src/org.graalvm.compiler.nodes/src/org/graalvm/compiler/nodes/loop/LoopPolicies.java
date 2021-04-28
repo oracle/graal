@@ -47,5 +47,25 @@ public interface LoopPolicies {
 
     boolean shouldTryUnswitch(LoopEx loop);
 
-    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
+    enum UnswitchingDecision {
+        /** This loop should be unswitched. */
+        YES,
+        /**
+         * This loop should be unswitched, and the unswitch is considered trivial. Trivial
+         * unswitches are not counted towards the loop's total unswitch count.
+         */
+        TRIVIAL,
+        /** This loop should not be unswitched. */
+        NO;
+
+        public boolean shouldUnswitch() {
+            return this == YES || this == TRIVIAL;
+        }
+
+        public boolean isTrivial() {
+            return this == TRIVIAL;
+        }
+    }
+
+    UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
 }

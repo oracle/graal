@@ -149,12 +149,14 @@ public abstract class LoopTransformations {
         canonicalizer.applyIncremental(graph, context, l.getNodes());
     }
 
-    public static void unswitch(LoopEx loop, List<ControlSplitNode> controlSplitNodeSet) {
+    public static void unswitch(LoopEx loop, List<ControlSplitNode> controlSplitNodeSet, boolean isTrivialUnswitch) {
         ControlSplitNode firstNode = controlSplitNodeSet.iterator().next();
         LoopFragmentWhole originalLoop = loop.whole();
         StructuredGraph graph = firstNode.graph();
 
-        loop.loopBegin().incrementUnswitches();
+        if (!isTrivialUnswitch) {
+            loop.loopBegin().incrementUnswitches();
+        }
 
         // create new control split out of loop
         ControlSplitNode newControlSplit = (ControlSplitNode) firstNode.copyWithInputs();
