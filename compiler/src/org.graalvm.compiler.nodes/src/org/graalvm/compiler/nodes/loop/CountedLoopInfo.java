@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public class CountedLoopInfo {
 
     protected final LoopEx loop;
-    protected InductionVariable iv;
+    protected InductionVariable limitCheckedIV;
     protected ValueNode end;
     /**
      * {@code true} iff the limit is included in the limit test, e.g., the limit test is
@@ -70,10 +70,10 @@ public class CountedLoopInfo {
     protected IfNode ifNode;
     protected final boolean unsigned;
 
-    protected CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean isLimitIncluded, AbstractBeginNode body, boolean unsigned) {
-        assert iv.direction() != null;
+    protected CountedLoopInfo(LoopEx loop, InductionVariable limitCheckedIV, IfNode ifNode, ValueNode end, boolean isLimitIncluded, AbstractBeginNode body, boolean unsigned) {
+        assert limitCheckedIV.direction() != null;
         this.loop = loop;
-        this.iv = iv;
+        this.limitCheckedIV = limitCheckedIV;
         this.end = end;
         this.isLimitIncluded = isLimitIncluded;
         this.body = body;
@@ -125,7 +125,7 @@ public class CountedLoopInfo {
      *         {@linkplain CountedLoopInfo#getBodyIV()}.
      */
     public InductionVariable getLimitCheckedIV() {
-        return iv;
+        return limitCheckedIV;
     }
 
     /**
@@ -135,8 +135,8 @@ public class CountedLoopInfo {
      *         {@linkplain CountedLoopInfo#getLimitCheckedIV()}.
      */
     public InductionVariable getBodyIV() {
-        assert !isInverted() || getLimitCheckedIV() == iv : "Only inverted loops must have different body ivs.";
-        return iv;
+        assert !isInverted() && getLimitCheckedIV() == limitCheckedIV : "Only inverted loops must have different body ivs.";
+        return limitCheckedIV;
     }
 
     /**
@@ -183,7 +183,7 @@ public class CountedLoopInfo {
      *
      */
     public ValueNode getTripCountLimit() {
-        assert !isInverted() || getLimit() == getTripCountLimit() : "Only inverted loops must have a different trip count limit";
+        assert !isInverted() && getLimit() == end : "Only inverted loops must have a different trip count limit";
         return end;
     }
 
@@ -380,11 +380,20 @@ public class CountedLoopInfo {
         return "iv=" + getLimitCheckedIV() + " until " + getTripCountLimit() + (isLimitIncluded ? getBodyIV().direction() == Direction.Up ? "+1" : "-1" : "") + " bodyIV=" + getBodyIV();
     }
 
+    /**
+     * @return the {@linkplain IfNode} that checks {@linkplain CountedLoopInfo#getLimitCheckedIV()}
+     *         against {@linkplain CountedLoopInfo#getLimit()}.
+     */
     public IfNode getLimitTest() {
         return ifNode;
     }
 
-    public ValueNode getStart() {
+    /**
+     * @return the {@linkplain InductionVariable#initNode()} of the loop's
+     *         {@linkplain #getBodyIV()}, i.e., the start node of the IV used inside the loop body
+     *         (which can be different than the IV checked in {@linkplain #getLimitCheckedIV()}}.
+     */
+    public ValueNode getBodyIVStart() {
         return getBodyIV().initNode();
     }
 

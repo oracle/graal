@@ -205,7 +205,7 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
                         IntegerConvertNode.convert(offset, StampFactory.forInteger(64), graph, NodeView.DEFAULT));
         final LogicNode upperCond = IntegerBelowNode.create(upperNode, rangeLong, NodeView.DEFAULT);
 
-        final ValueNode initNode = IntegerConvertNode.convert(loop.counted().getStart(), StampFactory.forInteger(64), graph, NodeView.DEFAULT);
+        final ValueNode initNode = IntegerConvertNode.convert(loop.counted().getBodyIVStart(), StampFactory.forInteger(64), graph, NodeView.DEFAULT);
         final ValueNode lowerNode = MathUtil.add(graph, MathUtil.mul(graph, initNode, ConstantNode.forLong(scaleCon, graph)),
                         IntegerConvertNode.convert(offset, StampFactory.forInteger(64), graph, NodeView.DEFAULT));
         final LogicNode lowerCond = IntegerBelowNode.create(lowerNode, rangeLong, NodeView.DEFAULT);

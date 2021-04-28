@@ -610,7 +610,7 @@ public abstract class LoopTransformations {
     private static void updatePreLoopLimit(CountedLoopInfo preCounted) {
         // Update the pre loops limit test
         // Make new limit one iteration
-        ValueNode newLimit = AddNode.add(preCounted.getStart(), preCounted.getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
+        ValueNode newLimit = AddNode.add(preCounted.getBodyIVStart(), preCounted.getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
         // Fetch the variable we are not replacing and configure the one we are
         ValueNode ub = preCounted.getLimit();
         IntegerHelper helper = preCounted.getCounterIntegerHelper();
