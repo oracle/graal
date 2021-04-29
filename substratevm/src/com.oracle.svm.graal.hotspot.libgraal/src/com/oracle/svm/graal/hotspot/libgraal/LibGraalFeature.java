@@ -641,22 +641,9 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
         // This scope is required to allow Graal compilations of host methods to call methods
         // on the TruffleCompilerRuntime. This is, for example, required to find out about
         // Truffle-specific method annotations.
-        try (JNIMethodScope scope = new JNIMethodScope(VMScopeId.INSTANCE, env)) {
+        try (JNIMethodScope scope = new JNIMethodScope("<called from VM>", env)) {
             return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
         }
-    }
-}
-
-final class VMScopeId implements JNIMethodScope.ScopeId {
-
-    static final VMScopeId INSTANCE = new VMScopeId();
-
-    private VMScopeId() {
-    }
-
-    @Override
-    public String getDisplayName() {
-        return "<called from VM>";
     }
 }
 

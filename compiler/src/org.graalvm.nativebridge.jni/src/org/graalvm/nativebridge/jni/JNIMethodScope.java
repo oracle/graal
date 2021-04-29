@@ -37,12 +37,12 @@ import java.util.Objects;
  * Scope of a call from HotSpot to native method. This also provides access to the {@link JNIEnv}
  * value for the current thread within the native method call.
  *
- * If the native method call call returns a non-primitive value, the return value must be
+ * If the native method call returns a non-primitive value, the return value must be
  * {@linkplain #setObjectResult(JObject) set} within the try-with-resources statement and then
  * {@linkplain #getObjectResult() retrieved} and returned outside the try-with-resources statement.
  * This is necessary to support use of JNI local frames.
  */
-public class JNIMethodScope implements AutoCloseable {
+public final class JNIMethodScope implements AutoCloseable {
 
     private static final ThreadLocal<JNIMethodScope> topScope = new ThreadLocal<>();
 
@@ -57,9 +57,9 @@ public class JNIMethodScope implements AutoCloseable {
     HSObject locals;
 
     /**
-     * The native method method id for this scope.
+     * The name for this scope.
      */
-    private final ScopeId scopeId;
+    private final String scopeName;
 
     /**
      * Gets the {@link JNIEnv} value for the current thread.
@@ -98,9 +98,9 @@ public class JNIMethodScope implements AutoCloseable {
      * Enters the scope of an native method call.
      */
     @SuppressWarnings("unchecked")
-    public JNIMethodScope(ScopeId scopeId, JNIEnv env) {
-        Objects.requireNonNull(scopeId, "Id must be non null.");
-        this.scopeId = scopeId;
+    public JNIMethodScope(String scopeName, JNIEnv env) {
+        Objects.requireNonNull(scopeName, "ScopeName must be non null.");
+        this.scopeName = scopeName;
         JNIMethodScope top = topScope.get();
         this.env = env;
         if (top == null) {
@@ -117,7 +117,7 @@ public class JNIMethodScope implements AutoCloseable {
             parent = top.leaf;
         }
         top.leaf = this;
-        JNIUtil.trace(1, "HS->%s[enter]: %s", JNIUtil.getFeatureName(), scopeId.getDisplayName());
+        JNIUtil.trace(1, "HS->%s[enter]: %s", JNIUtil.getFeatureName(), scopeName);
     }
 
     /**
@@ -136,7 +136,7 @@ public class JNIMethodScope implements AutoCloseable {
 
     @Override
     public void close() {
-        JNIUtil.trace(1, "HS->%s[ exit]: %s", getFeatureName(), scopeId.getDisplayName());
+        JNIUtil.trace(1, "HS->%s[ exit]: %s", getFeatureName(), scopeName);
         HSObject.invalidate(locals);
         if (parent == null) {
             if (topScope.get() != this) {
@@ -166,9 +166,5 @@ public class JNIMethodScope implements AutoCloseable {
     @Override
     public String toString() {
         return "JNIMethodScope[" + depth() + "]@" + Long.toHexString(env.rawValue());
-    }
-
-    public interface ScopeId {
-        String getDisplayName();
     }
 }

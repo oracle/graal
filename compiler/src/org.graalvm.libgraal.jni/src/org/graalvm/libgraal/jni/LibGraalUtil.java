@@ -45,25 +45,8 @@ public final class LibGraalUtil {
     }
 
     public static JNIMethodScope openScope(Class<?> entryPointClass, Enum<?> id, JNIEnv env) {
-        Objects.requireNonNull(id, "EntryPointClass must be non null.");
         Objects.requireNonNull(id, "Id must be non null.");
-        return new JNIMethodScope(new LibGraalJNIMethodScopeId(entryPointClass, id), env);
-    }
-
-    private static final class LibGraalJNIMethodScopeId implements JNIMethodScope.ScopeId {
-
-        private final Class<?> entryPointClass;
-        private final Enum<?> methodId;
-
-        LibGraalJNIMethodScopeId(Class<?> entryPointClass, Enum<?> methodId) {
-            this.entryPointClass = entryPointClass;
-            this.methodId = methodId;
-        }
-
-        @Override
-        public String getDisplayName() {
-            return entryPointClass.getSimpleName() + "::" + methodId;
-        }
+        return new JNIMethodScope(entryPointClass.getSimpleName() + "::" + id, env);
     }
 
     /*----------------- CHECKING ------------------*/
