@@ -276,7 +276,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         try {
-            doCompile(optimizedCallTarget, new SingleThreadedCompilationTask(lastTierCompilation));
+            doCompile(optimizedCallTarget, lastTierCompilation ? SingleThreadedCompilationTask.lastTier : SingleThreadedCompilationTask.firstTier);
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
             if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
@@ -382,6 +382,8 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
      */
     private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
         private final boolean lastTierCompilation;
+        static SingleThreadedCompilationTask firstTier = new SingleThreadedCompilationTask(false);
+        static SingleThreadedCompilationTask lastTier = new SingleThreadedCompilationTask(true);
 
         SingleThreadedCompilationTask(boolean lastTierCompilation) {
             this.lastTierCompilation = lastTierCompilation;
