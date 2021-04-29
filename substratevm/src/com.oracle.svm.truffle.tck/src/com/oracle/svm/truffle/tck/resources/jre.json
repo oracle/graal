@@ -244,5 +244,14 @@
          ]
        }
     ]
+  },
+  {
+    "name": "java.util.logging.LogManager",
+    "methods" : [
+      {
+        "name" : "checkPermission",
+        "parameterTypes" : []
+      }
+    ]
   }
 ]
