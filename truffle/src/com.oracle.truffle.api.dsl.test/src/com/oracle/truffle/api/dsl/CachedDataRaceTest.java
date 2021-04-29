@@ -58,7 +58,9 @@ import com.oracle.truffle.api.nodes.Node;
  * "executeAndSpecialize" method. Note that the race was reproducible only on JDK8.
  */
 public class CachedDataRaceTest {
-    private static final int TEST_REPETITIONS = 5000;
+    private static final int TEST_REPETITIONS = 1000;
+    // Don't go too crazy, if JVM reports lots of available threads
+    private static final int MAX_THREADS = 8;
 
     public abstract static class TestNodeBase extends Node {
         public abstract Object execute(Object obj);
@@ -102,7 +104,7 @@ public class CachedDataRaceTest {
 
     public void testCachedDataRace(Supplier<TestNodeBase> nodeFactory) throws Exception {
         Object[] items = new Object[]{1, 1.2, 1L, "string", new Object(), true, (byte) 1, (short) 2, (float) 1.2, 'a'};
-        int threadsCount = Runtime.getRuntime().availableProcessors();
+        int threadsCount = Math.min(MAX_THREADS, Runtime.getRuntime().availableProcessors());
         ExecutorService executorService = Executors.newFixedThreadPool(threadsCount);
         Future<?>[] futures = new Future<?>[threadsCount];
 
