@@ -43,6 +43,7 @@ package com.oracle.truffle.api.dsl;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
@@ -102,15 +103,26 @@ public class CachedDataRaceTest {
         testCachedDataRace(CachedDataRaceTestFactory.TestCachedNodeNodeGen::create);
     }
 
-    public void testCachedDataRace(Supplier<TestNodeBase> nodeFactory) throws Exception {
-        Object[] items = new Object[]{1, 1.2, 1L, "string", new Object(), true, (byte) 1, (short) 2, (float) 1.2, 'a'};
+    public static void testCachedDataRace(Supplier<TestNodeBase> nodeFactory) throws Exception {
         int threadsCount = Math.min(MAX_THREADS, Runtime.getRuntime().availableProcessors());
         ExecutorService executorService = Executors.newFixedThreadPool(threadsCount);
+        AtomicBoolean done = new AtomicBoolean();
+        try {
+            testCachedDataRace(nodeFactory, executorService, threadsCount, done);
+        } finally {
+            done.set(true);
+            executorService.shutdown();
+            executorService.awaitTermination(10000, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private static void testCachedDataRace(Supplier<TestNodeBase> nodeFactory, ExecutorService executorService, int threadsCount, AtomicBoolean done) throws Exception {
+        Object[] items = new Object[]{1, 1.2, 1L, "string", new Object(), true, (byte) 1, (short) 2, (float) 1.2, 'a'};
         Future<?>[] futures = new Future<?>[threadsCount];
 
         for (int i = 0; i < TEST_REPETITIONS; i++) {
             TestNodeBase node = nodeFactory.get();
-            AtomicBoolean done = new AtomicBoolean();
+            done.set(false);
 
             // "reader" threads keep on reading the CachedLibrary until done
             for (int idx = 0; idx < futures.length - 1; idx++) {
