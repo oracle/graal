@@ -112,4 +112,9 @@ public class ValuePhiNode extends PhiNode {
     public PhiNode duplicateOn(AbstractMergeNode newMerge) {
         return graph().addWithoutUnique(new ValuePhiNode(stamp(NodeView.DEFAULT), newMerge));
     }
+
+    @Override
+    public ProxyNode createProxyFor(LoopExitNode lex) {
+        return graph().addWithoutUnique(new ValueProxyNode(this, lex));
+    }
 }
