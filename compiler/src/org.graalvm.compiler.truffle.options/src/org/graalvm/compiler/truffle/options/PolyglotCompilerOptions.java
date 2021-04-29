@@ -517,16 +517,16 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
 
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> DynamicThresholds = new OptionKey<>(true);
+    public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
 
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Double> DynamicThresholdsMinScale = new OptionKey<>(0.1);
+    public static final OptionKey<Double> DynamicCompilerThresholdsMinScale = new OptionKey<>(0.1);
 
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> DynamicThresholdsNormalLoad = new OptionKey<>(100);
+    public static final OptionKey<Integer> DynamicCompilerThresholdsNormalLoad = new OptionKey<>(100);
 
     @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Double> DynamicThresholdPlateauWidth = new OptionKey<>(0.9);
+    public static final OptionKey<Double> DynamicCompilationThresholdsPlateauWidth = new OptionKey<>(0.9);
 
     // Language agnostic inlining
 
