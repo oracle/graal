@@ -161,7 +161,7 @@ public class PropertyAccessTest {
         StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new StaticProperty(descriptor.kind);
         builder.property(property, "property", false);
-        StaticShape<DefaultStaticObject.DefaultStaticObjectFactory> shape = builder.build();
+        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
 
         // Check the default value
@@ -180,7 +180,7 @@ public class PropertyAccessTest {
         StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new StaticProperty(expectedDescriptor.kind);
         builder.property(property, "property", false);
-        StaticShape<DefaultStaticObject.DefaultStaticObjectFactory> shape = builder.build();
+        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
 
         // Check that wrong getters throw exceptions

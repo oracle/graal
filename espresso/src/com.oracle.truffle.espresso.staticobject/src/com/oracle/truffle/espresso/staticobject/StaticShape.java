@@ -106,11 +106,11 @@ public abstract class StaticShape<T> {
             return this;
         }
 
-        public StaticShape<DefaultStaticObject.DefaultStaticObjectFactory> build() {
+        public StaticShape<DefaultStaticObject.Factory> build() {
             // The classloader that loaded the default superClass must be able to load the default
             // factory.
             // Therefore, we can't use java.lang.Object as default superClass.
-            return build(DefaultStaticObject.class, DefaultStaticObject.DefaultStaticObjectFactory.class);
+            return build(DefaultStaticObject.class, DefaultStaticObject.Factory.class);
         }
 
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {

@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.staticobject.test;
 
 import com.oracle.truffle.espresso.staticobject.DefaultStaticObject;
-import com.oracle.truffle.espresso.staticobject.DefaultStaticObject.DefaultStaticObjectFactory;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
@@ -89,7 +88,7 @@ public class BuilderPropertyTest {
         StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
         String propertyName = "p1";
         builder.property(property, propertyName, false);
-        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
         Field field = object.getClass().getField(propertyName);
         Assert.assertEquals(propertyName, field.getName());
@@ -106,7 +105,7 @@ public class BuilderPropertyTest {
         String p2Name = "p2";
         builder.property(p1, p1Name, true);
         builder.property(p2, p2Name, false);
-        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
         Field f1 = object.getClass().getField(p1Name);
         Field f2 = object.getClass().getField(p2Name);
@@ -122,7 +121,7 @@ public class BuilderPropertyTest {
         for (StaticPropertyKind kind : StaticPropertyKind.values()) {
             builder.property(new StaticProperty(kind), kind.name(), false);
         }
-        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
         for (StaticPropertyKind kind : StaticPropertyKind.values()) {
             Class<?> expectedType;
