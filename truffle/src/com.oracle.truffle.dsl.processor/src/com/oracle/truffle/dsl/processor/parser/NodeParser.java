@@ -2656,6 +2656,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
         }
+        if (specialization.isFallback()) {
+            for (int i = 0; i < libraries.size(); i++) {
+                CacheExpression cachedLibrary = libraries.get(i);
+                if (cachedLibrary.getCachedLibraryExpression() != null) {
+                    cachedLibrary.addError("@%s annotations with specialized receivers are not supported in combination with @%s annotations. " +
+                                    "Specify the @%s(limit=\"...\") attribute and remove the receiver expression to use an dispatched library instead.",
+                                    getSimpleName(types.CachedLibrary), getSimpleName(types.Fallback), getSimpleName(types.CachedLibrary));
+                }
+            }
+        }
 
         if (!libraries.isEmpty() && !specialization.hasErrors() && ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "limit", false) == null &&
                         specialization.hasMultipleInstances()) {

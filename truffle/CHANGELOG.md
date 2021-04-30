@@ -9,6 +9,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `RootNode#countsTowardsStackTraceLimit()`, replacing `RootNode#isInternal()` as the criterion that determines whether a frame with the given root node counts towards the stack trace limit.
 * Added `engine.UsePreInitializedContext` option which can be used to disable usage of pre-initialized context.
 * Added `MemoryFence`: provides methods for fine-grained control of memory ordering.
+* Methods annotated with `@Fallback`  of the Truffle specialization DSL now support `@Cached`, `@CachedContext`, `@CachedLanguage`, `@Bind` and dispatched `@CachedLibrary` parameters.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
