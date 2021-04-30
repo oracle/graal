@@ -73,18 +73,13 @@ def svm_java_compliance():
 def svm_java8():
     return svm_java_compliance() <= mx.JavaCompliance('1.8')
 
-def graal_compiler_flags(version_tag=None):
-    version_tag = version_tag or svm_java_compliance().value
-    config_path = mx.dependency('substratevm:svm-compiler-flags-builder').result_file_path(version_tag)
-    if not exists(config_path):
-        missing_flags_message = '''
-Missing graal-compiler-flags config-file {0}. Possible causes:
-* Forgot to run "mx build" before using SubstrateVM.
-* Generating config-file for Java {1} missing in SubstrateCompilerFlagsBuilder.compute_graal_compiler_flags_map().
-'''
-        mx.abort(missing_flags_message.format(config_path, version_tag))
-    with open(config_path, 'r') as config_file:
-        return config_file.read().splitlines()
+def graal_compiler_flags(all_unnamed=True):
+    version_tag = svm_java_compliance().value
+    compiler_flags = mx.dependency('substratevm:svm-compiler-flags-builder').compute_graal_compiler_flags_map(all_unnamed=all_unnamed)
+    if version_tag not in compiler_flags:
+        missing_flags_message = 'Missing graal-compiler-flags for {0}.\n Did you forget to run "mx build"?'
+        mx.abort(missing_flags_message.format(version_tag))
+    return compiler_flags[version_tag]
 
 def svm_unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -1424,7 +1419,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
     # If renaming or moving this method, please update the error message in
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
-    def compute_graal_compiler_flags_map(self):
+    def compute_graal_compiler_flags_map(self, all_unnamed=not USE_NI_JPMS):
         graal_compiler_flags_map = dict()
         graal_compiler_flags_map[8] = [
             '-d64',
@@ -1441,7 +1436,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             distributions_transitive = mx.classpath_entries(self.deps)
             jdk = mx.get_jdk(tag='default')
             required_exports = mx_javamodules.requiredExports(distributions_transitive, jdk)
-            target_module = None if USE_NI_JPMS else 'ALL-UNNAMED'
+            target_module = 'ALL-UNNAMED' if all_unnamed else None
             exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports, target_module)
             graal_compiler_flags_map[11].extend(exports_flags)
 
