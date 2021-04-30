@@ -95,7 +95,7 @@ public abstract class InvokeEspressoNode extends Node {
         int expectedArity = cachedMethod.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
             badArityProfile.enter();
-            throw ArityException.create(expectedArity, arguments.length);
+            throw ArityException.create(expectedArity, expectedArity, arguments.length);
         }
 
         Klass[] parameterKlasses = method.getMethod().resolveParameterKlasses();
@@ -125,7 +125,7 @@ public abstract class InvokeEspressoNode extends Node {
 
         int expectedArity = method.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
-            throw ArityException.create(expectedArity, arguments.length);
+            throw ArityException.create(expectedArity, expectedArity, arguments.length);
         }
 
         Klass[] parameterKlasses = method.getMethod().resolveParameterKlasses();

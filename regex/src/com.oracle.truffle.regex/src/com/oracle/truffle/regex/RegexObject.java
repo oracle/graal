@@ -234,7 +234,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
                     throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (args.length != 2) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(2, args.length);
+            throw ArityException.create(2, 2, args.length);
         }
         Object input = args[0];
         long fromIndex = toLongNode.execute(args[1]);

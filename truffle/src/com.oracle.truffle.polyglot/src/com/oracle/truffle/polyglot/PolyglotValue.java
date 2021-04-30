@@ -2895,7 +2895,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     unknown.enter();
                     throw nonWritableMemberKey(context, receiver, key);
                 } catch (UnsupportedTypeException e) {
-<<<<<<< HEAD
                     invalidValue.enter();
                     throw invalidMemberValue(context, receiver, key, value);
                 }
@@ -2930,13 +2929,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     assert key != null : "should be handled already";
                     objects.removeMember(receiver, key);
                     value = Boolean.TRUE;
-=======
-                    invalidArgument.enter();
-                    throw invalidInstantiateArgumentType(context, receiver, instantiateArguments);
-                } catch (ArityException e) {
-                    arity.enter();
-                    throw invalidInstantiateArity(context, receiver, instantiateArguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
->>>>>>> 483f6927de64 (Migrate to expected arity exception ranges.)
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     if (!objects.hasMembers(receiver)) {
@@ -3128,7 +3120,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     throw invalidExecuteArgumentType(context, receiver, e);
                 } catch (ArityException e) {
                     arity.enter();
-                    throw invalidExecuteArity(context, receiver, guestArguments, e.getExpectedArity(), e.getActualArity());
+                    throw invalidExecuteArity(context, receiver, guestArguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     throw executeUnsupported(context, receiver);
@@ -3270,7 +3262,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     throw invalidInstantiateArgumentType(context, receiver, instantiateArguments);
                 } catch (ArityException e) {
                     arity.enter();
-                    throw invalidInstantiateArity(context, receiver, instantiateArguments, e.getExpectedArity(), e.getActualArity());
+                    throw invalidInstantiateArity(context, receiver, instantiateArguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     return newInstanceUnsupported(context, receiver);
@@ -3312,7 +3304,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     throw invalidInvokeArgumentType(context, receiver, key, e);
                 } catch (ArityException e) {
                     arity.enter();
-                    throw invalidInvokeArity(context, receiver, key, guestArguments, e.getExpectedArity(), e.getActualArity());
+                    throw invalidInvokeArity(context, receiver, key, guestArguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
                 }
             }
 

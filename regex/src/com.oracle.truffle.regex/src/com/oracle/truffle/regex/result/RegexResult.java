@@ -306,7 +306,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                     @Cached InvokeCacheNode invokeCache) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
         if (args.length != 1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(1, args.length);
+            throw ArityException.create(1, 1, args.length);
         }
         return invokeCache.execute(this, member, toIntNode.execute(args[0]));
     }
