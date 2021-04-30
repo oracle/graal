@@ -65,7 +65,6 @@ public final class SpecializationData extends TemplateMethod {
 
     public enum SpecializationKind {
         SPECIALIZED,
-        POLYMORPHIC,
         FALLBACK
     }
 
@@ -418,10 +417,6 @@ public final class SpecializationData extends TemplateMethod {
 
     public boolean isReplaced() {
         return replaced;
-    }
-
-    public boolean isPolymorphic() {
-        return kind == SpecializationKind.POLYMORPHIC;
     }
 
     @Override
