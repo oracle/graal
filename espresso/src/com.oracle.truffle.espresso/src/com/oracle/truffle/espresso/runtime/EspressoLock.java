@@ -28,8 +28,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.impl.Stable;
-import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 
 /**
  * Lock implementation for guest objects. Provides a similar interface to {@link Object} built-in
