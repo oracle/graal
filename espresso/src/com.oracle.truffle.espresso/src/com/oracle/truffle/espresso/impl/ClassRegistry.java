@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * A {@link ClassRegistry} maps type names to resolved {@link Klass} instances. Each class loader is
@@ -224,7 +224,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     protected abstract void loadKlassCacheHitsInc();
 
-    public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
+    public abstract @JavaType(ClassLoader.class) StaticObject getClassLoader();
 
     public List<Klass> getLoadedKlasses() {
         ArrayList<Klass> klasses = new ArrayList<>(classes.size());

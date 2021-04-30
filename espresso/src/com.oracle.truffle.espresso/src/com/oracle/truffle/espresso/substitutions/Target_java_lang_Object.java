@@ -39,40 +39,40 @@ import com.oracle.truffle.espresso.vm.VM;
 @EspressoSubstitutions
 public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
-    public static int hashCode(@Host(Object.class) StaticObject self) {
+    public static int hashCode(@JavaType(Object.class) StaticObject self) {
         return VM.JVM_IHashCode(self);
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(Class.class) StaticObject getClass(@Host(Object.class) StaticObject self) {
+    public static @JavaType(Class.class) StaticObject getClass(@JavaType(Object.class) StaticObject self) {
         return self.getKlass().mirror();
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")
     static abstract class Init extends Node {
 
-        abstract void execute(@Host(Object.class) StaticObject self);
+        abstract void execute(@JavaType(Object.class) StaticObject self);
 
         static boolean hasFinalizer(StaticObject self) {
             return ((ObjectKlass) self.getKlass()).hasFinalizer();
         }
 
         @Specialization(guards = "hasFinalizer(self)")
-        void registerFinalizer(@Host(Object.class) StaticObject self,
+        void registerFinalizer(@JavaType(Object.class) StaticObject self,
                         @SuppressWarnings("unused") @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_ref_Finalizer_register.getCallTarget())") DirectCallNode register) {
             register.call(self);
         }
 
         @Fallback
-        void noFinalizer(@SuppressWarnings("unused") @Host(Object.class) StaticObject self) {
+        void noFinalizer(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject self) {
             // nop
         }
     }
 
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
-    public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self,
+    public static @JavaType(Object.class) StaticObject clone(@JavaType(Object.class) StaticObject self,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         return VM.JVM_Clone(self, meta, profiler);

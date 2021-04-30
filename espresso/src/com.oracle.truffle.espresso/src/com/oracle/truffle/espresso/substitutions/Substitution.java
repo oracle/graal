@@ -64,7 +64,7 @@ import java.lang.annotation.Target;
      *
      * <pre>
      * &#064;Substitution(hasReceiver = true)
-     * public static int hashCode(@Host(Object.class) StaticObject receiver) {
+     * public static int hashCode(@JavaType(Object.class) StaticObject receiver) {
      *     return 42;
      * }
      * </pre>

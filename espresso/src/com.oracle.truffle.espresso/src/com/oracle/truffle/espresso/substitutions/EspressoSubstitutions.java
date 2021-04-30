@@ -30,7 +30,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface EspressoSubstitutions {
-    Class<?> value() default EspressoSubstitutions.class;
+    JavaType value() default @JavaType;
 
     Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
 }

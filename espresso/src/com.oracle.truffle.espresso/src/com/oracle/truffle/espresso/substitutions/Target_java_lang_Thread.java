@@ -153,17 +153,17 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution
-    public static @Host(Thread.class) StaticObject currentThread(@InjectMeta Meta meta) {
+    public static @JavaType(Thread.class) StaticObject currentThread(@InjectMeta Meta meta) {
         return meta.getContext().getCurrentThread();
     }
 
     @Substitution
-    public static @Host(Thread[].class) StaticObject getThreads(@InjectMeta Meta meta) {
+    public static @JavaType(Thread[].class) StaticObject getThreads(@InjectMeta Meta meta) {
         return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads());
     }
 
     @Substitution
-    public static @Host(StackTraceElement[][].class) StaticObject dumpThreads(@Host(Thread[].class) StaticObject threads, @InjectMeta Meta meta) {
+    public static @JavaType(StackTraceElement[][].class) StaticObject dumpThreads(@JavaType(Thread[].class) StaticObject threads, @InjectMeta Meta meta) {
         if (StaticObject.isNull(threads)) {
             throw meta.throwNullPointerException();
         }
@@ -178,11 +178,11 @@ public final class Target_java_lang_Thread {
 
     @Substitution(hasReceiver = true)
     static abstract class Start0 extends Node {
-        abstract void execute(@Host(Thread.class) StaticObject self);
+        abstract void execute(@JavaType(Thread.class) StaticObject self);
 
         @Specialization
         @TruffleBoundary
-        void doCached(@Host(Thread.class) StaticObject self,
+        void doCached(@JavaType(Thread.class) StaticObject self,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_Thread_exit.getCallTarget())") DirectCallNode threadExit) {
             Meta meta = context.getMeta();
@@ -276,7 +276,7 @@ public final class Target_java_lang_Thread {
         terminate(thread, null, meta);
     }
 
-    private static void terminate(@Host(Thread.class) StaticObject self, DirectCallNode threadExit, Meta meta) {
+    private static void terminate(@JavaType(Thread.class) StaticObject self, DirectCallNode threadExit, Meta meta) {
         setThreadStop(self, KillStatus.EXITING);
         try {
             if (threadExit != null) {
@@ -325,7 +325,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void setPriority0(@Host(Thread.class) StaticObject self, int newPriority) {
+    public static void setPriority0(@JavaType(Thread.class) StaticObject self, int newPriority) {
         // Priority is set in the guest field in Thread.setPriority().
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
@@ -335,18 +335,18 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean isAlive(@Host(Thread.class) StaticObject self) {
+    public static boolean isAlive(@JavaType(Thread.class) StaticObject self) {
         int state = self.getKlass().getMeta().java_lang_Thread_threadStatus.getInt(self);
         return state != State.NEW.value && state != State.TERMINATED.value;
     }
 
     @Substitution(hasReceiver = true)
     static abstract class GetState extends Node {
-        abstract @Host(typeName = "Ljava/lang/Thread$State;") StaticObject execute(@Host(Thread.class) StaticObject self);
+        abstract @JavaType(internalName = "Ljava/lang/Thread$State;") StaticObject execute(@JavaType(Thread.class) StaticObject self);
 
         @Specialization
-        @Host(typeName = "Ljava/lang/Thread$State;")
-        StaticObject execute(@Host(Thread.class) StaticObject self,
+        @JavaType(internalName = "Ljava/lang/Thread$State;")
+        StaticObject execute(@JavaType(Thread.class) StaticObject self,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
             Meta meta = context.getMeta();
@@ -362,7 +362,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution
-    public static boolean holdsLock(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
+    public static boolean holdsLock(@JavaType(Object.class) StaticObject object, @InjectMeta Meta meta) {
         if (StaticObject.isNull(object)) {
             throw meta.throwNullPointerException();
         }
@@ -397,7 +397,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void interrupt0(@Host(Object.class) StaticObject self) {
+    public static void interrupt0(@JavaType(Object.class) StaticObject self) {
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
@@ -408,7 +408,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean clear) {
+    public static boolean isInterrupted(@JavaType(Thread.class) StaticObject self, boolean clear) {
         boolean result = checkInterrupt(self);
         if (clear) {
             Thread hostThread = getHostFromGuestThread(self);
@@ -424,7 +424,7 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
-    public static void resume0(@Host(Object.class) StaticObject self) {
+    public static void resume0(@JavaType(Object.class) StaticObject self) {
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
             return;
@@ -438,7 +438,7 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
-    public static void suspend0(@Host(Object.class) StaticObject toSuspend) {
+    public static void suspend0(@JavaType(Object.class) StaticObject toSuspend) {
         toSuspend.getKlass().getContext().invalidateNoSuspend("Calling Thread.suspend()");
         SuspendLock lock = getSuspendLock(toSuspend);
         if (lock == null) {
@@ -452,7 +452,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void stop0(@Host(Object.class) StaticObject self, @Host(Object.class) StaticObject throwable) {
+    public static void stop0(@JavaType(Object.class) StaticObject self, @JavaType(Object.class) StaticObject throwable) {
         self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
         killThread(self);
         setInterrupt(self, true);
@@ -466,13 +466,13 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void setNativeName(@Host(Object.class) StaticObject self, @Host(String.class) StaticObject name,
+    public static void setNativeName(@JavaType(Object.class) StaticObject self, @JavaType(String.class) StaticObject name,
                     @InjectMeta Meta meta) {
         Thread hostThread = getHostFromGuestThread(self);
         hostThread.setName(meta.toHostString(name));
     }
 
-    public static Thread getHostFromGuestThread(@Host(Object.class) StaticObject self) {
+    public static Thread getHostFromGuestThread(@JavaType(Object.class) StaticObject self) {
         return (Thread) self.getKlass().getMeta().HIDDEN_HOST_THREAD.getHiddenObject(self);
     }
 
@@ -551,14 +551,14 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    private static SuspendLock getSuspendLock(@Host(Object.class) StaticObject self) {
+    private static SuspendLock getSuspendLock(@JavaType(Object.class) StaticObject self) {
         return (SuspendLock) self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK.getHiddenObject(self);
     }
 
     /**
      * Synchronizes on Target_ class to avoid deadlock when locking on thread object.
      */
-    private static synchronized SuspendLock initSuspendLock(@Host(Object.class) StaticObject self) {
+    private static synchronized SuspendLock initSuspendLock(@JavaType(Object.class) StaticObject self) {
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
             lock = new SuspendLock();

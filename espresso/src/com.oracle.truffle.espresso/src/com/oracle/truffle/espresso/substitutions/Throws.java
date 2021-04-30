@@ -35,11 +35,11 @@ import java.lang.annotation.Target;
  *
  * <pre>
  * {@code @Throws(CloneNotSupportedException.class)}
- * {@code @Throws(hostClasses = @Host(typeName = "Lmy/package/MyCheckedException;"))}
+ * {@code @Throws(other = @JavaType(internalName = "Lmy/package/MyCheckedException;"))}
  * {@literal @}Throws({IllegalAccessException.class, IllegalArgumentException.class, InvocationTargetException.class})
  * </pre>
  */
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.METHOD, ElementType.TYPE})
 public @interface Throws {
     /**
@@ -50,5 +50,5 @@ public @interface Throws {
     /**
      * List of exceptions classes that are not accessible.
      */
-    Host[] hostClasses() default {};
+    JavaType[] others() default {};
 }

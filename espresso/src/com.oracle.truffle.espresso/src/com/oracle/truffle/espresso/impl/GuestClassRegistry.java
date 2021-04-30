@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
@@ -63,7 +63,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     private final Method loadClass;
     private final Method addClass;
 
-    public GuestClassRegistry(EspressoContext context, @Host(ClassLoader.class) StaticObject classLoader) {
+    public GuestClassRegistry(EspressoContext context, @JavaType(ClassLoader.class) StaticObject classLoader) {
         super(context);
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
@@ -89,7 +89,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public @Host(ClassLoader.class) StaticObject getClassLoader() {
+    public @JavaType(ClassLoader.class) StaticObject getClassLoader() {
         return classLoader;
     }
 

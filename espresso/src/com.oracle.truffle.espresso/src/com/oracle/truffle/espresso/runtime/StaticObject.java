@@ -39,11 +39,11 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 
 /**
@@ -150,7 +150,8 @@ public class StaticObject implements TruffleObject, Cloneable {
      * Wraps a foreign {@link InteropLibrary#isException(Object) exception} as a guest
      * ForeignException.
      */
-    public static @Host(typeName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject, InteropLibrary interopLibrary) {
+    public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject,
+                    InteropLibrary interopLibrary) {
         assert meta.polyglot != null;
         assert meta.getContext().Polyglot;
         assert interopLibrary.isException(foreignObject);

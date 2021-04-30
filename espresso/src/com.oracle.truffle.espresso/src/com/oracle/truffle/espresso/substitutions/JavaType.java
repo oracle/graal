@@ -36,22 +36,22 @@ import java.lang.annotation.Target;
  * used as a hint (better readability) for guest parameter/return types.
  *
  * <pre>
- * {@code @Host(byte[].class) StaticObject data}
- * {@code @Host(Class.class) StaticObject clazz}
- * {@code @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject memberName}
- * {@code @Host(typeName = "Ljava/lang/Thread$State;") StaticObject threadState}
+ * {@code @JavaType(byte[].class) StaticObject data}
+ * {@code @JavaType(Class.class) StaticObject clazz}
+ * {@code @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName}
+ * {@code @JavaType(internalName = "Ljava/lang/Thread$State;") StaticObject threadState}
  * </pre>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE_USE)
-public @interface Host {
+public @interface JavaType {
     /**
      * Host class for the expected type.
      */
-    Class<?> value() default Host.class;
+    Class<?> value() default JavaType.class;
 
     /**
-     * Host class in internal form. Used when the host class is not accessible.
+     * Class in internal form. Used when the host class is not accessible.
      */
-    String typeName() default "";
+    String internalName() default "";
 }

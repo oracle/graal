@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
 import com.oracle.truffle.espresso.nodes.helper.TypeCheckNodeGen;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class CheckCastNode extends QuickNode {
+public final class CheckCastNode extends QuickNode {
 
     final Klass typeToCheck;
     @Child TypeCheckNode typeCheckNode;

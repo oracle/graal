@@ -36,7 +36,6 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
@@ -47,8 +46,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     // @Substitution
     private TypeElement substitutionAnnotation;
 
-    // @Host
-    private TypeElement host;
+    // @JavaType
+    private TypeElement javaType;
     // NoProvider.class
     private TypeElement noProvider;
     // NoFilter.class
@@ -66,10 +65,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     // @Substitution.versionFilter()
     private ExecutableElement versionFilterElement;
 
-    // @Host.value()
-    private ExecutableElement hostValueElement;
-    // @Host.typeName()
-    private ExecutableElement hostTypeNameElement;
+    // @JavaType.value()
+    private ExecutableElement javaTypeValueElement;
+    // @JavaType.internalName()
+    private ExecutableElement javaTypeInternalNameElement;
 
     // region Various String constants.
 
@@ -77,7 +76,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     private static final String ESPRESSO_SUBSTITUTIONS = SUBSTITUTION_PACKAGE + "." + "EspressoSubstitutions";
     private static final String METHOD_SUBSTITUTION = SUBSTITUTION_PACKAGE + "." + "Substitution";
-    private static final String HOST = SUBSTITUTION_PACKAGE + "." + "Host";
+    private static final String JAVA_TYPE = SUBSTITUTION_PACKAGE + "." + "JavaType";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
     private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
 
@@ -321,9 +320,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     String getReturnTypeFromHost(ExecutableElement method) {
         TypeMirror returnType = method.getReturnType();
-        AnnotationMirror a = getAnnotation(returnType, host);
+        AnnotationMirror a = getAnnotation(returnType, javaType);
         if (a != null) {
-            return getClassFromHost(a);
+            return getClassFromJavaType(a);
         }
         return getInternalName(returnType.toString());
     }
@@ -332,11 +331,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         ArrayList<String> parameterTypeNames = new ArrayList<>();
         for (VariableElement parameter : inner.getParameters()) {
             if (isActualParameter(parameter)) {
-                AnnotationMirror mirror = getAnnotation(parameter.asType(), host);
+                AnnotationMirror mirror = getAnnotation(parameter.asType(), javaType);
                 if (mirror != null) {
-                    parameterTypeNames.add(getClassFromHost(mirror));
+                    parameterTypeNames.add(getClassFromJavaType(mirror));
                 } else {
-                    // @Host annotation not found -> primitive or j.l.Object
+                    // @JavaType annotation not found -> primitive or j.l.Object
                     String arg = getInternalName(parameter.asType().toString());
                     parameterTypeNames.add(arg);
                 }
@@ -346,22 +345,22 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     }
 
     /**
-     * @param a an @Host annotation
+     * @param a an @JavaType annotation
      * @return the fully qualified internal name of the guest class.
      */
-    private String getClassFromHost(AnnotationMirror a) {
+    private String getClassFromJavaType(AnnotationMirror a) {
         Map<? extends ExecutableElement, ? extends AnnotationValue> members = processingEnv.getElementUtils().getElementValuesWithDefaults(a);
-        AnnotationValue v = members.get(hostValueElement);
+        AnnotationValue v = members.get(javaTypeValueElement);
         if (v != null) {
             assert v.getValue() instanceof TypeMirror;
             TypeMirror value = (TypeMirror) v.getValue();
-            if (processingEnv.getTypeUtils().isSameType(value, host.asType())) {
-                return (String) members.get(hostTypeNameElement).getValue();
+            if (processingEnv.getTypeUtils().isSameType(value, javaType.asType())) {
+                return (String) members.get(javaTypeInternalNameElement).getValue();
             } else {
                 return getInternalName(value.toString());
             }
         } else {
-            System.err.println("value() member of @Host annotation not found");
+            System.err.println("value() member of @JavaType annotation not found");
         }
         throw new IllegalArgumentException();
     }
@@ -455,7 +454,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Set up the different annotations, along with their values, that we will need.
         this.espressoSubstitutions = processingEnv.getElementUtils().getTypeElement(ESPRESSO_SUBSTITUTIONS);
         this.substitutionAnnotation = processingEnv.getElementUtils().getTypeElement(METHOD_SUBSTITUTION);
-        this.host = processingEnv.getElementUtils().getTypeElement(HOST);
+        this.javaType = processingEnv.getElementUtils().getTypeElement(JAVA_TYPE);
         this.noProvider = processingEnv.getElementUtils().getTypeElement(NO_PROVIDER);
         this.noFilter = processingEnv.getElementUtils().getTypeElement(NO_FILTER);
         for (Element e : espressoSubstitutions.getEnclosedElements()) {
@@ -484,13 +483,13 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             }
         }
 
-        for (Element e : host.getEnclosedElements()) {
+        for (Element e : javaType.getEnclosedElements()) {
             if (e.getKind() == ElementKind.METHOD) {
                 if (e.getSimpleName().contentEquals("value")) {
-                    this.hostValueElement = (ExecutableElement) e;
+                    this.javaTypeValueElement = (ExecutableElement) e;
                 }
-                if (e.getSimpleName().contentEquals("typeName")) {
-                    this.hostTypeNameElement = (ExecutableElement) e;
+                if (e.getSimpleName().contentEquals("internalName")) {
+                    this.javaTypeInternalNameElement = (ExecutableElement) e;
                 }
             }
         }
