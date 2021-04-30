@@ -29,6 +29,7 @@ import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.ref.Reference;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -53,6 +54,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -310,6 +312,8 @@ public class NativeImageGenerator {
 
     private Pair<Method, CEntryPointData> mainEntryPoint;
 
+    final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
+
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
@@ -482,7 +486,6 @@ public class NativeImageGenerator {
             ImageSingletonsSupportImpl.HostedManagement.installInThread(new ImageSingletonsSupportImpl.HostedManagement());
             this.buildExecutor = createForkJoinPool(compilationExecutor.getParallelism());
 
-            Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
             buildExecutor.submit(() -> {
                 ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
                 ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
@@ -496,19 +499,6 @@ public class NativeImageGenerator {
                     watchdog.close();
                 }
             }).get();
-
-            Path buildDir = generatedFiles(HostedOptionValues.singleton());
-            ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"),
-                            writer -> buildArtifacts.forEach((artifactType, paths) -> {
-                                writer.println("[" + artifactType + "]");
-                                if (artifactType == ArtifactType.JDK_LIB_SHIM) {
-                                    writer.println("# Note that shim JDK libraries depend on this");
-                                    writer.println("# particular native image (including its name)");
-                                    writer.println("# and therefore cannot be used with others.");
-                                }
-                                paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
-                                writer.println();
-                            }));
         } catch (InterruptedException | CancellationException e) {
             System.out.println("Interrupted!");
             throw new InterruptImageBuilding(e);
@@ -715,6 +705,21 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
         }
+    }
+
+    void reportBuildArtifacts(String imageName) {
+        Path buildDir = generatedFiles(HostedOptionValues.singleton());
+        Consumer<PrintWriter> writerConsumer = writer -> buildArtifacts.forEach((artifactType, paths) -> {
+            writer.println("[" + artifactType + "]");
+            if (artifactType == BuildArtifacts.ArtifactType.JDK_LIB_SHIM) {
+                writer.println("# Note that shim JDK libraries depend on this");
+                writer.println("# particular native image (including its name)");
+                writer.println("# and therefore cannot be used with others.");
+            }
+            paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
+            writer.println();
+        });
+        ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer);
     }
 
     @SuppressWarnings("try")

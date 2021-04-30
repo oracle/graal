@@ -246,6 +246,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         if (!verifyValidJavaVersionAndPlatform()) {
             return 1;
         }
+        String imageName = null;
         Timer totalTimer = new Timer("[total]", false);
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
@@ -269,7 +270,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
             DebugContext debug = new Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
 
-            String imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
+            imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
             if (imageName.length() == 0) {
                 throw UserError.abort("No output file name specified. Use '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
@@ -433,10 +434,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             NativeImageGeneratorRunner.reportFatalError(e);
             return 1;
         } finally {
+            totalTimer.print();
+            if (imageName != null && generator != null) {
+                generator.reportBuildArtifacts(imageName);
+            }
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clearInThread();
         }
-        totalTimer.print();
         return 0;
     }
 
