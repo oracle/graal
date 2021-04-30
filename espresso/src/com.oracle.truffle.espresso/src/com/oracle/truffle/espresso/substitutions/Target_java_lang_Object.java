@@ -75,9 +75,9 @@ public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
     public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self,
-                    @GuestCall(target = "java_lang_ref_Finalizer_register") DirectCallNode finalizerRegister,
-                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
-        return VM.JVM_Clone(self, finalizerRegister, meta, profiler);
+                    @InjectMeta Meta meta,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        return VM.JVM_Clone(self, meta, profiler);
     }
 
     /* As of JDK 14+, these are no longer linked in libjava. */

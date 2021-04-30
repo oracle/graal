@@ -125,7 +125,6 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
-import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectMeta;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
@@ -545,7 +544,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public static @Host(Object.class) StaticObject JVM_Clone(@Host(Object.class) StaticObject self,
-                    @GuestCall(target = "java_lang_ref_Finalizer_register") DirectCallNode finalizerRegister,
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         assert StaticObject.notNull(self);
         char exceptionBranch = 3;
@@ -596,7 +594,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert self.getKlass() instanceof ObjectKlass;
         if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
             profiler.profile(2);
-            finalizerRegister.call(clone);
+            meta.java_lang_ref_Finalizer_register.invokeDirect(clone);
         }
 
         return clone;
@@ -951,7 +949,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index,
-                    @GuestCall(target = "java_lang_StackTraceElement_init") DirectCallNode stackTraceElementInit,
                     @InjectProfile SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         if (index < 0) {
@@ -971,7 +968,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         int bci = stackElement.getBCI();
 
-        stackTraceElementInit.call(
+        getMeta().java_lang_StackTraceElement_init.invokeDirect(
                         /* this */ ste,
                         /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(method.getDeclaringKlass().getType().toString(), true, true)),
                         /* methodName */ meta.toGuestString(method.getName()),
@@ -1685,7 +1682,6 @@ public final class VM extends NativeEnv implements ContextAccess {
                     @Host(typeName = "PrivilegedAction OR PrivilegedActionException") StaticObject action,
                     @Host(AccessControlContext.class) StaticObject context,
                     boolean wrapException,
-                    @GuestCall(target = "java_security_PrivilegedActionException_init_Exception") DirectCallNode privilegedActionExceptionInit,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(action)) {
@@ -1721,7 +1717,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                             !meta.java_lang_RuntimeException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                 profiler.profile(3);
                 StaticObject wrapper = meta.java_security_PrivilegedActionException.allocateInstance();
-                privilegedActionExceptionInit.call(wrapper, e.getExceptionObject());
+                getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
                 throw meta.throwException(wrapper);
             }
             profiler.profile(4);
@@ -2755,7 +2751,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressWarnings("unused")
     public void JVM_InitStackTraceElement(@Host(StackTraceElement.class) StaticObject element, @Host(typeName = "Ljava/lang/StackFrameInfo;") StaticObject info,
-                    @GuestCall(target = "java_lang_Class_getName") DirectCallNode classGetName, @InjectMeta Meta meta) {
+                    @InjectMeta Meta meta) {
         if (StaticObject.isNull(element) || StaticObject.isNull(info)) {
             throw meta.throwNullPointerException();
         }
@@ -2769,13 +2765,12 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "uninitialized StackFrameInfo !");
         }
         int bci = meta.java_lang_StackFrameInfo_bci.getInt(info);
-        fillInElement(element, new VM.StackElement(m, bci), classGetName);
+        fillInElement(element, new VM.StackElement(m, bci), getMeta().java_lang_Class_getName);
     }
 
     @VmImpl
     @JniImpl
     public void JVM_InitStackTraceElementArray(@Host(StackTraceElement[].class) StaticObject elements, @Host(Throwable.class) StaticObject throwable,
-                    @GuestCall(target = "java_lang_Class_getName") DirectCallNode classGetName,
                     @InjectProfile SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         if (StaticObject.isNull(elements) || StaticObject.isNull(throwable)) {
@@ -2793,12 +2788,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                 profiler.profile(2);
                 throw meta.throwNullPointerException();
             }
-            fillInElement(elements.get(i), stackTrace.trace[i], classGetName);
+            fillInElement(elements.get(i), stackTrace.trace[i], getMeta().java_lang_Class_getName);
         }
     }
 
     private void fillInElement(@Host(StackTraceElement.class) StaticObject ste, VM.StackElement element,
-                    DirectCallNode classGetName) {
+                    Method classGetName) {
         Method m = element.getMethod();
         Klass k = m.getDeclaringKlass();
         StaticObject guestClass = k.mirror();
@@ -2806,7 +2801,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         ModuleEntry module = k.module();
 
         // Fill in class name
-        getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, classGetName.call(guestClass));
+        getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, classGetName.invokeDirect(null, guestClass));
         getMeta().java_lang_StackTraceElement_declaringClassObject.setObject(ste, guestClass);
 
         // Fill in loader name

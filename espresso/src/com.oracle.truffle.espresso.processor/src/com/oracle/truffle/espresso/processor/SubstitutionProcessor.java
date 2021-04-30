@@ -105,22 +105,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         final boolean hasReceiver;
         final TypeMirror nameProvider;
         final TypeMirror versionFilter;
-
-        public SubstitutorHelper(EspressoProcessor processor, ExecutableElement method, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
+        public SubstitutorHelper(EspressoProcessor processor, Element target, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
                         boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter) {
-            super(processor, method);
-            this.targetClassName = targetClassName;
-            this.guestMethodName = guestMethodName;
-            this.guestTypeNames = guestTypeNames;
-            this.returnType = returnType;
-            this.hasReceiver = hasReceiver;
-            this.nameProvider = nameProvider;
-            this.versionFilter = versionFilter;
-        }
-
-        public SubstitutorHelper(EspressoProcessor processor, TypeElement node, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
-                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter) {
-            super(processor, node);
+            super(processor, target);
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
             this.guestTypeNames = guestTypeNames;
@@ -138,8 +125,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     private static String extractInvocation(String className, String methodName, int nParameters, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
-        if (helper.node != null) {
-            ExecutableElement executeMethod = findNodeExecute(helper.node);
+        if (helper.isNodeTarget()) {
+            ExecutableElement executeMethod = findNodeExecute(helper.getNodeTarget());
             str.append("this.node").append(".").append(executeMethod.getSimpleName()).append("(");
         } else {
             str.append(className).append(".").append(methodName).append("(");
@@ -191,18 +178,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 processMethodSubstitution((ExecutableElement) element, className, defaultNameProvider);
             }
         }
-    }
-
-    // Find the node abstract method.
-    static ExecutableElement findNodeExecute(TypeElement node) {
-        for (Element method : node.getEnclosedElements()) {
-            if (method.getKind() == ElementKind.METHOD) {
-                if (method.getModifiers().contains(Modifier.ABSTRACT)) {
-                    return (ExecutableElement) method;
-                }
-            }
-        }
-        return null;
     }
 
     private static String camelCase(String s) {
@@ -533,9 +508,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("V")) {
             str.append(IMPORT_STATIC_OBJECT);
         }
-        if (helper.node != null) {
-            TypeElement enclosing = (TypeElement) helper.node.getEnclosingElement();
-            str.append("import ").append(helper.node.getQualifiedName()).append(";\n");
+        if (helper.isNodeTarget()) {
+            str.append("import ").append(helper.getNodeTarget().getQualifiedName()).append(";\n");
         }
         str.append("\n");
         return str.toString();

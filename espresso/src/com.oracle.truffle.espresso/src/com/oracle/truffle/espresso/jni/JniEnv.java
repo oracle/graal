@@ -74,7 +74,6 @@ import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
-import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectMeta;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
@@ -1376,12 +1375,11 @@ public final class JniEnv extends NativeEnv {
      * @return the length of the Java string.
      */
     @JniImpl
-    public static int GetStringLength(@Host(String.class) StaticObject string,
-                    @GuestCall(target = "java_lang_String_length") DirectCallNode stringLength) {
+    public int GetStringLength(@Host(String.class) StaticObject string) {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) stringLength.call(string);
+        return (int) getMeta().java_lang_String_length.invokeDirect(string);
     }
 
     /**
@@ -2634,11 +2632,7 @@ public final class JniEnv extends NativeEnv {
      */
     @TruffleBoundary
     @JniImpl
-    public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
-                    @GuestCall(target = "java_lang_ClassLoader_getSystemClassLoader") DirectCallNode getSystemClassLoader,
-                    @GuestCall(target = "java_lang_ClassLoader$NativeLibrary_getFromClass") DirectCallNode nativeLibraryGetFromClass,
-                    @GuestCall(target = "java_lang_Class_forName_String_boolean_ClassLoader") DirectCallNode classForName,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr, @InjectProfile SubstitutionProfiler profiler) {
         String name = NativeUtils.interopPointerToString(namePtr);
         Meta meta = getMeta();
         if (name == null || (name.indexOf('.') > -1)) {
@@ -2664,18 +2658,18 @@ public final class JniEnv extends NativeEnv {
             Klass callerKlass = caller.getMirrorKlass();
             loader = callerKlass.getDefiningClassLoader();
             if (StaticObject.isNull(loader) && Type.java_lang_ClassLoader$NativeLibrary.equals(callerKlass.getType())) {
-                StaticObject result = (StaticObject) nativeLibraryGetFromClass.call();
+                StaticObject result = (StaticObject) getMeta().java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
                 loader = result.getMirrorKlass().getDefiningClassLoader();
                 protectionDomain = Target_java_lang_Class.getProtectionDomain0(result, getMeta());
             }
         } else {
-            loader = (StaticObject) getSystemClassLoader.call();
+            loader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
         }
 
         StaticObject guestClass = StaticObject.NULL;
         try {
             String dotName = name.replace('/', '.');
-            guestClass = (StaticObject) classForName.call(meta.toGuestString(dotName), false, loader);
+            guestClass = (StaticObject) getMeta().java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
             EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
         } catch (EspressoException e) {
             profiler.profile(5);

@@ -98,11 +98,6 @@ import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
  * </pre>
  *
  * and so on so forth.
- * <li>Furthermore, if a substitution needs to call a known guest method, it is possible to give a
- * {@link DirectCallNode} as an argument, annotated with {@link GuestCall}. The Espresso Processor
- * wil generate the boilerplate to both generate the node, and pass it around. Note that the name of
- * the parameter, or the string in {@link GuestCall#target()} must be rigorously equal to the name
- * of the target method as declared in {@link Meta}.
  * <li>Additionally, some substitutions may not be given a meta accessor as parameter, but may need
  * to get the meta from somewhere. Regular meta obtention can be done through
  * {@link EspressoLanguage#getCurrentContext()}, but this is quite a slow access. As such, it is
