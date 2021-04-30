@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -80,7 +81,7 @@ import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
  * {@link CachedSignatureInfo}. Two {@link LibFFISignature} objects that have the same
  * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
-@ExportLibrary(NFIBackendSignatureLibrary.class)
+@ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 0)
 final class LibFFISignature {
 
     @TruffleBoundary
@@ -105,31 +106,40 @@ final class LibFFISignature {
         return ret;
     }
 
-    @ExportMessage(limit = "3")
-    Object call(Object functionPointer, Object[] args,
+    // Turned into a class message export due to a DSL processor issue
+    @ExportMessage
+    static class Call {
+
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
+        static Object call(LibFFISignature self, Object functionPointer, Object[] args,
                     @CachedLibrary("functionPointer") InteropLibrary interop,
                     @Cached BranchProfile toNative,
                     @Cached BranchProfile error,
                     @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
-        if (!interop.isPointer(functionPointer)) {
-            toNative.enter();
-            interop.toNative(functionPointer);
+            if (!interop.isPointer(functionPointer)) {
+                toNative.enter();
+                interop.toNative(functionPointer);
+            }
+            long pointer;
+            try {
+                pointer = interop.asPointer(functionPointer);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+            }
+            return functionExecute.execute(pointer, self, args);
         }
-        long pointer;
-        try {
-            pointer = interop.asPointer(functionPointer);
-        } catch (UnsupportedMessageException e) {
-            error.enter();
-            throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
-        }
-        return functionExecute.execute(pointer, this, args);
+
     }
+
 
     @ExportMessage
     @ImportStatic(LibFFILanguage.class)
     static class CreateClosure {
 
         @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
+        @GenerateAOT.Exclude
         static LibFFIClosure doCachedExecutable(LibFFISignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("executable") Object cachedExecutable,
@@ -143,6 +153,7 @@ final class LibFFISignature {
         }
 
         @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
+        @GenerateAOT.Exclude
         static LibFFIClosure doCachedSignature(LibFFISignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
