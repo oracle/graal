@@ -23,17 +23,15 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.TYPE;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
  * List of (checked) guest exceptions a method may throw, equivalent to Java `throws`. Checked
- * exceptions are a Java construct, not enforced by the VM. This annotation is optional, to
- * preserve the Java meta-data.
+ * exceptions are a Java construct, not enforced by the VM. This annotation is optional, to preserve
+ * the Java meta-data.
  *
  * <pre>
  * {@code @Throws(CloneNotSupportedException.class)}
@@ -42,7 +40,7 @@ import java.lang.annotation.Target;
  * </pre>
  */
 @Retention(RetentionPolicy.CLASS)
-@Target(value = {METHOD, TYPE})
+@Target({ElementType.METHOD, ElementType.TYPE})
 public @interface Throws {
     /**
      * List of (checked?) exceptions the methods throws.

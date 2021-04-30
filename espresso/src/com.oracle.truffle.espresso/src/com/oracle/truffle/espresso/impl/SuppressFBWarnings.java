@@ -22,10 +22,14 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
 /**
  * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
  */
-@interface SuppressFBWarnings {
+@Retention(RetentionPolicy.SOURCE)
+public @interface SuppressFBWarnings {
     /**
      * The set of FindBugs
      * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be

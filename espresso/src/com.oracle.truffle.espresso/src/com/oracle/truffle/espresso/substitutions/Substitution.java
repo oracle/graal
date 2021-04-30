@@ -22,9 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.TYPE;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -38,8 +36,8 @@ import java.lang.annotation.Target;
  * {@link EspressoSubstitutions}.
  */
 @Retention(RetentionPolicy.CLASS)
-@Target(value = {METHOD, TYPE})
-public @interface Substitution {
+@Target({ElementType.METHOD, ElementType.TYPE})
+@interface Substitution {
     /**
      * Substituted method name.
      *

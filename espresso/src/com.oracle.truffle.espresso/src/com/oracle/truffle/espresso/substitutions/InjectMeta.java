@@ -23,13 +23,12 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.TYPE_USE;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.CLASS)
-@Target(value = {TYPE_USE})
+@Target(ElementType.TYPE_USE)
 public @interface InjectMeta {
 }

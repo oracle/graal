@@ -22,14 +22,13 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.TYPE;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.CLASS)
-@Target(value = {TYPE})
+@Target(ElementType.TYPE)
 public @interface EspressoSubstitutions {
     Class<?> value() default EspressoSubstitutions.class;
 
