@@ -70,8 +70,6 @@ public final class Target_java_lang_Object {
         }
     }
 
-    // TODO(peterssen): Substitution required, instead of calling native JVM_Clone, to avoid leaking
-    // cloned objects. Remove once GR-19247 is resolved.
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
     public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self,

@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
-public class StackWalk {
+public final class StackWalk {
     // -1 and 0 are reserved values.
     private final AtomicLong walkerIds = new AtomicLong(1);
 
