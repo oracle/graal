@@ -119,7 +119,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
 
     private static final long serialVersionUID = -2776792497346642438L;
 
-    @Stable private volatile Condition waitCondition;
+    private volatile Condition waitCondition;
 
     @SuppressFBWarnings(value = "JLM_JSR166_LOCK_MONITORENTER", justification = "Espresso runtime method.")
     private Condition getWaitCondition() {
