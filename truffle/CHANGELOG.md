@@ -9,6 +9,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `RootNode#countsTowardsStackTraceLimit()`, replacing `RootNode#isInternal()` as the criterion that determines whether a frame with the given root node counts towards the stack trace limit.
 * Added `engine.UsePreInitializedContext` option which can be used to disable usage of pre-initialized context.
 * Added `MemoryFence`: provides methods for fine-grained control of memory ordering.
+* Deprecated and added methods to support expected arity ranges in `ArityException` instances. Note that the replacement methods now include more strict validations.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
@@ -67,8 +68,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Make the Truffle NFI more modular.
     * Provide option `--language:nfi=none` for disabling native access via the Truffle NFI in native-image even if the NFI is included in the image (e.g. as dependency of another language).
     * Moved `trufflenfi.h` header from the JDK root include directory into the NFI language home (`languages/nfi/include`).
-## Version 21.1.0
-* Deprecated and added methods to support expected arity ranges in `ArityException` instances. Note that the replacement methods now include more strict validations.
 
 ## Version 21.0.0
 * If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the exception interop messages are executed without a context being entered. The event listeners called during the context enter are:
