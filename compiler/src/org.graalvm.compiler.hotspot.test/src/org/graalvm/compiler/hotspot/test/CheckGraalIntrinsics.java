@@ -404,11 +404,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
                             "java/lang/invoke/MethodHandle.linkToNative*",
 
-                            // JDK-8256999: Add C2 intrinsic for Reference.refersTo and
-                            // PhantomReference::refersTo
-                            "java/lang/ref/PhantomReference.refersTo0(Ljava/lang/Object;)Z",
-                            "java/lang/ref/Reference.refersTo0(Ljava/lang/Object;)Z",
-
                             // JDK-8248188: Add IntrinsicCandidate and API for Base64 decoding
                             "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
 
