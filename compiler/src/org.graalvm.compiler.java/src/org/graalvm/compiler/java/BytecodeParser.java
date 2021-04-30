@@ -5018,9 +5018,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private double[] switchProbability(int numberOfCases, int bci) {
         double[] prob = (profilingInfo == null ? null : profilingInfo.getSwitchProbabilities(bci));
-        if (prob != null) {
-            assert prob.length == numberOfCases;
-        } else {
+        /* A broken profile (wrong number of cases) must not fail compilation, so just ignore it. */
+        if (prob == null || prob.length != numberOfCases) {
             debug.log("Missing probability (switch) in %s at bci %d", method, bci);
             prob = new double[numberOfCases];
             for (int i = 0; i < numberOfCases; i++) {
