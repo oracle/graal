@@ -491,15 +491,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return null;
     }
 
-    public SpecializationData getUninitializedSpecialization() {
-        for (SpecializationData specialization : specializations) {
-            if (specialization.isUninitialized()) {
-                return specialization;
-            }
-        }
-        return null;
-    }
-
     public TypeSystemData getTypeSystem() {
         return typeSystem;
     }

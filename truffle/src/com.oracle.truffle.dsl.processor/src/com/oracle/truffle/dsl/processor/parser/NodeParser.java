@@ -1762,7 +1762,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         initializeGeneric(node);
-        initializeUninitialized(node);
         initializeOrder(node);
         initializePolymorphism(node); // requires specializations
         initializeReachability(node);
@@ -1998,8 +1997,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         for (SpecializationData specialization : specializations) {
             if (specialization.isFallback()) {
                 signatures.add("Fallback");
-            } else if (specialization.isUninitialized()) {
-                signatures.add("Uninitialized");
             } else if (specialization.isPolymorphic()) {
                 signatures.add("Polymorphic");
             } else {
@@ -2926,17 +2923,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private static void initializeUninitialized(final NodeData node) {
-        SpecializationData generic = node.getGenericSpecialization();
-        if (generic == null) {
-            return;
-        }
-        TemplateMethod uninializedMethod = new TemplateMethod("Uninitialized", -1, node, generic.getSpecification(), null, null, generic.getReturnType(), generic.getParameters());
-        // should not use messages from generic specialization
-        uninializedMethod.getMessages().clear();
-        node.getSpecializations().add(new SpecializationData(node, uninializedMethod, SpecializationKind.UNINITIALIZED));
-    }
-
     private void initializePolymorphism(NodeData node) {
 
         SpecializationData generic = node.getGenericSpecialization();
@@ -2977,9 +2963,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 NodeExecutionData execution = genericParameter.getSpecification().getExecution();
                 Collection<TypeMirror> usedTypes = new HashSet<>();
                 for (SpecializationData specialization : node.getSpecializations()) {
-                    if (specialization.isUninitialized()) {
-                        continue;
-                    }
                     Parameter parameter = specialization.findParameter(genericParameter.getLocalName());
                     if (parameter == specialization.getReturnType() && specialization.isFallback() && specialization.getMethod() == null) {
                         continue;

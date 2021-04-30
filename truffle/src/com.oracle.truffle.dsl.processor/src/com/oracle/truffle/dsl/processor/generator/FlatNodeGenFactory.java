@@ -498,8 +498,6 @@ public class FlatNodeGenFactory {
     private static boolean mayBeExcluded(SpecializationData specialization) {
         if (specialization.isPolymorphic()) {
             return false;
-        } else if (specialization.isUninitialized()) {
-            return false;
         }
         return !specialization.getExceptions().isEmpty() || !specialization.getExcludedBy().isEmpty();
     }
@@ -5482,8 +5480,6 @@ public class FlatNodeGenFactory {
 
                 SpecializationData specialization = (SpecializationData) object;
                 if (specialization.isPolymorphic()) {
-                    return 0;
-                } else if (specialization.isUninitialized()) {
                     return 0;
                 }
                 if (!specialization.getExceptions().isEmpty() || !specialization.getExcludedBy().isEmpty()) {
