@@ -92,6 +92,11 @@ public class JfrSymbolRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public long getSymbolId(String imageHeapString, boolean previousEpoch, boolean replaceDotWithSlash) {
+
+        if (imageHeapString == null) {
+            return 0;
+        }
+
         assert Heap.getHeap().isInImageHeap(imageHeapString);
 
         JfrSymbol symbol = StackValue.get(JfrSymbol.class);
